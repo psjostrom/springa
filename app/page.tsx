@@ -1,40 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
 	generatePlan,
 	uploadToIntervals,
 	analyzeHistory,
 	WorkoutEvent,
-	getEstimatedDuration,
 } from "@/lib/plannerLogic";
-import {
-	BarChart,
-	Bar,
-	LineChart,
-	Line,
-	XAxis,
-	YAxis,
-	Tooltip,
-	ResponsiveContainer,
-	Cell,
-} from "recharts";
-import {
-	CalendarCheck,
-	UploadCloud,
-	TrendingUp,
-	Settings,
-	Route,
-} from "lucide-react";
-import {
-	getISOWeek,
-	format,
-	parseISO,
-	startOfWeek,
-	addWeeks,
-	differenceInCalendarWeeks,
-	isBefore,
-} from "date-fns";
+import { PhaseTracker } from "./components/PhaseTracker";
+import { ApiKeyInput } from "./components/ApiKeyInput";
+import { RaceSettings } from "./components/RaceSettings";
+import { PhysiologySettings } from "./components/PhysiologySettings";
+import { PlanStructureSettings } from "./components/PlanStructureSettings";
+import { AnalysisSection } from "./components/AnalysisSection";
+import { WeeklyVolumeChart } from "./components/WeeklyVolumeChart";
+import { WorkoutList } from "./components/WorkoutList";
+import { ActionBar } from "./components/ActionBar";
+import { StatusMessage } from "./components/StatusMessage";
+import { EmptyState } from "./components/EmptyState";
+import { usePhaseInfo } from "./hooks/usePhaseInfo";
+import { useWeeklyVolumeData } from "./hooks/useWeeklyVolumeData";
 
 export default function Home() {
 	const [apiKey, setApiKey] = useState(
@@ -57,34 +42,8 @@ export default function Home() {
 		[],
 	);
 
-	// --- PHASE CALCULATOR ---
-	const phaseInfo = useMemo(() => {
-		const today = new Date();
-		const rDate = parseISO(raceDate);
-		const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
-		const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
-
-		if (isBefore(today, planStartMonday)) {
-			return { name: "Pre-Plan", week: 0, progress: 0 };
-		}
-		if (isBefore(rDate, today)) {
-			return { name: "Post-Race", week: totalWeeks, progress: 100 };
-		}
-
-		const currentWeek =
-			differenceInCalendarWeeks(today, planStartMonday, { weekStartsOn: 1 }) +
-			1;
-		let name = "Build Phase";
-		if (currentWeek === totalWeeks) name = "🏁 Race Week";
-		else if (currentWeek === totalWeeks - 1) name = "📉 Taper Phase";
-		else if (currentWeek >= totalWeeks - 3) name = "🏔️ Race Test Phase";
-
-		const progress = Math.min(
-			100,
-			Math.max(0, (currentWeek / totalWeeks) * 100),
-		);
-		return { name, week: currentWeek, progress };
-	}, [raceDate, totalWeeks]);
+	const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
+	const chartData = useWeeklyVolumeData(planEvents);
 
 	// --- ACTIONS ---
 	const handleAnalyze = async () => {
@@ -137,255 +96,59 @@ export default function Home() {
 		setIsUploading(false);
 	};
 
-	// Chart Prep
-	const chartData = useMemo(() => {
-		const weeklyVolume = planEvents.reduce<Record<string, number>>(
-			(acc, event) => {
-				const weekNum = getISOWeek(event.start_date_local);
-				const label = `W${weekNum.toString().padStart(2, "0")}`;
-
-				const duration = getEstimatedDuration(event);
-
-				acc[label] = (acc[label] || 0) + duration;
-				return acc;
-			},
-			{},
-		);
-
-		return Object.entries(weeklyVolume)
-			.map(([name, mins]) => ({ name, mins }))
-			.sort((a, b) => a.name.localeCompare(b.name));
-	}, [planEvents]);
-
 	return (
 		<div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans">
-			{/* SIDEBAR */}
 			<aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 md:h-screen md:sticky md:top-0 md:overflow-y-auto shrink-0 z-20">
 				<div className="flex items-center gap-2 mb-2">
 					<h1 className="text-xl font-bold tracking-tight">🏃‍♂️‍➡️ Race Planner</h1>
 				</div>
 
-				{/* PHASE TRACKER */}
-				<div className="bg-slate-800 text-white p-4 rounded-lg shadow-sm">
-					<div className="flex items-center gap-2 mb-2">
-						<Route className="text-blue-400" size={18} />
-						<h3 className="font-bold text-sm">{phaseInfo.name}</h3>
-					</div>
-					<div className="flex justify-between text-xs text-slate-400 mb-1">
-						<span>Progress</span>
-						<span>
-							Week {phaseInfo.week} of {totalWeeks}
-						</span>
-					</div>
-					<div className="w-full bg-slate-700 rounded-full h-2">
-						<div
-							className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-							style={{ width: `${phaseInfo.progress}%` }}
-						></div>
-					</div>
-				</div>
+				<PhaseTracker
+					phaseName={phaseInfo.name}
+					currentWeek={phaseInfo.week}
+					totalWeeks={totalWeeks}
+					progress={phaseInfo.progress}
+				/>
 
 				<div className="space-y-4">
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-							API Key
-						</label>
-						{process.env.NEXT_PUBLIC_INTERVALS_API_KEY ? (
-							<div className="text-xs text-green-600 font-mono bg-green-50 p-2 rounded border border-green-200">
-								✅ Loaded from Env
-							</div>
-						) : (
-							<input
-								type="password"
-								value={apiKey}
-								onChange={(e) => setApiKey(e.target.value)}
-								className="w-full p-2 border rounded bg-slate-50 text-sm"
-								placeholder="Intervals.icu Key"
-							/>
-						)}
-					</div>
+					<ApiKeyInput
+						value={apiKey}
+						onChange={setApiKey}
+						hasEnvKey={!!process.env.NEXT_PUBLIC_INTERVALS_API_KEY}
+					/>
 
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-							Race Settings
-						</label>
-						<input
-							type="text"
-							value={raceName}
-							onChange={(e) => setRaceName(e.target.value)}
-							className="w-full p-2 border rounded mb-2 text-sm"
-							placeholder="Name"
-						/>
-						<input
-							type="date"
-							value={raceDate}
-							onChange={(e) => setRaceDate(e.target.value)}
-							className="w-full p-2 border rounded mb-2 text-sm"
-						/>
-						<div className="flex items-center gap-2 text-sm">
-							<span>Dist (km):</span>
-							<input
-								type="number"
-								value={raceDist}
-								onChange={(e) => setRaceDist(Number(e.target.value))}
-								className="w-20 p-1 border rounded"
-							/>
-						</div>
-					</div>
+					<RaceSettings
+						raceName={raceName}
+						raceDate={raceDate}
+						raceDist={raceDist}
+						onRaceNameChange={setRaceName}
+						onRaceDateChange={setRaceDate}
+						onRaceDistChange={setRaceDist}
+					/>
 
-					<div>
-						<label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-							Physiology
-						</label>
-						<div className="flex items-center gap-2 text-sm">
-							<span>LTHR:</span>
-							<input
-								type="number"
-								value={lthr}
-								onChange={(e) => setLthr(Number(e.target.value))}
-								className="w-20 p-1 border rounded"
-							/>
-						</div>
-					</div>
+					<PhysiologySettings lthr={lthr} onLthrChange={setLthr} />
 
-					<div className="bg-slate-50 p-3 rounded border border-slate-200">
-						<label className="block text-xs font-semibold uppercase text-slate-500 mb-2 flex items-center gap-1">
-							<Settings size={12} /> Plan Structure
-						</label>
-						<div className="space-y-2 text-sm">
-							<div>
-								<span className="block text-xs text-slate-400">Tag Prefix</span>
-								<input
-									type="text"
-									value={prefix}
-									onChange={(e) => setPrefix(e.target.value)}
-									className="w-full p-1 border rounded"
-								/>
-							</div>
-							<div className="flex gap-2">
-								<div className="flex-1">
-									<span className="block text-xs text-slate-400">Weeks</span>
-									<input
-										type="number"
-										value={totalWeeks}
-										onChange={(e) => setTotalWeeks(Number(e.target.value))}
-										className="w-full p-1 border rounded"
-									/>
-								</div>
-								<div className="flex-1">
-									<span className="block text-xs text-slate-400">Start km</span>
-									<input
-										type="number"
-										value={startKm}
-										onChange={(e) => setStartKm(Number(e.target.value))}
-										className="w-full p-1 border rounded"
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
+					<PlanStructureSettings
+						prefix={prefix}
+						totalWeeks={totalWeeks}
+						startKm={startKm}
+						onPrefixChange={setPrefix}
+						onTotalWeeksChange={setTotalWeeks}
+						onStartKmChange={setStartKm}
+					/>
 				</div>
 
 				<hr />
 
-				{/* ANALYSIS SECTION */}
-				<div className="bg-slate-100 p-4 rounded-lg">
-					<h3 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-						<TrendingUp size={16} /> Analysis
-					</h3>
-					{trend === null ? (
-						<button
-							onClick={handleAnalyze}
-							disabled={isAnalyzing}
-							className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
-						>
-							{isAnalyzing ? "Fetching..." : `Analyze '${prefix}'`}
-						</button>
-					) : (
-						<div className="space-y-3">
-							{/* MINI GLUCOSE CHART */}
-							{plotData.length > 0 && (
-								<div className="h-32 w-full bg-white rounded border border-slate-200 p-1">
-									<ResponsiveContainer width="100%" height="100%">
-										<LineChart
-											data={plotData}
-											margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
-										>
-											<XAxis
-												dataKey="time"
-												tick={{ fontSize: 10, fill: "#64748b" }}
-												interval="preserveStartEnd"
-												tickLine={false}
-												axisLine={{ stroke: "#e2e8f0" }}
-											/>
-											<YAxis
-												domain={["dataMin - 1", "dataMax + 1"]}
-												tick={{ fontSize: 10, fill: "#64748b" }}
-												width={35}
-												tickLine={false}
-												axisLine={false}
-												tickFormatter={(number) => number.toFixed(1)}
-											/>
-											<Tooltip
-												contentStyle={{
-													fontSize: "12px",
-													borderRadius: "4px",
-													border: "1px solid #e2e8f0",
-												}}
-												formatter={(
-													value:
-														| number
-														| string
-														| Array<number | string>
-														| undefined,
-												) => {
-													if (value === undefined || value === null)
-														return ["-", "mmol/L"];
-													if (Array.isArray(value))
-														return [value.join(", "), "mmol/L"];
-													const num = Number(value);
-													return [
-														!isNaN(num) ? num.toFixed(1) : value,
-														"mmol/L",
-													];
-												}}
-												labelFormatter={(label) => `${label} min`}
-											/>
-											<Line
-												type="monotone"
-												dataKey="glucose"
-												stroke="#ef4444"
-												strokeWidth={2}
-												dot={false}
-											/>
-										</LineChart>
-									</ResponsiveContainer>
-								</div>
-							)}
-
-							<div className="flex justify-between text-sm">
-								<span>Trend:</span>
-								<span
-									className={
-										trend < -3 ? "text-red-600 font-bold" : "text-green-600"
-									}
-								>
-									{trend.toFixed(1)}
-								</span>
-							</div>
-							<div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-300">
-								<span className="font-bold text-sm">Fuel:</span>
-								<input
-									type="number"
-									value={fuel}
-									onChange={(e) => setFuel(Number(e.target.value))}
-									className="w-16 p-1 text-center font-bold border rounded bg-white"
-								/>
-								<span className="text-xs text-slate-500">g/10m</span>
-							</div>
-						</div>
-					)}
-				</div>
+				<AnalysisSection
+					prefix={prefix}
+					trend={trend}
+					fuel={fuel}
+					plotData={plotData}
+					isAnalyzing={isAnalyzing}
+					onAnalyze={handleAnalyze}
+					onFuelChange={setFuel}
+				/>
 
 				<button
 					onClick={handleGenerate}
@@ -395,110 +158,19 @@ export default function Home() {
 				</button>
 			</aside>
 
-			{/* MAIN CONTENT */}
 			<main className="flex-1 p-4 md:p-8 md:overflow-y-auto md:h-screen bg-slate-50">
 				{planEvents.length === 0 ? (
-					<div className="h-64 md:h-full flex flex-col items-center justify-center text-slate-400">
-						<CalendarCheck size={64} className="mb-4 opacity-20" />
-						<p>Configure settings and generate your plan.</p>
-					</div>
+					<EmptyState />
 				) : (
 					<div className="max-w-4xl mx-auto space-y-8 pb-32 md:pb-20">
-						{/* DASHBOARD */}
-						<section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-							<h2 className="text-lg font-bold mb-6">
-								Weekly Volume (Estimated Minutes)
-							</h2>
-							<div className="h-64 w-full">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={chartData}>
-										<XAxis
-											dataKey="name"
-											fontSize={12}
-											tickLine={false}
-											axisLine={false}
-										/>
-										<YAxis hide />
-										<Tooltip
-											cursor={{ fill: "#f1f5f9" }}
-											contentStyle={{
-												borderRadius: "8px",
-												border: "none",
-												boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-											}}
-										/>
-										<Bar dataKey="mins" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-											{chartData.map((_, index: number) => (
-												<Cell
-													key={`cell-${index}`}
-													fill={
-														index >= chartData.length - 2
-															? "#93c5fd"
-															: "#3b82f6"
-													}
-												/>
-											))}
-										</Bar>
-									</BarChart>
-								</ResponsiveContainer>
-							</div>
-						</section>
-
-						{/* ACTION BAR (FIXED BOTTOM ON MOBILE) */}
-						<div className="fixed bottom-4 left-4 right-4 md:static z-50 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-xl md:shadow-sm backdrop-blur-sm bg-opacity-95 md:bg-opacity-100">
-							<div>
-								<h3 className="font-bold text-blue-900 text-sm md:text-base">
-									Ready to sync?
-								</h3>
-								<p className="text-xs md:text-sm text-blue-700">
-									{planEvents.length} workouts generated.
-								</p>
-							</div>
-							<button
-								onClick={handleUpload}
-								disabled={isUploading}
-								className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-sm text-sm md:text-base"
-							>
-								{isUploading ? (
-									"Syncing..."
-								) : (
-									<>
-										<UploadCloud size={18} /> Sync
-									</>
-								)}
-							</button>
-						</div>
-
-						{statusMsg && (
-							<div
-								className={`p-4 rounded-lg text-sm font-medium ${statusMsg.includes("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}
-							>
-								{statusMsg}
-							</div>
-						)}
-
-						{/* WORKOUT LIST */}
-						<div className="space-y-4">
-							<h3 className="text-sm font-bold uppercase text-slate-400 tracking-wider">
-								Preview
-							</h3>
-							{planEvents.map((ev, i) => (
-								<div
-									key={i}
-									className="bg-white p-4 rounded border border-slate-100 flex flex-col gap-2 hover:border-blue-200 transition"
-								>
-									<div className="flex justify-between items-baseline">
-										<h4 className="font-bold text-slate-900">{ev.name}</h4>
-										<span className="text-slate-400 text-xs font-mono">
-											{format(ev.start_date_local, "yyyy-MM-dd")}
-										</span>
-									</div>
-									<pre className="text-xs text-slate-500 whitespace-pre-wrap font-sans bg-slate-50 p-3 rounded">
-										{ev.description}
-									</pre>
-								</div>
-							))}
-						</div>
+						<WeeklyVolumeChart data={chartData} />
+						<ActionBar
+							workoutCount={planEvents.length}
+							isUploading={isUploading}
+							onUpload={handleUpload}
+						/>
+						<StatusMessage message={statusMsg} />
+						<WorkoutList events={planEvents} />
 					</div>
 				)}
 			</main>
