@@ -12,8 +12,7 @@ type StreamType =
   | "heartrate"
   | "pace"
   | "cadence"
-  | "altitude"
-  | "power";
+  | "altitude";
 
 interface StreamConfig {
   label: string;
@@ -61,12 +60,6 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
     label: "Elevation",
     unit: "m",
     color: "#10b981",
-    strokeWidth: 2,
-  },
-  power: {
-    label: "Power",
-    unit: "watts",
-    color: "#ec4899",
     strokeWidth: 2,
   },
 };
@@ -163,7 +156,26 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     setHoverTime(null);
   };
 
-  // Normalize each stream to 0-100% scale and create paths
+  // Determine if we should use actual values (single stream) or normalized (multiple)
+  const useSingleStreamMode = selectedStreams.length === 1;
+
+  // Calculate global min/max for single stream mode
+  let globalMin = 0;
+  let globalMax = 100;
+  if (useSingleStreamMode && selectedStreams.length > 0) {
+    const data = streamData[selectedStreams[0]];
+    if (data && data.length > 0) {
+      const values = data.map((d) => d.value);
+      globalMin = Math.min(...values);
+      globalMax = Math.max(...values);
+      // Add padding to the range
+      const paddingRange = (globalMax - globalMin) * 0.1;
+      globalMin = Math.max(0, globalMin - paddingRange);
+      globalMax = globalMax + paddingRange;
+    }
+  }
+
+  // Normalize each stream to 0-100% scale (or actual values for single stream) and create paths
   const streamPaths = selectedStreams
     .map((streamType) => {
       const data = streamData[streamType];
@@ -174,16 +186,21 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       const minValue = Math.min(...values);
       const maxValue = Math.max(...values);
 
-      // Scale to 0-100%
       const scaleX = (time: number) =>
         (time / maxTime) * chartWidth + padding.left;
+
       const scaleY = (value: number) => {
-        const normalized = (value - minValue) / (maxValue - minValue);
-        // Invert if needed (for pace)
-        const finalNormalized = config.invertYAxis
-          ? 1 - normalized
-          : normalized;
-        return height - padding.bottom - finalNormalized * chartHeight;
+        if (useSingleStreamMode) {
+          // Use actual values
+          const normalized = (value - globalMin) / (globalMax - globalMin);
+          const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
+          return height - padding.bottom - finalNormalized * chartHeight;
+        } else {
+          // Scale to 0-100%
+          const normalized = (value - minValue) / (maxValue - minValue);
+          const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
+          return height - padding.bottom - finalNormalized * chartHeight;
+        }
       };
 
       const pathData = data
@@ -311,10 +328,26 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             );
           })}
 
-          {/* Percentage labels */}
+          {/* Y-axis labels */}
           {Array.from({ length: 5 }).map((_, i) => {
             const yPercent = i / 4;
             const y = height - padding.bottom - yPercent * chartHeight;
+
+            let label = "";
+            if (useSingleStreamMode && streamPaths.length > 0) {
+              // Show actual values
+              const actualValue = globalMin + yPercent * (globalMax - globalMin);
+              const config = streamPaths[0]?.config;
+              if (config?.formatValue) {
+                label = config.formatValue(actualValue);
+              } else {
+                label = actualValue.toFixed(1);
+              }
+            } else {
+              // Show percentages
+              label = `${Math.round(yPercent * 100)}%`;
+            }
+
             return (
               <text
                 key={i}
@@ -324,7 +357,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 fontSize="10"
                 fill="#94a3b8"
               >
-                {Math.round(yPercent * 100)}%
+                {label}
               </text>
             );
           })}
@@ -401,18 +434,20 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             Time (minutes)
           </text>
 
-          {/* Y-axis label */}
-          <text
-            x={10}
-            y={height / 2}
-            textAnchor="middle"
-            fontSize="11"
-            fill="#64748b"
-            fontWeight="500"
-            transform={`rotate(-90, 10, ${height / 2})`}
-          >
-            Normalized (%)
-          </text>
+          {/* Y-axis label - only show when single stream */}
+          {useSingleStreamMode && streamPaths.length > 0 && (
+            <text
+              x={10}
+              y={height / 2}
+              textAnchor="middle"
+              fontSize="11"
+              fill="#64748b"
+              fontWeight="500"
+              transform={`rotate(-90, 10, ${height / 2})`}
+            >
+              {streamPaths[0]?.config.unit}
+            </text>
+          )}
         </svg>
       </div>
       <div className="flex justify-between text-xs text-slate-500 mt-1 px-6 sm:px-12">
@@ -421,9 +456,6 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
         <span>{maxTime}m</span>
       </div>
       <div className="text-xs text-slate-500 mt-2 italic">
-        💡 Each metric is normalized to 0-100% of its range for comparison
-      </div>
-      <div className="text-xs text-slate-500 mt-1 italic">
         🖱️ Hover or drag over the graph to see data points
       </div>
     </div>

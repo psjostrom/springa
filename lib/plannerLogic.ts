@@ -179,11 +179,9 @@ async function fetchStreams(
     "bloodglucose",
     "glucose",
     "ga_smooth",
-    "pace",
+    "velocity_smooth",
     "cadence",
     "altitude",
-    "watts",
-    "power",
   ].join(",");
   try {
     const res = await fetch(
@@ -192,7 +190,9 @@ async function fetchStreams(
         headers: { Authorization: auth },
       },
     );
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      return await res.json();
+    }
     console.warn(
       `Failed to fetch streams for activity ${activityId}: ${res.status} ${res.statusText}`,
     );
@@ -704,7 +704,6 @@ export interface StreamData {
   pace?: DataPoint[];
   cadence?: DataPoint[];
   altitude?: DataPoint[];
-  power?: DataPoint[];
 }
 
 export interface CalendarEvent {
@@ -771,10 +770,9 @@ async function fetchActivityDetails(
     let hrData: number[] = [];
     let glucoseData: number[] = [];
     let glucoseStreamType: string = "";
-    let paceData: number[] = [];
+    let velocityData: number[] = [];
     let cadenceData: number[] = [];
     let altitudeData: number[] = [];
-    let powerData: number[] = [];
 
     for (const s of streams) {
       if (s.type === "time") timeData = s.data;
@@ -783,11 +781,25 @@ async function fetchActivityDetails(
         glucoseData = s.data;
         glucoseStreamType = s.type;
       }
-      if (s.type === "pace") paceData = s.data;
+      if (s.type === "velocity_smooth") {
+        velocityData = s.data;
+      }
       if (s.type === "cadence") cadenceData = s.data;
       if (s.type === "altitude") altitudeData = s.data;
-      if (["watts", "power"].includes(s.type)) powerData = s.data;
     }
+
+    // Convert velocity (m/s) to pace (min/km) with outlier filtering
+    const paceData = velocityData.map(v => {
+      if (v === 0 || v < 0.001) return null; // Stopped or invalid
+      const pace = 1000 / (v * 60); // Convert m/s to min/km
+
+      // Filter outliers: realistic running pace is 2:00 - 12:00 min/km
+      // Faster than 2:00/km = elite sprinting (unlikely)
+      // Slower than 12:00/km = walking very slowly (likely GPS error when stopped)
+      if (pace < 2.0 || pace > 12.0) return null;
+
+      return pace;
+    });
 
     const result: {
       hrZones?: HRZoneData;
@@ -828,10 +840,12 @@ async function fetchActivityDetails(
       }
 
       if (paceData.length > 0) {
-        streamData.pace = timeData.map((t, idx) => ({
-          time: Math.round(t / 60),
-          value: paceData[idx], // Already in min/km
-        }));
+        streamData.pace = timeData
+          .map((t, idx) => ({
+            time: Math.round(t / 60),
+            value: paceData[idx], // Converted from velocity_smooth (m/s) to min/km
+          }))
+          .filter((point) => point.value !== null && point.value > 0) as DataPoint[];
       }
 
       if (cadenceData.length > 0) {
@@ -845,13 +859,6 @@ async function fetchActivityDetails(
         streamData.altitude = timeData.map((t, idx) => ({
           time: Math.round(t / 60),
           value: altitudeData[idx],
-        }));
-      }
-
-      if (powerData.length > 0) {
-        streamData.power = timeData.map((t, idx) => ({
-          time: Math.round(t / 60),
-          value: powerData[idx],
         }));
       }
 

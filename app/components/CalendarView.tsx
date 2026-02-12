@@ -21,6 +21,8 @@ import { CalendarEvent, fetchCalendarData } from "@/lib/plannerLogic";
 import { HRZoneBar } from "./HRZoneBar";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
+import { WorkoutStructureBar } from "./WorkoutStructureBar";
+import { HRMiniChart } from "./HRMiniChart";
 import "../calendar.css";
 
 interface CalendarViewProps {
@@ -105,6 +107,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 	const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
 	const agendaScrollRef = useRef<HTMLDivElement>(null);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const lastCompletedRef = useRef<HTMLDivElement>(null);
+	const hasScrolledToLastCompleted = useRef(false);
 
 	// Set responsive view mode after hydration to avoid SSR mismatch
 	useEffect(() => {
@@ -130,8 +134,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
 		const loadCalendarData = async () => {
 			// Calculate needed range to cover both currentMonth and selectedWeek
-			// This ensures switching between views doesn't trigger refetch
-			let neededStart = startOfMonth(subMonths(currentMonth, 2));
+			// For agenda view, load more past data (6 months back) to show workout history
+			let neededStart = startOfMonth(subMonths(currentMonth, viewMode === 'agenda' ? 6 : 2));
 			let neededEnd = endOfMonth(addMonths(currentMonth, 2));
 
 			// Expand range if selectedWeek falls outside
@@ -167,7 +171,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 		};
 
 		loadCalendarData();
-	}, [apiKey, currentMonth, selectedWeek]);
+	}, [apiKey, currentMonth, selectedWeek, viewMode]);
 
 	// Sync URL params with modal state
 	useEffect(() => {
@@ -262,7 +266,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 		return events.sort((a, b) => a.date.getTime() - b.date.getTime());
 	}, [events]);
 
-	// Load more data for infinite scroll in agenda view
+	// Find the index of the last completed workout
+	const lastCompletedIndex = useMemo(() => {
+		const completedEvents = agendaEvents.filter(e => e.type === 'completed');
+		if (completedEvents.length === 0) return -1;
+		const lastCompleted = completedEvents[completedEvents.length - 1];
+		return agendaEvents.findIndex(e => e.id === lastCompleted.id);
+	}, [agendaEvents]);
+
+	// Load more data for infinite scroll in agenda view (downward)
 	const loadMoreEvents = useCallback(async () => {
 		if (!apiKey || isLoadingMore || !loadedRangeRef.current) return;
 
@@ -292,6 +304,56 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 		}
 	}, [apiKey, isLoadingMore]);
 
+	// Load more data for infinite scroll in agenda view (upward)
+	const loadPreviousEvents = useCallback(async () => {
+		if (!apiKey || isLoadingMore || !loadedRangeRef.current) return;
+
+		setIsLoadingMore(true);
+		try {
+			// Extend the range backward by 3 months
+			const currentStart = loadedRangeRef.current.start;
+			const newStart = startOfMonth(subMonths(currentStart, 3));
+
+			const newData = await fetchCalendarData(apiKey, newStart, addDays(currentStart, -1));
+
+			// Merge new events with existing ones, avoiding duplicates
+			setEvents(prev => {
+				const existingIds = new Set(prev.map(e => e.id));
+				const uniqueNew = newData.filter(e => !existingIds.has(e.id));
+				return [...uniqueNew, ...prev];
+			});
+
+			loadedRangeRef.current = {
+				start: newStart,
+				end: loadedRangeRef.current.end
+			};
+		} catch (err) {
+			console.error('Error loading previous events:', err);
+		} finally {
+			setIsLoadingMore(false);
+		}
+	}, [apiKey, isLoadingMore]);
+
+	// Scroll to last completed workout on initial agenda view load
+	useEffect(() => {
+		if (viewMode !== 'agenda' || !lastCompletedRef.current || hasScrolledToLastCompleted.current) return;
+
+		// Small delay to ensure DOM is fully rendered
+		setTimeout(() => {
+			if (lastCompletedRef.current) {
+				lastCompletedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				hasScrolledToLastCompleted.current = true;
+			}
+		}, 100);
+	}, [viewMode, lastCompletedIndex, events]);
+
+	// Reset scroll flag when leaving agenda view
+	useEffect(() => {
+		if (viewMode !== 'agenda') {
+			hasScrolledToLastCompleted.current = false;
+		}
+	}, [viewMode]);
+
 	// Handle scroll event for infinite scroll in agenda view
 	useEffect(() => {
 		if (viewMode !== 'agenda') return;
@@ -307,6 +369,11 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 			if (scrollHeight - scrollPosition < 200 && !isLoadingMore) {
 				loadMoreEvents();
 			}
+
+			// Check if user has scrolled near the top (within 200px)
+			if (container.scrollTop < 200 && !isLoadingMore) {
+				loadPreviousEvents();
+			}
 		};
 
 		const container = agendaScrollRef.current;
@@ -314,7 +381,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 			container.addEventListener('scroll', handleScroll);
 			return () => container.removeEventListener('scroll', handleScroll);
 		}
-	}, [viewMode, isLoadingMore, loadMoreEvents]);
+	}, [viewMode, isLoadingMore, loadMoreEvents, loadPreviousEvents]);
 
 	return (
 		<div className="max-w-7xl mx-auto">
@@ -442,8 +509,26 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 														onClick={() => openWorkoutModal(event)}
 														className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} w-full text-left break-words`}
 													>
-														<span className="mr-0.5">{getEventIcon(event)}</span>
-														<span className="hidden sm:inline">{event.name}</span>
+														<div className="flex items-center gap-0.5 mb-0.5">
+															<span className="flex-shrink-0">{getEventIcon(event)}</span>
+															<span className="hidden sm:inline truncate">{event.name}</span>
+														</div>
+														{event.type === "completed" && event.hrZones && (
+															<HRMiniChart
+																z1={event.hrZones.z1}
+																z2={event.hrZones.z2}
+																z3={event.hrZones.z3}
+																z4={event.hrZones.z4}
+																z5={event.hrZones.z5}
+																maxHeight={20}
+															/>
+														)}
+														{event.type === "planned" && event.description && (
+															<WorkoutStructureBar
+																description={event.description}
+																maxHeight={20}
+															/>
+														)}
 													</button>
 												))}
 											</div>
@@ -493,8 +578,26 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 														onClick={() => openWorkoutModal(event)}
 														className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} w-full text-left break-words`}
 													>
-														<span className="mr-0.5">{getEventIcon(event)}</span>
-														<span className="hidden sm:inline">{event.name}</span>
+														<div className="flex items-center gap-0.5 mb-0.5">
+															<span className="flex-shrink-0">{getEventIcon(event)}</span>
+															<span className="hidden sm:inline truncate">{event.name}</span>
+														</div>
+														{event.type === "completed" && event.hrZones && (
+															<HRMiniChart
+																z1={event.hrZones.z1}
+																z2={event.hrZones.z2}
+																z3={event.hrZones.z3}
+																z4={event.hrZones.z4}
+																z5={event.hrZones.z5}
+																maxHeight={20}
+															/>
+														)}
+														{event.type === "planned" && event.description && (
+															<WorkoutStructureBar
+																description={event.description}
+																maxHeight={20}
+															/>
+														)}
 													</button>
 												))}
 											</div>
@@ -517,10 +620,12 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 							</div>
 						) : (
 							<>
-							{agendaEvents.map((event) => {
+							{agendaEvents.map((event, index) => {
+								const isLastCompleted = index === lastCompletedIndex;
 								return (
 									<div
 										key={event.id}
+										ref={isLastCompleted ? lastCompletedRef : null}
 										onClick={() => openWorkoutModal(event)}
 										className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100"
 									>
@@ -654,13 +759,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 													{/* HR Zones */}
 													{event.hrZones && (
 														<div className="mt-2">
-															<HRZoneBar
+															<HRMiniChart
 																z1={event.hrZones.z1}
 																z2={event.hrZones.z2}
 																z3={event.hrZones.z3}
 																z4={event.hrZones.z4}
 																z5={event.hrZones.z5}
-																height="h-2"
+																maxHeight={40}
 															/>
 														</div>
 													)}
@@ -668,9 +773,17 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 											)}
 
 											{event.type === "planned" && event.description && (
-												<div className="text-sm text-slate-600 line-clamp-2">
-													{event.description}
-												</div>
+												<>
+													<div className="mb-2">
+														<WorkoutStructureBar
+															description={event.description}
+															maxHeight={40}
+														/>
+													</div>
+													<div className="text-sm text-slate-600 line-clamp-2">
+														{event.description}
+													</div>
+												</>
 											)}
 										</div>
 									</div>
