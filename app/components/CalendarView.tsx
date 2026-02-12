@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
 	format,
@@ -39,29 +39,44 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 	const [selectedWeek, setSelectedWeek] = useState(new Date());
 	const [error, setError] = useState<string | null>(null);
 	const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+	const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
+	const agendaScrollRef = useRef<HTMLDivElement>(null);
+	const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-	// Fetch data when month or week changes
+	// Fetch data only when navigating outside loaded range
 	useEffect(() => {
 		if (!apiKey) return;
 
 		const loadCalendarData = async () => {
+			// Calculate needed range to cover both currentMonth and selectedWeek
+			// This ensures switching between views doesn't trigger refetch
+			let neededStart = startOfMonth(subMonths(currentMonth, 2));
+			let neededEnd = endOfMonth(addMonths(currentMonth, 2));
+
+			// Expand range if selectedWeek falls outside
+			const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
+			const weekEnd = addDays(weekStart, 6);
+			if (weekStart < neededStart) {
+				neededStart = startOfMonth(subMonths(weekStart, 2));
+			}
+			if (weekEnd > neededEnd) {
+				neededEnd = endOfMonth(addMonths(weekEnd, 2));
+			}
+
+			// Check if we already have this data
+			const loadedRange = loadedRangeRef.current;
+			if (loadedRange &&
+				loadedRange.start <= neededStart &&
+				loadedRange.end >= neededEnd) {
+				return; // Data already loaded, no need to fetch
+			}
+
 			setIsLoading(true);
 			setError(null);
 			try {
-				// Determine date range based on view mode
-				let startDate: Date, endDate: Date;
-
-				if (viewMode === 'week') {
-					const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
-					startDate = addDays(weekStart, -7); // Load prev week too
-					endDate = addDays(weekStart, 13); // Load next week too
-				} else {
-					startDate = startOfMonth(subMonths(currentMonth, 1));
-					endDate = endOfMonth(addMonths(currentMonth, 1));
-				}
-
-				const data = await fetchCalendarData(apiKey, startDate, endDate);
+				const data = await fetchCalendarData(apiKey, neededStart, neededEnd);
 				setEvents(data);
+				loadedRangeRef.current = { start: neededStart, end: neededEnd };
 			} catch (err) {
 				console.error('Error loading calendar data:', err);
 				setError('Failed to load calendar data. Please check your API key and try again.');
@@ -71,7 +86,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 		};
 
 		loadCalendarData();
-	}, [apiKey, currentMonth, selectedWeek, viewMode]);
+	}, [apiKey, currentMonth, selectedWeek]);
 
 	// Sync URL params with modal state
 	useEffect(() => {
@@ -161,18 +176,64 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 		return days;
 	}, [selectedWeek]);
 
-	// Get events for current month, sorted by date for agenda view
+	// Get all loaded events, sorted by date for agenda view
 	const agendaEvents = useMemo(() => {
-		const monthStart = startOfMonth(currentMonth);
-		const monthEnd = endOfMonth(currentMonth);
+		return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+	}, [events]);
 
-		return events
-			.filter(event => {
-				const eventDate = event.date;
-				return eventDate >= monthStart && eventDate <= monthEnd;
-			})
-			.sort((a, b) => a.date.getTime() - b.date.getTime());
-	}, [events, currentMonth]);
+	// Load more data for infinite scroll in agenda view
+	const loadMoreEvents = useCallback(async () => {
+		if (!apiKey || isLoadingMore || !loadedRangeRef.current) return;
+
+		setIsLoadingMore(true);
+		try {
+			// Extend the range forward by 3 months
+			const currentEnd = loadedRangeRef.current.end;
+			const newEnd = endOfMonth(addMonths(currentEnd, 3));
+
+			const newData = await fetchCalendarData(apiKey, addDays(currentEnd, 1), newEnd);
+
+			// Merge new events with existing ones, avoiding duplicates
+			setEvents(prev => {
+				const existingIds = new Set(prev.map(e => e.id));
+				const uniqueNew = newData.filter(e => !existingIds.has(e.id));
+				return [...prev, ...uniqueNew];
+			});
+
+			loadedRangeRef.current = {
+				start: loadedRangeRef.current.start,
+				end: newEnd
+			};
+		} catch (err) {
+			console.error('Error loading more events:', err);
+		} finally {
+			setIsLoadingMore(false);
+		}
+	}, [apiKey, isLoadingMore]);
+
+	// Handle scroll event for infinite scroll in agenda view
+	useEffect(() => {
+		if (viewMode !== 'agenda') return;
+
+		const handleScroll = () => {
+			const container = agendaScrollRef.current;
+			if (!container) return;
+
+			// Check if user has scrolled near the bottom (within 200px)
+			const scrollPosition = container.scrollTop + container.clientHeight;
+			const scrollHeight = container.scrollHeight;
+
+			if (scrollHeight - scrollPosition < 200 && !isLoadingMore) {
+				loadMoreEvents();
+			}
+		};
+
+		const container = agendaScrollRef.current;
+		if (container) {
+			container.addEventListener('scroll', handleScroll);
+			return () => container.removeEventListener('scroll', handleScroll);
+		}
+	}, [viewMode, isLoadingMore, loadMoreEvents]);
 
 	return (
 		<div className="max-w-7xl mx-auto">
@@ -365,13 +426,17 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 				)}
 
 				{!isLoading && !error && viewMode === 'agenda' && (
-					<div className="space-y-2">
+					<div
+						ref={agendaScrollRef}
+						className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto"
+					>
 						{agendaEvents.length === 0 ? (
 							<div className="text-center py-12 text-slate-500">
-								No workouts scheduled for this month
+								No workouts scheduled
 							</div>
 						) : (
-							agendaEvents.map((event) => {
+							<>
+							{agendaEvents.map((event) => {
 								return (
 									<div
 										key={event.id}
@@ -520,7 +585,14 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 										</div>
 									</div>
 								);
-							})
+							})}
+							{isLoadingMore && (
+								<div className="flex items-center justify-center py-8">
+									<Loader2 className="animate-spin text-slate-400" size={24} />
+									<span className="ml-2 text-sm text-slate-500">Loading more...</span>
+								</div>
+							)}
+							</>
 						)}
 					</div>
 				)}
