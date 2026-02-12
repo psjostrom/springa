@@ -752,7 +752,7 @@ function calculateHRZones(
 }
 
 // Fetch detailed activity data including HR zones and all stream data
-async function fetchActivityDetails(
+export async function fetchActivityDetails(
   activityId: string,
   apiKey: string,
   lthr: number = DEFAULT_LTHR,
@@ -911,35 +911,9 @@ export async function fetchCalendarData(
       (a: IntervalsActivity) => a.type === "Run" || a.type === "VirtualRun",
     );
 
-    // Fetch detailed data in smaller batches to avoid rate limiting
-    const batchSize = 3;
-    const allDetails: Array<{
-      hrZones?: HRZoneData;
-      streamData?: StreamData;
-      avgHr?: number;
-      maxHr?: number;
-    }> = [];
-
-    for (let i = 0; i < runActivities.length; i += batchSize) {
-      const batch = runActivities.slice(i, i + batchSize);
-      const batchPromises = batch.map((activity: IntervalsActivity) =>
-        fetchActivityDetails(activity.id, apiKey),
-      );
-      const batchResults = await Promise.allSettled(batchPromises);
-      allDetails.push(
-        ...batchResults.map((r) => (r.status === "fulfilled" ? r.value : {})),
-      );
-
-      // Small delay between batches to avoid rate limiting
-      if (i + batchSize < runActivities.length) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    // Process completed activities with their details
-    runActivities.forEach((activity: IntervalsActivity, index: number) => {
+    // Process completed activities (stream data will be loaded on-demand when clicking on workout)
+    runActivities.forEach((activity: IntervalsActivity) => {
       const category = getWorkoutCategory(activity.name);
-      const details = allDetails[index];
 
       // Calculate pace (min/km) if we have distance and duration
       let pace: number | undefined;
@@ -958,8 +932,8 @@ export async function fetchCalendarData(
         category,
         distance: activity.distance,
         duration: activity.moving_time,
-        avgHr: details.avgHr || activity.average_hr,
-        maxHr: details.maxHr || activity.max_hr,
+        avgHr: activity.average_hr,
+        maxHr: activity.max_hr,
         load: activity.icu_training_load,
         intensity: activity.icu_intensity,
         pace,
@@ -967,8 +941,7 @@ export async function fetchCalendarData(
         cadence: activity.average_cadence
           ? activity.average_cadence * 2
           : undefined, // Convert single-foot to total steps
-        hrZones: details.hrZones,
-        streamData: details.streamData,
+        // hrZones and streamData will be loaded on-demand when user clicks on workout
       });
     });
 
