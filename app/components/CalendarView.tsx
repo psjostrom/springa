@@ -334,7 +334,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     setTimeout(() => {
       if (lastCompletedRef.current) {
         lastCompletedRef.current.scrollIntoView({
-          behavior: "smooth",
+          behavior: "instant",
           block: "start",
         });
         hasScrolledToLastCompleted.current = true;
@@ -353,35 +353,37 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     <div className="max-w-7xl mx-auto">
       {/* Navigation */}
       <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 mb-4 sm:mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={() =>
-              viewMode === "week" ? navigateWeek("prev") : navigateMonth("prev")
-            }
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <h2 className="text-xl sm:text-2xl font-bold">
-            {viewMode === "week" ? (
-              <>
-                {format(weekDays[0], "d MMM", { locale: enGB })} -{" "}
-                {format(weekDays[6], "d MMM yyyy", { locale: enGB })}
-              </>
-            ) : (
-              format(currentMonth, "MMMM yyyy", { locale: enGB })
-            )}
-          </h2>
-          <button
-            onClick={() =>
-              viewMode === "week" ? navigateWeek("next") : navigateMonth("next")
-            }
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-        <div className="flex items-center justify-center gap-2 mt-3">
+        {viewMode !== "agenda" && (
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() =>
+                viewMode === "week" ? navigateWeek("prev") : navigateMonth("prev")
+              }
+              className="p-2 hover:bg-slate-100 rounded-lg transition"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-xl sm:text-2xl font-bold">
+              {viewMode === "week" ? (
+                <>
+                  {format(weekDays[0], "d MMM", { locale: enGB })} -{" "}
+                  {format(weekDays[6], "d MMM yyyy", { locale: enGB })}
+                </>
+              ) : (
+                format(currentMonth, "MMMM yyyy", { locale: enGB })
+              )}
+            </h2>
+            <button
+              onClick={() =>
+                viewMode === "week" ? navigateWeek("next") : navigateMonth("next")
+              }
+              className="p-2 hover:bg-slate-100 rounded-lg transition"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
+        <div className={`flex items-center justify-center gap-2 ${viewMode !== "agenda" ? "mt-3" : ""}`}>
           <button
             onClick={() => setViewMode("month")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
