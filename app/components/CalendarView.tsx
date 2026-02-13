@@ -111,7 +111,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   const agendaScrollRef = useRef<HTMLDivElement>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const lastCompletedRef = useRef<HTMLDivElement>(null);
   const hasScrolledToLastCompleted = useRef(false);
   const [isLoadingStreamData, setIsLoadingStreamData] = useState(false);
@@ -134,37 +133,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [selectedEvent]);
 
-  // Fetch data only when navigating outside loaded range
+  // Fetch data once on mount - load full workout history
   useEffect(() => {
     if (!apiKey) return;
+    if (loadedRangeRef.current) return; // Already loaded
 
     const loadCalendarData = async () => {
-      // Calculate needed range to cover both currentMonth and selectedWeek
-      // For agenda view, load more past data (6 months back) to show workout history
-      let neededStart = startOfMonth(
-        subMonths(currentMonth, viewMode === "agenda" ? 6 : 2),
-      );
-      let neededEnd = endOfMonth(addMonths(currentMonth, 2));
-
-      // Expand range if selectedWeek falls outside
-      const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
-      const weekEnd = addDays(weekStart, 6);
-      if (weekStart < neededStart) {
-        neededStart = startOfMonth(subMonths(weekStart, 2));
-      }
-      if (weekEnd > neededEnd) {
-        neededEnd = endOfMonth(addMonths(weekEnd, 2));
-      }
-
-      // Check if we already have this data
-      const loadedRange = loadedRangeRef.current;
-      if (
-        loadedRange &&
-        loadedRange.start <= neededStart &&
-        loadedRange.end >= neededEnd
-      ) {
-        return; // Data already loaded, no need to fetch
-      }
+      // Load 2 years of history + 6 months future
+      const neededStart = startOfMonth(subMonths(new Date(), 24));
+      const neededEnd = endOfMonth(addMonths(new Date(), 6));
 
       setIsLoading(true);
       setError(null);
@@ -183,7 +160,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     };
 
     loadCalendarData();
-  }, [apiKey, currentMonth, selectedWeek, viewMode]);
+  }, [apiKey]);
 
   // Sync URL params with modal state
   useEffect(() => {
@@ -267,9 +244,9 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   }, [currentMonth]);
 
   // Get events for a specific date
-  const getEventsForDate = (date: Date): CalendarEvent[] => {
+  const getEventsForDate = useCallback((date: Date): CalendarEvent[] => {
     return events.filter((event) => isSameDay(event.date, date));
-  };
+  }, [events]);
 
   // Open modal by updating URL
   const openWorkoutModal = (event: CalendarEvent) => {
@@ -344,73 +321,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   }, [agendaEvents]);
 
   // Load more data for infinite scroll in agenda view (downward)
-  const loadMoreEvents = useCallback(async () => {
-    if (!apiKey || isLoadingMore || !loadedRangeRef.current) return;
-
-    setIsLoadingMore(true);
-    try {
-      // Extend the range forward by 3 months
-      const currentEnd = loadedRangeRef.current.end;
-      const newEnd = endOfMonth(addMonths(currentEnd, 3));
-
-      const newData = await fetchCalendarData(
-        apiKey,
-        addDays(currentEnd, 1),
-        newEnd,
-      );
-
-      // Merge new events with existing ones, avoiding duplicates
-      setEvents((prev) => {
-        const existingIds = new Set(prev.map((e) => e.id));
-        const uniqueNew = newData.filter((e) => !existingIds.has(e.id));
-        return [...prev, ...uniqueNew];
-      });
-
-      loadedRangeRef.current = {
-        start: loadedRangeRef.current.start,
-        end: newEnd,
-      };
-    } catch (err) {
-      console.error("Error loading more events:", err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [apiKey, isLoadingMore]);
-
-  // Load more data for infinite scroll in agenda view (upward)
-  const loadPreviousEvents = useCallback(async () => {
-    if (!apiKey || isLoadingMore || !loadedRangeRef.current) return;
-
-    setIsLoadingMore(true);
-    try {
-      // Extend the range backward by 3 months
-      const currentStart = loadedRangeRef.current.start;
-      const newStart = startOfMonth(subMonths(currentStart, 3));
-
-      const newData = await fetchCalendarData(
-        apiKey,
-        newStart,
-        addDays(currentStart, -1),
-      );
-
-      // Merge new events with existing ones, avoiding duplicates
-      setEvents((prev) => {
-        const existingIds = new Set(prev.map((e) => e.id));
-        const uniqueNew = newData.filter((e) => !existingIds.has(e.id));
-        return [...uniqueNew, ...prev];
-      });
-
-      loadedRangeRef.current = {
-        start: newStart,
-        end: loadedRangeRef.current.end,
-      };
-    } catch (err) {
-      console.error("Error loading previous events:", err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [apiKey, isLoadingMore]);
-
   // Scroll to last completed workout on initial agenda view load
   useEffect(() => {
     if (
@@ -438,35 +348,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
       hasScrolledToLastCompleted.current = false;
     }
   }, [viewMode]);
-
-  // Handle scroll event for infinite scroll in agenda view
-  useEffect(() => {
-    if (viewMode !== "agenda") return;
-
-    const handleScroll = () => {
-      const container = agendaScrollRef.current;
-      if (!container) return;
-
-      // Check if user has scrolled near the bottom (within 200px)
-      const scrollPosition = container.scrollTop + container.clientHeight;
-      const scrollHeight = container.scrollHeight;
-
-      if (scrollHeight - scrollPosition < 200 && !isLoadingMore) {
-        loadMoreEvents();
-      }
-
-      // Check if user has scrolled near the top (within 200px)
-      if (container.scrollTop < 200 && !isLoadingMore) {
-        loadPreviousEvents();
-      }
-    };
-
-    const container = agendaScrollRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      return () => container.removeEventListener("scroll", handleScroll);
-    }
-  }, [viewMode, isLoadingMore, loadMoreEvents, loadPreviousEvents]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -737,6 +618,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                   return (
                     <div
                       key={event.id}
+                      data-event-id={event.id}
                       ref={isLastCompleted ? lastCompletedRef : null}
                       onClick={() => openWorkoutModal(event)}
                       className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100"
@@ -902,17 +784,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                     </div>
                   );
                 })}
-                {isLoadingMore && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2
-                      className="animate-spin text-slate-400"
-                      size={24}
-                    />
-                    <span className="ml-2 text-sm text-slate-500">
-                      Loading more...
-                    </span>
-                  </div>
-                )}
               </>
             )}
           </div>

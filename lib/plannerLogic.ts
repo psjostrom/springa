@@ -99,9 +99,13 @@ interface IntervalsActivity {
   training_load?: number;
   intensity?: number;
   average_hr?: number;
+  average_heartrate?: number;
   max_hr?: number;
+  max_heartrate?: number;
   icu_training_load?: number;
   icu_intensity?: number;
+  icu_hr_zone_times?: number[]; // Array of seconds in each zone [z1, z2, z3, z4, z5]
+  pace?: number;
 }
 
 interface IntervalsStream {
@@ -911,7 +915,7 @@ export async function fetchCalendarData(
       (a: IntervalsActivity) => a.type === "Run" || a.type === "VirtualRun",
     );
 
-    // Process completed activities (stream data will be loaded on-demand when clicking on workout)
+    // Process completed activities
     runActivities.forEach((activity: IntervalsActivity) => {
       const category = getWorkoutCategory(activity.name);
 
@@ -923,6 +927,18 @@ export async function fetchCalendarData(
         pace = durationMin / distanceKm;
       }
 
+      // Extract HR zones from the API response (icu_hr_zone_times)
+      let hrZones: HRZoneData | undefined;
+      if (activity.icu_hr_zone_times && activity.icu_hr_zone_times.length >= 5) {
+        hrZones = {
+          z1: activity.icu_hr_zone_times[0],
+          z2: activity.icu_hr_zone_times[1],
+          z3: activity.icu_hr_zone_times[2],
+          z4: activity.icu_hr_zone_times[3],
+          z5: activity.icu_hr_zone_times[4],
+        };
+      }
+
       calendarEvents.push({
         id: `activity-${activity.id}`,
         date: parseISO(activity.start_date_local || activity.start_date),
@@ -932,16 +948,17 @@ export async function fetchCalendarData(
         category,
         distance: activity.distance,
         duration: activity.moving_time,
-        avgHr: activity.average_hr,
-        maxHr: activity.max_hr,
+        avgHr: activity.average_heartrate || activity.average_hr,
+        maxHr: activity.max_heartrate || activity.max_hr,
         load: activity.icu_training_load,
         intensity: activity.icu_intensity,
-        pace,
+        pace: activity.pace || pace,
         calories: activity.calories,
         cadence: activity.average_cadence
           ? activity.average_cadence * 2
           : undefined, // Convert single-foot to total steps
-        // hrZones and streamData will be loaded on-demand when user clicks on workout
+        hrZones, // HR zones from API - no additional calls needed!
+        // streamData will still be loaded on-demand when clicking on workout
       });
     });
 
