@@ -674,6 +674,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
                         {event.type === "completed" && (
                           <>
+                            {/* Description/Fuel Strategy */}
+                            {event.description && (
+                              <div className="bg-slate-50 rounded-lg p-2 mb-2 text-xs whitespace-pre-wrap">
+                                {event.description}
+                              </div>
+                            )}
+
                             {/* Stats Grid */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs sm:text-sm mb-2">
                               {event.distance && (
@@ -739,14 +746,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                                     {Math.round(event.cadence)}
                                   </span>{" "}
                                   spm
-                                </div>
-                              )}
-                              {calculateTotalCarbs(event) && (
-                                <div className="text-slate-600">
-                                  <span className="font-semibold text-slate-900">
-                                    {calculateTotalCarbs(event)}g
-                                  </span>{" "}
-                                  carbs
                                 </div>
                               )}
                             </div>
@@ -892,14 +891,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                       <div className="text-slate-600">Cadence</div>
                       <div className="font-semibold">
                         {Math.round(selectedEvent.cadence)} spm
-                      </div>
-                    </div>
-                  )}
-                  {calculateTotalCarbs(selectedEvent) && (
-                    <div>
-                      <div className="text-slate-600">Carbs</div>
-                      <div className="font-semibold">
-                        {calculateTotalCarbs(selectedEvent)}g
                       </div>
                     </div>
                   )}

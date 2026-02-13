@@ -892,7 +892,7 @@ export async function fetchCalendarData(
     // Fetch both activities (completed) and events (planned) in parallel
     const results = await Promise.allSettled([
       fetch(
-        `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}`,
+        `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
         { headers: { Authorization: auth } },
       ),
       fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
@@ -939,11 +939,30 @@ export async function fetchCalendarData(
         };
       }
 
+      // Try to find matching planned event for this activity to get the description
+      const activityDate = parseISO(activity.start_date_local || activity.start_date);
+      const matchingEvent = events.find((event: any) => {
+        if (event.category !== "WORKOUT") return false;
+        const eventDate = parseISO(event.start_date_local);
+        const sameDay = isSameDay(activityDate, eventDate);
+        const similarName =
+          activity.name
+            ?.toLowerCase()
+            .includes(event.name?.toLowerCase().substring(0, 10)) ||
+          event.name
+            ?.toLowerCase()
+            .includes(activity.name?.toLowerCase().substring(0, 10));
+        return sameDay && similarName;
+      });
+
+      // Use event description if found, otherwise use activity description
+      const description = matchingEvent?.description || activity.description || "";
+
       calendarEvents.push({
         id: `activity-${activity.id}`,
-        date: parseISO(activity.start_date_local || activity.start_date),
+        date: activityDate,
         name: activity.name,
-        description: activity.description || "",
+        description,
         type: "completed",
         category,
         distance: activity.distance,
