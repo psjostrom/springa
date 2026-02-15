@@ -350,7 +350,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   }, [viewMode]);
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-hidden">
       {/* Navigation */}
       <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 mb-4 sm:mb-6">
         {viewMode !== "agenda" && (
@@ -418,7 +418,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
       </div>
 
       {/* Calendar / Agenda */}
-      <div className="bg-white p-2 sm:p-6 rounded-xl shadow-sm border border-slate-100">
+      <div className="bg-white p-2 sm:p-6 rounded-xl shadow-sm border border-slate-100 flex-1 min-h-0 flex flex-col">
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-slate-400" size={32} />
@@ -609,7 +609,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
         {!isLoading && !error && viewMode === "agenda" && (
           <div
             ref={agendaScrollRef}
-            className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto"
+            className="space-y-2 flex-1 overflow-y-auto"
           >
             {agendaEvents.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
@@ -625,7 +625,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                       data-event-id={event.id}
                       ref={isLastCompleted ? lastCompletedRef : null}
                       onClick={() => openWorkoutModal(event)}
-                      className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100"
+                      className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100 overflow-hidden"
                     >
                       {/* Date */}
                       <div className="flex-shrink-0 text-center w-16 sm:w-20">
