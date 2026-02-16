@@ -4,6 +4,7 @@ import type { CalendarEvent } from "@/lib/types";
 import {
   estimateWorkoutDuration,
   extractPumpStatus,
+  getPumpMode,
 } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
@@ -187,12 +188,12 @@ export function AgendaView({
                   </div>
                   {(() => {
                     const status = extractPumpStatus(event.description);
-                    if (!status.pump) return null;
-                    const pumpLabel = status.pump
+                    if (!status.pump && !getPumpMode(event.name)) return null;
+                    const pumpMode = getPumpMode(event.name) ?? status.pump
                       .replace(/^PUMP\s+/i, "")
                       .replace(/\s*\(EASE OFF\)/i, "");
                     const parts = [
-                      `Pump ${pumpLabel}`,
+                      `Pump ${pumpMode}`,
                       status.fuelRate != null
                         ? `${status.fuelRate}g/10min`
                         : null,
