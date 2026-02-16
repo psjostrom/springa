@@ -604,11 +604,13 @@ const generateQualityRun = (
     case "distance-intervals": {
       const distM = 600 + Math.floor(progress * 2) * 200; // 600m → 1000m
       reps = distM >= 1000 ? 6 : 8;
-      // Estimate rep duration: 800m at ~5:10/km ≈ 4min + 2min recovery
-      repDuration = Math.ceil((distM / 1000) * 5.2) + 2;
+      const distKm = (distM / 1000).toFixed(1); // 0.6km, 0.8km, 1.0km
+      const recoveryKm = "0.2"; // 200m jog recovery
+      // Estimate rep duration: 800m at ~5:10/km ≈ 4min + 200m jog ≈ 1.5min
+      repDuration = Math.ceil((distM / 1000) * 5.2) + 1.5;
       steps = [
-        formatStep(`${distM}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+        formatStep(`${distKm}km`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
+        formatStep(`${recoveryKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ];
       break;
     }
