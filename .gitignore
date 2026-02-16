@@ -31,4 +31,6 @@ ts-debug.log*
 
 # private project context
 CLAUDE.md
-Claude.MDtsconfig.tsbuildinfo
+
+# typescript
+tsconfig.tsbuildinfo
