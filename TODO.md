@@ -2,7 +2,6 @@
 
 ## Bugs
 
-- [ ] Modal shows wrong pump status when agenda shows correct (description mismatch between views)
 - [ ] Suppress React warnings from Recharts mock props in test output (dataKey, tickLine, etc.)
 
 ## Features
