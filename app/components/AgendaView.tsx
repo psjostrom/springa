@@ -8,6 +8,7 @@ import {
   formatPace,
   estimateWorkoutDuration,
 } from "@/lib/utils";
+import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
 
@@ -17,13 +18,6 @@ interface AgendaViewProps {
   paceTable: PaceTable;
   nextUpcomingRef: React.RefObject<HTMLDivElement | null>;
 }
-
-const getEventIcon = (event: CalendarEvent) => {
-  if (event.type === "race") return "🏁";
-  if (event.category === "long") return "🏃";
-  if (event.category === "interval") return "⚡";
-  return "✓";
-};
 
 export function AgendaView({
   events,

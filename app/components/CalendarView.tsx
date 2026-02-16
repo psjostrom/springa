@@ -20,6 +20,7 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { FALLBACK_PACE_TABLE } from "@/lib/constants";
 import { buildEasyPaceFromHistory } from "@/lib/utils";
+import { getEventStyle, getEventIcon } from "@/lib/eventStyles";
 import { fetchCalendarData, fetchActivityDetails } from "@/lib/intervalsApi";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -33,25 +34,6 @@ interface CalendarViewProps {
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
-
-const getEventStyle = (event: CalendarEvent) => {
-  if (event.type === "race") return "bg-red-500 text-white";
-  if (event.type === "completed") {
-    if (event.category === "long") return "bg-green-600 text-white";
-    if (event.category === "interval") return "bg-purple-600 text-white";
-    return "bg-green-500 text-white";
-  }
-  if (event.category === "long") return "bg-green-200 text-green-800";
-  if (event.category === "interval") return "bg-purple-200 text-purple-800";
-  return "bg-blue-200 text-blue-800";
-};
-
-const getEventIcon = (event: CalendarEvent) => {
-  if (event.type === "race") return "🏁";
-  if (event.category === "long") return "🏃";
-  if (event.category === "interval") return "⚡";
-  return "✓";
-};
 
 export function CalendarView({ apiKey }: CalendarViewProps) {
   const router = useRouter();
@@ -134,13 +116,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     if (selectedEvent.streamData) return;
     if (!apiKey) return;
 
-    const loadStreamData = async () => {
-      const activityId = selectedEvent.id.replace("activity-", "");
-      if (!activityId) return;
+    const activityId = selectedEvent.id.replace("activity-", "");
+    if (!activityId) return;
 
-      setIsLoadingStreamData(true);
-      try {
-        const details = await fetchActivityDetails(activityId, apiKey);
+    let cancelled = false;
+    setIsLoadingStreamData(true);
+
+    fetchActivityDetails(activityId, apiKey)
+      .then((details) => {
+        if (cancelled) return;
         setSelectedEvent((prev) => {
           if (!prev || prev.id !== selectedEvent.id) return prev;
           return {
@@ -164,14 +148,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               : e,
           ),
         );
-      } catch (err) {
-        console.error("Error loading stream data:", err);
-      } finally {
-        setIsLoadingStreamData(false);
-      }
-    };
+      })
+      .catch((err) => {
+        if (!cancelled) console.error("Error loading stream data:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingStreamData(false);
+      });
 
-    loadStreamData();
+    return () => { cancelled = true; };
   }, [selectedEvent, apiKey]);
 
   // Generate calendar grid

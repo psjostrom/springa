@@ -5,6 +5,7 @@ import {
   parseISO,
   isBefore,
   isSameDay,
+  set,
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
@@ -56,7 +57,7 @@ const generateQualityRun = (
     const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
     return {
-      start_date_local: new Date(date.setHours(12, 0, 0)),
+      start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
       description: createWorkoutText(strat, wu, [
         formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
@@ -136,7 +137,7 @@ const generateQualityRun = (
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   return {
-    start_date_local: new Date(date.setHours(12, 0, 0)),
+    start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `${prefixName} ${label} ${ctx.prefix}`,
     description: createWorkoutText(strat, wu, steps, cd, reps, notes),
     external_id: `${ctx.prefix}-thu-${weekNum}`,
@@ -210,7 +211,7 @@ const generateEasyRun = (
       "",
     ];
     return {
-      start_date_local: new Date(date.setHours(12, 0, 0)),
+      start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
       external_id: `${ctx.prefix}-tue-${weekNum}`,
@@ -219,7 +220,7 @@ const generateEasyRun = (
   }
 
   return {
-    start_date_local: new Date(date.setHours(12, 0, 0)),
+    start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createWorkoutText(strat, wu, [
       formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
@@ -251,7 +252,7 @@ const generateBonusRun = (
   const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";
 
   return {
-    start_date_local: new Date(date.setHours(12, 0, 0)),
+    start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createWorkoutText(strat, wu, [
       formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
@@ -273,7 +274,7 @@ const generateLongRun = (
     const totalCarbs = calculateWorkoutCarbs(estimatedRaceDuration, ctx.fuelLong);
     const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
     return {
-      start_date_local: new Date(ctx.raceDate.setHours(10, 0, 0)),
+      start_date_local: set(ctx.raceDate, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY ${ctx.prefix}`,
       description: `RACE DAY! ${ctx.raceDist}km. ${strat}\n\nGood luck!`,
       external_id: `${ctx.prefix}-race`,
@@ -366,7 +367,7 @@ const generateLongRun = (
   }
 
   return {
-    start_date_local: new Date(date.setHours(10, 0, 0)),
+    start_date_local: set(date, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
     description: createWorkoutText(`${strat} (Trail)`, wu, mainSteps, cd, 1, notes),
     external_id: `${ctx.prefix}-sun-${weekNum}`,

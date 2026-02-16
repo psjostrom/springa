@@ -115,4 +115,29 @@ describe("generatePlan", () => {
     const ids = plan.map((e) => e.external_id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("all events have start_date_local with clean time (10:00 or 12:00)", () => {
+    const plan = generate();
+    for (const event of plan) {
+      const date = event.start_date_local;
+      const isSunOrRace = event.name.includes("Sun") || event.name.includes("RACE DAY");
+      expect(date.getHours()).toBe(isSunOrRace ? 10 : 12);
+      expect(date.getMinutes()).toBe(0);
+      expect(date.getSeconds()).toBe(0);
+    }
+  });
+
+  it("does not produce duplicate dates from date mutation", () => {
+    const plan = generate();
+    // Group events by day — no two events within the same generator
+    // call should share the exact same Date object reference
+    for (let i = 0; i < plan.length; i++) {
+      for (let j = i + 1; j < plan.length; j++) {
+        if (plan[i].start_date_local === plan[j].start_date_local) {
+          // Same object reference means mutation bug
+          expect(plan[i].start_date_local).not.toBe(plan[j].start_date_local);
+        }
+      }
+    }
+  });
 });
