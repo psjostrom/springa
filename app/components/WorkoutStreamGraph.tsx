@@ -270,7 +270,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       </div>
 
       {/* Legend showing current ranges or hover values */}
-      <div className="flex gap-2 sm:gap-4 mb-3 text-xs flex-wrap">
+      <div className="flex gap-2 sm:gap-4 mb-3 text-xs flex-wrap min-h-[2.5rem]">
         {streamPaths.map((path, idx) => {
           if (!path) return null;
           const { config, minValue, maxValue, hoverValue } = path;
