@@ -109,6 +109,109 @@ export function parseWorkoutZones(description: string): HRZoneName[] {
   return order.filter((z) => zones.has(z));
 }
 
+// --- PRE-RUN CARD PARSING ---
+
+export interface PumpStatus {
+  pump: string;
+  fuelRate: number | null;
+  totalCarbs: number | null;
+}
+
+/** Extract pump status, fuel rate, and total carbs from the strategy header line. */
+export function extractPumpStatus(description: string): PumpStatus {
+  const firstLine = description.split("\n")[0] ?? "";
+  const pumpMatch = firstLine.match(/^(PUMP\s+(?:OFF|ON\s*\([^)]*\)))/i);
+  return {
+    pump: pumpMatch ? pumpMatch[1] : "",
+    fuelRate: extractFuelRate(description),
+    totalCarbs: extractTotalCarbs(description),
+  };
+}
+
+/** Extract notes/flavor text from between the strategy header and the first section header. */
+export function extractNotes(description: string): string | null {
+  if (!description) return null;
+  const firstSectionIdx = description.search(/\nWarmup/);
+  if (firstSectionIdx === -1) return null;
+  const preamble = description.slice(0, firstSectionIdx);
+  // Notes come after the strategy header line and any blank lines
+  const lines = preamble.split("\n");
+  // Skip the first line (strategy string) and any blank lines
+  const noteLines = lines.slice(1).filter((l) => l.trim().length > 0);
+  return noteLines.length > 0 ? noteLines.join(" ") : null;
+}
+
+export interface WorkoutStep {
+  label?: string;         // "Uphill", "Downhill", or undefined
+  duration: string;       // raw: "10m", "2m", "8km", "20s"
+  zone: HRZoneName;       // classified zone name
+  bpmRange: string;       // "112-132 bpm"
+}
+
+export interface WorkoutSection {
+  name: string;           // "Warmup", "Main set", "Strides", "Cooldown"
+  repeats?: number;       // e.g. 6 for "Main set 6x"
+  steps: WorkoutStep[];
+}
+
+/**
+ * Parse a workout description into structured sections for display.
+ * Returns the raw display strings (unlike parseWorkoutSegments which returns computed values).
+ */
+export function parseWorkoutStructure(description: string): WorkoutSection[] {
+  if (!description) return [];
+
+  const sections: WorkoutSection[] = [];
+  const stepPattern = /^-\s*(?:(?:PUMP.*?)\s+)?(?:(Uphill|Downhill)\s+)?(\d+(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+
+  // Split into section blocks
+  const sectionPattern = /\n(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/g;
+  const headers: { name: string; index: number }[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = sectionPattern.exec(description)) !== null) {
+    headers.push({ name: match[1], index: match.index });
+  }
+
+  if (headers.length === 0) return [];
+
+  for (let i = 0; i < headers.length; i++) {
+    const start = headers[i].index;
+    const end = i + 1 < headers.length ? headers[i + 1].index : description.length;
+    const block = description.slice(start, end);
+    const headerText = headers[i].name;
+
+    // Extract repeats
+    const repeatsMatch = headerText.match(/(\d+)x$/);
+    const repeats = repeatsMatch ? parseInt(repeatsMatch[1], 10) : undefined;
+
+    // Clean section name
+    const name = headerText.replace(/\s+\d+x$/, "");
+
+    // Parse steps
+    const steps: WorkoutStep[] = [];
+    const lines = block.split("\n");
+    for (const line of lines) {
+      const stepMatch = line.match(stepPattern);
+      if (stepMatch) {
+        const maxPct = parseInt(stepMatch[4], 10);
+        steps.push({
+          label: stepMatch[1] || undefined,
+          duration: stepMatch[2],
+          zone: classifyZone(maxPct),
+          bpmRange: stepMatch[5],
+        });
+      }
+    }
+
+    if (steps.length > 0) {
+      sections.push({ name, repeats, steps });
+    }
+  }
+
+  return sections;
+}
+
 // --- WORKOUT DESCRIPTION PARSING ---
 
 export interface WorkoutSegment {

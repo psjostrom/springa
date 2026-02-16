@@ -9,6 +9,9 @@ import {
   parseWorkoutSegments,
   estimateWorkoutDuration,
   estimateWorkoutDistance,
+  extractPumpStatus,
+  extractNotes,
+  parseWorkoutStructure,
 } from "../utils";
 import { FALLBACK_PACE_TABLE } from "../constants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
@@ -401,5 +404,190 @@ Cooldown
       description: "No structured workout", type: "planned", category: "easy",
     };
     expect(estimateWorkoutDistance(event)).toBe(0);
+  });
+});
+
+describe("extractPumpStatus", () => {
+  it("extracts PUMP OFF with fuel rate and total carbs", () => {
+    const desc = "PUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractPumpStatus(desc);
+    expect(result.pump).toBe("PUMP OFF");
+    expect(result.fuelRate).toBe(5);
+    expect(result.totalCarbs).toBe(25);
+  });
+
+  it("extracts PUMP ON (EASE OFF)", () => {
+    const desc = "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractPumpStatus(desc);
+    expect(result.pump).toBe("PUMP ON (EASE OFF)");
+    expect(result.fuelRate).toBe(8);
+    expect(result.totalCarbs).toBe(32);
+  });
+
+  it("extracts PUMP OFF with high fuel rate", () => {
+    const desc = "PUMP OFF - FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractPumpStatus(desc);
+    expect(result.pump).toBe("PUMP OFF");
+    expect(result.fuelRate).toBe(10);
+    expect(result.totalCarbs).toBe(75);
+  });
+
+  it("returns empty pump string for non-standard description", () => {
+    const result = extractPumpStatus("Just a regular note");
+    expect(result.pump).toBe("");
+    expect(result.fuelRate).toBeNull();
+    expect(result.totalCarbs).toBeNull();
+  });
+});
+
+describe("parseWorkoutStructure", () => {
+  it("parses a short intervals workout", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(3);
+    expect(sections[0].name).toBe("Warmup");
+    expect(sections[0].steps).toHaveLength(1);
+    expect(sections[0].steps[0].duration).toBe("10m");
+
+    expect(sections[1].name).toBe("Main set");
+    expect(sections[1].repeats).toBe(6);
+    expect(sections[1].steps).toHaveLength(2);
+    expect(sections[1].steps[0].zone).toBe("tempo");
+    expect(sections[1].steps[1].zone).toBe("easy");
+
+    expect(sections[2].name).toBe("Cooldown");
+    expect(sections[2].steps[0].duration).toBe("5m");
+  });
+
+  it("parses a hills workout with Uphill/Downhill labels", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- Uphill 2m 99-111% LTHR (167-188 bpm)
+- Downhill 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    const mainSet = sections[1];
+    expect(mainSet.repeats).toBe(6);
+    expect(mainSet.steps[0].label).toBe("Uphill");
+    expect(mainSet.steps[0].duration).toBe("2m");
+    expect(mainSet.steps[0].bpmRange).toBe("167-188 bpm");
+    expect(mainSet.steps[1].label).toBe("Downhill");
+  });
+
+  it("parses a long run with km distances", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 8km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections[1].name).toBe("Main set");
+    expect(sections[1].repeats).toBeUndefined();
+    expect(sections[1].steps[0].duration).toBe("8km");
+  });
+
+  it("parses a race pace sandwich long run", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 66-78% LTHR (112-132 bpm)
+- 4km 78-89% LTHR (132-150 bpm)
+- 4km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    const mainSet = sections[1];
+    expect(mainSet.steps).toHaveLength(3);
+    expect(mainSet.steps[0].zone).toBe("easy");
+    expect(mainSet.steps[1].zone).toBe("steady");
+    expect(mainSet.steps[2].zone).toBe("easy");
+  });
+
+  it("parses an easy + strides workout", () => {
+    const desc = `PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g
+
+Warmup
+- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 20m 66-78% LTHR (112-132 bpm)
+
+Strides 4x
+- 20s 99-111% LTHR (167-188 bpm)
+- 1m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(4);
+    expect(sections[2].name).toBe("Strides");
+    expect(sections[2].repeats).toBe(4);
+    expect(sections[2].steps[0].duration).toBe("20s");
+    expect(sections[2].steps[1].duration).toBe("1m");
+  });
+
+  it("returns empty array for non-standard descriptions", () => {
+    expect(parseWorkoutStructure("Just a note")).toEqual([]);
+    expect(parseWorkoutStructure("")).toEqual([]);
+  });
+});
+
+describe("extractNotes", () => {
+  it("extracts notes from between strategy header and first section", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Short, punchy efforts to build leg speed and running economy.
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)`;
+
+    expect(extractNotes(desc)).toBe("Short, punchy efforts to build leg speed and running economy.");
+  });
+
+  it("returns null when no notes present", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)`;
+
+    expect(extractNotes(desc)).toBeNull();
+  });
+
+  it("returns null for empty description", () => {
+    expect(extractNotes("")).toBeNull();
+  });
+
+  it("returns null for description without sections", () => {
+    expect(extractNotes("Just a note")).toBeNull();
   });
 });

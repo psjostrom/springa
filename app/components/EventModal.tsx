@@ -4,17 +4,10 @@ import { enGB } from "date-fns/locale";
 import { Loader2 } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { updateEvent } from "@/lib/intervalsApi";
-import {
-  parseWorkoutZones,
-  getPaceForZone,
-  getZoneLabel,
-  formatPace,
-  calculateTotalCarbs,
-  estimateWorkoutDuration,
-} from "@/lib/utils";
 import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
+import { PreRunCard } from "./PreRunCard";
 
 interface EventModalProps {
   event: CalendarEvent;
@@ -149,63 +142,12 @@ export function EventModal({
         </div>
 
         {selectedEvent.description && (
-          <div className="bg-slate-50 rounded-lg p-3 sm:p-4 mb-4">
-            <div className="text-sm whitespace-pre-wrap">
-              {selectedEvent.description}
-            </div>
-          </div>
+          selectedEvent.type === "planned" || selectedEvent.type === "race"
+            ? <PreRunCard description={selectedEvent.description} paceTable={paceTable} />
+            : <div className="bg-slate-50 rounded-lg p-3 sm:p-4 mb-4">
+                <div className="text-sm whitespace-pre-wrap">{selectedEvent.description}</div>
+              </div>
         )}
-
-        {selectedEvent.type === "planned" && (() => {
-          const est = selectedEvent.description ? estimateWorkoutDuration(selectedEvent.description) : null;
-          const carbs = calculateTotalCarbs(selectedEvent);
-          const zones = parseWorkoutZones(selectedEvent.description);
-          if (!est && !carbs && zones.length === 0) return null;
-          return (
-            <div className="text-sm mb-4 space-y-3">
-              {(est || carbs) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                  {est && (
-                    <div>
-                      <div className="text-slate-600">Est. Duration</div>
-                      <div className="font-semibold">
-                        {Math.floor(est / 60) > 0
-                          ? `${Math.floor(est / 60)}h ${est % 60}m`
-                          : `${est}m`}
-                      </div>
-                    </div>
-                  )}
-                  {carbs && (
-                    <div>
-                      <div className="text-slate-600">Est. Carbs</div>
-                      <div className="font-semibold">{carbs}g</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {zones.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                  {zones.map((zone) => {
-                    const entry = getPaceForZone(paceTable, zone);
-                    return (
-                      <div key={zone}>
-                        <div className="text-slate-600">{getZoneLabel(zone)} Pace</div>
-                        <div className="font-semibold">
-                          ~{formatPace(entry.avgPace)}/km
-                          {entry.avgHr && (
-                            <span className="text-xs text-slate-500 font-normal ml-1">
-                              {entry.avgHr} bpm
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {selectedEvent.type === "completed" && (
           <>
