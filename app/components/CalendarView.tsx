@@ -475,7 +475,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   }, [viewMode]);
 
   return (
-    <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-hidden">
+    <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-y-auto">
       {/* Navigation */}
       <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 mb-4 sm:mb-6">
         {viewMode !== "agenda" && (
