@@ -124,6 +124,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   // Set responsive view mode after hydration to avoid SSR mismatch
   useEffect(() => {
@@ -309,6 +311,71 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
       alert("Failed to update event. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Drag-and-drop handlers
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
+    if (event.type !== "planned") return;
+    setDraggedEvent(event);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", event.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEvent(null);
+    setDragOverDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!draggedEvent) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (dateKey: string) => {
+    if (!draggedEvent) return;
+    setDragOverDate(dateKey);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!draggedEvent) return;
+    // Only clear if leaving the cell entirely (not entering a child)
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (relatedTarget && (e.currentTarget as HTMLElement).contains(relatedTarget)) return;
+    setDragOverDate(null);
+  };
+
+  const handleDrop = async (targetDate: Date) => {
+    if (!draggedEvent) return;
+
+    const numericId = parseInt(draggedEvent.id.replace("event-", ""));
+    if (isNaN(numericId)) {
+      setDraggedEvent(null);
+      setDragOverDate(null);
+      return;
+    }
+
+    // Preserve the original time, change only the date
+    const originalDate = draggedEvent.date;
+    const newDate = new Date(targetDate);
+    newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+
+    const newDateLocal = format(newDate, "yyyy-MM-dd'T'HH:mm:ss");
+
+    try {
+      await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === draggedEvent.id ? { ...e, date: newDate } : e,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to move event:", err);
+      alert("Failed to move workout. Please try again.");
+    } finally {
+      setDraggedEvent(null);
+      setDragOverDate(null);
     }
   };
 
@@ -522,13 +589,21 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                 const dayEvents = getEventsForDate(day);
                 const isCurrentMonth = isSameMonth(day, currentMonth);
                 const isTodayDate = isToday(day);
+                const dateKey = format(day, "yyyy-MM-dd");
+                const isDropTarget = dragOverDate === dateKey;
 
                 return (
                   <div
                     key={idx}
-                    className={`bg-white p-1 sm:p-2 min-h-[80px] sm:min-h-[120px] overflow-hidden ${
+                    onDragOver={handleDragOver}
+                    onDragEnter={() => handleDragEnter(dateKey)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => { e.preventDefault(); handleDrop(day); }}
+                    className={`bg-white p-1 sm:p-2 min-h-[80px] sm:min-h-[120px] overflow-hidden transition-colors ${
                       !isCurrentMonth ? "opacity-40" : ""
-                    } ${isTodayDate ? "ring-2 ring-blue-500 ring-inset" : ""}`}
+                    } ${isTodayDate && !isDropTarget ? "ring-2 ring-blue-500 ring-inset" : ""} ${
+                      isDropTarget ? "ring-2 ring-blue-400 ring-inset bg-blue-50" : ""
+                    }`}
                   >
                     <div className="flex flex-col h-full">
                       <div
@@ -545,8 +620,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                         {dayEvents.map((event) => (
                           <button
                             key={event.id}
+                            draggable={event.type === "planned"}
+                            onDragStart={(e) => handleDragStart(e, event)}
+                            onDragEnd={handleDragEnd}
                             onClick={() => openWorkoutModal(event)}
-                            className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full`}
+                            className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
+                              draggedEvent?.id === event.id ? "opacity-50" : ""
+                            }`}
                           >
                             <div className="flex items-center gap-0.5 mb-0.5">
                               <span className="flex-shrink-0">
@@ -603,13 +683,19 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               {weekDays.map((day, idx) => {
                 const dayEvents = getEventsForDate(day);
                 const isTodayDate = isToday(day);
+                const dateKey = format(day, "yyyy-MM-dd");
+                const isDropTarget = dragOverDate === dateKey;
 
                 return (
                   <div
                     key={idx}
-                    className={`bg-white p-1 sm:p-2 min-h-[200px] sm:min-h-[300px] overflow-hidden ${
-                      isTodayDate ? "ring-2 ring-blue-500 ring-inset" : ""
-                    }`}
+                    onDragOver={handleDragOver}
+                    onDragEnter={() => handleDragEnter(dateKey)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => { e.preventDefault(); handleDrop(day); }}
+                    className={`bg-white p-1 sm:p-2 min-h-[200px] sm:min-h-[300px] overflow-hidden transition-colors ${
+                      isTodayDate && !isDropTarget ? "ring-2 ring-blue-500 ring-inset" : ""
+                    } ${isDropTarget ? "ring-2 ring-blue-400 ring-inset bg-blue-50" : ""}`}
                   >
                     <div className="flex flex-col h-full">
                       <div
@@ -626,8 +712,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                         {dayEvents.map((event) => (
                           <button
                             key={event.id}
+                            draggable={event.type === "planned"}
+                            onDragStart={(e) => handleDragStart(e, event)}
+                            onDragEnd={handleDragEnd}
                             onClick={() => openWorkoutModal(event)}
-                            className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full`}
+                            className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
+                              draggedEvent?.id === event.id ? "opacity-50" : ""
+                            }`}
                           >
                             <div className="flex items-center gap-0.5 mb-0.5">
                               <span className="flex-shrink-0">
