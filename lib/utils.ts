@@ -310,7 +310,7 @@ export const calculateTotalCarbs = (event: CalendarEvent): number | null => {
 // --- GLUCOSE CONVERSION ---
 
 /** Smart glucose conversion: converts mg/dL to mmol/L only when needed */
-export function convertGlucoseToMmol(values: number[], streamType: string): number[] {
+export function convertGlucoseToMmol(values: number[]): number[] {
   if (values.length === 0) return values;
 
   const avgValue = values.reduce((a, b) => a + b, 0) / values.length;

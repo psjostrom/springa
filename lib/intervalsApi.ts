@@ -90,7 +90,6 @@ export async function fetchActivityDetails(
     let timeData: number[] = [];
     let hrData: number[] = [];
     let glucoseData: number[] = [];
-    let glucoseStreamType: string = "";
     let velocityData: number[] = [];
     let cadenceData: number[] = [];
     let altitudeData: number[] = [];
@@ -100,7 +99,6 @@ export async function fetchActivityDetails(
       if (s.type === "heartrate") hrData = s.data;
       if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
         glucoseData = s.data;
-        glucoseStreamType = s.type;
       }
       if (s.type === "velocity_smooth") {
         velocityData = s.data;
@@ -135,10 +133,7 @@ export async function fetchActivityDetails(
       const streamData: StreamData = {};
 
       if (glucoseData.length > 0) {
-        const glucoseInMmol = convertGlucoseToMmol(
-          glucoseData,
-          glucoseStreamType,
-        );
+        const glucoseInMmol = convertGlucoseToMmol(glucoseData);
         streamData.glucose = timeData.map((t, idx) => ({
           time: Math.round(t / 60),
           value: glucoseInMmol[idx],

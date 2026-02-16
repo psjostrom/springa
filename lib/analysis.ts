@@ -15,13 +15,11 @@ async function analyzeRun(
   const streams = await fetchStreams(run.id, apiKey);
   let tData: number[] = [];
   let gData: number[] = [];
-  let glucoseStreamType: string = "";
 
   for (const s of streams) {
     if (s.type === "time") tData = s.data;
     if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
       gData = s.data;
-      glucoseStreamType = s.type;
     }
   }
 
@@ -33,7 +31,7 @@ async function analyzeRun(
   if (match) currentFuel = parseInt(match[1]);
 
   if (gData.length > 0 && tData.length > 1) {
-    const glucoseInMmol = convertGlucoseToMmol(gData, glucoseStreamType);
+    const glucoseInMmol = convertGlucoseToMmol(gData);
 
     plotData = tData.map((t, idx) => ({
       time: Math.round(t / 60),
