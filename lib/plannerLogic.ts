@@ -807,22 +807,26 @@ const generateLongRun = (
     isRacePaceSandwich = nonSpecialCount % 2 === 1;
   }
 
+  // Warmup and cooldown are distance-based and included in the total km
+  const wuKm = 1;
+  const cdKm = 1;
+  const mainKm = Math.max(km - wuKm - cdKm, 1);
+
   // Estimate duration at easy pace ~6:43/km
-  const estimatedMainDuration = km * 6.71;
-  const totalDuration = 10 + estimatedMainDuration + 5;
-  const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelLong);
+  const estimatedDuration = km * 6.71;
+  const totalCarbs = calculateWorkoutCarbs(estimatedDuration, ctx.fuelLong);
 
   const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
-  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
-  const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+  const wu = formatStep(`${wuKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+  const cd = formatStep(`${cdKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   let mainSteps: string[];
 
-  if (isRacePaceSandwich && km >= 6) {
+  if (isRacePaceSandwich && mainKm >= 4) {
     // Race pace sandwich: easy → race pace → easy
-    const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(km * 0.4));
-    const easyBeforeKm = Math.floor((km - rpBlockKm) / 2);
-    const easyAfterKm = km - rpBlockKm - easyBeforeKm;
+    const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(mainKm * 0.4));
+    const easyBeforeKm = Math.floor((mainKm - rpBlockKm) / 2);
+    const easyAfterKm = mainKm - rpBlockKm - easyBeforeKm;
     mainSteps = [
       formatStep(`${easyBeforeKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       formatStep(`${rpBlockKm}km`, ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
@@ -831,7 +835,7 @@ const generateLongRun = (
   } else {
     // All easy
     mainSteps = [
-      formatStep(`${km}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      formatStep(`${mainKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ];
   }
 
