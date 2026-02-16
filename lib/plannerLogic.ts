@@ -284,21 +284,29 @@ const createWorkoutText = (
   mainSteps: string[],
   cooldown: string,
   repeats: number = 1,
+  notes?: string,
 ): string => {
   const lines = [
     title,
     "",
+  ];
+
+  if (notes) {
+    lines.push(notes, "");
+  }
+
+  lines.push(
     "Warmup",
-    `- ${warmup}`, // Added dash here since formatStep doesn't include it
+    `- ${warmup}`,
     "",
     repeats > 1 ? `Main set ${repeats}x` : "Main set",
     ...mainSteps.map((s) => `- ${s}`),
     "",
     "Cooldown",
-    `- ${cooldown}`, // Added dash here
-  ];
+    `- ${cooldown}`,
+    "",
+  );
 
-  lines.push("");
   return lines.join("\n");
 };
 
@@ -556,12 +564,13 @@ const generateQualityRun = (
     const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
     const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
     const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+    const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
     return {
       start_date_local: new Date(date.setHours(12, 0, 0)),
       name: `${prefixName} Easy ${ctx.prefix}`,
       description: createWorkoutText(strat, wu, [
         formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
-      ], cd, 1),
+      ], cd, 1, notes),
       external_id: `${ctx.prefix}-tue-${weekNum}`,
       type: "Run",
     };
@@ -570,6 +579,7 @@ const generateQualityRun = (
   let reps: number;
   let repDuration: number; // minutes per full rep cycle (work + rest)
   let steps: string[];
+  let notes: string;
   const label = SPEED_SESSION_LABELS[sessionType];
 
   switch (sessionType) {
@@ -580,6 +590,7 @@ const generateQualityRun = (
         formatStep("2m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ];
+      notes = "Short, punchy efforts to build leg speed and running economy. Run each rep at a strong, controlled effort — not a flat-out sprint. Focus on quick cadence and light feet. The recovery jog should be truly easy, letting your HR come back down before the next one.";
       break;
     }
     case "hills": {
@@ -589,6 +600,7 @@ const generateQualityRun = (
         formatStep("2m", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr, "Uphill"),
         formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
       ];
+      notes = "Hill reps build strength and power that translates directly to EcoTrail's terrain. Find a steady hill with a moderate gradient. Drive your knees, lean slightly forward from the ankles, and keep a strong arm swing. Jog back down easy — the downhill IS the recovery.";
       break;
     }
     case "long-intervals": {
@@ -599,6 +611,7 @@ const generateQualityRun = (
         formatStep(`${workMin}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ];
+      notes = "Longer intervals to develop your threshold and teach your body to clear lactate at pace. These should feel 'comfortably hard' — you can speak a few words but not hold a conversation. Stay relaxed in your shoulders and hands. Each rep should feel the same effort, not faster as you go.";
       break;
     }
     case "distance-intervals": {
@@ -612,6 +625,7 @@ const generateQualityRun = (
         formatStep(`${distKm}km`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep(`${recoveryKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ];
+      notes = `Track-style reps to sharpen your pace awareness. Run each ${distM}m at a consistent, controlled pace — aim to hit the same split every rep rather than going out too fast. The 200m jog recovery is short, so keep moving. These build the specific speed and confidence you need on race day.`;
       break;
     }
     case "race-pace-intervals": {
@@ -621,6 +635,7 @@ const generateQualityRun = (
         formatStep("5m", ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
         formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ];
+      notes = "Race pace practice. The goal is to lock in what race effort feels like so it becomes automatic on the day. These should feel controlled and sustainable — not hard. Focus on rhythm: steady breathing, relaxed form, consistent pace. If it feels too easy, you're doing it right.";
       break;
     }
   }
@@ -634,7 +649,7 @@ const generateQualityRun = (
   return {
     start_date_local: new Date(date.setHours(12, 0, 0)),
     name: `${prefixName} ${label} ${ctx.prefix}`,
-    description: createWorkoutText(strat, wu, steps, cd, reps),
+    description: createWorkoutText(strat, wu, steps, cd, reps, notes),
     external_id: `${ctx.prefix}-tue-${weekNum}`,
     type: "Run",
   };
@@ -673,6 +688,15 @@ const generateEasyRun = (
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
   const name = `W${weekNum.toString().padStart(2, "0")} Thu ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
+  let notes: string;
+  if (isRaceWeek) {
+    notes = "Pre-race shakeout. Just loosen the legs and shake off any nerves. Keep it short, keep it easy. Tomorrow is the day.";
+  } else if (withStrides) {
+    notes = "Easy run with strides at the end. The main run should be fully conversational — save your energy. After the easy portion, do 4 short strides: accelerate smoothly to near-sprint over 20 seconds, then walk/jog back. Strides build neuromuscular speed without creating fatigue.";
+  } else {
+    notes = "Steady easy running to build your aerobic base. This should feel comfortable and conversational the entire way. If you can't chat in full sentences, slow down. Easy days make hard days possible.";
+  }
+
   if (withStrides) {
     // Build text manually for strides (two sections)
     const easyStep = formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
@@ -680,6 +704,8 @@ const generateEasyRun = (
     const strideRest = formatStep("1m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const lines = [
       strat,
+      "",
+      notes,
       "",
       "Warmup",
       `- ${wu}`,
@@ -709,7 +735,7 @@ const generateEasyRun = (
     name,
     description: createWorkoutText(strat, wu, [
       formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
-    ], cd, 1),
+    ], cd, 1, notes),
     external_id: `${ctx.prefix}-thu-${weekNum}`,
     type: "Run",
   };
@@ -734,13 +760,14 @@ const generateBonusRun = (
   const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+  const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";
 
   return {
     start_date_local: new Date(date.setHours(12, 0, 0)),
     name,
     description: createWorkoutText(strat, wu, [
       formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
-    ], cd, 1),
+    ], cd, 1, notes),
     external_id: `${ctx.prefix}-sat-${weekNum}`,
     type: "Run",
   };
@@ -821,6 +848,7 @@ const generateLongRun = (
   const cd = formatStep(`${cdKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   let mainSteps: string[];
+  let notes: string;
 
   if (isRacePaceSandwich && mainKm >= 4) {
     // Race pace sandwich: easy → race pace → easy
@@ -832,17 +860,34 @@ const generateLongRun = (
       formatStep(`${rpBlockKm}km`, ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
       formatStep(`${easyAfterKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ];
-  } else {
-    // All easy
+    notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
+  } else if (isRecoveryWeek) {
     mainSteps = [
       formatStep(`${mainKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ];
+    notes = "Recovery week long run — shorter distance to let your body absorb the training. Run the whole thing easy and enjoy being out there. No pace pressure today.";
+  } else if (isTaper) {
+    mainSteps = [
+      formatStep(`${mainKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ];
+    notes = "Taper run. The hay is in the barn — you've done the work. Keep this short and easy. Your legs might feel heavy or oddly flat; that's normal during taper. Trust the process.";
+  } else if (isRaceTest) {
+    mainSteps = [
+      formatStep(`${mainKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ];
+    notes = `Race distance test at easy effort. This is about covering ${km}km and practising your fueling and BG strategy, not about pace. Treat it as a dress rehearsal: same kit, same fuel timing, same pump setup you'll use on race day. Note what works and what doesn't.`;
+  } else {
+    // All easy, normal build week
+    mainSteps = [
+      formatStep(`${mainKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ];
+    notes = "Long run at easy pace. This is the most important run of the week — it builds your endurance engine. Keep the effort genuinely easy throughout. If the last few km feel harder at the same pace, that's normal; resist the urge to speed up early to 'bank time'. Fuel early, fuel often.";
   }
 
   return {
     start_date_local: new Date(date.setHours(10, 0, 0)),
     name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
-    description: createWorkoutText(`${strat} (Trail)`, wu, mainSteps, cd, 1),
+    description: createWorkoutText(`${strat} (Trail)`, wu, mainSteps, cd, 1, notes),
     external_id: `${ctx.prefix}-sun-${weekNum}`,
     type: "Run",
   };
