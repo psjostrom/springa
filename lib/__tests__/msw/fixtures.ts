@@ -66,6 +66,7 @@ export const sampleEvents = [
     name: "W04 Tue Easy eco16",
     description:
       "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+    paired_activity_id: "act-easy-1",
   },
   {
     id: 1002,

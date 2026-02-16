@@ -8,6 +8,7 @@ import {
   buildEasyPaceFromHistory,
   parseWorkoutSegments,
   estimateWorkoutDuration,
+  estimateWorkoutDistance,
 } from "../utils";
 import { FALLBACK_PACE_TABLE } from "../constants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
@@ -350,5 +351,55 @@ Cooldown
 
   it("returns null for unstructured descriptions", () => {
     expect(estimateWorkoutDuration("No workout here")).toBeNull();
+  });
+});
+
+describe("estimateWorkoutDistance", () => {
+  it("returns actual distance in km for completed events", () => {
+    const event: CalendarEvent = {
+      id: "1", date: new Date(), name: "W03 Tue Easy eco16",
+      description: "", type: "completed", category: "easy",
+      distance: 5500, duration: 2200, avgHr: 125,
+    };
+    expect(estimateWorkoutDistance(event)).toBe(5.5);
+  });
+
+  it("extracts km from name for long runs", () => {
+    const event: CalendarEvent = {
+      id: "2", date: new Date(), name: "W05 Sun Long (12km) eco16",
+      description: "", type: "planned", category: "long",
+    };
+    expect(estimateWorkoutDistance(event)).toBe(12);
+  });
+
+  it("estimates from workout duration for structured descriptions", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const event: CalendarEvent = {
+      id: "3", date: new Date(), name: "W01 Thu Short Intervals eco16",
+      description: desc, type: "planned", category: "interval",
+    };
+    // 39 min / 5.15 min/km (tempo pace for intervals) ≈ 7.6 km
+    const result = estimateWorkoutDistance(event);
+    expect(result).toBeGreaterThan(7);
+    expect(result).toBeLessThan(8);
+  });
+
+  it("returns 0 for events with no data", () => {
+    const event: CalendarEvent = {
+      id: "4", date: new Date(), name: "W01 Tue Easy eco16",
+      description: "No structured workout", type: "planned", category: "easy",
+    };
+    expect(estimateWorkoutDistance(event)).toBe(0);
   });
 });

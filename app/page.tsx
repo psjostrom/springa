@@ -6,7 +6,10 @@ import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeyModal } from "./components/ApiKeyModal";
 import { PlannerScreen } from "./screens/PlannerScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
+import { ProgressScreen } from "./screens/ProgressScreen";
 import { usePhaseInfo } from "./hooks/usePhaseInfo";
+
+type Tab = "planner" | "calendar" | "progress";
 
 function HomeContent() {
   const router = useRouter();
@@ -29,11 +32,15 @@ function HomeContent() {
 
   // Derive active tab from URL (default to calendar)
   const tabParam = searchParams.get("tab");
-  const activeTab: "planner" | "calendar" =
-    tabParam === "planner" ? "planner" : "calendar";
+  const activeTab: Tab =
+    tabParam === "planner"
+      ? "planner"
+      : tabParam === "progress"
+        ? "progress"
+        : "calendar";
 
   // Handle tab change via URL
-  const handleTabChange = (tab: "planner" | "calendar") => {
+  const handleTabChange = (tab: Tab) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.push(`?${params.toString()}`, { scroll: false });
@@ -46,7 +53,7 @@ function HomeContent() {
     setShowApiKeyModal(false);
   };
 
-  // Phase info for calendar
+  // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
   return (
@@ -68,8 +75,10 @@ function HomeContent() {
         <div className="flex-1 overflow-hidden">
           {activeTab === "planner" && <PlannerScreen apiKey={apiKey} />}
 
-          {activeTab === "calendar" && (
-            <CalendarScreen
+          {activeTab === "calendar" && <CalendarScreen apiKey={apiKey} />}
+
+          {activeTab === "progress" && (
+            <ProgressScreen
               apiKey={apiKey}
               phaseName={phaseInfo.name}
               currentWeek={phaseInfo.week}

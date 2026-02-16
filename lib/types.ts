@@ -80,6 +80,7 @@ export interface IntervalsEvent {
   moving_time?: number;
   duration?: number;
   elapsed_time?: number;
+  paired_activity_id?: string | null;
 }
 
 export interface IntervalsStream {

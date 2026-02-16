@@ -76,6 +76,7 @@ describe("fetchCalendarData", () => {
         start_date_local: "2026-02-10T12:00:00",
         name: "W01 Tue Short Intervals eco16",
         description: "some desc",
+        paired_activity_id: "123",
       },
     ];
 
@@ -119,6 +120,7 @@ describe("fetchCalendarData", () => {
         start_date_local: "2026-02-10T12:00:00",
         name: "W01 Tue Easy eco16",
         description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g",
+        paired_activity_id: "123",
       },
     ];
 

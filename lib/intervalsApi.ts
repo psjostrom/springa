@@ -191,6 +191,7 @@ export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
   endDate: Date,
+  options?: { includePairedEvents?: boolean },
 ): Promise<CalendarEvent[]> {
   const auth = "Basic " + btoa("API_KEY:" + apiKey);
   const oldest = format(startDate, "yyyy-MM-dd");
@@ -294,29 +295,12 @@ export async function fetchCalendarData(
     for (const event of events) {
       if (event.category !== "WORKOUT") continue;
 
-      const name = event.name || "";
-      const eventDate = parseISO(event.start_date_local);
-
-      const hasMatchingActivity = runActivities.some(
-        (activity) => {
-          const activityDate = parseISO(
-            activity.start_date_local || activity.start_date,
-          );
-          const sameDay = isSameDay(activityDate, eventDate);
-          const similarName =
-            activity.name
-              ?.toLowerCase()
-              .includes(name.toLowerCase().substring(0, 10)) ||
-            name
-              .toLowerCase()
-              .includes(activity.name?.toLowerCase().substring(0, 10));
-          return sameDay && similarName;
-        },
-      );
-
-      if (hasMatchingActivity) {
+      if (event.paired_activity_id && !options?.includePairedEvents) {
         continue;
       }
+
+      const name = event.name || "";
+      const eventDate = parseISO(event.start_date_local);
 
       const isRace = name.toLowerCase().includes("race");
       const category = isRace ? "race" : getWorkoutCategory(name);

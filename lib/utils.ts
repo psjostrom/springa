@@ -333,6 +333,28 @@ export function convertGlucoseToMmol(values: number[]): number[] {
   return values;
 }
 
+// --- DISTANCE ESTIMATION ---
+
+export function estimateWorkoutDistance(event: CalendarEvent): number {
+  if (event.distance) {
+    return event.distance / 1000;
+  }
+  const kmMatch = event.name.match(/\((\d+)km\)/);
+  if (kmMatch) return parseInt(kmMatch[1], 10);
+
+  const pace =
+    event.category === "interval"
+      ? PACE_ESTIMATES.tempo
+      : PACE_ESTIMATES.easy;
+
+  const parsedMinutes = estimateWorkoutDuration(event.description);
+  if (parsedMinutes) return parsedMinutes / pace;
+
+  if (event.duration) return event.duration / 60 / pace;
+
+  return 0;
+}
+
 // --- WORKOUT CATEGORIZATION ---
 
 export function getWorkoutCategory(

@@ -67,13 +67,7 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
   it("loads events, clicks a completed event, shows modal with details and streams", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
-      <CalendarScreen
-        apiKey={TEST_API_KEY}
-        phaseName="Build Phase"
-        currentWeek={4}
-        totalWeeks={18}
-        progress={22}
-      />,
+      <CalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load (MSW returns sampleActivities + sampleEvents)
@@ -99,13 +93,7 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
       "workout=activity-act-easy-1",
     );
     rerender(
-      <CalendarScreen
-        apiKey={TEST_API_KEY}
-        phaseName="Build Phase"
-        currentWeek={4}
-        totalWeeks={18}
-        progress={22}
-      />,
+      <CalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 6. Assert modal shows completed details
@@ -134,13 +122,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
   it("clicks a planned event, edits the date, and saves", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
-      <CalendarScreen
-        apiKey={TEST_API_KEY}
-        phaseName="Build Phase"
-        currentWeek={4}
-        totalWeeks={18}
-        progress={22}
-      />,
+      <CalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events
@@ -157,13 +139,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
     // 3. Simulate URL -> workout=event-1002
     searchParamsState.current = new URLSearchParams("workout=event-1002");
     rerender(
-      <CalendarScreen
-        apiKey={TEST_API_KEY}
-        phaseName="Build Phase"
-        currentWeek={4}
-        totalWeeks={18}
-        progress={22}
-      />,
+      <CalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 4. Assert Planned badge and Edit button visible
