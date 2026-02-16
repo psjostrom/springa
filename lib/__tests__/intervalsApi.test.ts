@@ -99,6 +99,148 @@ describe("fetchCalendarData", () => {
     const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
     expect(result).toEqual([]);
   });
+
+  it("merges event description into matching completed activity", async () => {
+    const mockActivities = [
+      {
+        id: "123",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "W01 Tue Easy eco16",
+        type: "Run",
+        distance: 5000,
+        moving_time: 1800,
+      },
+    ];
+    const mockEvents = [
+      {
+        id: 789,
+        category: "WORKOUT",
+        start_date_local: "2026-02-10T12:00:00",
+        name: "W01 Tue Easy eco16",
+        description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g",
+      },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe("completed");
+    // The event's description should be merged into the completed activity
+    expect(result[0].description).toContain("FUEL PER 10: 8g");
+  });
+
+  it("does not match activity and event on different days", async () => {
+    const mockActivities = [
+      {
+        id: "123",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "W01 Tue Easy eco16",
+        type: "Run",
+        distance: 5000,
+        moving_time: 1800,
+      },
+    ];
+    const mockEvents = [
+      {
+        id: 789,
+        category: "WORKOUT",
+        start_date_local: "2026-02-12T12:00:00",
+        name: "W01 Tue Easy eco16",
+        description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g",
+      },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    // Should have both: activity as completed + event as planned (different days = no match)
+    expect(result.length).toBe(2);
+    expect(result.filter((e) => e.type === "completed").length).toBe(1);
+    expect(result.filter((e) => e.type === "planned").length).toBe(1);
+  });
+
+  it("marks race events with type 'race'", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 100,
+              category: "WORKOUT",
+              start_date_local: "2026-06-13T08:00:00",
+              name: "RACE DAY eco16",
+              description: "Race day!",
+            },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-06-01"), new Date("2026-06-30"));
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe("race");
+  });
+
+  it("filters to only Run and VirtualRun activities", async () => {
+    const mockActivities = [
+      {
+        id: "1",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "Easy Run",
+        type: "Run",
+        distance: 5000,
+        moving_time: 1800,
+      },
+      {
+        id: "2",
+        start_date: "2026-02-11T10:00:00",
+        start_date_local: "2026-02-11T10:00:00",
+        name: "Morning Ride",
+        type: "Ride",
+        distance: 20000,
+        moving_time: 3600,
+      },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe("Easy Run");
+  });
 });
 
 describe("updateEvent", () => {

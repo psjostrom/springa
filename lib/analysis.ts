@@ -28,7 +28,7 @@ async function analyzeRun(
   let currentFuel = 10;
 
   const match = run.description?.match(/FUEL PER 10:\s*(\d+)g/i);
-  if (match) currentFuel = parseInt(match[1]);
+  if (match) currentFuel = parseInt(match[1], 10);
 
   if (gData.length > 0 && tData.length > 1) {
     const glucoseInMmol = convertGlucoseToMmol(gData);

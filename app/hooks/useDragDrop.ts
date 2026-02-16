@@ -43,7 +43,7 @@ export function useDragDrop(
   const handleDrop = useCallback(async (targetDate: Date) => {
     if (!draggedEvent) return;
 
-    const numericId = parseInt(draggedEvent.id.replace("event-", ""));
+    const numericId = parseInt(draggedEvent.id.replace("event-", ""), 10);
     if (isNaN(numericId)) {
       setDraggedEvent(null);
       setDragOverDate(null);

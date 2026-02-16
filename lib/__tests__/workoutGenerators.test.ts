@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generatePlan } from "../workoutGenerators";
+import { getDay } from "date-fns";
 
 describe("generatePlan", () => {
   const defaultArgs = {
@@ -21,6 +22,11 @@ describe("generatePlan", () => {
       args.raceDateStr, args.raceDist, args.prefix,
       args.totalWeeks, args.startKm, args.lthr,
     );
+  }
+
+  // Use a far-future race date so all 12 weeks are generated regardless of today's date
+  function generateFull(overrides: Partial<typeof defaultArgs> = {}) {
+    return generate({ raceDateStr: "2027-06-12", ...overrides });
   }
 
   it("generates workouts for future weeks only", () => {
@@ -138,6 +144,131 @@ describe("generatePlan", () => {
           expect(plan[i].start_date_local).not.toBe(plan[j].start_date_local);
         }
       }
+    }
+  });
+
+  // --- DAY-OF-WEEK ASSIGNMENTS ---
+
+  it("assigns Tue sessions to Tuesday (day 2)", () => {
+    const plan = generateFull();
+    const tueSessions = plan.filter((e) => e.name.includes(" Tue "));
+    expect(tueSessions.length).toBeGreaterThan(0);
+    for (const event of tueSessions) {
+      expect(getDay(event.start_date_local)).toBe(2);
+    }
+  });
+
+  it("assigns Thu sessions to Thursday (day 4)", () => {
+    const plan = generateFull();
+    const thuSessions = plan.filter((e) => e.name.includes(" Thu "));
+    expect(thuSessions.length).toBeGreaterThan(0);
+    for (const event of thuSessions) {
+      expect(getDay(event.start_date_local)).toBe(4);
+    }
+  });
+
+  it("assigns Sat sessions to Saturday (day 6)", () => {
+    const plan = generateFull();
+    const satSessions = plan.filter((e) => e.name.includes(" Sat "));
+    expect(satSessions.length).toBeGreaterThan(0);
+    for (const event of satSessions) {
+      expect(getDay(event.start_date_local)).toBe(6);
+    }
+  });
+
+  it("assigns Sun long runs to Sunday (day 0)", () => {
+    const plan = generateFull();
+    const sunSessions = plan.filter((e) => e.name.includes(" Sun "));
+    expect(sunSessions.length).toBeGreaterThan(0);
+    for (const event of sunSessions) {
+      expect(getDay(event.start_date_local)).toBe(0);
+    }
+  });
+
+  // --- LONG RUN SANDWICH PROGRESSION ---
+
+  it("alternates long runs between all-easy and race-pace sandwich", () => {
+    const plan = generateFull();
+    const longRuns = plan.filter(
+      (e) => e.name.includes("Sun Long") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
+    );
+    // Week 1 should be all-easy (no sandwich for first week)
+    // After that, non-special weeks should alternate
+    const hasRacePace = longRuns.map((lr) =>
+      lr.description.includes("78-89%"),
+    );
+    // At least some should have race pace sections
+    expect(hasRacePace.some(Boolean)).toBe(true);
+    // At least some should be all-easy
+    expect(hasRacePace.some((v) => !v)).toBe(true);
+  });
+
+  it("grows race pace block distance as plan progresses", () => {
+    const plan = generateFull();
+    const sandwichRuns = plan.filter(
+      (e) => e.name.includes("Sun Long") && e.description.includes("78-89%"),
+    );
+    if (sandwichRuns.length < 2) return;
+
+    // Extract race pace km from each sandwich run
+    const rpKms = sandwichRuns.map((lr) => {
+      const match = lr.description.match(/(\d+)km\s+78-89%/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+
+    // The race pace block should not shrink over time (monotonic non-decreasing)
+    for (let i = 1; i < rpKms.length; i++) {
+      expect(rpKms[i]).toBeGreaterThanOrEqual(rpKms[i - 1]);
+    }
+  });
+
+  it("increases long run total distance progressively", () => {
+    const plan = generateFull();
+    const longRuns = plan.filter(
+      (e) => e.name.includes("Sun Long") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
+    );
+
+    const distances = longRuns.map((lr) => {
+      const match = lr.name.match(/\((\d+)km\)/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+
+    // First long run should start at startKm (8)
+    expect(distances[0]).toBe(8);
+    // Last non-special long run distance should be greater than first
+    expect(distances[distances.length - 1]).toBeGreaterThan(distances[0]);
+  });
+
+  it("reduces distance on recovery weeks (every 4th week)", () => {
+    const plan = generateFull();
+    const recoveryRuns = plan.filter((e) => e.name.includes("[RECOVERY]"));
+    expect(recoveryRuns.length).toBeGreaterThan(0);
+    for (const run of recoveryRuns) {
+      const match = run.name.match(/\((\d+)km\)/);
+      expect(match).not.toBeNull();
+      // Recovery runs reset to startKm (8)
+      expect(parseInt(match![1], 10)).toBe(8);
+    }
+  });
+
+  it("reduces distance on taper week", () => {
+    const plan = generateFull();
+    const taperRuns = plan.filter((e) => e.name.includes("[TAPER]"));
+    expect(taperRuns.length).toBe(1);
+    const match = taperRuns[0].name.match(/\((\d+)km\)/);
+    expect(match).not.toBeNull();
+    // Taper is 50% of race distance (16 * 0.5 = 8)
+    expect(parseInt(match![1], 10)).toBe(8);
+  });
+
+  it("sets race test weeks to full race distance", () => {
+    const plan = generateFull();
+    const raceTests = plan.filter((e) => e.name.includes("[RACE TEST]"));
+    expect(raceTests.length).toBeGreaterThan(0);
+    for (const rt of raceTests) {
+      const match = rt.name.match(/\((\d+)km\)/);
+      expect(match).not.toBeNull();
+      expect(parseInt(match![1], 10)).toBe(16);
     }
   });
 });

@@ -6,6 +6,8 @@ import {
   parseWorkoutZones,
   getEstimatedDuration,
   buildEasyPaceFromHistory,
+  parseWorkoutSegments,
+  estimateWorkoutDuration,
 } from "../utils";
 import { FALLBACK_PACE_TABLE } from "../constants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
@@ -227,5 +229,126 @@ describe("buildEasyPaceFromHistory", () => {
       },
     ];
     expect(buildEasyPaceFromHistory(events)).toBeNull();
+  });
+});
+
+describe("parseWorkoutSegments", () => {
+  it("parses a short intervals workout", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const segments = parseWorkoutSegments(desc);
+    // Warmup (10m) + 6 * (2m + 2m) + Cooldown (5m)
+    expect(segments.length).toBe(1 + 12 + 1);
+    expect(segments[0].duration).toBe(10);
+    expect(segments[0].intensity).toBe(72); // (66+78)/2
+    expect(segments[segments.length - 1].duration).toBe(5);
+  });
+
+  it("parses a hills workout with Uphill/Downhill prefixes", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- Uphill 2m 99-111% LTHR (167-188 bpm)
+- Downhill 3m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const segments = parseWorkoutSegments(desc);
+    // Warmup (10m) + 6 * (2m uphill + 3m downhill) + Cooldown (5m)
+    expect(segments.length).toBe(1 + 12 + 1);
+    // Check uphill segment intensity
+    expect(segments[1].intensity).toBe(105); // (99+111)/2
+    expect(segments[1].duration).toBe(2);
+  });
+
+  it("parses a long run with race pace sandwich", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 10g 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 66-78% LTHR (112-132 bpm)
+- 4km 78-89% LTHR (132-150 bpm)
+- 4km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const segments = parseWorkoutSegments(desc);
+    // Warmup (1km) + 3 main segments + Cooldown (1km)
+    expect(segments.length).toBe(5);
+    // Race pace segment should have higher intensity
+    expect(segments[2].intensity).toBe(83.5); // (78+89)/2
+    // Easy segments should have lower intensity
+    expect(segments[1].intensity).toBe(72); // (66+78)/2
+  });
+
+  it("parses an easy + strides workout", () => {
+    const desc = `PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g
+
+Warmup
+- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 20m 66-78% LTHR (112-132 bpm)
+
+Strides 4x
+- 20s 99-111% LTHR (167-188 bpm)
+- 1m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const segments = parseWorkoutSegments(desc);
+    // Warmup (10m) + Main (20m) + 4 * (20s + 1m) + Cooldown (5m)
+    expect(segments.length).toBe(1 + 1 + 8 + 1);
+    // Stride work segment (20s = 0.333m)
+    const strideWork = segments[2];
+    expect(strideWork.duration).toBeCloseTo(1 / 3, 1);
+    expect(strideWork.intensity).toBe(105);
+  });
+
+  it("returns empty array for description without structured workout", () => {
+    expect(parseWorkoutSegments("Just a note")).toEqual([]);
+    expect(parseWorkoutSegments("")).toEqual([]);
+  });
+});
+
+describe("estimateWorkoutDuration", () => {
+  it("estimates total duration from a structured description", () => {
+    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+
+Warmup
+- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const duration = estimateWorkoutDuration(desc);
+    // 10 + 6*(2+2) + 5 = 39
+    expect(duration).toBe(39);
+  });
+
+  it("returns null for unstructured descriptions", () => {
+    expect(estimateWorkoutDuration("No workout here")).toBeNull();
   });
 });

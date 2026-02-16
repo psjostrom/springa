@@ -280,6 +280,7 @@ export async function fetchCalendarData(
         intensity: activity.icu_intensity,
         pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
         calories: activity.calories,
+        // Garmin reports half-cadence (steps per foot); double to get full SPM
         cadence: activity.average_cadence
           ? activity.average_cadence * 2
           : undefined,

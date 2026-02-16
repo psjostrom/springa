@@ -11,20 +11,16 @@ import {
   addDays,
   addMonths,
   subMonths,
-  isSameMonth,
   isSameDay,
-  isToday,
 } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { FALLBACK_PACE_TABLE } from "@/lib/constants";
 import { buildEasyPaceFromHistory } from "@/lib/utils";
-import { getEventStyle, getEventIcon } from "@/lib/eventStyles";
 import { fetchCalendarData, fetchActivityDetails } from "@/lib/intervalsApi";
-import { HRMiniChart } from "./HRMiniChart";
-import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { EventModal } from "./EventModal";
+import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
 import { useDragDrop } from "../hooks/useDragDrop";
 import "../calendar.css";
@@ -297,73 +293,31 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     }
   }, [viewMode]);
 
-  // Render a day cell for month/week views
-  const renderDayCell = (day: Date, idx: number, minHeight: string, showMonthOpacity: boolean) => {
-    const dayEvents = getEventsForDate(day);
-    const isTodayDate = isToday(day);
-    const dateKey = format(day, "yyyy-MM-dd");
-    const isDropTarget = dragOverDate === dateKey;
-    const isCurrentMonth = showMonthOpacity ? isSameMonth(day, currentMonth) : true;
+  // Stable drop handler that prevents default then delegates
+  const handleDropEvent = useCallback(
+    (_e: React.DragEvent, day: Date) => { handleDrop(day); },
+    [handleDrop],
+  );
 
-    return (
-      <div
-        key={idx}
-        onDragOver={handleDragOver}
-        onDragEnter={() => handleDragEnter(dateKey)}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => { e.preventDefault(); handleDrop(day); }}
-        className={`bg-white p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
-          !isCurrentMonth ? "opacity-40" : ""
-        } ${isTodayDate && !isDropTarget ? "ring-2 ring-blue-500 ring-inset" : ""} ${
-          isDropTarget ? "ring-2 ring-blue-400 ring-inset bg-blue-50" : ""
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          <div
-            className={`text-xs sm:text-sm mb-1 ${
-              isTodayDate ? "font-bold text-blue-600" : "text-slate-600"
-            }`}
-          >
-            {showMonthOpacity ? format(day, "d") : format(day, "d MMM")}
-          </div>
-
-          <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
-            {dayEvents.map((event) => (
-              <button
-                key={event.id}
-                draggable={event.type === "planned"}
-                onDragStart={(e) => handleDragStart(e, event)}
-                onDragEnd={handleDragEnd}
-                onClick={() => openWorkoutModal(event)}
-                className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
-                  draggedEvent?.id === event.id ? "opacity-50" : ""
-                }`}
-              >
-                <div className="flex items-center gap-0.5 mb-0.5">
-                  <span className="flex-shrink-0">{getEventIcon(event)}</span>
-                  <span className="hidden sm:inline break-words">{event.name}</span>
-                </div>
-                {event.type === "completed" && event.hrZones && (
-                  <HRMiniChart
-                    z1={event.hrZones.z1}
-                    z2={event.hrZones.z2}
-                    z3={event.hrZones.z3}
-                    z4={event.hrZones.z4}
-                    z5={event.hrZones.z5}
-                    maxHeight={20}
-                    hrData={event.streamData?.heartrate}
-                  />
-                )}
-                {event.type === "planned" && event.description && (
-                  <WorkoutStructureBar description={event.description} maxHeight={20} />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const renderDayCell = (day: Date, idx: number, minHeight: string, showMonthOpacity: boolean) => (
+    <DayCell
+      key={idx}
+      day={day}
+      dayEvents={getEventsForDate(day)}
+      minHeight={minHeight}
+      showMonthOpacity={showMonthOpacity}
+      currentMonth={currentMonth}
+      dragOverDate={dragOverDate}
+      draggedEventId={draggedEvent?.id ?? null}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropEvent}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onEventClick={openWorkoutModal}
+    />
+  );
 
   return (
     <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-y-auto">

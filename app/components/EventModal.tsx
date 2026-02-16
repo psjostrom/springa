@@ -21,7 +21,8 @@ interface EventModalProps {
   onClose: () => void;
   onDateSaved: (eventId: string, newDate: Date) => void;
   paceTable: PaceTable;
-  isLoadingStreamData: boolean;
+  /** Only relevant for completed events — shows a spinner while stream data loads. */
+  isLoadingStreamData?: boolean;
   apiKey: string;
 }
 
@@ -44,7 +45,7 @@ export function EventModal({
 
   const saveEventEdit = async () => {
     if (!editDate) return;
-    const numericId = parseInt(selectedEvent.id.replace("event-", ""));
+    const numericId = parseInt(selectedEvent.id.replace("event-", ""), 10);
     if (isNaN(numericId)) return;
 
     setIsSaving(true);

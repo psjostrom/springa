@@ -43,3 +43,30 @@ export const PACE_ESTIMATES = {
   tempo: 5.15,
   hard: 4.75,
 } as const;
+
+/** LTHR zone boundaries as percentages. Used for HR-to-zone classification and color mapping. */
+export const ZONE_THRESHOLDS = {
+  z5: 99,  // >= 99% LTHR
+  z4: 89,  // >= 89% LTHR
+  z3: 78,  // >= 78% LTHR
+  z2: 66,  // >= 66% LTHR
+} as const;
+
+import type { HRZoneName } from "./types";
+
+/** Classify an LTHR percentage into a zone color. */
+export function getZoneColor(lthrPercent: number): string {
+  if (lthrPercent >= ZONE_THRESHOLDS.z5) return HR_ZONE_COLORS.z5;
+  if (lthrPercent >= ZONE_THRESHOLDS.z4) return HR_ZONE_COLORS.z4;
+  if (lthrPercent >= ZONE_THRESHOLDS.z3) return HR_ZONE_COLORS.z3;
+  if (lthrPercent >= ZONE_THRESHOLDS.z2) return HR_ZONE_COLORS.z2;
+  return HR_ZONE_COLORS.z1;
+}
+
+/** Classify an LTHR percentage into a zone name. */
+export function classifyZone(lthrPercent: number): HRZoneName {
+  if (lthrPercent > ZONE_THRESHOLDS.z5) return "hard";
+  if (lthrPercent > ZONE_THRESHOLDS.z4) return "tempo";
+  if (lthrPercent > ZONE_THRESHOLDS.z3) return "steady";
+  return "easy";
+}

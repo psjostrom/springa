@@ -10,13 +10,13 @@
 
 ## Medium Priority
 
-- [ ] **6. Deduplicate workout description parsing** — `WorkoutStructureBar.tsx` and `estimateWorkoutDuration()` in `utils.ts` both parse descriptions with near-identical regex. Share a single parser.
-- [ ] **7. Memoize day cell rendering** — `renderDayCell()` called 35+ times per month. Each runs regex parsing and segment generation. Extract to `React.memo` component.
-- [ ] **8. Add tests for critical untested logic** — `fetchCalendarData()` event-activity matching, long run sandwich progression, date generation, drag-drop rescheduling.
-- [ ] **9. Extract zone thresholds to shared constants** — `HRMiniChart.tsx`, `WorkoutStructureBar.tsx`, `utils.ts` each hardcode zone boundary percentages.
+- [x] **6. Deduplicate workout description parsing** — Created shared `parseWorkoutSegments()` in `utils.ts` with `toMinutes()` and `parseSectionSegments()` helpers. `WorkoutStructureBar` and `estimateWorkoutDuration()` both consume the shared parser.
+- [x] **7. Memoize day cell rendering** — Extracted `DayCell` as `React.memo` component in `app/components/DayCell.tsx`. CalendarView passes props; only cells whose props change re-render.
+- [x] **8. Add tests for critical untested logic** — Added 10 tests to `workoutGenerators.test.ts` (day-of-week assignments, sandwich progression, distance growth, recovery/taper/race-test distances), 6 tests to `utils.test.ts` (`parseWorkoutSegments`, `estimateWorkoutDuration`), 4 tests to `intervalsApi.test.ts` (description merging, different-day non-matching, race event typing, activity type filtering). Total: 97 tests.
+- [x] **9. Extract zone thresholds to shared constants** — Added `ZONE_THRESHOLDS`, `getZoneColor()`, `classifyZone()` to `constants.ts`. Updated `HRMiniChart`, `WorkoutStructureBar`, and `utils.ts` to use shared functions.
 
 ## Low Priority
 
-- [ ] **10. Document `cadence * 2` in `intervalsApi.ts:291`** — Likely converting Garmin half-cadence to full SPM.
-- [ ] **11. Add radix to `parseInt()` calls** — Throughout `utils.ts` and `WorkoutStructureBar.tsx`.
-- [ ] **12. Clean up `isLoadingStreamData` prop** — Passed to `EventModal` but only used inside the `completed` block.
+- [x] **10. Document `cadence * 2` in `intervalsApi.ts`** — Added comment: "Garmin reports half-cadence (steps per foot); double to get full SPM".
+- [x] **11. Add radix to `parseInt()` calls** — Added radix 10 across `utils.ts`, `analysis.ts`, `EventModal.tsx`, `useDragDrop.ts`.
+- [x] **12. Clean up `isLoadingStreamData` prop** — Made optional with JSDoc comment documenting it's only relevant for completed events.

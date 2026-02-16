@@ -1,5 +1,5 @@
 import type { DataPoint } from "@/lib/types";
-import { HR_ZONE_COLORS } from "@/lib/constants";
+import { HR_ZONE_COLORS, getZoneColor } from "@/lib/constants";
 
 interface HRMiniChartProps {
   z1: number;
@@ -13,12 +13,7 @@ interface HRMiniChartProps {
 }
 
 const getHRColor = (hr: number, lthr: number = 169): string => {
-  const percent = (hr / lthr) * 100;
-  if (percent >= 99) return HR_ZONE_COLORS.z5;
-  if (percent >= 89) return HR_ZONE_COLORS.z4;
-  if (percent >= 78) return HR_ZONE_COLORS.z3;
-  if (percent >= 66) return HR_ZONE_COLORS.z2;
-  return HR_ZONE_COLORS.z1;
+  return getZoneColor((hr / lthr) * 100);
 };
 
 // Create a mini time-series graph from HR stream data

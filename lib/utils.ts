@@ -5,7 +5,7 @@ import type {
   CalendarEvent,
   WorkoutEvent,
 } from "./types";
-import { FALLBACK_PACE_TABLE, PACE_ESTIMATES } from "./constants";
+import { FALLBACK_PACE_TABLE, PACE_ESTIMATES, classifyZone } from "./constants";
 
 // --- ZONE LABELS ---
 
@@ -86,19 +86,7 @@ export function buildEasyPaceFromHistory(
 
 /** Classify avgHr into a zone name based on LTHR ratio (Garmin LTHR zones) */
 export function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
-  const ratio = avgHr / lthr;
-  if (ratio > 0.99) return "hard";
-  if (ratio > 0.89) return "tempo";
-  if (ratio > 0.78) return "steady";
-  return "easy";
-}
-
-/** Classify an HR max-percentage into a zone name */
-function classifyPctToZone(maxPct: number): HRZoneName {
-  if (maxPct > 99) return "hard";
-  if (maxPct > 89) return "tempo";
-  if (maxPct > 78) return "steady";
-  return "easy";
+  return classifyZone((avgHr / lthr) * 100);
 }
 
 /**
@@ -113,65 +101,67 @@ export function parseWorkoutZones(description: string): HRZoneName[] {
 
   const zones = new Set<HRZoneName>();
   for (const m of stepMatches) {
-    const maxPct = parseInt(m[3]);
-    zones.add(classifyPctToZone(maxPct));
+    const maxPct = parseInt(m[3], 10);
+    zones.add(classifyZone(maxPct));
   }
 
   const order: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
   return order.filter((z) => zones.has(z));
 }
 
-// --- HELPER FUNCTIONS ---
+// --- WORKOUT DESCRIPTION PARSING ---
 
-export const getEstimatedDuration = (event: WorkoutEvent): number => {
-  if (event.name.includes("Long")) {
-    const match = event.name.match(/(\d+)km/);
-    if (match) return parseInt(match[1]) * 6;
-  }
-  return 45;
-};
-
-function parseSectionSteps(section: string): number {
-  let total = 0;
-  const stepMatches = Array.from(
-    section.matchAll(/-\s*(?:Uphill\s+|Downhill\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g)
-  );
-  for (const m of stepMatches) {
-    const value = parseInt(m[1]);
-    const unit = m[2];
-    const avgPercent = (parseInt(m[3]) + parseInt(m[4])) / 2;
-    if (unit === "km") {
-      let pace: number;
-      if (avgPercent >= 95) pace = PACE_ESTIMATES.hard;
-      else if (avgPercent >= 88) pace = PACE_ESTIMATES.tempo;
-      else if (avgPercent >= 80) pace = PACE_ESTIMATES.steady;
-      else pace = PACE_ESTIMATES.easy;
-      total += value * pace;
-    } else if (unit === "s") {
-      total += value / 60;
-    } else {
-      total += value;
-    }
-  }
-  return total;
+export interface WorkoutSegment {
+  duration: number; // in minutes
+  intensity: number; // average LTHR percentage (0-100)
 }
 
-export function estimateWorkoutDuration(description: string): number | null {
-  if (!description) return null;
+/** Convert a value+unit into minutes, using pace estimates for km distances. */
+function toMinutes(value: number, unit: string, avgPercent: number): number {
+  if (unit === "km") {
+    let pace: number;
+    if (avgPercent >= 95) pace = PACE_ESTIMATES.hard;
+    else if (avgPercent >= 88) pace = PACE_ESTIMATES.tempo;
+    else if (avgPercent >= 80) pace = PACE_ESTIMATES.steady;
+    else pace = PACE_ESTIMATES.easy;
+    return value * pace;
+  }
+  if (unit === "s") return value / 60;
+  return value; // "m" = already minutes
+}
 
-  let total = 0;
+/** Parse step lines within a section, returning total duration and individual segments. */
+function parseSectionSegments(section: string): WorkoutSegment[] {
+  const segments: WorkoutSegment[] = [];
+  const stepMatches = Array.from(
+    section.matchAll(/-\s*(?:Uphill\s+|Downhill\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g),
+  );
+  for (const m of stepMatches) {
+    const value = parseInt(m[1], 10);
+    const unit = m[2];
+    const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
+    segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });
+  }
+  return segments;
+}
 
-  // Anchor section headers to line start (\n) to avoid matching words in prose
-  // (e.g. "Strides build neuromuscular speed" in notes text)
+/**
+ * Parse a workout description into an ordered list of segments with duration and intensity.
+ * Handles Warmup, Main set (with repeats), Strides (with repeats), and Cooldown.
+ */
+export function parseWorkoutSegments(description: string): WorkoutSegment[] {
+  if (!description) return [];
+  const segments: WorkoutSegment[] = [];
 
   // Warmup
   const warmupMatch = description.match(/\nWarmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
   if (warmupMatch) {
-    const wuStep = warmupMatch[0].match(/-\s*(?:PUMP.*?\s+)?(\d+)(m|km)\s+(\d+)-(\d+)%/);
+    const wuStep = warmupMatch[0].match(/-\s*(?:PUMP.*?\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/);
     if (wuStep) {
-      const value = parseInt(wuStep[1]);
+      const value = parseInt(wuStep[1], 10);
       const unit = wuStep[2];
-      total += unit === "km" ? value * PACE_ESTIMATES.easy : value;
+      const avgPercent = (parseInt(wuStep[3], 10) + parseInt(wuStep[4], 10)) / 2;
+      segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });
     }
   }
 
@@ -179,29 +169,48 @@ export function estimateWorkoutDuration(description: string): number | null {
   const mainSetSection = description.match(/\nMain set[\s\S]*?(?=\nStrides|\nCooldown|$)/);
   if (mainSetSection) {
     const repsMatch = mainSetSection[0].match(/Main set\s+(\d+)x/);
-    const reps = repsMatch ? parseInt(repsMatch[1]) : 1;
-    total += parseSectionSteps(mainSetSection[0]) * reps;
+    const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
+    const stepSegs = parseSectionSegments(mainSetSection[0]);
+    for (let r = 0; r < reps; r++) {
+      segments.push(...stepSegs);
+    }
   }
 
   // Strides (with optional repeats)
   const stridesSection = description.match(/\nStrides\s+\d+x[\s\S]*?(?=\nCooldown|$)/);
   if (stridesSection) {
     const repsMatch = stridesSection[0].match(/Strides\s+(\d+)x/);
-    const reps = repsMatch ? parseInt(repsMatch[1]) : 1;
-    total += parseSectionSteps(stridesSection[0]) * reps;
+    const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
+    const stepSegs = parseSectionSegments(stridesSection[0]);
+    for (let r = 0; r < reps; r++) {
+      segments.push(...stepSegs);
+    }
   }
 
   // Cooldown
   const cooldownMatch = description.match(/\nCooldown[\s\S]*$/);
   if (cooldownMatch) {
-    const cdStep = cooldownMatch[0].match(/-\s*(\d+)(m|km)\s+(\d+)-(\d+)%/);
-    if (cdStep) {
-      const value = parseInt(cdStep[1]);
-      const unit = cdStep[2];
-      total += unit === "km" ? value * PACE_ESTIMATES.easy : value;
-    }
+    const cdSegs = parseSectionSegments(cooldownMatch[0]);
+    segments.push(...cdSegs);
   }
 
+  return segments;
+}
+
+// --- HELPER FUNCTIONS ---
+
+export const getEstimatedDuration = (event: WorkoutEvent): number => {
+  if (event.name.includes("Long")) {
+    const match = event.name.match(/(\d+)km/);
+    if (match) return parseInt(match[1], 10) * 6;
+  }
+  return 45;
+};
+
+export function estimateWorkoutDuration(description: string): number | null {
+  const segments = parseWorkoutSegments(description);
+  if (segments.length === 0) return null;
+  const total = segments.reduce((sum, s) => sum + s.duration, 0);
   return total > 0 ? Math.round(total) : null;
 }
 
@@ -260,16 +269,16 @@ export const createWorkoutText = (
 /** Extract fuel rate from description (e.g., "FUEL PER 10: 10g" -> 10) */
 export const extractFuelRate = (description: string): number | null => {
   const newMatch = description.match(/FUEL PER 10:\s*(\d+)g/i);
-  if (newMatch) return parseInt(newMatch[1]);
+  if (newMatch) return parseInt(newMatch[1], 10);
 
   const oldMatch = description.match(/FUEL:\s*(\d+)g\/10m/i);
-  return oldMatch ? parseInt(oldMatch[1]) : null;
+  return oldMatch ? parseInt(oldMatch[1], 10) : null;
 };
 
 /** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
 export const extractTotalCarbs = (description: string): number | null => {
   const match = description.match(/TOTAL:\s*(\d+)g/i);
-  return match ? parseInt(match[1]) : null;
+  return match ? parseInt(match[1], 10) : null;
 };
 
 /** Estimate pace from average HR (min/km) */
