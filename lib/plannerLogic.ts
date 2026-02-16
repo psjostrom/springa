@@ -113,6 +113,137 @@ interface IntervalsStream {
   data: number[];
 }
 
+// --- PACE TABLE TYPES & HELPERS ---
+export type HRZoneName = "easy" | "steady" | "tempo" | "hard";
+
+export interface ZonePaceEntry {
+  zone: HRZoneName;
+  avgPace: number; // min/km as decimal (e.g. 6.15 = 6min 9sec)
+  sampleCount: number;
+  avgHr?: number; // average HR across the sampled runs (only for data-driven entries)
+}
+
+export type PaceTable = Record<HRZoneName, ZonePaceEntry | null>;
+
+/** Format decimal pace (e.g. 6.15) as "6:09" */
+export function formatPace(paceMinPerKm: number): string {
+  const totalSeconds = Math.round(paceMinPerKm * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+export const FALLBACK_PACE_TABLE: PaceTable = {
+  easy: { zone: "easy", avgPace: 6.71, sampleCount: 0 },    // ~6:43/km
+  steady: { zone: "steady", avgPace: 5.67, sampleCount: 0 }, // ~5:40/km (race pace)
+  tempo: { zone: "tempo", avgPace: 5.21, sampleCount: 0 },   // ~5:13/km (interval)
+  hard: { zone: "hard", avgPace: 4.75, sampleCount: 0 },     // ~4:45/km
+};
+
+/** Returns data-driven entry or falls back to hardcoded values */
+export function getPaceForZone(
+  table: PaceTable,
+  zone: HRZoneName,
+): ZonePaceEntry {
+  return table[zone] ?? FALLBACK_PACE_TABLE[zone]!;
+}
+
+/**
+ * Build easy pace from historical easy and long runs (excluding strides).
+ * Returns a data-driven easy pace entry with avg HR, or null if no data.
+ */
+export function buildEasyPaceFromHistory(
+  events: CalendarEvent[],
+): ZonePaceEntry | null {
+  const easyRuns = events.filter((e) => {
+    if (e.type !== "completed") return false;
+    if (!e.distance || !e.duration || !e.avgHr) return false;
+    const name = e.name.toLowerCase();
+    const isEasyOrLong =
+      name.includes("easy") || name.includes("long") || name.includes("bonus");
+    const hasStrides = name.includes("strides");
+    return isEasyOrLong && !hasStrides;
+  });
+
+  if (easyRuns.length === 0) return null;
+
+  let totalPace = 0;
+  let totalHr = 0;
+  let validCount = 0;
+
+  for (const e of easyRuns) {
+    const distKm = e.distance! / 1000;
+    if (distKm < 0.5) continue;
+    const durMin = e.duration! / 60;
+    const pace = durMin / distKm;
+    if (pace < 2.0 || pace > 12.0) continue;
+    totalPace += pace;
+    totalHr += e.avgHr!;
+    validCount++;
+  }
+
+  if (validCount === 0) return null;
+
+  return {
+    zone: "easy",
+    avgPace: totalPace / validCount,
+    sampleCount: validCount,
+    avgHr: Math.round(totalHr / validCount),
+  };
+}
+
+/** Classify avgHr into a zone name based on LTHR ratio (Garmin LTHR zones) */
+function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
+  const ratio = avgHr / lthr;
+  if (ratio > 0.99) return "hard";   // Z5: >99% LTHR
+  if (ratio > 0.89) return "tempo";  // Z4: >89% LTHR (interval)
+  if (ratio > 0.78) return "steady"; // Z3: >78% LTHR (race pace)
+  return "easy";                     // Z2: ≤78% LTHR
+}
+
+
+
+const ZONE_LABELS: Record<HRZoneName, string> = {
+  easy: "Easy",
+  steady: "Race Pace",
+  tempo: "Interval",
+  hard: "Hard",
+};
+
+export function getZoneLabel(zone: HRZoneName): string {
+  return ZONE_LABELS[zone];
+}
+
+/** Classify an HR max-percentage into a zone name */
+function classifyPctToZone(maxPct: number): HRZoneName {
+  if (maxPct > 99) return "hard";
+  if (maxPct > 89) return "tempo";
+  if (maxPct > 78) return "steady";
+  return "easy";
+}
+
+/**
+ * Parse a workout description and return all distinct HR zones used,
+ * ordered from lowest to highest intensity.
+ */
+export function parseWorkoutZones(description: string): HRZoneName[] {
+  // Match all HR percentage ranges across the entire description
+  const stepMatches = Array.from(
+    description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(m|km)\s+(\d+)-(\d+)%/g),
+  );
+  if (stepMatches.length === 0) return [];
+
+  const zones = new Set<HRZoneName>();
+  for (const m of stepMatches) {
+    const maxPct = parseInt(m[3]);
+    zones.add(classifyPctToZone(maxPct));
+  }
+
+  // Return sorted low-to-high intensity
+  const order: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
+  return order.filter((z) => zones.has(z));
+}
+
 // --- HELPER FUNCTIONS ---
 export const getEstimatedDuration = (event: WorkoutEvent): number => {
   // 1. Long Run: Calculate 6 min/km (approximate trail pace)
@@ -212,10 +343,20 @@ function getWorkoutCategory(
   name: string,
 ): "long" | "interval" | "easy" | "other" {
   const lowerName = name.toLowerCase();
-  if (lowerName.includes("lr") || lowerName.includes("long")) return "long";
-  if (lowerName.includes("tempo") || lowerName.includes("hills"))
+  if (lowerName.includes("long")) return "long";
+  if (
+    lowerName.includes("interval") ||
+    lowerName.includes("hills") ||
+    lowerName.includes("tempo") ||
+    lowerName.includes("race pace")
+  )
     return "interval";
-  if (lowerName.includes("easy") || lowerName.includes("bonus")) return "easy";
+  if (
+    lowerName.includes("easy") ||
+    lowerName.includes("bonus") ||
+    lowerName.includes("strides")
+  )
+    return "easy";
   return "other";
 }
 
@@ -347,6 +488,51 @@ export async function analyzeHistory(
 
 // --- PLAN GENERATORS ---
 
+type SpeedSessionType =
+  | "short-intervals"
+  | "hills"
+  | "long-intervals"
+  | "distance-intervals"
+  | "race-pace-intervals";
+
+const SPEED_ROTATION: SpeedSessionType[] = [
+  "short-intervals",
+  "hills",
+  "long-intervals",
+  "distance-intervals",
+];
+
+function getSpeedSessionType(
+  weekIdx: number,
+  totalWeeks: number,
+): SpeedSessionType | null {
+  const weekNum = weekIdx + 1;
+  const isRaceWeek = weekNum === totalWeeks;
+  const isTaper = weekNum >= totalWeeks - 1;
+  const isRecoveryWeek = weekNum % 4 === 0;
+
+  if (isRaceWeek) return null; // No speed session on race week
+  if (isRecoveryWeek) return null; // Recovery week — no speed
+  if (isTaper) return "race-pace-intervals"; // Taper: race pace practice
+
+  // Count non-skipped speed weeks before this one for rotation
+  let speedCount = 0;
+  for (let i = 0; i < weekIdx; i++) {
+    const wn = i + 1;
+    if (wn % 4 !== 0 && wn < totalWeeks - 1) speedCount++;
+  }
+
+  return SPEED_ROTATION[speedCount % SPEED_ROTATION.length];
+}
+
+const SPEED_SESSION_LABELS: Record<SpeedSessionType, string> = {
+  "short-intervals": "Short Intervals",
+  hills: "Hills",
+  "long-intervals": "Long Intervals",
+  "distance-intervals": "Distance Intervals",
+  "race-pace-intervals": "Race Pace Intervals",
+};
+
 const generateQualityRun = (
   ctx: PlanContext,
   weekIdx: number,
@@ -359,91 +545,94 @@ const generateQualityRun = (
 
   const weekNum = weekIdx + 1;
   const progress = weekIdx / ctx.totalWeeks;
-  const isRaceWeek = weekNum === ctx.totalWeeks;
-  const isRaceTest =
-    weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
-
   const prefixName = `W${weekNum.toString().padStart(2, "0")} Tue`;
-  const isTempo = weekIdx % 2 !== 0;
 
-  if (isTempo) {
-    const isShakeout = isRaceWeek;
-    const reps = isShakeout ? 2 : isRaceTest ? 3 : 3 + Math.floor(progress * 3);
-    const steps = isShakeout
-      ? [
-          formatStep("5m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-          formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
-        ]
-      : [
-          formatStep("8m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-          formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
-        ];
+  const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
-    // Calculate total duration and carbs
-    const repDuration = isShakeout ? 7 : 10; // 5m+2m or 8m+2m
-    const totalDuration = 10 + reps * repDuration + 5; // warmup + main + cooldown
-    const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelInterval);
-
-    const stratHard = `PUMP OFF - FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`; // Intervals use LOW fuel
-    const wu = formatStep(
-      "10m",
-      ctx.zones.easy.min,
-      ctx.zones.easy.max,
-      ctx.lthr,
-      stratHard,
-    );
-    const cd = formatStep(
-      "5m",
-      ctx.zones.easy.min,
-      ctx.zones.easy.max,
-      ctx.lthr,
-    );
-
+  // No speed session this week — generate an easy run instead
+  if (sessionType === null) {
+    const totalDuration = 10 + 30 + 5;
+    const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
+    const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+    const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+    const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     return {
       start_date_local: new Date(date.setHours(12, 0, 0)),
-      name: `${prefixName} Tempo ${ctx.prefix}${isShakeout ? " [SHAKEOUT]" : ""}`,
-      description: createWorkoutText(stratHard, wu, steps, cd, reps),
+      name: `${prefixName} Easy ${ctx.prefix}`,
+      description: createWorkoutText(strat, wu, [
+        formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      ], cd, 1),
       external_id: `${ctx.prefix}-tue-${weekNum}`,
       type: "Run",
     };
   }
-  const isShakeout = isRaceWeek;
-  const reps = isShakeout ? 2 : isRaceTest ? 4 : 6;
-  const steps = [
-    formatStep(
-      "2m",
-      ctx.zones.hard.min,
-      ctx.zones.hard.max,
-      ctx.lthr,
-      "Uphill",
-    ),
-    formatStep(
-      "2m",
-      ctx.zones.easy.min,
-      ctx.zones.easy.max,
-      ctx.lthr,
-      "Downhill",
-    ),
-  ];
 
-  // Calculate total duration and carbs
-  const totalDuration = 10 + reps * 4 + 5; // warmup + (reps * 4m) + cooldown
+  let reps: number;
+  let repDuration: number; // minutes per full rep cycle (work + rest)
+  let steps: string[];
+  const label = SPEED_SESSION_LABELS[sessionType];
+
+  switch (sessionType) {
+    case "short-intervals": {
+      reps = 6 + Math.floor(progress * 2); // 6 → 8
+      repDuration = 4; // 2m work + 2m recovery
+      steps = [
+        formatStep("2m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
+        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      ];
+      break;
+    }
+    case "hills": {
+      reps = 6 + Math.floor(progress * 2); // 6 → 8
+      repDuration = 4; // 2m up + 2m down
+      steps = [
+        formatStep("2m", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr, "Uphill"),
+        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
+      ];
+      break;
+    }
+    case "long-intervals": {
+      const workMin = 4 + Math.floor(progress * 2); // 4m → 6m
+      reps = 4;
+      repDuration = workMin + 2; // work + 2m recovery
+      steps = [
+        formatStep(`${workMin}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
+        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      ];
+      break;
+    }
+    case "distance-intervals": {
+      const distM = 600 + Math.floor(progress * 2) * 200; // 600m → 1000m
+      reps = distM >= 1000 ? 6 : 8;
+      // Estimate rep duration: 800m at ~5:10/km ≈ 4min + 2min recovery
+      repDuration = Math.ceil((distM / 1000) * 5.2) + 2;
+      steps = [
+        formatStep(`${distM}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
+        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      ];
+      break;
+    }
+    case "race-pace-intervals": {
+      reps = 5;
+      repDuration = 7; // 5m work + 2m recovery
+      steps = [
+        formatStep("5m", ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
+        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      ];
+      break;
+    }
+  }
+
+  const totalDuration = 10 + reps * repDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelInterval);
-
-  const stratHard = `PUMP OFF - FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`; // Intervals use LOW fuel
-  const wu = formatStep(
-    "10m",
-    ctx.zones.easy.min,
-    ctx.zones.easy.max,
-    ctx.lthr,
-    stratHard,
-  );
+  const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`;
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   return {
     start_date_local: new Date(date.setHours(12, 0, 0)),
-    name: `${prefixName} Hills ${ctx.prefix}${isShakeout ? " [SHAKEOUT]" : ""}`,
-    description: createWorkoutText(stratHard, wu, steps, cd, reps),
+    name: `${prefixName} ${label} ${ctx.prefix}`,
+    description: createWorkoutText(strat, wu, steps, cd, reps),
     external_id: `${ctx.prefix}-tue-${weekNum}`,
     type: "Run",
   };
@@ -463,45 +652,62 @@ const generateEasyRun = (
   const isRaceWeek = weekNum === ctx.totalWeeks;
   const isRaceTest =
     weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
+  const withStrides = weekIdx % 2 === 1 && !isRaceWeek; // Alternate weeks
 
   const duration = isRaceWeek
     ? 20
     : isRaceTest
       ? 30
       : 40 + Math.floor(progress * 20);
-  const name = `W${weekNum.toString().padStart(2, "0")} Thu Easy ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
-  // Calculate total duration and carbs
-  const totalDuration = 10 + duration + 5; // warmup + main + cooldown
+  const stridesDuration = withStrides ? 6 : 0; // 4x (20s + 1m) ≈ 6 min
+  const totalDuration = 10 + duration + stridesDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const stratEasy = `PUMP ON (-50%) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`; // Easy runs use MODERATE fuel
-  const wu = formatStep(
-    "10m",
-    ctx.zones.easy.min,
-    ctx.zones.easy.max,
-    ctx.lthr,
-    stratEasy,
-  );
+  const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+
+  const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
+  const name = `W${weekNum.toString().padStart(2, "0")} Thu ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
+
+  if (withStrides) {
+    // Build text manually for strides (two sections)
+    const easyStep = formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+    const strideWork = formatStep("20s", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr);
+    const strideRest = formatStep("1m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+    const lines = [
+      strat,
+      "",
+      "Warmup",
+      `- ${wu}`,
+      "",
+      "Main set",
+      `- ${easyStep}`,
+      "",
+      "Strides 4x",
+      `- ${strideWork}`,
+      `- ${strideRest}`,
+      "",
+      "Cooldown",
+      `- ${cd}`,
+      "",
+    ];
+    return {
+      start_date_local: new Date(date.setHours(12, 0, 0)),
+      name,
+      description: lines.join("\n"),
+      external_id: `${ctx.prefix}-thu-${weekNum}`,
+      type: "Run",
+    };
+  }
 
   return {
     start_date_local: new Date(date.setHours(12, 0, 0)),
     name,
-    description: createWorkoutText(
-      stratEasy,
-      wu,
-      [
-        formatStep(
-          `${duration}m`,
-          ctx.zones.easy.min,
-          ctx.zones.easy.max,
-          ctx.lthr,
-        ),
-      ],
-      cd,
-      1,
-    ),
+    description: createWorkoutText(strat, wu, [
+      formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ], cd, 1),
     external_id: `${ctx.prefix}-thu-${weekNum}`,
     type: "Run",
   };
@@ -518,32 +724,21 @@ const generateBonusRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
   const weekNum = weekIdx + 1;
 
-  const name = `W${weekNum.toString().padStart(2, "0")} Sat Easy (Optional) ${ctx.prefix}`;
+  const name = `W${weekNum.toString().padStart(2, "0")} Sat Bonus Easy ${ctx.prefix}`;
 
-  // Calculate total duration and carbs
-  const totalDuration = 10 + 30 + 5; // warmup + main + cooldown
+  const totalDuration = 10 + 30 + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const stratEasy = `PUMP ON (-50%) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`; // Bonus runs use MODERATE fuel
-  const wu = formatStep(
-    "10m",
-    ctx.zones.easy.min,
-    ctx.zones.easy.max,
-    ctx.lthr,
-    stratEasy,
-  );
+  const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   return {
     start_date_local: new Date(date.setHours(12, 0, 0)),
     name,
-    description: createWorkoutText(
-      stratEasy,
-      wu,
-      [formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr)],
-      cd,
-      1,
-    ),
+    description: createWorkoutText(strat, wu, [
+      formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ], cd, 1),
     external_id: `${ctx.prefix}-sat-${weekNum}`,
     type: "Run",
   };
@@ -557,19 +752,14 @@ const generateLongRun = (
   const weekNum = weekIdx + 1;
   const isRaceWeek = weekNum === ctx.totalWeeks;
   if (isRaceWeek) {
-    // Calculate total carbs for race day
-    // Estimate duration: Race pace ~5.15 min/km (88-94% LTHR)
-    const estimatedRaceDuration = ctx.raceDist * 5.15;
-    const totalCarbs = calculateWorkoutCarbs(
-      estimatedRaceDuration,
-      ctx.fuelLong,
-    );
-    const stratLong = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`; // Long runs use HIGH fuel
-
+    // Race day: estimate at race pace ~5:40/km
+    const estimatedRaceDuration = ctx.raceDist * 5.67;
+    const totalCarbs = calculateWorkoutCarbs(estimatedRaceDuration, ctx.fuelLong);
+    const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
     return {
       start_date_local: new Date(ctx.raceDate.setHours(10, 0, 0)),
       name: `RACE DAY ${ctx.prefix}`,
-      description: `RACE DAY! ${ctx.raceDist}km. ${stratLong}\n\nGood luck!`,
+      description: `RACE DAY! ${ctx.raceDist}km. ${strat}\n\nGood luck!`,
       external_id: `${ctx.prefix}-race`,
       type: "Run",
     };
@@ -580,6 +770,7 @@ const generateLongRun = (
   const isRaceTest =
     weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
   const isRecoveryWeek = weekNum % 4 === 0;
+
   let km = Math.min(
     Math.floor(
       ctx.startKm +
@@ -602,39 +793,50 @@ const generateLongRun = (
     type = " [RACE TEST]";
   }
 
-  // Calculate total duration and carbs
-  // Estimate duration: Zone 2 pace ~6.15 min/km (77-84% LTHR)
-  const estimatedMainDuration = km * 6.15;
-  const totalDuration = 10 + estimatedMainDuration + 5; // warmup + main + cooldown
+  // Determine if this is a race-pace sandwich long run
+  // Alternate among non-special weeks; recovery, taper, and week 1 are always all-easy
+  let isRacePaceSandwich = false;
+  if (!isRecoveryWeek && !isTaper && weekNum > 1) {
+    let nonSpecialCount = 0;
+    for (let i = 0; i < weekIdx; i++) {
+      const wn = i + 1;
+      if (wn % 4 !== 0 && wn < ctx.totalWeeks - 1 && wn > 1) nonSpecialCount++;
+    }
+    isRacePaceSandwich = nonSpecialCount % 2 === 1;
+  }
+
+  // Estimate duration at easy pace ~6:43/km
+  const estimatedMainDuration = km * 6.71;
+  const totalDuration = 10 + estimatedMainDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelLong);
 
-  const stratLong = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`; // Long runs use HIGH fuel
-  const wu = formatStep(
-    "10m",
-    ctx.zones.easy.min,
-    ctx.zones.easy.max,
-    ctx.lthr,
-    stratLong,
-  );
+  const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
+
+  let mainSteps: string[];
+
+  if (isRacePaceSandwich && km >= 6) {
+    // Race pace sandwich: easy → race pace → easy
+    const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(km * 0.4));
+    const easyBeforeKm = Math.floor((km - rpBlockKm) / 2);
+    const easyAfterKm = km - rpBlockKm - easyBeforeKm;
+    mainSteps = [
+      formatStep(`${easyBeforeKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+      formatStep(`${rpBlockKm}km`, ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
+      formatStep(`${easyAfterKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ];
+  } else {
+    // All easy
+    mainSteps = [
+      formatStep(`${km}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+    ];
+  }
 
   return {
     start_date_local: new Date(date.setHours(10, 0, 0)),
     name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
-    description: createWorkoutText(
-      `${stratLong} (Trail)`,
-      wu,
-      [
-        formatStep(
-          `${km}km`,
-          ctx.zones.steady.min,
-          ctx.zones.steady.max,
-          ctx.lthr,
-        ),
-      ],
-      cd,
-      1,
-    ),
+    description: createWorkoutText(`${strat} (Trail)`, wu, mainSteps, cd, 1),
     external_id: `${ctx.prefix}-sun-${weekNum}`,
     type: "Run",
   };
@@ -669,10 +871,10 @@ export function generatePlan(
       -(totalWeeks - 1),
     ),
     zones: {
-      easy: { min: 0.72, max: 0.8 },
-      steady: { min: 0.77, max: 0.84 },
-      tempo: { min: 0.88, max: 0.94 },
-      hard: { min: 0.95, max: 1.0 },
+      easy: { min: 0.66, max: 0.78 },   // Z2: 112-132 bpm
+      steady: { min: 0.78, max: 0.89 },  // Z3: 132-150 bpm (race pace)
+      tempo: { min: 0.89, max: 0.99 },   // Z4: 150-167 bpm (interval)
+      hard: { min: 0.99, max: 1.11 },    // Z5: 167-188 bpm
     },
   };
   const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
@@ -737,12 +939,12 @@ function calculateHRZones(
 ): HRZoneData {
   const zones: HRZoneData = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
 
-  // Zone boundaries based on LTHR
-  const z1Max = lthr * 0.8; // Up to 80% LTHR
-  const z2Max = lthr * 0.88; // 80-88% LTHR
-  const z3Max = lthr * 0.94; // 88-94% LTHR
-  const z4Max = lthr * 1.0; // 94-100% LTHR
-  // z5 is > 100% LTHR
+  // Zone boundaries based on Garmin LTHR zones
+  const z1Max = lthr * 0.66; // Z1: up to 66% LTHR (warm up)
+  const z2Max = lthr * 0.78; // Z2: 66-78% LTHR (easy)
+  const z3Max = lthr * 0.89; // Z3: 78-89% LTHR (aerobic/race pace)
+  const z4Max = lthr * 0.99; // Z4: 89-99% LTHR (threshold/interval)
+  // Z5 is > 99% LTHR (maximum)
 
   hrData.forEach((hr) => {
     if (hr <= z1Max) zones.z1++;

@@ -21,6 +21,12 @@ import {
   CalendarEvent,
   fetchCalendarData,
   fetchActivityDetails,
+  FALLBACK_PACE_TABLE,
+  buildEasyPaceFromHistory,
+  parseWorkoutZones,
+  getPaceForZone,
+  getZoneLabel,
+  formatPace,
 } from "@/lib/plannerLogic";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
@@ -310,6 +316,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   // Get all loaded events, sorted by date for agenda view
   const agendaEvents = useMemo(() => {
     return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [events]);
+
+  // Hybrid pace table: easy pace from historical data, higher zones from LT calculations
+  const paceTable = useMemo(() => {
+    const easyPace = buildEasyPaceFromHistory(events);
+    if (!easyPace) return FALLBACK_PACE_TABLE;
+    return { ...FALLBACK_PACE_TABLE, easy: easyPace };
   }, [events]);
 
   // Find the index of the last completed workout
@@ -779,6 +792,22 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                                 maxHeight={40}
                               />
                             </div>
+                            {(() => {
+                              const zones = parseWorkoutZones(event.description);
+                              if (zones.length === 0) return null;
+                              return (
+                                <div className="text-xs text-slate-500 mb-1 flex flex-wrap gap-x-3">
+                                  {zones.map((zone) => {
+                                    const entry = getPaceForZone(paceTable, zone);
+                                    return (
+                                      <span key={zone}>
+                                        {getZoneLabel(zone)} ~{formatPace(entry.avgPace)}/km{entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                             <div className="text-sm text-slate-600 line-clamp-2">
                               {event.description}
                             </div>
@@ -839,6 +868,38 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                 </div>
               </div>
             )}
+
+            {selectedEvent.type === "planned" && (() => {
+              const zones = parseWorkoutZones(selectedEvent.description);
+              if (zones.length === 0) return null;
+              return (
+                <div className="mb-4">
+                  <div className="text-sm text-slate-600 mb-2">
+                    Suggested Paces
+                  </div>
+                  <div className="grid gap-2">
+                    {zones.map((zone) => {
+                      const entry = getPaceForZone(paceTable, zone);
+                      return (
+                        <div key={zone} className="flex items-baseline gap-2">
+                          <span className="text-sm font-medium text-slate-700 w-16">
+                            {getZoneLabel(zone)}
+                          </span>
+                          <span className="text-lg font-semibold text-slate-900">
+                            ~{formatPace(entry.avgPace)}/km
+                          </span>
+                          {entry.avgHr && (
+                            <span className="text-xs text-slate-500">
+                              avg {entry.avgHr} bpm
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {selectedEvent.type === "planned" &&
               calculateTotalCarbs(selectedEvent) && (
