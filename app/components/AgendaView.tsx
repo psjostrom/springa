@@ -6,6 +6,7 @@ import {
   getPaceForZone,
   getZoneLabel,
   formatPace,
+  estimateWorkoutDuration,
 } from "@/lib/utils";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -65,6 +66,17 @@ export function AgendaView({
               <div className="text-xs text-slate-600">
                 {format(event.date, "MMM", { locale: enGB })}
               </div>
+              {event.type === "planned" && event.description && (() => {
+                const est = estimateWorkoutDuration(event.description);
+                if (!est) return null;
+                const hours = Math.floor(est / 60);
+                const mins = est % 60;
+                return (
+                  <div className="text-xs text-slate-400 mt-1">
+                    ~{hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Event Details */}

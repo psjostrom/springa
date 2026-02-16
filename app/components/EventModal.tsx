@@ -106,27 +106,14 @@ export function EventModal({
             <h3 className="text-lg sm:text-xl font-bold">
               {selectedEvent.name}
             </h3>
-            <div className="flex items-center gap-2 mt-2">
-              <div
-                className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStyle(selectedEvent)}`}
-              >
-                {selectedEvent.type === "completed"
-                  ? "✓ Completed"
-                  : selectedEvent.type === "race"
-                    ? "🏁 Race"
-                    : "📅 Planned"}
-              </div>
-              {selectedEvent.type === "planned" && selectedEvent.description && (() => {
-                const est = estimateWorkoutDuration(selectedEvent.description);
-                if (!est) return null;
-                const hours = Math.floor(est / 60);
-                const mins = est % 60;
-                return (
-                  <span className="text-xs text-slate-500">
-                    ~{hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
-                  </span>
-                );
-              })()}
+            <div
+              className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${getEventStyle(selectedEvent)}`}
+            >
+              {selectedEvent.type === "completed"
+                ? "✓ Completed"
+                : selectedEvent.type === "race"
+                  ? "🏁 Race"
+                  : "📅 Planned"}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -180,48 +167,55 @@ export function EventModal({
         )}
 
         {selectedEvent.type === "planned" && (() => {
+          const est = selectedEvent.description ? estimateWorkoutDuration(selectedEvent.description) : null;
+          const carbs = calculateTotalCarbs(selectedEvent);
           const zones = parseWorkoutZones(selectedEvent.description);
-          if (zones.length === 0) return null;
+          if (!est && !carbs && zones.length === 0) return null;
           return (
-            <div className="mb-4">
-              <div className="text-sm text-slate-600 mb-2">
-                Suggested Paces
-              </div>
-              <div className="grid gap-2">
-                {zones.map((zone) => {
-                  const entry = getPaceForZone(paceTable, zone);
-                  return (
-                    <div key={zone} className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-slate-700 w-16">
-                        {getZoneLabel(zone)}
-                      </span>
-                      <span className="text-lg font-semibold text-slate-900">
-                        ~{formatPace(entry.avgPace)}/km
-                      </span>
-                      {entry.avgHr && (
-                        <span className="text-xs text-slate-500">
-                          avg {entry.avgHr} bpm
-                        </span>
-                      )}
+            <div className="text-sm mb-4 space-y-3">
+              {(est || carbs) && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {est && (
+                    <div>
+                      <div className="text-slate-600">Est. Duration</div>
+                      <div className="font-semibold">
+                        {Math.floor(est / 60) > 0
+                          ? `${Math.floor(est / 60)}h ${est % 60}m`
+                          : `${est}m`}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                  {carbs && (
+                    <div>
+                      <div className="text-slate-600">Est. Carbs</div>
+                      <div className="font-semibold">{carbs}g</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {zones.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {zones.map((zone) => {
+                    const entry = getPaceForZone(paceTable, zone);
+                    return (
+                      <div key={zone}>
+                        <div className="text-slate-600">{getZoneLabel(zone)} Pace</div>
+                        <div className="font-semibold">
+                          ~{formatPace(entry.avgPace)}/km
+                          {entry.avgHr && (
+                            <span className="text-xs text-slate-500 font-normal ml-1">
+                              {entry.avgHr} bpm
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })()}
-
-        {selectedEvent.type === "planned" &&
-          calculateTotalCarbs(selectedEvent) && (
-            <div className="mb-4">
-              <div className="text-sm text-slate-600 mb-1">
-                Estimated Carbs
-              </div>
-              <div className="text-lg font-semibold text-slate-900">
-                {calculateTotalCarbs(selectedEvent)}g
-              </div>
-            </div>
-          )}
 
         {selectedEvent.type === "completed" && (
           <>
