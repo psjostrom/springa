@@ -63,9 +63,9 @@ describe("generatePlan", () => {
 
   it("skips speed sessions on recovery weeks (every 4th week)", () => {
     const plan = generate();
-    const w4Tue = plan.find((e) => e.name.startsWith("W04 Tue"));
-    if (w4Tue) {
-      expect(w4Tue.name).toContain("Easy");
+    const w4Thu = plan.find((e) => e.name.startsWith("W04 Thu"));
+    if (w4Thu) {
+      expect(w4Thu.name).toContain("Easy");
     }
   });
 
@@ -89,7 +89,7 @@ describe("generatePlan", () => {
   it("rotates speed session types", () => {
     const plan = generate();
     const speedSessions = plan
-      .filter((e) => e.name.includes("Tue") && !e.name.includes("Easy"))
+      .filter((e) => e.name.includes("Thu") && !e.name.includes("Easy"))
       .map((e) => e.name);
 
     const types = new Set<string>();

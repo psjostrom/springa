@@ -37,14 +37,14 @@ const generateQualityRun = (
   weekIdx: number,
   weekStart: Date,
 ): WorkoutEvent | null => {
-  const date = addDays(weekStart, 1);
+  const date = addDays(weekStart, 3);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const weekNum = weekIdx + 1;
   const progress = weekIdx / ctx.totalWeeks;
-  const prefixName = `W${weekNum.toString().padStart(2, "0")} Tue`;
+  const prefixName = `W${weekNum.toString().padStart(2, "0")} Thu`;
 
   const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
@@ -61,7 +61,7 @@ const generateQualityRun = (
       description: createWorkoutText(strat, wu, [
         formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ], cd, 1, notes),
-      external_id: `${ctx.prefix}-tue-${weekNum}`,
+      external_id: `${ctx.prefix}-thu-${weekNum}`,
       type: "Run",
     };
   }
@@ -139,7 +139,7 @@ const generateQualityRun = (
     start_date_local: new Date(date.setHours(12, 0, 0)),
     name: `${prefixName} ${label} ${ctx.prefix}`,
     description: createWorkoutText(strat, wu, steps, cd, reps, notes),
-    external_id: `${ctx.prefix}-tue-${weekNum}`,
+    external_id: `${ctx.prefix}-thu-${weekNum}`,
     type: "Run",
   };
 };
@@ -149,7 +149,7 @@ const generateEasyRun = (
   weekIdx: number,
   weekStart: Date,
 ): WorkoutEvent | null => {
-  const date = addDays(weekStart, 3);
+  const date = addDays(weekStart, 1);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
@@ -175,7 +175,7 @@ const generateEasyRun = (
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
-  const name = `W${weekNum.toString().padStart(2, "0")} Thu ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
+  const name = `W${weekNum.toString().padStart(2, "0")} Tue ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
   let notes: string;
   if (isRaceWeek) {
@@ -213,7 +213,7 @@ const generateEasyRun = (
       start_date_local: new Date(date.setHours(12, 0, 0)),
       name,
       description: lines.join("\n"),
-      external_id: `${ctx.prefix}-thu-${weekNum}`,
+      external_id: `${ctx.prefix}-tue-${weekNum}`,
       type: "Run",
     };
   }
@@ -224,7 +224,7 @@ const generateEasyRun = (
     description: createWorkoutText(strat, wu, [
       formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ], cd, 1, notes),
-    external_id: `${ctx.prefix}-thu-${weekNum}`,
+    external_id: `${ctx.prefix}-tue-${weekNum}`,
     type: "Run",
   };
 };
@@ -415,8 +415,8 @@ export function generatePlan(
     const weekStart = addWeeks(ctx.planStartMonday, i);
     if (isBefore(addDays(weekStart, 7), today)) return [];
     return [
-      generateQualityRun(ctx, i, weekStart),
       generateEasyRun(ctx, i, weekStart),
+      generateQualityRun(ctx, i, weekStart),
       generateBonusRun(ctx, i, weekStart),
       generateLongRun(ctx, i, weekStart),
     ].filter((e): e is WorkoutEvent => e !== null);
