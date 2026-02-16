@@ -118,8 +118,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   const agendaScrollRef = useRef<HTMLDivElement>(null);
-  const lastCompletedRef = useRef<HTMLDivElement>(null);
-  const hasScrolledToLastCompleted = useRef(false);
+  const nextUpcomingRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToUpcoming = useRef(false);
   const [isLoadingStreamData, setIsLoadingStreamData] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState("");
@@ -438,40 +438,39 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return { ...FALLBACK_PACE_TABLE, easy: easyPace };
   }, [events]);
 
-  // Find the index of the last completed workout
-  const lastCompletedIndex = useMemo(() => {
-    const completedEvents = agendaEvents.filter((e) => e.type === "completed");
-    if (completedEvents.length === 0) return -1;
-    const lastCompleted = completedEvents[completedEvents.length - 1];
-    return agendaEvents.findIndex((e) => e.id === lastCompleted.id);
+  // Find the index of the next upcoming workout (today or future)
+  const nextUpcomingIndex = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const idx = agendaEvents.findIndex((e) => e.date >= now);
+    return idx !== -1 ? idx : -1;
   }, [agendaEvents]);
 
-  // Load more data for infinite scroll in agenda view (downward)
-  // Scroll to last completed workout on initial agenda view load
+  // Scroll to next upcoming workout on initial agenda view load
   useEffect(() => {
     if (
       viewMode !== "agenda" ||
-      !lastCompletedRef.current ||
-      hasScrolledToLastCompleted.current
+      !nextUpcomingRef.current ||
+      hasScrolledToUpcoming.current
     )
       return;
 
     // Small delay to ensure DOM is fully rendered
     setTimeout(() => {
-      if (lastCompletedRef.current) {
-        lastCompletedRef.current.scrollIntoView({
+      if (nextUpcomingRef.current) {
+        nextUpcomingRef.current.scrollIntoView({
           behavior: "instant",
           block: "start",
         });
-        hasScrolledToLastCompleted.current = true;
+        hasScrolledToUpcoming.current = true;
       }
     }, 100);
-  }, [viewMode, lastCompletedIndex, events]);
+  }, [viewMode, nextUpcomingIndex, events]);
 
   // Reset scroll flag when leaving agenda view
   useEffect(() => {
     if (viewMode !== "agenda") {
-      hasScrolledToLastCompleted.current = false;
+      hasScrolledToUpcoming.current = false;
     }
   }, [viewMode]);
 
@@ -768,12 +767,12 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
             ) : (
               <>
                 {agendaEvents.map((event, index) => {
-                  const isLastCompleted = index === lastCompletedIndex;
+                  const isNextUpcoming = index === nextUpcomingIndex;
                   return (
                     <div
                       key={event.id}
                       data-event-id={event.id}
-                      ref={isLastCompleted ? lastCompletedRef : null}
+                      ref={isNextUpcoming ? nextUpcomingRef : null}
                       onClick={() => openWorkoutModal(event)}
                       className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100 overflow-hidden"
                     >
