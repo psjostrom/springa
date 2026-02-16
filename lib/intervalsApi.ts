@@ -285,7 +285,7 @@ export async function fetchCalendarData(
         maxHr: activity.max_heartrate || activity.max_hr,
         load: activity.icu_training_load,
         intensity: activity.icu_intensity,
-        pace: activity.pace || pace,
+        pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
         calories: activity.calories,
         cadence: activity.average_cadence
           ? activity.average_cadence * 2
