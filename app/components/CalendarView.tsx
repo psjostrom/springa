@@ -432,7 +432,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
       </div>
 
       {/* Calendar / Agenda */}
-      <div className="bg-white p-2 sm:p-6 rounded-xl shadow-sm border border-slate-100 flex-1 min-h-0 flex flex-col">
+      <div className="bg-white p-2 sm:p-6 rounded-xl shadow-sm border border-slate-100">
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-slate-400" size={32} />
