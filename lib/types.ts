@@ -70,6 +70,18 @@ export interface IntervalsActivity {
   pace?: number;
 }
 
+export interface IntervalsEvent {
+  id: number;
+  category: string;
+  start_date_local: string;
+  name?: string;
+  description?: string;
+  distance?: number;
+  moving_time?: number;
+  duration?: number;
+  elapsed_time?: number;
+}
+
 export interface IntervalsStream {
   type: string;
   data: number[];

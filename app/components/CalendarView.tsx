@@ -260,7 +260,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
   // Get all loaded events, sorted by date for agenda view
   const agendaEvents = useMemo(() => {
-    return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [events]);
 
   // Hybrid pace table: easy pace from historical data, higher zones from LT calculations

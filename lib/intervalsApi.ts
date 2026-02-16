@@ -2,6 +2,7 @@ import { format, addDays } from "date-fns";
 import type {
   WorkoutEvent,
   IntervalsStream,
+  IntervalsEvent,
   HRZoneData,
   StreamData,
   CalendarEvent,
@@ -211,18 +212,18 @@ export async function fetchCalendarData(
     const eventsRes =
       results[1].status === "fulfilled" ? results[1].value : null;
 
-    const activities = activitiesRes?.ok ? await activitiesRes.json() : [];
-    const events = eventsRes?.ok ? await eventsRes.json() : [];
+    const activities: IntervalsActivity[] = activitiesRes?.ok ? await activitiesRes.json() : [];
+    const events: IntervalsEvent[] = eventsRes?.ok ? await eventsRes.json() : [];
 
     const calendarEvents: CalendarEvent[] = [];
 
     const runActivities = activities.filter(
-      (a: IntervalsActivity) => a.type === "Run" || a.type === "VirtualRun",
+      (a) => a.type === "Run" || a.type === "VirtualRun",
     );
 
     const activityMap = new Map<string, CalendarEvent>();
 
-    runActivities.forEach((activity: IntervalsActivity) => {
+    runActivities.forEach((activity) => {
       const category = getWorkoutCategory(activity.name);
 
       let pace: number | undefined;
@@ -249,18 +250,15 @@ export async function fetchCalendarData(
       const activityDate = parseISO(
         activity.start_date_local || activity.start_date,
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const matchingEvent = events.find((event: any) => {
+      const matchingEvent = events.find((event) => {
         if (event.category !== "WORKOUT") return false;
         const eventDate = parseISO(event.start_date_local);
         const sameDay = isSameDay(activityDate, eventDate);
+        const actName = activity.name?.toLowerCase() ?? "";
+        const evtName = event.name?.toLowerCase() ?? "";
         const similarName =
-          activity.name
-            ?.toLowerCase()
-            .includes(event.name?.toLowerCase().substring(0, 10)) ||
-          event.name
-            ?.toLowerCase()
-            .includes(activity.name?.toLowerCase().substring(0, 10));
+          actName.includes(evtName.substring(0, 10)) ||
+          evtName.includes(actName.substring(0, 10));
         return sameDay && similarName;
       });
 
@@ -299,7 +297,7 @@ export async function fetchCalendarData(
       const eventDate = parseISO(event.start_date_local);
 
       const hasMatchingActivity = runActivities.some(
-        (activity: IntervalsActivity) => {
+        (activity) => {
           const activityDate = parseISO(
             activity.start_date_local || activity.start_date,
           );

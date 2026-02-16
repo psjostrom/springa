@@ -5,8 +5,8 @@
 - [x] **1. Extract duplicate `getEventStyle` / `getEventIcon`** — Extracted to `lib/eventStyles.ts`. CalendarView, EventModal, and AgendaView now import from shared module.
 - [x] **2. Fix date mutation in `workoutGenerators.ts`** — Replaced `new Date(date.setHours(...))` with `date-fns/set()` across all 7 call sites. No longer mutates original date.
 - [x] **3. Fix race condition in stream data loading** — Added staleness guard (`cancelled` flag) with cleanup return in useEffect. Stale responses are discarded.
-- [ ] **4. Replace `any` type in `intervalsApi.ts:258`** — Event-activity matching uses `event: any`. Define a proper `IntervalsEvent` interface.
-- [ ] **5. Fix `events.sort()` mutation** — `CalendarView.tsx:278`: `.sort()` mutates original array inside `useMemo`. Use `[...events].sort()`.
+- [x] **4. Replace `any` type in `intervalsApi.ts:258`** — Added `IntervalsEvent` interface to `types.ts`. Typed `activities` and `events` arrays from API response, removed `eslint-disable` comment and redundant inline type annotations.
+- [x] **5. Fix `events.sort()` mutation** — Changed `events.sort()` to `[...events].sort()` in `CalendarView.tsx` useMemo. Added integration test that freezes the state array to verify sort doesn't mutate in-place.
 
 ## Medium Priority
 
