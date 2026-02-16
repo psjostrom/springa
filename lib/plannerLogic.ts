@@ -600,7 +600,7 @@ const generateQualityRun = (
         formatStep("2m", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr, "Uphill"),
         formatStep("3m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
       ];
-      notes = "Hill reps build strength and power that translates directly to EcoTrail's terrain. Find a steady hill with a moderate gradient. Drive your knees, lean slightly forward from the ankles, and keep a strong arm swing. Jog back down easy — the downhill IS the recovery.";
+      notes = "Hill reps build strength and power that translates directly to EcoTrail's terrain. Outdoors: find a steady hill with a moderate gradient. Drive your knees, lean slightly forward from the ankles, and keep a strong arm swing. Jog back down easy — the downhill IS the recovery. Treadmill: set a fixed incline (5-6%) for the entire session. Hard reps at 10-12 km/h, recovery at 4-5 km/h walk.";
       break;
     }
     case "long-intervals": {
