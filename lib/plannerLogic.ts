@@ -1303,6 +1303,24 @@ export async function fetchCalendarData(
   }
 }
 
+// --- EVENT UPDATE ---
+export async function updateEvent(
+  apiKey: string,
+  eventId: number,
+  updates: { start_date_local?: string; name?: string; description?: string },
+): Promise<void> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update event: ${res.status} ${errorText}`);
+  }
+}
+
 // --- API UPLOAD ---
 export async function uploadToIntervals(
   apiKey: string,

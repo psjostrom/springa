@@ -21,6 +21,7 @@ import {
   CalendarEvent,
   fetchCalendarData,
   fetchActivityDetails,
+  updateEvent,
   FALLBACK_PACE_TABLE,
   buildEasyPaceFromHistory,
   parseWorkoutZones,
@@ -120,6 +121,9 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const lastCompletedRef = useRef<HTMLDivElement>(null);
   const hasScrolledToLastCompleted = useRef(false);
   const [isLoadingStreamData, setIsLoadingStreamData] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDate, setEditDate] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set responsive view mode after hydration to avoid SSR mismatch
   useEffect(() => {
@@ -138,6 +142,12 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [selectedEvent]);
+
+  // Reset edit state when modal closes or selected event changes
+  useEffect(() => {
+    setIsEditing(false);
+    setEditDate("");
+  }, [selectedEvent?.id]);
 
   // Fetch data once on mount - load full workout history
   useEffect(() => {
@@ -264,6 +274,42 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   // Close modal by removing URL param
   const closeWorkoutModal = () => {
     router.back();
+  };
+
+  // Save edited event date
+  const saveEventEdit = async () => {
+    if (!selectedEvent || !editDate) return;
+    const numericId = parseInt(selectedEvent.id.replace("event-", ""));
+    if (isNaN(numericId)) return;
+
+    setIsSaving(true);
+    try {
+      const newDateLocal = editDate.includes("T")
+        ? editDate + ":00"
+        : editDate + "T12:00:00";
+      await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
+
+      const newDate = new Date(newDateLocal);
+
+      // Update events array
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedEvent.id ? { ...e, date: newDate } : e,
+        ),
+      );
+
+      // Update selected event
+      setSelectedEvent((prev) =>
+        prev ? { ...prev, date: newDate } : prev,
+      );
+
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to update event:", err);
+      alert("Failed to update event. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Get event style class
@@ -835,11 +881,22 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <div className="text-sm text-slate-600 mb-1">
-                  {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
-                    locale: enGB,
-                  })}
-                </div>
+                {isEditing ? (
+                  <div className="flex items-center gap-2 mb-1">
+                    <input
+                      type="datetime-local"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-600 mb-1">
+                    {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
+                      locale: enGB,
+                    })}
+                  </div>
+                )}
                 <h3 className="text-lg sm:text-xl font-bold">
                   {selectedEvent.name}
                 </h3>
@@ -853,12 +910,46 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                       : "📅 Planned"}
                 </div>
               </div>
-              <button
-                onClick={() => closeWorkoutModal()}
-                className="text-slate-400 hover:text-slate-600 text-xl"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedEvent.type === "planned" && !isEditing && (
+                  <button
+                    onClick={() => {
+                      setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
+                      setIsEditing(true);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+                  >
+                    Edit
+                  </button>
+                )}
+                {isEditing && (
+                  <>
+                    <button
+                      onClick={saveEventEdit}
+                      disabled={isSaving}
+                      className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+                    >
+                      {isSaving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditDate("");
+                      }}
+                      disabled={isSaving}
+                      className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => closeWorkoutModal()}
+                  className="text-slate-400 hover:text-slate-600 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {selectedEvent.description && (
