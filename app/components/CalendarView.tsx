@@ -444,7 +444,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
             <AgendaView
               events={agendaEvents}
               onSelectEvent={openWorkoutModal}
-              paceTable={paceTable}
               nextUpcomingRef={nextUpcomingRef}
             />
           </div>

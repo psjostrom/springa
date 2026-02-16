@@ -89,15 +89,25 @@ export function EventModal({
             <h3 className="text-lg sm:text-xl font-bold">
               {selectedEvent.name}
             </h3>
-            <div
-              className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${getEventStyle(selectedEvent)}`}
-            >
-              {selectedEvent.type === "completed"
-                ? "✓ Completed"
-                : selectedEvent.type === "race"
-                  ? "🏁 Race"
-                  : "📅 Planned"}
-            </div>
+            {(() => {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              const isMissed =
+                selectedEvent.type === "planned" && selectedEvent.date < now;
+              return (
+                <div
+                  className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${isMissed ? "bg-red-100 text-red-700" : getEventStyle(selectedEvent)}`}
+                >
+                  {isMissed
+                    ? "Missed"
+                    : selectedEvent.type === "completed"
+                      ? "✓ Completed"
+                      : selectedEvent.type === "race"
+                        ? "🏁 Race"
+                        : "📅 Planned"}
+                </div>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2">
             {selectedEvent.type === "planned" && !isEditing && (

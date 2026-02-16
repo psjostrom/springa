@@ -1,12 +1,9 @@
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
-import type { CalendarEvent, PaceTable } from "@/lib/types";
+import type { CalendarEvent } from "@/lib/types";
 import {
-  parseWorkoutZones,
-  getPaceForZone,
-  getZoneLabel,
-  formatPace,
   estimateWorkoutDuration,
+  extractPumpStatus,
 } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
@@ -15,14 +12,12 @@ import { WorkoutStructureBar } from "./WorkoutStructureBar";
 interface AgendaViewProps {
   events: CalendarEvent[];
   onSelectEvent: (event: CalendarEvent) => void;
-  paceTable: PaceTable;
   nextUpcomingRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function AgendaView({
   events,
   onSelectEvent,
-  paceTable,
   nextUpcomingRef,
 }: AgendaViewProps) {
   const now = new Date();
@@ -41,13 +36,18 @@ export function AgendaView({
     <>
       {events.map((event, index) => {
         const isNextUpcoming = index === nextUpcomingIndex;
+        const isMissed = event.type === "planned" && event.date < now;
         return (
           <div
             key={event.id}
             data-event-id={event.id}
             ref={isNextUpcoming ? nextUpcomingRef : null}
             onClick={() => onSelectEvent(event)}
-            className="flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100 overflow-hidden"
+            className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border overflow-hidden ${
+              isMissed
+                ? "border-red-200 bg-red-50/50 opacity-60"
+                : "border-slate-100"
+            }`}
           >
             {/* Date */}
             <div className="flex-shrink-0 text-center w-10 sm:w-20">
@@ -60,6 +60,18 @@ export function AgendaView({
               <div className="text-xs text-slate-600">
                 {format(event.date, "MMM", { locale: enGB })}
               </div>
+              {event.type === "completed" && event.duration && (() => {
+                  const mins = Math.floor(event.duration / 60);
+                  const hours = Math.floor(mins / 60);
+                  const remainMins = mins % 60;
+                  return (
+                    <div className="text-sm text-slate-900 mt-4">
+                      {hours > 0
+                        ? `${hours}h${remainMins > 0 ? ` ${remainMins}m` : ""}`
+                        : `${remainMins}m`}
+                    </div>
+                  );
+                })()}
               {event.type === "planned" &&
                 event.description &&
                 (() => {
@@ -68,7 +80,7 @@ export function AgendaView({
                   const hours = Math.floor(est / 60);
                   const mins = est % 60;
                   return (
-                    <div className="text-sm sm:text-sm text-slate-900 mt-4">
+                    <div className="text-sm text-slate-900 mt-4">
                       {hours > 0
                         ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
                         : `${mins}m`}
@@ -86,58 +98,51 @@ export function AgendaView({
                   </span>
                   <h3
                     className={`font-semibold truncate px-2 py-0.5 rounded text-sm border ${
-                      event.type === "completed"
-                        ? "bg-green-50 text-green-700 border-green-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
-                        : event.type === "race"
-                          ? "bg-red-50 text-red-700 border-red-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
-                          : "bg-blue-50 text-blue-700 border-blue-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
+                      isMissed
+                        ? "bg-red-50 text-red-700 border-red-200 sm:bg-transparent sm:text-red-400 sm:border-transparent sm:px-0 sm:py-0 line-through"
+                        : event.type === "completed"
+                          ? "bg-green-50 text-green-700 border-green-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
+                          : event.type === "race"
+                            ? "bg-red-50 text-red-700 border-red-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
+                            : "bg-blue-50 text-blue-700 border-blue-200 sm:bg-transparent sm:text-slate-900 sm:border-transparent sm:px-0 sm:py-0"
                     }`}
                   >
                     {event.name}
                   </h3>
                 </div>
                 <span
-                  className={`hidden sm:inline-block px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
-                    event.type === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : event.type === "race"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-blue-100 text-blue-700"
+                  className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                    isMissed
+                      ? "hidden sm:inline-block bg-red-100 text-red-700"
+                      : event.type === "completed"
+                        ? "hidden sm:inline-block bg-green-100 text-green-700"
+                        : event.type === "race"
+                          ? "hidden sm:inline-block bg-red-100 text-red-700"
+                          : "hidden sm:inline-block bg-blue-100 text-blue-700"
                   }`}
                 >
-                  {event.type === "completed"
-                    ? "Completed"
-                    : event.type === "race"
-                      ? "Race"
-                      : "Planned"}
+                  {isMissed
+                    ? "Missed"
+                    : event.type === "completed"
+                      ? "Completed"
+                      : event.type === "race"
+                        ? "Race"
+                        : "Planned"}
                 </span>
               </div>
 
               {event.type === "completed" && (
                 <>
-                  {event.description && (
-                    <div className="bg-slate-50 rounded-lg p-2 mb-2 text-xs whitespace-pre-wrap">
-                      {event.description}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs sm:text-sm mb-2">
+                  <div className="flex flex-wrap gap-x-3 text-xs sm:text-sm text-slate-600 mb-2">
                     {event.distance && (
-                      <div className="text-slate-600">
+                      <span>
                         <span className="font-semibold text-slate-900">
                           {(event.distance / 1000).toFixed(2)} km
                         </span>
-                      </div>
-                    )}
-                    {event.duration && (
-                      <div className="text-slate-600">
-                        <span className="font-semibold text-slate-900">
-                          {Math.floor(event.duration / 60)} min
-                        </span>
-                      </div>
+                      </span>
                     )}
                     {event.pace && (
-                      <div className="text-slate-600">
+                      <span>
                         <span className="font-semibold text-slate-900">
                           {Math.floor(event.pace)}:
                           {String(Math.round((event.pace % 1) * 60)).padStart(
@@ -146,62 +151,28 @@ export function AgendaView({
                           )}
                         </span>{" "}
                         /km
-                      </div>
+                      </span>
                     )}
                     {event.avgHr && (
-                      <div className="text-slate-600">
+                      <span>
                         <span className="font-semibold text-slate-900">
                           {event.avgHr}
                         </span>{" "}
                         bpm
-                      </div>
-                    )}
-                    {event.load && (
-                      <div className="text-slate-600">
-                        Load:{" "}
-                        <span className="font-semibold text-slate-900">
-                          {Math.round(event.load)}
-                        </span>
-                      </div>
-                    )}
-                    {event.intensity !== undefined && (
-                      <div className="text-slate-600">
-                        IF:{" "}
-                        <span className="font-semibold text-slate-900">
-                          {Math.round(event.intensity)}%
-                        </span>
-                      </div>
-                    )}
-                    {event.calories && (
-                      <div className="text-slate-600">
-                        <span className="font-semibold text-slate-900">
-                          {event.calories}
-                        </span>{" "}
-                        kcal
-                      </div>
-                    )}
-                    {event.cadence && (
-                      <div className="text-slate-600">
-                        <span className="font-semibold text-slate-900">
-                          {Math.round(event.cadence)}
-                        </span>{" "}
-                        spm
-                      </div>
+                      </span>
                     )}
                   </div>
 
                   {event.hrZones && (
-                    <div className="mt-2">
-                      <HRMiniChart
-                        z1={event.hrZones.z1}
-                        z2={event.hrZones.z2}
-                        z3={event.hrZones.z3}
-                        z4={event.hrZones.z4}
-                        z5={event.hrZones.z5}
-                        maxHeight={40}
-                        hrData={event.streamData?.heartrate}
-                      />
-                    </div>
+                    <HRMiniChart
+                      z1={event.hrZones.z1}
+                      z2={event.hrZones.z2}
+                      z3={event.hrZones.z3}
+                      z4={event.hrZones.z4}
+                      z5={event.hrZones.z5}
+                      maxHeight={40}
+                      hrData={event.streamData?.heartrate}
+                    />
                   )}
                 </>
               )}
@@ -215,25 +186,26 @@ export function AgendaView({
                     />
                   </div>
                   {(() => {
-                    const zones = parseWorkoutZones(event.description);
-                    if (zones.length === 0) return null;
+                    const status = extractPumpStatus(event.description);
+                    if (!status.pump) return null;
+                    const pumpLabel = status.pump
+                      .replace(/^PUMP\s+/i, "")
+                      .replace(/\s*\(EASE OFF\)/i, "");
+                    const parts = [
+                      `Pump ${pumpLabel}`,
+                      status.fuelRate != null
+                        ? `${status.fuelRate}g/10min`
+                        : null,
+                      status.totalCarbs != null
+                        ? `${status.totalCarbs}g total`
+                        : null,
+                    ].filter(Boolean);
                     return (
-                      <div className="text-xs text-slate-500 mb-1 flex flex-wrap gap-x-3">
-                        {zones.map((zone) => {
-                          const entry = getPaceForZone(paceTable, zone);
-                          return (
-                            <span key={zone}>
-                              {getZoneLabel(zone)} ~{formatPace(entry.avgPace)}
-                              /km{entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
-                            </span>
-                          );
-                        })}
+                      <div className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 inline-block">
+                        {parts.join(" · ")}
                       </div>
                     );
                   })()}
-                  <div className="text-sm text-slate-600 line-clamp-2">
-                    {event.description}
-                  </div>
                 </>
               )}
             </div>
