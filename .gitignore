@@ -28,3 +28,7 @@ ts-debug.log*
 
 # vercel
 .vercel
+
+# private project context
+CLAUDE.md
+Claude.MD
