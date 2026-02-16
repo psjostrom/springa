@@ -103,7 +103,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
 
   const width = 700;
   const height = 200;
-  const padding = { top: 40, right: 20, bottom: 30, left: 60 };
+  const padding = { top: 40, right: 15, bottom: 30, left: 45 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -351,10 +351,10 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             return (
               <text
                 key={i}
-                x={padding.left - 10}
+                x={padding.left - 8}
                 y={y + 4}
                 textAnchor="end"
-                fontSize="10"
+                fontSize="12"
                 fill="#94a3b8"
               >
                 {label}
@@ -427,7 +427,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             x={width / 2}
             y={height - 5}
             textAnchor="middle"
-            fontSize="11"
+            fontSize="13"
             fill="#64748b"
             fontWeight="500"
           >
@@ -437,26 +437,23 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           {/* Y-axis label - only show when single stream */}
           {useSingleStreamMode && streamPaths.length > 0 && (
             <text
-              x={10}
+              x={12}
               y={height / 2}
               textAnchor="middle"
-              fontSize="11"
+              fontSize="13"
               fill="#64748b"
               fontWeight="500"
-              transform={`rotate(-90, 10, ${height / 2})`}
+              transform={`rotate(-90, 12, ${height / 2})`}
             >
               {streamPaths[0]?.config.unit}
             </text>
           )}
         </svg>
       </div>
-      <div className="flex justify-between text-xs text-slate-500 mt-1 px-6 sm:px-12">
+      <div className="flex justify-between text-xs text-slate-500 mt-1 px-4 sm:px-10">
         <span>0m</span>
         <span>{Math.round(maxTime / 2)}m</span>
         <span>{maxTime}m</span>
-      </div>
-      <div className="text-xs text-slate-500 mt-2 italic">
-        🖱️ Hover or drag over the graph to see data points
       </div>
     </div>
   );
