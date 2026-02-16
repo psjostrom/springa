@@ -595,10 +595,10 @@ const generateQualityRun = (
     }
     case "hills": {
       reps = 6 + Math.floor(progress * 2); // 6 → 8
-      repDuration = 4; // 2m up + 2m down
+      repDuration = 5; // 2m up + 3m down
       steps = [
         formatStep("2m", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr, "Uphill"),
-        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
+        formatStep("3m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
       ];
       notes = "Hill reps build strength and power that translates directly to EcoTrail's terrain. Find a steady hill with a moderate gradient. Drive your knees, lean slightly forward from the ankles, and keep a strong arm swing. Jog back down easy — the downhill IS the recovery.";
       break;
