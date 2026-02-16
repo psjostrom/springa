@@ -249,3 +249,82 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
     expect(capturedUploadPayload.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Flow 6: Calendar — BG strategy consistency between agenda and modal
+// ---------------------------------------------------------------------------
+describe("Flow 6: Calendar — BG strategy matches in agenda and modal", () => {
+  it("shows PUMP ON in agenda pill and modal for an easy run", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CalendarScreen apiKey={TEST_API_KEY} />,
+    );
+
+    // 1. Wait for events to load, then switch to agenda view
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
+
+    // 2. Wait for agenda to render the planned event
+    await waitFor(() => {
+      expect(
+        screen.getByText(/W05 Tue Easy \+ Strides eco16/),
+      ).toBeInTheDocument();
+    });
+
+    // 3. Assert agenda T1D pill shows Pump ON with correct fuel
+    expect(screen.getByText(/Pump ON · 8g\/10min · 48g total/)).toBeInTheDocument();
+
+    // 4. Click the event to open modal
+    await user.click(screen.getByText(/W05 Tue Easy \+ Strides eco16/));
+
+    // 5. Simulate URL -> workout=event-1002
+    searchParamsState.current = new URLSearchParams("workout=event-1002");
+    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
+
+    // 6. Assert modal PreRunCard shows matching pump status
+    await waitFor(() => {
+      expect(screen.getByText("Pump ON")).toBeInTheDocument();
+    });
+    expect(screen.getByText("8g / 10 min")).toBeInTheDocument();
+    expect(screen.getByText("48g total")).toBeInTheDocument();
+  });
+
+  it("shows PUMP OFF in agenda pill and modal for a speed session", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CalendarScreen apiKey={TEST_API_KEY} />,
+    );
+
+    // 1. Wait for events to load, then switch to agenda view
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Agenda" })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: "Agenda" }));
+
+    // 2. Wait for agenda to render the planned event
+    await waitFor(() => {
+      expect(
+        screen.getByText(/W05 Thu Hills eco16/),
+      ).toBeInTheDocument();
+    });
+
+    // 3. Assert agenda T1D pill shows Pump OFF with correct fuel
+    expect(screen.getByText(/Pump OFF · 5g\/10min · 28g total/)).toBeInTheDocument();
+
+    // 4. Click the event to open modal
+    await user.click(screen.getByText(/W05 Thu Hills eco16/));
+
+    // 5. Simulate URL -> workout=event-1003
+    searchParamsState.current = new URLSearchParams("workout=event-1003");
+    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
+
+    // 6. Assert modal PreRunCard shows matching pump status
+    await waitFor(() => {
+      expect(screen.getByText("Pump OFF")).toBeInTheDocument();
+    });
+    expect(screen.getByText("5g / 10 min")).toBeInTheDocument();
+    expect(screen.getByText("28g total")).toBeInTheDocument();
+  });
+});

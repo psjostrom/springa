@@ -73,14 +73,16 @@ export const sampleEvents = [
     category: "WORKOUT",
     start_date_local: "2026-02-17T12:00:00",
     name: "W05 Tue Easy + Strides eco16",
-    description: "PUMP ON - FUEL PER 10: 8g TOTAL: 48g",
+    description:
+      "PUMP ON - FUEL PER 10: 8g TOTAL: 48g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
   },
   {
     id: 1003,
     category: "WORKOUT",
     start_date_local: "2026-02-19T12:00:00",
     name: "W05 Thu Hills eco16",
-    description: "PUMP OFF - FUEL PER 10: 5g TOTAL: 28g",
+    description:
+      "PUMP OFF - FUEL PER 10: 5g TOTAL: 28g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
   },
 ];
 
