@@ -48,14 +48,24 @@ describe("getPaceForZone", () => {
   });
 
   it("falls back to FALLBACK_PACE_TABLE when entry is null", () => {
-    const table: PaceTable = { easy: null, steady: null, tempo: null, hard: null };
+    const table: PaceTable = {
+      easy: null,
+      steady: null,
+      tempo: null,
+      hard: null,
+    };
     const result = getPaceForZone(table, "easy");
     expect(result.avgPace).toBe(FALLBACK_PACE_TABLE.easy!.avgPace);
     expect(result.sampleCount).toBe(0);
   });
 
   it("returns correct fallback for each zone", () => {
-    const emptyTable: PaceTable = { easy: null, steady: null, tempo: null, hard: null };
+    const emptyTable: PaceTable = {
+      easy: null,
+      steady: null,
+      tempo: null,
+      hard: null,
+    };
     expect(getPaceForZone(emptyTable, "steady").avgPace).toBe(5.67);
     expect(getPaceForZone(emptyTable, "tempo").avgPace).toBe(5.21);
     expect(getPaceForZone(emptyTable, "hard").avgPace).toBe(4.75);
@@ -178,12 +188,26 @@ describe("buildEasyPaceFromHistory", () => {
   it("calculates average pace from completed easy/long runs", () => {
     const events: CalendarEvent[] = [
       {
-        id: "1", date: new Date(), name: "Easy Run", description: "",
-        type: "completed", category: "easy", distance: 5000, duration: 2025, avgHr: 125,
+        id: "1",
+        date: new Date(),
+        name: "Easy Run",
+        description: "",
+        type: "completed",
+        category: "easy",
+        distance: 5000,
+        duration: 2025,
+        avgHr: 125,
       },
       {
-        id: "2", date: new Date(), name: "Long Run", description: "",
-        type: "completed", category: "long", distance: 8000, duration: 3360, avgHr: 128,
+        id: "2",
+        date: new Date(),
+        name: "Long Run",
+        description: "",
+        type: "completed",
+        category: "long",
+        distance: 8000,
+        duration: 3360,
+        avgHr: 128,
       },
     ];
 
@@ -198,8 +222,15 @@ describe("buildEasyPaceFromHistory", () => {
   it("excludes strides runs", () => {
     const events: CalendarEvent[] = [
       {
-        id: "1", date: new Date(), name: "Easy + Strides", description: "",
-        type: "completed", category: "easy", distance: 5000, duration: 2025, avgHr: 125,
+        id: "1",
+        date: new Date(),
+        name: "Easy + Strides",
+        description: "",
+        type: "completed",
+        category: "easy",
+        distance: 5000,
+        duration: 2025,
+        avgHr: 125,
       },
     ];
     expect(buildEasyPaceFromHistory(events)).toBeNull();
@@ -208,8 +239,15 @@ describe("buildEasyPaceFromHistory", () => {
   it("returns null when no matching runs", () => {
     const events: CalendarEvent[] = [
       {
-        id: "1", date: new Date(), name: "Intervals", description: "",
-        type: "completed", category: "interval", distance: 5000, duration: 1500, avgHr: 160,
+        id: "1",
+        date: new Date(),
+        name: "Intervals",
+        description: "",
+        type: "completed",
+        category: "interval",
+        distance: 5000,
+        duration: 1500,
+        avgHr: 160,
       },
     ];
     expect(buildEasyPaceFromHistory(events)).toBeNull();
@@ -218,8 +256,15 @@ describe("buildEasyPaceFromHistory", () => {
   it("excludes planned events", () => {
     const events: CalendarEvent[] = [
       {
-        id: "1", date: new Date(), name: "Easy Run", description: "",
-        type: "planned", category: "easy", distance: 5000, duration: 2025, avgHr: 125,
+        id: "1",
+        date: new Date(),
+        name: "Easy Run",
+        description: "",
+        type: "planned",
+        category: "easy",
+        distance: 5000,
+        duration: 2025,
+        avgHr: 125,
       },
     ];
     expect(buildEasyPaceFromHistory(events)).toBeNull();
@@ -228,8 +273,15 @@ describe("buildEasyPaceFromHistory", () => {
   it("filters out unrealistic paces", () => {
     const events: CalendarEvent[] = [
       {
-        id: "1", date: new Date(), name: "Easy Run", description: "",
-        type: "completed", category: "easy", distance: 100, duration: 60, avgHr: 120,
+        id: "1",
+        date: new Date(),
+        name: "Easy Run",
+        description: "",
+        type: "completed",
+        category: "easy",
+        distance: 100,
+        duration: 60,
+        avgHr: 120,
       },
     ];
     expect(buildEasyPaceFromHistory(events)).toBeNull();
@@ -360,17 +412,27 @@ Cooldown
 describe("estimateWorkoutDistance", () => {
   it("returns actual distance in km for completed events", () => {
     const event: CalendarEvent = {
-      id: "1", date: new Date(), name: "W03 Tue Easy eco16",
-      description: "", type: "completed", category: "easy",
-      distance: 5500, duration: 2200, avgHr: 125,
+      id: "1",
+      date: new Date(),
+      name: "W03 Tue Easy eco16",
+      description: "",
+      type: "completed",
+      category: "easy",
+      distance: 5500,
+      duration: 2200,
+      avgHr: 125,
     };
     expect(estimateWorkoutDistance(event)).toBe(5.5);
   });
 
   it("extracts km from name for long runs", () => {
     const event: CalendarEvent = {
-      id: "2", date: new Date(), name: "W05 Sun Long (12km) eco16",
-      description: "", type: "planned", category: "long",
+      id: "2",
+      date: new Date(),
+      name: "W05 Sun Long (12km) eco16",
+      description: "",
+      type: "planned",
+      category: "long",
     };
     expect(estimateWorkoutDistance(event)).toBe(12);
   });
@@ -389,8 +451,12 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const event: CalendarEvent = {
-      id: "3", date: new Date(), name: "W01 Thu Short Intervals eco16",
-      description: desc, type: "planned", category: "interval",
+      id: "3",
+      date: new Date(),
+      name: "W01 Thu Short Intervals eco16",
+      description: desc,
+      type: "planned",
+      category: "interval",
     };
     // 39 min / 5.15 min/km (tempo pace for intervals) ≈ 7.6 km
     const result = estimateWorkoutDistance(event);
@@ -400,8 +466,12 @@ Cooldown
 
   it("returns 0 for events with no data", () => {
     const event: CalendarEvent = {
-      id: "4", date: new Date(), name: "W01 Tue Easy eco16",
-      description: "No structured workout", type: "planned", category: "easy",
+      id: "4",
+      date: new Date(),
+      name: "W01 Tue Easy eco16",
+      description: "No structured workout",
+      type: "planned",
+      category: "easy",
     };
     expect(estimateWorkoutDistance(event)).toBe(0);
   });
@@ -409,7 +479,8 @@ Cooldown
 
 describe("extractPumpStatus", () => {
   it("extracts PUMP OFF with fuel rate and total carbs", () => {
-    const desc = "PUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)";
+    const desc =
+      "PUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractPumpStatus(desc);
     expect(result.pump).toBe("PUMP OFF");
     expect(result.fuelRate).toBe(5);
@@ -417,7 +488,8 @@ describe("extractPumpStatus", () => {
   });
 
   it("extracts PUMP ON", () => {
-    const desc = "PUMP ON - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
+    const desc =
+      "PUMP ON - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractPumpStatus(desc);
     expect(result.pump).toBe("PUMP ON");
     expect(result.fuelRate).toBe(8);
@@ -425,7 +497,8 @@ describe("extractPumpStatus", () => {
   });
 
   it("extracts PUMP OFF with high fuel rate", () => {
-    const desc = "PUMP OFF - FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)";
+    const desc =
+      "PUMP OFF - FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractPumpStatus(desc);
     expect(result.pump).toBe("PUMP OFF");
     expect(result.fuelRate).toBe(10);
@@ -571,7 +644,9 @@ Short, punchy efforts to build leg speed and running economy.
 Warmup
 - PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)`;
 
-    expect(extractNotes(desc)).toBe("Short, punchy efforts to build leg speed and running economy.");
+    expect(extractNotes(desc)).toBe(
+      "Short, punchy efforts to build leg speed and running economy.",
+    );
   });
 
   it("returns null when no notes present", () => {

@@ -43,6 +43,7 @@ vi.mock("recharts", () => {
     YAxis: createMock("YAxis"),
     Tooltip: createMock("Tooltip"),
     Cell: createMock("Cell"),
+    ReferenceLine: createMock("ReferenceLine"),
   };
 });
 

@@ -1,10 +1,7 @@
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import type { CalendarEvent } from "@/lib/types";
-import {
-  estimateWorkoutDuration,
-  extractPumpStatus,
-} from "@/lib/utils";
+import { estimateWorkoutDuration, extractPumpStatus } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -60,7 +57,9 @@ export function AgendaView({
               <div className="text-xs text-slate-600">
                 {format(event.date, "MMM", { locale: enGB })}
               </div>
-              {event.type === "completed" && event.duration && (() => {
+              {event.type === "completed" &&
+                event.duration &&
+                (() => {
                   const mins = Math.floor(event.duration / 60);
                   const hours = Math.floor(mins / 60);
                   const remainMins = mins % 60;
