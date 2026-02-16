@@ -14,10 +14,10 @@ interface HRMiniChartProps {
 
 const getHRColor = (hr: number, lthr: number = 169): string => {
   const percent = (hr / lthr) * 100;
-  if (percent >= 100) return HR_ZONE_COLORS.z5;
-  if (percent >= 94) return HR_ZONE_COLORS.z4;
-  if (percent >= 88) return HR_ZONE_COLORS.z3;
-  if (percent >= 80) return HR_ZONE_COLORS.z2;
+  if (percent >= 99) return HR_ZONE_COLORS.z5;
+  if (percent >= 89) return HR_ZONE_COLORS.z4;
+  if (percent >= 78) return HR_ZONE_COLORS.z3;
+  if (percent >= 66) return HR_ZONE_COLORS.z2;
   return HR_ZONE_COLORS.z1;
 };
 

@@ -106,9 +106,10 @@ export function WorkoutStructureBar({
   const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
 
   const getColor = (intensity: number) => {
-    if (intensity >= 95) return HR_ZONE_COLORS.z5;
-    if (intensity >= 88) return HR_ZONE_COLORS.z3;
-    if (intensity >= 80) return HR_ZONE_COLORS.z2;
+    if (intensity >= 99) return HR_ZONE_COLORS.z5;
+    if (intensity >= 89) return HR_ZONE_COLORS.z4;
+    if (intensity >= 78) return HR_ZONE_COLORS.z3;
+    if (intensity >= 66) return HR_ZONE_COLORS.z2;
     return HR_ZONE_COLORS.z1;
   };
 
