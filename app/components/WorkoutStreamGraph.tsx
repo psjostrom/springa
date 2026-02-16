@@ -101,9 +101,9 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     });
   };
 
-  const width = 700;
-  const height = 200;
-  const padding = { top: 40, right: 15, bottom: 30, left: 45 };
+  const width = 400;
+  const height = 180;
+  const padding = { top: 25, right: 10, bottom: 30, left: 35 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -298,13 +298,11 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       </div>
 
       {/* Graph */}
-      <div className="overflow-x-auto">
+      <div>
         <svg
           ref={svgRef}
-          width="100%"
-          height={height}
           viewBox={`0 0 ${width} ${height}`}
-          className="min-w-[300px] cursor-crosshair"
+          className="w-full cursor-crosshair"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onTouchMove={handleTouchMove}
@@ -351,10 +349,10 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             return (
               <text
                 key={i}
-                x={padding.left - 8}
+                x={padding.left - 6}
                 y={y + 4}
                 textAnchor="end"
-                fontSize="12"
+                fontSize="11"
                 fill="#94a3b8"
               >
                 {label}
@@ -422,38 +420,35 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             </>
           )}
 
-          {/* X-axis label */}
-          <text
-            x={width / 2}
-            y={height - 5}
-            textAnchor="middle"
-            fontSize="13"
-            fill="#64748b"
-            fontWeight="500"
-          >
-            Time (minutes)
-          </text>
+          {/* X-axis tick labels */}
+          {[0, 0.5, 1].map((frac) => (
+            <text
+              key={frac}
+              x={padding.left + frac * chartWidth}
+              y={height - padding.bottom + 14}
+              textAnchor="middle"
+              fontSize="11"
+              fill="#94a3b8"
+            >
+              {Math.round(frac * maxTime)}m
+            </text>
+          ))}
 
           {/* Y-axis label - only show when single stream */}
           {useSingleStreamMode && streamPaths.length > 0 && (
             <text
-              x={12}
+              x={10}
               y={height / 2}
               textAnchor="middle"
-              fontSize="13"
+              fontSize="12"
               fill="#64748b"
               fontWeight="500"
-              transform={`rotate(-90, 12, ${height / 2})`}
+              transform={`rotate(-90, 10, ${height / 2})`}
             >
               {streamPaths[0]?.config.unit}
             </text>
           )}
         </svg>
-      </div>
-      <div className="flex justify-between text-xs text-slate-500 mt-1 px-4 sm:px-10">
-        <span>0m</span>
-        <span>{Math.round(maxTime / 2)}m</span>
-        <span>{maxTime}m</span>
       </div>
     </div>
   );
