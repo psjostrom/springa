@@ -1,4 +1,5 @@
-import { DataPoint } from "@/lib/plannerLogic";
+import type { DataPoint } from "@/lib/types";
+import { HR_ZONE_COLORS } from "@/lib/constants";
 
 interface HRMiniChartProps {
   z1: number;
@@ -7,18 +8,17 @@ interface HRMiniChartProps {
   z4: number;
   z5: number;
   maxHeight?: number;
-  hrData?: DataPoint[]; // Optional HR time-series data
-  lthr?: number; // Optional LTHR for zone coloring
+  hrData?: DataPoint[];
+  lthr?: number;
 }
 
-// Get HR zone color based on value
 const getHRColor = (hr: number, lthr: number = 169): string => {
   const percent = (hr / lthr) * 100;
-  if (percent >= 100) return "#ef4444"; // Z5 - red-500
-  if (percent >= 94) return "#fb923c"; // Z4 - orange-400
-  if (percent >= 88) return "#fbbf24"; // Z3 - yellow-400
-  if (percent >= 80) return "#06b6d4"; // Z2 - cyan-500
-  return "#6ee7b7"; // Z1 - emerald-300
+  if (percent >= 100) return HR_ZONE_COLORS.z5;
+  if (percent >= 94) return HR_ZONE_COLORS.z4;
+  if (percent >= 88) return HR_ZONE_COLORS.z3;
+  if (percent >= 80) return HR_ZONE_COLORS.z2;
+  return HR_ZONE_COLORS.z1;
 };
 
 // Create a mini time-series graph from HR stream data
@@ -73,11 +73,11 @@ export function HRMiniChart({
   if (total === 0) return null;
 
   const zones = [
-    { time: z1, height: 40, color: "#6ee7b7" }, // Z1 - emerald-300
-    { time: z2, height: 55, color: "#06b6d4" }, // Z2 - cyan-500
-    { time: z3, height: 70, color: "#fbbf24" }, // Z3 - yellow-400
-    { time: z4, height: 85, color: "#fb923c" }, // Z4 - orange-400
-    { time: z5, height: 100, color: "#ef4444" }, // Z5 - red-500
+    { time: z1, height: 40, color: HR_ZONE_COLORS.z1 },
+    { time: z2, height: 55, color: HR_ZONE_COLORS.z2 },
+    { time: z3, height: 70, color: HR_ZONE_COLORS.z3 },
+    { time: z4, height: 85, color: HR_ZONE_COLORS.z4 },
+    { time: z5, height: 100, color: HR_ZONE_COLORS.z5 },
   ];
 
   const segments: Array<{ width: number; height: number; color: string }> = [];

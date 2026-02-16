@@ -1,3 +1,5 @@
+import { HR_ZONE_COLORS, PACE_ESTIMATES } from "@/lib/constants";
+
 interface WorkoutStructureBarProps {
   description: string;
   maxHeight?: number;
@@ -21,7 +23,7 @@ function parseWorkoutStructure(description: string): WorkoutSegment[] {
 
     let duration: number;
     if (unit === "km") {
-      duration = value * 6.75; // Warmup pace
+      duration = value * PACE_ESTIMATES.easy;
     } else {
       duration = value;
     }
@@ -55,10 +57,10 @@ function parseWorkoutStructure(description: string): WorkoutSegment[] {
         if (unit === "km") {
           // Convert km to minutes based on zone
           let paceMinPerKm: number;
-          if (avgPercent >= 95) paceMinPerKm = 4.75; // Hard
-          else if (avgPercent >= 88) paceMinPerKm = 5.15; // Tempo
-          else if (avgPercent >= 80) paceMinPerKm = 6.15; // Steady
-          else paceMinPerKm = 6.75; // Easy
+          if (avgPercent >= 95) paceMinPerKm = PACE_ESTIMATES.hard;
+          else if (avgPercent >= 88) paceMinPerKm = PACE_ESTIMATES.tempo;
+          else if (avgPercent >= 80) paceMinPerKm = PACE_ESTIMATES.steady;
+          else paceMinPerKm = PACE_ESTIMATES.easy;
 
           duration = value * paceMinPerKm;
         } else {
@@ -79,7 +81,7 @@ function parseWorkoutStructure(description: string): WorkoutSegment[] {
 
     let duration: number;
     if (unit === "km") {
-      duration = value * 6.75; // Cooldown pace
+      duration = value * PACE_ESTIMATES.easy;
     } else {
       duration = value;
     }
@@ -104,15 +106,10 @@ export function WorkoutStructureBar({
   const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
 
   const getColor = (intensity: number) => {
-    // Intensity ranges:
-    // 70-80%: Easy (green-ish)
-    // 80-88%: Steady (teal)
-    // 88-94%: Tempo (yellow/orange)
-    // 95-100%: Hard (red)
-    if (intensity >= 95) return "#ef4444"; // red-500
-    if (intensity >= 88) return "#fbbf24"; // yellow-400
-    if (intensity >= 80) return "#06b6d4"; // cyan-500
-    return "#6ee7b7"; // emerald-300
+    if (intensity >= 95) return HR_ZONE_COLORS.z5;
+    if (intensity >= 88) return HR_ZONE_COLORS.z3;
+    if (intensity >= 80) return HR_ZONE_COLORS.z2;
+    return HR_ZONE_COLORS.z1;
   };
 
   return (

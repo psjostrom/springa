@@ -1,0 +1,423 @@
+import { format, addDays } from "date-fns";
+import type {
+  WorkoutEvent,
+  IntervalsStream,
+  HRZoneData,
+  StreamData,
+  CalendarEvent,
+  IntervalsActivity,
+} from "./types";
+import { API_BASE, DEFAULT_LTHR } from "./constants";
+import { convertGlucoseToMmol, getWorkoutCategory } from "./utils";
+import { isSameDay, parseISO } from "date-fns";
+
+// --- STREAM FETCHING ---
+
+export async function fetchStreams(
+  activityId: string,
+  apiKey: string,
+): Promise<IntervalsStream[]> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const keys = [
+    "time",
+    "heartrate",
+    "bloodglucose",
+    "glucose",
+    "ga_smooth",
+    "velocity_smooth",
+    "cadence",
+    "altitude",
+  ].join(",");
+  try {
+    const res = await fetch(
+      `${API_BASE}/activity/${activityId}/streams?keys=${keys}`,
+      {
+        headers: { Authorization: auth },
+      },
+    );
+    if (res.ok) {
+      return await res.json();
+    }
+    console.warn(
+      `Failed to fetch streams for activity ${activityId}: ${res.status} ${res.statusText}`,
+    );
+    return [];
+  } catch (e) {
+    console.warn(`Error fetching streams for activity ${activityId}:`, e);
+    return [];
+  }
+}
+
+// --- HR ZONE CALCULATION ---
+
+function calculateHRZones(
+  hrData: number[],
+  lthr: number = DEFAULT_LTHR,
+): HRZoneData {
+  const zones: HRZoneData = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+
+  const z1Max = lthr * 0.66;
+  const z2Max = lthr * 0.78;
+  const z3Max = lthr * 0.89;
+  const z4Max = lthr * 0.99;
+
+  hrData.forEach((hr) => {
+    if (hr <= z1Max) zones.z1++;
+    else if (hr <= z2Max) zones.z2++;
+    else if (hr <= z3Max) zones.z3++;
+    else if (hr <= z4Max) zones.z4++;
+    else zones.z5++;
+  });
+
+  return zones;
+}
+
+// --- ACTIVITY DETAILS ---
+
+export async function fetchActivityDetails(
+  activityId: string,
+  apiKey: string,
+  lthr: number = DEFAULT_LTHR,
+): Promise<{
+  hrZones?: HRZoneData;
+  streamData?: StreamData;
+  avgHr?: number;
+  maxHr?: number;
+}> {
+  try {
+    const streams = await fetchStreams(activityId, apiKey);
+
+    let timeData: number[] = [];
+    let hrData: number[] = [];
+    let glucoseData: number[] = [];
+    let glucoseStreamType: string = "";
+    let velocityData: number[] = [];
+    let cadenceData: number[] = [];
+    let altitudeData: number[] = [];
+
+    for (const s of streams) {
+      if (s.type === "time") timeData = s.data;
+      if (s.type === "heartrate") hrData = s.data;
+      if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
+        glucoseData = s.data;
+        glucoseStreamType = s.type;
+      }
+      if (s.type === "velocity_smooth") {
+        velocityData = s.data;
+      }
+      if (s.type === "cadence") cadenceData = s.data;
+      if (s.type === "altitude") altitudeData = s.data;
+    }
+
+    const paceData = velocityData.map((v) => {
+      if (v === 0 || v < 0.001) return null;
+      const pace = 1000 / (v * 60);
+      if (pace < 2.0 || pace > 12.0) return null;
+      return pace;
+    });
+
+    const result: {
+      hrZones?: HRZoneData;
+      streamData?: StreamData;
+      avgHr?: number;
+      maxHr?: number;
+    } = {};
+
+    if (hrData.length > 0) {
+      result.hrZones = calculateHRZones(hrData, lthr);
+      result.avgHr = Math.round(
+        hrData.reduce((a, b) => a + b, 0) / hrData.length,
+      );
+      result.maxHr = Math.round(Math.max(...hrData));
+    }
+
+    if (timeData.length > 0) {
+      const streamData: StreamData = {};
+
+      if (glucoseData.length > 0) {
+        const glucoseInMmol = convertGlucoseToMmol(
+          glucoseData,
+          glucoseStreamType,
+        );
+        streamData.glucose = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: glucoseInMmol[idx],
+        }));
+      }
+
+      if (hrData.length > 0) {
+        streamData.heartrate = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: hrData[idx],
+        }));
+      }
+
+      if (paceData.length > 0) {
+        streamData.pace = timeData
+          .map((t, idx) => ({
+            time: Math.round(t / 60),
+            value: paceData[idx],
+          }))
+          .filter(
+            (point) => point.value !== null && point.value > 0,
+          ) as { time: number; value: number }[];
+      }
+
+      if (cadenceData.length > 0) {
+        streamData.cadence = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: cadenceData[idx] * 2,
+        }));
+      }
+
+      if (altitudeData.length > 0) {
+        streamData.altitude = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: altitudeData[idx],
+        }));
+      }
+
+      if (Object.keys(streamData).length > 0) {
+        result.streamData = streamData;
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to fetch activity details:", error);
+    return {};
+  }
+}
+
+// --- CALENDAR API ---
+
+export async function fetchCalendarData(
+  apiKey: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<CalendarEvent[]> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const oldest = format(startDate, "yyyy-MM-dd");
+  const newest = format(endDate, "yyyy-MM-dd");
+
+  try {
+    const results = await Promise.allSettled([
+      fetch(
+        `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
+        { headers: { Authorization: auth } },
+      ),
+      fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
+        headers: { Authorization: auth },
+      }),
+    ]);
+
+    const activitiesRes =
+      results[0].status === "fulfilled" ? results[0].value : null;
+    const eventsRes =
+      results[1].status === "fulfilled" ? results[1].value : null;
+
+    const activities = activitiesRes?.ok ? await activitiesRes.json() : [];
+    const events = eventsRes?.ok ? await eventsRes.json() : [];
+
+    const calendarEvents: CalendarEvent[] = [];
+
+    const runActivities = activities.filter(
+      (a: IntervalsActivity) => a.type === "Run" || a.type === "VirtualRun",
+    );
+
+    const activityMap = new Map<string, CalendarEvent>();
+
+    runActivities.forEach((activity: IntervalsActivity) => {
+      const category = getWorkoutCategory(activity.name);
+
+      let pace: number | undefined;
+      if (activity.distance && activity.moving_time) {
+        const distanceKm = activity.distance / 1000;
+        const durationMin = activity.moving_time / 60;
+        pace = durationMin / distanceKm;
+      }
+
+      let hrZones: HRZoneData | undefined;
+      if (
+        activity.icu_hr_zone_times &&
+        activity.icu_hr_zone_times.length >= 5
+      ) {
+        hrZones = {
+          z1: activity.icu_hr_zone_times[0],
+          z2: activity.icu_hr_zone_times[1],
+          z3: activity.icu_hr_zone_times[2],
+          z4: activity.icu_hr_zone_times[3],
+          z5: activity.icu_hr_zone_times[4],
+        };
+      }
+
+      const activityDate = parseISO(
+        activity.start_date_local || activity.start_date,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const matchingEvent = events.find((event: any) => {
+        if (event.category !== "WORKOUT") return false;
+        const eventDate = parseISO(event.start_date_local);
+        const sameDay = isSameDay(activityDate, eventDate);
+        const similarName =
+          activity.name
+            ?.toLowerCase()
+            .includes(event.name?.toLowerCase().substring(0, 10)) ||
+          event.name
+            ?.toLowerCase()
+            .includes(activity.name?.toLowerCase().substring(0, 10));
+        return sameDay && similarName;
+      });
+
+      const description =
+        matchingEvent?.description || activity.description || "";
+
+      const calendarEvent: CalendarEvent = {
+        id: `activity-${activity.id}`,
+        date: activityDate,
+        name: activity.name,
+        description,
+        type: "completed",
+        category,
+        distance: activity.distance,
+        duration: activity.moving_time,
+        avgHr: activity.average_heartrate || activity.average_hr,
+        maxHr: activity.max_heartrate || activity.max_hr,
+        load: activity.icu_training_load,
+        intensity: activity.icu_intensity,
+        pace: activity.pace || pace,
+        calories: activity.calories,
+        cadence: activity.average_cadence
+          ? activity.average_cadence * 2
+          : undefined,
+        hrZones,
+      };
+
+      activityMap.set(activity.id, calendarEvent);
+      calendarEvents.push(calendarEvent);
+    });
+
+    for (const event of events) {
+      if (event.category !== "WORKOUT") continue;
+
+      const name = event.name || "";
+      const eventDate = parseISO(event.start_date_local);
+
+      const hasMatchingActivity = runActivities.some(
+        (activity: IntervalsActivity) => {
+          const activityDate = parseISO(
+            activity.start_date_local || activity.start_date,
+          );
+          const sameDay = isSameDay(activityDate, eventDate);
+          const similarName =
+            activity.name
+              ?.toLowerCase()
+              .includes(name.toLowerCase().substring(0, 10)) ||
+            name
+              .toLowerCase()
+              .includes(activity.name?.toLowerCase().substring(0, 10));
+          return sameDay && similarName;
+        },
+      );
+
+      if (hasMatchingActivity) {
+        continue;
+      }
+
+      const isRace = name.toLowerCase().includes("race");
+      const category = isRace ? "race" : getWorkoutCategory(name);
+
+      calendarEvents.push({
+        id: `event-${event.id}`,
+        date: eventDate,
+        name,
+        description: event.description || "",
+        type: isRace ? "race" : "planned",
+        category,
+        distance: event.distance || 0,
+        duration: event.moving_time || event.duration || event.elapsed_time,
+      });
+    }
+
+    calendarEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    return calendarEvents;
+  } catch (error) {
+    console.error("Failed to fetch calendar data:", error);
+    return [];
+  }
+}
+
+// --- EVENT UPDATE ---
+
+export async function updateEvent(
+  apiKey: string,
+  eventId: number,
+  updates: { start_date_local?: string; name?: string; description?: string },
+): Promise<void> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update event: ${res.status} ${errorText}`);
+  }
+}
+
+// --- API UPLOAD ---
+
+export async function uploadToIntervals(
+  apiKey: string,
+  events: WorkoutEvent[],
+): Promise<number> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
+  const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
+
+  try {
+    console.log("Deleting all future workouts...");
+    const deleteRes = await fetch(
+      `${API_BASE}/athlete/0/events?oldest=${todayStr}&newest=${endStr}&category=WORKOUT`,
+      {
+        method: "DELETE",
+        headers: { Authorization: auth },
+      },
+    );
+
+    if (!deleteRes.ok) {
+      console.error(`Delete failed with status ${deleteRes.status}`);
+    }
+  } catch (deleteError) {
+    console.error("Error during deletion phase:", deleteError);
+  }
+
+  const payload = events.map((e) => ({
+    category: "WORKOUT",
+    start_date_local: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+    name: e.name,
+    description: e.description,
+    external_id: e.external_id,
+    type: e.type,
+  }));
+
+  try {
+    const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API Error ${res.status}: ${errorText}`);
+    }
+    return payload.length;
+  } catch (error) {
+    console.error("Upload failed:", error);
+    console.error("Payload size:", payload.length);
+    console.error("First event:", payload[0]);
+    throw error;
+  }
+}
