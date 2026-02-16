@@ -47,10 +47,10 @@ export function AgendaView({
             data-event-id={event.id}
             ref={isNextUpcoming ? nextUpcomingRef : null}
             onClick={() => onSelectEvent(event)}
-            className="flex gap-4 p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100 overflow-hidden"
+            className="flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-slate-50 cursor-pointer rounded-lg transition border border-slate-100 overflow-hidden"
           >
             {/* Date */}
-            <div className="flex-shrink-0 text-center w-16 sm:w-20">
+            <div className="flex-shrink-0 text-center w-10 sm:w-20">
               <div className="text-xs sm:text-sm text-slate-600 uppercase">
                 {format(event.date, "EEE", { locale: enGB })}
               </div>
@@ -60,17 +60,21 @@ export function AgendaView({
               <div className="text-xs text-slate-600">
                 {format(event.date, "MMM", { locale: enGB })}
               </div>
-              {event.type === "planned" && event.description && (() => {
-                const est = estimateWorkoutDuration(event.description);
-                if (!est) return null;
-                const hours = Math.floor(est / 60);
-                const mins = est % 60;
-                return (
-                  <div className="text-xs text-slate-400 mt-1">
-                    ~{hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`}
-                  </div>
-                );
-              })()}
+              {event.type === "planned" &&
+                event.description &&
+                (() => {
+                  const est = estimateWorkoutDuration(event.description);
+                  if (!est) return null;
+                  const hours = Math.floor(est / 60);
+                  const mins = est % 60;
+                  return (
+                    <div className="text-sm sm:text-sm text-slate-900 mt-4">
+                      {hours > 0
+                        ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
+                        : `${mins}m`}
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* Event Details */}
@@ -136,9 +140,10 @@ export function AgendaView({
                       <div className="text-slate-600">
                         <span className="font-semibold text-slate-900">
                           {Math.floor(event.pace)}:
-                          {String(
-                            Math.round((event.pace % 1) * 60),
-                          ).padStart(2, "0")}
+                          {String(Math.round((event.pace % 1) * 60)).padStart(
+                            2,
+                            "0",
+                          )}
                         </span>{" "}
                         /km
                       </div>
@@ -218,7 +223,8 @@ export function AgendaView({
                           const entry = getPaceForZone(paceTable, zone);
                           return (
                             <span key={zone}>
-                              {getZoneLabel(zone)} ~{formatPace(entry.avgPace)}/km{entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
+                              {getZoneLabel(zone)} ~{formatPace(entry.avgPace)}
+                              /km{entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
                             </span>
                           );
                         })}
