@@ -292,7 +292,7 @@ const createWorkoutText = (
   ];
 
   if (notes) {
-    lines.push(notes, "", "");
+    lines.push(notes, "");
   }
 
   lines.push(
@@ -706,7 +706,6 @@ const generateEasyRun = (
       strat,
       "",
       notes,
-      "",
       "",
       "Warmup",
       `- ${wu}`,
