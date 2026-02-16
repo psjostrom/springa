@@ -11,7 +11,7 @@ describe("extractFuelRate", () => {
   it("extracts fuel rate from new format", () => {
     expect(extractFuelRate("PUMP OFF - FUEL PER 10: 10g TOTAL: 50g")).toBe(10);
     expect(extractFuelRate("FUEL PER 10: 5g")).toBe(5);
-    expect(extractFuelRate("PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g")).toBe(8);
+    expect(extractFuelRate("PUMP ON - FUEL PER 10: 8g TOTAL: 32g")).toBe(8);
   });
 
   it("extracts fuel rate from old format", () => {

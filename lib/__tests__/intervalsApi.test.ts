@@ -35,7 +35,7 @@ describe("fetchCalendarData", () => {
         category: "WORKOUT",
         start_date_local: "2026-02-15T12:00:00",
         name: "W02 Thu Easy eco16",
-        description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g",
+        description: "PUMP ON - FUEL PER 10: 8g TOTAL: 32g",
       },
     ];
 
@@ -119,7 +119,7 @@ describe("fetchCalendarData", () => {
         category: "WORKOUT",
         start_date_local: "2026-02-10T12:00:00",
         name: "W01 Tue Easy eco16",
-        description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g",
+        description: "PUMP ON - FUEL PER 10: 8g",
         paired_activity_id: "123",
       },
     ];
@@ -159,7 +159,7 @@ describe("fetchCalendarData", () => {
         category: "WORKOUT",
         start_date_local: "2026-02-12T12:00:00",
         name: "W01 Tue Easy eco16",
-        description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g",
+        description: "PUMP ON - FUEL PER 10: 8g",
       },
     ];
 

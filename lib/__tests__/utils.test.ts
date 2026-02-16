@@ -12,7 +12,6 @@ import {
   extractPumpStatus,
   extractNotes,
   parseWorkoutStructure,
-  getPumpMode,
 } from "../utils";
 import { FALLBACK_PACE_TABLE } from "../constants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
@@ -304,10 +303,10 @@ Cooldown
   });
 
   it("parses an easy + strides workout", () => {
-    const desc = `PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g
+    const desc = `PUMP ON - FUEL PER 10: 8g TOTAL: 32g
 
 Warmup
-- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 20m 66-78% LTHR (112-132 bpm)
@@ -417,10 +416,10 @@ describe("extractPumpStatus", () => {
     expect(result.totalCarbs).toBe(25);
   });
 
-  it("extracts PUMP ON (EASE OFF)", () => {
-    const desc = "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
+  it("extracts PUMP ON", () => {
+    const desc = "PUMP ON - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractPumpStatus(desc);
-    expect(result.pump).toBe("PUMP ON (EASE OFF)");
+    expect(result.pump).toBe("PUMP ON");
     expect(result.fuelRate).toBe(8);
     expect(result.totalCarbs).toBe(32);
   });
@@ -438,45 +437,6 @@ describe("extractPumpStatus", () => {
     expect(result.pump).toBe("");
     expect(result.fuelRate).toBeNull();
     expect(result.totalCarbs).toBeNull();
-  });
-});
-
-describe("getPumpMode", () => {
-  it("returns ON for easy runs", () => {
-    expect(getPumpMode("W01 Tue Easy eco16")).toBe("ON");
-  });
-
-  it("returns ON for easy + strides", () => {
-    expect(getPumpMode("W02 Tue Easy + Strides eco16")).toBe("ON");
-  });
-
-  it("returns ON for bonus easy runs", () => {
-    expect(getPumpMode("W03 Sat Bonus Easy eco16")).toBe("ON");
-  });
-
-  it("returns ON for shakeout runs", () => {
-    expect(getPumpMode("W12 Tue Easy eco16 [SHAKEOUT]")).toBe("ON");
-  });
-
-  it("returns OFF for speed sessions", () => {
-    expect(getPumpMode("W01 Thu Short Intervals eco16")).toBe("OFF");
-    expect(getPumpMode("W02 Thu Hills eco16")).toBe("OFF");
-    expect(getPumpMode("W03 Thu Long Intervals eco16")).toBe("OFF");
-    expect(getPumpMode("W05 Thu Distance Intervals eco16")).toBe("OFF");
-    expect(getPumpMode("W11 Thu Race Pace Intervals eco16")).toBe("OFF");
-  });
-
-  it("returns OFF for long runs", () => {
-    expect(getPumpMode("W01 Sun Long (8km) eco16")).toBe("OFF");
-    expect(getPumpMode("W05 Sun Long (12km) eco16")).toBe("OFF");
-  });
-
-  it("returns OFF for race day", () => {
-    expect(getPumpMode("RACE DAY eco16")).toBe("OFF");
-  });
-
-  it("returns null for unknown workout names", () => {
-    expect(getPumpMode("Some random event")).toBeNull();
   });
 });
 
@@ -573,10 +533,10 @@ Cooldown
   });
 
   it("parses an easy + strides workout", () => {
-    const desc = `PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 32g
+    const desc = `PUMP ON - FUEL PER 10: 8g TOTAL: 32g
 
 Warmup
-- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 20m 66-78% LTHR (112-132 bpm)

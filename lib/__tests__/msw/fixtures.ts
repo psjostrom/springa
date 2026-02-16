@@ -26,7 +26,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "PUMP ON - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 6500,
     moving_time: 2700,
@@ -65,7 +65,7 @@ export const sampleEvents = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON (EASE OFF) - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "PUMP ON - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     paired_activity_id: "act-easy-1",
   },
   {
@@ -73,7 +73,7 @@ export const sampleEvents = [
     category: "WORKOUT",
     start_date_local: "2026-02-17T12:00:00",
     name: "W05 Tue Easy + Strides eco16",
-    description: "PUMP ON (EASE OFF) - FUEL PER 10: 8g TOTAL: 48g",
+    description: "PUMP ON - FUEL PER 10: 8g TOTAL: 48g",
   },
   {
     id: 1003,

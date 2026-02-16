@@ -52,7 +52,7 @@ const generateQualityRun = (
   if (sessionType === null) {
     const totalDuration = 10 + 30 + 5;
     const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
-    const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+    const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
     const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
     const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
@@ -171,7 +171,7 @@ const generateEasyRun = (
   const totalDuration = 10 + duration + stridesDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
@@ -246,7 +246,7 @@ const generateBonusRun = (
   const totalDuration = 10 + 30 + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const strat = `PUMP ON (EASE OFF) - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";

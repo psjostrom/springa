@@ -117,25 +117,10 @@ export interface PumpStatus {
   totalCarbs: number | null;
 }
 
-/** Determine pump mode from the workout name. Returns "ON", "OFF", or null if unknown. */
-export function getPumpMode(name: string): "ON" | "OFF" | null {
-  const n = name.toLowerCase();
-  if (n.includes("easy") || n.includes("bonus") || n.includes("strides") || n.includes("shakeout"))
-    return "ON";
-  if (
-    n.includes("interval") ||
-    n.includes("hills") ||
-    n.includes("long") ||
-    n.includes("race")
-  )
-    return "OFF";
-  return null;
-}
-
 /** Extract pump status, fuel rate, and total carbs from the strategy header line. */
 export function extractPumpStatus(description: string): PumpStatus {
   const firstLine = description.split("\n")[0] ?? "";
-  const pumpMatch = firstLine.match(/^(PUMP\s+(?:OFF|ON\s*\([^)]*\)))/i);
+  const pumpMatch = firstLine.match(/^(PUMP\s+(?:OFF|ON))/i);
   return {
     pump: pumpMatch ? pumpMatch[1] : "",
     fuelRate: extractFuelRate(description),
