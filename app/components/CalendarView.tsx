@@ -133,18 +133,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     setViewMode(isMobile ? "agenda" : "month");
   }, []);
 
-  // Handle Escape key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedEvent) {
-        setSelectedEvent(null);
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [selectedEvent]);
-
   // Reset edit state when modal closes or selected event changes
   useEffect(() => {
     setIsEditing(false);
@@ -266,17 +254,50 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return events.filter((event) => isSameDay(event.date, date));
   }, [events]);
 
+  // Track whether we pushed a modal entry onto the history stack
+  const modalPushedRef = useRef(false);
+
   // Open modal by updating URL
   const openWorkoutModal = (event: CalendarEvent) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("workout", event.id);
-    router.push(`?${params.toString()}`, { scroll: false });
+    const url = `?${params.toString()}`;
+
+    if (searchParams.get("workout")) {
+      // Already viewing a modal — replace to avoid stacking history entries
+      router.replace(url, { scroll: false });
+    } else {
+      // Opening fresh — push one entry so back closes the modal
+      router.push(url, { scroll: false });
+      modalPushedRef.current = true;
+    }
   };
 
   // Close modal by removing URL param
-  const closeWorkoutModal = () => {
-    router.back();
-  };
+  const closeWorkoutModal = useCallback(() => {
+    if (modalPushedRef.current) {
+      modalPushedRef.current = false;
+      router.back();
+    } else {
+      // Fallback: replace URL to remove param (e.g. direct navigation or page reload)
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("workout");
+      const query = params.toString();
+      router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
+    }
+  }, [router, searchParams]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedEvent) {
+        closeWorkoutModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [selectedEvent, closeWorkoutModal]);
 
   // Save edited event date
   const saveEventEdit = async () => {
