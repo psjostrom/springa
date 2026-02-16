@@ -10,6 +10,7 @@ import {
   getZoneLabel,
   formatPace,
   calculateTotalCarbs,
+  estimateWorkoutDuration,
 } from "@/lib/utils";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
@@ -105,14 +106,27 @@ export function EventModal({
             <h3 className="text-lg sm:text-xl font-bold">
               {selectedEvent.name}
             </h3>
-            <div
-              className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${getEventStyle(selectedEvent)}`}
-            >
-              {selectedEvent.type === "completed"
-                ? "✓ Completed"
-                : selectedEvent.type === "race"
-                  ? "🏁 Race"
-                  : "📅 Planned"}
+            <div className="flex items-center gap-2 mt-2">
+              <div
+                className={`inline-block px-2 py-1 rounded text-xs font-medium ${getEventStyle(selectedEvent)}`}
+              >
+                {selectedEvent.type === "completed"
+                  ? "✓ Completed"
+                  : selectedEvent.type === "race"
+                    ? "🏁 Race"
+                    : "📅 Planned"}
+              </div>
+              {selectedEvent.type === "planned" && selectedEvent.description && (() => {
+                const est = estimateWorkoutDuration(selectedEvent.description);
+                if (!est) return null;
+                const hours = Math.floor(est / 60);
+                const mins = est % 60;
+                return (
+                  <span className="text-xs text-slate-500">
+                    ~{hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
+                  </span>
+                );
+              })()}
             </div>
           </div>
           <div className="flex items-center gap-2">

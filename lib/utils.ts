@@ -5,7 +5,7 @@ import type {
   CalendarEvent,
   WorkoutEvent,
 } from "./types";
-import { FALLBACK_PACE_TABLE } from "./constants";
+import { FALLBACK_PACE_TABLE, PACE_ESTIMATES } from "./constants";
 
 // --- ZONE LABELS ---
 
@@ -130,6 +130,80 @@ export const getEstimatedDuration = (event: WorkoutEvent): number => {
   }
   return 45;
 };
+
+function parseSectionSteps(section: string): number {
+  let total = 0;
+  const stepMatches = Array.from(
+    section.matchAll(/-\s*(?:Uphill\s+|Downhill\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g)
+  );
+  for (const m of stepMatches) {
+    const value = parseInt(m[1]);
+    const unit = m[2];
+    const avgPercent = (parseInt(m[3]) + parseInt(m[4])) / 2;
+    if (unit === "km") {
+      let pace: number;
+      if (avgPercent >= 95) pace = PACE_ESTIMATES.hard;
+      else if (avgPercent >= 88) pace = PACE_ESTIMATES.tempo;
+      else if (avgPercent >= 80) pace = PACE_ESTIMATES.steady;
+      else pace = PACE_ESTIMATES.easy;
+      total += value * pace;
+    } else if (unit === "s") {
+      total += value / 60;
+    } else {
+      total += value;
+    }
+  }
+  return total;
+}
+
+export function estimateWorkoutDuration(description: string): number | null {
+  if (!description) return null;
+
+  let total = 0;
+
+  // Anchor section headers to line start (\n) to avoid matching words in prose
+  // (e.g. "Strides build neuromuscular speed" in notes text)
+
+  // Warmup
+  const warmupMatch = description.match(/\nWarmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
+  if (warmupMatch) {
+    const wuStep = warmupMatch[0].match(/-\s*(?:PUMP.*?\s+)?(\d+)(m|km)\s+(\d+)-(\d+)%/);
+    if (wuStep) {
+      const value = parseInt(wuStep[1]);
+      const unit = wuStep[2];
+      total += unit === "km" ? value * PACE_ESTIMATES.easy : value;
+    }
+  }
+
+  // Main set (with optional repeats)
+  const mainSetSection = description.match(/\nMain set[\s\S]*?(?=\nStrides|\nCooldown|$)/);
+  if (mainSetSection) {
+    const repsMatch = mainSetSection[0].match(/Main set\s+(\d+)x/);
+    const reps = repsMatch ? parseInt(repsMatch[1]) : 1;
+    total += parseSectionSteps(mainSetSection[0]) * reps;
+  }
+
+  // Strides (with optional repeats)
+  const stridesSection = description.match(/\nStrides\s+\d+x[\s\S]*?(?=\nCooldown|$)/);
+  if (stridesSection) {
+    const repsMatch = stridesSection[0].match(/Strides\s+(\d+)x/);
+    const reps = repsMatch ? parseInt(repsMatch[1]) : 1;
+    total += parseSectionSteps(stridesSection[0]) * reps;
+  }
+
+  // Cooldown
+  const cooldownMatch = description.match(/\nCooldown[\s\S]*$/);
+  if (cooldownMatch) {
+    const cdStep = cooldownMatch[0].match(/-\s*(\d+)(m|km)\s+(\d+)-(\d+)%/);
+    if (cdStep) {
+      const value = parseInt(cdStep[1]);
+      const unit = cdStep[2];
+      total += unit === "km" ? value * PACE_ESTIMATES.easy : value;
+    }
+  }
+
+  return total > 0 ? Math.round(total) : null;
+}
 
 export const formatStep = (
   duration: string,
