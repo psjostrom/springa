@@ -1,27 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Key } from "lucide-react";
 
-interface ApiKeyModalProps {
-  onApiKeySubmit: (key: string) => void;
-  onClose?: () => void;
+interface ApiKeySetupProps {
+  onSubmit: (key: string) => void;
 }
 
-export function ApiKeyModal({ onApiKeySubmit, onClose }: ApiKeyModalProps) {
+export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && onClose) {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +17,22 @@ export function ApiKeyModal({ onApiKeySubmit, onClose }: ApiKeyModalProps) {
       setError("API key is required");
       return;
     }
-    onApiKeySubmit(apiKey.trim());
+    onSubmit(apiKey.trim());
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-        <div className="flex items-center gap-3 mb-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-lg">
+        <div className="flex items-center gap-3 mb-6">
           <div className="bg-blue-100 p-3 rounded-lg">
             <Key className="text-blue-600" size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
-              API Key Required
-            </h2>
+            <h1 className="text-xl font-bold text-slate-900">
+              Connect Intervals.icu
+            </h1>
             <p className="text-sm text-slate-600">
-              Enter your Intervals.icu API key to continue
+              Enter your API key to get started
             </p>
           </div>
         </div>
@@ -76,7 +64,7 @@ export function ApiKeyModal({ onApiKeySubmit, onClose }: ApiKeyModalProps) {
             <p className="font-semibold mb-1">How to get your API key:</p>
             <ol className="list-decimal list-inside space-y-1">
               <li>Go to intervals.icu</li>
-              <li>Navigate to Settings → Developer</li>
+              <li>Navigate to Settings &rarr; Developer</li>
               <li>Copy your API key</li>
             </ol>
           </div>
@@ -85,7 +73,7 @@ export function ApiKeyModal({ onApiKeySubmit, onClose }: ApiKeyModalProps) {
             type="submit"
             className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
           >
-            Continue
+            Save &amp; Continue
           </button>
         </form>
       </div>

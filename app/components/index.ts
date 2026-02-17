@@ -1,5 +1,4 @@
 export { PhaseTracker } from "./PhaseTracker";
-export { ApiKeyInput } from "./ApiKeyInput";
 export { RaceSettings } from "./RaceSettings";
 export { PhysiologySettings } from "./PhysiologySettings";
 export { PlanStructureSettings } from "./PlanStructureSettings";

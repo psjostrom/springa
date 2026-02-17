@@ -154,12 +154,6 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
   return (
     <div className="h-full bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans overflow-hidden">
       <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 shrink-0 overflow-y-auto h-full">
-        <div className="flex items-center gap-2 mb-2">
-          <h1 className="text-xl font-bold tracking-tight">
-            🏃‍♂️‍➡️ Race Planner
-          </h1>
-        </div>
-
         <div className="space-y-4">
           <RaceSettings
             raceName={raceName}

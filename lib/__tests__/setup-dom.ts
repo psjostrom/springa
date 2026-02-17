@@ -20,6 +20,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+// --- next-auth/react mock ---
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: { email: "test@example.com" } }, status: "authenticated" }),
+  signOut: vi.fn(),
+  SessionProvider: ({ children }: React.PropsWithChildren) => children,
+}));
+
 // --- Recharts mock ---
 // jsdom can't measure SVG layout; mock all Recharts components
 vi.mock("recharts", () => {
@@ -85,9 +92,6 @@ const localStorageMock: Storage = {
   key: (index: number) => Array.from(localStorageMap.keys())[index] ?? null,
 };
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
-
-// --- env ---
-process.env.NEXT_PUBLIC_INTERVALS_API_KEY = "";
 
 // --- Reset mocks between tests ---
 beforeEach(() => {
