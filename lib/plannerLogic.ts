@@ -54,6 +54,7 @@ export {
   fetchCalendarData,
   updateEvent,
   uploadToIntervals,
+  updateActivityCarbs,
 } from "./intervalsApi";
 
 export { analyzeHistory } from "./analysis";

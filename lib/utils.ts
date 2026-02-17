@@ -124,16 +124,22 @@ export function extractFuelStatus(description: string): FuelStatus {
   };
 }
 
-/** Extract notes/flavor text from between the strategy header and the first section header. */
+/** Extract notes/flavor text from between any header lines and the first section header. */
 export function extractNotes(description: string): string | null {
   if (!description) return null;
-  const firstSectionIdx = description.search(/\nWarmup/);
+  const firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
   if (firstSectionIdx === -1) return null;
   const preamble = description.slice(0, firstSectionIdx);
-  // Notes come after the strategy header line and any blank lines
   const lines = preamble.split("\n");
-  // Skip the first line (strategy string) and any blank lines
-  const noteLines = lines.slice(1).filter((l) => l.trim().length > 0);
+  // Filter out blank lines, FUEL strategy lines, and PUMP lines (backward compat)
+  const noteLines = lines.filter((l) => {
+    const trimmed = l.trim();
+    if (trimmed.length === 0) return false;
+    if (/^FUEL PER 10:/i.test(trimmed)) return false;
+    if (/^PUMP/i.test(trimmed)) return false;
+    if (/^\(Trail\)$/i.test(trimmed)) return false;
+    return true;
+  });
   return noteLines.length > 0 ? noteLines.join(" ") : null;
 }
 
@@ -161,7 +167,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk)\s+)?(\d+(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
 
   // Split into section blocks
-  const sectionPattern = /\n(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/g;
+  const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
   const headers: { name: string; index: number }[] = [];
   let match: RegExpExecArray | null;
 
@@ -253,7 +259,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
 
   // Warmup
-  const warmupMatch = description.match(/\nWarmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
+  const warmupMatch = description.match(/(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
   if (warmupMatch) {
     const wuStep = warmupMatch[0].match(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/);
     if (wuStep) {
@@ -334,14 +340,13 @@ export const calculateWorkoutCarbs = (
 };
 
 export const createWorkoutText = (
-  title: string,
   warmup: string,
   mainSteps: string[],
   cooldown: string,
   repeats: number = 1,
   notes?: string,
 ): string => {
-  const lines = [title, ""];
+  const lines: string[] = [];
 
   if (notes) {
     lines.push(notes, "");

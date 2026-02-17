@@ -84,11 +84,14 @@ describe("generatePlan", () => {
     }
   });
 
-  it("includes fuel strategy in descriptions", () => {
+  it("sets fuelRate on all events instead of embedding in descriptions", () => {
     const plan = generate();
     for (const event of plan) {
-      expect(event.description).toContain("FUEL PER 10:");
-      expect(event.description).toContain("TOTAL:");
+      expect(event.fuelRate).toBeDefined();
+      expect(event.fuelRate).toBeGreaterThan(0);
+      // Descriptions should NOT contain fuel text
+      expect(event.description).not.toContain("FUEL PER 10:");
+      expect(event.description).not.toContain("TOTAL:");
     }
   });
 

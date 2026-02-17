@@ -4,6 +4,7 @@ import {
   updateEvent,
   uploadToIntervals,
   fetchActivityDetails,
+  updateActivityCarbs,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -180,6 +181,153 @@ describe("fetchCalendarData", () => {
     expect(result.filter((e) => e.type === "planned").length).toBe(1);
   });
 
+  it("populates carbsIngested from activity carbs_ingested field", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: "act-1",
+              start_date: "2026-02-10T10:00:00",
+              start_date_local: "2026-02-10T10:00:00",
+              name: "W04 Tue Easy eco16",
+              type: "Run",
+              distance: 5000,
+              moving_time: 1800,
+              carbs_ingested: 55,
+            },
+          ]),
+        });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 100,
+              category: "WORKOUT",
+              start_date_local: "2026-02-10T12:00:00",
+              name: "W04 Tue Easy eco16",
+              description: "Warmup\n- 10m 66-78% LTHR",
+              paired_activity_id: "act-1",
+              carbs_per_hour: 48,
+            },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe("completed");
+    expect(result[0].carbsIngested).toBe(55); // actual from activity
+    expect(result[0].fuelRate).toBe(8); // planned rate from event
+  });
+
+  it("defaults carbsIngested to planned totalCarbs when carbs_ingested is absent", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: "act-2",
+              start_date: "2026-02-10T10:00:00",
+              start_date_local: "2026-02-10T10:00:00",
+              name: "W04 Tue Easy eco16",
+              type: "Run",
+              distance: 5000,
+              moving_time: 1800,
+            },
+          ]),
+        });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 101,
+              category: "WORKOUT",
+              start_date_local: "2026-02-10T12:00:00",
+              name: "W04 Tue Easy eco16",
+              description: "Warmup\n- 10m 66-78% LTHR",
+              paired_activity_id: "act-2",
+              carbs_per_hour: 48,
+            },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    // carbsIngested defaults to totalCarbs (planned)
+    expect(result[0].carbsIngested).toBe(result[0].totalCarbs);
+    expect(result[0].activityId).toBe("act-2");
+  });
+
+  it("populates fuelRate from carbs_per_hour on planned events", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 500,
+              category: "WORKOUT",
+              start_date_local: "2026-02-20T12:00:00",
+              name: "W05 Tue Easy eco16",
+              description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 30m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+              carbs_per_hour: 48,
+            },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].fuelRate).toBe(8); // 48 / 6
+    expect(result[0].totalCarbs).toBeDefined();
+  });
+
+  it("falls back to description parsing when carbs_per_hour is absent", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 501,
+              category: "WORKOUT",
+              start_date_local: "2026-02-20T12:00:00",
+              name: "W05 Tue Easy eco16",
+              description: "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+            },
+          ]),
+        });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].fuelRate).toBe(8);
+    // totalCarbs computed from fuelRate (8g/10min) × estimated duration (55min) = 44
+    expect(result[0].totalCarbs).toBe(44);
+  });
+
   it("marks race events with type 'race'", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if (url.includes("/activities")) {
@@ -296,6 +444,46 @@ describe("uploadToIntervals", () => {
     expect(calls).toEqual(["delete", "upload"]);
   });
 
+  it("includes carbs_per_hour in upload payload when fuelRate is set", async () => {
+    let capturedBody: unknown[] = [];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
+      if (opts?.method === "POST") {
+        capturedBody = JSON.parse(opts?.body as string);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run", fuelRate: 10 },
+    ];
+
+    await uploadToIntervals("test-key", events);
+    expect((capturedBody[0] as Record<string, unknown>).carbs_per_hour).toBe(60);
+  });
+
+  it("omits carbs_per_hour when fuelRate is undefined", async () => {
+    let capturedBody: unknown[] = [];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
+      if (opts?.method === "POST") {
+        capturedBody = JSON.parse(opts?.body as string);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run" },
+    ];
+
+    await uploadToIntervals("test-key", events);
+    expect((capturedBody[0] as Record<string, unknown>).carbs_per_hour).toBeUndefined();
+  });
+
   it("throws on upload failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
       if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
@@ -339,5 +527,33 @@ describe("fetchActivityDetails", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("fail")));
     const result = await fetchActivityDetails("123", "test-key");
     expect(result).toEqual({});
+  });
+});
+
+describe("updateActivityCarbs", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sends PUT with carbs_ingested to activity endpoint", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await updateActivityCarbs("test-key", "i125839480", 60);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `${API_BASE}/activity/i125839480`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ carbs_ingested: 60 }),
+      }),
+    );
+  });
+
+  it("throws on non-ok response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false, status: 404, text: () => Promise.resolve("Not found"),
+    }));
+    await expect(updateActivityCarbs("test-key", "bad-id", 50)).rejects.toThrow("Failed to update activity carbs");
   });
 });

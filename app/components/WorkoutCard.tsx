@@ -14,6 +14,8 @@ import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
 interface WorkoutCardProps {
   description: string;
   paceTable: PaceTable;
+  fuelRate?: number | null;
+  totalCarbs?: number | null;
 }
 
 const ZONE_STYLES: Record<HRZoneName, string> = {
@@ -64,8 +66,12 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
-  const fuel = extractFuelStatus(description);
+export function WorkoutCard({ description, paceTable, fuelRate: propFuelRate, totalCarbs: propTotalCarbs }: WorkoutCardProps) {
+  const descFuel = extractFuelStatus(description);
+  const fuel = {
+    fuelRate: propFuelRate ?? descFuel.fuelRate,
+    totalCarbs: propTotalCarbs ?? descFuel.totalCarbs,
+  };
   const sections = parseWorkoutStructure(description);
 
   // Fall back to raw text if parsing fails

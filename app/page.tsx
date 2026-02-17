@@ -76,7 +76,7 @@ function HomeContent() {
     <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
       <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <h1 className="md:hidden text-lg font-bold text-[#ff2d95]">Springa</h1>
+          <h1 className="md:hidden text-lg font-bold text-[#ff69b4]">Springa</h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-3 text-sm text-[#b8a5d4]">
             <span className="hidden sm:inline">{session?.user?.email}</span>

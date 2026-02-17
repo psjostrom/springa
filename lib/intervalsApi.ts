@@ -9,7 +9,7 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { API_BASE, DEFAULT_LTHR } from "./constants";
-import { convertGlucoseToMmol, getWorkoutCategory } from "./utils";
+import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate, extractTotalCarbs, calculateWorkoutCarbs, estimateWorkoutDuration } from "./utils";
 import { isSameDay, parseISO } from "date-fns";
 
 // --- STREAM FETCHING ---
@@ -266,6 +266,29 @@ export async function fetchCalendarData(
       const description =
         matchingEvent?.description || activity.description || "";
 
+      // Resolve fuel rate: prefer carbs_per_hour from matched event, fall back to description
+      let fuelRate: number | null = null;
+      if (matchingEvent?.carbs_per_hour != null) {
+        fuelRate = Math.round(matchingEvent.carbs_per_hour / 6);
+      } else {
+        fuelRate = extractFuelRate(description);
+      }
+
+      // Calculate total carbs from fuel rate and duration
+      let totalCarbs: number | null = null;
+      if (fuelRate != null) {
+        const durationMinutes = activity.moving_time ? activity.moving_time / 60 : null;
+        if (durationMinutes != null) {
+          totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
+        }
+      }
+      if (totalCarbs == null) {
+        totalCarbs = extractTotalCarbs(description);
+      }
+
+      // Actual carbs ingested: from activity API field, default to planned totalCarbs
+      const carbsIngested = activity.carbs_ingested ?? totalCarbs;
+
       const calendarEvent: CalendarEvent = {
         id: `activity-${activity.id}`,
         date: activityDate,
@@ -286,6 +309,10 @@ export async function fetchCalendarData(
           ? activity.average_cadence * 2
           : undefined,
         hrZones,
+        fuelRate,
+        totalCarbs,
+        carbsIngested,
+        activityId: activity.id,
       };
 
       activityMap.set(activity.id, calendarEvent);
@@ -301,19 +328,43 @@ export async function fetchCalendarData(
 
       const name = event.name || "";
       const eventDate = parseISO(event.start_date_local);
+      const eventDesc = event.description || "";
 
       const isRace = name.toLowerCase().includes("race");
       const category = isRace ? "race" : getWorkoutCategory(name);
+
+      // Resolve fuel rate: prefer carbs_per_hour API field, fall back to description
+      let eventFuelRate: number | null = null;
+      if (event.carbs_per_hour != null) {
+        eventFuelRate = Math.round(event.carbs_per_hour / 6);
+      } else {
+        eventFuelRate = extractFuelRate(eventDesc);
+      }
+
+      // Calculate total carbs from fuel rate and estimated duration
+      let eventTotalCarbs: number | null = null;
+      if (eventFuelRate != null) {
+        const estDur = event.moving_time || event.duration || event.elapsed_time;
+        const estMinutes = estDur ? estDur / 60 : estimateWorkoutDuration(eventDesc);
+        if (estMinutes != null) {
+          eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
+        }
+      }
+      if (eventTotalCarbs == null) {
+        eventTotalCarbs = extractTotalCarbs(eventDesc);
+      }
 
       calendarEvents.push({
         id: `event-${event.id}`,
         date: eventDate,
         name,
-        description: event.description || "",
+        description: eventDesc,
         type: isRace ? "race" : "planned",
         category,
         distance: event.distance || 0,
         duration: event.moving_time || event.duration || event.elapsed_time,
+        fuelRate: eventFuelRate,
+        totalCarbs: eventTotalCarbs,
       });
     }
 
@@ -379,6 +430,7 @@ export async function uploadToIntervals(
     description: e.description,
     external_id: e.external_id,
     type: e.type,
+    ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate * 6) }),
   }));
 
   try {
@@ -397,5 +449,22 @@ export async function uploadToIntervals(
     console.error("Payload size:", payload.length);
     console.error("First event:", payload[0]);
     throw error;
+  }
+}
+
+export async function updateActivityCarbs(
+  apiKey: string,
+  activityId: string,
+  carbsIngested: number,
+): Promise<void> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ carbs_ingested: carbsIngested }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update activity carbs: ${res.status} ${errorText}`);
   }
 }

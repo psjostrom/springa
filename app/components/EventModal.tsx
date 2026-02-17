@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Loader2 } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
-import { updateEvent } from "@/lib/intervalsApi";
+import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
 import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
@@ -67,10 +67,37 @@ export function EventModal({
   const [editDate, setEditDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Carbs ingested editing
+  const [editingCarbs, setEditingCarbs] = useState(false);
+  const [carbsValue, setCarbsValue] = useState("");
+  const [savingCarbs, setSavingCarbs] = useState(false);
+  const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
+
   useEffect(() => {
     setIsEditing(false);
     setEditDate("");
+    setEditingCarbs(false);
+    setCarbsValue("");
+    setSavedCarbs(null);
   }, [selectedEvent.id]);
+
+  const saveCarbs = async () => {
+    const val = parseInt(carbsValue, 10);
+    if (isNaN(val) || val < 0) return;
+    const actId = selectedEvent.activityId;
+    if (!actId) return;
+
+    setSavingCarbs(true);
+    try {
+      await updateActivityCarbs(apiKey, actId, val);
+      setSavedCarbs(val);
+      setEditingCarbs(false);
+    } catch (err) {
+      console.error("Failed to update carbs:", err);
+    } finally {
+      setSavingCarbs(false);
+    }
+  };
 
   const saveEventEdit = async () => {
     if (!editDate) return;
@@ -188,7 +215,7 @@ export function EventModal({
         </div>
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} paceTable={paceTable} />
+          <WorkoutCard description={selectedEvent.description} paceTable={paceTable} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} />
         )}
 
         {selectedEvent.type === "completed" && (
@@ -277,6 +304,60 @@ export function EventModal({
                 </div>
               )}
             </div>
+
+            {/* Carbs ingested */}
+            {(selectedEvent.carbsIngested != null || selectedEvent.totalCarbs != null) && (
+              <div className="rounded-xl border border-[#3d2b5a] shadow-sm px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
+                  {editingCarbs ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={carbsValue}
+                        onChange={(e) => setCarbsValue(e.target.value)}
+                        className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveCarbs();
+                          if (e.key === "Escape") setEditingCarbs(false);
+                        }}
+                      />
+                      <span className="text-sm text-[#b8a5d4]">g</span>
+                      <button
+                        onClick={saveCarbs}
+                        disabled={savingCarbs}
+                        className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
+                      >
+                        {savingCarbs ? "..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setEditingCarbs(false)}
+                        disabled={savingCarbs}
+                        className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const current = savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? 0;
+                        setCarbsValue(String(current));
+                        setEditingCarbs(true);
+                      }}
+                      className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
+                    >
+                      {savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? "—"}g
+                      {selectedEvent.carbsIngested == null && savedCarbs == null && (
+                        <span className="text-xs font-normal text-[#b8a5d4]">(planned)</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* HR Zones card */}
             {selectedEvent.hrZones && (

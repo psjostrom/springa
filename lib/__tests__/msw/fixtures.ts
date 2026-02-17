@@ -9,7 +9,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-08T10:00:00",
     name: "W03 Sun Long (10km) eco16",
     description:
-      "FUEL PER 10: 10g TOTAL: 67g\n\nWarmup\n- FUEL PER 10: 10g TOTAL: 67g 1km 66-78% LTHR (112-132 bpm)\n\nMain set\n- 8km 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 1km 66-78% LTHR (112-132 bpm)\n",
+      "Long run at easy pace. This is the most important run of the week.\n\nWarmup\n- 1km 66-78% LTHR (112-132 bpm)\n\nMain set\n- 8km 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 1km 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 10000,
     moving_time: 4020,
@@ -26,7 +26,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "Steady easy running to build your aerobic base.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 6500,
     moving_time: 2700,
@@ -43,7 +43,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-12T12:00:00",
     name: "W04 Thu Short Intervals eco16",
     description:
-      "FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- 2m 89-99% LTHR (150-167 bpm)\n- 2m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "Short, punchy efforts to build leg speed and running economy.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- 2m 89-99% LTHR (150-167 bpm)\n- 2m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 7200,
     moving_time: 2400,
@@ -65,8 +65,9 @@ export const sampleEvents = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "Steady easy running to build your aerobic base. This should feel comfortable and conversational the entire way. If you can't chat in full sentences, slow down. Easy days make hard days possible.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     paired_activity_id: "act-easy-1",
+    carbs_per_hour: 48,
   },
   {
     id: 1002,
@@ -74,7 +75,8 @@ export const sampleEvents = [
     start_date_local: "2026-02-17T12:00:00",
     name: "W05 Tue Easy + Strides eco16",
     description:
-      "FUEL PER 10: 8g TOTAL: 48g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 48g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "Easy run with strides at the end. The main run should be fully conversational — save your energy. After the easy portion, do 4 short strides: accelerate smoothly to near-sprint over 20 seconds, then walk/jog back. Strides build neuromuscular speed without creating fatigue.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+    carbs_per_hour: 48,
   },
   {
     id: 1003,
@@ -82,7 +84,8 @@ export const sampleEvents = [
     start_date_local: "2026-02-19T12:00:00",
     name: "W05 Thu Hills eco16",
     description:
-      "FUEL PER 10: 5g TOTAL: 28g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 28g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "Hill reps build strength and power that translates directly to EcoTrail's terrain. Outdoors: find a steady hill with a moderate gradient.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+    carbs_per_hour: 30,
   },
 ];
 

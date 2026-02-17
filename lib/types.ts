@@ -5,6 +5,7 @@ export interface WorkoutEvent {
   description: string;
   external_id: string;
   type: "Run";
+  fuelRate?: number; // g per 10 min
 }
 
 export interface AnalysisResult {
@@ -68,6 +69,7 @@ export interface IntervalsActivity {
   icu_intensity?: number;
   icu_hr_zone_times?: number[];
   pace?: number;
+  carbs_ingested?: number;
 }
 
 export interface IntervalsEvent {
@@ -81,6 +83,7 @@ export interface IntervalsEvent {
   duration?: number;
   elapsed_time?: number;
   paired_activity_id?: string | null;
+  carbs_per_hour?: number;
 }
 
 export interface IntervalsStream {
@@ -140,6 +143,10 @@ export interface CalendarEvent {
   cadence?: number;
   hrZones?: HRZoneData;
   streamData?: StreamData;
+  fuelRate?: number | null; // g per 10 min (planned rate)
+  totalCarbs?: number | null; // planned total carbs
+  carbsIngested?: number | null; // actual carbs consumed (from activity)
+  activityId?: string; // raw Intervals.icu activity ID for API calls
 }
 
 export type SpeedSessionType =

@@ -56,6 +56,11 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
     for (const item of capturedUploadPayload as Record<string, unknown>[]) {
       expect(item.category).toBe("WORKOUT");
       expect(item.type).toBe("Run");
+      // All events should have carbs_per_hour set
+      expect(item.carbs_per_hour).toBeDefined();
+      expect(typeof item.carbs_per_hour).toBe("number");
+      // Descriptions should NOT contain fuel text
+      expect(item.description).not.toContain("FUEL PER 10:");
     }
   });
 });
@@ -273,8 +278,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
       ).toBeInTheDocument();
     });
 
-    // 3. Assert agenda pill shows fuel info
-    expect(screen.getByText(/8g\/10min · 48g total/)).toBeInTheDocument();
+    // 3. Assert agenda pill shows fuel info (8g/10min from carbs_per_hour: 48)
+    expect(screen.getByText(/8g\/10min/)).toBeInTheDocument();
 
     // 4. Click the event to open modal
     await user.click(screen.getByText(/W05 Tue Easy \+ Strides eco16/));
@@ -287,7 +292,6 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     await waitFor(() => {
       expect(screen.getByText("8g / 10 min")).toBeInTheDocument();
     });
-    expect(screen.getByText("48g total")).toBeInTheDocument();
   });
 
   it("shows fuel info in agenda pill and modal for a speed session", async () => {
@@ -309,8 +313,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
       ).toBeInTheDocument();
     });
 
-    // 3. Assert agenda pill shows fuel info
-    expect(screen.getByText(/5g\/10min · 28g total/)).toBeInTheDocument();
+    // 3. Assert agenda pill shows fuel info (5g/10min from carbs_per_hour: 30)
+    expect(screen.getByText(/5g\/10min/)).toBeInTheDocument();
 
     // 4. Click the event to open modal
     await user.click(screen.getByText(/W05 Thu Hills eco16/));
@@ -323,6 +327,5 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     await waitFor(() => {
       expect(screen.getByText("5g / 10 min")).toBeInTheDocument();
     });
-    expect(screen.getByText("28g total")).toBeInTheDocument();
   });
 });

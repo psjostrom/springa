@@ -636,7 +636,7 @@ Cooldown
 });
 
 describe("extractNotes", () => {
-  it("extracts notes from between strategy header and first section", () => {
+  it("extracts notes from between strategy header and first section (old format)", () => {
     const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Short, punchy efforts to build leg speed and running economy.
@@ -649,7 +649,18 @@ Warmup
     );
   });
 
-  it("returns null when no notes present", () => {
+  it("extracts notes from new format (no fuel header)", () => {
+    const desc = `Short, punchy efforts to build leg speed and running economy.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)`;
+
+    expect(extractNotes(desc)).toBe(
+      "Short, punchy efforts to build leg speed and running economy.",
+    );
+  });
+
+  it("returns null when no notes present (old format)", () => {
     const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup

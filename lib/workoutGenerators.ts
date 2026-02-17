@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
-import { formatStep, createWorkoutText, calculateWorkoutCarbs } from "./utils";
+import { formatStep, createWorkoutText } from "./utils";
 
 function getSpeedSessionType(
   weekIdx: number,
@@ -50,20 +50,18 @@ const generateQualityRun = (
   const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
   if (sessionType === null) {
-    const totalDuration = 10 + 30 + 5;
-    const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
-    const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
-    const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+    const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
-      description: createWorkoutText(strat, wu, [
+      description: createWorkoutText(wu, [
         formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
       ], cd, 1, notes),
       external_id: `${ctx.prefix}-thu-${weekNum}`,
       type: "Run",
+      fuelRate: ctx.fuelEasy,
     };
   }
 
@@ -130,18 +128,16 @@ const generateQualityRun = (
     }
   }
 
-  const totalDuration = 10 + reps * repDuration + 5;
-  const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelInterval);
-  const strat = `FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`;
-  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `${prefixName} ${label} ${ctx.prefix}`,
-    description: createWorkoutText(strat, wu, steps, cd, reps, notes),
+    description: createWorkoutText(wu, steps, cd, reps, notes),
     external_id: `${ctx.prefix}-thu-${weekNum}`,
     type: "Run",
+    fuelRate: ctx.fuelInterval,
   };
 };
 
@@ -170,12 +166,7 @@ const generateEasyRun = (
       ? 20
       : 20 + Math.round(progress * 25);
 
-  const stridesDuration = withStrides ? 6 : 0;
-  const totalDuration = 10 + duration + stridesDuration + 5;
-  const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
-
-  const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
-  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
@@ -195,8 +186,6 @@ const generateEasyRun = (
     const strideWork = formatStep("20s", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr);
     const strideRest = formatStep("1m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const lines = [
-      strat,
-      "",
       notes,
       "",
       "Warmup",
@@ -219,17 +208,19 @@ const generateEasyRun = (
       description: lines.join("\n"),
       external_id: `${ctx.prefix}-tue-${weekNum}`,
       type: "Run",
+      fuelRate: ctx.fuelEasy,
     };
   }
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createWorkoutText(strat, wu, [
+    description: createWorkoutText(wu, [
       formatStep(`${duration}m`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ], cd, 1, notes),
     external_id: `${ctx.prefix}-tue-${weekNum}`,
     type: "Run",
+    fuelRate: ctx.fuelEasy,
   };
 };
 
@@ -246,22 +237,19 @@ const generateBonusRun = (
 
   const name = `W${weekNum.toString().padStart(2, "0")} Sat Bonus Easy ${ctx.prefix}`;
 
-  const totalDuration = 10 + 30 + 5;
-  const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
-
-  const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
-  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+  const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createWorkoutText(strat, wu, [
+    description: createWorkoutText(wu, [
       formatStep("30m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
     ], cd, 1, notes),
     external_id: `${ctx.prefix}-sat-${weekNum}`,
     type: "Run",
+    fuelRate: ctx.fuelEasy,
   };
 };
 
@@ -273,15 +261,13 @@ const generateLongRun = (
   const weekNum = weekIdx + 1;
   const isRaceWeek = weekNum === ctx.totalWeeks;
   if (isRaceWeek) {
-    const estimatedRaceDuration = ctx.raceDist * 5.67;
-    const totalCarbs = calculateWorkoutCarbs(estimatedRaceDuration, ctx.fuelLong);
-    const strat = `FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
     return {
       start_date_local: set(ctx.raceDate, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY ${ctx.prefix}`,
-      description: `RACE DAY! ${ctx.raceDist}km. ${strat}\n\nGood luck!`,
+      description: `RACE DAY! ${ctx.raceDist}km.\n\nGood luck!`,
       external_id: `${ctx.prefix}-race`,
       type: "Run",
+      fuelRate: ctx.fuelLong,
     };
   }
   const date = addDays(weekStart, 6);
@@ -327,11 +313,7 @@ const generateLongRun = (
   const cdKm = 1;
   const mainKm = Math.max(km - wuKm - cdKm, 1);
 
-  const estimatedDuration = km * 7.25;
-  const totalCarbs = calculateWorkoutCarbs(estimatedDuration, ctx.fuelLong);
-
-  const strat = `FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
-  const wu = formatStep(`${wuKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
+  const wu = formatStep(`${wuKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const cd = formatStep(`${cdKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
   let mainSteps: string[];
@@ -372,9 +354,10 @@ const generateLongRun = (
   return {
     start_date_local: set(date, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
-    description: createWorkoutText(`${strat} (Trail)`, wu, mainSteps, cd, 1, notes),
+    description: createWorkoutText(wu, mainSteps, cd, 1, notes),
     external_id: `${ctx.prefix}-sun-${weekNum}`,
     type: "Run",
+    fuelRate: ctx.fuelLong,
   };
 };
 

@@ -1,12 +1,13 @@
 import { addDays, format } from "date-fns";
-import type { AnalysisResult, IntervalsActivity } from "./types";
+import type { AnalysisResult, IntervalsActivity, IntervalsEvent } from "./types";
 import { API_BASE } from "./constants";
-import { convertGlucoseToMmol, getWorkoutCategory } from "./utils";
+import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate } from "./utils";
 import { fetchStreams } from "./intervalsApi";
 
 async function analyzeRun(
   run: IntervalsActivity,
   apiKey: string,
+  matchedEvent?: IntervalsEvent,
 ): Promise<{
   trend: number;
   currentFuel: number;
@@ -27,8 +28,16 @@ async function analyzeRun(
   let trend = 0.0;
   let currentFuel = 10;
 
-  const match = run.description?.match(/FUEL PER 10:\s*(\d+)g/i);
-  if (match) currentFuel = parseInt(match[1], 10);
+  // Priority: carbs_ingested (actual) → carbs_per_hour (planned rate) → description regex
+  if (run.carbs_ingested != null && run.moving_time && run.moving_time > 0) {
+    // Convert actual total back to g/10min rate
+    currentFuel = Math.round((run.carbs_ingested / (run.moving_time / 60)) * 10);
+  } else if (matchedEvent?.carbs_per_hour != null) {
+    currentFuel = Math.round(matchedEvent.carbs_per_hour / 6);
+  } else {
+    const descFuel = extractFuelRate(run.description || "");
+    if (descFuel != null) currentFuel = descFuel;
+  }
 
   if (gData.length > 0 && tData.length > 1) {
     const glucoseInMmol = convertGlucoseToMmol(gData);
@@ -59,12 +68,27 @@ export async function analyzeHistory(
   const newest = format(today, "yyyy-MM-dd");
 
   try {
-    const res = await fetch(
-      `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}`,
-      { headers: { Authorization: auth } },
-    );
-    if (!res.ok) throw new Error("Failed to fetch activities");
-    const activities: IntervalsActivity[] = await res.json();
+    const [activitiesRes, eventsRes] = await Promise.all([
+      fetch(
+        `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}`,
+        { headers: { Authorization: auth } },
+      ),
+      fetch(
+        `${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`,
+        { headers: { Authorization: auth } },
+      ),
+    ]);
+    if (!activitiesRes.ok) throw new Error("Failed to fetch activities");
+    const activities: IntervalsActivity[] = await activitiesRes.json();
+    const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
+
+    // Build a map of paired_activity_id -> event for quick lookup
+    const eventByActivity = new Map<string, IntervalsEvent>();
+    for (const ev of events) {
+      if (ev.paired_activity_id) {
+        eventByActivity.set(ev.paired_activity_id, ev);
+      }
+    }
 
     const relevant = activities.filter((a) =>
       a.name.toLowerCase().includes(prefix.toLowerCase()),
@@ -101,15 +125,15 @@ export async function analyzeHistory(
     };
 
     if (mostRecentLong) {
-      result.longRun = await analyzeRun(mostRecentLong, apiKey);
+      result.longRun = await analyzeRun(mostRecentLong, apiKey, eventByActivity.get(mostRecentLong.id));
     }
 
     if (mostRecentEasy) {
-      result.easyRun = await analyzeRun(mostRecentEasy, apiKey);
+      result.easyRun = await analyzeRun(mostRecentEasy, apiKey, eventByActivity.get(mostRecentEasy.id));
     }
 
     if (mostRecentInterval) {
-      result.interval = await analyzeRun(mostRecentInterval, apiKey);
+      result.interval = await analyzeRun(mostRecentInterval, apiKey, eventByActivity.get(mostRecentInterval.id));
     }
 
     return result;
