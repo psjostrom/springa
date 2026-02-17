@@ -42,9 +42,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
-  const agendaScrollRef = useRef<HTMLDivElement>(null);
-  const nextUpcomingRef = useRef<HTMLDivElement>(null);
-  const hasScrolledToUpcoming = useRef(false);
   const [isLoadingStreamData, setIsLoadingStreamData] = useState(false);
 
   const {
@@ -266,33 +263,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return { ...FALLBACK_PACE_TABLE, easy: easyPace };
   }, [events]);
 
-  // Scroll to next upcoming workout on initial agenda view load
-  useEffect(() => {
-    if (
-      viewMode !== "agenda" ||
-      !nextUpcomingRef.current ||
-      hasScrolledToUpcoming.current
-    )
-      return;
-
-    setTimeout(() => {
-      if (nextUpcomingRef.current) {
-        nextUpcomingRef.current.scrollIntoView({
-          behavior: "instant",
-          block: "start",
-        });
-        hasScrolledToUpcoming.current = true;
-      }
-    }, 100);
-  }, [viewMode, agendaEvents]);
-
-  // Reset scroll flag when leaving agenda view
-  useEffect(() => {
-    if (viewMode !== "agenda") {
-      hasScrolledToUpcoming.current = false;
-    }
-  }, [viewMode]);
-
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = useCallback(
     (_e: React.DragEvent, day: Date) => { handleDrop(day); },
@@ -438,13 +408,11 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
         {!isLoading && !error && viewMode === "agenda" && (
           <div
-            ref={agendaScrollRef}
-            className="space-y-2 flex-1 overflow-y-auto"
+            className="flex-1 overflow-y-auto"
           >
             <AgendaView
               events={agendaEvents}
               onSelectEvent={openWorkoutModal}
-              nextUpcomingRef={nextUpcomingRef}
             />
           </div>
         )}
