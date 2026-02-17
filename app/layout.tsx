@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Race Planner",
-	description: "A web app to help me plan my training for races",
+	title: "Springa",
+	description: "Training planner and workout tracker with T1D blood glucose management, synced to Intervals.icu.",
 };
 
 export default function RootLayout({
