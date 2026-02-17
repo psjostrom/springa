@@ -152,11 +152,7 @@ export function EventModal({
         </div>
 
         {selectedEvent.description && (
-          selectedEvent.type === "planned" || selectedEvent.type === "race"
-            ? <PreRunCard description={selectedEvent.description} paceTable={paceTable} />
-            : <div className="bg-slate-50 rounded-lg p-3 sm:p-4 mb-4">
-                <div className="text-sm whitespace-pre-wrap">{selectedEvent.description}</div>
-              </div>
+          <PreRunCard description={selectedEvent.description} paceTable={paceTable} />
         )}
 
         {selectedEvent.type === "completed" && (
