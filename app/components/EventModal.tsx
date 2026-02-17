@@ -297,7 +297,7 @@ export function EventModal({
             {/* Stream Graph card */}
             {selectedEvent.streamData &&
             Object.keys(selectedEvent.streamData).length > 0 ? (
-              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
+              <div className="rounded-xl border border-slate-200 shadow-sm p-4">
                 <WorkoutStreamGraph streamData={selectedEvent.streamData} />
               </div>
             ) : isLoadingStreamData ? (
