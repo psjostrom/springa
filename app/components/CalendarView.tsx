@@ -292,18 +292,18 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   return (
     <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-y-auto">
       {/* Navigation */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-100 mb-4 sm:mb-6">
+      <div className="bg-[#1e1535] p-4 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a] mb-4 sm:mb-6">
         {viewMode !== "agenda" && (
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() =>
                 viewMode === "week" ? navigateWeek("prev") : navigateMonth("prev")
               }
-              className="p-2 hover:bg-slate-100 rounded-lg transition"
+              className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
             >
               <ChevronLeft size={20} />
             </button>
-            <h2 className="text-xl sm:text-2xl font-bold">
+            <h2 className="text-xl sm:text-2xl font-bold text-white">
               {viewMode === "week" ? (
                 <>
                   {format(weekDays[0], "d MMM", { locale: enGB })} -{" "}
@@ -317,7 +317,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               onClick={() =>
                 viewMode === "week" ? navigateWeek("next") : navigateMonth("next")
               }
-              className="p-2 hover:bg-slate-100 rounded-lg transition"
+              className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
             >
               <ChevronRight size={20} />
             </button>
@@ -330,8 +330,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               onClick={() => setViewMode(mode)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-[#ff2d95] text-white shadow-lg shadow-[#ff2d95]/20"
+                  : "bg-[#2a1f3d] text-[#8b7aaa] hover:bg-[#3d2b5a] hover:text-[#c4b5fd]"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -341,24 +341,24 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
       </div>
 
       {/* Calendar / Agenda */}
-      <div className="bg-white p-2 sm:p-6 rounded-xl shadow-sm border border-slate-100">
+      <div className="bg-[#1e1535] p-2 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
         {isLoading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-slate-400" size={32} />
+            <Loader2 className="animate-spin text-[#ff2d95]" size={32} />
           </div>
         )}
 
         {error && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="text-red-600 font-semibold mb-2">⚠️ Error</div>
-              <div className="text-sm text-slate-600">{error}</div>
+              <div className="text-[#ff3366] font-semibold mb-2">Error</div>
+              <div className="text-sm text-[#a78bca]">{error}</div>
               <button
                 onClick={() => {
                   setError(null);
                   setCurrentMonth(new Date(currentMonth));
                 }}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
               >
                 Retry
               </button>
@@ -368,17 +368,17 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
         {!isLoading && !error && viewMode === "month" && (
           <div className="calendar-grid">
-            <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200">
+            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-slate-50 p-2 text-center text-xs sm:text-sm font-semibold text-slate-600"
+                  className="bg-[#2a1f3d] p-2 text-center text-xs sm:text-sm font-semibold text-[#8b7aaa]"
                 >
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 min-h-[500px]">
+            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border-x border-b border-[#3d2b5a] min-h-[500px]">
               {calendarDays.map((day, idx) =>
                 renderDayCell(day, idx, "min-h-[80px] sm:min-h-[120px]", true)
               )}
@@ -388,17 +388,17 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
         {!isLoading && !error && viewMode === "week" && (
           <div className="calendar-grid">
-            <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200">
+            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-slate-50 p-2 text-center text-xs sm:text-sm font-semibold text-slate-600"
+                  className="bg-[#2a1f3d] p-2 text-center text-xs sm:text-sm font-semibold text-[#8b7aaa]"
                 >
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200">
+            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border-x border-b border-[#3d2b5a]">
               {weekDays.map((day, idx) =>
                 renderDayCell(day, idx, "min-h-[200px] sm:min-h-[300px]", false)
               )}

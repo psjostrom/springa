@@ -49,16 +49,16 @@ export const DayCell = React.memo(function DayCell({
       onDragEnter={() => onDragEnter(dateKey)}
       onDragLeave={onDragLeave}
       onDrop={(e) => { e.preventDefault(); onDrop(e, day); }}
-      className={`bg-white p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
+      className={`bg-[#1e1535] p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
         !isCurrentMonth ? "opacity-40" : ""
-      } ${isTodayDate && !isDropTarget ? "ring-2 ring-blue-500 ring-inset" : ""} ${
-        isDropTarget ? "ring-2 ring-blue-400 ring-inset bg-blue-50" : ""
+      } ${isTodayDate && !isDropTarget ? "ring-2 ring-[#00ffff] ring-inset" : ""} ${
+        isDropTarget ? "ring-2 ring-[#ff2d95] ring-inset bg-[#2a1f3d]" : ""
       }`}
     >
       <div className="flex flex-col h-full">
         <div
           className={`text-xs sm:text-sm mb-1 ${
-            isTodayDate ? "font-bold text-blue-600" : "text-slate-600"
+            isTodayDate ? "font-bold text-[#00ffff]" : "text-[#8b7aaa]"
           }`}
         >
           {showMonthOpacity ? format(day, "d") : format(day, "d MMM")}

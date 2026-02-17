@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d0a1a;
+  --foreground: #f0e6ff;
+  --surface: #1e1535;
+  --surface-alt: #2a1f3d;
+  --border: #3d2b5a;
+  --muted: #8b7aaa;
+  --accent-pink: #ff2d95;
+  --accent-cyan: #00ffff;
+  --accent-purple: #d946ef;
+  --neon-glow: 0 0 12px rgba(255, 45, 149, 0.3);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border-neon: var(--border);
+  --color-muted: var(--muted);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-purple: var(--accent-purple);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Dark themed date/datetime inputs */
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
 }

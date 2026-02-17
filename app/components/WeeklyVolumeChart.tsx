@@ -14,8 +14,8 @@ interface WeeklyVolumeChartProps {
 
 export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 	return (
-		<section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-			<h2 className="text-lg font-bold mb-6">
+		<section className="bg-[#1e1535] p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
+			<h2 className="text-lg font-bold mb-6 text-white">
 				Weekly Volume (Estimated Minutes)
 			</h2>
 			<div className="h-64 w-full min-h-0">
@@ -26,21 +26,24 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 							fontSize={12}
 							tickLine={false}
 							axisLine={false}
+							tick={{ fill: "#8b7aaa" }}
 						/>
 						<YAxis hide />
 						<Tooltip
-							cursor={{ fill: "#f1f5f9" }}
+							cursor={{ fill: "#2a1f3d" }}
 							contentStyle={{
 								borderRadius: "8px",
-								border: "none",
-								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+								border: "1px solid #3d2b5a",
+								backgroundColor: "#1e1535",
+								color: "#fff",
+								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.3)",
 							}}
 						/>
-						<Bar dataKey="mins" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+						<Bar dataKey="mins" fill="#ff2d95" radius={[4, 4, 0, 0]}>
 							{data.map((_, index: number) => (
 								<Cell
 									key={`cell-${index}`}
-									fill={index >= data.length - 2 ? "#93c5fd" : "#3b82f6"}
+									fill={index >= data.length - 2 ? "#ff2d95" : "#00ffff"}
 								/>
 							))}
 						</Bar>

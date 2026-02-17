@@ -43,8 +43,8 @@ function GlucoseChart({
 
 	return (
 		<div>
-			<div className="text-xs font-medium text-slate-600 mb-1">{title}</div>
-			<div className="h-32 w-full bg-white rounded border border-slate-200 p-1 min-h-0">
+			<div className="text-xs font-medium text-[#c4b5fd] mb-1">{title}</div>
+			<div className="h-32 w-full bg-[#1a1030] rounded border border-[#3d2b5a] p-1 min-h-0">
 				<ResponsiveContainer width="100%" height="100%" minHeight={120}>
 					<LineChart
 						data={plotData}
@@ -52,14 +52,14 @@ function GlucoseChart({
 					>
 						<XAxis
 							dataKey="time"
-							tick={{ fontSize: 10, fill: "#64748b" }}
+							tick={{ fontSize: 10, fill: "#8b7aaa" }}
 							interval="preserveStartEnd"
 							tickLine={false}
-							axisLine={{ stroke: "#e2e8f0" }}
+							axisLine={{ stroke: "#3d2b5a" }}
 						/>
 						<YAxis
 							domain={["dataMin - 1", "dataMax + 1"]}
-							tick={{ fontSize: 10, fill: "#64748b" }}
+							tick={{ fontSize: 10, fill: "#8b7aaa" }}
 							width={35}
 							tickLine={false}
 							axisLine={false}
@@ -68,8 +68,10 @@ function GlucoseChart({
 						<Tooltip
 							contentStyle={{
 								fontSize: "12px",
-								borderRadius: "4px",
-								border: "1px solid #e2e8f0",
+								borderRadius: "8px",
+								border: "1px solid #3d2b5a",
+								backgroundColor: "#1e1535",
+								color: "#fff",
 							}}
 							formatter={(
 								value: number | string | Array<number | string> | undefined,
@@ -85,7 +87,7 @@ function GlucoseChart({
 						<Line
 							type="monotone"
 							dataKey="glucose"
-							stroke="#ef4444"
+							stroke="#ff2d95"
 							strokeWidth={2}
 							dot={false}
 						/>
@@ -94,6 +96,16 @@ function GlucoseChart({
 			</div>
 		</div>
 	);
+}
+
+function TrendBadge({ trend }: { trend: number }) {
+	const color =
+		trend < -3
+			? "text-[#ff3366] font-bold"
+			: trend > 3
+				? "text-[#ffb800] font-bold"
+				: "text-[#39ff14]";
+	return <span className={color}>{trend.toFixed(1)}</span>;
 }
 
 export function AnalysisSection({
@@ -114,16 +126,20 @@ export function AnalysisSection({
 		longRunAnalysis !== null ||
 		easyRunAnalysis !== null ||
 		intervalAnalysis !== null;
+
+	const fuelInputClass =
+		"w-10 p-1 text-center text-sm font-bold border border-[#3d2b5a] bg-[#1a1030] text-white rounded focus:outline-none focus:ring-2 focus:ring-[#ff2d95]";
+
 	return (
-		<div className="bg-slate-100 p-4 rounded-lg">
-			<h3 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-				<TrendingUp size={16} /> Analysis
+		<div className="bg-[#2a1f3d] p-4 rounded-lg">
+			<h3 className="font-semibold mb-2 flex items-center gap-2 text-sm text-white">
+				<TrendingUp size={16} className="text-[#00ffff]" /> Analysis
 			</h3>
 			{!hasAnalysis ? (
 				<button
 					onClick={onAnalyze}
 					disabled={isAnalyzing}
-					className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+					className="w-full bg-[#ff2d95] text-white py-2 rounded text-sm font-medium hover:bg-[#e0207a] transition disabled:opacity-50"
 				>
 					{isAnalyzing ? "Fetching..." : `Analyze '${prefix}'`}
 				</button>
@@ -136,30 +152,20 @@ export function AnalysisSection({
 								plotData={longRunAnalysis.plotData}
 								title="Last Long Run"
 							/>
-							<div className="flex justify-between items-center text-xs bg-white p-2 rounded border border-slate-200 gap-2">
+							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Long:</span>
+									<span className="text-[#8b7aaa]">Long:</span>
 									<input
 										type="number"
 										value={fuelLong}
 										onChange={(e) => onFuelLongChange(Number(e.target.value))}
-										className="w-10 p-1 text-center text-sm font-bold border rounded"
+										className={fuelInputClass}
 									/>
-									<span className="text-slate-500">g/10m</span>
+									<span className="text-[#6b5a8a]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Trend:</span>
-									<span
-										className={
-											longRunAnalysis.trend < -3
-												? "text-red-600 font-bold"
-												: longRunAnalysis.trend > 3
-													? "text-orange-600 font-bold"
-													: "text-green-600"
-										}
-									>
-										{longRunAnalysis.trend.toFixed(1)}
-									</span>
+									<span className="text-[#8b7aaa]">Trend:</span>
+									<TrendBadge trend={longRunAnalysis.trend} />
 								</div>
 							</div>
 						</div>
@@ -172,30 +178,20 @@ export function AnalysisSection({
 								plotData={easyRunAnalysis.plotData}
 								title="Last Easy Run"
 							/>
-							<div className="flex justify-between items-center text-xs bg-white p-2 rounded border border-slate-200 gap-2">
+							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Easy:</span>
+									<span className="text-[#8b7aaa]">Easy:</span>
 									<input
 										type="number"
 										value={fuelEasy}
 										onChange={(e) => onFuelEasyChange(Number(e.target.value))}
-										className="w-10 p-1 text-center text-sm font-bold border rounded"
+										className={fuelInputClass}
 									/>
-									<span className="text-slate-500">g/10m</span>
+									<span className="text-[#6b5a8a]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Trend:</span>
-									<span
-										className={
-											easyRunAnalysis.trend < -3
-												? "text-red-600 font-bold"
-												: easyRunAnalysis.trend > 3
-													? "text-orange-600 font-bold"
-													: "text-green-600"
-										}
-									>
-										{easyRunAnalysis.trend.toFixed(1)}
-									</span>
+									<span className="text-[#8b7aaa]">Trend:</span>
+									<TrendBadge trend={easyRunAnalysis.trend} />
 								</div>
 							</div>
 						</div>
@@ -208,30 +204,20 @@ export function AnalysisSection({
 								plotData={intervalAnalysis.plotData}
 								title="Last Interval/Tempo"
 							/>
-							<div className="flex justify-between items-center text-xs bg-white p-2 rounded border border-slate-200 gap-2">
+							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Intervals:</span>
+									<span className="text-[#8b7aaa]">Intervals:</span>
 									<input
 										type="number"
 										value={fuelInterval}
 										onChange={(e) => onFuelIntervalChange(Number(e.target.value))}
-										className="w-10 p-1 text-center text-sm font-bold border rounded"
+										className={fuelInputClass}
 									/>
-									<span className="text-slate-500">g/10m</span>
+									<span className="text-[#6b5a8a]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-slate-600">Trend:</span>
-									<span
-										className={
-											intervalAnalysis.trend < -3
-												? "text-red-600 font-bold"
-												: intervalAnalysis.trend > 3
-													? "text-orange-600 font-bold"
-													: "text-green-600"
-										}
-									>
-										{intervalAnalysis.trend.toFixed(1)}
-									</span>
+									<span className="text-[#8b7aaa]">Trend:</span>
+									<TrendBadge trend={intervalAnalysis.trend} />
 								</div>
 							</div>
 						</div>

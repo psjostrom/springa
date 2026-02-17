@@ -7,10 +7,10 @@ export function StatusMessage({ message }: StatusMessageProps) {
 
 	return (
 		<div
-			className={`p-4 rounded-lg text-sm font-medium ${
+			className={`p-4 rounded-lg text-sm font-medium border ${
 				message.includes("Error")
-					? "bg-red-50 text-red-700"
-					: "bg-green-50 text-green-700"
+					? "bg-[#3d1525] text-[#ff6b8a] border-[#ff3366]/30"
+					: "bg-[#1a3d25] text-[#39ff14] border-[#39ff14]/30"
 			}`}
 		>
 			{message}

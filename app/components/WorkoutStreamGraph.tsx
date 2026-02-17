@@ -28,20 +28,20 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   glucose: {
     label: "Blood Glucose",
     unit: "mmol/L",
-    color: "#8b5cf6",
+    color: "#c4b5fd",
     strokeWidth: 3,
-    targetRange: { min: 3.9, max: 10.0, color: "#dcfce7" }, // 70-180 mg/dL
+    targetRange: { min: 3.9, max: 10.0, color: "#1a3d25" },
   },
   heartrate: {
     label: "Heart Rate",
     unit: "bpm",
-    color: "#ef4444",
+    color: "#ff3366",
     strokeWidth: 2,
   },
   pace: {
     label: "Pace",
     unit: "min/km",
-    color: "#3b82f6",
+    color: "#00ffff",
     strokeWidth: 2,
     invertYAxis: true,
     formatValue: (value: number) => {
@@ -53,13 +53,13 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   cadence: {
     label: "Cadence",
     unit: "spm",
-    color: "#f59e0b",
+    color: "#ffb800",
     strokeWidth: 2,
   },
   altitude: {
     label: "Elevation",
     unit: "m",
-    color: "#10b981",
+    color: "#39ff14",
     strokeWidth: 2,
   },
 };
@@ -252,14 +252,14 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               onClick={() => toggleStream(stream)}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
                 isSelected
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
+                  : "bg-[#1a1030] text-[#6b5a8a] hover:bg-[#2a1f3d] border border-transparent"
               }`}
             >
               <div
                 className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                 style={{
-                  backgroundColor: isSelected ? config.color : "#cbd5e1",
+                  backgroundColor: isSelected ? config.color : "#3d2b5a",
                 }}
               />
               <span className="hidden sm:inline">{config.label}</span>
@@ -287,7 +287,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               >
                 {config.label}:
               </span>
-              <span className="text-slate-600 text-xs whitespace-nowrap font-semibold">
+              <span className="text-[#c4b5fd] text-xs whitespace-nowrap font-semibold">
                 {isHovering && hoverValue !== null
                   ? `${formatVal(hoverValue)} ${config.unit}`
                   : `${formatVal(minValue)} - ${formatVal(maxValue)} ${config.unit}`}
@@ -320,7 +320,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y1={y}
                 x2={width - padding.right}
                 y2={y}
-                stroke="#e2e8f0"
+                stroke="#3d2b5a"
                 strokeWidth="1"
               />
             );
@@ -353,7 +353,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y={y + 4}
                 textAnchor="end"
                 fontSize="11"
-                fill="#94a3b8"
+                fill="#8b7aaa"
               >
                 {label}
               </text>
@@ -386,7 +386,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y1={padding.top}
                 x2={(hoverTime / maxTime) * chartWidth + padding.left}
                 y2={height - padding.bottom}
-                stroke="#64748b"
+                stroke="#8b7aaa"
                 strokeWidth="1"
                 strokeDasharray="4 2"
                 opacity="0.6"
@@ -401,7 +401,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                     cy={path.hoverY}
                     r="4"
                     fill={path.config.color}
-                    stroke="white"
+                    stroke="#0d0a1a"
                     strokeWidth="2"
                   />
                 );
@@ -412,7 +412,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y={padding.top - 5}
                 textAnchor="middle"
                 fontSize="11"
-                fill="#64748b"
+                fill="#c4b5fd"
                 fontWeight="600"
               >
                 {Math.round(hoverTime)}m
@@ -428,7 +428,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               y={height - padding.bottom + 14}
               textAnchor="middle"
               fontSize="11"
-              fill="#94a3b8"
+              fill="#8b7aaa"
             >
               {Math.round(frac * maxTime)}m
             </text>
@@ -441,7 +441,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               y={height / 2}
               textAnchor="middle"
               fontSize="12"
-              fill="#64748b"
+              fill="#8b7aaa"
               fontWeight="500"
               transform={`rotate(-90, 10, ${height / 2})`}
             >

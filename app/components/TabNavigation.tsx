@@ -20,35 +20,35 @@ export function TabNavigation({
 	return (
 		<>
 			{/* Desktop: horizontal text tabs in header */}
-			<div className="hidden md:flex gap-2 border-b border-slate-200 mb-6">
+			<div className="hidden md:flex gap-2 border-b border-[#3d2b5a] mb-6">
 				{TABS.map(({ key, label }) => (
 					<button
 						key={key}
 						onClick={() => onTabChange(key)}
 						className={`px-6 py-3 font-medium transition-colors relative ${
 							activeTab === key
-								? "text-slate-900"
-								: "text-slate-500 hover:text-slate-700"
+								? "text-[#ff2d95]"
+								: "text-[#8b7aaa] hover:text-[#c4b5fd]"
 						}`}
 					>
 						{label}
 						{activeTab === key && (
-							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900"></div>
+							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff2d95] shadow-[0_0_8px_#ff2d95]"></div>
 						)}
 					</button>
 				))}
 			</div>
 
 			{/* Mobile: fixed bottom tab bar with icons */}
-			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1e1535] border-t border-[#3d2b5a]" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
 						onClick={() => onTabChange(key)}
 						className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
 							activeTab === key
-								? "text-slate-900"
-								: "text-slate-400"
+								? "text-[#ff2d95]"
+								: "text-[#6b5a8a]"
 						}`}
 					>
 						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} />

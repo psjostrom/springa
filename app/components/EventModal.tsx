@@ -32,12 +32,12 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
         type="button"
         aria-label={`Info about ${label.split(" ")[0].toLowerCase()}`}
         onClick={() => setOpen((v) => !v)}
-        className="text-slate-400 hover:text-slate-600 transition-colors"
+        className="text-[#6b5a8a] hover:text-[#c4b5fd] transition-colors"
       >
         <Info className="w-3 h-3" />
       </button>
       {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-slate-800 text-white text-xs leading-relaxed px-3 py-2 shadow-lg z-10">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-[#0d0a1a] text-white text-xs leading-relaxed px-3 py-2 shadow-lg border border-[#3d2b5a] z-10">
           {tip}
         </span>
       )}
@@ -97,11 +97,11 @@ export function EventModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl p-4 sm:p-6 max-w-3xl w-full shadow-xl max-h-[90vh] overflow-y-auto"
+        className="bg-[#1e1535] rounded-xl p-4 sm:p-6 max-w-3xl w-full shadow-xl shadow-[#ff2d95]/10 border border-[#3d2b5a] max-h-[90vh] overflow-y-auto"
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
@@ -112,17 +112,17 @@ export function EventModal({
                   type="datetime-local"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                  className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
                 />
               </div>
             ) : (
-              <div className="text-sm text-slate-600 mb-1">
+              <div className="text-sm text-[#a78bca] mb-1">
                 {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
                   locale: enGB,
                 })}
               </div>
             )}
-            <h3 className="text-lg sm:text-xl font-bold">
+            <h3 className="text-lg sm:text-xl font-bold text-white">
               {selectedEvent.name}
             </h3>
             {(() => {
@@ -132,15 +132,15 @@ export function EventModal({
                 selectedEvent.type === "planned" && selectedEvent.date < now;
               return (
                 <div
-                  className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${isMissed ? "bg-red-100 text-red-700" : getEventStyle(selectedEvent)}`}
+                  className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${isMissed ? "bg-[#3d1525] text-[#ff6b8a]" : getEventStyle(selectedEvent)}`}
                 >
                   {isMissed
                     ? "Missed"
                     : selectedEvent.type === "completed"
-                      ? "✓ Completed"
+                      ? "Completed"
                       : selectedEvent.type === "race"
-                        ? "🏁 Race"
-                        : "📅 Planned"}
+                        ? "Race"
+                        : "Planned"}
                 </div>
               );
             })()}
@@ -152,7 +152,7 @@ export function EventModal({
                   setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
                   setIsEditing(true);
                 }}
-                className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+                className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
               >
                 Edit
               </button>
@@ -162,7 +162,7 @@ export function EventModal({
                 <button
                   onClick={saveEventEdit}
                   disabled={isSaving}
-                  className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
                 >
                   {isSaving ? "Saving..." : "Save"}
                 </button>
@@ -172,7 +172,7 @@ export function EventModal({
                     setEditDate("");
                   }}
                   disabled={isSaving}
-                  className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -180,7 +180,7 @@ export function EventModal({
             )}
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 text-xl"
+              className="text-[#6b5a8a] hover:text-[#c4b5fd] text-xl"
             >
               ✕
             </button>
@@ -194,29 +194,29 @@ export function EventModal({
         {selectedEvent.type === "completed" && (
           <div className="space-y-4">
             {/* Stats card */}
-            <div className="rounded-xl border border-slate-200 shadow-sm">
+            <div className="rounded-xl border border-[#3d2b5a] shadow-sm">
               {/* Primary stats — top strip */}
-              <div className="bg-slate-50 rounded-t-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="bg-[#2a1f3d] rounded-t-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 {selectedEvent.distance && (
                   <div>
-                    <div className="text-slate-500 text-xs">Distance</div>
-                    <div className="font-semibold">
+                    <div className="text-[#8b7aaa] text-xs">Distance</div>
+                    <div className="font-semibold text-white">
                       {(selectedEvent.distance / 1000).toFixed(2)} km
                     </div>
                   </div>
                 )}
                 {selectedEvent.duration && (
                   <div>
-                    <div className="text-slate-500 text-xs">Duration</div>
-                    <div className="font-semibold">
+                    <div className="text-[#8b7aaa] text-xs">Duration</div>
+                    <div className="font-semibold text-white">
                       {Math.floor(selectedEvent.duration / 60)} min
                     </div>
                   </div>
                 )}
                 {selectedEvent.pace && (
                   <div>
-                    <div className="text-slate-500 text-xs">Pace</div>
-                    <div className="font-semibold">
+                    <div className="text-[#8b7aaa] text-xs">Pace</div>
+                    <div className="font-semibold text-white">
                       {Math.floor(selectedEvent.pace)}:
                       {String(
                         Math.round((selectedEvent.pace % 1) * 60),
@@ -227,8 +227,8 @@ export function EventModal({
                 )}
                 {selectedEvent.avgHr && (
                   <div>
-                    <div className="text-slate-500 text-xs">Avg HR</div>
-                    <div className="font-semibold">
+                    <div className="text-[#8b7aaa] text-xs">Avg HR</div>
+                    <div className="font-semibold text-white">
                       {selectedEvent.avgHr} bpm
                     </div>
                   </div>
@@ -241,7 +241,7 @@ export function EventModal({
                 selectedEvent.maxHr ||
                 selectedEvent.load ||
                 selectedEvent.intensity !== undefined) && (
-                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-xs text-slate-500">
+                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-xs text-[#8b7aaa]">
                   {selectedEvent.calories && (
                     <span>{selectedEvent.calories} kcal</span>
                   )}
@@ -280,8 +280,8 @@ export function EventModal({
 
             {/* HR Zones card */}
             {selectedEvent.hrZones && (
-              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
-                <div className="text-sm font-semibold text-slate-700 mb-3">
+              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
                   Heart Rate Zones
                 </div>
                 <HRZoneBreakdown
@@ -297,19 +297,19 @@ export function EventModal({
             {/* Stream Graph card */}
             {selectedEvent.streamData &&
             Object.keys(selectedEvent.streamData).length > 0 ? (
-              <div className="rounded-xl border border-slate-200 shadow-sm p-4">
+              <div className="rounded-xl border border-[#3d2b5a] shadow-sm p-4">
                 <WorkoutStreamGraph streamData={selectedEvent.streamData} />
               </div>
             ) : isLoadingStreamData ? (
-              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
-                <div className="flex items-center justify-center py-8 text-slate-500">
+              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+                <div className="flex items-center justify-center py-8 text-[#8b7aaa]">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   <span className="text-sm">Loading workout data...</span>
                 </div>
               </div>
             ) : selectedEvent.type === "completed" ? (
-              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
-                <div className="text-sm text-slate-500 italic">
+              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+                <div className="text-sm text-[#6b5a8a] italic">
                   Detailed workout data (graphs) not available for this
                   activity
                 </div>

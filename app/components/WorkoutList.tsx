@@ -8,21 +8,21 @@ interface WorkoutListProps {
 export function WorkoutList({ events }: WorkoutListProps) {
 	return (
 		<div className="space-y-4">
-			<h3 className="text-sm font-bold uppercase text-slate-400 tracking-wider">
+			<h3 className="text-sm font-bold uppercase text-[#8b7aaa] tracking-wider">
 				Preview
 			</h3>
 			{events.map((ev, i) => (
 				<div
 					key={i}
-					className="bg-white p-4 rounded border border-slate-100 flex flex-col gap-2 hover:border-blue-200 transition"
+					className="bg-[#1e1535] p-4 rounded border border-[#3d2b5a] flex flex-col gap-2 hover:border-[#ff2d95]/50 transition"
 				>
 					<div className="flex justify-between items-baseline">
-						<h4 className="font-bold text-slate-900">{ev.name}</h4>
-						<span className="text-slate-400 text-xs font-mono">
+						<h4 className="font-bold text-white">{ev.name}</h4>
+						<span className="text-[#6b5a8a] text-xs font-mono">
 							{format(ev.start_date_local, "yyyy-MM-dd")}
 						</span>
 					</div>
-					<pre className="text-xs text-slate-500 whitespace-pre-wrap font-sans bg-slate-50 p-3 rounded">
+					<pre className="text-xs text-[#a78bca] whitespace-pre-wrap font-sans bg-[#2a1f3d] p-3 rounded">
 						{ev.description}
 					</pre>
 				</div>

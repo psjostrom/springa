@@ -49,7 +49,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 
 	return (
 		<div className="w-full">
-			<div className="text-sm font-semibold text-slate-700 mb-2">
+			<div className="text-sm font-semibold text-[#c4b5fd] mb-2">
 				Blood Glucose
 			</div>
 			<svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -63,7 +63,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 								y1={y}
 								x2={width - padding.right}
 								y2={y}
-								stroke="#e2e8f0"
+								stroke="#3d2b5a"
 								strokeWidth="1"
 							/>
 							<text
@@ -71,7 +71,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 								y={y + 4}
 								textAnchor="end"
 								fontSize="10"
-								fill="#64748b"
+								fill="#8b7aaa"
 							>
 								{Math.round(yMin + i * yStep)}
 							</text>
@@ -85,7 +85,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 					y={scaleY(10)}
 					width={chartWidth}
 					height={scaleY(3.9) - scaleY(10)}
-					fill="#dcfce7"
+					fill="#1a3d25"
 					opacity="0.3"
 				/>
 
@@ -93,7 +93,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 				<path
 					d={pathData}
 					fill="none"
-					stroke="#8b5cf6"
+					stroke="#c4b5fd"
 					strokeWidth="2"
 					strokeLinecap="round"
 					strokeLinejoin="round"
@@ -105,7 +105,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 					y={height - 5}
 					textAnchor="middle"
 					fontSize="10"
-					fill="#64748b"
+					fill="#8b7aaa"
 				>
 					Time (minutes)
 				</text>
@@ -116,13 +116,13 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 					y={height / 2}
 					textAnchor="middle"
 					fontSize="10"
-					fill="#64748b"
+					fill="#8b7aaa"
 					transform={`rotate(-90, 10, ${height / 2})`}
 				>
 					mmol/L
 				</text>
 			</svg>
-			<div className="flex justify-between text-xs text-slate-500 mt-1 px-12">
+			<div className="flex justify-between text-xs text-[#6b5a8a] mt-1 px-12">
 				<span>0m</span>
 				<span>{Math.round(maxTime / 2)}m</span>
 				<span>{maxTime}m</span>

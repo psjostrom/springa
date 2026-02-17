@@ -1,15 +1,15 @@
 import type { CalendarEvent } from "./types";
 
 export const getEventStyle = (event: CalendarEvent): string => {
-  if (event.type === "race") return "bg-red-500 text-white";
+  if (event.type === "race") return "bg-[#ff2d95] text-white";
   if (event.type === "completed") {
-    if (event.category === "long") return "bg-green-600 text-white";
-    if (event.category === "interval") return "bg-purple-600 text-white";
-    return "bg-green-500 text-white";
+    if (event.category === "long") return "bg-[#1a3d25] text-[#39ff14]";
+    if (event.category === "interval") return "bg-[#4a2080] text-white";
+    return "bg-[#1a3d25] text-[#39ff14]";
   }
-  if (event.category === "long") return "bg-green-200 text-green-800";
-  if (event.category === "interval") return "bg-purple-200 text-purple-800";
-  return "bg-blue-200 text-blue-800";
+  if (event.category === "long") return "bg-[#0d4a5a] text-[#00ffff]";
+  if (event.category === "interval") return "bg-[#3d1a6a] text-[#e0d0ff]";
+  return "bg-[#0d4a5a] text-[#00ffff]";
 };
 
 export const getEventIcon = (event: CalendarEvent): string => {

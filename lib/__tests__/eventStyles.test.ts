@@ -16,31 +16,31 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 
 describe("getEventStyle", () => {
   it("returns race style for race events", () => {
-    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("red");
+    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("ff2d95");
   });
 
   it("returns completed long style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "long" }))).toContain("green-600");
+    expect(getEventStyle(makeEvent({ type: "completed", category: "long" }))).toContain("39ff14");
   });
 
   it("returns completed interval style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "interval" }))).toContain("purple-600");
+    expect(getEventStyle(makeEvent({ type: "completed", category: "interval" }))).toContain("4a2080");
   });
 
   it("returns completed default style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "easy" }))).toContain("green-500");
+    expect(getEventStyle(makeEvent({ type: "completed", category: "easy" }))).toContain("39ff14");
   });
 
   it("returns planned long style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "long" }))).toContain("green-200");
+    expect(getEventStyle(makeEvent({ type: "planned", category: "long" }))).toContain("00ffff");
   });
 
   it("returns planned interval style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "interval" }))).toContain("purple-200");
+    expect(getEventStyle(makeEvent({ type: "planned", category: "interval" }))).toContain("e0d0ff");
   });
 
   it("returns planned default style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "easy" }))).toContain("blue-200");
+    expect(getEventStyle(makeEvent({ type: "planned", category: "easy" }))).toContain("00ffff");
   });
 });
 

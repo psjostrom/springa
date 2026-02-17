@@ -21,10 +21,10 @@ export function ProgressScreen({
   progress,
 }: ProgressScreenProps) {
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto bg-[#0d0a1a]">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         <div>
-          <label className="block text-xs font-semibold uppercase text-slate-500 mb-2">
+          <label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2">
             Training Progress
           </label>
           <PhaseTracker

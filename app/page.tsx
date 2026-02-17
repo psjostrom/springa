@@ -52,16 +52,16 @@ function HomeContent() {
 
   if (storedKey === null) {
     return (
-      <div className="h-screen bg-slate-50 flex flex-col text-slate-900 font-sans overflow-hidden">
-        <div className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
+      <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
+        <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30">
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-            <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+            <div className="h-6 w-24 bg-[#2a1f3d] rounded animate-pulse" />
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="space-y-3 w-full max-w-md px-4">
-            <div className="h-4 bg-slate-200 rounded animate-pulse" />
-            <div className="h-4 bg-slate-200 rounded animate-pulse w-2/3" />
+            <div className="h-4 bg-[#2a1f3d] rounded animate-pulse" />
+            <div className="h-4 bg-[#2a1f3d] rounded animate-pulse w-2/3" />
           </div>
         </div>
       </div>
@@ -73,16 +73,16 @@ function HomeContent() {
   }
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col text-slate-900 font-sans overflow-hidden">
-      <div className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
+    <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
+      <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <h1 className="md:hidden text-lg font-bold text-slate-900">Springa</h1>
+          <h1 className="md:hidden text-lg font-bold text-[#ff2d95]">Springa</h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
-          <div className="flex items-center gap-3 text-sm text-slate-600">
+          <div className="flex items-center gap-3 text-sm text-[#8b7aaa]">
             <span className="hidden sm:inline">{session?.user?.email}</span>
             <button
               onClick={() => signOut()}
-              className="text-slate-500 hover:text-slate-700 transition"
+              className="text-[#8b7aaa] hover:text-[#c4b5fd] transition"
             >
               Sign out
             </button>
@@ -116,7 +116,7 @@ export default function Home() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center text-[#8b7aaa]">
           Loading...
         </div>
       }

@@ -121,10 +121,10 @@ export function VolumeTrendChart({
 
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase text-slate-500 mb-2">
+      <label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2">
         Weekly Volume (km)
       </label>
-      <div className="bg-white py-3 rounded-xl shadow-sm border border-slate-100">
+      <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a]">
         <div className="h-72 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -145,6 +145,7 @@ export function VolumeTrendChart({
                 axisLine={false}
                 interval={1}
                 padding={{ left: 2, right: 2 }}
+                tick={{ fill: "#8b7aaa" }}
               />
               <YAxis
                 width={30}
@@ -152,13 +153,16 @@ export function VolumeTrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `${v}`}
+                tick={{ fill: "#8b7aaa" }}
               />
               <Tooltip
-                cursor={{ fill: "#f1f5f9" }}
+                cursor={{ fill: "#2a1f3d" }}
                 contentStyle={{
                   borderRadius: "8px",
-                  border: "none",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  border: "1px solid #3d2b5a",
+                  backgroundColor: "#1e1535",
+                  color: "#fff",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.3)",
                   fontSize: "12px",
                 }}
                 labelFormatter={(_label, payload) => {
@@ -181,7 +185,7 @@ export function VolumeTrendChart({
                   <ReferenceLine
                     x={data.weeks[data.currentWeekIdx].week}
                     xAxisId="actual"
-                    stroke="#6366f1"
+                    stroke="#ff2d95"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
                   />
@@ -191,8 +195,8 @@ export function VolumeTrendChart({
                 xAxisId="planned"
                 dataKey="planned"
                 stackId="plan"
-                fill="#93c5fd"
-                fillOpacity={0.4}
+                fill="#00ffff"
+                fillOpacity={0.3}
                 radius={[0, 0, 0, 0]}
                 maxBarSize={14}
               />
@@ -201,7 +205,7 @@ export function VolumeTrendChart({
                 dataKey="plannedOptional"
                 stackId="plan"
                 fill="#c4b5fd"
-                fillOpacity={0.35}
+                fillOpacity={0.25}
                 radius={[2, 2, 0, 0]}
                 maxBarSize={14}
               />
@@ -209,24 +213,24 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="actual"
                 dataKey="completed"
-                fill="#10b981"
+                fill="#39ff14"
                 radius={[2, 2, 0, 0]}
                 maxBarSize={10}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-slate-500">
+        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-[#8b7aaa]">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#39ff14]" />
             Actual
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-300/60" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#00ffff]/40" />
             Planned
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-violet-300/50" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#c4b5fd]/40" />
             Optional
           </span>
         </div>
