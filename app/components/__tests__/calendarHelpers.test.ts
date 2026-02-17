@@ -9,9 +9,9 @@ import type { CalendarEvent } from "@/lib/types";
 
 describe("extractFuelRate", () => {
   it("extracts fuel rate from new format", () => {
-    expect(extractFuelRate("PUMP OFF - FUEL PER 10: 10g TOTAL: 50g")).toBe(10);
+    expect(extractFuelRate("FUEL PER 10: 10g TOTAL: 50g")).toBe(10);
     expect(extractFuelRate("FUEL PER 10: 5g")).toBe(5);
-    expect(extractFuelRate("PUMP ON - FUEL PER 10: 8g TOTAL: 32g")).toBe(8);
+    expect(extractFuelRate("FUEL PER 10: 8g TOTAL: 32g")).toBe(8);
   });
 
   it("extracts fuel rate from old format", () => {
@@ -32,7 +32,7 @@ describe("extractFuelRate", () => {
 describe("extractTotalCarbs", () => {
   it("extracts total carbs from description", () => {
     expect(extractTotalCarbs("TOTAL: 50g")).toBe(50);
-    expect(extractTotalCarbs("PUMP OFF - FUEL PER 10: 10g TOTAL: 63g")).toBe(63);
+    expect(extractTotalCarbs("FUEL PER 10: 10g TOTAL: 63g")).toBe(63);
   });
 
   it("returns null when no total found", () => {
@@ -63,7 +63,7 @@ describe("calculateTotalCarbs", () => {
   it("returns total from description when available (new format)", () => {
     const event: CalendarEvent = {
       id: "1", date: new Date(), name: "Test", type: "planned", category: "easy",
-      description: "PUMP OFF - FUEL PER 10: 10g TOTAL: 50g",
+      description: "FUEL PER 10: 10g TOTAL: 50g",
     };
     expect(calculateTotalCarbs(event)).toBe(50);
   });

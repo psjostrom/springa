@@ -1,6 +1,6 @@
 import type { PaceTable, HRZoneName } from "@/lib/types";
 import {
-  extractPumpStatus,
+  extractFuelStatus,
   extractNotes,
   parseWorkoutStructure,
   parseWorkoutZones,
@@ -65,7 +65,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
 }
 
 export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
-  const status = extractPumpStatus(description);
+  const fuel = extractFuelStatus(description);
   const sections = parseWorkoutStructure(description);
 
   // Fall back to raw text if parsing fails
@@ -77,52 +77,35 @@ export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
     );
   }
 
-  const isPumpOff = status.pump.toUpperCase().includes("OFF");
   const estDuration = estimateWorkoutDuration(description);
   const zones = parseWorkoutZones(description);
   const notes = extractNotes(description);
 
   return (
     <div className="rounded-xl overflow-hidden mb-4 border border-[#3d2b5a] shadow-sm">
-      {/* Duration + T1D Protocol Strip */}
-      <div
-        className={`px-4 py-3 ${
-          isPumpOff
-            ? "bg-[#3d2b1a] border-b border-[#ffb800]/30"
-            : "bg-[#1a3d25] border-b border-[#39ff14]/30"
-        }`}
-      >
+      {/* Duration + Fuel Strip */}
+      <div className="px-4 py-3 bg-[#3d2b1a] border-b border-[#ffb800]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {estDuration != null && (
             <div className="flex items-center gap-2">
-              <svg className={`w-3.5 h-3.5 shrink-0 ${isPumpOff ? "text-[#ffb800]" : "text-[#39ff14]"}`} viewBox="0 0 16 16" fill="none" stroke="currentColor">
+              <svg className="w-3.5 h-3.5 shrink-0 text-[#ffb800]" viewBox="0 0 16 16" fill="none" stroke="currentColor">
                 <circle cx="8" cy="8" r="6.5" strokeWidth="2" />
                 <line x1="8" y1="4.5" x2="8" y2="8.5" strokeWidth="2" strokeLinecap="round" />
                 <line x1="8" y1="8.5" x2="10.5" y2="10.5" strokeWidth="2" strokeLinecap="round" />
               </svg>
-              <span className={`text-base font-bold ${isPumpOff ? "text-[#ffb800]" : "text-[#39ff14]"}`}>
+              <span className="text-base font-bold text-[#ffb800]">
                 ~{estDuration} min
               </span>
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-block w-2.5 h-2.5 rounded-full ${
-                isPumpOff ? "bg-[#ffb800]" : "bg-[#39ff14]"
-              }`}
-            />
-            <span className={`text-base font-bold ${isPumpOff ? "text-[#ffb800]" : "text-[#39ff14]"}`}>
-              {isPumpOff ? "Pump OFF" : status.pump.replace(/^PUMP\s+/i, "Pump ")}
-            </span>
-          </div>
-          {status.fuelRate != null && (
-            <span className={`text-sm font-semibold ${isPumpOff ? "text-[#ffb800]/80" : "text-[#39ff14]/80"}`}>
-              {status.fuelRate}g / 10 min
+          {fuel.fuelRate != null && (
+            <span className="text-sm font-semibold text-[#ffb800]/80">
+              {fuel.fuelRate}g / 10 min
             </span>
           )}
-          {status.totalCarbs != null && (
-            <span className={`text-sm font-bold ${isPumpOff ? "text-[#ffb800]" : "text-[#39ff14]"}`}>
-              {status.totalCarbs}g total
+          {fuel.totalCarbs != null && (
+            <span className="text-sm font-bold text-[#ffb800]">
+              {fuel.totalCarbs}g total
             </span>
           )}
         </div>

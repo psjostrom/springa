@@ -17,7 +17,6 @@ import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { FALLBACK_PACE_TABLE } from "@/lib/constants";
-import { buildEasyPaceFromHistory } from "@/lib/utils";
 import { fetchCalendarData, fetchActivityDetails } from "@/lib/intervalsApi";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
@@ -256,12 +255,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [events]);
 
-  // Hybrid pace table: easy pace from historical data, higher zones from LT calculations
-  const paceTable = useMemo(() => {
-    const easyPace = buildEasyPaceFromHistory(events);
-    if (!easyPace) return FALLBACK_PACE_TABLE;
-    return { ...FALLBACK_PACE_TABLE, easy: easyPace };
-  }, [events]);
+  // Use target paces from constants — not historical averages
+  const paceTable = FALLBACK_PACE_TABLE;
 
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = useCallback(

@@ -111,18 +111,14 @@ export function parseWorkoutZones(description: string): HRZoneName[] {
 
 // --- PRE-RUN CARD PARSING ---
 
-export interface PumpStatus {
-  pump: string;
+export interface FuelStatus {
   fuelRate: number | null;
   totalCarbs: number | null;
 }
 
-/** Extract pump status, fuel rate, and total carbs from the strategy header line. */
-export function extractPumpStatus(description: string): PumpStatus {
-  const firstLine = description.split("\n")[0] ?? "";
-  const pumpMatch = firstLine.match(/^(PUMP\s+(?:OFF|ON))/i);
+/** Extract fuel rate and total carbs from the strategy header line. */
+export function extractFuelStatus(description: string): FuelStatus {
   return {
-    pump: pumpMatch ? pumpMatch[1] : "",
     fuelRate: extractFuelRate(description),
     totalCarbs: extractTotalCarbs(description),
   };
@@ -162,7 +158,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   if (!description) return [];
 
   const sections: WorkoutSection[] = [];
-  const stepPattern = /^-\s*(?:(?:PUMP.*?)\s+)?(?:(Uphill|Downhill)\s+)?(\d+(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk)\s+)?(\d+(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
 
   // Split into section blocks
   const sectionPattern = /\n(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/g;
@@ -237,7 +233,7 @@ function toMinutes(value: number, unit: string, avgPercent: number): number {
 function parseSectionSegments(section: string): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
   const stepMatches = Array.from(
-    section.matchAll(/-\s*(?:Uphill\s+|Downhill\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g),
+    section.matchAll(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:Uphill\s+|Downhill\s+|Walk\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g),
   );
   for (const m of stepMatches) {
     const value = parseInt(m[1], 10);
@@ -259,7 +255,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   // Warmup
   const warmupMatch = description.match(/\nWarmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
   if (warmupMatch) {
-    const wuStep = warmupMatch[0].match(/-\s*(?:PUMP.*?\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/);
+    const wuStep = warmupMatch[0].match(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/);
     if (wuStep) {
       const value = parseInt(wuStep[1], 10);
       const unit = wuStep[2];

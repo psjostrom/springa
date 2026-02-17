@@ -8,7 +8,7 @@ export const DEFAULT_CARBS_G = 10;
 export const API_BASE = "https://intervals.icu/api/v1";
 
 export const FALLBACK_PACE_TABLE: PaceTable = {
-  easy: { zone: "easy", avgPace: 6.71, sampleCount: 0 },
+  easy: { zone: "easy", avgPace: 7.25, sampleCount: 0 },
   steady: { zone: "steady", avgPace: 5.67, sampleCount: 0 },
   tempo: { zone: "tempo", avgPace: 5.21, sampleCount: 0 },
   hard: { zone: "hard", avgPace: 4.75, sampleCount: 0 },
@@ -38,7 +38,7 @@ export const HR_ZONE_COLORS = {
 } as const;
 
 export const PACE_ESTIMATES = {
-  easy: 6.75,
+  easy: 7.25,
   steady: 6.15,
   tempo: 5.15,
   hard: 4.75,

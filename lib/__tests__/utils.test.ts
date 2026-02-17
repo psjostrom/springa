@@ -9,7 +9,7 @@ import {
   parseWorkoutSegments,
   estimateWorkoutDuration,
   estimateWorkoutDistance,
-  extractPumpStatus,
+  extractFuelStatus,
   extractNotes,
   parseWorkoutStructure,
 } from "../utils";
@@ -83,10 +83,10 @@ describe("getZoneLabel", () => {
 
 describe("parseWorkoutZones", () => {
   it("extracts HR zones from a short intervals description", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - 2m 89-99% LTHR (150-167 bpm)
@@ -100,8 +100,10 @@ Cooldown
   });
 
   it("extracts HR zones from a hills description", () => {
-    const desc = `Warmup
-- PUMP OFF 10m 66-78% LTHR (112-132 bpm)
+    const desc = `FUEL PER 10: 5g TOTAL: 28g
+
+Warmup
+- FUEL PER 10: 5g TOTAL: 28g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - Uphill 2m 99-111% LTHR (167-188 bpm)
@@ -115,8 +117,10 @@ Cooldown
   });
 
   it("extracts all zones from race pace sandwich long run", () => {
-    const desc = `Warmup
-- PUMP OFF 1km 66-78% LTHR (112-132 bpm)
+    const desc = `FUEL PER 10: 10g TOTAL: 75g
+
+Warmup
+- FUEL PER 10: 10g TOTAL: 75g 1km 66-78% LTHR (112-132 bpm)
 
 Main set
 - 4km 66-78% LTHR (112-132 bpm)
@@ -290,10 +294,10 @@ describe("buildEasyPaceFromHistory", () => {
 
 describe("parseWorkoutSegments", () => {
   it("parses a short intervals workout", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - 2m 89-99% LTHR (150-167 bpm)
@@ -311,10 +315,10 @@ Cooldown
   });
 
   it("parses a hills workout with Uphill/Downhill prefixes", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - Uphill 2m 99-111% LTHR (167-188 bpm)
@@ -332,10 +336,10 @@ Cooldown
   });
 
   it("parses a long run with race pace sandwich", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+    const desc = `FUEL PER 10: 10g TOTAL: 75g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 10g 1km 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 10g TOTAL: 75g 1km 66-78% LTHR (112-132 bpm)
 
 Main set
 - 4km 66-78% LTHR (112-132 bpm)
@@ -355,10 +359,10 @@ Cooldown
   });
 
   it("parses an easy + strides workout", () => {
-    const desc = `PUMP ON - FUEL PER 10: 8g TOTAL: 32g
+    const desc = `FUEL PER 10: 8g TOTAL: 32g
 
 Warmup
-- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 8g TOTAL: 32g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 20m 66-78% LTHR (112-132 bpm)
@@ -387,10 +391,10 @@ Cooldown
 
 describe("estimateWorkoutDuration", () => {
   it("estimates total duration from a structured description", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - 2m 89-99% LTHR (150-167 bpm)
@@ -438,10 +442,10 @@ describe("estimateWorkoutDistance", () => {
   });
 
   it("estimates from workout duration for structured descriptions", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - 2m 89-99% LTHR (150-167 bpm)
@@ -477,37 +481,33 @@ Cooldown
   });
 });
 
-describe("extractPumpStatus", () => {
-  it("extracts PUMP OFF with fuel rate and total carbs", () => {
+describe("extractFuelStatus", () => {
+  it("extracts fuel rate and total carbs", () => {
     const desc =
-      "PUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractPumpStatus(desc);
-    expect(result.pump).toBe("PUMP OFF");
+      "FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractFuelStatus(desc);
     expect(result.fuelRate).toBe(5);
     expect(result.totalCarbs).toBe(25);
   });
 
-  it("extracts PUMP ON", () => {
+  it("extracts moderate fuel rate", () => {
     const desc =
-      "PUMP ON - FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractPumpStatus(desc);
-    expect(result.pump).toBe("PUMP ON");
+      "FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 32g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractFuelStatus(desc);
     expect(result.fuelRate).toBe(8);
     expect(result.totalCarbs).toBe(32);
   });
 
-  it("extracts PUMP OFF with high fuel rate", () => {
+  it("extracts high fuel rate", () => {
     const desc =
-      "PUMP OFF - FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractPumpStatus(desc);
-    expect(result.pump).toBe("PUMP OFF");
+      "FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- FUEL PER 10: 10g TOTAL: 75g 10m 66-78% LTHR (112-132 bpm)";
+    const result = extractFuelStatus(desc);
     expect(result.fuelRate).toBe(10);
     expect(result.totalCarbs).toBe(75);
   });
 
-  it("returns empty pump string for non-standard description", () => {
-    const result = extractPumpStatus("Just a regular note");
-    expect(result.pump).toBe("");
+  it("returns null for non-standard description", () => {
+    const result = extractFuelStatus("Just a regular note");
     expect(result.fuelRate).toBeNull();
     expect(result.totalCarbs).toBeNull();
   });
@@ -515,10 +515,10 @@ describe("extractPumpStatus", () => {
 
 describe("parseWorkoutStructure", () => {
   it("parses a short intervals workout", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - 2m 89-99% LTHR (150-167 bpm)
@@ -544,10 +544,10 @@ Cooldown
   });
 
   it("parses a hills workout with Uphill/Downhill labels", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)
 
 Main set 6x
 - Uphill 2m 99-111% LTHR (167-188 bpm)
@@ -566,10 +566,10 @@ Cooldown
   });
 
   it("parses a long run with km distances", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+    const desc = `FUEL PER 10: 10g TOTAL: 75g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 10g TOTAL: 75g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 8km 66-78% LTHR (112-132 bpm)
@@ -584,10 +584,10 @@ Cooldown
   });
 
   it("parses a race pace sandwich long run", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g
+    const desc = `FUEL PER 10: 10g TOTAL: 75g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 10g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 10g TOTAL: 75g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 4km 66-78% LTHR (112-132 bpm)
@@ -606,10 +606,10 @@ Cooldown
   });
 
   it("parses an easy + strides workout", () => {
-    const desc = `PUMP ON - FUEL PER 10: 8g TOTAL: 32g
+    const desc = `FUEL PER 10: 8g TOTAL: 32g
 
 Warmup
-- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)
+- FUEL PER 10: 8g TOTAL: 32g 10m 66-78% LTHR (112-132 bpm)
 
 Main set
 - 20m 66-78% LTHR (112-132 bpm)
@@ -637,12 +637,12 @@ Cooldown
 
 describe("extractNotes", () => {
   it("extracts notes from between strategy header and first section", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Short, punchy efforts to build leg speed and running economy.
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)`;
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)`;
 
     expect(extractNotes(desc)).toBe(
       "Short, punchy efforts to build leg speed and running economy.",
@@ -650,10 +650,10 @@ Warmup
   });
 
   it("returns null when no notes present", () => {
-    const desc = `PUMP OFF - FUEL PER 10: 5g TOTAL: 25g
+    const desc = `FUEL PER 10: 5g TOTAL: 25g
 
 Warmup
-- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)`;
+- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)`;
 
     expect(extractNotes(desc)).toBeNull();
   });

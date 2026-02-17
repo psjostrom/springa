@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { estimateWorkoutDuration, extractPumpStatus } from "@/lib/utils";
+import { estimateWorkoutDuration, extractFuelStatus } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -163,16 +163,12 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
               />
             </div>
             {(() => {
-              const status = extractPumpStatus(event.description);
-              if (!status.pump) return null;
-              const pumpLabel = status.pump.replace(/^PUMP\s+/i, "");
+              const fuel = extractFuelStatus(event.description);
+              if (fuel.fuelRate == null) return null;
               const parts = [
-                `Pump ${pumpLabel}`,
-                status.fuelRate != null
-                  ? `${status.fuelRate}g/10min`
-                  : null,
-                status.totalCarbs != null
-                  ? `${status.totalCarbs}g total`
+                `${fuel.fuelRate}g/10min`,
+                fuel.totalCarbs != null
+                  ? `${fuel.totalCarbs}g total`
                   : null,
               ].filter(Boolean);
               return (

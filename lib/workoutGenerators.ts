@@ -52,7 +52,7 @@ const generateQualityRun = (
   if (sessionType === null) {
     const totalDuration = 10 + 30 + 5;
     const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
-    const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+    const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
     const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
     const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
@@ -79,9 +79,9 @@ const generateQualityRun = (
       repDuration = 4;
       steps = [
         formatStep("2m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+        formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),
       ];
-      notes = "Short, punchy efforts to build leg speed and running economy. Run each rep at a strong, controlled effort — not a flat-out sprint. Focus on quick cadence and light feet. The recovery jog should be truly easy, letting your HR come back down before the next one.";
+      notes = "Short, punchy efforts to build leg speed and running economy. Run each rep at a strong, controlled effort — not a flat-out sprint. Focus on quick cadence and light feet. Walk the recovery — let your HR come back down fully before the next rep.";
       break;
     }
     case "hills": {
@@ -100,9 +100,9 @@ const generateQualityRun = (
       repDuration = workMin + 2;
       steps = [
         formatStep(`${workMin}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+        formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),
       ];
-      notes = "Longer intervals to develop your threshold and teach your body to clear lactate at pace. These should feel 'comfortably hard' — you can speak a few words but not hold a conversation. Stay relaxed in your shoulders and hands. Each rep should feel the same effort, not faster as you go.";
+      notes = "Longer intervals to develop your threshold and teach your body to clear lactate at pace. These should feel 'comfortably hard' — you can speak a few words but not hold a conversation. Stay relaxed in your shoulders and hands. Walk the recovery fully. Each rep should feel the same effort, not faster as you go.";
       break;
     }
     case "distance-intervals": {
@@ -113,9 +113,9 @@ const generateQualityRun = (
       repDuration = Math.ceil((distM / 1000) * 5.2) + 1.5;
       steps = [
         formatStep(`${distKm}km`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
-        formatStep(`${recoveryKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+        formatStep(`${recoveryKm}km`, 0.50, 0.66, ctx.lthr, "Walk"),
       ];
-      notes = `Track-style reps to sharpen your pace awareness. Run each ${distM}m at a consistent, controlled pace — aim to hit the same split every rep rather than going out too fast. The 200m jog recovery is short, so keep moving. These build the specific speed and confidence you need on race day.`;
+      notes = `Track-style reps to sharpen your pace awareness. Run each ${distM}m at a consistent, controlled pace — aim to hit the same split every rep rather than going out too fast. Walk the 200m recovery. These build the specific speed and confidence you need on race day.`;
       break;
     }
     case "race-pace-intervals": {
@@ -123,16 +123,16 @@ const generateQualityRun = (
       repDuration = 7;
       steps = [
         formatStep("5m", ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
-        formatStep("2m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr),
+        formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),
       ];
-      notes = "Race pace practice. The goal is to lock in what race effort feels like so it becomes automatic on the day. These should feel controlled and sustainable — not hard. Focus on rhythm: steady breathing, relaxed form, consistent pace. If it feels too easy, you're doing it right.";
+      notes = "Race pace practice. The goal is to lock in what race effort feels like so it becomes automatic on the day. These should feel controlled and sustainable — not hard. Focus on rhythm: steady breathing, relaxed form, consistent pace. Walk the recovery. If it feels too easy, you're doing it right.";
       break;
     }
   }
 
   const totalDuration = 10 + reps * repDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelInterval);
-  const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`;
+  const strat = `FUEL PER 10: ${ctx.fuelInterval}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
@@ -155,23 +155,26 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
   const weekNum = weekIdx + 1;
-  const progress = weekIdx / ctx.totalWeeks;
   const isRaceWeek = weekNum === ctx.totalWeeks;
+  const isTaper = weekNum === ctx.totalWeeks - 1;
   const isRaceTest =
     weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
+  const isRecoveryWeek = weekNum % 4 === 0;
   const withStrides = weekIdx % 2 === 1 && !isRaceWeek;
 
+  // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
+  const progress = weekIdx / ctx.totalWeeks;
   const duration = isRaceWeek
-    ? 20
-    : isRaceTest
-      ? 30
-      : 40 + Math.floor(progress * 20);
+    ? 15
+    : isRaceTest || isTaper || isRecoveryWeek
+      ? 20
+      : 20 + Math.round(progress * 25);
 
   const stridesDuration = withStrides ? 6 : 0;
   const totalDuration = 10 + duration + stridesDuration + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 
@@ -246,7 +249,7 @@ const generateBonusRun = (
   const totalDuration = 10 + 30 + 5;
   const totalCarbs = calculateWorkoutCarbs(totalDuration, ctx.fuelEasy);
 
-  const strat = `PUMP ON - FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
+  const strat = `FUEL PER 10: ${ctx.fuelEasy}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep("10m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep("5m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
   const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";
@@ -272,7 +275,7 @@ const generateLongRun = (
   if (isRaceWeek) {
     const estimatedRaceDuration = ctx.raceDist * 5.67;
     const totalCarbs = calculateWorkoutCarbs(estimatedRaceDuration, ctx.fuelLong);
-    const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
+    const strat = `FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
     return {
       start_date_local: set(ctx.raceDate, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY ${ctx.prefix}`,
@@ -324,10 +327,10 @@ const generateLongRun = (
   const cdKm = 1;
   const mainKm = Math.max(km - wuKm - cdKm, 1);
 
-  const estimatedDuration = km * 6.71;
+  const estimatedDuration = km * 7.25;
   const totalCarbs = calculateWorkoutCarbs(estimatedDuration, ctx.fuelLong);
 
-  const strat = `PUMP OFF - FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
+  const strat = `FUEL PER 10: ${ctx.fuelLong}g TOTAL: ${totalCarbs}g`;
   const wu = formatStep(`${wuKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, strat);
   const cd = formatStep(`${cdKm}km`, ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr);
 

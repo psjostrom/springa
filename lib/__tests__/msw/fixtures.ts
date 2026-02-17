@@ -9,7 +9,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-08T10:00:00",
     name: "W03 Sun Long (10km) eco16",
     description:
-      "PUMP OFF - FUEL PER 10: 10g TOTAL: 67g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 10g 1km 66-78% LTHR (112-132 bpm)\n\nMain set\n- 8km 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 1km 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 10g TOTAL: 67g\n\nWarmup\n- FUEL PER 10: 10g TOTAL: 67g 1km 66-78% LTHR (112-132 bpm)\n\nMain set\n- 8km 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 1km 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 10000,
     moving_time: 4020,
@@ -26,7 +26,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "PUMP ON - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 6500,
     moving_time: 2700,
@@ -43,7 +43,7 @@ export const sampleActivities: IntervalsActivity[] = [
     start_date_local: "2026-02-12T12:00:00",
     name: "W04 Thu Short Intervals eco16",
     description:
-      "PUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- 2m 89-99% LTHR (150-167 bpm)\n- 2m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- 2m 89-99% LTHR (150-167 bpm)\n- 2m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     type: "Run",
     distance: 7200,
     moving_time: 2400,
@@ -65,7 +65,7 @@ export const sampleEvents = [
     start_date_local: "2026-02-10T12:00:00",
     name: "W04 Tue Easy eco16",
     description:
-      "PUMP ON - FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     paired_activity_id: "act-easy-1",
   },
   {
@@ -74,7 +74,7 @@ export const sampleEvents = [
     start_date_local: "2026-02-17T12:00:00",
     name: "W05 Tue Easy + Strides eco16",
     description:
-      "PUMP ON - FUEL PER 10: 8g TOTAL: 48g\n\nWarmup\n- PUMP ON - FUEL PER 10: 8g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 8g TOTAL: 48g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 48g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
   },
   {
     id: 1003,
@@ -82,7 +82,7 @@ export const sampleEvents = [
     start_date_local: "2026-02-19T12:00:00",
     name: "W05 Thu Hills eco16",
     description:
-      "PUMP OFF - FUEL PER 10: 5g TOTAL: 28g\n\nWarmup\n- PUMP OFF - FUEL PER 10: 5g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+      "FUEL PER 10: 5g TOTAL: 28g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 28g 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
   },
 ];
 
