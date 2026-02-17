@@ -125,12 +125,10 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
       lthr,
     );
 
-    // Filter out past workouts and today - only show future workouts
+    // Filter out past workouts - keep today and future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const futureEvents = events.filter((e) => e.start_date_local >= tomorrow);
+    const futureEvents = events.filter((e) => e.start_date_local >= today);
 
     setPlanEvents(futureEvents);
     setStatusMsg("");
@@ -152,8 +150,8 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
   };
 
   return (
-    <div className="h-full bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans overflow-hidden">
-      <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col gap-6 shrink-0 overflow-y-auto h-full">
+    <div className="h-full bg-[#0d0a1a] flex flex-col md:flex-row text-white font-sans overflow-hidden">
+      <aside className="w-full md:w-80 bg-[#1e1535] border-r border-[#3d2b5a] p-6 flex flex-col gap-6 shrink-0 overflow-y-auto h-full">
         <div className="space-y-4">
           <RaceSettings
             raceName={raceName}
@@ -176,7 +174,7 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
           />
         </div>
 
-        <hr />
+        <hr className="border-[#3d2b5a]" />
 
         <AnalysisSection
           prefix={prefix}
@@ -195,13 +193,13 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
 
         <button
           onClick={handleGenerate}
-          className="w-full py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition shadow-lg mt-auto"
+          className="w-full py-3 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 mt-auto"
         >
           Generate Plan
         </button>
       </aside>
 
-      <main className="flex-1 bg-slate-50 overflow-y-auto h-full">
+      <main className="flex-1 bg-[#0d0a1a] overflow-y-auto h-full">
         <div className="p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             {planEvents.length === 0 ? (
