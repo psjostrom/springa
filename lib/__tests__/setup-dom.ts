@@ -67,6 +67,7 @@ vi.mock("lucide-react", () => {
     TrendingUp: icon("TrendingUp"),
     Route: icon("Route"),
     CalendarCheck: icon("CalendarCheck"),
+    Info: icon("Info"),
   };
 });
 

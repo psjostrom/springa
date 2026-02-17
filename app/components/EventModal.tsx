@@ -1,13 +1,49 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { updateEvent } from "@/lib/intervalsApi";
 import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
+
+function StatInfo({ label, tip }: { label: string; tip: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const close = useCallback(
+    (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (open) document.addEventListener("click", close, true);
+    return () => document.removeEventListener("click", close, true);
+  }, [open, close]);
+
+  return (
+    <span ref={ref} className="relative inline-flex items-center gap-0.5">
+      {label}
+      <button
+        type="button"
+        aria-label={`Info about ${label.split(" ")[0].toLowerCase()}`}
+        onClick={() => setOpen((v) => !v)}
+        className="text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        <Info className="w-3 h-3" />
+      </button>
+      {open && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-slate-800 text-white text-xs leading-relaxed px-3 py-2 shadow-lg z-10">
+          {tip}
+        </span>
+      )}
+    </span>
+  );
+}
 
 interface EventModalProps {
   event: CalendarEvent;
@@ -156,88 +192,95 @@ export function EventModal({
         )}
 
         {selectedEvent.type === "completed" && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-sm mb-4">
-              {selectedEvent.distance && (
-                <div>
-                  <div className="text-slate-600">Distance</div>
-                  <div className="font-semibold">
-                    {(selectedEvent.distance / 1000).toFixed(2)} km
+          <div className="space-y-4">
+            {/* Stats card */}
+            <div className="rounded-xl border border-slate-200 shadow-sm">
+              {/* Primary stats — top strip */}
+              <div className="bg-slate-50 rounded-t-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                {selectedEvent.distance && (
+                  <div>
+                    <div className="text-slate-500 text-xs">Distance</div>
+                    <div className="font-semibold">
+                      {(selectedEvent.distance / 1000).toFixed(2)} km
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedEvent.duration && (
-                <div>
-                  <div className="text-slate-600">Duration</div>
-                  <div className="font-semibold">
-                    {Math.floor(selectedEvent.duration / 60)} min
+                )}
+                {selectedEvent.duration && (
+                  <div>
+                    <div className="text-slate-500 text-xs">Duration</div>
+                    <div className="font-semibold">
+                      {Math.floor(selectedEvent.duration / 60)} min
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedEvent.pace && (
-                <div>
-                  <div className="text-slate-600">Pace</div>
-                  <div className="font-semibold">
-                    {Math.floor(selectedEvent.pace)}:
-                    {String(
-                      Math.round((selectedEvent.pace % 1) * 60),
-                    ).padStart(2, "0")}
-                    /km
+                )}
+                {selectedEvent.pace && (
+                  <div>
+                    <div className="text-slate-500 text-xs">Pace</div>
+                    <div className="font-semibold">
+                      {Math.floor(selectedEvent.pace)}:
+                      {String(
+                        Math.round((selectedEvent.pace % 1) * 60),
+                      ).padStart(2, "0")}{" "}
+                      /km
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedEvent.calories && (
-                <div>
-                  <div className="text-slate-600">Calories</div>
-                  <div className="font-semibold">
-                    {selectedEvent.calories} kcal
+                )}
+                {selectedEvent.avgHr && (
+                  <div>
+                    <div className="text-slate-500 text-xs">Avg HR</div>
+                    <div className="font-semibold">
+                      {selectedEvent.avgHr} bpm
+                    </div>
                   </div>
-                </div>
-              )}
-              {selectedEvent.cadence && (
-                <div>
-                  <div className="text-slate-600">Cadence</div>
-                  <div className="font-semibold">
-                    {Math.round(selectedEvent.cadence)} spm
-                  </div>
-                </div>
-              )}
-              {selectedEvent.avgHr && (
-                <div>
-                  <div className="text-slate-600">Avg HR</div>
-                  <div className="font-semibold">
-                    {selectedEvent.avgHr} bpm
-                  </div>
-                </div>
-              )}
-              {selectedEvent.maxHr && (
-                <div>
-                  <div className="text-slate-600">Max HR</div>
-                  <div className="font-semibold">
-                    {selectedEvent.maxHr} bpm
-                  </div>
-                </div>
-              )}
-              {selectedEvent.load && (
-                <div>
-                  <div className="text-slate-600">Load</div>
-                  <div className="font-semibold">
-                    {Math.round(selectedEvent.load)}
-                  </div>
-                </div>
-              )}
-              {selectedEvent.intensity !== undefined && (
-                <div>
-                  <div className="text-slate-600">Intensity</div>
-                  <div className="font-semibold">
-                    {Math.round(selectedEvent.intensity)}%
-                  </div>
+                )}
+              </div>
+
+              {/* Secondary stats — bottom row */}
+              {(selectedEvent.calories ||
+                selectedEvent.cadence ||
+                selectedEvent.maxHr ||
+                selectedEvent.load ||
+                selectedEvent.intensity !== undefined) && (
+                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-xs text-slate-500">
+                  {selectedEvent.calories && (
+                    <span>{selectedEvent.calories} kcal</span>
+                  )}
+                  {selectedEvent.calories && selectedEvent.cadence && (
+                    <span>·</span>
+                  )}
+                  {selectedEvent.cadence && (
+                    <span>{Math.round(selectedEvent.cadence)} spm</span>
+                  )}
+                  {selectedEvent.cadence && selectedEvent.maxHr && (
+                    <span>·</span>
+                  )}
+                  {selectedEvent.maxHr && (
+                    <span>Max HR {selectedEvent.maxHr} bpm</span>
+                  )}
+                  {selectedEvent.maxHr && selectedEvent.load && (
+                    <span>·</span>
+                  )}
+                  {selectedEvent.load && (
+                    <StatInfo
+                      label={`Load ${Math.round(selectedEvent.load)}`}
+                      tip="Training load estimates how hard an activity was relative to your capabilities. It is calculated from heart rate and pace. 1 hour at threshold is roughly 100 load."
+                    />
+                  )}
+                  {selectedEvent.load &&
+                    selectedEvent.intensity !== undefined && <span>·</span>}
+                  {selectedEvent.intensity !== undefined && (
+                    <StatInfo
+                      label={`Intensity ${Math.round(selectedEvent.intensity)}%`}
+                      tip="Intensity measures how hard the activity was compared to your threshold. Over 100% for an hour or longer suggests your threshold setting is too low."
+                    />
+                  )}
                 </div>
               )}
             </div>
 
+            {/* HR Zones card */}
             {selectedEvent.hrZones && (
-              <div className="mb-4">
+              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
                 <div className="text-sm font-semibold text-slate-700 mb-3">
                   Heart Rate Zones
                 </div>
@@ -251,23 +294,28 @@ export function EventModal({
               </div>
             )}
 
+            {/* Stream Graph card */}
             {selectedEvent.streamData &&
             Object.keys(selectedEvent.streamData).length > 0 ? (
-              <div className="mb-4">
+              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
                 <WorkoutStreamGraph streamData={selectedEvent.streamData} />
               </div>
             ) : isLoadingStreamData ? (
-              <div className="flex items-center justify-center py-8 text-slate-500">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                <span className="text-sm">Loading workout data...</span>
+              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
+                <div className="flex items-center justify-center py-8 text-slate-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  <span className="text-sm">Loading workout data...</span>
+                </div>
               </div>
             ) : selectedEvent.type === "completed" ? (
-              <div className="text-sm text-slate-500 italic mt-4">
-                💡 Detailed workout data (graphs) not available for this
-                activity
+              <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden p-4">
+                <div className="text-sm text-slate-500 italic">
+                  Detailed workout data (graphs) not available for this
+                  activity
+                </div>
               </div>
             ) : null}
-          </>
+          </div>
         )}
       </div>
     </div>
