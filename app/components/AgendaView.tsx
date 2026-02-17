@@ -167,7 +167,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
               if (fuelRate == null) return null;
               const totalCarbs = event.totalCarbs ?? extractTotalCarbs(event.description);
               const parts = [
-                `${fuelRate}g/10min`,
+                `${fuelRate}g/h`,
                 totalCarbs != null
                   ? `${totalCarbs}g total`
                   : null,

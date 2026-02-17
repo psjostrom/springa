@@ -5,7 +5,7 @@ export interface WorkoutEvent {
   description: string;
   external_id: string;
   type: "Run";
-  fuelRate?: number; // g per 10 min
+  fuelRate?: number; // g/h (carbs per hour)
 }
 
 export interface AnalysisResult {
@@ -143,7 +143,7 @@ export interface CalendarEvent {
   cadence?: number;
   hrZones?: HRZoneData;
   streamData?: StreamData;
-  fuelRate?: number | null; // g per 10 min (planned rate)
+  fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
   totalCarbs?: number | null; // planned total carbs
   carbsIngested?: number | null; // actual carbs consumed (from activity)
   activityId?: string; // raw Intervals.icu activity ID for API calls

@@ -266,10 +266,10 @@ export async function fetchCalendarData(
       const description =
         matchingEvent?.description || activity.description || "";
 
-      // Resolve fuel rate: prefer carbs_per_hour from matched event, fall back to description
+      // Resolve fuel rate (g/h): prefer carbs_per_hour from matched event, fall back to description
       let fuelRate: number | null = null;
       if (matchingEvent?.carbs_per_hour != null) {
-        fuelRate = Math.round(matchingEvent.carbs_per_hour / 6);
+        fuelRate = matchingEvent.carbs_per_hour;
       } else {
         fuelRate = extractFuelRate(description);
       }
@@ -333,10 +333,10 @@ export async function fetchCalendarData(
       const isRace = name.toLowerCase().includes("race");
       const category = isRace ? "race" : getWorkoutCategory(name);
 
-      // Resolve fuel rate: prefer carbs_per_hour API field, fall back to description
+      // Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description
       let eventFuelRate: number | null = null;
       if (event.carbs_per_hour != null) {
-        eventFuelRate = Math.round(event.carbs_per_hour / 6);
+        eventFuelRate = event.carbs_per_hour;
       } else {
         eventFuelRate = extractFuelRate(eventDesc);
       }
@@ -430,7 +430,7 @@ export async function uploadToIntervals(
     description: e.description,
     external_id: e.external_id,
     type: e.type,
-    ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate * 6) }),
+    ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate) }),
   }));
 
   try {

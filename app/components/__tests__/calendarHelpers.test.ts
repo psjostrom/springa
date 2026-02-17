@@ -8,19 +8,19 @@ import {
 import type { CalendarEvent } from "@/lib/types";
 
 describe("extractFuelRate", () => {
-  it("extracts fuel rate from new format", () => {
-    expect(extractFuelRate("FUEL PER 10: 10g TOTAL: 50g")).toBe(10);
-    expect(extractFuelRate("FUEL PER 10: 5g")).toBe(5);
-    expect(extractFuelRate("FUEL PER 10: 8g TOTAL: 32g")).toBe(8);
+  it("extracts fuel rate from new format (returns g/h)", () => {
+    expect(extractFuelRate("FUEL PER 10: 10g TOTAL: 50g")).toBe(60);
+    expect(extractFuelRate("FUEL PER 10: 5g")).toBe(30);
+    expect(extractFuelRate("FUEL PER 10: 8g TOTAL: 32g")).toBe(48);
   });
 
-  it("extracts fuel rate from old format", () => {
-    expect(extractFuelRate("FUEL: 10g/10m")).toBe(10);
-    expect(extractFuelRate("FUEL: 5g/10m")).toBe(5);
+  it("extracts fuel rate from old format (returns g/h)", () => {
+    expect(extractFuelRate("FUEL: 10g/10m")).toBe(60);
+    expect(extractFuelRate("FUEL: 5g/10m")).toBe(30);
   });
 
   it("prefers new format over old format", () => {
-    expect(extractFuelRate("FUEL PER 10: 10g FUEL: 5g/10m")).toBe(10);
+    expect(extractFuelRate("FUEL PER 10: 10g FUEL: 5g/10m")).toBe(60);
   });
 
   it("returns null when no fuel rate found", () => {

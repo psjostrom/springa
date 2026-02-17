@@ -26,14 +26,14 @@ async function analyzeRun(
 
   let plotData: { time: number; glucose: number }[] = [];
   let trend = 0.0;
-  let currentFuel = 10;
+  let currentFuel = 60;
 
   // Priority: carbs_ingested (actual) → carbs_per_hour (planned rate) → description regex
+  // All values in g/h
   if (run.carbs_ingested != null && run.moving_time && run.moving_time > 0) {
-    // Convert actual total back to g/10min rate
-    currentFuel = Math.round((run.carbs_ingested / (run.moving_time / 60)) * 10);
+    currentFuel = Math.round(run.carbs_ingested / (run.moving_time / 3600));
   } else if (matchedEvent?.carbs_per_hour != null) {
-    currentFuel = Math.round(matchedEvent.carbs_per_hour / 6);
+    currentFuel = matchedEvent.carbs_per_hour;
   } else {
     const descFuel = extractFuelRate(run.description || "");
     if (descFuel != null) currentFuel = descFuel;

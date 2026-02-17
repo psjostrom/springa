@@ -88,7 +88,7 @@ export function WorkoutCard({ description, paceTable, fuelRate: propFuelRate, to
   const notes = extractNotes(description);
 
   return (
-    <div className="rounded-xl overflow-hidden mb-4 border border-[#3d2b5a] shadow-sm">
+    <div className="mb-4">
       {/* Duration + Fuel Strip */}
       <div className="px-4 py-3 bg-[#2d1a35] border-b border-[#ff2d95]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
@@ -106,7 +106,7 @@ export function WorkoutCard({ description, paceTable, fuelRate: propFuelRate, to
           )}
           {fuel.fuelRate != null && (
             <span className="text-sm font-semibold text-[#ffb800]/80">
-              {fuel.fuelRate}g / 10 min
+              {fuel.fuelRate}g/h
             </span>
           )}
           {fuel.totalCarbs != null && (

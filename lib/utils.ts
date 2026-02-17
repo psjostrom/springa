@@ -334,9 +334,9 @@ export const formatStep = (
 
 export const calculateWorkoutCarbs = (
   durationMinutes: number,
-  fuelRateGPer10Min: number,
+  fuelRateGPerHour: number,
 ): number => {
-  return Math.round((durationMinutes / 10) * fuelRateGPer10Min);
+  return Math.round((durationMinutes / 60) * fuelRateGPerHour);
 };
 
 export const createWorkoutText = (
@@ -370,13 +370,13 @@ export const createWorkoutText = (
 // --- CALENDAR HELPERS ---
 // (Extracted from CalendarView.tsx)
 
-/** Extract fuel rate from description (e.g., "FUEL PER 10: 10g" -> 10) */
+/** Extract fuel rate from description and convert to g/h (e.g., "FUEL PER 10: 10g" -> 60) */
 export const extractFuelRate = (description: string): number | null => {
   const newMatch = description.match(/FUEL PER 10:\s*(\d+)g/i);
-  if (newMatch) return parseInt(newMatch[1], 10);
+  if (newMatch) return parseInt(newMatch[1], 10) * 6;
 
   const oldMatch = description.match(/FUEL:\s*(\d+)g\/10m/i);
-  return oldMatch ? parseInt(oldMatch[1], 10) : null;
+  return oldMatch ? parseInt(oldMatch[1], 10) * 6 : null;
 };
 
 /** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
@@ -417,7 +417,7 @@ export const calculateTotalCarbs = (event: CalendarEvent): number | null => {
     return null;
   }
 
-  return Math.round((durationMinutes / 10) * fuelRate);
+  return calculateWorkoutCarbs(durationMinutes, fuelRate);
 };
 
 // --- GLUCOSE CONVERSION ---

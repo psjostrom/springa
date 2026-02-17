@@ -28,8 +28,9 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
       screen.getByText("Configure settings and generate your plan."),
     ).toBeInTheDocument();
 
-    // 2. Click Generate Plan
-    await user.click(screen.getByRole("button", { name: /Generate Plan/i }));
+    // 2. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
+    const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
+    await user.click(generateBtns[0]);
 
     // 3. Assert preview heading appears with workout cards
     await waitFor(() => {
@@ -181,18 +182,16 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 // ---------------------------------------------------------------------------
 // Flow 4: Planner — Analyze history -> Glucose charts + fuel adjustment
 // ---------------------------------------------------------------------------
-describe("Flow 4: Planner — Analyze history -> fuel adjustment", () => {
+describe("Flow 4: Planner — Generate triggers analysis + fuel adjustment", () => {
   it("analyzes workout history and auto-adjusts fuel values", async () => {
     const user = userEvent.setup();
     render(<PlannerScreen apiKey={TEST_API_KEY} />);
 
-    // 1. Click analyze button
-    const analyzeBtn = screen.getByRole("button", {
-      name: /Analyze 'eco16'/i,
-    });
-    await user.click(analyzeBtn);
+    // 1. Click Generate Plan (now triggers analysis + generation in one click)
+    const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
+    await user.click(generateBtns[0]);
 
-    // 2. Wait for analysis — assert chart titles appear
+    // 2. Wait for analysis — assert chart titles appear alongside generated plan
     await waitFor(
       () => {
         expect(screen.getByText("Last Long Run")).toBeInTheDocument();
@@ -202,19 +201,16 @@ describe("Flow 4: Planner — Analyze history -> fuel adjustment", () => {
       { timeout: 5000 },
     );
 
-    // 3. Assert trend values are displayed (3 trend elements)
-    const trendLabels = screen.getAllByText("Trend:");
-    expect(trendLabels.length).toBe(3);
-
-    // 4. Assert fuel inputs are present and auto-adjusted
-    // Long run fuel should have increased due to negative glucose trend
+    // 3. Assert fuel inputs are present and auto-adjusted
     const fuelInputs = screen.getAllByRole("spinbutton");
-    // There are 3 fuel inputs in AnalysisSection (Long, Easy, Intervals)
     const analysisFuelInputs = fuelInputs.filter((input) => {
       const value = Number((input as HTMLInputElement).value);
       return value > 0;
     });
     expect(analysisFuelInputs.length).toBeGreaterThanOrEqual(3);
+
+    // 4. Assert plan was also generated (action bar visible)
+    expect(screen.getByText("Ready to sync?")).toBeInTheDocument();
   });
 });
 
@@ -235,8 +231,9 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
     const user = userEvent.setup();
     render(<PlannerScreen apiKey={TEST_API_KEY} />);
 
-    // 1. Generate plan
-    await user.click(screen.getByRole("button", { name: /Generate Plan/i }));
+    // 1. Generate plan (two buttons: desktop + mobile; click first)
+    const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
+    await user.click(generateBtns[0]);
 
     await waitFor(() => {
       expect(screen.getByText("Preview")).toBeInTheDocument();
@@ -278,8 +275,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
       ).toBeInTheDocument();
     });
 
-    // 3. Assert agenda pill shows fuel info (8g/10min from carbs_per_hour: 48)
-    expect(screen.getByText(/8g\/10min/)).toBeInTheDocument();
+    // 3. Assert agenda pill shows fuel info (48g/h from carbs_per_hour: 48)
+    expect(screen.getByText(/48g\/h/)).toBeInTheDocument();
 
     // 4. Click the event to open modal
     await user.click(screen.getByText(/W05 Tue Easy \+ Strides eco16/));
@@ -290,7 +287,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
     // 6. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
-      expect(screen.getByText("8g / 10 min")).toBeInTheDocument();
+      expect(screen.getByText("48g/h")).toBeInTheDocument();
     });
   });
 
@@ -313,8 +310,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
       ).toBeInTheDocument();
     });
 
-    // 3. Assert agenda pill shows fuel info (5g/10min from carbs_per_hour: 30)
-    expect(screen.getByText(/5g\/10min/)).toBeInTheDocument();
+    // 3. Assert agenda pill shows fuel info (30g/h from carbs_per_hour: 30)
+    expect(screen.getByText(/30g\/h/)).toBeInTheDocument();
 
     // 4. Click the event to open modal
     await user.click(screen.getByText(/W05 Thu Hills eco16/));
@@ -325,7 +322,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
     // 6. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
-      expect(screen.getByText("5g / 10 min")).toBeInTheDocument();
+      expect(screen.getByText("30g/h")).toBeInTheDocument();
     });
   });
 });

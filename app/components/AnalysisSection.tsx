@@ -9,7 +9,6 @@ import {
 } from "recharts";
 
 interface AnalysisSectionProps {
-	prefix: string;
 	longRunAnalysis: {
 		trend: number;
 		plotData: { time: number; glucose: number }[];
@@ -25,8 +24,6 @@ interface AnalysisSectionProps {
 	fuelInterval: number;
 	fuelLong: number;
 	fuelEasy: number;
-	isAnalyzing: boolean;
-	onAnalyze: () => void;
 	onFuelIntervalChange: (value: number) => void;
 	onFuelLongChange: (value: number) => void;
 	onFuelEasyChange: (value: number) => void;
@@ -109,15 +106,12 @@ function TrendBadge({ trend }: { trend: number }) {
 }
 
 export function AnalysisSection({
-	prefix,
 	longRunAnalysis,
 	easyRunAnalysis,
 	intervalAnalysis,
 	fuelInterval,
 	fuelLong,
 	fuelEasy,
-	isAnalyzing,
-	onAnalyze,
 	onFuelIntervalChange,
 	onFuelLongChange,
 	onFuelEasyChange,
@@ -127,103 +121,89 @@ export function AnalysisSection({
 		easyRunAnalysis !== null ||
 		intervalAnalysis !== null;
 
+	if (!hasAnalysis) return null;
+
 	const fuelInputClass =
-		"w-10 p-1 text-center text-sm font-bold border border-[#3d2b5a] bg-[#1a1030] text-white rounded focus:outline-none focus:ring-2 focus:ring-[#ff2d95]";
+		"w-14 p-1 text-center text-sm font-bold border border-[#3d2b5a] bg-[#1a1030] text-white rounded focus:outline-none focus:ring-2 focus:ring-[#ff2d95]";
 
 	return (
 		<div className="bg-[#2a1f3d] p-4 rounded-lg">
-			<h3 className="font-semibold mb-2 flex items-center gap-2 text-sm text-white">
-				<TrendingUp size={16} className="text-[#00ffff]" /> Analysis
+			<h3 className="font-semibold mb-3 flex items-center gap-2 text-sm text-white">
+				<TrendingUp size={16} className="text-[#00ffff]" /> BG Analysis
 			</h3>
-			{!hasAnalysis ? (
-				<button
-					onClick={onAnalyze}
-					disabled={isAnalyzing}
-					className="w-full bg-[#ff2d95] text-white py-2 rounded text-sm font-medium hover:bg-[#e0207a] transition disabled:opacity-50"
-				>
-					{isAnalyzing ? "Fetching..." : `Analyze '${prefix}'`}
-				</button>
-			) : (
-				<div className="space-y-4">
-					{/* Long Run Analysis */}
-					{longRunAnalysis && (
-						<div className="space-y-2">
-							<GlucoseChart
-								plotData={longRunAnalysis.plotData}
-								title="Last Long Run"
-							/>
-							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Long:</span>
-									<input
-										type="number"
-										value={fuelLong}
-										onChange={(e) => onFuelLongChange(Number(e.target.value))}
-										className={fuelInputClass}
-									/>
-									<span className="text-[#b8a5d4]">g/10m</span>
-								</div>
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Trend:</span>
-									<TrendBadge trend={longRunAnalysis.trend} />
-								</div>
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				{longRunAnalysis && (
+					<div className="space-y-2 min-w-0">
+						<GlucoseChart
+							plotData={longRunAnalysis.plotData}
+							title="Last Long Run"
+						/>
+						<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex items-center gap-1 shrink-0">
+								<span className="text-[#b8a5d4]">Fuel:</span>
+								<input
+									type="number"
+									value={fuelLong}
+									onChange={(e) => onFuelLongChange(Number(e.target.value))}
+									className={fuelInputClass}
+								/>
+								<span className="text-[#b8a5d4]">g/h</span>
+							</div>
+							<div className="flex items-center gap-1 shrink-0">
+								<TrendBadge trend={longRunAnalysis.trend} />
 							</div>
 						</div>
-					)}
+					</div>
+				)}
 
-					{/* Easy Run Analysis */}
-					{easyRunAnalysis && (
-						<div className="space-y-2">
-							<GlucoseChart
-								plotData={easyRunAnalysis.plotData}
-								title="Last Easy Run"
-							/>
-							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Easy:</span>
-									<input
-										type="number"
-										value={fuelEasy}
-										onChange={(e) => onFuelEasyChange(Number(e.target.value))}
-										className={fuelInputClass}
-									/>
-									<span className="text-[#b8a5d4]">g/10m</span>
-								</div>
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Trend:</span>
-									<TrendBadge trend={easyRunAnalysis.trend} />
-								</div>
+				{easyRunAnalysis && (
+					<div className="space-y-2 min-w-0">
+						<GlucoseChart
+							plotData={easyRunAnalysis.plotData}
+							title="Last Easy Run"
+						/>
+						<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex items-center gap-1 shrink-0">
+								<span className="text-[#b8a5d4]">Fuel:</span>
+								<input
+									type="number"
+									value={fuelEasy}
+									onChange={(e) => onFuelEasyChange(Number(e.target.value))}
+									className={fuelInputClass}
+								/>
+								<span className="text-[#b8a5d4]">g/h</span>
+							</div>
+							<div className="flex items-center gap-1 shrink-0">
+								<TrendBadge trend={easyRunAnalysis.trend} />
 							</div>
 						</div>
-					)}
+					</div>
+				)}
 
-					{/* Interval Analysis */}
-					{intervalAnalysis && (
-						<div className="space-y-2">
-							<GlucoseChart
-								plotData={intervalAnalysis.plotData}
-								title="Last Interval/Tempo"
-							/>
-							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Intervals:</span>
-									<input
-										type="number"
-										value={fuelInterval}
-										onChange={(e) => onFuelIntervalChange(Number(e.target.value))}
-										className={fuelInputClass}
-									/>
-									<span className="text-[#b8a5d4]">g/10m</span>
-								</div>
-								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#b8a5d4]">Trend:</span>
-									<TrendBadge trend={intervalAnalysis.trend} />
-								</div>
+				{intervalAnalysis && (
+					<div className="space-y-2 min-w-0">
+						<GlucoseChart
+							plotData={intervalAnalysis.plotData}
+							title="Last Interval/Tempo"
+						/>
+						<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex items-center gap-1 shrink-0">
+								<span className="text-[#b8a5d4]">Fuel:</span>
+								<input
+									type="number"
+									value={fuelInterval}
+									onChange={(e) => onFuelIntervalChange(Number(e.target.value))}
+									className={fuelInputClass}
+								/>
+								<span className="text-[#b8a5d4]">g/h</span>
+							</div>
+							<div className="flex items-center gap-1 shrink-0">
+								<TrendBadge trend={intervalAnalysis.trend} />
 							</div>
 						</div>
-					)}
-				</div>
-			)}
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

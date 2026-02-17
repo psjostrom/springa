@@ -72,6 +72,7 @@ export function EventModal({
   const [carbsValue, setCarbsValue] = useState("");
   const [savingCarbs, setSavingCarbs] = useState(false);
   const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     setIsEditing(false);
@@ -79,7 +80,18 @@ export function EventModal({
     setEditingCarbs(false);
     setCarbsValue("");
     setSavedCarbs(null);
+    setIsClosing(false);
   }, [selectedEvent.id]);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+      setTimeout(onClose, 250);
+    } else {
+      onClose();
+    }
+  }, [onClose]);
 
   const saveCarbs = async () => {
     const val = parseInt(carbsValue, 10);
@@ -124,13 +136,17 @@ export function EventModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosing ? "bg-black/0" : "bg-black/70"}`}
+      onClick={handleClose}
     >
       <div
-        className="bg-[#1e1535] rounded-xl p-4 sm:p-6 max-w-3xl w-full shadow-xl shadow-[#ff2d95]/10 border border-[#3d2b5a] max-h-[90vh] overflow-y-auto"
+        className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center mb-3 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-[#3d2b5a]" />
+        </div>
         <div className="flex items-start justify-between mb-4">
           <div>
             {isEditing ? (
@@ -206,7 +222,7 @@ export function EventModal({
               </>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-[#b8a5d4] hover:text-white text-xl"
             >
               ✕
@@ -221,9 +237,9 @@ export function EventModal({
         {selectedEvent.type === "completed" && (
           <div className="space-y-4">
             {/* Stats card */}
-            <div className="rounded-xl border border-[#3d2b5a] shadow-sm">
+            <div className="border-t border-[#3d2b5a] pt-4 mt-4">
               {/* Primary stats — top strip */}
-              <div className="bg-[#2a1f3d] rounded-t-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 {selectedEvent.distance && (
                   <div>
                     <div className="text-[#b8a5d4] text-sm">Distance</div>
@@ -307,7 +323,7 @@ export function EventModal({
 
             {/* Carbs ingested */}
             {(selectedEvent.carbsIngested != null || selectedEvent.totalCarbs != null) && (
-              <div className="rounded-xl border border-[#3d2b5a] shadow-sm px-4 py-3">
+              <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
                   {editingCarbs ? (
@@ -359,9 +375,9 @@ export function EventModal({
               </div>
             )}
 
-            {/* HR Zones card */}
+            {/* HR Zones */}
             {selectedEvent.hrZones && (
-              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
                   Heart Rate Zones
                 </div>
@@ -375,21 +391,21 @@ export function EventModal({
               </div>
             )}
 
-            {/* Stream Graph card */}
+            {/* Stream Graph */}
             {selectedEvent.streamData &&
             Object.keys(selectedEvent.streamData).length > 0 ? (
-              <div className="rounded-xl border border-[#3d2b5a] shadow-sm p-4">
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <WorkoutStreamGraph streamData={selectedEvent.streamData} />
               </div>
             ) : isLoadingStreamData ? (
-              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   <span className="text-sm">Loading workout data...</span>
                 </div>
               </div>
             ) : selectedEvent.type === "completed" ? (
-              <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="text-sm text-[#b8a5d4] italic">
                   Detailed workout data (graphs) not available for this
                   activity

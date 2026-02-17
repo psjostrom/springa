@@ -486,7 +486,7 @@ describe("extractFuelStatus", () => {
     const desc =
       "FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(5);
+    expect(result.fuelRate).toBe(30); // 5g/10min × 6 = 30g/h
     expect(result.totalCarbs).toBe(25);
   });
 
@@ -494,7 +494,7 @@ describe("extractFuelStatus", () => {
     const desc =
       "FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 32g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(8);
+    expect(result.fuelRate).toBe(48); // 8g/10min × 6 = 48g/h
     expect(result.totalCarbs).toBe(32);
   });
 
@@ -502,7 +502,7 @@ describe("extractFuelStatus", () => {
     const desc =
       "FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- FUEL PER 10: 10g TOTAL: 75g 10m 66-78% LTHR (112-132 bpm)";
     const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(10);
+    expect(result.fuelRate).toBe(60); // 10g/10min × 6 = 60g/h
     expect(result.totalCarbs).toBe(75);
   });
 

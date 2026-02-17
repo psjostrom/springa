@@ -223,7 +223,7 @@ describe("fetchCalendarData", () => {
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
     expect(result[0].carbsIngested).toBe(55); // actual from activity
-    expect(result[0].fuelRate).toBe(8); // planned rate from event
+    expect(result[0].fuelRate).toBe(48); // planned rate from event (carbs_per_hour)
   });
 
   it("defaults carbsIngested to planned totalCarbs when carbs_ingested is absent", async () => {
@@ -295,7 +295,7 @@ describe("fetchCalendarData", () => {
 
     const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
     expect(result.length).toBe(1);
-    expect(result[0].fuelRate).toBe(8); // 48 / 6
+    expect(result[0].fuelRate).toBe(48); // carbs_per_hour directly
     expect(result[0].totalCarbs).toBeDefined();
   });
 
@@ -323,8 +323,8 @@ describe("fetchCalendarData", () => {
 
     const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
     expect(result.length).toBe(1);
-    expect(result[0].fuelRate).toBe(8);
-    // totalCarbs computed from fuelRate (8g/10min) × estimated duration (55min) = 44
+    expect(result[0].fuelRate).toBe(48); // 8g/10min × 6 = 48g/h
+    // totalCarbs computed from fuelRate (48g/h) × estimated duration (55min/60) = 44
     expect(result[0].totalCarbs).toBe(44);
   });
 
@@ -457,7 +457,7 @@ describe("uploadToIntervals", () => {
     }));
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run", fuelRate: 10 },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run", fuelRate: 60 },
     ];
 
     await uploadToIntervals("test-key", events);
