@@ -7,7 +7,7 @@ import { updateEvent } from "@/lib/intervalsApi";
 import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
-import { PreRunCard } from "./PreRunCard";
+import { WorkoutCard } from "./WorkoutCard";
 
 interface EventModalProps {
   event: CalendarEvent;
@@ -152,7 +152,7 @@ export function EventModal({
         </div>
 
         {selectedEvent.description && (
-          <PreRunCard description={selectedEvent.description} paceTable={paceTable} />
+          <WorkoutCard description={selectedEvent.description} paceTable={paceTable} />
         )}
 
         {selectedEvent.type === "completed" && (

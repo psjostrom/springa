@@ -283,7 +283,7 @@ describe("Flow 6: Calendar — BG strategy matches in agenda and modal", () => {
     searchParamsState.current = new URLSearchParams("workout=event-1002");
     rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
 
-    // 6. Assert modal PreRunCard shows matching pump status
+    // 6. Assert modal WorkoutCard shows matching pump status
     await waitFor(() => {
       expect(screen.getByText("Pump ON")).toBeInTheDocument();
     });
@@ -320,7 +320,7 @@ describe("Flow 6: Calendar — BG strategy matches in agenda and modal", () => {
     searchParamsState.current = new URLSearchParams("workout=event-1003");
     rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
 
-    // 6. Assert modal PreRunCard shows matching pump status
+    // 6. Assert modal WorkoutCard shows matching pump status
     await waitFor(() => {
       expect(screen.getByText("Pump OFF")).toBeInTheDocument();
     });

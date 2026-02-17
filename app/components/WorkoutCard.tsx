@@ -11,7 +11,7 @@ import {
 } from "@/lib/utils";
 import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
 
-interface PreRunCardProps {
+interface WorkoutCardProps {
   description: string;
   paceTable: PaceTable;
 }
@@ -64,7 +64,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function PreRunCard({ description, paceTable }: PreRunCardProps) {
+export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
   const status = extractPumpStatus(description);
   const sections = parseWorkoutStructure(description);
 
