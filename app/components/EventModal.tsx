@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
 import { getEventStyle } from "@/lib/eventStyles";
@@ -376,7 +376,7 @@ export function EventModal({
             )}
 
             {/* HR Zones */}
-            {selectedEvent.hrZones && (
+            {selectedEvent.hrZones ? (
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
                   Heart Rate Zones
@@ -389,7 +389,18 @@ export function EventModal({
                   z5={selectedEvent.hrZones.z5}
                 />
               </div>
-            )}
+            ) : isLoadingStreamData ? (
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
+                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
+                  Heart Rate Zones
+                </div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="skeleton h-5 w-full" />
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* Stream Graph */}
             {selectedEvent.streamData &&
@@ -399,10 +410,7 @@ export function EventModal({
               </div>
             ) : isLoadingStreamData ? (
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  <span className="text-sm">Loading workout data...</span>
-                </div>
+                <div className="skeleton h-40 w-full" />
               </div>
             ) : selectedEvent.type === "completed" ? (
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">

@@ -175,8 +175,11 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   // Track whether we pushed a modal entry onto the history stack
   const modalPushedRef = useRef(false);
 
-  // Open modal by updating URL
+  // Open modal by updating URL — set selectedEvent immediately so the
+  // modal appears without waiting for the URL roundtrip.
   const openWorkoutModal = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("workout", event.id);
     const url = `?${params.toString()}`;
