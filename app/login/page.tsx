@@ -5,7 +5,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center p-4">
       <div className="bg-[#1e1535] rounded-xl p-8 max-w-sm w-full shadow-lg shadow-[#ff2d95]/10 border border-[#3d2b5a] text-center">
         <h1 className="text-2xl font-bold text-white mb-2">Springa</h1>
-        <p className="text-[#a78bca] text-sm mb-8">
+        <p className="text-[#c4b5fd] text-sm mb-8">
           Sign in to access your training planner
         </p>
         <form

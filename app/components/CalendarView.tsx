@@ -326,7 +326,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
                   ? "bg-[#ff2d95] text-white shadow-lg shadow-[#ff2d95]/20"
-                  : "bg-[#2a1f3d] text-[#8b7aaa] hover:bg-[#3d2b5a] hover:text-[#c4b5fd]"
+                  : "bg-[#2a1f3d] text-[#b8a5d4] hover:bg-[#3d2b5a] hover:text-[#c4b5fd]"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -347,7 +347,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="text-[#ff3366] font-semibold mb-2">Error</div>
-              <div className="text-sm text-[#a78bca]">{error}</div>
+              <div className="text-sm text-[#c4b5fd]">{error}</div>
               <button
                 onClick={() => {
                   setError(null);
@@ -367,7 +367,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-[#2a1f3d] p-2 text-center text-xs sm:text-sm font-semibold text-[#8b7aaa]"
+                  className="bg-[#2a1f3d] p-2 text-center text-sm font-semibold text-[#b8a5d4]"
                 >
                   {day}
                 </div>
@@ -387,7 +387,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-[#2a1f3d] p-2 text-center text-xs sm:text-sm font-semibold text-[#8b7aaa]"
+                  className="bg-[#2a1f3d] p-2 text-center text-sm font-semibold text-[#b8a5d4]"
                 >
                   {day}
                 </div>

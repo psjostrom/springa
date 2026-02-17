@@ -26,7 +26,7 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 							fontSize={12}
 							tickLine={false}
 							axisLine={false}
-							tick={{ fill: "#8b7aaa" }}
+							tick={{ fill: "#b8a5d4" }}
 						/>
 						<YAxis hide />
 						<Tooltip

@@ -19,12 +19,12 @@ export function PlanStructureSettings({
 }: PlanStructureSettingsProps) {
 	return (
 		<div className="bg-[#2a1f3d] p-3 rounded border border-[#3d2b5a]">
-			<label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2 flex items-center gap-1">
+			<label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2 flex items-center gap-1">
 				<Settings size={12} /> Plan Structure
 			</label>
 			<div className="space-y-2 text-sm">
 				<div>
-					<span className="block text-xs text-[#6b5a8a]">Tag Prefix</span>
+					<span className="block text-sm text-[#b8a5d4]">Tag Prefix</span>
 					<input
 						type="text"
 						value={prefix}
@@ -34,7 +34,7 @@ export function PlanStructureSettings({
 				</div>
 				<div className="flex gap-2">
 					<div className="flex-1">
-						<span className="block text-xs text-[#6b5a8a]">Weeks</span>
+						<span className="block text-sm text-[#b8a5d4]">Weeks</span>
 						<input
 							type="number"
 							value={totalWeeks}
@@ -43,7 +43,7 @@ export function PlanStructureSettings({
 						/>
 					</div>
 					<div className="flex-1">
-						<span className="block text-xs text-[#6b5a8a]">Start km</span>
+						<span className="block text-sm text-[#b8a5d4]">Start km</span>
 						<input
 							type="number"
 							value={startKm}

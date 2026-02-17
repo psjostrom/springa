@@ -57,9 +57,9 @@ function StatCard({
 }) {
   return (
     <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-      <div className="text-sm text-[#8b7aaa] mb-1">{label}</div>
+      <div className="text-sm text-[#b8a5d4] mb-1">{label}</div>
       <div className={`text-xl font-bold ${color || "text-white"}`}>{value}</div>
-      {sub && <div className="text-sm text-[#a78bca] mt-0.5">{sub}</div>}
+      {sub && <div className="text-sm text-[#c4b5fd] mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -75,7 +75,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
     ) : insights.ctlTrend < -1 ? (
       <TrendingDown className="w-4 h-4 text-[#ff3366]" />
     ) : (
-      <Minus className="w-4 h-4 text-[#8b7aaa]" />
+      <Minus className="w-4 h-4 text-[#b8a5d4]" />
     );
 
   const rampWarning =
@@ -96,7 +96,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           <div className={`font-bold text-base ${formStyle.text}`}>
             {insights.formZoneLabel}
           </div>
-          <div className="text-sm text-[#a78bca]">
+          <div className="text-sm text-[#c4b5fd]">
             Form: {insights.currentTsb > 0 ? "+" : ""}
             {insights.currentTsb}
             {insights.formZone === "optimal" &&
@@ -127,7 +127,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           color="text-[#c4b5fd]"
         />
         <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-          <div className="text-sm text-[#8b7aaa] mb-1">Fitness Trend</div>
+          <div className="text-sm text-[#b8a5d4] mb-1">Fitness Trend</div>
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
@@ -136,17 +136,17 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
               {insights.ctlTrend > 0 ? "+" : ""}
               {insights.ctlTrend}
             </span>
-            <span className="text-sm text-[#8b7aaa]">in 28d</span>
+            <span className="text-sm text-[#b8a5d4]">in 28d</span>
           </div>
         </div>
         <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-          <div className="text-sm text-[#8b7aaa] mb-1">Ramp Rate</div>
+          <div className="text-sm text-[#b8a5d4] mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
             <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#00ffff]"}`}>
               {insights.rampRate > 0 ? "+" : ""}
               {insights.rampRate}
             </span>
-            <span className="text-sm text-[#8b7aaa]">/week</span>
+            <span className="text-sm text-[#b8a5d4]">/week</span>
           </div>
         </div>
       </div>
@@ -162,24 +162,24 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Activity Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-          <div className="text-sm text-[#8b7aaa] mb-1">Last 7 days</div>
+          <div className="text-sm text-[#b8a5d4] mb-1">Last 7 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities7d}{" "}
-            <span className="text-sm font-normal text-[#8b7aaa]">
+            <span className="text-sm font-normal text-[#b8a5d4]">
               {insights.totalActivities7d === 1 ? "run" : "runs"}
             </span>
           </div>
-          <div className="text-sm text-[#a78bca] mt-0.5">
+          <div className="text-sm text-[#c4b5fd] mt-0.5">
             {insights.totalLoad7d} load
           </div>
         </div>
         <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-          <div className="text-sm text-[#8b7aaa] mb-1">Last 28 days</div>
+          <div className="text-sm text-[#b8a5d4] mb-1">Last 28 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities28d}{" "}
-            <span className="text-sm font-normal text-[#8b7aaa]">runs</span>
+            <span className="text-sm font-normal text-[#b8a5d4]">runs</span>
           </div>
-          <div className="text-sm text-[#a78bca] mt-0.5">
+          <div className="text-sm text-[#c4b5fd] mt-0.5">
             {insights.totalLoad28d} load
           </div>
         </div>
@@ -188,14 +188,14 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Explainer Toggle */}
       <button
         onClick={() => setShowExplainer((v) => !v)}
-        className="flex items-center gap-1.5 text-sm text-[#8b7aaa] hover:text-[#c4b5fd] transition-colors"
+        className="flex items-center gap-1.5 text-sm text-[#b8a5d4] hover:text-[#c4b5fd] transition-colors"
       >
         <Info className="w-4 h-4" />
         {showExplainer ? "Hide explanation" : "What do these numbers mean?"}
       </button>
 
       {showExplainer && (
-        <div className="bg-[#1a1030] rounded-xl border border-[#3d2b5a] p-4 space-y-3 text-sm text-[#a78bca] leading-relaxed">
+        <div className="bg-[#1a1030] rounded-xl border border-[#3d2b5a] p-4 space-y-3 text-sm text-[#c4b5fd] leading-relaxed">
           <div>
             <span className="font-semibold text-[#00ffff]">Load</span> is a
             score for how hard a workout was, combining duration and intensity.

@@ -71,7 +71,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 								y={y + 4}
 								textAnchor="end"
 								fontSize="10"
-								fill="#8b7aaa"
+								fill="#b8a5d4"
 							>
 								{Math.round(yMin + i * yStep)}
 							</text>
@@ -105,7 +105,7 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 					y={height - 5}
 					textAnchor="middle"
 					fontSize="10"
-					fill="#8b7aaa"
+					fill="#b8a5d4"
 				>
 					Time (minutes)
 				</text>
@@ -116,13 +116,13 @@ export function GlucoseGraph({ data }: GlucoseGraphProps) {
 					y={height / 2}
 					textAnchor="middle"
 					fontSize="10"
-					fill="#8b7aaa"
+					fill="#b8a5d4"
 					transform={`rotate(-90, 10, ${height / 2})`}
 				>
 					mmol/L
 				</text>
 			</svg>
-			<div className="flex justify-between text-xs text-[#6b5a8a] mt-1 px-12">
+			<div className="flex justify-between text-sm text-[#b8a5d4] mt-1 px-12">
 				<span>0m</span>
 				<span>{Math.round(maxTime / 2)}m</span>
 				<span>{maxTime}m</span>

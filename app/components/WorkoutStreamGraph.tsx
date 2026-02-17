@@ -250,10 +250,10 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             <button
               key={stream}
               onClick={() => toggleStream(stream)}
-              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
                 isSelected
                   ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
-                  : "bg-[#1a1030] text-[#6b5a8a] hover:bg-[#2a1f3d] border border-transparent"
+                  : "bg-[#1a1030] text-[#b8a5d4] hover:bg-[#2a1f3d] border border-transparent"
               }`}
             >
               <div
@@ -270,7 +270,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       </div>
 
       {/* Legend showing current ranges or hover values */}
-      <div className="flex gap-2 sm:gap-4 mb-3 text-xs flex-wrap min-h-[2.5rem]">
+      <div className="flex gap-2 sm:gap-4 mb-3 text-sm flex-wrap min-h-[2.5rem]">
         {streamPaths.map((path, idx) => {
           if (!path) return null;
           const { config, minValue, maxValue, hoverValue } = path;
@@ -282,12 +282,12 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 style={{ backgroundColor: config.color }}
               />
               <span
-                className="font-medium text-xs"
+                className="font-medium text-sm"
                 style={{ color: config.color }}
               >
                 {config.label}:
               </span>
-              <span className="text-[#c4b5fd] text-xs whitespace-nowrap font-semibold">
+              <span className="text-[#c4b5fd] text-sm whitespace-nowrap font-semibold">
                 {isHovering && hoverValue !== null
                   ? `${formatVal(hoverValue)} ${config.unit}`
                   : `${formatVal(minValue)} - ${formatVal(maxValue)} ${config.unit}`}
@@ -353,7 +353,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y={y + 4}
                 textAnchor="end"
                 fontSize="11"
-                fill="#8b7aaa"
+                fill="#b8a5d4"
               >
                 {label}
               </text>
@@ -386,7 +386,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 y1={padding.top}
                 x2={(hoverTime / maxTime) * chartWidth + padding.left}
                 y2={height - padding.bottom}
-                stroke="#8b7aaa"
+                stroke="#b8a5d4"
                 strokeWidth="1"
                 strokeDasharray="4 2"
                 opacity="0.6"
@@ -428,7 +428,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               y={height - padding.bottom + 14}
               textAnchor="middle"
               fontSize="11"
-              fill="#8b7aaa"
+              fill="#b8a5d4"
             >
               {Math.round(frac * maxTime)}m
             </text>
@@ -441,7 +441,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               y={height / 2}
               textAnchor="middle"
               fontSize="12"
-              fill="#8b7aaa"
+              fill="#b8a5d4"
               fontWeight="500"
               transform={`rotate(-90, 10, ${height / 2})`}
             >

@@ -19,7 +19,7 @@ export function PhaseTracker({
 				<Route className="text-[#00ffff]" size={18} />
 				<h3 className="font-bold text-sm">{phaseName}</h3>
 			</div>
-			<div className="flex justify-between text-xs text-[#8b7aaa] mb-1">
+			<div className="flex justify-between text-sm text-[#b8a5d4] mb-1">
 				<span>Progress</span>
 				<span>
 					Week {currentWeek} of {totalWeeks}

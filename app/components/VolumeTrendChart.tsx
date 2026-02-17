@@ -121,7 +121,7 @@ export function VolumeTrendChart({
 
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2">
+      <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
         Weekly Volume (km)
       </label>
       <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a]">
@@ -145,7 +145,7 @@ export function VolumeTrendChart({
                 axisLine={false}
                 interval={1}
                 padding={{ left: 2, right: 2 }}
-                tick={{ fill: "#8b7aaa" }}
+                tick={{ fill: "#b8a5d4" }}
               />
               <YAxis
                 width={30}
@@ -153,7 +153,7 @@ export function VolumeTrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `${v}`}
-                tick={{ fill: "#8b7aaa" }}
+                tick={{ fill: "#b8a5d4" }}
               />
               <Tooltip
                 cursor={{ fill: "#2a1f3d" }}
@@ -220,7 +220,7 @@ export function VolumeTrendChart({
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-[#8b7aaa]">
+        <div className="flex items-center justify-center gap-4 mt-2 text-sm text-[#b8a5d4]">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#39ff14]" />
             Actual

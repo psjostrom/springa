@@ -9,7 +9,7 @@ export function PhysiologySettings({
 }: PhysiologySettingsProps) {
 	return (
 		<div>
-			<label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-1">
+			<label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-1">
 				Physiology
 			</label>
 			<div className="flex items-center gap-2 text-sm text-[#c4b5fd]">

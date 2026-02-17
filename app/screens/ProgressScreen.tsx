@@ -70,7 +70,7 @@ export function ProgressScreen({
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {/* Phase Tracker */}
         <div>
-          <label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2">
+          <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
             Training Progress
           </label>
           <PhaseTracker
@@ -84,7 +84,7 @@ export function ProgressScreen({
         {/* Fitness & Insights */}
         {isLoading ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <div className="flex items-center justify-center py-8 text-[#8b7aaa]">
+            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               <span className="text-sm">Loading fitness data...</span>
             </div>
@@ -95,7 +95,7 @@ export function ProgressScreen({
             <>
               {/* Insights */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-2">
+                <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
                   Fitness Insights
                 </label>
                 <FitnessInsightsPanel insights={insights} />

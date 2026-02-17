@@ -31,7 +31,7 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
             <h1 className="text-xl font-bold text-white">
               Connect Intervals.icu
             </h1>
-            <p className="text-sm text-[#a78bca]">
+            <p className="text-sm text-[#c4b5fd]">
               Enter your API key to get started
             </p>
           </div>
@@ -53,16 +53,16 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
                 setApiKey(e.target.value);
                 setError("");
               }}
-              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#6b5a8a]"
+              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4]"
               placeholder="Paste your API key here"
               autoFocus
             />
             {error && <p className="text-sm text-[#ff3366] mt-1">{error}</p>}
           </div>
 
-          <div className="bg-[#2a1f3d] rounded-lg p-3 text-xs text-[#c4b5fd] border border-[#3d2b5a]">
+          <div className="bg-[#2a1f3d] rounded-lg p-3 text-sm text-[#c4b5fd] border border-[#3d2b5a]">
             <p className="font-semibold mb-1">How to get your API key:</p>
-            <ol className="list-decimal list-inside space-y-1 text-[#a78bca]">
+            <ol className="list-decimal list-inside space-y-1 text-[#c4b5fd]">
               <li>Go to intervals.icu</li>
               <li>Navigate to Settings &rarr; Developer</li>
               <li>Copy your API key</li>

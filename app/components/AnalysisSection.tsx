@@ -43,7 +43,7 @@ function GlucoseChart({
 
 	return (
 		<div>
-			<div className="text-xs font-medium text-[#c4b5fd] mb-1">{title}</div>
+			<div className="text-sm font-medium text-[#c4b5fd] mb-1">{title}</div>
 			<div className="h-32 w-full bg-[#1a1030] rounded border border-[#3d2b5a] p-1 min-h-0">
 				<ResponsiveContainer width="100%" height="100%" minHeight={120}>
 					<LineChart
@@ -52,14 +52,14 @@ function GlucoseChart({
 					>
 						<XAxis
 							dataKey="time"
-							tick={{ fontSize: 10, fill: "#8b7aaa" }}
+							tick={{ fontSize: 10, fill: "#b8a5d4" }}
 							interval="preserveStartEnd"
 							tickLine={false}
 							axisLine={{ stroke: "#3d2b5a" }}
 						/>
 						<YAxis
 							domain={["dataMin - 1", "dataMax + 1"]}
-							tick={{ fontSize: 10, fill: "#8b7aaa" }}
+							tick={{ fontSize: 10, fill: "#b8a5d4" }}
 							width={35}
 							tickLine={false}
 							axisLine={false}
@@ -152,19 +152,19 @@ export function AnalysisSection({
 								plotData={longRunAnalysis.plotData}
 								title="Last Long Run"
 							/>
-							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Long:</span>
+									<span className="text-[#b8a5d4]">Long:</span>
 									<input
 										type="number"
 										value={fuelLong}
 										onChange={(e) => onFuelLongChange(Number(e.target.value))}
 										className={fuelInputClass}
 									/>
-									<span className="text-[#6b5a8a]">g/10m</span>
+									<span className="text-[#b8a5d4]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Trend:</span>
+									<span className="text-[#b8a5d4]">Trend:</span>
 									<TrendBadge trend={longRunAnalysis.trend} />
 								</div>
 							</div>
@@ -178,19 +178,19 @@ export function AnalysisSection({
 								plotData={easyRunAnalysis.plotData}
 								title="Last Easy Run"
 							/>
-							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Easy:</span>
+									<span className="text-[#b8a5d4]">Easy:</span>
 									<input
 										type="number"
 										value={fuelEasy}
 										onChange={(e) => onFuelEasyChange(Number(e.target.value))}
 										className={fuelInputClass}
 									/>
-									<span className="text-[#6b5a8a]">g/10m</span>
+									<span className="text-[#b8a5d4]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Trend:</span>
+									<span className="text-[#b8a5d4]">Trend:</span>
 									<TrendBadge trend={easyRunAnalysis.trend} />
 								</div>
 							</div>
@@ -204,19 +204,19 @@ export function AnalysisSection({
 								plotData={intervalAnalysis.plotData}
 								title="Last Interval/Tempo"
 							/>
-							<div className="flex justify-between items-center text-xs bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
+							<div className="flex justify-between items-center text-sm bg-[#1a1030] p-2 rounded border border-[#3d2b5a] gap-2">
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Intervals:</span>
+									<span className="text-[#b8a5d4]">Intervals:</span>
 									<input
 										type="number"
 										value={fuelInterval}
 										onChange={(e) => onFuelIntervalChange(Number(e.target.value))}
 										className={fuelInputClass}
 									/>
-									<span className="text-[#6b5a8a]">g/10m</span>
+									<span className="text-[#b8a5d4]">g/10m</span>
 								</div>
 								<div className="flex items-center gap-1 shrink-0">
-									<span className="text-[#8b7aaa]">Trend:</span>
+									<span className="text-[#b8a5d4]">Trend:</span>
 									<TrendBadge trend={intervalAnalysis.trend} />
 								</div>
 							</div>

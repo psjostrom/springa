@@ -34,10 +34,10 @@ function StepRow({ step }: { step: WorkoutStep }) {
       <span className="font-mono text-base font-semibold text-white w-12 shrink-0">
         {step.duration}
       </span>
-      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${ZONE_STYLES[step.zone]}`}>
+      <span className={`px-2 py-0.5 rounded-full text-sm font-bold ${ZONE_STYLES[step.zone]}`}>
         {getZoneLabel(step.zone)}
       </span>
-      <span className="text-sm text-[#8b7aaa]">{step.bpmRange}</span>
+      <span className="text-sm text-[#b8a5d4]">{step.bpmRange}</span>
     </div>
   );
 }
@@ -50,7 +50,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
           {section.name}
         </span>
         {section.repeats && (
-          <span className="text-xs font-bold bg-[#ff2d95] text-white px-2 py-0.5 rounded-full">
+          <span className="text-sm font-bold bg-[#ff2d95] text-white px-2 py-0.5 rounded-full">
             {section.repeats}x
           </span>
         )}
@@ -84,7 +84,7 @@ export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
   return (
     <div className="rounded-xl overflow-hidden mb-4 border border-[#3d2b5a] shadow-sm">
       {/* Duration + Fuel Strip */}
-      <div className="px-4 py-3 bg-[#3d2b1a] border-b border-[#ffb800]/30">
+      <div className="px-4 py-3 bg-[#2d1a35] border-b border-[#ff2d95]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {estDuration != null && (
             <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ export function WorkoutCard({ description, paceTable }: WorkoutCardProps) {
       {/* Notes */}
       {notes && (
         <div className="bg-[#2a1f3d] px-4 py-3 border-t border-[#3d2b5a]">
-          <p className="text-sm text-[#a78bca] leading-relaxed">{notes}</p>
+          <p className="text-sm text-[#c4b5fd] leading-relaxed">{notes}</p>
         </div>
       )}
     </div>

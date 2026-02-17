@@ -57,8 +57,8 @@ export const DayCell = React.memo(function DayCell({
     >
       <div className="flex flex-col h-full">
         <div
-          className={`text-xs sm:text-sm mb-1 ${
-            isTodayDate ? "font-bold text-[#00ffff]" : "text-[#8b7aaa]"
+          className={`text-sm mb-1 ${
+            isTodayDate ? "font-bold text-[#00ffff]" : "text-[#b8a5d4]"
           }`}
         >
           {showMonthOpacity ? format(day, "d") : format(day, "d MMM")}
@@ -72,7 +72,7 @@ export const DayCell = React.memo(function DayCell({
               onDragStart={(e) => onDragStart(e, event)}
               onDragEnd={onDragEnd}
               onClick={() => onEventClick(event)}
-              className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
+              className={`text-sm p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
                 draggedEventId === event.id ? "opacity-50" : ""
               }`}
             >

@@ -32,12 +32,12 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
         type="button"
         aria-label={`Info about ${label.split(" ")[0].toLowerCase()}`}
         onClick={() => setOpen((v) => !v)}
-        className="text-[#6b5a8a] hover:text-[#c4b5fd] transition-colors"
+        className="text-[#b8a5d4] hover:text-white transition-colors"
       >
         <Info className="w-3 h-3" />
       </button>
       {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-[#0d0a1a] text-white text-xs leading-relaxed px-3 py-2 shadow-lg border border-[#3d2b5a] z-10">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-[#0d0a1a] text-white text-sm leading-relaxed px-3 py-2 shadow-lg border border-[#3d2b5a] z-10">
           {tip}
         </span>
       )}
@@ -116,7 +116,7 @@ export function EventModal({
                 />
               </div>
             ) : (
-              <div className="text-sm text-[#a78bca] mb-1">
+              <div className="text-sm text-[#c4b5fd] mb-1">
                 {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
                   locale: enGB,
                 })}
@@ -132,7 +132,7 @@ export function EventModal({
                 selectedEvent.type === "planned" && selectedEvent.date < now;
               return (
                 <div
-                  className={`inline-block px-2 py-1 rounded text-xs font-medium mt-2 ${isMissed ? "bg-[#3d1525] text-[#ff6b8a]" : getEventStyle(selectedEvent)}`}
+                  className={`inline-block px-2 py-1 rounded text-sm font-medium mt-2 ${isMissed ? "bg-[#3d1525] text-[#ff6b8a]" : getEventStyle(selectedEvent)}`}
                 >
                   {isMissed
                     ? "Missed"
@@ -180,7 +180,7 @@ export function EventModal({
             )}
             <button
               onClick={onClose}
-              className="text-[#6b5a8a] hover:text-[#c4b5fd] text-xl"
+              className="text-[#b8a5d4] hover:text-white text-xl"
             >
               ✕
             </button>
@@ -199,7 +199,7 @@ export function EventModal({
               <div className="bg-[#2a1f3d] rounded-t-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 {selectedEvent.distance && (
                   <div>
-                    <div className="text-[#8b7aaa] text-xs">Distance</div>
+                    <div className="text-[#b8a5d4] text-sm">Distance</div>
                     <div className="font-semibold text-white">
                       {(selectedEvent.distance / 1000).toFixed(2)} km
                     </div>
@@ -207,7 +207,7 @@ export function EventModal({
                 )}
                 {selectedEvent.duration && (
                   <div>
-                    <div className="text-[#8b7aaa] text-xs">Duration</div>
+                    <div className="text-[#b8a5d4] text-sm">Duration</div>
                     <div className="font-semibold text-white">
                       {Math.floor(selectedEvent.duration / 60)} min
                     </div>
@@ -215,7 +215,7 @@ export function EventModal({
                 )}
                 {selectedEvent.pace && (
                   <div>
-                    <div className="text-[#8b7aaa] text-xs">Pace</div>
+                    <div className="text-[#b8a5d4] text-sm">Pace</div>
                     <div className="font-semibold text-white">
                       {Math.floor(selectedEvent.pace)}:
                       {String(
@@ -227,7 +227,7 @@ export function EventModal({
                 )}
                 {selectedEvent.avgHr && (
                   <div>
-                    <div className="text-[#8b7aaa] text-xs">Avg HR</div>
+                    <div className="text-[#b8a5d4] text-sm">Avg HR</div>
                     <div className="font-semibold text-white">
                       {selectedEvent.avgHr} bpm
                     </div>
@@ -241,7 +241,7 @@ export function EventModal({
                 selectedEvent.maxHr ||
                 selectedEvent.load ||
                 selectedEvent.intensity !== undefined) && (
-                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-xs text-[#8b7aaa]">
+                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-sm text-[#b8a5d4]">
                   {selectedEvent.calories && (
                     <span>{selectedEvent.calories} kcal</span>
                   )}
@@ -302,14 +302,14 @@ export function EventModal({
               </div>
             ) : isLoadingStreamData ? (
               <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
-                <div className="flex items-center justify-center py-8 text-[#8b7aaa]">
+                <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   <span className="text-sm">Loading workout data...</span>
                 </div>
               </div>
             ) : selectedEvent.type === "completed" ? (
               <div className="rounded-xl border border-[#3d2b5a] shadow-sm overflow-hidden p-4">
-                <div className="text-sm text-[#6b5a8a] italic">
+                <div className="text-sm text-[#b8a5d4] italic">
                   Detailed workout data (graphs) not available for this
                   activity
                 </div>

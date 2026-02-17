@@ -26,13 +26,13 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
     >
       {/* Date */}
       <div className="flex-shrink-0 text-center w-10 sm:w-20">
-        <div className="text-xs sm:text-sm text-[#8b7aaa] uppercase">
+        <div className="text-sm text-[#b8a5d4] uppercase">
           {format(event.date, "EEE", { locale: enGB })}
         </div>
         <div className="text-2xl sm:text-3xl font-bold text-white">
           {format(event.date, "d", { locale: enGB })}
         </div>
-        <div className="text-xs text-[#8b7aaa]">
+        <div className="text-sm text-[#b8a5d4]">
           {format(event.date, "MMM", { locale: enGB })}
         </div>
         {event.type === "completed" &&
@@ -88,7 +88,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
             </h3>
           </div>
           <span
-            className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+            className={`px-2 py-0.5 rounded text-sm font-medium flex-shrink-0 ${
               isMissed
                 ? "hidden sm:inline-block bg-[#3d1525] text-[#ff6b8a]"
                 : event.type === "completed"
@@ -110,7 +110,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
 
         {event.type === "completed" && (
           <>
-            <div className="flex flex-wrap gap-x-3 text-xs sm:text-sm text-[#a78bca] mb-2">
+            <div className="flex flex-wrap gap-x-3 text-sm text-[#c4b5fd] mb-2">
               {event.distance && (
                 <span>
                   <span className="font-semibold text-white">
@@ -172,7 +172,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
                   : null,
               ].filter(Boolean);
               return (
-                <div className="text-sm font-medium text-[#ffb800] bg-[#3d2b1a] border border-[#ffb800]/30 rounded px-2 py-0.5 inline-block">
+                <div className="text-sm font-medium text-[#ffb800] bg-[#2d1a35] border border-[#ffb800]/30 rounded px-2 py-0.5 inline-block">
                   {parts.join(" · ")}
                 </div>
               );
@@ -200,7 +200,7 @@ export function AgendaView({
 
   if (events.length === 0) {
     return (
-      <div className="text-center py-12 text-[#6b5a8a]">
+      <div className="text-center py-12 text-[#b8a5d4]">
         No workouts scheduled
       </div>
     );
@@ -211,7 +211,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => setView("upcoming")}
-          className="flex items-center gap-1.5 py-2 text-sm text-[#8b7aaa] hover:text-[#c4b5fd] transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-[#b8a5d4] hover:text-[#c4b5fd] transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -233,7 +233,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => setView("history")}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#8b7aaa] hover:text-[#c4b5fd] transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#b8a5d4] hover:text-[#c4b5fd] transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

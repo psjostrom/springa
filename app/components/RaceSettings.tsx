@@ -17,7 +17,7 @@ export function RaceSettings({
 }: RaceSettingsProps) {
 	return (
 		<div>
-			<label className="block text-xs font-semibold uppercase text-[#8b7aaa] mb-1">
+			<label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-1">
 				Race Settings
 			</label>
 			<input

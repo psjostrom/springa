@@ -48,7 +48,7 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 							<span className="text-sm font-semibold text-white">
 								{formatTime(zone.seconds)}
 							</span>
-							<span className="text-xs text-[#8b7aaa]">
+							<span className="text-sm text-[#b8a5d4]">
 								{percentage.toFixed(1)}%
 							</span>
 						</div>

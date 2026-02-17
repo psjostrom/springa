@@ -17,7 +17,7 @@ export function ActionBar({
 				<h3 className="font-bold text-[#00ffff] text-sm md:text-base">
 					Ready to sync?
 				</h3>
-				<p className="text-xs md:text-sm text-[#a78bca]">
+				<p className="text-sm text-[#c4b5fd]">
 					{workoutCount} workouts generated.
 				</p>
 			</div>

@@ -28,7 +28,7 @@ export function TabNavigation({
 						className={`px-6 py-3 font-medium transition-colors relative ${
 							activeTab === key
 								? "text-[#ff2d95]"
-								: "text-[#8b7aaa] hover:text-[#c4b5fd]"
+								: "text-[#c4b5fd] hover:text-white"
 						}`}
 					>
 						{label}
@@ -48,11 +48,11 @@ export function TabNavigation({
 						className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
 							activeTab === key
 								? "text-[#ff2d95]"
-								: "text-[#6b5a8a]"
+								: "text-[#c4b5fd]"
 						}`}
 					>
 						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} />
-						<span className="text-[10px] font-medium">{label}</span>
+						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}
 			</nav>

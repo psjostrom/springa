@@ -129,10 +129,10 @@ export function FitnessChart({ data }: FitnessChartProps) {
             <button
               key={line}
               onClick={() => toggleLine(line)}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-2 ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                 active
                   ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
-                  : "bg-[#1a1030] text-[#6b5a8a] hover:bg-[#2a1f3d] border border-transparent"
+                  : "bg-[#1a1030] text-[#b8a5d4] hover:bg-[#2a1f3d] border border-transparent"
               }`}
             >
               <div
@@ -146,10 +146,10 @@ export function FitnessChart({ data }: FitnessChartProps) {
       </div>
 
       {/* Hover legend */}
-      <div className="flex gap-3 sm:gap-5 mb-3 text-xs flex-wrap min-h-[1.5rem]">
+      <div className="flex gap-3 sm:gap-5 mb-3 text-sm flex-wrap min-h-[1.5rem]">
         {hoverData ? (
           <>
-            <span className="text-[#8b7aaa]">{hoverData.date}</span>
+            <span className="text-[#b8a5d4]">{hoverData.date}</span>
             {visibleLines.has("ctl") && (
               <span style={{ color: LINE_CONFIGS.ctl.color }}>
                 Fitness: <span className="font-bold text-white">{hoverData.ctl}</span>
@@ -172,7 +172,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             )}
           </>
         ) : (
-          <span className="text-[#6b5a8a]">Hover or touch to see values</span>
+          <span className="text-[#b8a5d4]">Hover or touch to see values</span>
         )}
       </div>
 
@@ -207,7 +207,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y1={zeroY}
             x2={width - padding.right}
             y2={zeroY}
-            stroke="#6b5a8a"
+            stroke="#b8a5d4"
             strokeWidth="1"
             strokeDasharray="4 2"
           />
@@ -248,7 +248,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y={tick.y + 4}
             textAnchor="end"
             fontSize="11"
-            fill="#8b7aaa"
+            fill="#b8a5d4"
           >
             {tick.label}
           </text>
@@ -262,7 +262,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y={height - padding.bottom + 16}
             textAnchor="middle"
             fontSize="11"
-            fill="#8b7aaa"
+            fill="#b8a5d4"
           >
             {tick.label}
           </text>
@@ -290,7 +290,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
               y1={padding.top}
               x2={scaleX(hoverIdx)}
               y2={height - padding.bottom}
-              stroke="#8b7aaa"
+              stroke="#b8a5d4"
               strokeWidth="1"
               strokeDasharray="4 2"
               opacity="0.5"
