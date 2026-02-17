@@ -53,8 +53,8 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
                 setApiKey(e.target.value);
                 setError("");
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="API_KEY:your_key_here"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400"
+              placeholder="Paste your API key here"
               autoFocus
             />
             {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
