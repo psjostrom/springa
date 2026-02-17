@@ -12,7 +12,7 @@ export function ActionBar({
 	onUpload,
 }: ActionBarProps) {
 	return (
-		<div className="fixed bottom-4 left-4 right-4 md:static z-50 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-xl md:shadow-sm backdrop-blur-sm bg-opacity-95 md:bg-opacity-100">
+		<div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:static z-50 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-xl md:shadow-sm backdrop-blur-sm bg-opacity-95 md:bg-opacity-100">
 			<div>
 				<h3 className="font-bold text-blue-900 text-sm md:text-base">
 					Ready to sync?

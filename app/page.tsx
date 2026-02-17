@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
@@ -17,14 +17,11 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
 
-  // Initialize API key from localStorage
-  const [apiKey, setApiKey] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const storedKey = localStorage.getItem("intervals_api_key");
-      if (storedKey) return storedKey;
-    }
-    return "";
-  });
+  const subscribe = useCallback(() => () => {}, []);
+  const getSnapshot = useCallback(() => localStorage.getItem("intervals_api_key") ?? "", []);
+  const getServerSnapshot = useCallback(() => null as string | null, []);
+  const storedKey = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [localKey, setLocalKey] = useState("");
 
   // Derive active tab from URL (default to calendar)
   const tabParam = searchParams.get("tab");
@@ -44,12 +41,32 @@ function HomeContent() {
 
   // Handle API key submission
   const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
+    setLocalKey(key);
     localStorage.setItem("intervals_api_key", key);
   };
 
+  const apiKey = storedKey ?? localKey;
+
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
+
+  if (storedKey === null) {
+    return (
+      <div className="h-screen bg-slate-50 flex flex-col text-slate-900 font-sans overflow-hidden">
+        <div className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+            <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="space-y-3 w-full max-w-md px-4">
+            <div className="h-4 bg-slate-200 rounded animate-pulse" />
+            <div className="h-4 bg-slate-200 rounded animate-pulse w-2/3" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!apiKey) {
     return <ApiKeySetup onSubmit={handleApiKeySubmit} />;
@@ -59,6 +76,7 @@ function HomeContent() {
     <div className="h-screen bg-slate-50 flex flex-col text-slate-900 font-sans overflow-hidden">
       <div className="bg-white border-b border-slate-200 flex-shrink-0 z-30">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <h1 className="md:hidden text-lg font-bold text-slate-900">Springa</h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span className="hidden sm:inline">{session?.user?.email}</span>
@@ -87,6 +105,9 @@ function HomeContent() {
           />
         )}
       </div>
+
+      {/* Spacer to prevent bottom tab bar overlap on mobile */}
+      <div className="h-16 md:hidden flex-shrink-0" />
     </div>
   );
 }

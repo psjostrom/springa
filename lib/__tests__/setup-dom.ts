@@ -71,6 +71,8 @@ vi.mock("lucide-react", () => {
     ChevronRight: icon("ChevronRight"),
     UploadCloud: icon("UploadCloud"),
     Key: icon("Key"),
+    CalendarDays: icon("CalendarDays"),
+    ClipboardList: icon("ClipboardList"),
     TrendingUp: icon("TrendingUp"),
     Route: icon("Route"),
     CalendarCheck: icon("CalendarCheck"),
