@@ -46,6 +46,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const {
     draggedEvent,
     dragOverDate,
+    dragError,
+    clearDragError,
     handleDragStart,
     handleDragEnd,
     handleDragOver,
@@ -357,6 +359,13 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
                 Retry
               </button>
             </div>
+          </div>
+        )}
+
+        {dragError && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm flex items-center justify-between">
+            <span>{dragError}</span>
+            <button onClick={clearDragError} className="text-[#ff6b8a] hover:text-white ml-2">✕</button>
           </div>
         )}
 

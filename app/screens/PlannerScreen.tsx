@@ -88,7 +88,17 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
     setEasyRunAnalysis(null);
     setIntervalAnalysis(null);
 
-    const result = await analyzeHistory(apiKey, prefix);
+    let result;
+    try {
+      result = await analyzeHistory(apiKey, prefix);
+    } catch (err) {
+      console.error("Analysis failed unexpectedly:", err);
+      setIsAnalyzing(false);
+      setStatusMsg("Analysis failed. Generating plan with default fuel values.");
+      runGenerate(fuelInterval, fuelLong, fuelEasy);
+      setHasGenerated(true);
+      return;
+    }
 
     let fi = fuelInterval;
     let fl = fuelLong;
@@ -141,7 +151,7 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
     // Generate immediately with the adjusted fuel values
     runGenerate(fi, fl, fe);
     setHasGenerated(true);
-    setStatusMsg("");
+    setStatusMsg(result.msg || "");
   };
 
   const handleUpload = async () => {

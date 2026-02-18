@@ -96,10 +96,11 @@ describe("fetchCalendarData", () => {
     expect(result[0].type).toBe("completed");
   });
 
-  it("returns empty array on fetch error", async () => {
+  it("throws on fetch error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
-    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
-    expect(result).toEqual([]);
+    await expect(
+      fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28")),
+    ).rejects.toThrow("Network error");
   });
 
   it("merges event description into matching completed activity", async () => {

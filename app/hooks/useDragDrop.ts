@@ -10,6 +10,7 @@ export function useDragDrop(
 ) {
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [dragError, setDragError] = useState<string | null>(null);
 
   const handleDragStart = useCallback((e: React.DragEvent, event: CalendarEvent) => {
     if (event.type !== "planned") return;
@@ -57,6 +58,7 @@ export function useDragDrop(
 
     const newDateLocal = format(newDate, "yyyy-MM-dd'T'HH:mm:ss");
 
+    setDragError(null);
     try {
       await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
       setEvents((prev) =>
@@ -66,16 +68,20 @@ export function useDragDrop(
       );
     } catch (err) {
       console.error("Failed to move event:", err);
-      alert("Failed to move workout. Please try again.");
+      setDragError("Failed to move workout. Please try again.");
     } finally {
       setDraggedEvent(null);
       setDragOverDate(null);
     }
   }, [draggedEvent, apiKey, setEvents]);
 
+  const clearDragError = useCallback(() => setDragError(null), []);
+
   return {
     draggedEvent,
     dragOverDate,
+    dragError,
+    clearDragError,
     handleDragStart,
     handleDragEnd,
     handleDragOver,

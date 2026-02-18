@@ -204,174 +204,168 @@ export async function fetchCalendarData(
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
 
-  try {
-    const results = await Promise.allSettled([
-      fetch(
-        `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
-        { headers: { Authorization: auth } },
-      ),
-      fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
-        headers: { Authorization: auth },
-      }),
-    ]);
+  const [activitiesRes, eventsRes] = await Promise.all([
+    fetch(
+      `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
+      { headers: { Authorization: auth } },
+    ),
+    fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
+      headers: { Authorization: auth },
+    }),
+  ]);
 
-    const activitiesRes =
-      results[0].status === "fulfilled" ? results[0].value : null;
-    const eventsRes =
-      results[1].status === "fulfilled" ? results[1].value : null;
+  if (!activitiesRes.ok) {
+    throw new Error(`Failed to fetch activities: ${activitiesRes.status}`);
+  }
 
-    const activities: IntervalsActivity[] = activitiesRes?.ok ? await activitiesRes.json() : [];
-    const events: IntervalsEvent[] = eventsRes?.ok ? await eventsRes.json() : [];
+  const activities: IntervalsActivity[] = await activitiesRes.json();
+  const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
 
-    const calendarEvents: CalendarEvent[] = [];
+  const calendarEvents: CalendarEvent[] = [];
 
-    const runActivities = activities.filter(
-      (a) => a.type === "Run" || a.type === "VirtualRun",
-    );
+  const runActivities = activities.filter(
+    (a) => a.type === "Run" || a.type === "VirtualRun",
+  );
 
-    const activityMap = new Map<string, CalendarEvent>();
+  const activityMap = new Map<string, CalendarEvent>();
 
-    runActivities.forEach((activity) => {
-      const category = getWorkoutCategory(activity.name);
+  runActivities.forEach((activity) => {
+    const category = getWorkoutCategory(activity.name);
 
-      let pace: number | undefined;
-      if (activity.distance && activity.moving_time) {
-        const distanceKm = activity.distance / 1000;
-        const durationMin = activity.moving_time / 60;
-        pace = durationMin / distanceKm;
-      }
-
-      let hrZones: HRZoneData | undefined;
-      if (
-        activity.icu_hr_zone_times &&
-        activity.icu_hr_zone_times.length >= 5
-      ) {
-        hrZones = {
-          z1: activity.icu_hr_zone_times[0],
-          z2: activity.icu_hr_zone_times[1],
-          z3: activity.icu_hr_zone_times[2],
-          z4: activity.icu_hr_zone_times[3],
-          z5: activity.icu_hr_zone_times[4],
-        };
-      }
-
-      const activityDate = parseISO(
-        activity.start_date_local || activity.start_date,
-      );
-      const matchingEvent = events.find((event) => {
-        if (event.category !== "WORKOUT") return false;
-        const eventDate = parseISO(event.start_date_local);
-        const sameDay = isSameDay(activityDate, eventDate);
-        const actName = activity.name?.toLowerCase() ?? "";
-        const evtName = event.name?.toLowerCase() ?? "";
-        const similarName =
-          actName.includes(evtName.substring(0, 10)) ||
-          evtName.includes(actName.substring(0, 10));
-        return sameDay && similarName;
-      });
-
-      const description =
-        matchingEvent?.description || activity.description || "";
-
-      const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
-
-      // Calculate total carbs from fuel rate and duration
-      let totalCarbs: number | null = null;
-      if (fuelRate != null) {
-        const durationMinutes = activity.moving_time ? activity.moving_time / 60 : null;
-        if (durationMinutes != null) {
-          totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
-        }
-      }
-      if (totalCarbs == null) {
-        totalCarbs = extractTotalCarbs(description);
-      }
-
-      // Actual carbs ingested: from activity API field, default to planned totalCarbs
-      const carbsIngested = activity.carbs_ingested ?? totalCarbs;
-
-      const calendarEvent: CalendarEvent = {
-        id: `activity-${activity.id}`,
-        date: activityDate,
-        name: activity.name,
-        description,
-        type: "completed",
-        category,
-        distance: activity.distance,
-        duration: activity.moving_time,
-        avgHr: activity.average_heartrate || activity.average_hr,
-        maxHr: activity.max_heartrate || activity.max_hr,
-        load: activity.icu_training_load,
-        intensity: activity.icu_intensity,
-        pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
-        calories: activity.calories,
-        // Garmin reports half-cadence (steps per foot); double to get full SPM
-        cadence: activity.average_cadence
-          ? activity.average_cadence * 2
-          : undefined,
-        hrZones,
-        fuelRate,
-        totalCarbs,
-        carbsIngested,
-        activityId: activity.id,
-      };
-
-      activityMap.set(activity.id, calendarEvent);
-      calendarEvents.push(calendarEvent);
-    });
-
-    for (const event of events) {
-      if (event.category !== "WORKOUT") continue;
-
-      if (event.paired_activity_id && !options?.includePairedEvents) {
-        continue;
-      }
-
-      const name = event.name || "";
-      const eventDate = parseISO(event.start_date_local);
-      const eventDesc = event.description || "";
-
-      const isRace = name.toLowerCase().includes("race");
-      const category = isRace ? "race" : getWorkoutCategory(name);
-
-      const eventFuelRate = resolveFuelRate(event.carbs_per_hour, eventDesc);
-
-      // Calculate total carbs from fuel rate and estimated duration.
-      // Prefer our description-based estimate (uses our pace zones) over the
-      // API's duration which Intervals.icu computes with its own pace config.
-      let eventTotalCarbs: number | null = null;
-      if (eventFuelRate != null) {
-        const estDur = event.moving_time || event.duration || event.elapsed_time;
-        const estMinutes = estimateWorkoutDuration(eventDesc) ?? (estDur ? estDur / 60 : null);
-        if (estMinutes != null) {
-          eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
-        }
-      }
-      if (eventTotalCarbs == null) {
-        eventTotalCarbs = extractTotalCarbs(eventDesc);
-      }
-
-      calendarEvents.push({
-        id: `event-${event.id}`,
-        date: eventDate,
-        name,
-        description: eventDesc,
-        type: isRace ? "race" : "planned",
-        category,
-        distance: event.distance || 0,
-        duration: event.moving_time || event.duration || event.elapsed_time,
-        fuelRate: eventFuelRate,
-        totalCarbs: eventTotalCarbs,
-      });
+    let pace: number | undefined;
+    if (activity.distance && activity.moving_time) {
+      const distanceKm = activity.distance / 1000;
+      const durationMin = activity.moving_time / 60;
+      pace = durationMin / distanceKm;
     }
 
-    calendarEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+    let hrZones: HRZoneData | undefined;
+    if (
+      activity.icu_hr_zone_times &&
+      activity.icu_hr_zone_times.length >= 5
+    ) {
+      hrZones = {
+        z1: activity.icu_hr_zone_times[0],
+        z2: activity.icu_hr_zone_times[1],
+        z3: activity.icu_hr_zone_times[2],
+        z4: activity.icu_hr_zone_times[3],
+        z5: activity.icu_hr_zone_times[4],
+      };
+    }
 
-    return calendarEvents;
-  } catch (error) {
-    console.error("Failed to fetch calendar data:", error);
-    return [];
+    const activityDate = parseISO(
+      activity.start_date_local || activity.start_date,
+    );
+    const matchingEvent = events.find((event) => {
+      if (event.category !== "WORKOUT") return false;
+      const eventDate = parseISO(event.start_date_local);
+      const sameDay = isSameDay(activityDate, eventDate);
+      const actName = activity.name?.toLowerCase() ?? "";
+      const evtName = event.name?.toLowerCase() ?? "";
+      const similarName =
+        actName.includes(evtName.substring(0, 10)) ||
+        evtName.includes(actName.substring(0, 10));
+      return sameDay && similarName;
+    });
+
+    const description =
+      matchingEvent?.description || activity.description || "";
+
+    const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
+
+    // Calculate total carbs from fuel rate and duration
+    let totalCarbs: number | null = null;
+    if (fuelRate != null) {
+      const durationMinutes = activity.moving_time ? activity.moving_time / 60 : null;
+      if (durationMinutes != null) {
+        totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
+      }
+    }
+    if (totalCarbs == null) {
+      totalCarbs = extractTotalCarbs(description);
+    }
+
+    // Actual carbs ingested: from activity API field, default to planned totalCarbs
+    const carbsIngested = activity.carbs_ingested ?? totalCarbs;
+
+    const calendarEvent: CalendarEvent = {
+      id: `activity-${activity.id}`,
+      date: activityDate,
+      name: activity.name,
+      description,
+      type: "completed",
+      category,
+      distance: activity.distance,
+      duration: activity.moving_time,
+      avgHr: activity.average_heartrate || activity.average_hr,
+      maxHr: activity.max_heartrate || activity.max_hr,
+      load: activity.icu_training_load,
+      intensity: activity.icu_intensity,
+      pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
+      calories: activity.calories,
+      // Garmin reports half-cadence (steps per foot); double to get full SPM
+      cadence: activity.average_cadence
+        ? activity.average_cadence * 2
+        : undefined,
+      hrZones,
+      fuelRate,
+      totalCarbs,
+      carbsIngested,
+      activityId: activity.id,
+    };
+
+    activityMap.set(activity.id, calendarEvent);
+    calendarEvents.push(calendarEvent);
+  });
+
+  for (const event of events) {
+    if (event.category !== "WORKOUT") continue;
+
+    if (event.paired_activity_id && !options?.includePairedEvents) {
+      continue;
+    }
+
+    const name = event.name || "";
+    const eventDate = parseISO(event.start_date_local);
+    const eventDesc = event.description || "";
+
+    const isRace = name.toLowerCase().includes("race");
+    const category = isRace ? "race" : getWorkoutCategory(name);
+
+    const eventFuelRate = resolveFuelRate(event.carbs_per_hour, eventDesc);
+
+    // Calculate total carbs from fuel rate and estimated duration.
+    // Prefer our description-based estimate (uses our pace zones) over the
+    // API's duration which Intervals.icu computes with its own pace config.
+    let eventTotalCarbs: number | null = null;
+    if (eventFuelRate != null) {
+      const estDur = event.moving_time || event.duration || event.elapsed_time;
+      const estMinutes = estimateWorkoutDuration(eventDesc) ?? (estDur ? estDur / 60 : null);
+      if (estMinutes != null) {
+        eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
+      }
+    }
+    if (eventTotalCarbs == null) {
+      eventTotalCarbs = extractTotalCarbs(eventDesc);
+    }
+
+    calendarEvents.push({
+      id: `event-${event.id}`,
+      date: eventDate,
+      name,
+      description: eventDesc,
+      type: isRace ? "race" : "planned",
+      category,
+      distance: event.distance || 0,
+      duration: event.moving_time || event.duration || event.elapsed_time,
+      fuelRate: eventFuelRate,
+      totalCarbs: eventTotalCarbs,
+    });
   }
+
+  calendarEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return calendarEvents;
 }
 
 // --- EVENT UPDATE ---
@@ -460,8 +454,6 @@ export async function uploadToIntervals(
     return payload.length;
   } catch (error) {
     console.error("Upload failed:", error);
-    console.error("Payload size:", payload.length);
-    console.error("First event:", payload[0]);
     throw error;
   }
 }

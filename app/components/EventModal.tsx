@@ -76,6 +76,7 @@ export function EventModal({
   const [savingCarbs, setSavingCarbs] = useState(false);
   const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsEditing(false);
@@ -86,6 +87,7 @@ export function EventModal({
     setIsClosing(false);
     setConfirmingDelete(false);
     setIsDeleting(false);
+    setError(null);
   }, [selectedEvent.id]);
 
   const handleClose = useCallback(() => {
@@ -133,7 +135,7 @@ export function EventModal({
       setIsEditing(false);
     } catch (err) {
       console.error("Failed to update event:", err);
-      alert("Failed to update event. Please try again.");
+      setError("Failed to update event. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -223,7 +225,7 @@ export function EventModal({
                       await onDelete(selectedEvent.id);
                     } catch {
                       setIsDeleting(false);
-                      alert("Failed to delete event. Please try again.");
+                      setError("Failed to delete event. Please try again.");
                     }
                   }}
                   disabled={isDeleting}
@@ -269,6 +271,12 @@ export function EventModal({
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm">
+            {error}
+          </div>
+        )}
 
         {selectedEvent.description && (
           <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
 import { Loader2 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
@@ -30,30 +30,32 @@ export function ProgressScreen({
 }: ProgressScreenProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const start = startOfMonth(subMonths(new Date(), 24));
+      const end = endOfMonth(addMonths(new Date(), 6));
+      const data = await fetchCalendarData(apiKey, start, end, {
+        includePairedEvents: true,
+      });
+      setEvents(data);
+    } catch (err) {
+      console.error("ProgressScreen: failed to load events", err);
+      setError("Failed to load fitness data. Check your API key and try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiKey]);
 
   useEffect(() => {
     if (!apiKey || loadedRef.current) return;
     loadedRef.current = true;
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const start = startOfMonth(subMonths(new Date(), 24));
-        const end = endOfMonth(addMonths(new Date(), 6));
-        const data = await fetchCalendarData(apiKey, start, end, {
-          includePairedEvents: true,
-        });
-        setEvents(data);
-      } catch (err) {
-        console.error("ProgressScreen: failed to load events", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    load();
-  }, [apiKey]);
+    loadEvents();
+  }, [apiKey, loadEvents]);
 
   const fitnessData = useMemo(
     () => computeFitnessData(events, 180),
@@ -82,7 +84,20 @@ export function ProgressScreen({
         </div>
 
         {/* Fitness & Insights */}
-        {isLoading ? (
+        {error ? (
+          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+            <div className="text-center py-4">
+              <div className="text-[#ff3366] font-semibold mb-2">Error</div>
+              <div className="text-sm text-[#c4b5fd]">{error}</div>
+              <button
+                onClick={loadEvents}
+                className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
             <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
