@@ -29,16 +29,7 @@ export const SPEED_SESSION_LABELS: Record<SpeedSessionType, string> = {
   "race-pace-intervals": "Race Pace Intervals",
 };
 
-/** Softer palette used in SVG charts (HRMiniChart, WorkoutStructureBar). */
-export const HR_ZONE_COLORS = {
-  z1: "#6ee7b7",
-  z2: "#06b6d4",
-  z3: "#fbbf24",
-  z4: "#fb923c",
-  z5: "#ef4444",
-} as const;
-
-/** UI palette used in zone bars, badges, and breakdowns. */
+/** Zone colors used across the app (bars, badges, charts, breakdowns). */
 export const ZONE_COLORS = {
   z1: "#6ee7b7",
   z2: "#06b6d4",
@@ -46,6 +37,7 @@ export const ZONE_COLORS = {
   z4: "#fb923c",
   z5: "#ef4444",
 } as const;
+
 
 export const PACE_ESTIMATES = {
   easy: 7.25,
@@ -66,11 +58,11 @@ import type { HRZoneName } from "./types";
 
 /** Classify an LTHR percentage into a zone color. */
 export function getZoneColor(lthrPercent: number): string {
-  if (lthrPercent >= ZONE_THRESHOLDS.z5) return HR_ZONE_COLORS.z5;
-  if (lthrPercent >= ZONE_THRESHOLDS.z4) return HR_ZONE_COLORS.z4;
-  if (lthrPercent >= ZONE_THRESHOLDS.z3) return HR_ZONE_COLORS.z3;
-  if (lthrPercent >= ZONE_THRESHOLDS.z2) return HR_ZONE_COLORS.z2;
-  return HR_ZONE_COLORS.z1;
+  if (lthrPercent >= ZONE_THRESHOLDS.z5) return ZONE_COLORS.z5;
+  if (lthrPercent >= ZONE_THRESHOLDS.z4) return ZONE_COLORS.z4;
+  if (lthrPercent >= ZONE_THRESHOLDS.z3) return ZONE_COLORS.z3;
+  if (lthrPercent >= ZONE_THRESHOLDS.z2) return ZONE_COLORS.z2;
+  return ZONE_COLORS.z1;
 }
 
 /** Classify an LTHR percentage into a zone name. */

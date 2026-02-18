@@ -1,5 +1,5 @@
 import type { DataPoint } from "@/lib/types";
-import { HR_ZONE_COLORS, getZoneColor } from "@/lib/constants";
+import { ZONE_COLORS, getZoneColor } from "@/lib/constants";
 
 interface HRMiniChartProps {
   z1: number;
@@ -68,11 +68,11 @@ export function HRMiniChart({
   if (total === 0) return null;
 
   const zones = [
-    { time: z1, height: 40, color: HR_ZONE_COLORS.z1 },
-    { time: z2, height: 55, color: HR_ZONE_COLORS.z2 },
-    { time: z3, height: 70, color: HR_ZONE_COLORS.z3 },
-    { time: z4, height: 85, color: HR_ZONE_COLORS.z4 },
-    { time: z5, height: 100, color: HR_ZONE_COLORS.z5 },
+    { time: z1, height: 40, color: ZONE_COLORS.z1 },
+    { time: z2, height: 55, color: ZONE_COLORS.z2 },
+    { time: z3, height: 70, color: ZONE_COLORS.z3 },
+    { time: z4, height: 85, color: ZONE_COLORS.z4 },
+    { time: z5, height: 100, color: ZONE_COLORS.z5 },
   ];
 
   const segments: Array<{ width: number; height: number; color: string }> = [];
