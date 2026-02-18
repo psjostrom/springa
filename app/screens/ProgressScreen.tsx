@@ -10,6 +10,7 @@ import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
 import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
+import { ErrorCard } from "../components/ErrorCard";
 
 interface ProgressScreenProps {
   apiKey: string;
@@ -86,16 +87,7 @@ export function ProgressScreen({
         {/* Fitness & Insights */}
         {error ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <div className="text-center py-4">
-              <div className="text-[#ff3366] font-semibold mb-2">Error</div>
-              <div className="text-sm text-[#c4b5fd]">{error}</div>
-              <button
-                onClick={loadEvents}
-                className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
-              >
-                Retry
-              </button>
-            </div>
+            <ErrorCard message={error} onRetry={loadEvents} />
           </div>
         ) : isLoading ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">

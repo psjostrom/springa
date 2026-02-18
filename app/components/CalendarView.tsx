@@ -22,6 +22,7 @@ import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
 import { useDragDrop } from "../hooks/useDragDrop";
+import { ErrorCard } from "./ErrorCard";
 import "../calendar.css";
 
 interface CalendarViewProps {
@@ -346,19 +347,10 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
         {error && (
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="text-[#ff3366] font-semibold mb-2">Error</div>
-              <div className="text-sm text-[#c4b5fd]">{error}</div>
-              <button
-                onClick={() => {
-                  setError(null);
-                  setCurrentMonth(new Date(currentMonth));
-                }}
-                className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
-              >
-                Retry
-              </button>
-            </div>
+            <ErrorCard message={error} onRetry={() => {
+              setError(null);
+              setCurrentMonth(new Date(currentMonth));
+            }} />
           </div>
         )}
 
