@@ -118,16 +118,8 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     fetchActivityDetails(activityId, apiKey)
       .then((details) => {
         if (cancelled) return;
-        setSelectedEvent((prev) => {
-          if (!prev || prev.id !== selectedEvent.id) return prev;
-          return {
-            ...prev,
-            hrZones: details.hrZones,
-            streamData: details.streamData,
-            avgHr: details.avgHr || prev.avgHr,
-            maxHr: details.maxHr || prev.maxHr,
-          };
-        });
+        // Only update events — the URL sync effect derives selectedEvent
+        // from events, so it will pick up the enriched data automatically.
         setEvents((prevEvents) =>
           prevEvents.map((e) =>
             e.id === selectedEvent.id
@@ -218,13 +210,10 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [selectedEvent, closeWorkoutModal]);
 
-  // Handle date save from modal
+  // Handle date save from modal — URL sync effect derives selectedEvent
   const handleDateSaved = (eventId: string, newDate: Date) => {
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, date: newDate } : e)),
-    );
-    setSelectedEvent((prev) =>
-      prev ? { ...prev, date: newDate } : prev,
     );
   };
 
