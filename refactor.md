@@ -2,19 +2,12 @@
 
 Audit from 2026-02-18. Items ranked by value.
 
-## MEDIUM
+## DONE
 
-### EventModal state explosion
-11 `useState` calls managing mutually exclusive modes (editing date, editing carbs, confirming delete, closing). A mode enum + grouped sub-state would make invalid states unrepresentable and simplify the reset logic at line 81.
-
-### AnalysisSection prop sprawl
-9 props (3 analysis objects + 3 fuel values + 3 onChange handlers). Could collapse to `onFuelChange(type: 'interval' | 'long' | 'easy', value: number)` and a single fuel config object.
-
-### Zone color/label duplication
-Zone colors defined in `constants.ts` (`getZoneColor`), `WorkoutCard.tsx` (`ZONE_STYLES`), `FitnessInsightsPanel.tsx` (`FORM_ZONE_STYLES`), plus raw hex strings in ~5 components. One `ZONE_CONFIG` constant would cut maintenance cost.
-
-### Repeated error UI pattern
-ProgressScreen, CalendarView, and VolumeTrendChart all render near-identical error+retry cards. Extractable to an `<ErrorCard message={...} onRetry={...} />` component.
+- ~~EventModal state explosion~~ → `ActionMode` enum (`f03b2de`)
+- ~~AnalysisSection prop sprawl~~ → `fuelValues` + `onFuelChange` (`9237cc8`)
+- ~~Zone color/label duplication~~ → `ZONE_COLORS` constant in constants.ts (`1694c5f`)
+- ~~Repeated error UI pattern~~ → `<ErrorCard>` component (`9bb29e9`)
 
 ## LOW
 
