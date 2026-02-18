@@ -12,7 +12,6 @@ import { PlanStructureSettings } from "../components/PlanStructureSettings";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
-import { StatusMessage } from "../components/StatusMessage";
 import { EmptyState } from "../components/EmptyState";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 
@@ -165,9 +164,9 @@ export function PlannerScreen({ apiKey, bgModel }: PlannerScreenProps) {
                 <ActionBar
                   workoutCount={planEvents.length}
                   isUploading={isUploading}
+                  statusMsg={statusMsg}
                   onUpload={handleUpload}
                 />
-                <StatusMessage message={statusMsg} />
                 <WorkoutList events={planEvents} />
               </div>
             )}

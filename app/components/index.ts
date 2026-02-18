@@ -5,5 +5,4 @@ export { PlanStructureSettings } from "./PlanStructureSettings";
 export { WeeklyVolumeChart } from "./WeeklyVolumeChart";
 export { WorkoutList } from "./WorkoutList";
 export { ActionBar } from "./ActionBar";
-export { StatusMessage } from "./StatusMessage";
 export { EmptyState } from "./EmptyState";

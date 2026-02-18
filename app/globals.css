@@ -159,3 +159,94 @@ input[type="datetime-local"] {
   from { background-position: 0 0; }
   to { background-position: 0 18px; }
 }
+
+/* ── Retrowave Upload Animation ── */
+@keyframes retro-border-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes retro-glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 45, 149, 0.5), 0 0 30px rgba(255, 45, 149, 0.2); }
+  50%      { box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.2); }
+}
+
+@keyframes retro-scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes retro-text-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.6; }
+}
+
+/* Animated border wrappers (divs — no preflight conflict) */
+.retro-error-border {
+  background: linear-gradient(270deg, #ff6b8a, #ff2d95, #ff6b8a);
+  background-size: 300% 300%;
+  animation: retro-border-flow 3s ease infinite;
+  box-shadow: 0 0 15px rgba(255, 107, 138, 0.3), 0 0 30px rgba(255, 107, 138, 0.1);
+  padding: 2px;
+}
+
+.retro-success-border {
+  background: linear-gradient(270deg, #39ff14, #00ffff, #39ff14);
+  background-size: 300% 300%;
+  animation: retro-border-flow 3s ease infinite;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.3), 0 0 30px rgba(57, 255, 20, 0.1);
+  padding: 2px;
+}
+
+.retro-upload-border {
+  background: linear-gradient(270deg, #ff2d95, #00ffff, #d946ef, #ff2d95);
+  background-size: 300% 300%;
+  animation: retro-border-flow 3s ease infinite, retro-glow-pulse 2s ease-in-out infinite;
+  padding: 2px;
+}
+
+.retro-text-flicker {
+  animation: retro-text-flicker 3s linear infinite;
+}
+
+/* Static scanline overlay (::after — not affected by button preflight) */
+.retro-scanline-static::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* Uploading button — animated gradient needs @layer to beat button preflight */
+@layer components {
+  .retro-btn-uploading {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(270deg, #ff2d95, #d946ef, #ff2d95);
+    background-size: 200% 200%;
+    animation: retro-border-flow 3s ease infinite;
+  }
+
+  .retro-btn-uploading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    animation: retro-scanline 1.5s linear infinite;
+    pointer-events: none;
+  }
+}
