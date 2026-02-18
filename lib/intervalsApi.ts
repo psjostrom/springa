@@ -12,13 +12,15 @@ import { API_BASE, DEFAULT_LTHR } from "./constants";
 import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate, extractTotalCarbs, calculateWorkoutCarbs, estimateWorkoutDuration } from "./utils";
 import { isSameDay, parseISO } from "date-fns";
 
+export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
+
 // --- STREAM FETCHING ---
 
 export async function fetchStreams(
   activityId: string,
   apiKey: string,
 ): Promise<IntervalsStream[]> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const keys = [
     "time",
     "heartrate",
@@ -193,7 +195,7 @@ export async function fetchCalendarData(
   endDate: Date,
   options?: { includePairedEvents?: boolean },
 ): Promise<CalendarEvent[]> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
 
@@ -386,7 +388,7 @@ export async function updateEvent(
   eventId: number,
   updates: { start_date_local?: string; name?: string; description?: string },
 ): Promise<void> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
@@ -404,7 +406,7 @@ export async function deleteEvent(
   apiKey: string,
   eventId: number,
 ): Promise<void> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
     method: "DELETE",
     headers: { Authorization: auth },
@@ -421,7 +423,7 @@ export async function uploadToIntervals(
   apiKey: string,
   events: WorkoutEvent[],
 ): Promise<number> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
 
@@ -476,7 +478,7 @@ export async function updateActivityCarbs(
   activityId: string,
   carbsIngested: number,
 ): Promise<void> {
-  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const auth = authHeader(apiKey);
   const res = await fetch(`${API_BASE}/activity/${activityId}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
