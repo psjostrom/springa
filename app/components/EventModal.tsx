@@ -145,10 +145,6 @@ export function EventModal({
         className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
-        {/* Drag handle — mobile only */}
-        <div className="flex justify-center mb-3 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-[#3d2b5a]" />
-        </div>
         <div className="flex items-start justify-between mb-4">
           <div>
             {actionMode === "editing" || actionMode === "saving" ? (
