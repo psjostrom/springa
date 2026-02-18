@@ -29,12 +29,22 @@ export const SPEED_SESSION_LABELS: Record<SpeedSessionType, string> = {
   "race-pace-intervals": "Race Pace Intervals",
 };
 
+/** Softer palette used in SVG charts (HRMiniChart, WorkoutStructureBar). */
 export const HR_ZONE_COLORS = {
   z1: "#6ee7b7",
   z2: "#06b6d4",
   z3: "#fbbf24",
   z4: "#fb923c",
   z5: "#ef4444",
+} as const;
+
+/** Neon palette used in UI elements (zone bars, badges, breakdowns). */
+export const ZONE_COLORS = {
+  z1: "#39ff14",
+  z2: "#00ffff",
+  z3: "#ffb800",
+  z4: "#ff8c00",
+  z5: "#ff3366",
 } as const;
 
 export const PACE_ESTIMATES = {

@@ -1,5 +1,5 @@
 import type { HRZoneName } from "@/lib/types";
-import { FALLBACK_PACE_TABLE } from "@/lib/constants";
+import { FALLBACK_PACE_TABLE, ZONE_COLORS } from "@/lib/constants";
 import {
   extractFuelStatus,
   extractNotes,
@@ -18,11 +18,11 @@ interface WorkoutCardProps {
   totalCarbs?: number | null;
 }
 
-const ZONE_STYLES: Record<HRZoneName, string> = {
-  easy: "bg-[#39ff14] text-[#0d0a1a]",
-  steady: "bg-[#ffb800] text-[#0d0a1a]",
-  tempo: "bg-[#ff8c00] text-[#0d0a1a]",
-  hard: "bg-[#ff3366] text-white",
+const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
+  easy: { bg: ZONE_COLORS.z1, text: "#0d0a1a" },
+  steady: { bg: ZONE_COLORS.z3, text: "#0d0a1a" },
+  tempo: { bg: ZONE_COLORS.z4, text: "#0d0a1a" },
+  hard: { bg: ZONE_COLORS.z5, text: "#ffffff" },
 };
 
 function StepRow({ step }: { step: WorkoutStep }) {
@@ -36,7 +36,10 @@ function StepRow({ step }: { step: WorkoutStep }) {
       <span className="font-mono text-base font-semibold text-white w-12 shrink-0">
         {step.duration}
       </span>
-      <span className={`px-2 py-0.5 rounded-full text-sm font-bold ${ZONE_STYLES[step.zone]}`}>
+      <span
+        className="px-2 py-0.5 rounded-full text-sm font-bold"
+        style={{ backgroundColor: ZONE_BADGE[step.zone].bg, color: ZONE_BADGE[step.zone].text }}
+      >
         {getZoneLabel(step.zone)}
       </span>
       <span className="text-sm text-[#b8a5d4]">{step.bpmRange}</span>
