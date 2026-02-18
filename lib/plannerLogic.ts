@@ -44,8 +44,6 @@ export {
   getWorkoutCategory,
   extractFuelRate,
   extractTotalCarbs,
-  estimatePaceFromHR,
-  calculateTotalCarbs,
 } from "./utils";
 
 export {

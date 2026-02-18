@@ -385,41 +385,6 @@ export const extractTotalCarbs = (description: string): number | null => {
   return match ? parseInt(match[1], 10) : null;
 };
 
-/** Estimate pace from average HR (min/km) */
-export const estimatePaceFromHR = (avgHr: number, lthr: number = 169): number => {
-  const hrPercent = avgHr / lthr;
-  if (hrPercent < 0.8) return 6.75;
-  if (hrPercent < 0.84) return 6.15;
-  if (hrPercent < 0.94) return 5.15;
-  return 4.75;
-};
-
-/** Calculate total carbs for a calendar event */
-export const calculateTotalCarbs = (event: CalendarEvent): number | null => {
-  const totalFromDesc = extractTotalCarbs(event.description);
-  if (totalFromDesc) return totalFromDesc;
-
-  const fuelRate = extractFuelRate(event.description);
-  if (!fuelRate) return null;
-
-  let durationMinutes: number;
-
-  if (event.duration) {
-    durationMinutes = event.duration / 60;
-  } else if (event.distance && event.avgHr) {
-    const distanceKm = event.distance / 1000;
-    const paceMinPerKm = estimatePaceFromHR(event.avgHr);
-    durationMinutes = distanceKm * paceMinPerKm;
-  } else if (event.distance) {
-    const distanceKm = event.distance / 1000;
-    durationMinutes = distanceKm * 6;
-  } else {
-    return null;
-  }
-
-  return calculateWorkoutCarbs(durationMinutes, fuelRate);
-};
-
 // --- GLUCOSE CONVERSION ---
 
 /** Smart glucose conversion: converts mg/dL to mmol/L only when needed */
