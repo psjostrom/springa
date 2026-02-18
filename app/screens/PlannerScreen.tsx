@@ -63,18 +63,12 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
     [raceDate, raceDist, prefix, totalWeeks, startKm, lthr],
   );
 
-  // Fuel setters that auto-regenerate after initial generate
-  const handleFuelLongChange = (v: number) => {
-    setFuelLong(v);
-    if (hasGenerated) runGenerate(fuelInterval, v, fuelEasy);
-  };
-  const handleFuelEasyChange = (v: number) => {
-    setFuelEasy(v);
-    if (hasGenerated) runGenerate(fuelInterval, fuelLong, v);
-  };
-  const handleFuelIntervalChange = (v: number) => {
-    setFuelInterval(v);
-    if (hasGenerated) runGenerate(v, fuelLong, fuelEasy);
+  const handleFuelChange = (type: "long" | "easy" | "interval", v: number) => {
+    const next = { interval: fuelInterval, long: fuelLong, easy: fuelEasy, [type]: v };
+    if (type === "long") setFuelLong(v);
+    else if (type === "easy") setFuelEasy(v);
+    else setFuelInterval(v);
+    if (hasGenerated) runGenerate(next.interval, next.long, next.easy);
   };
 
   const handleGenerate = async () => {
@@ -244,12 +238,8 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
                   longRunAnalysis={longRunAnalysis}
                   easyRunAnalysis={easyRunAnalysis}
                   intervalAnalysis={intervalAnalysis}
-                  fuelInterval={fuelInterval}
-                  fuelLong={fuelLong}
-                  fuelEasy={fuelEasy}
-                  onFuelIntervalChange={handleFuelIntervalChange}
-                  onFuelLongChange={handleFuelLongChange}
-                  onFuelEasyChange={handleFuelEasyChange}
+                  fuelValues={{ long: fuelLong, easy: fuelEasy, interval: fuelInterval }}
+                  onFuelChange={handleFuelChange}
                 />
                 <WeeklyVolumeChart data={chartData} />
                 <ActionBar
