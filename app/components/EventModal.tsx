@@ -317,46 +317,20 @@ export function EventModal({
               </div>
 
               {/* Secondary stats — bottom row */}
-              {(selectedEvent.calories ||
-                selectedEvent.cadence ||
-                selectedEvent.maxHr ||
-                selectedEvent.load ||
-                selectedEvent.intensity !== undefined) && (
-                <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-sm text-[#b8a5d4]">
-                  {selectedEvent.calories && (
-                    <span>{selectedEvent.calories} kcal</span>
-                  )}
-                  {selectedEvent.calories && selectedEvent.cadence && (
-                    <span>·</span>
-                  )}
-                  {selectedEvent.cadence && (
-                    <span>{Math.round(selectedEvent.cadence)} spm</span>
-                  )}
-                  {selectedEvent.cadence && selectedEvent.maxHr && (
-                    <span>·</span>
-                  )}
-                  {selectedEvent.maxHr && (
-                    <span>Max HR {selectedEvent.maxHr} bpm</span>
-                  )}
-                  {selectedEvent.maxHr && selectedEvent.load && (
-                    <span>·</span>
-                  )}
-                  {selectedEvent.load && (
-                    <StatInfo
-                      label={`Load ${Math.round(selectedEvent.load)}`}
-                      tip="Training load estimates how hard an activity was relative to your capabilities. It is calculated from heart rate and pace. 1 hour at threshold is roughly 100 load."
-                    />
-                  )}
-                  {selectedEvent.load &&
-                    selectedEvent.intensity !== undefined && <span>·</span>}
-                  {selectedEvent.intensity !== undefined && (
-                    <StatInfo
-                      label={`Intensity ${Math.round(selectedEvent.intensity)}%`}
-                      tip="Intensity measures how hard the activity was compared to your threshold. Over 100% for an hour or longer suggests your threshold setting is too low."
-                    />
-                  )}
-                </div>
-              )}
+              {(() => {
+                const items: React.ReactNode[] = [];
+                if (selectedEvent.calories) items.push(<span key="cal">{selectedEvent.calories} kcal</span>);
+                if (selectedEvent.cadence) items.push(<span key="cad">{Math.round(selectedEvent.cadence)} spm</span>);
+                if (selectedEvent.maxHr) items.push(<span key="mhr">Max HR {selectedEvent.maxHr} bpm</span>);
+                if (selectedEvent.load) items.push(<StatInfo key="load" label={`Load ${Math.round(selectedEvent.load)}`} tip="Training load estimates how hard an activity was relative to your capabilities. It is calculated from heart rate and pace. 1 hour at threshold is roughly 100 load." />);
+                if (selectedEvent.intensity !== undefined) items.push(<StatInfo key="int" label={`Intensity ${Math.round(selectedEvent.intensity)}%`} tip="Intensity measures how hard the activity was compared to your threshold. Over 100% for an hour or longer suggests your threshold setting is too low." />);
+                if (items.length === 0) return null;
+                return (
+                  <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-sm text-[#b8a5d4]">
+                    {items.flatMap((item, i) => i > 0 ? [<span key={`sep-${i}`}>·</span>, item] : [item])}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Carbs ingested */}
