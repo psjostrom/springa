@@ -66,7 +66,6 @@ const generateQualityRun = (
   }
 
   let reps: number;
-  let repDuration: number;
   let steps: string[];
   let notes: string;
   const label = SPEED_SESSION_LABELS[sessionType];
@@ -74,7 +73,6 @@ const generateQualityRun = (
   switch (sessionType) {
     case "short-intervals": {
       reps = 6 + Math.floor(progress * 2);
-      repDuration = 4;
       steps = [
         formatStep("2m", ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),
@@ -84,7 +82,6 @@ const generateQualityRun = (
     }
     case "hills": {
       reps = 6 + Math.floor(progress * 2);
-      repDuration = 5;
       steps = [
         formatStep("2m", ctx.zones.hard.min, ctx.zones.hard.max, ctx.lthr, "Uphill"),
         formatStep("3m", ctx.zones.easy.min, ctx.zones.easy.max, ctx.lthr, "Downhill"),
@@ -95,7 +92,6 @@ const generateQualityRun = (
     case "long-intervals": {
       const workMin = 4 + Math.floor(progress * 2);
       reps = 4;
-      repDuration = workMin + 2;
       steps = [
         formatStep(`${workMin}m`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),
@@ -108,7 +104,6 @@ const generateQualityRun = (
       reps = distM >= 1000 ? 6 : 8;
       const distKm = (distM / 1000).toFixed(1);
       const recoveryKm = "0.2";
-      repDuration = Math.ceil((distM / 1000) * 5.2) + 1.5;
       steps = [
         formatStep(`${distKm}km`, ctx.zones.tempo.min, ctx.zones.tempo.max, ctx.lthr),
         formatStep(`${recoveryKm}km`, 0.50, 0.66, ctx.lthr, "Walk"),
@@ -118,7 +113,6 @@ const generateQualityRun = (
     }
     case "race-pace-intervals": {
       reps = 5;
-      repDuration = 7;
       steps = [
         formatStep("5m", ctx.zones.steady.min, ctx.zones.steady.max, ctx.lthr),
         formatStep("2m", 0.50, 0.66, ctx.lthr, "Walk"),

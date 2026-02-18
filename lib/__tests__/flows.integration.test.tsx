@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -125,6 +125,15 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
 // Flow 3: Calendar — Click planned event -> Edit date -> Save
 // ---------------------------------------------------------------------------
 describe("Flow 3: Calendar — Edit planned event date", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-02-09T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("clicks a planned event, edits the date, and saves", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
@@ -256,6 +265,16 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
 // Flow 6: Calendar — BG strategy consistency between agenda and modal
 // ---------------------------------------------------------------------------
 describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
+  beforeEach(() => {
+    // Pin date before all fixture events so they appear in "upcoming"
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-02-09T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows fuel info in agenda pill and modal for an easy run", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
