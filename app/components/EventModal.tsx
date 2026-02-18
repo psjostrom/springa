@@ -64,11 +64,9 @@ export function EventModal({
   isLoadingStreamData,
   apiKey,
 }: EventModalProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  type ActionMode = "idle" | "editing" | "saving" | "confirming-delete" | "deleting";
+  const [actionMode, setActionMode] = useState<ActionMode>("idle");
   const [editDate, setEditDate] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Carbs ingested editing
   const [editingCarbs, setEditingCarbs] = useState(false);
@@ -79,14 +77,12 @@ export function EventModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsEditing(false);
+    setActionMode("idle");
     setEditDate("");
     setEditingCarbs(false);
     setCarbsValue("");
     setSavedCarbs(null);
     setIsClosing(false);
-    setConfirmingDelete(false);
-    setIsDeleting(false);
     setError(null);
   }, [selectedEvent.id]);
 
@@ -123,7 +119,7 @@ export function EventModal({
     const numericId = parseEventId(selectedEvent.id);
     if (isNaN(numericId)) return;
 
-    setIsSaving(true);
+    setActionMode("saving");
     try {
       const newDateLocal = editDate.includes("T")
         ? editDate + ":00"
@@ -132,12 +128,11 @@ export function EventModal({
 
       const newDate = new Date(newDateLocal);
       onDateSaved(selectedEvent.id, newDate);
-      setIsEditing(false);
+      setActionMode("idle");
     } catch (err) {
       console.error("Failed to update event:", err);
       setError("Failed to update event. Please try again.");
-    } finally {
-      setIsSaving(false);
+      setActionMode("editing");
     }
   };
 
@@ -156,7 +151,7 @@ export function EventModal({
         </div>
         <div className="flex items-start justify-between mb-4">
           <div>
-            {isEditing ? (
+            {actionMode === "editing" || actionMode === "saving" ? (
               <div className="flex items-center gap-2 mb-1">
                 <input
                   type="datetime-local"
@@ -196,67 +191,67 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {selectedEvent.type === "planned" && !isEditing && !confirmingDelete && (
+            {selectedEvent.type === "planned" && actionMode === "idle" && (
               <>
                 <button
                   onClick={() => {
                     setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
-                    setIsEditing(true);
+                    setActionMode("editing");
                   }}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
                 >
                   Edit
                 </button>
                 <button
-                  onClick={() => setConfirmingDelete(true)}
+                  onClick={() => setActionMode("confirming-delete")}
                   className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
                 >
                   Delete
                 </button>
               </>
             )}
-            {confirmingDelete && (
+            {(actionMode === "confirming-delete" || actionMode === "deleting") && (
               <>
                 <span className="text-sm text-[#ff6b8a]">Delete this workout?</span>
                 <button
                   onClick={async () => {
-                    setIsDeleting(true);
+                    setActionMode("deleting");
                     try {
                       await onDelete(selectedEvent.id);
                     } catch {
-                      setIsDeleting(false);
+                      setActionMode("confirming-delete");
                       setError("Failed to delete event. Please try again.");
                     }
                   }}
-                  disabled={isDeleting}
+                  disabled={actionMode === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#ff3366] hover:bg-[#e0294f] text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {isDeleting ? "Deleting..." : "Confirm"}
+                  {actionMode === "deleting" ? "Deleting..." : "Confirm"}
                 </button>
                 <button
-                  onClick={() => setConfirmingDelete(false)}
-                  disabled={isDeleting}
+                  onClick={() => setActionMode("idle")}
+                  disabled={actionMode === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
               </>
             )}
-            {isEditing && (
+            {(actionMode === "editing" || actionMode === "saving") && (
               <>
                 <button
                   onClick={saveEventEdit}
-                  disabled={isSaving}
+                  disabled={actionMode === "saving"}
                   className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {isSaving ? "Saving..." : "Save"}
+                  {actionMode === "saving" ? "Saving..." : "Save"}
                 </button>
                 <button
                   onClick={() => {
-                    setIsEditing(false);
+                    setActionMode("idle");
                     setEditDate("");
                   }}
-                  disabled={isSaving}
+                  disabled={actionMode === "saving"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
