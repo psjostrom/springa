@@ -442,14 +442,6 @@ export function formatDuration(seconds: number): string {
   return `${mins}m`;
 }
 
-/** Format estimated duration in minutes as "Xh Ym" or "Ym". */
-export function formatDurationMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours > 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  return `${mins}m`;
-}
-
 // --- WORKOUT CATEGORIZATION ---
 
 export function getWorkoutCategory(

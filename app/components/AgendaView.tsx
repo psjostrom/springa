@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { estimateWorkoutDuration, extractFuelRate, extractTotalCarbs, formatPace, formatDuration, formatDurationMinutes } from "@/lib/utils";
+import { estimateWorkoutDuration, extractFuelRate, extractTotalCarbs, formatPace, formatDuration } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -45,7 +45,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
           if (!est) return null;
           return (
             <div className="text-sm text-white mt-4">
-              {formatDurationMinutes(est)}
+              {formatDuration(est * 60)}
             </div>
           );
         })()}

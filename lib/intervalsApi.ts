@@ -14,6 +14,11 @@ import { isSameDay, parseISO } from "date-fns";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
+/** Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description regex. */
+function resolveFuelRate(carbsPerHour: number | null | undefined, description: string): number | null {
+  return carbsPerHour ?? extractFuelRate(description);
+}
+
 // --- STREAM FETCHING ---
 
 export async function fetchStreams(
@@ -268,13 +273,7 @@ export async function fetchCalendarData(
       const description =
         matchingEvent?.description || activity.description || "";
 
-      // Resolve fuel rate (g/h): prefer carbs_per_hour from matched event, fall back to description
-      let fuelRate: number | null = null;
-      if (matchingEvent?.carbs_per_hour != null) {
-        fuelRate = matchingEvent.carbs_per_hour;
-      } else {
-        fuelRate = extractFuelRate(description);
-      }
+      const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
 
       // Calculate total carbs from fuel rate and duration
       let totalCarbs: number | null = null;
@@ -335,13 +334,7 @@ export async function fetchCalendarData(
       const isRace = name.toLowerCase().includes("race");
       const category = isRace ? "race" : getWorkoutCategory(name);
 
-      // Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description
-      let eventFuelRate: number | null = null;
-      if (event.carbs_per_hour != null) {
-        eventFuelRate = event.carbs_per_hour;
-      } else {
-        eventFuelRate = extractFuelRate(eventDesc);
-      }
+      const eventFuelRate = resolveFuelRate(event.carbs_per_hour, eventDesc);
 
       // Calculate total carbs from fuel rate and estimated duration.
       // Prefer our description-based estimate (uses our pace zones) over the
