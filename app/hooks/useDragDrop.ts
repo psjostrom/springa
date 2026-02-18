@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
 import { updateEvent } from "@/lib/intervalsApi";
+import { parseEventId } from "@/lib/utils";
 
 export function useDragDrop(
   apiKey: string,
@@ -43,7 +44,7 @@ export function useDragDrop(
   const handleDrop = useCallback(async (targetDate: Date) => {
     if (!draggedEvent) return;
 
-    const numericId = parseInt(draggedEvent.id.replace("event-", ""), 10);
+    const numericId = parseEventId(draggedEvent.id);
     if (isNaN(numericId)) {
       setDraggedEvent(null);
       setDragOverDate(null);

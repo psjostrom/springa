@@ -459,6 +459,32 @@ export function estimateWorkoutDistance(event: CalendarEvent): number {
   return 0;
 }
 
+// --- ID PARSING ---
+
+/** Extract numeric event ID from prefixed string (e.g. "event-1002" → 1002). Returns NaN for non-event IDs. */
+export function parseEventId(id: string): number {
+  return parseInt(id.replace("event-", ""), 10);
+}
+
+// --- DURATION FORMATTING ---
+
+/** Format seconds as "Xh Ym" or "Ym". */
+export function formatDuration(seconds: number): string {
+  const totalMins = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours > 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return `${mins}m`;
+}
+
+/** Format estimated duration in minutes as "Xh Ym" or "Ym". */
+export function formatDurationMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  return `${mins}m`;
+}
+
 // --- WORKOUT CATEGORIZATION ---
 
 export function getWorkoutCategory(

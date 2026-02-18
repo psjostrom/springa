@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { estimateWorkoutDuration, extractFuelRate, extractTotalCarbs } from "@/lib/utils";
+import { estimateWorkoutDuration, extractFuelRate, extractTotalCarbs, formatPace, formatDuration, formatDurationMinutes } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -35,35 +35,20 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
         <div className="text-sm text-[#b8a5d4]">
           {format(event.date, "MMM", { locale: enGB })}
         </div>
-        {event.type === "completed" &&
-          event.duration &&
-          (() => {
-            const mins = Math.floor(event.duration / 60);
-            const hours = Math.floor(mins / 60);
-            const remainMins = mins % 60;
-            return (
-              <div className="text-sm text-white mt-4">
-                {hours > 0
-                  ? `${hours}h${remainMins > 0 ? ` ${remainMins}m` : ""}`
-                  : `${remainMins}m`}
-              </div>
-            );
-          })()}
-        {event.type === "planned" &&
-          event.description &&
-          (() => {
-            const est = estimateWorkoutDuration(event.description);
-            if (!est) return null;
-            const hours = Math.floor(est / 60);
-            const mins = est % 60;
-            return (
-              <div className="text-sm text-white mt-4">
-                {hours > 0
-                  ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}`
-                  : `${mins}m`}
-              </div>
-            );
-          })()}
+        {event.type === "completed" && event.duration && (
+          <div className="text-sm text-white mt-4">
+            {formatDuration(event.duration)}
+          </div>
+        )}
+        {event.type === "planned" && event.description && (() => {
+          const est = estimateWorkoutDuration(event.description);
+          if (!est) return null;
+          return (
+            <div className="text-sm text-white mt-4">
+              {formatDurationMinutes(est)}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Event Details */}
@@ -121,11 +106,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
               {event.pace && (
                 <span>
                   <span className="font-semibold text-white">
-                    {Math.floor(event.pace)}:
-                    {String(Math.round((event.pace % 1) * 60)).padStart(
-                      2,
-                      "0",
-                    )}
+                    {formatPace(event.pace)}
                   </span>{" "}
                   /km
                 </span>

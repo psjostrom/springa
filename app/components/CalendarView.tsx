@@ -18,6 +18,7 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { FALLBACK_PACE_TABLE } from "@/lib/constants";
 import { fetchCalendarData, fetchActivityDetails, deleteEvent } from "@/lib/intervalsApi";
+import { parseEventId } from "@/lib/utils";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
@@ -229,7 +230,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
   // Handle delete from modal
   const handleDeleteEvent = useCallback(async (eventId: string) => {
-    const numericId = parseInt(eventId.replace("event-", ""), 10);
+    const numericId = parseEventId(eventId);
     if (isNaN(numericId)) return;
 
     await deleteEvent(apiKey, numericId);

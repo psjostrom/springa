@@ -4,6 +4,7 @@ import { enGB } from "date-fns/locale";
 import { Info } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
+import { parseEventId, formatPace } from "@/lib/utils";
 import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
@@ -119,7 +120,7 @@ export function EventModal({
 
   const saveEventEdit = async () => {
     if (!editDate) return;
-    const numericId = parseInt(selectedEvent.id.replace("event-", ""), 10);
+    const numericId = parseEventId(selectedEvent.id);
     if (isNaN(numericId)) return;
 
     setIsSaving(true);
@@ -301,11 +302,7 @@ export function EventModal({
                   <div>
                     <div className="text-[#b8a5d4] text-sm">Pace</div>
                     <div className="font-semibold text-white">
-                      {Math.floor(selectedEvent.pace)}:
-                      {String(
-                        Math.round((selectedEvent.pace % 1) * 60),
-                      ).padStart(2, "0")}{" "}
-                      /km
+                      {formatPace(selectedEvent.pace)} /km
                     </div>
                   </div>
                 )}
