@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { WorkoutEvent } from "@/lib/plannerLogic";
+import type { WorkoutEvent } from "@/lib/types";
 
 interface WorkoutListProps {
 	events: WorkoutEvent[];

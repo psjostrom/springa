@@ -2,12 +2,10 @@
 
 import { useState, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
-import {
-  generatePlan,
-  uploadToIntervals,
-  analyzeHistory,
-  WorkoutEvent,
-} from "@/lib/plannerLogic";
+import type { WorkoutEvent } from "@/lib/types";
+import { uploadToIntervals } from "@/lib/intervalsApi";
+import { analyzeHistory } from "@/lib/analysis";
+import { generatePlan } from "@/lib/workoutGenerators";
 import { RaceSettings } from "../components/RaceSettings";
 import { PhysiologySettings } from "../components/PhysiologySettings";
 import { PlanStructureSettings } from "../components/PlanStructureSettings";

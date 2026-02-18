@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { getISOWeek } from "date-fns";
-import { WorkoutEvent, getEstimatedDuration } from "@/lib/plannerLogic";
+import type { WorkoutEvent } from "@/lib/types";
+import { getEstimatedDuration } from "@/lib/utils";
 
 export function useWeeklyVolumeData(planEvents: WorkoutEvent[]) {
 	return useMemo(() => {

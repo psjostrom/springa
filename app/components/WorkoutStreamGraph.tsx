@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { StreamData } from "@/lib/plannerLogic";
+import type { StreamData } from "@/lib/types";
 
 interface WorkoutStreamGraphProps {
   streamData: StreamData;
