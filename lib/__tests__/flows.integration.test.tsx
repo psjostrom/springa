@@ -4,7 +4,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "./msw/server";
-import { capturedUploadPayload, capturedPutPayload } from "./msw/handlers";
+import { capturedUploadPayload, capturedPutPayload, capturedDeleteEventIds } from "./msw/handlers";
 import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
@@ -343,5 +343,115 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     await waitFor(() => {
       expect(screen.getByText("30g/h")).toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Flow 7: Calendar — Delete planned event from modal
+// ---------------------------------------------------------------------------
+describe("Flow 7: Calendar — Delete planned event from modal", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-02-09T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("opens a planned event, clicks Delete, confirms, and event is removed", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CalendarScreen apiKey={TEST_API_KEY} />,
+    );
+
+    // 1. Wait for events to load
+    await waitFor(() => {
+      expect(
+        screen.getByText(/W05 Tue Easy \+ Strides eco16/),
+      ).toBeInTheDocument();
+    });
+
+    // 2. Click the planned event
+    const plannedEvent = screen.getByText(/W05 Tue Easy \+ Strides eco16/);
+    await user.click(plannedEvent);
+
+    // 3. Simulate URL -> workout=event-1002
+    searchParamsState.current = new URLSearchParams("workout=event-1002");
+    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
+
+    // 4. Assert Planned badge and Delete button visible
+    await waitFor(() => {
+      expect(screen.getByText(/Planned/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+
+    // 5. Click Delete -> confirmation appears
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByText("Delete this workout?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
+
+    // 6. Click Confirm
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    // 7. Assert DELETE request was made with correct event ID
+    await waitFor(() => {
+      expect(capturedDeleteEventIds).toContain("1002");
+    });
+
+    // 8. Simulate URL cleared (modal closed via closeWorkoutModal)
+    searchParamsState.current = new URLSearchParams("");
+    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
+
+    // 9. Assert event is removed from the DOM
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/W05 Tue Easy \+ Strides eco16/),
+      ).not.toBeInTheDocument();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Flow 8: Calendar — Long run totalCarbs uses our pace estimate, not API duration
+// ---------------------------------------------------------------------------
+describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimate", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-02-09T12:00:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows 58g total (not 49g) for an 8km long run at 60g/h", async () => {
+    // Fixture event-1004 has duration: 2940 (49 min from Intervals.icu)
+    // but our description-based estimate is ~58 min (8km × 7.25 min/km).
+    // The modal must show 58g, not 49g.
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CalendarScreen apiKey={TEST_API_KEY} />,
+    );
+
+    // 1. Wait for events to load
+    await waitFor(() => {
+      expect(
+        screen.getByText(/W05 Sun Long \(8km\) eco16/),
+      ).toBeInTheDocument();
+    });
+
+    // 2. Click the planned long run
+    await user.click(screen.getByText(/W05 Sun Long \(8km\) eco16/));
+
+    // 3. Simulate URL -> workout=event-1004
+    searchParamsState.current = new URLSearchParams("workout=event-1004");
+    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
+
+    // 4. Assert modal shows correct fuel strip values
+    await waitFor(() => {
+      expect(screen.getByText("60g/h")).toBeInTheDocument();
+    });
+    expect(screen.getByText("58g total")).toBeInTheDocument();
   });
 });

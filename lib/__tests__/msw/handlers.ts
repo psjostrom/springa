@@ -5,10 +5,12 @@ import { sampleActivities, sampleEvents, sampleStreams } from "./fixtures";
 // Capture payloads for assertion in tests
 export let capturedUploadPayload: unknown[] = [];
 export let capturedPutPayload: { url: string; body: unknown } | null = null;
+export let capturedDeleteEventIds: string[] = [];
 
 export function resetCaptures() {
   capturedUploadPayload = [];
   capturedPutPayload = null;
+  capturedDeleteEventIds = [];
 }
 
 export const handlers = [
@@ -40,6 +42,12 @@ export const handlers = [
       body: await request.json(),
     };
     return HttpResponse.json({ ok: true });
+  }),
+
+  // DELETE single event
+  http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+    capturedDeleteEventIds.push(params.eventId as string);
+    return new HttpResponse(null, { status: 200 });
   }),
 
   // GET activity streams

@@ -49,6 +49,7 @@ interface EventModalProps {
   event: CalendarEvent;
   onClose: () => void;
   onDateSaved: (eventId: string, newDate: Date) => void;
+  onDelete: (eventId: string) => Promise<void>;
   paceTable: PaceTable;
   /** Only relevant for completed events — shows a spinner while stream data loads. */
   isLoadingStreamData?: boolean;
@@ -59,6 +60,7 @@ export function EventModal({
   event: selectedEvent,
   onClose,
   onDateSaved,
+  onDelete,
   paceTable,
   isLoadingStreamData,
   apiKey,
@@ -66,6 +68,8 @@ export function EventModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editDate, setEditDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Carbs ingested editing
   const [editingCarbs, setEditingCarbs] = useState(false);
@@ -81,6 +85,8 @@ export function EventModal({
     setCarbsValue("");
     setSavedCarbs(null);
     setIsClosing(false);
+    setConfirmingDelete(false);
+    setIsDeleting(false);
   }, [selectedEvent.id]);
 
   const handleClose = useCallback(() => {
@@ -189,16 +195,51 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {selectedEvent.type === "planned" && !isEditing && (
-              <button
-                onClick={() => {
-                  setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
-                  setIsEditing(true);
-                }}
-                className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
-              >
-                Edit
-              </button>
+            {selectedEvent.type === "planned" && !isEditing && !confirmingDelete && (
+              <>
+                <button
+                  onClick={() => {
+                    setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
+                    setIsEditing(true);
+                  }}
+                  className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
+                >
+                  Delete
+                </button>
+              </>
+            )}
+            {confirmingDelete && (
+              <>
+                <span className="text-sm text-[#ff6b8a]">Delete this workout?</span>
+                <button
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    try {
+                      await onDelete(selectedEvent.id);
+                    } catch {
+                      setIsDeleting(false);
+                      alert("Failed to delete event. Please try again.");
+                    }
+                  }}
+                  disabled={isDeleting}
+                  className="px-3 py-1.5 text-sm bg-[#ff3366] hover:bg-[#e0294f] text-white rounded-lg transition disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Confirm"}
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={isDeleting}
+                  className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </>
             )}
             {isEditing && (
               <>

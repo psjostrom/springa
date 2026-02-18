@@ -17,7 +17,7 @@ import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { FALLBACK_PACE_TABLE } from "@/lib/constants";
-import { fetchCalendarData, fetchActivityDetails } from "@/lib/intervalsApi";
+import { fetchCalendarData, fetchActivityDetails, deleteEvent } from "@/lib/intervalsApi";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
@@ -227,6 +227,16 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     );
   };
 
+  // Handle delete from modal
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const numericId = parseInt(eventId.replace("event-", ""), 10);
+    if (isNaN(numericId)) return;
+
+    await deleteEvent(apiKey, numericId);
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    closeWorkoutModal();
+  }, [apiKey, closeWorkoutModal]);
+
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentMonth(
       direction === "prev"
@@ -422,6 +432,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           event={selectedEvent}
           onClose={closeWorkoutModal}
           onDateSaved={handleDateSaved}
+          onDelete={handleDeleteEvent}
           paceTable={paceTable}
           isLoadingStreamData={isLoadingStreamData}
           apiKey={apiKey}

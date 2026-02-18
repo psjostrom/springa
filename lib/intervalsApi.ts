@@ -341,11 +341,13 @@ export async function fetchCalendarData(
         eventFuelRate = extractFuelRate(eventDesc);
       }
 
-      // Calculate total carbs from fuel rate and estimated duration
+      // Calculate total carbs from fuel rate and estimated duration.
+      // Prefer our description-based estimate (uses our pace zones) over the
+      // API's duration which Intervals.icu computes with its own pace config.
       let eventTotalCarbs: number | null = null;
       if (eventFuelRate != null) {
         const estDur = event.moving_time || event.duration || event.elapsed_time;
-        const estMinutes = estDur ? estDur / 60 : estimateWorkoutDuration(eventDesc);
+        const estMinutes = estimateWorkoutDuration(eventDesc) ?? (estDur ? estDur / 60 : null);
         if (estMinutes != null) {
           eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
         }
@@ -393,6 +395,23 @@ export async function updateEvent(
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to update event: ${res.status} ${errorText}`);
+  }
+}
+
+// --- EVENT DELETE ---
+
+export async function deleteEvent(
+  apiKey: string,
+  eventId: number,
+): Promise<void> {
+  const auth = "Basic " + btoa("API_KEY:" + apiKey);
+  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+    method: "DELETE",
+    headers: { Authorization: auth },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete event: ${res.status} ${errorText}`);
   }
 }
 

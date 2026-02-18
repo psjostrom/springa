@@ -87,6 +87,17 @@ export const sampleEvents = [
       "Hill reps build strength and power that translates directly to EcoTrail's terrain. Outdoors: find a steady hill with a moderate gradient.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
     carbs_per_hour: 30,
   },
+  {
+    id: 1004,
+    category: "WORKOUT",
+    start_date_local: "2026-02-22T10:00:00",
+    name: "W05 Sun Long (8km) eco16",
+    description:
+      "Long run at easy pace.\n\nWarmup\n- 1km 66-78% LTHR (112-132 bpm)\n\nMain set\n- 6km 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 1km 66-78% LTHR (112-132 bpm)\n",
+    carbs_per_hour: 60,
+    // Intervals.icu computes 49 min using its own pace zones — wrong for us
+    duration: 2940,
+  },
 ];
 
 // --- STREAMS ---
