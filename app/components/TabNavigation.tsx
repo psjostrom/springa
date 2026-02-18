@@ -1,6 +1,6 @@
 import { CalendarDays, TrendingUp, ClipboardList, type LucideIcon } from "lucide-react";
 
-type Tab = "planner" | "calendar" | "progress";
+type Tab = "planner" | "calendar" | "intel";
 
 interface TabNavigationProps {
 	activeTab: Tab;
@@ -9,7 +9,7 @@ interface TabNavigationProps {
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
 	{ key: "calendar", label: "Calendar", icon: CalendarDays },
-	{ key: "progress", label: "Progress", icon: TrendingUp },
+	{ key: "intel", label: "Intel", icon: TrendingUp },
 	{ key: "planner", label: "Planner", icon: ClipboardList },
 ];
 

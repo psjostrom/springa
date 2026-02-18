@@ -21,6 +21,12 @@ function resolveFuelRate(carbsPerHour: number | null | undefined, description: s
 
 // --- STREAM FETCHING ---
 
+const RETRY_DELAYS = [1000, 2000, 4000]; // ms — backoff for 429s
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function fetchStreams(
   activityId: string,
   apiKey: string,
@@ -36,24 +42,69 @@ export async function fetchStreams(
     "cadence",
     "altitude",
   ].join(",");
-  try {
-    const res = await fetch(
-      `${API_BASE}/activity/${activityId}/streams?keys=${keys}`,
-      {
-        headers: { Authorization: auth },
-      },
-    );
-    if (res.ok) {
-      return await res.json();
+  const url = `${API_BASE}/activity/${activityId}/streams?keys=${keys}`;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { Authorization: auth } });
+      if (res.ok) {
+        return await res.json();
+      }
+      if (res.status === 429 && attempt < RETRY_DELAYS.length) {
+        console.warn(`Rate limited on activity ${activityId}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
+        await sleep(RETRY_DELAYS[attempt]);
+        continue;
+      }
+      console.warn(
+        `Failed to fetch streams for activity ${activityId}: ${res.status} ${res.statusText}`,
+      );
+      return [];
+    } catch (e) {
+      if (attempt < RETRY_DELAYS.length) {
+        await sleep(RETRY_DELAYS[attempt]);
+        continue;
+      }
+      console.warn(`Error fetching streams for activity ${activityId}:`, e);
+      return [];
     }
-    console.warn(
-      `Failed to fetch streams for activity ${activityId}: ${res.status} ${res.statusText}`,
-    );
-    return [];
-  } catch (e) {
-    console.warn(`Error fetching streams for activity ${activityId}:`, e);
-    return [];
   }
+  return [];
+}
+
+// --- BATCH STREAM FETCHING ---
+
+const BATCH_DELAY_MS = 500; // pause between batches to avoid 429s
+
+/** Fetch streams for multiple activities with concurrency control and rate limiting. */
+export async function fetchStreamBatch(
+  apiKey: string,
+  activityIds: string[],
+  concurrency: number = 2,
+  onProgress?: (completed: number, total: number) => void,
+): Promise<Map<string, IntervalsStream[]>> {
+  const results = new Map<string, IntervalsStream[]>();
+  let completed = 0;
+
+  for (let i = 0; i < activityIds.length; i += concurrency) {
+    if (i > 0) await sleep(BATCH_DELAY_MS);
+
+    const batch = activityIds.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(async (id) => {
+        const streams = await fetchStreams(id, apiKey);
+        return { id, streams };
+      }),
+    );
+
+    for (const { id, streams } of batchResults) {
+      results.set(id, streams);
+      completed++;
+    }
+
+    onProgress?.(completed, activityIds.length);
+  }
+
+  return results;
 }
 
 // --- HR ZONE CALCULATION ---

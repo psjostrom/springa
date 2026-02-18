@@ -524,7 +524,7 @@ describe("fetchActivityDetails", () => {
     expect(result.streamData!.pace).toBeDefined();
   });
 
-  it("returns empty object on error", async () => {
+  it("returns empty object on error", { timeout: 15000 }, async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("fail")));
     const result = await fetchActivityDetails("123", "test-key");
     expect(result).toEqual({});

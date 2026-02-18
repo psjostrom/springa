@@ -1,12 +1,10 @@
-import type { HRZoneName, DataPoint, IntervalsStream } from "./types";
-import { DEFAULT_LTHR } from "./constants";
-import { classifyZone } from "./constants";
+import type { WorkoutCategory, DataPoint, IntervalsStream } from "./types";
 import { convertGlucoseToMmol } from "./utils";
 
 // --- Types ---
 
 export interface BGObservation {
-  zone: HRZoneName;
+  category: WorkoutCategory;
   bgRate: number; // mmol/L per 10 min
   fuelRate: number | null; // g/h (from the activity's planned fuel), null if unknown
   activityId: string;
@@ -15,17 +13,18 @@ export interface BGObservation {
   relativeMinute: number; // minutes since activity start
 }
 
-export interface ZoneBGResponse {
-  zone: HRZoneName;
+export interface CategoryBGResponse {
+  category: WorkoutCategory;
   avgRate: number; // mmol/L per 10 min (negative = dropping)
   medianRate: number;
   sampleCount: number;
   confidence: "low" | "medium" | "high"; // <10 / 10-30 / 30+
-  avgFuelRate: number | null; // null if no activities in this zone had fuel data
+  avgFuelRate: number | null; // null if no activities in this category had fuel data
+  activityCount: number;
 }
 
 export interface BGResponseModel {
-  zones: Record<HRZoneName, ZoneBGResponse | null>;
+  categories: Record<WorkoutCategory, CategoryBGResponse | null>;
   observations: BGObservation[];
   activitiesAnalyzed: number;
   bgByStartLevel: BGBandResponse[];
@@ -34,7 +33,7 @@ export interface BGResponseModel {
 }
 
 export interface FuelSuggestion {
-  zone: HRZoneName;
+  category: WorkoutCategory;
   currentAvgFuel: number | null; // g/h, null if no fuel data
   suggestedIncrease: number; // g/h
   avgDropRate: number; // mmol/L per 10 min
@@ -104,9 +103,9 @@ export function classifyTimeBucket(relativeMinute: number): TimeBucket {
 
 export function analyzeBGByTime(
   observations: BGObservation[],
-  zone?: HRZoneName,
+  category?: WorkoutCategory,
 ): TimeBucketResponse[] {
-  const filtered = zone ? observations.filter((o) => o.zone === zone) : observations;
+  const filtered = category ? observations.filter((o) => o.category === category) : observations;
   if (filtered.length === 0) return [];
 
   const buckets: TimeBucket[] = ["0-15", "15-30", "30-45", "45+"];
@@ -132,7 +131,7 @@ export function analyzeBGByTime(
 // --- Target Fuel Rate ---
 
 export interface TargetFuelResult {
-  zone: HRZoneName;
+  category: WorkoutCategory;
   targetFuelRate: number;
   currentAvgFuel: number | null;
   method: "regression" | "extrapolation";
@@ -173,28 +172,39 @@ export function linearRegression(points: { x: number; y: number }[]): {
   return { slope, intercept, rSquared };
 }
 
-const EXTRAPOLATION_FACTOR = 12; // g/h per 1.0 mmol/L/10min
+const EXTRAPOLATION_FACTOR = 6; // g/h per 1.0 mmol/L/10min excess drop
+const ACCEPTABLE_DROP = -0.2; // mmol/L per 10min — a mild drop is normal during running
+const MIN_DROP_TO_SUGGEST = -0.5; // only suggest fuel increases beyond this threshold
+const MAX_FUEL_MULTIPLIER = 1.5; // cap target at 1.5× current fuel
+const MAX_FUEL_ABSOLUTE = 90; // absolute ceiling in g/h
+
+function capFuel(target: number, current: number): number {
+  const upperBound = current > 0
+    ? Math.min(current * MAX_FUEL_MULTIPLIER, MAX_FUEL_ABSOLUTE)
+    : MAX_FUEL_ABSOLUTE;
+  return Math.max(0, Math.round(Math.min(target, upperBound)));
+}
 
 export function calculateTargetFuelRates(observations: BGObservation[]): TargetFuelResult[] {
-  const zoneNames: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
+  const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
   const results: TargetFuelResult[] = [];
 
-  for (const zone of zoneNames) {
-    const zoneObs = observations.filter((o) => o.zone === zone && o.fuelRate != null);
-    if (zoneObs.length === 0) continue;
+  for (const category of categoryNames) {
+    const catObs = observations.filter((o) => o.category === category && o.fuelRate != null);
+    if (catObs.length === 0) continue;
 
-    const rates = zoneObs.map((o) => o.bgRate);
+    const rates = catObs.map((o) => o.bgRate);
     const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
 
-    // Only suggest for zones where BG is dropping
-    if (avgRate >= 0) continue;
+    // Only suggest for categories where BG is dropping meaningfully
+    if (avgRate >= MIN_DROP_TO_SUGGEST) continue;
 
-    const fuels = zoneObs.map((o) => o.fuelRate!);
+    const fuels = catObs.map((o) => o.fuelRate!);
     const currentAvgFuel = fuels.reduce((a, b) => a + b, 0) / fuels.length;
 
     // Group by distinct fuel rates
     const fuelGroups = new Map<number, BGObservation[]>();
-    for (const obs of zoneObs) {
+    for (const obs of catObs) {
       const key = obs.fuelRate!;
       const list = fuelGroups.get(key) ?? [];
       list.push(obs);
@@ -212,25 +222,28 @@ export function calculateTargetFuelRates(observations: BGObservation[]): TargetF
       });
 
       const reg = linearRegression(points);
-      // x-intercept: where y = 0 → x = -intercept / slope
-      const target = reg.slope !== 0 ? -reg.intercept / reg.slope : currentAvgFuel;
-      const confidence = getConfidence(zoneObs.length);
+      // Solve for y = ACCEPTABLE_DROP → x = (ACCEPTABLE_DROP - intercept) / slope
+      const target = reg.slope > 0
+        ? (ACCEPTABLE_DROP - reg.intercept) / reg.slope
+        : currentAvgFuel;
+      const confidence = getConfidence(catObs.length);
 
       results.push({
-        zone,
-        targetFuelRate: Math.max(0, Math.round(target)),
+        category,
+        targetFuelRate: capFuel(target, currentAvgFuel),
         currentAvgFuel,
         method: "regression",
         confidence,
       });
     } else {
-      // Extrapolation: target = current + |avgRate| * factor
-      const target = currentAvgFuel + Math.abs(avgRate) * EXTRAPOLATION_FACTOR;
-      const confidence = getConfidence(zoneObs.length);
+      // Extrapolation: only compensate for the excess drop beyond acceptable
+      const excessDrop = Math.abs(avgRate) - Math.abs(ACCEPTABLE_DROP);
+      const target = currentAvgFuel + excessDrop * EXTRAPOLATION_FACTOR;
+      const confidence = getConfidence(catObs.length);
 
       results.push({
-        zone,
-        targetFuelRate: Math.max(0, Math.round(target)),
+        category,
+        targetFuelRate: capFuel(target, currentAvgFuel),
         currentAvgFuel,
         method: "extrapolation",
         confidence,
@@ -312,10 +325,10 @@ const SKIP_END = 2; // skip last 2 minutes
 export function extractObservations(
   hr: DataPoint[],
   glucose: DataPoint[],
-  lthr: number,
   activityId: string,
   fuelRate: number | null,
   startBG: number,
+  category: WorkoutCategory,
 ): BGObservation[] {
   if (hr.length < WINDOW_SIZE) return [];
 
@@ -324,18 +337,14 @@ export function extractObservations(
   const endTime = hr[hr.length - 1].time - SKIP_END;
 
   // Build lookup maps for fast access
-  const hrMap = new Map(hr.map((p) => [p.time, p.value]));
   const gMap = new Map(glucose.map((p) => [p.time, p.value]));
 
   for (let t = startTime; t <= endTime - WINDOW_SIZE; t++) {
-    // Collect HR values in this window
-    const windowHR: number[] = [];
+    // Collect glucose values in this window
     let gStart: number | null = null;
     let gEnd: number | null = null;
 
     for (let m = t; m < t + WINDOW_SIZE; m++) {
-      const h = hrMap.get(m);
-      if (h != null) windowHR.push(h);
       const g = gMap.get(m);
       if (g != null) {
         if (gStart == null) gStart = g;
@@ -343,18 +352,14 @@ export function extractObservations(
       }
     }
 
-    // Need sufficient data points
-    if (windowHR.length < 3 || gStart == null || gEnd == null) continue;
-
-    const avgHR = windowHR.reduce((a, b) => a + b, 0) / windowHR.length;
-    const lthrPercent = (avgHR / lthr) * 100;
-    const zone = classifyZone(lthrPercent);
+    // Need glucose at start and end of window
+    if (gStart == null || gEnd == null) continue;
 
     // BG slope: (end - start) / windowMin * 10 → mmol/L per 10 min
     const bgRate = ((gEnd - gStart) / WINDOW_SIZE) * 10;
 
     observations.push({
-      zone,
+      category,
       bgRate,
       fuelRate,
       activityId,
@@ -384,19 +389,19 @@ function getConfidence(count: number): "low" | "medium" | "high" {
   return "low";
 }
 
-/** Build BG response model from activity streams. */
+/** Build BG response model from activity streams, grouped by workout category. */
 export function buildBGModel(
   activitiesData: Array<{
     streams: IntervalsStream[];
     activityId: string;
     fuelRate: number | null; // g/h, null if unknown
+    category: WorkoutCategory;
   }>,
-  lthr: number = DEFAULT_LTHR,
 ): BGResponseModel {
   const allObservations: BGObservation[] = [];
   let analyzed = 0;
 
-  for (const { streams, activityId, fuelRate } of activitiesData) {
+  for (const { streams, activityId, fuelRate, category } of activitiesData) {
     const aligned = alignStreams(streams);
     if (!aligned) continue;
 
@@ -405,10 +410,10 @@ export function buildBGModel(
     const obs = extractObservations(
       aligned.hr,
       aligned.glucose,
-      lthr,
       activityId,
       fuelRate,
       startBG,
+      category,
     );
 
     if (obs.length > 0) {
@@ -417,34 +422,35 @@ export function buildBGModel(
     }
   }
 
-  const zones: Record<HRZoneName, ZoneBGResponse | null> = {
+  const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
     easy: null,
-    steady: null,
-    tempo: null,
-    hard: null,
+    long: null,
+    interval: null,
   };
 
-  const zoneNames: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
+  const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
 
-  for (const zone of zoneNames) {
-    const zoneObs = allObservations.filter((o) => o.zone === zone);
-    if (zoneObs.length === 0) continue;
+  for (const cat of categoryNames) {
+    const catObs = allObservations.filter((o) => o.category === cat);
+    if (catObs.length === 0) continue;
 
-    const rates = zoneObs.map((o) => o.bgRate);
-    const fuels = zoneObs.map((o) => o.fuelRate).filter((f): f is number => f != null);
+    const rates = catObs.map((o) => o.bgRate);
+    const fuels = catObs.map((o) => o.fuelRate).filter((f): f is number => f != null);
+    const activityIds = new Set(catObs.map((o) => o.activityId));
 
-    zones[zone] = {
-      zone,
+    categories[cat] = {
+      category: cat,
       avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
       medianRate: median(rates),
-      sampleCount: zoneObs.length,
-      confidence: getConfidence(zoneObs.length),
+      sampleCount: catObs.length,
+      confidence: getConfidence(catObs.length),
       avgFuelRate: fuels.length > 0 ? fuels.reduce((a, b) => a + b, 0) / fuels.length : null,
+      activityCount: activityIds.size,
     };
   }
 
   return {
-    zones,
+    categories,
     observations: allObservations,
     activitiesAnalyzed: analyzed,
     bgByStartLevel: analyzeBGByStartLevel(allObservations),
@@ -458,11 +464,11 @@ export function buildBGModel(
 const DROP_THRESHOLD = -1.0; // mmol/L per 10 min — suggest fuel increase beyond this
 const FUEL_INCREASE_PER_HALF = 6; // +6 g/h per 0.5 mmol/L/10min excess drop
 
-/** Suggest fuel adjustments for zones with excessive BG drops. */
+/** Suggest fuel adjustments for categories with excessive BG drops. */
 export function suggestFuelAdjustments(model: BGResponseModel): FuelSuggestion[] {
   const suggestions: FuelSuggestion[] = [];
 
-  for (const [, response] of Object.entries(model.zones)) {
+  for (const [, response] of Object.entries(model.categories)) {
     if (!response) continue;
     if (response.avgRate >= DROP_THRESHOLD) continue;
 
@@ -470,7 +476,7 @@ export function suggestFuelAdjustments(model: BGResponseModel): FuelSuggestion[]
     const suggestedIncrease = Math.ceil(excessDrop / 0.5) * FUEL_INCREASE_PER_HALF;
 
     suggestions.push({
-      zone: response.zone,
+      category: response.category,
       currentAvgFuel: response.avgFuelRate,
       suggestedIncrease,
       avgDropRate: response.avgRate,

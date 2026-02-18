@@ -2,22 +2,25 @@
 
 import { useState } from "react";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown } from "lucide-react";
-import type { BGResponseModel, BGObservation, FuelSuggestion, ZoneBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult } from "@/lib/bgModel";
+import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult } from "@/lib/bgModel";
 import { suggestFuelAdjustments } from "@/lib/bgModel";
-import { ZONE_COLORS } from "@/lib/constants";
-import { getZoneLabel } from "@/lib/utils";
-import type { HRZoneName } from "@/lib/types";
+import type { WorkoutCategory } from "@/lib/types";
 
 interface BGResponsePanelProps {
   model: BGResponseModel;
   activityNames?: Map<string, string>;
 }
 
-const ZONE_COLOR_MAP: Record<HRZoneName, string> = {
-  easy: ZONE_COLORS.z2,
-  steady: ZONE_COLORS.z3,
-  tempo: ZONE_COLORS.z4,
-  hard: ZONE_COLORS.z5,
+const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
+  easy: "Easy Runs",
+  long: "Long Runs",
+  interval: "Interval Sessions",
+};
+
+const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
+  easy: "#06b6d4",
+  long: "#fbbf24",
+  interval: "#fb923c",
 };
 
 function rateColor(rate: number): string {
@@ -49,13 +52,13 @@ interface ActivityBreakdown {
 
 function buildActivityBreakdown(
   observations: BGObservation[],
-  zone: HRZoneName,
+  category: WorkoutCategory,
   activityNames: Map<string, string>,
 ): ActivityBreakdown[] {
-  const zoneObs = observations.filter((o) => o.zone === zone);
+  const catObs = observations.filter((o) => o.category === category);
   const byActivity = new Map<string, BGObservation[]>();
 
-  for (const obs of zoneObs) {
+  for (const obs of catObs) {
     const list = byActivity.get(obs.activityId) ?? [];
     list.push(obs);
     byActivity.set(obs.activityId, list);
@@ -76,29 +79,29 @@ function buildActivityBreakdown(
   return breakdowns.sort((a, b) => b.sampleCount - a.sampleCount);
 }
 
-function ZoneCard({
+function CategoryCard({
   response,
   observations,
   activityNames,
   targetFuel,
 }: {
-  response: ZoneBGResponse;
+  response: CategoryBGResponse;
   observations: BGObservation[];
   activityNames: Map<string, string>;
   targetFuel?: TargetFuelResult;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const color = ZONE_COLOR_MAP[response.zone];
+  const color = CATEGORY_COLORS[response.category];
   const rate = response.avgRate;
   const breakdown = expanded
-    ? buildActivityBreakdown(observations, response.zone, activityNames)
+    ? buildActivityBreakdown(observations, response.category, activityNames)
     : [];
 
   return (
     <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold" style={{ color }}>
-          {getZoneLabel(response.zone)}
+          {CATEGORY_LABELS[response.category]}
         </span>
         {confidenceBadge(response.confidence)}
       </div>
@@ -114,7 +117,7 @@ function ZoneCard({
       </div>
 
       <div className="text-xs text-[#8b7ba8]">
-        {response.sampleCount} samples{response.avgFuelRate != null ? ` · ${Math.round(response.avgFuelRate)} g/h fuel` : ""}
+        {response.sampleCount} samples · {response.activityCount} runs{response.avgFuelRate != null ? ` · ${Math.round(response.avgFuelRate)} g/h fuel` : ""}
       </div>
 
       {targetFuel && Math.abs(targetFuel.targetFuelRate - (targetFuel.currentAvgFuel ?? 0)) > 3 && (
@@ -164,7 +167,7 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
       <AlertTriangle className="w-4 h-4 text-[#ff3366] flex-shrink-0 mt-0.5" />
       <div className="text-sm">
         <span className="text-[#ff3366] font-medium">
-          {getZoneLabel(suggestion.zone)}:
+          {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
         <span className="text-[#e0d0f0]">
           BG dropping {Math.abs(suggestion.avgDropRate).toFixed(1)} mmol/L/10m{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
@@ -179,8 +182,8 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
 
 export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) {
   const suggestions = suggestFuelAdjustments(model);
-  const zoneOrder: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
-  const activeZones = zoneOrder.filter((z) => model.zones[z] != null);
+  const categoryOrder: WorkoutCategory[] = ["easy", "long", "interval"];
+  const activeCategories = categoryOrder.filter((c) => model.categories[c] != null);
   const names = activityNames ?? new Map<string, string>();
 
   return (
@@ -189,7 +192,7 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
         <div className="flex items-center gap-2">
           <Droplets className="w-4 h-4 text-[#06b6d4]" />
           <span className="text-sm font-semibold uppercase text-[#b8a5d4]">
-            BG Response by Zone
+            BG Response by Workout
           </span>
         </div>
         <span className="text-xs text-[#8b7ba8]">
@@ -197,20 +200,20 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
         </span>
       </div>
 
-      {activeZones.length === 0 ? (
+      {activeCategories.length === 0 ? (
         <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center text-sm text-[#8b7ba8]">
           No runs with both HR and glucose data found.
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2">
-            {zoneOrder.map((zone) => {
-              const response = model.zones[zone];
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {categoryOrder.map((cat) => {
+              const response = model.categories[cat];
               if (!response) return null;
-              const targetFuel = model.targetFuelRates.find((t) => t.zone === zone);
+              const targetFuel = model.targetFuelRates.find((t) => t.category === cat);
               return (
-                <ZoneCard
-                  key={zone}
+                <CategoryCard
+                  key={cat}
                   response={response}
                   observations={model.observations}
                   activityNames={names}
@@ -227,7 +230,7 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
                 Fuel Suggestions
               </div>
               {suggestions.map((s) => (
-                <SuggestionCard key={s.zone} suggestion={s} />
+                <SuggestionCard key={s.category} suggestion={s} />
               ))}
             </div>
           )}

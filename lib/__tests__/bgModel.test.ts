@@ -13,7 +13,6 @@ import {
   type BGObservation,
 } from "../bgModel";
 import type { IntervalsStream, DataPoint } from "../types";
-import { DEFAULT_LTHR } from "../constants";
 
 // Helper: create streams from arrays
 function makeStreams(
@@ -36,7 +35,7 @@ function minuteTimeArray(minutes: number): number[] {
 // Helper: create a BGObservation for unit tests
 function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
   return {
-    zone: "easy",
+    category: "easy",
     bgRate: -1.0,
     fuelRate: 48,
     activityId: "a1",
@@ -117,7 +116,7 @@ describe("alignStreams", () => {
 
 describe("extractObservations", () => {
   it("returns empty for insufficient data", () => {
-    const result = extractObservations([], [], DEFAULT_LTHR, "a1", 48, 10);
+    const result = extractObservations([], [], "a1", 48, 10, "easy");
     expect(result).toHaveLength(0);
   });
 
@@ -125,14 +124,14 @@ describe("extractObservations", () => {
     // 15 minutes of data
     const hr: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
       time: i,
-      value: 125, // easy zone
+      value: 125,
     }));
     const glucose: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
       time: i,
       value: 10 - i * 0.2,
     }));
 
-    const obs = extractObservations(hr, glucose, DEFAULT_LTHR, "a1", 48, 10);
+    const obs = extractObservations(hr, glucose, "a1", 48, 10, "easy");
 
     // First observation should start at minute 5 (skip first 5)
     // Last window should end before minute 13 (15 - 2)
@@ -153,7 +152,7 @@ describe("extractObservations", () => {
       value: 10 - i * 0.1,
     }));
 
-    const obs = extractObservations(hr, glucose, DEFAULT_LTHR, "a1", 48, 10);
+    const obs = extractObservations(hr, glucose, "a1", 48, 10, "easy");
     expect(obs.length).toBeGreaterThan(0);
 
     // Each 5-min window should show: (end - start) / 5 * 10 = -0.5 / 5 * 10 = -1.0
@@ -162,29 +161,24 @@ describe("extractObservations", () => {
     }
   });
 
-  it("classifies zones correctly based on HR", () => {
-    const lthr = 169;
-    // Easy: 66-78% = 112-132 bpm
-    // Steady: 78-89% = 132-150 bpm
-    // Tempo: 89-99% = 150-167 bpm
-    // Hard: >99% = 167+ bpm
+  it("assigns category from parameter", () => {
+    const hr: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
+      time: i,
+      value: 125,
+    }));
+    const glucose: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
+      time: i,
+      value: 10,
+    }));
 
-    const makeZoneObs = (hrVal: number) => {
-      const hr: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
-        time: i,
-        value: hrVal,
-      }));
-      const glucose: DataPoint[] = Array.from({ length: 15 }, (_, i) => ({
-        time: i,
-        value: 10,
-      }));
-      return extractObservations(hr, glucose, lthr, "a1", 48, 10);
-    };
+    const easyObs = extractObservations(hr, glucose, "a1", 48, 10, "easy");
+    expect(easyObs[0].category).toBe("easy");
 
-    expect(makeZoneObs(120)[0].zone).toBe("easy");
-    expect(makeZoneObs(140)[0].zone).toBe("steady");
-    expect(makeZoneObs(155)[0].zone).toBe("tempo");
-    expect(makeZoneObs(175)[0].zone).toBe("hard");
+    const longObs = extractObservations(hr, glucose, "a1", 60, 10, "long");
+    expect(longObs[0].category).toBe("long");
+
+    const intervalObs = extractObservations(hr, glucose, "a1", 30, 10, "interval");
+    expect(intervalObs[0].category).toBe("interval");
   });
 
   it("stores activityId and fuelRate on observations", () => {
@@ -197,7 +191,7 @@ describe("extractObservations", () => {
       value: 10,
     }));
 
-    const obs = extractObservations(hr, glucose, DEFAULT_LTHR, "run-42", 60, 10);
+    const obs = extractObservations(hr, glucose, "run-42", 60, 10, "easy");
     expect(obs[0].activityId).toBe("run-42");
     expect(obs[0].fuelRate).toBe(60);
   });
@@ -212,7 +206,7 @@ describe("extractObservations", () => {
       value: 11 - i * 0.1,
     }));
 
-    const obs = extractObservations(hr, glucose, DEFAULT_LTHR, "a1", 48, 11);
+    const obs = extractObservations(hr, glucose, "a1", 48, 11, "easy");
     expect(obs[0].startBG).toBe(11);
     // First obs starts at minute 5 (SKIP_START), hr[0].time = 0, so relativeMinute = 5
     expect(obs[0].relativeMinute).toBe(5);
@@ -220,14 +214,13 @@ describe("extractObservations", () => {
 });
 
 describe("buildBGModel", () => {
-  it("returns empty zones with no input", () => {
+  it("returns empty categories with no input", () => {
     const model = buildBGModel([]);
     expect(model.activitiesAnalyzed).toBe(0);
     expect(model.observations).toHaveLength(0);
-    expect(model.zones.easy).toBeNull();
-    expect(model.zones.steady).toBeNull();
-    expect(model.zones.tempo).toBeNull();
-    expect(model.zones.hard).toBeNull();
+    expect(model.categories.easy).toBeNull();
+    expect(model.categories.long).toBeNull();
+    expect(model.categories.interval).toBeNull();
     expect(model.bgByStartLevel).toHaveLength(0);
     expect(model.bgByTime).toHaveLength(0);
     expect(model.targetFuelRates).toHaveLength(0);
@@ -235,7 +228,7 @@ describe("buildBGModel", () => {
 
   it("builds model from single activity with linear BG drop", () => {
     const time = minuteTimeArray(25);
-    const hr = Array(25).fill(125); // easy zone
+    const hr = Array(25).fill(125);
     const glucose = Array.from({ length: 25 }, (_, i) => 10 - i * 0.1);
 
     const model = buildBGModel([
@@ -243,14 +236,15 @@ describe("buildBGModel", () => {
         streams: makeStreams(time, hr, glucose),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
     expect(model.activitiesAnalyzed).toBe(1);
     expect(model.observations.length).toBeGreaterThan(0);
-    expect(model.zones.easy).not.toBeNull();
-    expect(model.zones.easy!.avgRate).toBeCloseTo(-1.0, 0);
-    expect(model.zones.easy!.zone).toBe("easy");
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.easy!.avgRate).toBeCloseTo(-1.0, 0);
+    expect(model.categories.easy!.category).toBe("easy");
   });
 
   it("assigns confidence correctly based on sample count", () => {
@@ -264,12 +258,13 @@ describe("buildBGModel", () => {
         streams: makeStreams(time, hr, glucose),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
-    expect(model.zones.easy).not.toBeNull();
+    expect(model.categories.easy).not.toBeNull();
     // With a 15-min activity, after skipping first 5 and last 2, we get ~3 windows
-    expect(model.zones.easy!.confidence).toBe("low");
+    expect(model.categories.easy!.confidence).toBe("low");
   });
 
   it("reaches medium confidence with 10+ samples", () => {
@@ -282,36 +277,38 @@ describe("buildBGModel", () => {
       ),
       activityId: `a${i}`,
       fuelRate: 48,
+      category: "easy" as const,
     }));
 
     const model = buildBGModel(activities);
-    expect(model.zones.easy).not.toBeNull();
-    expect(["medium", "high"]).toContain(model.zones.easy!.confidence);
+    expect(model.categories.easy).not.toBeNull();
+    expect(["medium", "high"]).toContain(model.categories.easy!.confidence);
   });
 
-  it("separates observations into correct zones", () => {
-    const lthr = 169;
+  it("separates observations into correct categories", () => {
     const time = minuteTimeArray(20);
 
-    // Activity 1: easy zone (HR 125)
+    // Activity 1: easy
     const a1 = {
       streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
       activityId: "easy-run",
       fuelRate: 48,
+      category: "easy" as const,
     };
 
-    // Activity 2: tempo zone (HR 155)
+    // Activity 2: interval
     const a2 = {
       streams: makeStreams(time, Array(20).fill(155), Array(20).fill(8)),
       activityId: "interval-run",
       fuelRate: 30,
+      category: "interval" as const,
     };
 
-    const model = buildBGModel([a1, a2], lthr);
-    expect(model.zones.easy).not.toBeNull();
-    expect(model.zones.tempo).not.toBeNull();
-    expect(model.zones.easy!.avgFuelRate).toBe(48);
-    expect(model.zones.tempo!.avgFuelRate).toBe(30);
+    const model = buildBGModel([a1, a2]);
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.interval).not.toBeNull();
+    expect(model.categories.easy!.avgFuelRate).toBe(48);
+    expect(model.categories.interval!.avgFuelRate).toBe(30);
   });
 
   it("excludes null fuel rates from avgFuelRate", () => {
@@ -321,18 +318,20 @@ describe("buildBGModel", () => {
       streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
       activityId: "with-fuel",
       fuelRate: 48,
+      category: "easy" as const,
     };
 
     const a2 = {
       streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
       activityId: "no-fuel",
       fuelRate: null,
+      category: "easy" as const,
     };
 
     const model = buildBGModel([a1, a2]);
-    expect(model.zones.easy).not.toBeNull();
+    expect(model.categories.easy).not.toBeNull();
     // Should only average the activity that has fuel data
-    expect(model.zones.easy!.avgFuelRate).toBe(48);
+    expect(model.categories.easy!.avgFuelRate).toBe(48);
   });
 
   it("returns null avgFuelRate when no activities have fuel data", () => {
@@ -343,11 +342,12 @@ describe("buildBGModel", () => {
         streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
         activityId: "no-fuel",
         fuelRate: null,
+        category: "easy" as const,
       },
     ]);
 
-    expect(model.zones.easy).not.toBeNull();
-    expect(model.zones.easy!.avgFuelRate).toBeNull();
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.easy!.avgFuelRate).toBeNull();
   });
 
   it("computes median correctly", () => {
@@ -357,11 +357,11 @@ describe("buildBGModel", () => {
     const glucose = Array(20).fill(8.0);
 
     const model = buildBGModel([
-      { streams: makeStreams(time, hr, glucose), activityId: "a1", fuelRate: 48 },
+      { streams: makeStreams(time, hr, glucose), activityId: "a1", fuelRate: 48, category: "easy" },
     ]);
 
-    expect(model.zones.easy).not.toBeNull();
-    expect(model.zones.easy!.medianRate).toBeCloseTo(0, 0);
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.easy!.medianRate).toBeCloseTo(0, 0);
   });
 
   it("skips activities without aligned data", () => {
@@ -372,7 +372,7 @@ describe("buildBGModel", () => {
     ];
 
     const model = buildBGModel([
-      { streams, activityId: "no-glucose", fuelRate: 48 },
+      { streams, activityId: "no-glucose", fuelRate: 48, category: "easy" },
     ]);
 
     expect(model.activitiesAnalyzed).toBe(0);
@@ -389,6 +389,7 @@ describe("buildBGModel", () => {
         streams: makeStreams(time, hr, glucose),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
@@ -398,6 +399,18 @@ describe("buildBGModel", () => {
     expect(model.bgByTime.length).toBeGreaterThan(0);
     // BG is dropping with fuel → target fuel rates should be populated
     expect(model.targetFuelRates.length).toBeGreaterThan(0);
+  });
+
+  it("counts distinct activities per category", () => {
+    const time = minuteTimeArray(20);
+
+    const model = buildBGModel([
+      { streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)), activityId: "a1", fuelRate: 48, category: "long" },
+      { streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)), activityId: "a2", fuelRate: 60, category: "long" },
+    ]);
+
+    expect(model.categories.long).not.toBeNull();
+    expect(model.categories.long!.activityCount).toBe(2);
   });
 });
 
@@ -412,6 +425,7 @@ describe("suggestFuelAdjustments", () => {
         ),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
@@ -430,12 +444,13 @@ describe("suggestFuelAdjustments", () => {
         ),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
     expect(suggestions.length).toBeGreaterThan(0);
-    expect(suggestions[0].zone).toBe("easy");
+    expect(suggestions[0].category).toBe("easy");
     expect(suggestions[0].suggestedIncrease).toBeGreaterThan(0);
     expect(suggestions[0].avgDropRate).toBeLessThan(-1.0);
   });
@@ -451,6 +466,7 @@ describe("suggestFuelAdjustments", () => {
         ),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
@@ -469,6 +485,7 @@ describe("suggestFuelAdjustments", () => {
         ),
         activityId: "a1",
         fuelRate: 48,
+        category: "easy",
       },
     ]);
 
@@ -611,25 +628,25 @@ describe("analyzeBGByTime", () => {
     expect(result[3].avgRate).toBeCloseTo(-2.0);
   });
 
-  it("filters by zone when provided", () => {
+  it("filters by category when provided", () => {
     const obs: BGObservation[] = [
-      makeObs({ zone: "easy", relativeMinute: 5, bgRate: -0.5 }),
-      makeObs({ zone: "tempo", relativeMinute: 5, bgRate: -1.5 }),
-      makeObs({ zone: "easy", relativeMinute: 20, bgRate: -1.0 }),
+      makeObs({ category: "easy", relativeMinute: 5, bgRate: -0.5 }),
+      makeObs({ category: "interval", relativeMinute: 5, bgRate: -1.5 }),
+      makeObs({ category: "easy", relativeMinute: 20, bgRate: -1.0 }),
     ];
 
     const result = analyzeBGByTime(obs, "easy");
     expect(result).toHaveLength(2);
-    // All results should only contain easy zone data
+    // All results should only contain easy category data
     expect(result[0].avgRate).toBeCloseTo(-0.5);
     expect(result[1].avgRate).toBeCloseTo(-1.0);
   });
 
-  it("returns empty when zone filter matches nothing", () => {
+  it("returns empty when category filter matches nothing", () => {
     const obs: BGObservation[] = [
-      makeObs({ zone: "easy", relativeMinute: 5 }),
+      makeObs({ category: "easy", relativeMinute: 5 }),
     ];
-    expect(analyzeBGByTime(obs, "hard")).toHaveLength(0);
+    expect(analyzeBGByTime(obs, "interval")).toHaveLength(0);
   });
 });
 
@@ -701,9 +718,9 @@ describe("calculateTargetFuelRates", () => {
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].method).toBe("extrapolation");
-    // target = 48 + 1.0 * 12 = 60
-    expect(result[0].targetFuelRate).toBe(60);
-    expect(result[0].zone).toBe("easy");
+    // excessDrop = 1.0 - 0.2 = 0.8, target = 48 + 0.8 * 6 = 52.8 → 53
+    expect(result[0].targetFuelRate).toBe(53);
+    expect(result[0].category).toBe("easy");
   });
 
   it("uses regression with 2+ distinct fuel rates with 3+ obs each", () => {
@@ -717,17 +734,16 @@ describe("calculateTargetFuelRates", () => {
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].method).toBe("regression");
-    // With fuel 30 → rate -2.0 and fuel 60 → rate -0.5:
-    // slope = (-0.5 - -2.0) / (60 - 30) = 1.5/30 = 0.05
-    // intercept = y - slope*x using (30, -2.0): -2.0 - 0.05*30 = -3.5
-    // x-intercept = 3.5 / 0.05 = 70
-    expect(result[0].targetFuelRate).toBe(70);
+    // slope = 0.05, intercept = -3.5
+    // Solve for y = -0.2: x = (-0.2 - (-3.5)) / 0.05 = 66
+    // Cap: min(66, avgFuel 45 * 1.5 = 67.5, 90) = 66
+    expect(result[0].targetFuelRate).toBe(66);
   });
 
   it("clamps target fuel rate to >= 0", () => {
-    // Very slight drop with high fuel — extrapolation stays positive
+    // Drop exceeds threshold (-0.5) with zero fuel — extrapolation stays non-negative
     const obs: BGObservation[] = Array.from({ length: 5 }, () =>
-      makeObs({ bgRate: -0.1, fuelRate: 0 }),
+      makeObs({ bgRate: -0.6, fuelRate: 0 }),
     );
 
     const result = calculateTargetFuelRates(obs);

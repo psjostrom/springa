@@ -149,6 +149,8 @@ export interface CalendarEvent {
   activityId?: string; // raw Intervals.icu activity ID for API calls
 }
 
+export type WorkoutCategory = "easy" | "long" | "interval";
+
 export type SpeedSessionType =
   | "short-intervals"
   | "hills"

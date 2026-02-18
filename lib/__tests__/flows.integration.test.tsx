@@ -189,37 +189,24 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Flow 4: Planner — Analyze history -> Glucose charts + fuel adjustment
+// Flow 4: Planner — Generate uses fuel settings directly (no analysis)
 // ---------------------------------------------------------------------------
-describe("Flow 4: Planner — Generate triggers analysis + fuel adjustment", () => {
-  it("analyzes workout history and auto-adjusts fuel values", async () => {
+describe("Flow 4: Planner — Generate uses fuel settings directly", () => {
+  it("generates plan instantly using sidebar fuel values", async () => {
     const user = userEvent.setup();
     render(<PlannerScreen apiKey={TEST_API_KEY} />);
 
-    // 1. Click Generate Plan (now triggers analysis + generation in one click)
+    // 1. Click Generate Plan
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
     await user.click(generateBtns[0]);
 
-    // 2. Wait for analysis — assert chart titles appear alongside generated plan
-    await waitFor(
-      () => {
-        expect(screen.getByText("Last Long Run")).toBeInTheDocument();
-        expect(screen.getByText("Last Easy Run")).toBeInTheDocument();
-        expect(screen.getByText("Last Interval/Tempo")).toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
-
-    // 3. Assert fuel inputs are present and auto-adjusted
-    const fuelInputs = screen.getAllByRole("spinbutton");
-    const analysisFuelInputs = fuelInputs.filter((input) => {
-      const value = Number((input as HTMLInputElement).value);
-      return value > 0;
+    // 2. Plan generates synchronously — action bar visible immediately
+    await waitFor(() => {
+      expect(screen.getByText("Ready to sync?")).toBeInTheDocument();
     });
-    expect(analysisFuelInputs.length).toBeGreaterThanOrEqual(3);
 
-    // 4. Assert plan was also generated (action bar visible)
-    expect(screen.getByText("Ready to sync?")).toBeInTheDocument();
+    // 3. Workout list is rendered (plan was generated)
+    expect(screen.getByText("Preview")).toBeInTheDocument();
   });
 });
 

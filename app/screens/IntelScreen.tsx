@@ -6,29 +6,40 @@ import { Loader2 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
+import type { BGResponseModel } from "@/lib/bgModel";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
 import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
+import { BGResponsePanel } from "../components/BGResponsePanel";
+import { BGScatterChart } from "../components/BGScatterChart";
 import { ErrorCard } from "../components/ErrorCard";
 
-interface ProgressScreenProps {
+interface IntelScreenProps {
   apiKey: string;
   phaseName: string;
   currentWeek: number;
   totalWeeks: number;
   progress: number;
+  bgModel: BGResponseModel | null;
+  bgModelLoading: boolean;
+  bgModelProgress: { done: number; total: number };
+  bgActivityNames: Map<string, string>;
 }
 
 const RACE_DATE = "2026-06-13";
 
-export function ProgressScreen({
+export function IntelScreen({
   apiKey,
   phaseName,
   currentWeek,
   totalWeeks,
   progress,
-}: ProgressScreenProps) {
+  bgModel,
+  bgModelLoading,
+  bgModelProgress,
+  bgActivityNames,
+}: IntelScreenProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +56,7 @@ export function ProgressScreen({
       });
       setEvents(data);
     } catch (err) {
-      console.error("ProgressScreen: failed to load events", err);
+      console.error("IntelScreen: failed to load events", err);
       setError("Failed to load fitness data. Check your API key and try again.");
     } finally {
       setIsLoading(false);
@@ -125,6 +136,23 @@ export function ProgressScreen({
           raceDate={RACE_DATE}
           totalWeeks={totalWeeks}
         />
+
+        {/* BG Response Model */}
+        {bgModelLoading ? (
+          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <span className="text-sm">
+                Analyzing BG response... {bgModelProgress.done}/{bgModelProgress.total} runs
+              </span>
+            </div>
+          </div>
+        ) : bgModel ? (
+          <div className="space-y-4">
+            <BGResponsePanel model={bgModel} activityNames={bgActivityNames} />
+            <BGScatterChart model={bgModel} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

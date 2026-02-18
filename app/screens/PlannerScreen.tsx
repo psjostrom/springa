@@ -2,14 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
-import type { WorkoutEvent } from "@/lib/types";
+import type { WorkoutEvent, WorkoutCategory } from "@/lib/types";
+import type { BGResponseModel } from "@/lib/bgModel";
 import { uploadToIntervals } from "@/lib/intervalsApi";
-import { analyzeHistory } from "@/lib/analysis";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { RaceSettings } from "../components/RaceSettings";
 import { PhysiologySettings } from "../components/PhysiologySettings";
 import { PlanStructureSettings } from "../components/PlanStructureSettings";
-import { AnalysisSection } from "../components/AnalysisSection";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
@@ -17,11 +16,21 @@ import { StatusMessage } from "../components/StatusMessage";
 import { EmptyState } from "../components/EmptyState";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 
-interface PlannerScreenProps {
-  apiKey: string;
+const DEFAULT_FUEL = { easy: 48, long: 60, interval: 30 };
+
+function fuelDefault(bgModel: BGResponseModel | null | undefined, category: WorkoutCategory, fallback: number): number {
+  if (!bgModel) return fallback;
+  const target = bgModel.targetFuelRates.find((t) => t.category === category);
+  const value = target?.targetFuelRate ?? bgModel.categories[category]?.avgFuelRate;
+  return value != null ? Math.round(value) : fallback;
 }
 
-export function PlannerScreen({ apiKey }: PlannerScreenProps) {
+interface PlannerScreenProps {
+  apiKey: string;
+  bgModel?: BGResponseModel | null;
+}
+
+export function PlannerScreen({ apiKey, bgModel }: PlannerScreenProps) {
   const [raceName, setRaceName] = useState("EcoTrail");
   const [raceDate, setRaceDate] = useState("2026-06-13");
   const [raceDist, setRaceDist] = useState(16);
@@ -29,28 +38,14 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
   const [prefix, setPrefix] = useState("eco16");
   const [totalWeeks, setTotalWeeks] = useState(18);
   const [startKm, setStartKm] = useState(8);
-  const [fuelInterval, setFuelInterval] = useState(30);
-  const [fuelLong, setFuelLong] = useState(60);
-  const [fuelEasy, setFuelEasy] = useState(48);
+  const [fuelInterval, setFuelInterval] = useState(() => fuelDefault(bgModel, "interval", DEFAULT_FUEL.interval));
+  const [fuelLong, setFuelLong] = useState(() => fuelDefault(bgModel, "long", DEFAULT_FUEL.long));
+  const [fuelEasy, setFuelEasy] = useState(() => fuelDefault(bgModel, "easy", DEFAULT_FUEL.easy));
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
-  const [longRunAnalysis, setLongRunAnalysis] = useState<{
-    trend: number;
-    plotData: { time: number; glucose: number }[];
-  } | null>(null);
-  const [easyRunAnalysis, setEasyRunAnalysis] = useState<{
-    trend: number;
-    plotData: { time: number; glucose: number }[];
-  } | null>(null);
-  const [intervalAnalysis, setIntervalAnalysis] = useState<{
-    trend: number;
-    plotData: { time: number; glucose: number }[];
-  } | null>(null);
 
   const chartData = useWeeklyVolumeData(planEvents);
-  const [hasGenerated, setHasGenerated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
 
   const runGenerate = useCallback(
@@ -63,102 +58,26 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
     [raceDate, raceDist, prefix, totalWeeks, startKm, lthr],
   );
 
-  const handleFuelChange = (type: "long" | "easy" | "interval", v: number) => {
-    const next = { interval: fuelInterval, long: fuelLong, easy: fuelEasy, [type]: v };
-    if (type === "long") setFuelLong(v);
-    else if (type === "easy") setFuelEasy(v);
-    else setFuelInterval(v);
-    if (hasGenerated) runGenerate(next.interval, next.long, next.easy);
-  };
-
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!apiKey) {
-      setStatusMsg("❌ Missing API Key");
+      setStatusMsg("Missing API Key");
       return;
     }
-
-    setIsAnalyzing(true);
-    setLongRunAnalysis(null);
-    setEasyRunAnalysis(null);
-    setIntervalAnalysis(null);
-
-    let result;
-    try {
-      result = await analyzeHistory(apiKey, prefix);
-    } catch (err) {
-      console.error("Analysis failed unexpectedly:", err);
-      setIsAnalyzing(false);
-      setStatusMsg("Analysis failed. Generating plan with default fuel values.");
-      runGenerate(fuelInterval, fuelLong, fuelEasy);
-      setHasGenerated(true);
-      return;
-    }
-
-    let fi = fuelInterval;
-    let fl = fuelLong;
-    let fe = fuelEasy;
-
-    if (result.longRun) {
-      setLongRunAnalysis({
-        trend: result.longRun.trend,
-        plotData: result.longRun.plotData,
-      });
-      fl = result.longRun.currentFuel;
-      if (result.longRun.trend < -3.0) {
-        const diff = Math.abs(result.longRun.trend - -3.0);
-        fl += Math.min(6 + Math.floor(diff * 4), 24);
-      } else if (result.longRun.trend > 3.0) {
-        fl = Math.max(0, fl - 6);
-      }
-      setFuelLong(fl);
-    }
-
-    if (result.easyRun) {
-      setEasyRunAnalysis({
-        trend: result.easyRun.trend,
-        plotData: result.easyRun.plotData,
-      });
-      fe = result.easyRun.currentFuel;
-      if (result.easyRun.trend < -3.0) {
-        const diff = Math.abs(result.easyRun.trend - -3.0);
-        fe += Math.min(6 + Math.floor(diff * 4), 24);
-      } else if (result.easyRun.trend > 3.0) {
-        fe = Math.max(0, fe - 6);
-      }
-      setFuelEasy(fe);
-    }
-
-    if (result.interval) {
-      setIntervalAnalysis({
-        trend: result.interval.trend,
-        plotData: result.interval.plotData,
-      });
-      fi = result.interval.currentFuel;
-      if (result.interval.trend > 3.0) {
-        fi = Math.max(0, fi - 6);
-      }
-      setFuelInterval(fi);
-    }
-
-    setIsAnalyzing(false);
-
-    // Generate immediately with the adjusted fuel values
-    runGenerate(fi, fl, fe);
-    setHasGenerated(true);
-    setStatusMsg(result.msg || "");
+    runGenerate(fuelInterval, fuelLong, fuelEasy);
+    setStatusMsg("");
   };
 
   const handleUpload = async () => {
     if (!apiKey) {
-      setStatusMsg("❌ Missing API Key");
+      setStatusMsg("Missing API Key");
       return;
     }
     setIsUploading(true);
     try {
       const count = await uploadToIntervals(apiKey, planEvents);
-      setStatusMsg(`✅ Success! Uploaded ${count} workouts.`);
+      setStatusMsg(`Uploaded ${count} workouts.`);
     } catch (e) {
-      setStatusMsg(`❌ Error: ${e}`);
+      setStatusMsg(`Error: ${e}`);
     }
     setIsUploading(false);
   };
@@ -173,7 +92,16 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
         onRaceDateChange={setRaceDate}
         onRaceDistChange={setRaceDist}
       />
-      <PhysiologySettings lthr={lthr} onLthrChange={setLthr} />
+      <PhysiologySettings
+        lthr={lthr}
+        fuelEasy={fuelEasy}
+        fuelLong={fuelLong}
+        fuelInterval={fuelInterval}
+        onLthrChange={setLthr}
+        onFuelEasyChange={setFuelEasy}
+        onFuelLongChange={setFuelLong}
+        onFuelIntervalChange={setFuelInterval}
+      />
       <PlanStructureSettings
         prefix={prefix}
         totalWeeks={totalWeeks}
@@ -191,10 +119,9 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
         handleGenerate();
         setSettingsOpen(false);
       }}
-      disabled={isAnalyzing}
-      className="w-full py-3 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-50"
+      className="w-full py-3 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20"
     >
-      {isAnalyzing ? "Analyzing..." : "Generate Plan"}
+      Generate Plan
     </button>
   );
 
@@ -234,13 +161,6 @@ export function PlannerScreen({ apiKey }: PlannerScreenProps) {
               <EmptyState />
             ) : (
               <div className="space-y-8">
-                <AnalysisSection
-                  longRunAnalysis={longRunAnalysis}
-                  easyRunAnalysis={easyRunAnalysis}
-                  intervalAnalysis={intervalAnalysis}
-                  fuelValues={{ long: fuelLong, easy: fuelEasy, interval: fuelInterval }}
-                  onFuelChange={handleFuelChange}
-                />
                 <WeeklyVolumeChart data={chartData} />
                 <ActionBar
                   workoutCount={planEvents.length}
