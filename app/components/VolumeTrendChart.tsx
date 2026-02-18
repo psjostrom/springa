@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -15,17 +15,12 @@ import {
   addWeeks,
   differenceInCalendarWeeks,
   parseISO,
-  startOfMonth,
-  subMonths,
-  endOfMonth,
-  addMonths,
 } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
 import { estimateWorkoutDistance } from "@/lib/utils";
-import { fetchCalendarData } from "@/lib/intervalsApi";
 
 interface VolumeTrendChartProps {
-  apiKey: string;
+  events: CalendarEvent[];
   raceDate: string;
   totalWeeks: number;
 }
@@ -39,38 +34,10 @@ interface WeekData {
 }
 
 export function VolumeTrendChart({
-  apiKey,
+  events,
   raceDate,
   totalWeeks,
 }: VolumeTrendChartProps) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
-
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const start = startOfMonth(subMonths(new Date(), 24));
-      const end = endOfMonth(addMonths(new Date(), 6));
-      const data = await fetchCalendarData(apiKey, start, end, {
-        includePairedEvents: true,
-      });
-      setEvents(data);
-    } catch (err) {
-      console.error("VolumeTrendChart: failed to load events", err);
-      setError("Failed to load volume data.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiKey]);
-
-  useEffect(() => {
-    if (!apiKey || loadedRef.current) return;
-    loadedRef.current = true;
-    loadEvents();
-  }, [apiKey, loadEvents]);
 
   const data = useMemo(() => {
     const rDate = parseISO(raceDate);
@@ -119,27 +86,7 @@ export function VolumeTrendChart({
     return { weeks, currentWeekIdx };
   }, [events, raceDate, totalWeeks]);
 
-  if (error) {
-    return (
-      <div>
-        <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
-          Weekly Volume (km)
-        </label>
-        <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center">
-          <div className="text-[#ff3366] font-semibold mb-2">Error</div>
-          <div className="text-sm text-[#c4b5fd]">{error}</div>
-          <button
-            onClick={loadEvents}
-            className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading || events.length === 0) return null;
+  if (events.length === 0) return null;
 
   return (
     <div>

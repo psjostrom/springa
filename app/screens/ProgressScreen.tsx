@@ -129,7 +129,7 @@ export function ProgressScreen({
 
         {/* Volume Trend */}
         <VolumeTrendChart
-          apiKey={apiKey}
+          events={events}
           raceDate={RACE_DATE}
           totalWeeks={totalWeeks}
         />
