@@ -145,34 +145,23 @@ export function FitnessChart({ data }: FitnessChartProps) {
         })}
       </div>
 
-      {/* Hover legend */}
-      <div className="flex gap-3 sm:gap-5 mb-3 text-sm flex-wrap min-h-[1.5rem]">
-        {hoverData ? (
-          <>
-            <span className="text-[#b8a5d4]">{hoverData.date}</span>
-            {visibleLines.has("ctl") && (
-              <span style={{ color: LINE_CONFIGS.ctl.color }}>
-                Fitness: <span className="font-bold text-white">{hoverData.ctl}</span>
-              </span>
-            )}
-            {visibleLines.has("atl") && (
-              <span style={{ color: LINE_CONFIGS.atl.color }}>
-                Fatigue: <span className="font-bold text-white">{hoverData.atl}</span>
-              </span>
-            )}
-            {visibleLines.has("tsb") && (
-              <span style={{ color: LINE_CONFIGS.tsb.color }}>
-                Form: <span className="font-bold text-white">{hoverData.tsb}</span>
-              </span>
-            )}
-            {hoverData.load > 0 && (
-              <span className="text-[#ff2d95]">
-                Load: <span className="font-bold text-white">{hoverData.load}</span>
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="text-[#b8a5d4]">Hover or touch to see values</span>
+      {/* Hover legend — always render all labels to prevent layout shift */}
+      <div className="flex gap-3 sm:gap-5 mb-3 text-sm flex-wrap">
+        <span className="text-[#b8a5d4]">{hoverData ? hoverData.date : "\u2014"}</span>
+        {visibleLines.has("ctl") && (
+          <span style={{ color: LINE_CONFIGS.ctl.color }}>
+            Fitness: <span className="font-bold text-white">{hoverData ? hoverData.ctl : "\u2014"}</span>
+          </span>
+        )}
+        {visibleLines.has("atl") && (
+          <span style={{ color: LINE_CONFIGS.atl.color }}>
+            Fatigue: <span className="font-bold text-white">{hoverData ? hoverData.atl : "\u2014"}</span>
+          </span>
+        )}
+        {visibleLines.has("tsb") && (
+          <span style={{ color: LINE_CONFIGS.tsb.color }}>
+            Form: <span className="font-bold text-white">{hoverData ? hoverData.tsb : "\u2014"}</span>
+          </span>
         )}
       </div>
 
