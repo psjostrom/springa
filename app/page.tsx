@@ -92,9 +92,8 @@ function HomeContent() {
 
   const apiKey = storedKey ?? localKey;
 
-  // BG model — only fetches on first visit to planner or intel, cached after
-  const needsBgModel = activeTab === "planner" || activeTab === "intel";
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, needsBgModel);
+  // BG model — fetches once, cached after
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, true);
 
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
@@ -126,11 +125,13 @@ function HomeContent() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === "planner" && <PlannerScreen apiKey={apiKey} bgModel={bgModel} />}
-
-        {activeTab === "calendar" && <CalendarScreen apiKey={apiKey} />}
-
-        {activeTab === "intel" && (
+        <div className={activeTab === "planner" ? "h-full" : "hidden"}>
+          <PlannerScreen apiKey={apiKey} bgModel={bgModel} />
+        </div>
+        <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
+          <CalendarScreen apiKey={apiKey} />
+        </div>
+        <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
             apiKey={apiKey}
             phaseName={phaseInfo.name}
@@ -142,7 +143,7 @@ function HomeContent() {
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
           />
-        )}
+        </div>
       </div>
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
