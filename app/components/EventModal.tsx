@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info } from "lucide-react";
-import type { CalendarEvent, PaceTable } from "@/lib/types";
+import type { CalendarEvent } from "@/lib/types";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
 import { parseEventId, formatPace } from "@/lib/utils";
 import { getEventStyle } from "@/lib/eventStyles";
@@ -51,7 +51,6 @@ interface EventModalProps {
   onClose: () => void;
   onDateSaved: (eventId: string, newDate: Date) => void;
   onDelete: (eventId: string) => Promise<void>;
-  paceTable: PaceTable;
   /** Only relevant for completed events — shows a spinner while stream data loads. */
   isLoadingStreamData?: boolean;
   apiKey: string;
@@ -62,7 +61,6 @@ export function EventModal({
   onClose,
   onDateSaved,
   onDelete,
-  paceTable,
   isLoadingStreamData,
   apiKey,
 }: EventModalProps) {
@@ -273,7 +271,7 @@ export function EventModal({
         </div>
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} paceTable={paceTable} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} />
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} />
         )}
 
         {selectedEvent.type === "completed" && (

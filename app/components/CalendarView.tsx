@@ -16,7 +16,6 @@ import {
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { FALLBACK_PACE_TABLE } from "@/lib/constants";
 import { fetchCalendarData, fetchActivityDetails, deleteEvent } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/utils";
 import { EventModal } from "./EventModal";
@@ -258,9 +257,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     return [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [events]);
 
-  // Use target paces from constants — not historical averages
-  const paceTable = FALLBACK_PACE_TABLE;
-
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = useCallback(
     (_e: React.DragEvent, day: Date) => { handleDrop(day); },
@@ -423,7 +419,6 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           onClose={closeWorkoutModal}
           onDateSaved={handleDateSaved}
           onDelete={handleDeleteEvent}
-          paceTable={paceTable}
           isLoadingStreamData={isLoadingStreamData}
           apiKey={apiKey}
         />

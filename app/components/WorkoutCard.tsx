@@ -1,4 +1,5 @@
-import type { PaceTable, HRZoneName } from "@/lib/types";
+import type { HRZoneName } from "@/lib/types";
+import { FALLBACK_PACE_TABLE } from "@/lib/constants";
 import {
   extractFuelStatus,
   extractNotes,
@@ -13,7 +14,6 @@ import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
 
 interface WorkoutCardProps {
   description: string;
-  paceTable: PaceTable;
   fuelRate?: number | null;
   totalCarbs?: number | null;
 }
@@ -66,7 +66,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, paceTable, fuelRate: propFuelRate, totalCarbs: propTotalCarbs }: WorkoutCardProps) {
+export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs }: WorkoutCardProps) {
   const descFuel = extractFuelStatus(description);
   const fuel = {
     fuelRate: propFuelRate ?? descFuel.fuelRate,
@@ -128,7 +128,7 @@ export function WorkoutCard({ description, paceTable, fuelRate: propFuelRate, to
           <div className="mt-3 pt-3 border-t border-[#3d2b5a]">
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               {zones.map((zone) => {
-                const entry = getPaceForZone(paceTable, zone);
+                const entry = getPaceForZone(FALLBACK_PACE_TABLE, zone);
                 return (
                   <span key={zone} className="text-sm text-[#c4b5fd]">
                     <span className="font-semibold text-white">{getZoneLabel(zone)}</span>{" "}
