@@ -79,3 +79,83 @@ input[type="date"],
 input[type="datetime-local"] {
   color-scheme: dark;
 }
+
+/* ── Retrowave Splash ── */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: linear-gradient(
+    to bottom,
+    #0d0a1a 0%,
+    #150d28 40%,
+    #1f1040 60%,
+    #2d1050 78%,
+    #3a1060 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.splash-glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 45, 149, 0.3) 0%,
+    rgba(217, 70, 239, 0.15) 35%,
+    transparent 65%
+  );
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -65%);
+  pointer-events: none;
+}
+
+.splash-logo {
+  position: relative;
+  z-index: 2;
+  width: 140px;
+  height: 140px;
+  margin-top: -8vh;
+  animation: splash-logo-pulse 2.5s ease-in-out infinite;
+  overflow: visible;
+}
+
+@keyframes splash-logo-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.splash-floor {
+  position: absolute;
+  inset: 0;
+  left: -200%;
+  right: -200%;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent 26%, black 42%, black 52%, transparent 66%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 26%, black 42%, black 52%, transparent 66%);
+}
+
+.splash-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 45, 149, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 45, 149, 0.12) 1px, transparent 1px);
+  background-size: 30px 18px;
+  transform: perspective(200px) rotateX(55deg);
+  transform-origin: center 28%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation: splash-grid-flow 2s linear infinite;
+}
+
+@keyframes splash-grid-flow {
+  from { background-position: 0 0; }
+  to { background-position: 0 18px; }
+}
