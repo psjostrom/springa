@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   format,
   startOfMonth,
@@ -31,9 +30,11 @@ interface CalendarViewProps {
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
+function getWorkoutParam(): string | null {
+  return new URLSearchParams(window.location.search).get("workout");
+}
+
 export function CalendarView({ apiKey }: CalendarViewProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -91,27 +92,31 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     loadCalendarData();
   }, [apiKey]);
 
-  // Sync URL params with modal state
-  useEffect(() => {
-    const workoutId = searchParams.get("workout");
-
+  // Sync URL → modal on popstate (back/forward) and initial load
+  const syncModalFromUrl = useCallback(() => {
+    const workoutId = getWorkoutParam();
     if (workoutId) {
       const event = events.find((e) => e.id === workoutId);
-      if (event) {
-        setSelectedEvent((prev) => {
-          // Same event already showing — only update if data was enriched
-          if (prev?.id === event.id) {
-            if (event.streamData && !prev.streamData) return event;
-            if (event.hrZones && !prev.hrZones) return event;
-            return prev;
-          }
-          return event;
-        });
-      }
+      if (event) setSelectedEvent(event);
     } else {
       setSelectedEvent(null);
     }
-  }, [searchParams, events]);
+  }, [events]);
+
+  useEffect(() => {
+    syncModalFromUrl(); // initial load
+    window.addEventListener("popstate", syncModalFromUrl);
+    return () => window.removeEventListener("popstate", syncModalFromUrl);
+  }, [syncModalFromUrl]);
+
+  // When events are enriched (stream data), update the selected event
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const enriched = events.find((e) => e.id === selectedEvent.id);
+    if (!enriched) return;
+    if (enriched.streamData && !selectedEvent.streamData) setSelectedEvent(enriched);
+    else if (enriched.hrZones && !selectedEvent.hrZones) setSelectedEvent(enriched);
+  }, [events, selectedEvent]);
 
   // Lazy-load stream data when modal opens for a completed workout
   useEffect(() => {
@@ -183,30 +188,32 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   const openWorkoutModal = (event: CalendarEvent) => {
     setSelectedEvent(event);
 
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(window.location.search);
+    const wasOpen = params.has("workout");
     params.set("workout", event.id);
     const url = `?${params.toString()}`;
 
-    if (searchParams.get("workout")) {
-      router.replace(url, { scroll: false });
+    if (wasOpen) {
+      window.history.replaceState(null, "", url);
     } else {
-      router.push(url, { scroll: false });
+      window.history.pushState(null, "", url);
       modalPushedRef.current = true;
     }
   };
 
   // Close modal by removing URL param
   const closeWorkoutModal = useCallback(() => {
+    setSelectedEvent(null);
     if (modalPushedRef.current) {
       modalPushedRef.current = false;
-      router.back();
+      window.history.back();
     } else {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       params.delete("workout");
       const query = params.toString();
-      router.replace(query ? `?${query}` : window.location.pathname, { scroll: false });
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
     }
-  }, [router, searchParams]);
+  }, []);
 
   // Handle Escape key to close modal
   useEffect(() => {

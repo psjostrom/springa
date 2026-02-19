@@ -8,10 +8,7 @@ import { capturedUploadPayload, capturedPutPayload, capturedDeleteEventIds } fro
 import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
-import {
-  mockPush,
-  searchParamsState,
-} from "./setup-dom";
+import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
 
@@ -88,21 +85,10 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
     const completedEvent = screen.getByText(/W04 Tue Easy eco16/);
     await user.click(completedEvent);
 
-    // 4. Assert mockPush called with workout param
-    expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("workout=activity-act-easy-1"),
-      expect.anything(),
-    );
+    // 4. Assert URL updated with workout param
+    expect(window.location.search).toContain("workout=activity-act-easy-1");
 
-    // 5. Simulate URL update and rerender
-    searchParamsState.current = new URLSearchParams(
-      "workout=activity-act-easy-1",
-    );
-    rerender(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
-    );
-
-    // 6. Assert modal shows completed details
+    // 5. Assert modal shows completed details
     await waitFor(() => {
       expect(screen.getByText(/Completed/)).toBeInTheDocument();
     });
@@ -151,13 +137,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
     const plannedEvent = screen.getByText(/W05 Tue Easy \+ Strides eco16/);
     await user.click(plannedEvent);
 
-    // 3. Simulate URL -> workout=event-1002
-    searchParamsState.current = new URLSearchParams("workout=event-1002");
-    rerender(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
-    );
-
-    // 4. Assert Planned badge and Edit button visible
+    // 3. Assert Planned badge and Edit button visible
     await waitFor(() => {
       expect(screen.getByText(/Planned/)).toBeInTheDocument();
     });
@@ -274,24 +254,21 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     });
     await user.click(screen.getByRole("button", { name: "Agenda" }));
 
-    // 2. Wait for agenda to render the planned event
+    // 2. Wait for agenda to render the planned event (name appears in both month + agenda views)
     await waitFor(() => {
       expect(
-        screen.getByText(/W05 Tue Easy \+ Strides eco16/),
-      ).toBeInTheDocument();
+        screen.getAllByText(/W05 Tue Easy \+ Strides eco16/).length,
+      ).toBeGreaterThanOrEqual(1);
     });
 
-    // 3. Assert agenda pill shows fuel info (48g/h from carbs_per_hour: 48)
-    expect(screen.getByText(/48g\/h/)).toBeInTheDocument();
+    // 3. Assert fuel info visible (appears in both month cell and agenda pill)
+    expect(screen.getAllByText(/48g\/h/).length).toBeGreaterThanOrEqual(1);
 
-    // 4. Click the event to open modal
-    await user.click(screen.getByText(/W05 Tue Easy \+ Strides eco16/));
+    // 4. Click the event to open modal (click last match = agenda view)
+    const matches = screen.getAllByText(/W05 Tue Easy \+ Strides eco16/);
+    await user.click(matches[matches.length - 1]);
 
-    // 5. Simulate URL -> workout=event-1002
-    searchParamsState.current = new URLSearchParams("workout=event-1002");
-    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
-
-    // 6. Assert modal WorkoutCard shows fuel info
+    // 5. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
       expect(screen.getByText("48g/h")).toBeInTheDocument();
     });
@@ -309,24 +286,21 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     });
     await user.click(screen.getByRole("button", { name: "Agenda" }));
 
-    // 2. Wait for agenda to render the planned event
+    // 2. Wait for agenda to render the planned event (may appear in both month + agenda views)
     await waitFor(() => {
       expect(
-        screen.getByText(/W05 Thu Hills eco16/),
-      ).toBeInTheDocument();
+        screen.getAllByText(/W05 Thu Hills eco16/).length,
+      ).toBeGreaterThanOrEqual(1);
     });
 
-    // 3. Assert agenda pill shows fuel info (30g/h from carbs_per_hour: 30)
-    expect(screen.getByText(/30g\/h/)).toBeInTheDocument();
+    // 3. Assert fuel info visible (may appear in both month cell and agenda pill)
+    expect(screen.getAllByText(/30g\/h/).length).toBeGreaterThanOrEqual(1);
 
-    // 4. Click the event to open modal
-    await user.click(screen.getByText(/W05 Thu Hills eco16/));
+    // 4. Click the event to open modal (click last match = agenda view)
+    const hillMatches = screen.getAllByText(/W05 Thu Hills eco16/);
+    await user.click(hillMatches[hillMatches.length - 1]);
 
-    // 5. Simulate URL -> workout=event-1003
-    searchParamsState.current = new URLSearchParams("workout=event-1003");
-    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
-
-    // 6. Assert modal WorkoutCard shows fuel info
+    // 5. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
       expect(screen.getByText("30g/h")).toBeInTheDocument();
     });
@@ -363,11 +337,7 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
     const plannedEvent = screen.getByText(/W05 Tue Easy \+ Strides eco16/);
     await user.click(plannedEvent);
 
-    // 3. Simulate URL -> workout=event-1002
-    searchParamsState.current = new URLSearchParams("workout=event-1002");
-    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
-
-    // 4. Assert Planned badge and Delete button visible
+    // 3. Assert Planned badge and Delete button visible
     await waitFor(() => {
       expect(screen.getByText(/Planned/)).toBeInTheDocument();
     });
@@ -386,11 +356,7 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
       expect(capturedDeleteEventIds).toContain("1002");
     });
 
-    // 8. Simulate URL cleared (modal closed via closeWorkoutModal)
-    searchParamsState.current = new URLSearchParams("");
-    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
-
-    // 9. Assert event is removed from the DOM
+    // 7. Assert event is removed from the DOM
     await waitFor(() => {
       expect(
         screen.queryByText(/W05 Tue Easy \+ Strides eco16/),
@@ -431,11 +397,7 @@ describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimat
     // 2. Click the planned long run
     await user.click(screen.getByText(/W05 Sun Long \(8km\) eco16/));
 
-    // 3. Simulate URL -> workout=event-1004
-    searchParamsState.current = new URLSearchParams("workout=event-1004");
-    rerender(<CalendarScreen apiKey={TEST_API_KEY} />);
-
-    // 4. Assert modal shows correct fuel strip values
+    // 3. Assert modal shows correct fuel strip values
     await waitFor(() => {
       expect(screen.getByText("60g/h")).toBeInTheDocument();
     });
