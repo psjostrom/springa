@@ -65,7 +65,7 @@ export async function saveBGCache(
 
 // --- xDrip auth + readings ---
 
-const XDRIP_TTL = 7200; // 2 hours
+const XDRIP_TTL = 28800; // 8 hours — covers pre-run + run + 4h post-run analysis
 
 function xdripAuthKey(sha1: string) {
   return `xdrip-auth:${sha1}`;
