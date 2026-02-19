@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -10,6 +10,10 @@ import { IntelScreen } from "./screens/IntelScreen";
 import { CoachScreen } from "./screens/CoachScreen";
 import { usePhaseInfo } from "./hooks/usePhaseInfo";
 import { useBGModel } from "./hooks/useBGModel";
+import { useCurrentBG } from "./hooks/useCurrentBG";
+import { CurrentBGPill } from "./components/CurrentBGPill";
+import { SettingsModal } from "./components/SettingsModal";
+import { Settings } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
@@ -114,6 +118,24 @@ function HomeContent() {
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
+  // Live BG from xDrip
+  const { currentBG, trend, lastUpdate } = useCurrentBG();
+
+  // Settings modal
+  const [showSettings, setShowSettings] = useState(false);
+
+  const updateSettings = useCallback(
+    async (partial: Partial<UserSettings>) => {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(partial),
+      });
+      setSettings((prev) => ({ ...prev, ...partial }));
+    },
+    [],
+  );
+
   if (settingsLoading) return splashFallback;
 
   if (!apiKey) {
@@ -128,13 +150,14 @@ function HomeContent() {
             Springa
           </h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
-          <div className="flex items-center gap-3 text-sm text-[#b8a5d4]">
-            <span className="hidden sm:inline">{session?.user?.email}</span>
+          <div className="flex items-center gap-2">
+            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} />
             <button
-              onClick={() => signOut()}
-              className="text-[#b8a5d4] hover:text-[#c4b5fd] transition"
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
+              title="Settings"
             >
-              Sign out
+              <Settings size={20} />
             </button>
           </div>
         </div>
@@ -167,6 +190,15 @@ function HomeContent() {
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-16 md:hidden flex-shrink-0" />
+
+      {showSettings && settings && (
+        <SettingsModal
+          email={session?.user?.email ?? ""}
+          settings={settings}
+          onSave={updateSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

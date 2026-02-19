@@ -1,5 +1,10 @@
 import { auth } from "@/lib/auth";
-import { getUserSettings, saveUserSettings, UserSettings } from "@/lib/settings";
+import {
+  getUserSettings,
+  saveUserSettings,
+  saveXdripAuth,
+  type UserSettings,
+} from "@/lib/settings";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -19,6 +24,16 @@ export async function PUT(req: Request) {
   }
 
   const body = (await req.json()) as Partial<UserSettings>;
-  await saveUserSettings(session.user.email, body);
+
+  // xDrip secret needs special handling for reverse auth mapping
+  if (body.xdripSecret) {
+    await saveXdripAuth(session.user.email, body.xdripSecret);
+    delete body.xdripSecret;
+  }
+
+  if (Object.keys(body).length > 0) {
+    await saveUserSettings(session.user.email, body);
+  }
+
   return NextResponse.json({ ok: true });
 }

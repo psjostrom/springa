@@ -1,16 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Key } from "lucide-react";
+import { Key, Radio, Copy, RefreshCw } from "lucide-react";
 
 interface ApiKeySetupProps {
-  onSubmit: (keys: { intervalsApiKey: string; googleAiApiKey?: string }) => void;
+  onSubmit: (keys: { intervalsApiKey: string; googleAiApiKey?: string; xdripSecret?: string }) => void;
 }
 
 export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
   const [intervalsKey, setIntervalsKey] = useState("");
   const [googleAiKey, setGoogleAiKey] = useState("");
+  const [xdripSecret, setXdripSecret] = useState("");
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const generateSecret = () => {
+    setXdripSecret(crypto.randomUUID());
+  };
+
+  const nightscoutUrl = xdripSecret
+    ? `https://${xdripSecret}@springa.vercel.app/api/v1/`
+    : "";
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(nightscoutUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +37,7 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
     onSubmit({
       intervalsApiKey: intervalsKey.trim(),
       ...(googleAiKey.trim() && { googleAiApiKey: googleAiKey.trim() }),
+      ...(xdripSecret.trim() && { xdripSecret: xdripSecret.trim() }),
     });
   };
 
@@ -97,6 +114,57 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
               <li>Create or copy an API key</li>
               <li>Without it, Coach tab won&apos;t work</li>
             </ol>
+          </div>
+
+          {/* xDrip Integration */}
+          <div className="border-t border-[#3d2b5a] pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Radio className="text-[#39ff14]" size={18} />
+              <span className="text-sm font-semibold text-[#c4b5fd]">
+                xDrip Integration <span className="font-normal text-[#b8a5d4]">(optional)</span>
+              </span>
+            </div>
+
+            <div className="flex gap-2 mb-2">
+              <input
+                id="xdripSecret"
+                type="text"
+                value={xdripSecret}
+                onChange={(e) => setXdripSecret(e.target.value)}
+                className="flex-1 px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#39ff14] focus:border-transparent placeholder:text-[#b8a5d4] text-sm font-mono"
+                placeholder="Secret for xDrip sync"
+              />
+              <button
+                type="button"
+                onClick={generateSecret}
+                className="px-3 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-[#39ff14] hover:bg-[#3d2b5a] transition"
+                title="Generate secret"
+              >
+                <RefreshCw size={16} />
+              </button>
+            </div>
+
+            {xdripSecret && (
+              <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
+                <p className="text-xs text-[#b8a5d4] mb-1">Nightscout URL for xDrip:</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs text-[#39ff14] break-all flex-1">
+                    {nightscoutUrl}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copyUrl}
+                    className="shrink-0 p-1.5 rounded bg-[#2a1f3d] border border-[#3d2b5a] text-[#c4b5fd] hover:text-[#39ff14] transition"
+                    title="Copy URL"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+                {copied && (
+                  <p className="text-xs text-[#39ff14] mt-1">Copied!</p>
+                )}
+              </div>
+            )}
           </div>
 
           <button
