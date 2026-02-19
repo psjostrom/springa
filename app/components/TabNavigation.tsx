@@ -1,4 +1,4 @@
-import { CalendarDays, TrendingUp, MessageCircle, ClipboardList, type LucideIcon } from "lucide-react";
+import { Monitor, Activity, Bot, Layers, type LucideIcon } from "lucide-react";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
 
@@ -8,10 +8,10 @@ interface TabNavigationProps {
 }
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
-	{ key: "calendar", label: "Calendar", icon: CalendarDays },
-	{ key: "intel", label: "Intel", icon: TrendingUp },
-	{ key: "coach", label: "Coach", icon: MessageCircle },
-	{ key: "planner", label: "Planner", icon: ClipboardList },
+	{ key: "calendar", label: "Calendar", icon: Monitor },
+	{ key: "intel", label: "Intel", icon: Activity },
+	{ key: "coach", label: "Coach", icon: Bot },
+	{ key: "planner", label: "Planner", icon: Layers },
 ];
 
 export function TabNavigation({
@@ -46,13 +46,13 @@ export function TabNavigation({
 					<button
 						key={key}
 						onClick={() => onTabChange(key)}
-						className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors ${
+						className={`flex-1 flex flex-col items-center gap-0.5 py-2 ${
 							activeTab === key
 								? "text-[#ff69b4]"
 								: "text-[#c4b5fd]"
 						}`}
 					>
-						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} />
+						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} style={activeTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #ff2d95)" } : undefined} />
 						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}

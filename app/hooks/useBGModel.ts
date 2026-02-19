@@ -3,10 +3,37 @@
 import { useState, useEffect, useRef } from "react";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { fetchCalendarData, fetchStreamBatch } from "@/lib/intervalsApi";
-import { buildBGModel, type BGResponseModel } from "@/lib/bgModel";
+import {
+  alignStreams,
+  buildBGModelFromCached,
+  type BGResponseModel,
+} from "@/lib/bgModel";
+import type { CachedActivity } from "@/lib/settings";
 import { getWorkoutCategory } from "@/lib/utils";
 
 const BG_MODEL_MAX_ACTIVITIES = 15;
+
+async function fetchBGCache(): Promise<CachedActivity[]> {
+  try {
+    const res = await fetch("/api/bg-cache");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function saveBGCacheRemote(data: CachedActivity[]): Promise<void> {
+  try {
+    await fetch("/api/bg-cache", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // non-critical — next visit will rebuild
+  }
+}
 
 export function useBGModel(apiKey: string, enabled: boolean) {
   const [bgModel, setBgModel] = useState<BGResponseModel | null>(null);
@@ -18,6 +45,7 @@ export function useBGModel(apiKey: string, enabled: boolean) {
   useEffect(() => {
     if (!apiKey || !enabled || loadedRef.current) return;
     loadedRef.current = true;
+    let cancelled = false;
 
     (async () => {
       setBgModelLoading(true);
@@ -27,6 +55,7 @@ export function useBGModel(apiKey: string, enabled: boolean) {
         const events = await fetchCalendarData(apiKey, start, end, {
           includePairedEvents: true,
         });
+        if (cancelled) return;
 
         const completedRuns = events
           .filter((e) => e.type === "completed" && e.activityId && e.category !== "other" && e.category !== "race")
@@ -38,39 +67,78 @@ export function useBGModel(apiKey: string, enabled: boolean) {
           return;
         }
 
-        setBgModelProgress({ done: 0, total: completedRuns.length });
-
-        const activityIds = completedRuns.map((e) => e.activityId!);
-        const streamMap = await fetchStreamBatch(apiKey, activityIds, 3, (done, total) => {
-          setBgModelProgress({ done, total });
-        });
-
-        const activitiesData = completedRuns
-          .filter((e) => streamMap.has(e.activityId!))
-          .map((e) => {
-            const cat = getWorkoutCategory(e.name);
-            return {
-              streams: streamMap.get(e.activityId!)!,
-              activityId: e.activityId!,
-              fuelRate: e.fuelRate ?? null,
-              category: cat === "other" ? "easy" as const : cat,
-            };
-          });
-
-        const model = buildBGModel(activitiesData);
+        // Build name map
         const nameMap = new Map<string, string>();
         for (const e of completedRuns) {
           if (e.activityId) nameMap.set(e.activityId, e.name);
         }
         setBgActivityNames(nameMap);
-        setBgModel(model);
+
+        const wantedIds = new Set(completedRuns.map((e) => e.activityId!));
+
+        // Fetch cache
+        const cached = await fetchBGCache();
+        if (cancelled) return;
+
+        const cachedMap = new Map(
+          cached
+            .filter((c) => wantedIds.has(c.activityId))
+            .map((c) => [c.activityId, c]),
+        );
+
+        // Diff: find uncached activity IDs
+        const uncachedRuns = completedRuns.filter(
+          (e) => !cachedMap.has(e.activityId!),
+        );
+
+        const newCached: CachedActivity[] = [];
+
+        if (uncachedRuns.length > 0) {
+          setBgModelProgress({ done: 0, total: uncachedRuns.length });
+
+          const uncachedIds = uncachedRuns.map((e) => e.activityId!);
+          const streamMap = await fetchStreamBatch(apiKey, uncachedIds, 3, (done, total) => {
+            if (!cancelled) setBgModelProgress({ done, total });
+          });
+          if (cancelled) return;
+
+          for (const e of uncachedRuns) {
+            const streams = streamMap.get(e.activityId!);
+            const aligned = streams ? alignStreams(streams) : null;
+            const cat = getWorkoutCategory(e.name);
+
+            // Cache even failed alignments (empty arrays) so we don't re-fetch
+            newCached.push({
+              activityId: e.activityId!,
+              category: cat === "other" ? "easy" : cat,
+              fuelRate: e.fuelRate ?? null,
+              startBG: aligned?.glucose[0]?.value ?? 0,
+              glucose: aligned?.glucose ?? [],
+              hr: aligned?.hr ?? [],
+            });
+          }
+        }
+
+        // Merge: cached (still relevant) + newly fetched
+        const allCached = [...cachedMap.values(), ...newCached];
+
+        // Save merged cache (fire and forget)
+        if (newCached.length > 0) {
+          saveBGCacheRemote(allCached);
+        }
+
+        // Build model from all cached data
+        const model = buildBGModelFromCached(allCached);
+        if (!cancelled) setBgModel(model);
       } catch (err) {
         console.error("useBGModel: build failed", err);
         loadedRef.current = false;
       } finally {
-        setBgModelLoading(false);
+        if (!cancelled) setBgModelLoading(false);
       }
     })();
+
+    return () => { cancelled = true; };
   }, [apiKey, enabled]);
 
   return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames };

@@ -41,6 +41,7 @@ export function CoachScreen({ apiKey, phaseInfo, bgModel }: CoachScreenProps) {
     contextRef.current = context;
   }, [context]);
 
+  /* eslint-disable react-hooks/refs -- ref accessed in callback, not during render */
   const transport = useMemo(
     () =>
       new TextStreamChatTransport({
@@ -49,9 +50,9 @@ export function CoachScreen({ apiKey, phaseInfo, bgModel }: CoachScreenProps) {
           body: { id, messages, context: contextRef.current, trigger },
         }),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
+  /* eslint-enable react-hooks/refs */
 
   const { messages, sendMessage, status, error } = useChat({ transport });
 
