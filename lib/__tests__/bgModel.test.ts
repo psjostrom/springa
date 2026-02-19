@@ -3,6 +3,7 @@ import {
   alignStreams,
   extractObservations,
   buildBGModel,
+  buildBGModelFromCached,
   suggestFuelAdjustments,
   classifyBGBand,
   analyzeBGByStartLevel,
@@ -12,6 +13,7 @@ import {
   calculateTargetFuelRates,
   type BGObservation,
 } from "../bgModel";
+import type { CachedActivity } from "../settings";
 import type { IntervalsStream, DataPoint } from "../types";
 
 // Helper: create streams from arrays
@@ -762,5 +764,102 @@ describe("calculateTargetFuelRates", () => {
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].currentAvgFuel).toBe(48);
+  });
+});
+
+describe("buildBGModelFromCached", () => {
+  // Helper: build CachedActivity from the same data buildBGModel uses
+  function makeCached(
+    activityId: string,
+    category: "easy" | "long" | "interval",
+    fuelRate: number | null,
+    minutes: number,
+    glucoseFn: (i: number) => number,
+  ): CachedActivity {
+    const time = minuteTimeArray(minutes);
+    const hrRaw = Array(minutes).fill(125);
+    const glucoseRaw = Array.from({ length: minutes }, (_, i) => glucoseFn(i));
+    const streams = makeStreams(time, hrRaw, glucoseRaw);
+    const aligned = alignStreams(streams)!;
+    return {
+      activityId,
+      category,
+      fuelRate,
+      startBG: aligned.glucose[0].value,
+      glucose: aligned.glucose,
+      hr: aligned.hr,
+    };
+  }
+
+  it("returns empty model with no input", () => {
+    const model = buildBGModelFromCached([]);
+    expect(model.activitiesAnalyzed).toBe(0);
+    expect(model.observations).toHaveLength(0);
+    expect(model.categories.easy).toBeNull();
+  });
+
+  it("produces identical model to buildBGModel for single activity", () => {
+    const time = minuteTimeArray(25);
+    const hr = Array(25).fill(125);
+    const glucoseFn = (i: number) => 10 - i * 0.1;
+    const glucose = Array.from({ length: 25 }, (_, i) => glucoseFn(i));
+
+    const fromStreams = buildBGModel([{
+      streams: makeStreams(time, hr, glucose),
+      activityId: "a1",
+      fuelRate: 48,
+      category: "easy",
+    }]);
+
+    const cached = makeCached("a1", "easy", 48, 25, glucoseFn);
+    const fromCached = buildBGModelFromCached([cached]);
+
+    expect(fromCached.activitiesAnalyzed).toBe(fromStreams.activitiesAnalyzed);
+    expect(fromCached.observations.length).toBe(fromStreams.observations.length);
+    expect(fromCached.categories.easy!.avgRate).toBeCloseTo(fromStreams.categories.easy!.avgRate);
+    expect(fromCached.categories.easy!.medianRate).toBeCloseTo(fromStreams.categories.easy!.medianRate);
+    expect(fromCached.categories.easy!.sampleCount).toBe(fromStreams.categories.easy!.sampleCount);
+    expect(fromCached.categories.easy!.avgFuelRate).toBe(fromStreams.categories.easy!.avgFuelRate);
+  });
+
+  it("produces identical model for multiple categories", () => {
+    const time = minuteTimeArray(20);
+    const easyGlucose = Array.from({ length: 20 }, (_, i) => 10 - i * 0.1);
+    const intervalGlucose = Array.from({ length: 20 }, (_, i) => 10 - i * 0.05);
+
+    const fromStreams = buildBGModel([
+      { streams: makeStreams(time, Array(20).fill(125), easyGlucose), activityId: "a1", fuelRate: 48, category: "easy" },
+      { streams: makeStreams(time, Array(20).fill(155), intervalGlucose), activityId: "a2", fuelRate: 30, category: "interval" },
+    ]);
+
+    const fromCached = buildBGModelFromCached([
+      makeCached("a1", "easy", 48, 20, (i) => 10 - i * 0.1),
+      makeCached("a2", "interval", 30, 20, (i) => 10 - i * 0.05),
+    ]);
+
+    expect(fromCached.activitiesAnalyzed).toBe(fromStreams.activitiesAnalyzed);
+    expect(fromCached.categories.easy!.avgRate).toBeCloseTo(fromStreams.categories.easy!.avgRate);
+    expect(fromCached.categories.interval!.avgRate).toBeCloseTo(fromStreams.categories.interval!.avgRate);
+    expect(fromCached.bgByStartLevel.length).toBe(fromStreams.bgByStartLevel.length);
+    expect(fromCached.bgByTime.length).toBe(fromStreams.bgByTime.length);
+  });
+
+  it("skips activities with too few HR points", () => {
+    const cached: CachedActivity = {
+      activityId: "short",
+      category: "easy",
+      fuelRate: 48,
+      startBG: 10,
+      glucose: Array.from({ length: 5 }, (_, i) => ({ time: i, value: 10 })),
+      hr: Array.from({ length: 5 }, (_, i) => ({ time: i, value: 125 })),
+    };
+    const model = buildBGModelFromCached([cached]);
+    expect(model.activitiesAnalyzed).toBe(0);
+  });
+
+  it("handles null fuelRate correctly", () => {
+    const cached = makeCached("a1", "easy", null, 20, () => 8);
+    const model = buildBGModelFromCached([cached]);
+    expect(model.categories.easy!.avgFuelRate).toBeNull();
   });
 });

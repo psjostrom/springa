@@ -16,6 +16,15 @@ export interface UserSettings {
   googleAiApiKey?: string;
 }
 
+export interface CachedActivity {
+  activityId: string;
+  category: import("./types").WorkoutCategory;
+  fuelRate: number | null;
+  startBG: number;
+  glucose: { time: number; value: number }[];
+  hr: { time: number; value: number }[];
+}
+
 function key(email: string) {
   return `user:${email}`;
 }
@@ -31,4 +40,22 @@ export async function saveUserSettings(
 ): Promise<void> {
   const existing = await getUserSettings(email);
   await redis().set(key(email), { ...existing, ...partial });
+}
+
+// --- BG cache ---
+
+function bgCacheKey(email: string) {
+  return `bgcache:${email}`;
+}
+
+export async function getBGCache(email: string): Promise<CachedActivity[]> {
+  const data = await redis().get<CachedActivity[]>(bgCacheKey(email));
+  return data ?? [];
+}
+
+export async function saveBGCache(
+  email: string,
+  data: CachedActivity[],
+): Promise<void> {
+  await redis().set(bgCacheKey(email), data);
 }

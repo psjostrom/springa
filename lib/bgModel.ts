@@ -1,4 +1,5 @@
 import type { WorkoutCategory, DataPoint, IntervalsStream } from "./types";
+import type { CachedActivity } from "./settings";
 import { convertGlucoseToMmol } from "./utils";
 
 // --- Types ---
@@ -416,6 +417,58 @@ export function buildBGModel(
       category,
     );
 
+    if (obs.length > 0) {
+      allObservations.push(...obs);
+      analyzed++;
+    }
+  }
+
+  const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
+    easy: null,
+    long: null,
+    interval: null,
+  };
+
+  const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
+
+  for (const cat of categoryNames) {
+    const catObs = allObservations.filter((o) => o.category === cat);
+    if (catObs.length === 0) continue;
+
+    const rates = catObs.map((o) => o.bgRate);
+    const fuels = catObs.map((o) => o.fuelRate).filter((f): f is number => f != null);
+    const activityIds = new Set(catObs.map((o) => o.activityId));
+
+    categories[cat] = {
+      category: cat,
+      avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
+      medianRate: median(rates),
+      sampleCount: catObs.length,
+      confidence: getConfidence(catObs.length),
+      avgFuelRate: fuels.length > 0 ? fuels.reduce((a, b) => a + b, 0) / fuels.length : null,
+      activityCount: activityIds.size,
+    };
+  }
+
+  return {
+    categories,
+    observations: allObservations,
+    activitiesAnalyzed: analyzed,
+    bgByStartLevel: analyzeBGByStartLevel(allObservations),
+    bgByTime: analyzeBGByTime(allObservations),
+    targetFuelRates: calculateTargetFuelRates(allObservations),
+  };
+}
+
+/** Build BG response model from cached aligned data (skips stream fetch + alignment). */
+export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseModel {
+  const allObservations: BGObservation[] = [];
+  let analyzed = 0;
+
+  for (const { hr, glucose, activityId, fuelRate, startBG, category } of cached) {
+    if (hr.length < 7) continue;
+
+    const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category);
     if (obs.length > 0) {
       allObservations.push(...obs);
       analyzed++;

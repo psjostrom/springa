@@ -12,6 +12,24 @@ import type { CachedActivity } from "@/lib/settings";
 import { getWorkoutCategory } from "@/lib/utils";
 
 const BG_MODEL_MAX_ACTIVITIES = 15;
+const LS_KEY = "bgcache";
+
+function readLocalCache(): CachedActivity[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalCache(data: CachedActivity[]): void {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  } catch {
+    // quota exceeded — non-critical
+  }
+}
 
 async function fetchBGCache(): Promise<CachedActivity[]> {
   try {
@@ -46,6 +64,13 @@ export function useBGModel(apiKey: string, enabled: boolean) {
     if (!apiKey || !enabled || loadedRef.current) return;
     loadedRef.current = true;
     let cancelled = false;
+
+    // L1: instant render from localStorage
+    const local = readLocalCache();
+    if (local.length > 0) {
+      const model = buildBGModelFromCached(local);
+      if (model.activitiesAnalyzed > 0) setBgModel(model);
+    }
 
     (async () => {
       setBgModelLoading(true);
@@ -124,6 +149,7 @@ export function useBGModel(apiKey: string, enabled: boolean) {
 
         // Save merged cache (fire and forget)
         if (newCached.length > 0) {
+          writeLocalCache(allCached);
           saveBGCacheRemote(allCached);
         }
 

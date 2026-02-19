@@ -245,15 +245,38 @@ export async function fetchActivityDetails(
 
 // --- CALENDAR API ---
 
+// Deduplicate concurrent identical requests
+const calendarInflight = new Map<string, Promise<CalendarEvent[]>>();
+
 export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
   endDate: Date,
   options?: { includePairedEvents?: boolean },
 ): Promise<CalendarEvent[]> {
-  const auth = authHeader(apiKey);
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
+  const cacheKey = `${oldest}:${newest}:${options?.includePairedEvents ?? false}`;
+
+  const inflight = calendarInflight.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = fetchCalendarDataInner(apiKey, oldest, newest, options);
+  calendarInflight.set(cacheKey, promise);
+  promise.then(
+    () => calendarInflight.delete(cacheKey),
+    () => calendarInflight.delete(cacheKey),
+  );
+  return promise;
+}
+
+async function fetchCalendarDataInner(
+  apiKey: string,
+  oldest: string,
+  newest: string,
+  options?: { includePairedEvents?: boolean },
+): Promise<CalendarEvent[]> {
+  const auth = authHeader(apiKey);
 
   const [activitiesRes, eventsRes] = await Promise.all([
     fetch(
