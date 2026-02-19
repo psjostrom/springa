@@ -82,6 +82,7 @@ vi.mock("lucide-react", () => {
     CalendarCheck: icon("CalendarCheck"),
     ChevronDown: icon("ChevronDown"),
     Info: icon("Info"),
+    Pencil: icon("Pencil"),
   };
 });
 
