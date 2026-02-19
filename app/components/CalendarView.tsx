@@ -16,7 +16,7 @@ import {
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { fetchCalendarData, fetchActivityDetails, deleteEvent } from "@/lib/intervalsApi";
+import { fetchCalendarData, fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/utils";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
@@ -219,12 +219,16 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     );
   };
 
-  // Handle delete from modal
+  // Handle delete from modal (planned events or completed activities)
   const handleDeleteEvent = useCallback(async (eventId: string) => {
-    const numericId = parseEventId(eventId);
-    if (isNaN(numericId)) return;
-
-    await deleteEvent(apiKey, numericId);
+    if (eventId.startsWith("activity-")) {
+      const activityId = eventId.replace("activity-", "");
+      await deleteActivity(apiKey, activityId);
+    } else {
+      const numericId = parseEventId(eventId);
+      if (isNaN(numericId)) return;
+      await deleteEvent(apiKey, numericId);
+    }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
     closeWorkoutModal();
   }, [apiKey, closeWorkoutModal]);

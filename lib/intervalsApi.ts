@@ -478,6 +478,21 @@ export async function deleteEvent(
   }
 }
 
+export async function deleteActivity(
+  apiKey: string,
+  activityId: string,
+): Promise<void> {
+  const auth = authHeader(apiKey);
+  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+    method: "DELETE",
+    headers: { Authorization: auth },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete activity: ${res.status} ${errorText}`);
+  }
+}
+
 // --- API UPLOAD ---
 
 export async function uploadToIntervals(

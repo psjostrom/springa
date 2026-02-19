@@ -187,17 +187,19 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {selectedEvent.type === "planned" && actionMode === "idle" && (
+            {actionMode === "idle" && (
               <>
-                <button
-                  onClick={() => {
-                    setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
-                    setActionMode("editing");
-                  }}
-                  className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
-                >
-                  Edit
-                </button>
+                {selectedEvent.type === "planned" && (
+                  <button
+                    onClick={() => {
+                      setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
+                      setActionMode("editing");
+                    }}
+                    className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
+                  >
+                    Edit
+                  </button>
+                )}
                 <button
                   onClick={() => setActionMode("confirming-delete")}
                   className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
