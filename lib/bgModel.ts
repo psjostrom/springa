@@ -12,6 +12,7 @@ export interface BGObservation {
   timeMinute: number;
   startBG: number; // activity starting glucose (mmol/L)
   relativeMinute: number; // minutes since activity start
+  entrySlope: number | null; // mmol/L per 10 min pre-workout trend, null if insufficient data
 }
 
 export interface CategoryBGResponse {
@@ -29,6 +30,7 @@ export interface BGResponseModel {
   observations: BGObservation[];
   activitiesAnalyzed: number;
   bgByStartLevel: BGBandResponse[];
+  bgByEntrySlope: EntrySlopeResponse[];
   bgByTime: TimeBucketResponse[];
   targetFuelRates: TargetFuelResult[];
 }
@@ -74,6 +76,71 @@ export function analyzeBGByStartLevel(observations: BGObservation[]): BGBandResp
 
     results.push({
       band,
+      avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
+      medianRate: median(rates),
+      sampleCount: obs.length,
+      activityCount: activityIds.size,
+    });
+  }
+
+  return results;
+}
+
+// --- Window constants ---
+
+const WINDOW_SIZE = 5; // minutes
+const SKIP_START = 5; // skip first 5 minutes
+const SKIP_END = 2; // skip last 2 minutes
+
+// --- Entry Slope (Pre-Workout BG Trend) ---
+
+export type EntrySlope = "crashing" | "dropping" | "stable" | "rising";
+
+export interface EntrySlopeResponse {
+  slope: EntrySlope;
+  avgRate: number;
+  medianRate: number;
+  sampleCount: number;
+  activityCount: number;
+}
+
+/** Compute BG rate of change from glucose points in the first SKIP_START minutes.
+ *  Returns mmol/L per 10 min. Null if fewer than 2 points in that window. */
+export function computeEntrySlope(glucose: DataPoint[]): number | null {
+  const entryPoints = glucose.filter((p) => p.time < SKIP_START);
+  if (entryPoints.length < 2) return null;
+
+  const first = entryPoints[0];
+  const last = entryPoints[entryPoints.length - 1];
+  const timeDiffMinutes = last.time - first.time;
+  if (timeDiffMinutes <= 0) return null;
+
+  return ((last.value - first.value) / timeDiffMinutes) * 10;
+}
+
+export function classifyEntrySlope(slope: number): EntrySlope {
+  if (slope < -1.0) return "crashing";
+  if (slope < -0.3) return "dropping";
+  if (slope <= 0.3) return "stable";
+  return "rising";
+}
+
+export function analyzeBGByEntrySlope(observations: BGObservation[]): EntrySlopeResponse[] {
+  const withSlope = observations.filter((o) => o.entrySlope != null);
+  if (withSlope.length === 0) return [];
+
+  const slopeNames: EntrySlope[] = ["crashing", "dropping", "stable", "rising"];
+  const results: EntrySlopeResponse[] = [];
+
+  for (const slope of slopeNames) {
+    const obs = withSlope.filter((o) => classifyEntrySlope(o.entrySlope!) === slope);
+    if (obs.length === 0) continue;
+
+    const rates = obs.map((o) => o.bgRate);
+    const activityIds = new Set(obs.map((o) => o.activityId));
+
+    results.push({
+      slope,
       avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
       medianRate: median(rates),
       sampleCount: obs.length,
@@ -318,10 +385,6 @@ export function alignStreams(
 
 // --- Window extraction ---
 
-const WINDOW_SIZE = 5; // minutes
-const SKIP_START = 5; // skip first 5 minutes
-const SKIP_END = 2; // skip last 2 minutes
-
 /** Extract BG observations from aligned HR + glucose streams. */
 export function extractObservations(
   hr: DataPoint[],
@@ -330,6 +393,7 @@ export function extractObservations(
   fuelRate: number | null,
   startBG: number,
   category: WorkoutCategory,
+  entrySlope?: number | null,
 ): BGObservation[] {
   if (hr.length < WINDOW_SIZE) return [];
 
@@ -367,6 +431,7 @@ export function extractObservations(
       timeMinute: t,
       startBG,
       relativeMinute: t - hr[0].time,
+      entrySlope: entrySlope ?? null,
     });
   }
 
@@ -407,6 +472,7 @@ export function buildBGModel(
     if (!aligned) continue;
 
     const startBG = aligned.glucose[0].value;
+    const entrySlope = computeEntrySlope(aligned.glucose);
 
     const obs = extractObservations(
       aligned.hr,
@@ -415,6 +481,7 @@ export function buildBGModel(
       fuelRate,
       startBG,
       category,
+      entrySlope,
     );
 
     if (obs.length > 0) {
@@ -455,6 +522,7 @@ export function buildBGModel(
     observations: allObservations,
     activitiesAnalyzed: analyzed,
     bgByStartLevel: analyzeBGByStartLevel(allObservations),
+    bgByEntrySlope: analyzeBGByEntrySlope(allObservations),
     bgByTime: analyzeBGByTime(allObservations),
     targetFuelRates: calculateTargetFuelRates(allObservations),
   };
@@ -468,7 +536,8 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
   for (const { hr, glucose, activityId, fuelRate, startBG, category } of cached) {
     if (hr.length < 7) continue;
 
-    const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category);
+    const entrySlope = computeEntrySlope(glucose);
+    const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category, entrySlope);
     if (obs.length > 0) {
       allObservations.push(...obs);
       analyzed++;
@@ -507,6 +576,7 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
     observations: allObservations,
     activitiesAnalyzed: analyzed,
     bgByStartLevel: analyzeBGByStartLevel(allObservations),
+    bgByEntrySlope: analyzeBGByEntrySlope(allObservations),
     bgByTime: analyzeBGByTime(allObservations),
     targetFuelRates: calculateTargetFuelRates(allObservations),
   };

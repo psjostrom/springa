@@ -11,6 +11,9 @@ import {
   analyzeBGByTime,
   linearRegression,
   calculateTargetFuelRates,
+  computeEntrySlope,
+  classifyEntrySlope,
+  analyzeBGByEntrySlope,
   type BGObservation,
 } from "../bgModel";
 import type { CachedActivity } from "../settings";
@@ -44,6 +47,7 @@ function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
     timeMinute: 10,
     startBG: 10,
     relativeMinute: 10,
+    entrySlope: null,
     ...overrides,
   };
 }
@@ -224,6 +228,7 @@ describe("buildBGModel", () => {
     expect(model.categories.long).toBeNull();
     expect(model.categories.interval).toBeNull();
     expect(model.bgByStartLevel).toHaveLength(0);
+    expect(model.bgByEntrySlope).toHaveLength(0);
     expect(model.bgByTime).toHaveLength(0);
     expect(model.targetFuelRates).toHaveLength(0);
   });
@@ -581,6 +586,152 @@ describe("analyzeBGByStartLevel", () => {
   });
 });
 
+describe("computeEntrySlope", () => {
+  it("returns null for empty glucose array", () => {
+    expect(computeEntrySlope([])).toBeNull();
+  });
+
+  it("returns null for single point", () => {
+    expect(computeEntrySlope([{ time: 0, value: 10 }])).toBeNull();
+  });
+
+  it("returns null when all points are at time >= 5", () => {
+    const glucose = [
+      { time: 5, value: 10 },
+      { time: 6, value: 9.5 },
+    ];
+    expect(computeEntrySlope(glucose)).toBeNull();
+  });
+
+  it("computes dropping slope", () => {
+    // BG drops from 10 to 9 over 4 minutes → -0.25/min → -2.5/10min
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 1, value: 9.75 },
+      { time: 2, value: 9.5 },
+      { time: 3, value: 9.25 },
+      { time: 4, value: 9.0 },
+    ];
+    expect(computeEntrySlope(glucose)).toBeCloseTo(-2.5);
+  });
+
+  it("computes rising slope", () => {
+    // BG rises from 8 to 9 over 4 minutes → +0.25/min → +2.5/10min
+    const glucose = [
+      { time: 0, value: 8 },
+      { time: 4, value: 9 },
+    ];
+    expect(computeEntrySlope(glucose)).toBeCloseTo(2.5);
+  });
+
+  it("computes stable slope", () => {
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 4, value: 10.1 },
+    ];
+    const slope = computeEntrySlope(glucose)!;
+    expect(Math.abs(slope)).toBeLessThan(0.3);
+  });
+
+  it("ignores points at time >= 5", () => {
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 3, value: 9.4 },
+      { time: 5, value: 5.0 }, // should be ignored
+      { time: 10, value: 3.0 }, // should be ignored
+    ];
+    // Only uses time 0 and 3: (9.4 - 10) / 3 * 10 = -2.0
+    expect(computeEntrySlope(glucose)).toBeCloseTo(-2.0);
+  });
+});
+
+describe("classifyEntrySlope", () => {
+  it("classifies < -1.0 as crashing", () => {
+    expect(classifyEntrySlope(-1.5)).toBe("crashing");
+    expect(classifyEntrySlope(-2.0)).toBe("crashing");
+  });
+
+  it("classifies boundary at -1.0 as dropping", () => {
+    expect(classifyEntrySlope(-1.0)).toBe("dropping");
+  });
+
+  it("classifies -1.0 to -0.3 as dropping", () => {
+    expect(classifyEntrySlope(-0.5)).toBe("dropping");
+    expect(classifyEntrySlope(-0.3)).toBe("stable"); // boundary: -0.3 is stable
+  });
+
+  it("classifies boundary at -0.3 as stable", () => {
+    expect(classifyEntrySlope(-0.3)).toBe("stable");
+  });
+
+  it("classifies -0.3 to +0.3 as stable", () => {
+    expect(classifyEntrySlope(0)).toBe("stable");
+    expect(classifyEntrySlope(0.2)).toBe("stable");
+    expect(classifyEntrySlope(0.3)).toBe("stable");
+  });
+
+  it("classifies > +0.3 as rising", () => {
+    expect(classifyEntrySlope(0.31)).toBe("rising");
+    expect(classifyEntrySlope(1.0)).toBe("rising");
+  });
+});
+
+describe("analyzeBGByEntrySlope", () => {
+  it("returns empty for no observations", () => {
+    expect(analyzeBGByEntrySlope([])).toHaveLength(0);
+  });
+
+  it("returns empty when all entrySlopes are null", () => {
+    const obs = [
+      makeObs({ entrySlope: null }),
+      makeObs({ entrySlope: null }),
+    ];
+    expect(analyzeBGByEntrySlope(obs)).toHaveLength(0);
+  });
+
+  it("groups observations by entry slope band", () => {
+    const obs = [
+      makeObs({ entrySlope: -1.5, bgRate: -2.0, activityId: "a1" }),
+      makeObs({ entrySlope: -0.5, bgRate: -1.0, activityId: "a2" }),
+      makeObs({ entrySlope: 0.0, bgRate: -0.5, activityId: "a3" }),
+      makeObs({ entrySlope: 0.5, bgRate: 0.0, activityId: "a4" }),
+    ];
+
+    const result = analyzeBGByEntrySlope(obs);
+    expect(result).toHaveLength(4);
+    expect(result[0].slope).toBe("crashing");
+    expect(result[1].slope).toBe("dropping");
+    expect(result[2].slope).toBe("stable");
+    expect(result[3].slope).toBe("rising");
+  });
+
+  it("computes avg and median rate per slope band", () => {
+    const obs = [
+      makeObs({ entrySlope: 0.0, bgRate: -1.0, activityId: "a1" }),
+      makeObs({ entrySlope: 0.1, bgRate: -2.0, activityId: "a2" }),
+      makeObs({ entrySlope: -0.1, bgRate: -3.0, activityId: "a3" }),
+    ];
+
+    const result = analyzeBGByEntrySlope(obs);
+    expect(result).toHaveLength(1);
+    expect(result[0].slope).toBe("stable");
+    expect(result[0].avgRate).toBeCloseTo(-2.0);
+    expect(result[0].medianRate).toBeCloseTo(-2.0);
+    expect(result[0].sampleCount).toBe(3);
+  });
+
+  it("counts distinct activities per slope band", () => {
+    const obs = [
+      makeObs({ entrySlope: 0.0, activityId: "a1" }),
+      makeObs({ entrySlope: 0.0, activityId: "a1" }),
+      makeObs({ entrySlope: 0.1, activityId: "a2" }),
+    ];
+
+    const result = analyzeBGByEntrySlope(obs);
+    expect(result[0].activityCount).toBe(2);
+  });
+});
+
 describe("classifyTimeBucket", () => {
   it("classifies 0-14 as 0-15", () => {
     expect(classifyTimeBucket(0)).toBe("0-15");
@@ -841,6 +992,7 @@ describe("buildBGModelFromCached", () => {
     expect(fromCached.categories.easy!.avgRate).toBeCloseTo(fromStreams.categories.easy!.avgRate);
     expect(fromCached.categories.interval!.avgRate).toBeCloseTo(fromStreams.categories.interval!.avgRate);
     expect(fromCached.bgByStartLevel.length).toBe(fromStreams.bgByStartLevel.length);
+    expect(fromCached.bgByEntrySlope.length).toBe(fromStreams.bgByEntrySlope.length);
     expect(fromCached.bgByTime.length).toBe(fromStreams.bgByTime.length);
   });
 

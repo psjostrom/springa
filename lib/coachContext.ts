@@ -16,23 +16,23 @@ function formatPace(minPerKm: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number }> {
-  const map = new Map<string, { startBG: number; rates: number[] }>();
+function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
+  const map = new Map<string, { startBG: number; rates: number[]; entrySlope: number | null }>();
   if (!bgModel) return new Map();
 
   for (const obs of bgModel.observations) {
     let entry = map.get(obs.activityId);
     if (!entry) {
-      entry = { startBG: obs.startBG, rates: [] };
+      entry = { startBG: obs.startBG, rates: [], entrySlope: obs.entrySlope };
       map.set(obs.activityId, entry);
     }
     entry.rates.push(obs.bgRate);
   }
 
-  const result = new Map<string, { startBG: number; avgRate: number; samples: number }>();
+  const result = new Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }>();
   for (const [id, entry] of map) {
     const avgRate = entry.rates.reduce((a, b) => a + b, 0) / entry.rates.length;
-    result.set(id, { startBG: entry.startBG, avgRate, samples: entry.rates.length });
+    result.set(id, { startBG: entry.startBG, avgRate, samples: entry.rates.length, entrySlope: entry.entrySlope });
   }
   return result;
 }
@@ -62,7 +62,13 @@ function summarizeCompletedWorkouts(events: CalendarEvent[], bgModel: BGResponse
       const bg = bgMap.get(actId);
       if (bg) {
         const sign = bg.avgRate >= 0 ? "+" : "";
-        parts.push(`startBG ${bg.startBG.toFixed(1)} | BG rate ${sign}${bg.avgRate.toFixed(2)}/10min`);
+        let bgText = `startBG ${bg.startBG.toFixed(1)}`;
+        if (bg.entrySlope != null) {
+          const slopeSign = bg.entrySlope >= 0 ? "+" : "";
+          bgText += ` (entry ${slopeSign}${bg.entrySlope.toFixed(1)}/10m)`;
+        }
+        bgText += ` | BG rate ${sign}${bg.avgRate.toFixed(2)}/10min`;
+        parts.push(bgText);
       }
       return `- ${parts.join(" | ")}`;
     })
@@ -118,6 +124,15 @@ function summarizeBGModel(bgModel: BGResponseModel | null): string {
     for (const b of bgModel.bgByStartLevel) {
       lines.push(
         `- Start ${b.band} mmol/L: avg ${b.avgRate > 0 ? "+" : ""}${b.avgRate.toFixed(2)} mmol/L per 10min (${b.activityCount} activities)`,
+      );
+    }
+  }
+
+  if (bgModel.bgByEntrySlope.length > 0) {
+    lines.push("BG response by entry slope (pre-run trend):");
+    for (const s of bgModel.bgByEntrySlope) {
+      lines.push(
+        `- Entry ${s.slope}: avg ${s.avgRate > 0 ? "+" : ""}${s.avgRate.toFixed(2)} mmol/L per 10min (${s.activityCount} activities)`,
       );
     }
   }

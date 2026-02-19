@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown } from "lucide-react";
-import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult } from "@/lib/bgModel";
+import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult, EntrySlopeResponse } from "@/lib/bgModel";
 import { suggestFuelAdjustments } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
 
@@ -239,6 +239,10 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
             <StartingBGSection bands={model.bgByStartLevel} />
           )}
 
+          {model.bgByEntrySlope.length > 0 && (
+            <EntrySlopeSection slopes={model.bgByEntrySlope} />
+          )}
+
           {model.bgByTime.length > 0 && (
             <TimeDecaySection buckets={model.bgByTime} />
           )}
@@ -269,6 +273,42 @@ function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
             </span>
             <span className="text-xs text-[#8b7ba8] w-16 text-right">
               {b.sampleCount} obs
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SLOPE_LABELS: Record<string, string> = {
+  crashing: "Crashing",
+  dropping: "Dropping",
+  stable: "Stable",
+  rising: "Rising",
+};
+
+function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
+        BG Drop by Entry Slope
+      </div>
+      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+        {slopes.map((s) => (
+          <div
+            key={s.slope}
+            className="flex items-center justify-between px-3 py-2 border-b border-[#3d2b5a] last:border-b-0"
+          >
+            <span className="text-xs text-[#c4b5fd] w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
+            <span
+              className="text-sm font-bold tabular-nums flex-1 text-right"
+              style={{ color: rateColor(s.avgRate) }}
+            >
+              {s.avgRate > 0 ? "+" : ""}{s.avgRate.toFixed(1)}
+            </span>
+            <span className="text-xs text-[#8b7ba8] w-16 text-right">
+              {s.sampleCount} obs
             </span>
           </div>
         ))}

@@ -28,6 +28,7 @@ function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
     timeMinute: 10,
     startBG: 10.2,
     relativeMinute: 10,
+    entrySlope: null,
     ...overrides,
   };
 }
@@ -38,6 +39,7 @@ function makeBGModel(overrides: Partial<BGResponseModel> = {}): BGResponseModel 
     observations: [],
     activitiesAnalyzed: 0,
     bgByStartLevel: [],
+    bgByEntrySlope: [],
     bgByTime: [],
     targetFuelRates: [],
     ...overrides,
@@ -174,6 +176,53 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("BG response by time into run:");
     expect(prompt).toContain("0-15min: avg -0.20 mmol/L per 10min (20 samples)");
     expect(prompt).toContain("15-30min: avg -0.70 mmol/L per 10min (18 samples)");
+  });
+
+  it("includes BG by entry slope in prompt", () => {
+    const bgModel = makeBGModel({
+      bgByEntrySlope: [
+        { slope: "dropping", avgRate: -1.2, medianRate: -1.1, sampleCount: 8, activityCount: 3 },
+        { slope: "stable", avgRate: -0.5, medianRate: -0.4, sampleCount: 12, activityCount: 4 },
+      ],
+    });
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel,
+      events: [],
+    });
+
+    expect(prompt).toContain("BG response by entry slope (pre-run trend):");
+    expect(prompt).toContain("Entry dropping: avg -1.20 mmol/L per 10min (3 activities)");
+    expect(prompt).toContain("Entry stable: avg -0.50 mmol/L per 10min (4 activities)");
+  });
+
+  it("includes entry slope in per-workout BG data", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+
+    const events: CalendarEvent[] = [
+      makeEvent({
+        activityId: "run1",
+        date: yesterday,
+        name: "Easy Run eco16",
+      }),
+    ];
+
+    const bgModel = makeBGModel({
+      observations: [
+        makeObs({ activityId: "run1", startBG: 10.5, bgRate: -0.6, entrySlope: -0.8 }),
+      ],
+    });
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel,
+      events,
+    });
+
+    expect(prompt).toContain("startBG 10.5 (entry -0.8/10m)");
   });
 
   it("includes target fuel rate suggestions", () => {
