@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState, useSyncExternalStore } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
@@ -58,8 +57,6 @@ const splashFallback = (
 );
 
 function HomeContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   const subscribe = useCallback(() => () => {}, []);
@@ -68,21 +65,27 @@ function HomeContent() {
   const storedKey = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [localKey, setLocalKey] = useState("");
 
-  // Derive active tab from URL (default to calendar)
-  const tabParam = searchParams.get("tab");
-  const activeTab: Tab =
-    tabParam === "planner"
-      ? "planner"
-      : tabParam === "intel"
-        ? "intel"
-        : "calendar";
-
-  // Handle tab change via URL
-  const handleTabChange = (tab: Tab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", tab);
-    router.push(`?${params.toString()}`, { scroll: false });
+  const parseTab = (search: string): Tab => {
+    const p = new URLSearchParams(search).get("tab");
+    return p === "planner" ? "planner" : p === "intel" ? "intel" : "calendar";
   };
+
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    typeof window !== "undefined" ? parseTab(window.location.search) : "calendar"
+  );
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", tab);
+    window.history.pushState(null, "", `?${params.toString()}`);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => setActiveTab(parseTab(window.location.search));
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   // Handle API key submission
   const handleApiKeySubmit = (key: string) => {
