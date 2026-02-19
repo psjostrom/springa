@@ -65,7 +65,7 @@ export async function saveBGCache(
 
 // --- xDrip auth + readings ---
 
-const XDRIP_TTL = 28800; // 8 hours — covers pre-run + run + 4h post-run analysis
+// No TTL — xDrip readings persist indefinitely (~20KB/day, 256MB lasts ~35 years)
 
 function xdripAuthKey(sha1: string) {
   return `xdrip-auth:${sha1}`;
@@ -112,8 +112,5 @@ export async function saveXdripReadings(
   email: string,
   readings: XdripReading[],
 ): Promise<void> {
-  // Trim to last 2 hours
-  const cutoff = Date.now() - XDRIP_TTL * 1000;
-  const trimmed = readings.filter((r) => r.ts > cutoff);
-  await redis().set(xdripReadingsKey(email), trimmed, { ex: XDRIP_TTL });
+  await redis().set(xdripReadingsKey(email), readings);
 }
