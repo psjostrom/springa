@@ -98,7 +98,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     if (workoutId) {
       const event = events.find((e) => e.id === workoutId);
       if (event) {
-        setSelectedEvent(event);
+        setSelectedEvent((prev) => {
+          // Same event already showing — only update if data was enriched
+          if (prev?.id === event.id) {
+            if (event.streamData && !prev.streamData) return event;
+            if (event.hrZones && !prev.hrZones) return event;
+            return prev;
+          }
+          return event;
+        });
       }
     } else {
       setSelectedEvent(null);
