@@ -95,7 +95,7 @@ export function VolumeTrendChart({
       </label>
       <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a]">
         <div className="h-72 w-full min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
               data={data.weeks}
               margin={{ top: 5, right: 5, bottom: 0, left: 0 }}

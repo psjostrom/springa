@@ -1,16 +1,18 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
 import { PlannerScreen } from "./screens/PlannerScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { IntelScreen } from "./screens/IntelScreen";
+import { CoachScreen } from "./screens/CoachScreen";
 import { usePhaseInfo } from "./hooks/usePhaseInfo";
 import { useBGModel } from "./hooks/useBGModel";
+import type { UserSettings } from "@/lib/settings";
 
-type Tab = "planner" | "calendar" | "intel";
+type Tab = "planner" | "calendar" | "intel" | "coach";
 
 const S_PATH =
   "M3736 9887 c-44 -62 -230 -326 -414 -587 -482 -682 -724 -1026 -1015 -1438 l-257 -364 0 -920 c0 -910 0 -920 20 -936 66 -55 878 -808 877 -814 -2 -6 -179 -173 -729 -687 l-167 -156 -1 -742 0 -742 412 -583 c226 -321 464 -657 528 -748 64 -91 269 -381 455 -645 186 -264 346 -490 355 -502 17 -21 21 -16 251 310 128 183 281 400 340 482 58 83 350 495 648 917 l541 767 0 879 0 879 -395 368 c-217 202 -395 371 -395 375 0 4 177 173 394 376 l395 369 0 878 1 878 -541 767 c-298 422 -594 841 -659 932 -64 91 -148 210 -187 265 -114 163 -365 519 -372 527 -3 4 -42 -44 -85 -105z m142 -234 c34 -49 397 -563 807 -1143 l744 -1055 0 -825 0 -825 -325 -305 c-179 -168 -349 -326 -377 -351 l-52 -46 -375 350 -375 350 -5 823 c-5 790 -6 823 -24 843 -26 29 -86 29 -112 0 -18 -20 -19 -51 -22 -868 l-2 -846 462 -430 c254 -236 541 -504 637 -595 97 -91 265 -248 374 -349 l197 -184 0 -826 -1 -826 -805 -1140 c-442 -627 -806 -1140 -808 -1140 -2 0 -201 279 -442 620 -240 341 -478 679 -529 750 -50 72 -200 283 -331 470 -132 187 -257 363 -277 391 l-37 51 0 689 0 689 427 400 c234 220 430 400 435 400 8 0 95 -78 453 -405 99 -91 206 -188 238 -217 l57 -52 3 -824 c2 -889 0 -847 54 -868 28 -10 80 7 93 31 6 12 10 333 10 868 l0 850 -37 33 c-21 18 -182 164 -358 324 -176 160 -504 460 -730 665 -225 206 -463 423 -527 483 l-118 109 0 865 0 865 37 52 c20 28 143 202 273 386 130 184 252 358 272 385 141 199 922 1306 992 1408 22 31 40 57 41 57 0 0 29 -39 63 -87z";
@@ -59,15 +61,20 @@ const splashFallback = (
 function HomeContent() {
   const { data: session } = useSession();
 
-  const subscribe = useCallback(() => () => {}, []);
-  const getSnapshot = useCallback(() => localStorage.getItem("intervals_api_key") ?? "", []);
-  const getServerSnapshot = useCallback(() => null as string | null, []);
-  const storedKey = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const [localKey, setLocalKey] = useState("");
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setSettings(data))
+      .catch(() => setSettings({}))
+      .finally(() => setSettingsLoading(false));
+  }, []);
 
   const parseTab = (search: string): Tab => {
     const p = new URLSearchParams(search).get("tab");
-    return p === "planner" ? "planner" : p === "intel" ? "intel" : "calendar";
+    return p === "planner" ? "planner" : p === "intel" ? "intel" : p === "coach" ? "coach" : "calendar";
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(() =>
@@ -87,13 +94,19 @@ function HomeContent() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // Handle API key submission
-  const handleApiKeySubmit = (key: string) => {
-    setLocalKey(key);
-    localStorage.setItem("intervals_api_key", key);
-  };
+  const saveSettings = useCallback(
+    async (keys: { intervalsApiKey: string; googleAiApiKey?: string }) => {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(keys),
+      });
+      setSettings((prev) => ({ ...prev, ...keys }));
+    },
+    [],
+  );
 
-  const apiKey = storedKey ?? localKey;
+  const apiKey = settings?.intervalsApiKey ?? "";
 
   // BG model — fetches once, cached after
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, true);
@@ -101,10 +114,10 @@ function HomeContent() {
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
-  if (storedKey === null) return splashFallback;
+  if (settingsLoading) return splashFallback;
 
   if (!apiKey) {
-    return <ApiKeySetup onSubmit={handleApiKeySubmit} />;
+    return <ApiKeySetup onSubmit={saveSettings} />;
   }
 
   return (
@@ -146,6 +159,9 @@ function HomeContent() {
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
           />
+        </div>
+        <div className={activeTab === "coach" ? "h-full" : "hidden"}>
+          <CoachScreen apiKey={apiKey} phaseInfo={phaseInfo} bgModel={bgModel} />
         </div>
       </div>
 
