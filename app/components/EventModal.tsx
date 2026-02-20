@@ -9,6 +9,7 @@ import { getEventStyle } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
+import { RunReportCard } from "./RunReportCard";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -331,6 +332,9 @@ export function EventModal({
                 );
               })()}
             </div>
+
+            {/* Report Card */}
+            <RunReportCard event={selectedEvent} isLoadingStreamData={isLoadingStreamData} />
 
             {/* Carbs ingested */}
             <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
