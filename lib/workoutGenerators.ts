@@ -369,3 +369,46 @@ export function generatePlan(
     ].filter((e): e is WorkoutEvent => e !== null);
   });
 }
+
+/** Generate the full plan for all weeks (no date filtering). Used for plan-vs-actual comparisons. */
+export function generateFullPlan(
+  raceDateStr: string,
+  raceDist: number,
+  prefix: string,
+  totalWeeks: number,
+  startKm: number,
+  lthr: number,
+): WorkoutEvent[] {
+  const raceDate = parseISO(raceDateStr);
+  const ctx: PlanContext = {
+    fuelInterval: 30,
+    fuelLong: 60,
+    fuelEasy: 48,
+    raceDate,
+    raceDist,
+    prefix,
+    totalWeeks,
+    startKm,
+    lthr,
+    planStartMonday: addWeeks(
+      startOfWeek(raceDate, { weekStartsOn: 1 }),
+      -(totalWeeks - 1),
+    ),
+    zones: {
+      easy: { min: 0.66, max: 0.78 },
+      steady: { min: 0.78, max: 0.89 },
+      tempo: { min: 0.89, max: 0.99 },
+      hard: { min: 0.99, max: 1.11 },
+    },
+  };
+  const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
+  return weekIndices.flatMap((i) => {
+    const weekStart = addWeeks(ctx.planStartMonday, i);
+    return [
+      generateEasyRun(ctx, i, weekStart),
+      generateQualityRun(ctx, i, weekStart),
+      generateBonusRun(ctx, i, weekStart),
+      generateLongRun(ctx, i, weekStart),
+    ].filter((e): e is WorkoutEvent => e !== null);
+  });
+}

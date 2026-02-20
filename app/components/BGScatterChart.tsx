@@ -77,7 +77,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
   if (scatterData.length === 0) return null;
 
   return (
-    <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
+    <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 no-tap-highlight">
       <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
         BG Rate by Workout Type
       </div>

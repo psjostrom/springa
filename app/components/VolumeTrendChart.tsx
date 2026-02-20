@@ -17,7 +17,8 @@ import {
   parseISO,
 } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
-import { estimateWorkoutDistance } from "@/lib/utils";
+import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/utils";
+import { generateFullPlan } from "@/lib/workoutGenerators";
 
 interface VolumeTrendChartProps {
   events: CalendarEvent[];
@@ -30,6 +31,7 @@ interface WeekData {
   completed: number;
   planned: number;
   plannedOptional: number;
+  plannedTotal: number;
   isCurrent: boolean;
 }
 
@@ -54,33 +56,42 @@ export function VolumeTrendChart({
       completed: 0,
       planned: 0,
       plannedOptional: 0,
+      plannedTotal: 0,
       isCurrent: i === currentWeekIdx,
     }));
 
+    // Planned distances from the deterministic plan generator (covers all weeks)
+    const planEvents = generateFullPlan(raceDate, 16, "eco16", totalWeeks, 8, 169);
+    for (const pe of planEvents) {
+      const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, {
+        weekStartsOn: 1,
+      });
+      if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
+      const km = estimatePlanEventDistance(pe);
+      const isOptional = /bonus|optional/i.test(pe.name);
+      if (isOptional) {
+        weeks[weekIdx].plannedOptional += km;
+      } else {
+        weeks[weekIdx].planned += km;
+      }
+    }
+
+    // Completed distances from actual API data
     for (const event of events) {
+      if (event.type !== "completed") continue;
       const weekIdx = differenceInCalendarWeeks(event.date, planStartMonday, {
         weekStartsOn: 1,
       });
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-
-      const km = estimateWorkoutDistance(event);
-      if (event.type === "completed") {
-        weeks[weekIdx].completed += km;
-      } else if (event.type === "planned") {
-        const isOptional = /optional/i.test(event.name);
-        if (isOptional) {
-          weeks[weekIdx].plannedOptional += km;
-        } else {
-          weeks[weekIdx].planned += km;
-        }
-      }
+      weeks[weekIdx].completed += estimateWorkoutDistance(event);
     }
 
-    // Round values
+    // Compute totals and round
     for (const w of weeks) {
       w.completed = Math.round(w.completed * 10) / 10;
       w.planned = Math.round(w.planned * 10) / 10;
       w.plannedOptional = Math.round(w.plannedOptional * 10) / 10;
+      w.plannedTotal = Math.round((w.planned + w.plannedOptional) * 10) / 10;
     }
 
     return { weeks, currentWeekIdx };
@@ -93,13 +104,19 @@ export function VolumeTrendChart({
       <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
         Weekly Volume (km)
       </label>
-      <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a]">
+      <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a] no-tap-highlight">
         <div className="h-72 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
               data={data.weeks}
               margin={{ top: 5, right: 5, bottom: 0, left: 0 }}
             >
+              <XAxis
+                xAxisId="plannedTotal"
+                dataKey="week"
+                hide
+                padding={{ left: 2, right: 2 }}
+              />
               <XAxis
                 xAxisId="planned"
                 dataKey="week"
@@ -140,14 +157,11 @@ export function VolumeTrendChart({
                   return `Week ${parseInt(week.replace("W", ""), 10)}`;
                 }}
                 formatter={(value?: number, name?: string) => {
-                  const label =
-                    name === "planned"
-                      ? "Planned"
-                      : name === "plannedOptional"
-                        ? "Optional"
-                        : "Actual";
-                  return [`${value ?? 0} km`, label];
+                  if (name === "plannedTotal" || !value) return [null, null];
+                  const label = name === "planned" ? "Planned" : "Actual";
+                  return [`${value} km`, label];
                 }}
+                itemSorter={() => 0}
               />
               {data.currentWeekIdx >= 0 &&
                 data.currentWeekIdx < data.weeks.length && (
@@ -159,23 +173,22 @@ export function VolumeTrendChart({
                     strokeWidth={1.5}
                   />
                 )}
-              {/* Planned mandatory + optional stacked, behind actual */}
+              {/* Optional: full height (planned + optional), rendered behind */}
+              <Bar
+                xAxisId="plannedTotal"
+                dataKey="plannedTotal"
+                fill="#c4b5fd"
+                fillOpacity={0.25}
+                radius={2}
+                maxBarSize={14}
+              />
+              {/* Planned: mandatory only, rendered on top */}
               <Bar
                 xAxisId="planned"
                 dataKey="planned"
-                stackId="plan"
                 fill="#00ffff"
                 fillOpacity={0.3}
-                radius={[0, 0, 0, 0]}
-                maxBarSize={14}
-              />
-              <Bar
-                xAxisId="planned"
-                dataKey="plannedOptional"
-                stackId="plan"
-                fill="#c4b5fd"
-                fillOpacity={0.25}
-                radius={[2, 2, 0, 0]}
+                radius={2}
                 maxBarSize={14}
               />
               {/* Actual on top */}
@@ -183,8 +196,8 @@ export function VolumeTrendChart({
                 xAxisId="actual"
                 dataKey="completed"
                 fill="#39ff14"
-                radius={[2, 2, 0, 0]}
-                maxBarSize={10}
+                radius={2}
+                maxBarSize={14}
               />
             </BarChart>
           </ResponsiveContainer>

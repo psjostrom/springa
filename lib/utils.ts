@@ -424,6 +424,18 @@ export function estimateWorkoutDistance(event: CalendarEvent): number {
   return 0;
 }
 
+/** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
+export function estimatePlanEventDistance(event: WorkoutEvent): number {
+  const kmMatch = event.name.match(/\((\d+)km\)/);
+  if (kmMatch) return parseInt(kmMatch[1], 10);
+
+  const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
+  const pace = isInterval ? PACE_ESTIMATES.tempo : PACE_ESTIMATES.easy;
+  const mins = estimateWorkoutDuration(event.description);
+  if (mins) return mins / pace;
+  return 0;
+}
+
 // --- ID PARSING ---
 
 /** Extract numeric event ID from prefixed string (e.g. "event-1002" → 1002). Returns NaN for non-event IDs. */
