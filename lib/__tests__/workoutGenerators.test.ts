@@ -190,20 +190,38 @@ describe("generatePlan", () => {
 
   // --- LONG RUN SANDWICH PROGRESSION ---
 
-  it("alternates long runs between all-easy and race-pace sandwich", () => {
+  it("rotates long runs between all-easy, sandwich, and progressive", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
       (e) => e.name.includes("Sun Long") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    // Week 1 should be all-easy (no sandwich for first week)
-    // After that, non-special weeks should alternate
-    const hasRacePace = longRuns.map((lr) =>
-      lr.description.includes("78-89%"),
-    );
-    // At least some should have race pace sections
-    expect(hasRacePace.some(Boolean)).toBe(true);
+    // At least some should have race pace sections (sandwich or progressive)
+    expect(longRuns.some((lr) => lr.description.includes("78-89%"))).toBe(true);
+    // At least some should have tempo sections (progressive)
+    expect(longRuns.some((lr) => lr.description.includes("89-99%"))).toBe(true);
     // At least some should be all-easy
-    expect(hasRacePace.some((v) => !v)).toBe(true);
+    expect(longRuns.some((lr) =>
+      !lr.description.includes("78-89%") && !lr.description.includes("89-99%"),
+    )).toBe(true);
+  });
+
+  it("progressive long runs build from easy through steady to tempo", () => {
+    const plan = generateFull();
+    const progressiveRuns = plan.filter(
+      (e) => e.name.includes("Sun Long") && e.description.includes("Progressive"),
+    );
+    expect(progressiveRuns.length).toBeGreaterThan(0);
+    for (const run of progressiveRuns) {
+      // Main set should contain all three zones in ascending order
+      const mainSet = run.description.slice(run.description.indexOf("Main set"));
+      expect(mainSet).toContain("66-78%");
+      expect(mainSet).toContain("78-89%");
+      expect(mainSet).toContain("89-99%");
+      // Steady comes after easy, tempo comes after steady
+      const steadyIdx = mainSet.indexOf("78-89%");
+      const tempoIdx = mainSet.indexOf("89-99%");
+      expect(tempoIdx).toBeGreaterThan(steadyIdx);
+    }
   });
 
   it("grows race pace block distance as plan progresses", () => {

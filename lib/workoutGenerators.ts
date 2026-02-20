@@ -269,14 +269,14 @@ const generateLongRun = (
     type = " [RACE TEST]";
   }
 
-  let isRacePaceSandwich = false;
-  if (!isRecoveryWeek && !isTaper && weekNum > 1) {
+  let longRunVariant: "easy" | "sandwich" | "progressive" = "easy";
+  if (!isRecoveryWeek && !isTaper && !isRaceTest && weekNum > 1) {
     let nonSpecialCount = 0;
     for (let i = 0; i < weekIdx; i++) {
       const wn = i + 1;
       if (wn % 4 !== 0 && wn < ctx.totalWeeks - 1 && wn > 1) nonSpecialCount++;
     }
-    isRacePaceSandwich = nonSpecialCount % 2 === 1;
+    longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "progressive";
   }
 
   const mainKm = Math.max(km - 2, 1); // -1km WU, -1km CD
@@ -286,12 +286,18 @@ const generateLongRun = (
   let mainSteps: string[];
   let notes: string;
 
-  if (isRacePaceSandwich && mainKm >= 4) {
+  if (longRunVariant === "sandwich" && mainKm >= 4) {
     const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(mainKm * 0.4));
     const easyBeforeKm = Math.floor((mainKm - rpBlockKm) / 2);
     const easyAfterKm = mainKm - rpBlockKm - easyBeforeKm;
     mainSteps = [s(`${easyBeforeKm}km`, "easy"), s(`${rpBlockKm}km`, "steady"), s(`${easyAfterKm}km`, "easy")];
     notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
+  } else if (longRunVariant === "progressive" && mainKm >= 4) {
+    const easyKm = Math.ceil(mainKm * 0.5);
+    const steadyKm = Math.max(Math.floor(mainKm * 0.3), 1);
+    const tempoKm = mainKm - easyKm - steadyKm;
+    mainSteps = [s(`${easyKm}km`, "easy"), s(`${steadyKm}km`, "steady"), s(`${tempoKm}km`, "tempo")];
+    notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
     mainSteps = [s(`${mainKm}km`, "easy")];
     if (isRecoveryWeek) {
