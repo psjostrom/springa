@@ -10,6 +10,8 @@ import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
 import { RunReportCard } from "./RunReportCard";
+import { WorkoutStructureBar } from "./WorkoutStructureBar";
+import { HRMiniChart } from "./HRMiniChart";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -273,7 +275,25 @@ export function EventModal({
         )}
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} />
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs}>
+            {selectedEvent.type === "completed" ? (
+              selectedEvent.hrZones ? (
+                <HRMiniChart
+                  z1={selectedEvent.hrZones.z1}
+                  z2={selectedEvent.hrZones.z2}
+                  z3={selectedEvent.hrZones.z3}
+                  z4={selectedEvent.hrZones.z4}
+                  z5={selectedEvent.hrZones.z5}
+                  maxHeight={48}
+                  hrData={selectedEvent.streamData?.heartrate}
+                />
+              ) : isLoadingStreamData ? (
+                <div className="skeleton h-12 w-full rounded" />
+              ) : null
+            ) : (
+              <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} />
+            )}
+          </WorkoutCard>
         )}
 
         {selectedEvent.type === "completed" && (

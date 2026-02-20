@@ -16,6 +16,7 @@ interface WorkoutCardProps {
   description: string;
   fuelRate?: number | null;
   totalCarbs?: number | null;
+  children?: React.ReactNode;
 }
 
 const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
@@ -69,7 +70,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs }: WorkoutCardProps) {
+export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs, children }: WorkoutCardProps) {
   const descFuel = extractFuelStatus(description);
   const fuel = {
     fuelRate: propFuelRate ?? descFuel.fuelRate,
@@ -125,6 +126,8 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
         {sections.map((section, i) => (
           <SectionBlock key={i} section={section} />
         ))}
+
+        {children && <div className="mt-3 pt-3 border-t border-[#3d2b5a]">{children}</div>}
 
         {/* Zone Paces */}
         {zones.length > 0 && (
