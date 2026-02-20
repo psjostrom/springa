@@ -23,7 +23,9 @@ export function FitnessChart({ data }: FitnessChartProps) {
     new Set(["ctl", "atl", "tsb"]),
   );
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left?: number; right?: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   if (data.length === 0) return null;
 
@@ -90,17 +92,27 @@ export function FitnessChart({ data }: FitnessChartProps) {
     return Math.round(frac * (data.length - 1));
   };
 
+  const updateTooltipPos = (clientX: number) => {
+    if (!wrapperRef.current) return;
+    const r = wrapperRef.current.getBoundingClientRect();
+    const x = clientX - r.left;
+    const mid = r.width / 2;
+    setTooltipPos(x < mid ? { left: x + 12 } : { right: r.width - x + 12 });
+  };
+
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     setHoverIdx(getIdxFromPosition(e.clientX));
+    updateTooltipPos(e.clientX);
   };
 
   const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
     if (e.touches.length > 0) {
       setHoverIdx(getIdxFromPosition(e.touches[0].clientX));
+      updateTooltipPos(e.touches[0].clientX);
     }
   };
 
-  const handleLeave = () => setHoverIdx(null);
+  const handleLeave = () => { setHoverIdx(null); setTooltipPos(null); };
 
   // X-axis labels — show ~6 ticks
   const tickCount = 6;
@@ -117,6 +129,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
   });
 
   const hoverData = hoverIdx !== null ? data[hoverIdx] : null;
+
 
   return (
     <div>
@@ -145,27 +158,22 @@ export function FitnessChart({ data }: FitnessChartProps) {
         })}
       </div>
 
-      {/* Hover legend — always render all labels to prevent layout shift */}
-      <div className="flex gap-3 sm:gap-5 mb-3 text-sm flex-wrap">
-        <span className="text-[#b8a5d4]">{hoverData ? hoverData.date : "\u2014"}</span>
-        {visibleLines.has("ctl") && (
-          <span style={{ color: LINE_CONFIGS.ctl.color }}>
-            Fitness: <span className="font-bold text-white">{hoverData ? hoverData.ctl : "\u2014"}</span>
-          </span>
+      <div ref={wrapperRef} className="relative">
+        {hoverData && tooltipPos && (
+          <div
+            className="absolute top-2 z-10 bg-[#1e1535] border border-[#3d2b5a] rounded-lg px-3 py-2 text-xs sm:text-sm pointer-events-none"
+            style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.4)", ...tooltipPos }}
+          >
+            <div className="text-[#b8a5d4] font-medium mb-1">{hoverData.date}</div>
+            {(["ctl", "atl", "tsb"] as VisibleLine[]).filter(l => visibleLines.has(l)).map(line => (
+              <div key={line} className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: LINE_CONFIGS[line].color }} />
+                <span className="text-[#b8a5d4]">{LINE_CONFIGS[line].label}</span>
+                <span className="font-bold text-white ml-auto">{hoverData[line]}</span>
+              </div>
+            ))}
+          </div>
         )}
-        {visibleLines.has("atl") && (
-          <span style={{ color: LINE_CONFIGS.atl.color }}>
-            Fatigue: <span className="font-bold text-white">{hoverData ? hoverData.atl : "\u2014"}</span>
-          </span>
-        )}
-        {visibleLines.has("tsb") && (
-          <span style={{ color: LINE_CONFIGS.tsb.color }}>
-            Form: <span className="font-bold text-white">{hoverData ? hoverData.tsb : "\u2014"}</span>
-          </span>
-        )}
-      </div>
-
-      {/* SVG Chart */}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
@@ -271,8 +279,8 @@ export function FitnessChart({ data }: FitnessChartProps) {
           />
         ))}
 
-        {/* Hover crosshair */}
-        {hoverIdx !== null && (
+        {/* Hover crosshair + tooltip */}
+        {hoverIdx !== null && hoverData && (
           <>
             <line
               x1={scaleX(hoverIdx)}
@@ -301,6 +309,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
           </>
         )}
       </svg>
+      </div>
     </div>
   );
 }
