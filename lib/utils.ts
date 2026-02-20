@@ -198,7 +198,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
       if (stepMatch) {
         const maxPct = parseInt(stepMatch[4], 10);
         steps.push({
-          label: stepMatch[1] || undefined,
+          label: stepMatch[1] && stepMatch[1] !== "Walk" ? stepMatch[1] : undefined,
           duration: stepMatch[2],
           zone: classifyZone(maxPct),
           bpmRange: stepMatch[5],

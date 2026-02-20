@@ -37,7 +37,7 @@ function StepRow({ step }: { step: WorkoutStep }) {
         {step.duration}
       </span>
       <span
-        className="px-2 py-0.5 rounded-full text-sm font-bold"
+        className="px-2 py-0.5 rounded-full text-sm font-bold whitespace-nowrap"
         style={{ backgroundColor: ZONE_BADGE[step.zone].bg, color: ZONE_BADGE[step.zone].text }}
       >
         {getZoneLabel(step.zone)}
