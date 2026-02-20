@@ -83,23 +83,25 @@ describe("alignStreams", () => {
   });
 
   it("aligns HR and glucose by minute", () => {
-    const time = minuteTimeArray(10);
-    const hr = Array(10).fill(125);
-    const glucose = Array.from({ length: 10 }, (_, i) => 10 - i * 0.3);
+    const n = 15;
+    const time = minuteTimeArray(n);
+    const hr = Array(n).fill(125);
+    const glucose = Array.from({ length: n }, (_, i) => 10 - i * 0.2);
 
     const result = alignStreams(makeStreams(time, hr, glucose));
     expect(result).not.toBeNull();
-    expect(result!.hr.length).toBe(10);
-    expect(result!.glucose.length).toBe(10);
+    expect(result!.hr.length).toBe(n);
+    expect(result!.glucose.length).toBe(n);
     expect(result!.hr[0].time).toBe(0);
     expect(result!.glucose[0].value).toBeCloseTo(10);
   });
 
   it("handles mg/dL glucose values (auto-converts)", () => {
-    const time = minuteTimeArray(10);
-    const hr = Array(10).fill(125);
+    const n = 15;
+    const time = minuteTimeArray(n);
+    const hr = Array(n).fill(125);
     // Values in mg/dL (~180 mg/dL = ~10 mmol/L)
-    const glucose = Array(10).fill(180);
+    const glucose = Array(n).fill(180);
 
     const result = alignStreams(makeStreams(time, hr, glucose));
     expect(result).not.toBeNull();
@@ -108,10 +110,10 @@ describe("alignStreams", () => {
   });
 
   it("tolerates 1-minute offset between HR and glucose", () => {
-    // HR at minutes 0-9, glucose at minutes 1-10 (offset by 1)
-    const time = minuteTimeArray(11);
-    const hr = [...Array(10).fill(125), 0]; // HR for 0-9, zero at 10
-    const glucose = [0, ...Array(10).fill(8.0)]; // zero at 0, glucose for 1-10
+    // HR at minutes 0-14, glucose at minutes 1-15 (offset by 1)
+    const time = minuteTimeArray(16);
+    const hr = [...Array(15).fill(125), 0]; // HR for 0-14, zero at 15
+    const glucose = [0, ...Array(15).fill(8.0)]; // zero at 0, glucose for 1-15
 
     const result = alignStreams(makeStreams(time, hr, glucose));
     expect(result).not.toBeNull();

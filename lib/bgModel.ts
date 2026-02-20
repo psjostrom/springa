@@ -378,7 +378,8 @@ export function alignStreams(
   hr.sort((a, b) => a.time - b.time);
   glucose.sort((a, b) => a.time - b.time);
 
-  if (hr.length < 7) return null; // Need at least 5min window + margins
+  const minPoints = SKIP_START + WINDOW_SIZE + SKIP_END;
+  if (hr.length < minPoints) return null;
 
   return { hr, glucose };
 }
@@ -490,42 +491,7 @@ export function buildBGModel(
     }
   }
 
-  const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
-    easy: null,
-    long: null,
-    interval: null,
-  };
-
-  const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
-
-  for (const cat of categoryNames) {
-    const catObs = allObservations.filter((o) => o.category === cat);
-    if (catObs.length === 0) continue;
-
-    const rates = catObs.map((o) => o.bgRate);
-    const fuels = catObs.map((o) => o.fuelRate).filter((f): f is number => f != null);
-    const activityIds = new Set(catObs.map((o) => o.activityId));
-
-    categories[cat] = {
-      category: cat,
-      avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
-      medianRate: median(rates),
-      sampleCount: catObs.length,
-      confidence: getConfidence(catObs.length),
-      avgFuelRate: fuels.length > 0 ? fuels.reduce((a, b) => a + b, 0) / fuels.length : null,
-      activityCount: activityIds.size,
-    };
-  }
-
-  return {
-    categories,
-    observations: allObservations,
-    activitiesAnalyzed: analyzed,
-    bgByStartLevel: analyzeBGByStartLevel(allObservations),
-    bgByEntrySlope: analyzeBGByEntrySlope(allObservations),
-    bgByTime: analyzeBGByTime(allObservations),
-    targetFuelRates: calculateTargetFuelRates(allObservations),
-  };
+  return aggregateModel(allObservations, analyzed);
 }
 
 /** Build BG response model from cached aligned data (skips stream fetch + alignment). */
@@ -533,8 +499,10 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
   const allObservations: BGObservation[] = [];
   let analyzed = 0;
 
+  const minPoints = SKIP_START + WINDOW_SIZE + SKIP_END;
+
   for (const { hr, glucose, activityId, fuelRate, startBG, category } of cached) {
-    if (hr.length < 7) continue;
+    if (hr.length < minPoints) continue;
 
     const entrySlope = computeEntrySlope(glucose);
     const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category, entrySlope);
@@ -544,6 +512,11 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
     }
   }
 
+  return aggregateModel(allObservations, analyzed);
+}
+
+/** Aggregate observations into a full BGResponseModel. */
+function aggregateModel(observations: BGObservation[], activitiesAnalyzed: number): BGResponseModel {
   const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
     easy: null,
     long: null,
@@ -553,7 +526,7 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
   const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
 
   for (const cat of categoryNames) {
-    const catObs = allObservations.filter((o) => o.category === cat);
+    const catObs = observations.filter((o) => o.category === cat);
     if (catObs.length === 0) continue;
 
     const rates = catObs.map((o) => o.bgRate);
@@ -573,12 +546,12 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
 
   return {
     categories,
-    observations: allObservations,
-    activitiesAnalyzed: analyzed,
-    bgByStartLevel: analyzeBGByStartLevel(allObservations),
-    bgByEntrySlope: analyzeBGByEntrySlope(allObservations),
-    bgByTime: analyzeBGByTime(allObservations),
-    targetFuelRates: calculateTargetFuelRates(allObservations),
+    observations,
+    activitiesAnalyzed,
+    bgByStartLevel: analyzeBGByStartLevel(observations),
+    bgByEntrySlope: analyzeBGByEntrySlope(observations),
+    bgByTime: analyzeBGByTime(observations),
+    targetFuelRates: calculateTargetFuelRates(observations),
   };
 }
 
