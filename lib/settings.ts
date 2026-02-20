@@ -65,14 +65,24 @@ export async function saveBGCache(
 
 // --- xDrip auth + readings ---
 
-// No TTL — xDrip readings persist indefinitely (~20KB/day, 256MB lasts ~35 years)
+// Readings are sharded by month (xdrip:{email}:2026-02) to stay under
+// Upstash free-tier 1 MB max value size. Each month is ~560 KB at
+// Dexcom G6 5-min resolution. Persisted indefinitely for post-run analysis.
 
 function xdripAuthKey(sha1: string) {
   return `xdrip-auth:${sha1}`;
 }
 
-function xdripReadingsKey(email: string) {
-  return `xdrip:${email}`;
+/** Month key in YYYY-MM format from a timestamp in ms. */
+export function monthKey(tsMs: number): string {
+  const d = new Date(tsMs);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function xdripShardKey(email: string, month: string) {
+  return `xdrip:${email}:${month}`;
 }
 
 export function sha1(input: string): string {
@@ -101,16 +111,43 @@ export async function lookupXdripUser(
   return redis().get<string>(xdripAuthKey(apiSecretHash));
 }
 
+/** Read readings for specific months. Defaults to current + previous month. */
 export async function getXdripReadings(
   email: string,
+  months?: string[],
 ): Promise<XdripReading[]> {
-  const data = await redis().get<XdripReading[]>(xdripReadingsKey(email));
-  return data ?? [];
+  if (!months) {
+    const now = Date.now();
+    const cur = monthKey(now);
+    const prev = monthKey(now - 30 * 24 * 60 * 60 * 1000);
+    months = cur === prev ? [cur] : [prev, cur];
+  }
+
+  const results = await Promise.all(
+    months.map((m) => redis().get<XdripReading[]>(xdripShardKey(email, m))),
+  );
+
+  return results.flatMap((r) => r ?? []).sort((a, b) => a.ts - b.ts);
 }
 
+/** Save readings into their monthly shards. Merges with existing data per shard. */
 export async function saveXdripReadings(
   email: string,
   readings: XdripReading[],
 ): Promise<void> {
-  await redis().set(xdripReadingsKey(email), readings);
+  // Group by month
+  const byMonth = new Map<string, XdripReading[]>();
+  for (const r of readings) {
+    const mk = monthKey(r.ts);
+    const list = byMonth.get(mk) ?? [];
+    list.push(r);
+    byMonth.set(mk, list);
+  }
+
+  // Save each shard
+  await Promise.all(
+    [...byMonth.entries()].map(([month, shard]) =>
+      redis().set(xdripShardKey(email, month), shard),
+    ),
+  );
 }

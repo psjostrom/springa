@@ -3,6 +3,7 @@ import {
   lookupXdripUser,
   getXdripReadings,
   saveXdripReadings,
+  monthKey,
 } from "@/lib/settings";
 import { parseNightscoutEntries } from "@/lib/xdrip";
 
@@ -23,7 +24,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, count: 0 });
   }
 
-  const existing = await getXdripReadings(email);
+  // Determine which monthly shards are affected
+  const affectedMonths = [...new Set(newReadings.map((r) => monthKey(r.ts)))];
+
+  // Read existing data for affected shards only
+  const existing = await getXdripReadings(email, affectedMonths);
   const merged = [...existing, ...newReadings];
 
   // Deduplicate by timestamp
@@ -37,6 +42,7 @@ export async function POST(req: Request) {
   // Sort chronologically
   deduped.sort((a, b) => a.ts - b.ts);
 
+  // Save back into monthly shards
   await saveXdripReadings(email, deduped);
 
   return NextResponse.json({ ok: true, count: newReadings.length });
