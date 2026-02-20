@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
+import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { fetchCalendarData } from "@/lib/intervalsApi";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { PhaseTracker } from "../components/PhaseTracker";
@@ -17,6 +15,10 @@ import { ErrorCard } from "../components/ErrorCard";
 
 interface IntelScreenProps {
   apiKey: string;
+  events: CalendarEvent[];
+  eventsLoading: boolean;
+  eventsError: string | null;
+  onRetryLoad: () => void;
   phaseName: string;
   currentWeek: number;
   totalWeeks: number;
@@ -30,7 +32,10 @@ interface IntelScreenProps {
 const RACE_DATE = "2026-06-13";
 
 export function IntelScreen({
-  apiKey,
+  events,
+  eventsLoading,
+  eventsError,
+  onRetryLoad,
   phaseName,
   currentWeek,
   totalWeeks,
@@ -40,35 +45,6 @@ export function IntelScreen({
   bgModelProgress,
   bgActivityNames,
 }: IntelScreenProps) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
-
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const start = startOfMonth(subMonths(new Date(), 24));
-      const end = endOfMonth(addMonths(new Date(), 6));
-      const data = await fetchCalendarData(apiKey, start, end, {
-        includePairedEvents: true,
-      });
-      setEvents(data);
-    } catch (err) {
-      console.error("IntelScreen: failed to load events", err);
-      setError("Failed to load fitness data. Check your API key and try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiKey]);
-
-  useEffect(() => {
-    if (!apiKey || loadedRef.current) return;
-    loadedRef.current = true;
-    loadEvents();
-  }, [apiKey, loadEvents]);
-
   const fitnessData = useMemo(
     () => computeFitnessData(events, 180),
     [events],
@@ -96,11 +72,11 @@ export function IntelScreen({
         </div>
 
         {/* Fitness & Insights */}
-        {error ? (
+        {eventsError ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <ErrorCard message={error} onRetry={loadEvents} />
+            <ErrorCard message={eventsError} onRetry={onRetryLoad} />
           </div>
-        ) : isLoading ? (
+        ) : eventsLoading ? (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
             <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />

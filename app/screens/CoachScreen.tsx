@@ -8,6 +8,7 @@ import { ChatMessage } from "../components/ChatMessage";
 import { ChatInput } from "../components/ChatInput";
 import { useCoachData } from "../hooks/useCoachData";
 import type { BGResponseModel } from "@/lib/bgModel";
+import type { CalendarEvent } from "@/lib/types";
 
 const SUGGESTIONS = [
   "How's my training load looking?",
@@ -24,14 +25,14 @@ function getMessageText(parts: Array<{ type: string; text?: string }>): string {
 }
 
 interface CoachScreenProps {
-  apiKey: string;
+  events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
 }
 
-export function CoachScreen({ apiKey, phaseInfo, bgModel }: CoachScreenProps) {
+export function CoachScreen({ events, phaseInfo, bgModel }: CoachScreenProps) {
   const { context, isLoading: contextLoading } = useCoachData({
-    apiKey,
+    events,
     phaseInfo,
     bgModel,
   });

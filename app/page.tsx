@@ -11,6 +11,7 @@ import { CoachScreen } from "./screens/CoachScreen";
 import { usePhaseInfo } from "./hooks/usePhaseInfo";
 import { useBGModel } from "./hooks/useBGModel";
 import { useCurrentBG } from "./hooks/useCurrentBG";
+import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { SettingsModal } from "./components/SettingsModal";
 import { Settings } from "lucide-react";
@@ -112,8 +113,11 @@ function HomeContent() {
 
   const apiKey = settings?.intervalsApiKey ?? "";
 
-  // BG model — fetches once, cached after
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, true);
+  // Shared calendar events — single fetch for all screens
+  const sharedCalendar = useSharedCalendarData(apiKey);
+
+  // BG model — uses shared events, fetches streams independently
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, true, sharedCalendar.events);
 
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
@@ -168,11 +172,15 @@ function HomeContent() {
           <PlannerScreen apiKey={apiKey} bgModel={bgModel} />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} />
+          <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
             apiKey={apiKey}
+            events={sharedCalendar.events}
+            eventsLoading={sharedCalendar.isLoading}
+            eventsError={sharedCalendar.error}
+            onRetryLoad={sharedCalendar.reload}
             phaseName={phaseInfo.name}
             currentWeek={phaseInfo.week}
             totalWeeks={18}
@@ -184,7 +192,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen apiKey={apiKey} phaseInfo={phaseInfo} bgModel={bgModel} />
+          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} />
         </div>
       </div>
 

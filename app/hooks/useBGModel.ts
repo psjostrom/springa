@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { fetchCalendarData, fetchStreamBatch } from "@/lib/intervalsApi";
+import { fetchStreamBatch } from "@/lib/intervalsApi";
 import {
   alignStreams,
   buildBGModelFromCached,
   type BGResponseModel,
 } from "@/lib/bgModel";
 import type { CachedActivity } from "@/lib/settings";
+import type { CalendarEvent } from "@/lib/types";
 import { getWorkoutCategory } from "@/lib/utils";
 
 const BG_MODEL_MAX_ACTIVITIES = 15;
@@ -53,36 +53,34 @@ async function saveBGCacheRemote(data: CachedActivity[]): Promise<void> {
   }
 }
 
-export function useBGModel(apiKey: string, enabled: boolean) {
+export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: CalendarEvent[]) {
   const [bgModel, setBgModel] = useState<BGResponseModel | null>(null);
   const [bgModelLoading, setBgModelLoading] = useState(false);
   const [bgModelProgress, setBgModelProgress] = useState({ done: 0, total: 0 });
   const [bgActivityNames, setBgActivityNames] = useState<Map<string, string>>(new Map());
   const loadedRef = useRef(false);
 
+  // L1: instant render from localStorage (once)
+  const l1DoneRef = useRef(false);
   useEffect(() => {
-    if (!apiKey || !enabled || loadedRef.current) return;
-    loadedRef.current = true;
-    let cancelled = false;
-
-    // L1: instant render from localStorage
+    if (l1DoneRef.current) return;
+    l1DoneRef.current = true;
     const local = readLocalCache();
     if (local.length > 0) {
       const model = buildBGModelFromCached(local);
       if (model.activitiesAnalyzed > 0) setBgModel(model);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!apiKey || !enabled || loadedRef.current || sharedEvents.length === 0) return;
+    loadedRef.current = true;
+    let cancelled = false;
 
     (async () => {
       setBgModelLoading(true);
       try {
-        const start = startOfMonth(subMonths(new Date(), 24));
-        const end = endOfMonth(new Date());
-        const events = await fetchCalendarData(apiKey, start, end, {
-          includePairedEvents: true,
-        });
-        if (cancelled) return;
-
-        const completedRuns = events
+        const completedRuns = sharedEvents
           .filter((e) => e.type === "completed" && e.activityId && e.category !== "other" && e.category !== "race")
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .slice(0, BG_MODEL_MAX_ACTIVITIES);
@@ -165,7 +163,7 @@ export function useBGModel(apiKey: string, enabled: boolean) {
     })();
 
     return () => { cancelled = true; };
-  }, [apiKey, enabled]);
+  }, [apiKey, enabled, sharedEvents]);
 
   return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames };
 }

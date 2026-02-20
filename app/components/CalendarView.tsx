@@ -15,7 +15,7 @@ import {
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { fetchCalendarData, fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
+import { fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/utils";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
@@ -26,6 +26,10 @@ import "../calendar.css";
 
 interface CalendarViewProps {
   apiKey: string;
+  initialEvents: CalendarEvent[];
+  isLoadingInitial: boolean;
+  initialError: string | null;
+  onRetryLoad?: () => void;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
@@ -34,16 +38,33 @@ function getWorkoutParam(): string | null {
   return new URLSearchParams(window.location.search).get("workout");
 }
 
-export function CalendarView({ apiKey }: CalendarViewProps) {
+export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
-  const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
-  const loadedRangeRef = useRef<{ start: Date; end: Date } | null>(null);
-  const [isLoadingStreamData, setIsLoadingStreamData] = useState(false);
+
+  // Lazy init: detect mobile viewport without a post-mount effect
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "agenda" : "month"
+  );
+
+  // Lazy init: read ?workout= from URL on first render
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? getWorkoutParam() : null
+  );
+
+  // Derive selectedEvent from events + selectedEventId (replaces enrichment effect)
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return null;
+    return events.find((e) => e.id === selectedEventId) ?? null;
+  }, [events, selectedEventId]);
+
+  // Seed local state once shared events arrive (setState during render — React-approved pattern)
+  const [seeded, setSeeded] = useState(false);
+  if (!seeded && initialEvents.length > 0) {
+    setSeeded(true);
+    setEvents(initialEvents);
+  }
 
   const {
     draggedEvent,
@@ -58,86 +79,42 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
     handleDrop,
   } = useDragDrop(apiKey, setEvents);
 
-  // Set responsive view mode after hydration to avoid SSR mismatch
+  // Sync URL → selectedEventId on popstate (back/forward)
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    setViewMode(isMobile ? "agenda" : "month");
+    const onPopState = () => setSelectedEventId(getWorkoutParam());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // Fetch data once on mount - load full workout history
-  useEffect(() => {
-    if (!apiKey) return;
-    if (loadedRangeRef.current) return;
-
-    const loadCalendarData = async () => {
-      const neededStart = startOfMonth(subMonths(new Date(), 24));
-      const neededEnd = endOfMonth(addMonths(new Date(), 6));
-
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await fetchCalendarData(apiKey, neededStart, neededEnd);
-        setEvents(data);
-        loadedRangeRef.current = { start: neededStart, end: neededEnd };
-      } catch (err) {
-        console.error("Error loading calendar data:", err);
-        setError(
-          "Failed to load calendar data. Please check your API key and try again.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadCalendarData();
-  }, [apiKey]);
-
-  // Sync URL → modal on popstate (back/forward) and initial load
-  const syncModalFromUrl = useCallback(() => {
-    const workoutId = getWorkoutParam();
-    if (workoutId) {
-      const event = events.find((e) => e.id === workoutId);
-      if (event) setSelectedEvent(event);
-    } else {
-      setSelectedEvent(null);
-    }
-  }, [events]);
-
-  useEffect(() => {
-    syncModalFromUrl(); // initial load
-    window.addEventListener("popstate", syncModalFromUrl);
-    return () => window.removeEventListener("popstate", syncModalFromUrl);
-  }, [syncModalFromUrl]);
-
-  // When events are enriched (stream data), update the selected event
-  useEffect(() => {
-    if (!selectedEvent) return;
-    const enriched = events.find((e) => e.id === selectedEvent.id);
-    if (!enriched) return;
-    if (enriched.streamData && !selectedEvent.streamData) setSelectedEvent(enriched);
-    else if (enriched.hrZones && !selectedEvent.hrZones) setSelectedEvent(enriched);
-  }, [events, selectedEvent]);
+  // Derive loading state: completed event without stream data that hasn't failed
+  const fetchedStreamIdsRef = useRef(new Set<string>());
+  const [streamFetchDone, setStreamFetchDone] = useState(new Set<string>());
+  const isLoadingStreamData = !!(
+    selectedEvent?.type === "completed" &&
+    !selectedEvent?.streamData &&
+    !streamFetchDone.has(selectedEvent.id)
+  );
 
   // Lazy-load stream data when modal opens for a completed workout
   useEffect(() => {
-    if (!selectedEvent || selectedEvent.type !== "completed") return;
-    if (selectedEvent.streamData) return;
-    if (!apiKey) return;
+    if (!selectedEventId || !apiKey) return;
+    if (fetchedStreamIdsRef.current.has(selectedEventId)) return;
 
-    const activityId = selectedEvent.id.replace("activity-", "");
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event || event.type !== "completed" || event.streamData) return;
+
+    const activityId = selectedEventId.replace("activity-", "");
     if (!activityId) return;
 
+    fetchedStreamIdsRef.current.add(selectedEventId);
     let cancelled = false;
-    setIsLoadingStreamData(true);
 
     fetchActivityDetails(activityId, apiKey)
       .then((details) => {
         if (cancelled) return;
-        // Only update events — the URL sync effect derives selectedEvent
-        // from events, so it will pick up the enriched data automatically.
         setEvents((prevEvents) =>
           prevEvents.map((e) =>
-            e.id === selectedEvent.id
+            e.id === selectedEventId
               ? {
                   ...e,
                   hrZones: details.hrZones,
@@ -153,11 +130,11 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
         if (!cancelled) console.error("Error loading stream data:", err);
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingStreamData(false);
+        if (!cancelled) setStreamFetchDone((prev) => new Set([...prev, selectedEventId]));
       });
 
     return () => { cancelled = true; };
-  }, [selectedEvent, apiKey]);
+  }, [selectedEventId, events, apiKey]);
 
   // Generate calendar grid
   const calendarDays = useMemo(() => {
@@ -183,10 +160,10 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   // Track whether we pushed a modal entry onto the history stack
   const modalPushedRef = useRef(false);
 
-  // Open modal by updating URL — set selectedEvent immediately so the
+  // Open modal by updating URL — set selectedEventId immediately so the
   // modal appears without waiting for the URL roundtrip.
   const openWorkoutModal = (event: CalendarEvent) => {
-    setSelectedEvent(event);
+    setSelectedEventId(event.id);
 
     const params = new URLSearchParams(window.location.search);
     const wasOpen = params.has("workout");
@@ -203,7 +180,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
   // Close modal by removing URL param
   const closeWorkoutModal = useCallback(() => {
-    setSelectedEvent(null);
+    setSelectedEventId(null);
     if (modalPushedRef.current) {
       modalPushedRef.current = false;
       window.history.back();
@@ -218,16 +195,16 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
   // Handle Escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedEvent) {
+      if (e.key === "Escape" && selectedEventId) {
         closeWorkoutModal();
       }
     };
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [selectedEvent, closeWorkoutModal]);
+  }, [selectedEventId, closeWorkoutModal]);
 
-  // Handle date save from modal — URL sync effect derives selectedEvent
+  // Handle date save from modal
   const handleDateSaved = (eventId: string, newDate: Date) => {
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, date: newDate } : e)),
@@ -358,18 +335,15 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
 
       {/* Calendar / Agenda */}
       <div className="bg-[#1e1535] p-2 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
-        {isLoading && (
+        {isLoadingInitial && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-[#ff2d95]" size={32} />
           </div>
         )}
 
-        {error && (
+        {initialError && (
           <div className="flex items-center justify-center py-12">
-            <ErrorCard message={error} onRetry={() => {
-              setError(null);
-              setCurrentMonth(new Date(currentMonth));
-            }} />
+            <ErrorCard message={initialError} onRetry={onRetryLoad ?? (() => {})} />
           </div>
         )}
 
@@ -380,7 +354,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           </div>
         )}
 
-        {!isLoading && !error && viewMode === "month" && (
+        {!isLoadingInitial && !initialError && viewMode === "month" && (
           <div className="calendar-grid">
             <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
@@ -400,7 +374,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           </div>
         )}
 
-        {!isLoading && !error && viewMode === "week" && (
+        {!isLoadingInitial && !initialError && viewMode === "week" && (
           <div className="calendar-grid">
             <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
@@ -420,7 +394,7 @@ export function CalendarView({ apiKey }: CalendarViewProps) {
           </div>
         )}
 
-        {!isLoading && !error && viewMode === "agenda" && (
+        {!isLoadingInitial && !initialError && viewMode === "agenda" && (
           <div
             className="flex-1 overflow-y-auto"
           >

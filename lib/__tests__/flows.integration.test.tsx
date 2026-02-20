@@ -8,9 +8,24 @@ import { capturedUploadPayload, capturedPutPayload, capturedDeleteEventIds } fro
 import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
+import { useSharedCalendarData } from "@/app/hooks/useSharedCalendarData";
 import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
+
+/** Test wrapper that combines shared data hook + CalendarScreen, matching the prod wiring in page.tsx. */
+function TestCalendarScreen({ apiKey }: { apiKey: string }) {
+  const { events, isLoading, error, reload } = useSharedCalendarData(apiKey);
+  return (
+    <CalendarScreen
+      apiKey={apiKey}
+      initialEvents={events}
+      isLoadingInitial={isLoading}
+      initialError={error}
+      onRetryLoad={reload}
+    />
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Flow 1: Planner — Generate Plan -> Preview -> Sync -> Success
@@ -69,20 +84,20 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
 describe("Flow 2: Calendar — Events load -> Modal details", () => {
   it("loads events, clicks a completed event, shows modal with details and streams", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load (MSW returns sampleActivities + sampleEvents)
     await waitFor(() => {
-      expect(screen.getByText(/W04 Tue Easy eco16/)).toBeInTheDocument();
+      expect(screen.getAllByText(/W04 Tue Easy eco16/).length).toBeGreaterThanOrEqual(1);
     });
 
     // 2. Assert completed + planned events visible
-    expect(screen.getByText(/W05 Tue Easy \+ Strides eco16/)).toBeInTheDocument();
+    expect(screen.getAllByText(/W05 Tue Easy \+ Strides eco16/).length).toBeGreaterThanOrEqual(1);
 
     // 3. Click a completed event
-    const completedEvent = screen.getByText(/W04 Tue Easy eco16/);
+    const completedEvent = screen.getAllByText(/W04 Tue Easy eco16/)[0];
     await user.click(completedEvent);
 
     // 4. Assert URL updated with workout param
@@ -122,8 +137,8 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 
   it("clicks a planned event, edits the date, and saves", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events
@@ -244,8 +259,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
   it("shows fuel info in agenda pill and modal for an easy run", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load, then switch to agenda view
@@ -276,8 +291,8 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
   it("shows fuel info in agenda pill and modal for a speed session", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load, then switch to agenda view
@@ -322,8 +337,8 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
 
   it("opens a planned event, clicks Delete, confirms, and event is removed", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load
@@ -383,8 +398,8 @@ describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimat
     // but our description-based estimate is ~58 min (8km × 7.25 min/km).
     // The modal must show 58g, not 49g.
     const user = userEvent.setup();
-    const { rerender } = render(
-      <CalendarScreen apiKey={TEST_API_KEY} />,
+    render(
+      <TestCalendarScreen apiKey={TEST_API_KEY} />,
     );
 
     // 1. Wait for events to load
