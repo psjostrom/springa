@@ -96,7 +96,8 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    expect(zones).toEqual(["easy", "tempo"]);
+    // 78% = Z3 boundary (steady), 99% = Z5 boundary (hard)
+    expect(zones).toEqual(["steady", "hard"]);
   });
 
   it("extracts HR zones from a hills description", () => {
@@ -113,7 +114,8 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    expect(zones).toEqual(["easy", "hard"]);
+    // 78% = steady, 111% = hard
+    expect(zones).toEqual(["steady", "hard"]);
   });
 
   it("extracts all zones from race pace sandwich long run", () => {
@@ -131,7 +133,8 @@ Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    expect(zones).toEqual(["easy", "steady"]);
+    // 78% = steady, 89% = tempo
+    expect(zones).toEqual(["steady", "tempo"]);
   });
 
   it("returns sorted zones low-to-high", () => {
@@ -143,8 +146,9 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    expect(zones[0]).toBe("easy");
-    expect(zones[1]).toBe("tempo");
+    // 78% = steady, 99% = hard
+    expect(zones[0]).toBe("steady");
+    expect(zones[1]).toBe("hard");
   });
 
   it("returns empty array for descriptions without HR zones", () => {
@@ -536,8 +540,9 @@ Cooldown
     expect(sections[1].name).toBe("Main set");
     expect(sections[1].repeats).toBe(6);
     expect(sections[1].steps).toHaveLength(2);
-    expect(sections[1].steps[0].zone).toBe("tempo");
-    expect(sections[1].steps[1].zone).toBe("easy");
+    // 99% = hard (Z5 boundary), 78% = steady (Z3 boundary)
+    expect(sections[1].steps[0].zone).toBe("hard");
+    expect(sections[1].steps[1].zone).toBe("steady");
 
     expect(sections[2].name).toBe("Cooldown");
     expect(sections[2].steps[0].duration).toBe("5m");
@@ -600,9 +605,10 @@ Cooldown
     const sections = parseWorkoutStructure(desc);
     const mainSet = sections[1];
     expect(mainSet.steps).toHaveLength(3);
-    expect(mainSet.steps[0].zone).toBe("easy");
-    expect(mainSet.steps[1].zone).toBe("steady");
-    expect(mainSet.steps[2].zone).toBe("easy");
+    // 78% = steady, 89% = tempo, 78% = steady
+    expect(mainSet.steps[0].zone).toBe("steady");
+    expect(mainSet.steps[1].zone).toBe("tempo");
+    expect(mainSet.steps[2].zone).toBe("steady");
   });
 
   it("parses an easy + strides workout", () => {

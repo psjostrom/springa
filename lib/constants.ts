@@ -67,8 +67,8 @@ export function getZoneColor(lthrPercent: number): string {
 
 /** Classify an LTHR percentage into a zone name. */
 export function classifyZone(lthrPercent: number): HRZoneName {
-  if (lthrPercent > ZONE_THRESHOLDS.z5) return "hard";
-  if (lthrPercent > ZONE_THRESHOLDS.z4) return "tempo";
-  if (lthrPercent > ZONE_THRESHOLDS.z3) return "steady";
+  if (lthrPercent >= ZONE_THRESHOLDS.z5) return "hard";
+  if (lthrPercent >= ZONE_THRESHOLDS.z4) return "tempo";
+  if (lthrPercent >= ZONE_THRESHOLDS.z3) return "steady";
   return "easy";
 }
