@@ -12,7 +12,6 @@ import { PlanStructureSettings } from "../components/PlanStructureSettings";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
-import { EmptyState } from "../components/EmptyState";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 
 const DEFAULT_FUEL = { easy: 48, long: 60, interval: 30 };
@@ -156,9 +155,7 @@ export function PlannerScreen({ apiKey, bgModel }: PlannerScreenProps) {
               <div className="mt-3">{generateButton}</div>
             </div>
 
-            {planEvents.length === 0 ? (
-              <EmptyState />
-            ) : (
+            {planEvents.length > 0 && (
               <div className="space-y-8">
                 <WeeklyVolumeChart data={chartData} />
                 <ActionBar

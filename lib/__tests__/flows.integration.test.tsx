@@ -35,12 +35,7 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
     const user = userEvent.setup();
     render(<PlannerScreen apiKey={TEST_API_KEY} />);
 
-    // 1. Assert empty state
-    expect(
-      screen.getByText("Configure settings and generate your plan."),
-    ).toBeInTheDocument();
-
-    // 2. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
+    // 1. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
     await user.click(generateBtns[0]);
 
