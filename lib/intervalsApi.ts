@@ -252,16 +252,15 @@ export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
   endDate: Date,
-  options?: { includePairedEvents?: boolean },
 ): Promise<CalendarEvent[]> {
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
-  const cacheKey = `${oldest}:${newest}:${options?.includePairedEvents ?? false}`;
+  const cacheKey = `${oldest}:${newest}`;
 
   const inflight = calendarInflight.get(cacheKey);
   if (inflight) return inflight;
 
-  const promise = fetchCalendarDataInner(apiKey, oldest, newest, options);
+  const promise = fetchCalendarDataInner(apiKey, oldest, newest);
   calendarInflight.set(cacheKey, promise);
   promise.then(
     () => calendarInflight.delete(cacheKey),
@@ -274,7 +273,6 @@ async function fetchCalendarDataInner(
   apiKey: string,
   oldest: string,
   newest: string,
-  options?: { includePairedEvents?: boolean },
 ): Promise<CalendarEvent[]> {
   const auth = authHeader(apiKey);
 
@@ -303,6 +301,14 @@ async function fetchCalendarDataInner(
 
   const activityMap = new Map<string, CalendarEvent>();
 
+  // Build reverse lookup: activityId → planned event (authoritative link from Intervals.icu)
+  const pairedEventMap = new Map<string, IntervalsEvent>();
+  for (const event of events) {
+    if (event.category === "WORKOUT" && event.paired_activity_id) {
+      pairedEventMap.set(event.paired_activity_id, event);
+    }
+  }
+
   runActivities.forEach((activity) => {
     const category = getWorkoutCategory(activity.name);
 
@@ -330,8 +336,11 @@ async function fetchCalendarDataInner(
     const activityDate = parseISO(
       activity.start_date_local || activity.start_date,
     );
-    const matchingEvent = events.find((event) => {
+
+    // Prefer paired_activity_id (authoritative), fall back to name-based matching
+    const matchingEvent = pairedEventMap.get(activity.id) ?? events.find((event) => {
       if (event.category !== "WORKOUT") return false;
+      if (event.paired_activity_id) return false; // already claimed by another activity
       const eventDate = parseISO(event.start_date_local);
       const sameDay = isSameDay(activityDate, eventDate);
       const actName = activity.name?.toLowerCase() ?? "";
@@ -395,7 +404,8 @@ async function fetchCalendarDataInner(
   for (const event of events) {
     if (event.category !== "WORKOUT") continue;
 
-    if (event.paired_activity_id && !options?.includePairedEvents) {
+    // Skip events already represented by a completed activity
+    if (event.paired_activity_id && activityMap.has(event.paired_activity_id)) {
       continue;
     }
 

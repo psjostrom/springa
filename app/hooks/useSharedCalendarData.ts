@@ -7,8 +7,9 @@ import type { CalendarEvent } from "@/lib/types";
 
 /**
  * Single source of truth for calendar events across all screens.
- * Fetches once with the widest range (24 months back, 6 months forward)
- * and includePairedEvents: true so all consumers are covered.
+ * Fetches once with the widest range (24 months back, 6 months forward).
+ * Paired events (planned workouts linked to completed activities) are
+ * automatically deduplicated by fetchCalendarData.
  */
 export function useSharedCalendarData(apiKey: string) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -23,9 +24,7 @@ export function useSharedCalendarData(apiKey: string) {
     try {
       const start = startOfMonth(subMonths(new Date(), 24));
       const end = endOfMonth(addMonths(new Date(), 6));
-      const data = await fetchCalendarData(apiKey, start, end, {
-        includePairedEvents: true,
-      });
+      const data = await fetchCalendarData(apiKey, start, end);
       setEvents(data);
     } catch (err) {
       console.error("useSharedCalendarData: failed", err);
