@@ -10,49 +10,52 @@ The fueling strategy is embedded as text in workout descriptions — `PUMP OFF -
 
 A bar chart — one bar per week across the entire plan duration — split into completed (solid) vs remaining planned (faded). This makes the periodization visible: build phases growing, recovery weeks dropping, taper shrinking. It also immediately reveals if you're consistently missing sessions or falling behind volume targets.
 
+### BG Response Model [x]
+
+Category-based BG response analysis across easy/long/interval runs. 5-min sliding windows across aligned HR + glucose streams, BG slope per window, aggregated per workout category. Includes: confidence levels, fuel adjustment suggestions, BG by start level, BG by entry slope, BG by time decay, target fuel rate calculation (regression + extrapolation), scatter chart visualization.
+
+**Future refinement — per-zone HR analysis:** Classify each window by HR zone (Z2/Z3/Z4) instead of workout category. This gives intensity-level insight ("in Z3 BG drops X") rather than category-level ("long runs drop Y"). The infrastructure is ready (HR stream aligned, sliding windows computing slopes) — just swap the classification key. **Revisit after 20+ runs with BG data and several mixed-intensity runs (sandwich/progressive long runs).** Until then, per-zone splits would have too few samples per zone to be meaningful.
+
+### Auto-Suggest Fuel Rates [x]
+
+Target fuel rates computed from BG model (regression or extrapolation) and auto-applied as defaults in the planner. Shown as informational targets in Intel tab.
+
+### Live CGM via xDrip [x]
+
+xDrip pushes glucose data via Nightscout protocol. Readings persisted indefinitely for post-run analysis. Pre-run card shows current BG with trend.
+
+### Post-Run Report Card [x]
+
+3-column strip in EventModal (between stats card and carbs section) scoring each completed run on three axes: BG stability (drop rate + hypo detection), HR zone compliance (% time in target zone by workout category), and fuel adherence (actual vs planned carbs). Color-coded green/yellow/red dots. Skeleton shimmer while stream data loads. Scoring logic in `lib/reportCard.ts`, UI in `app/components/RunReportCard.tsx`, 32 unit tests.
+
+**Future refinements:**
+- **Trend across runs:** Track report card scores over time to show improvement patterns (e.g., "BG management improving over last 5 long runs").
+- **Per-zone HR scoring for intervals:** Currently scores intervals against Z4 total, but mixed sessions (warmup Z2 + reps Z4 + recovery Z1) dilute the percentage. Could score only the work intervals against Z4.
+- **BG scoring by workout phase:** Score BG stability per segment (warmup/main/cooldown) instead of whole-run average, to pinpoint where management breaks down.
+
 ---
 
 ## Intel Features
 
-### 1. BG Response Model [in progress]
-
-Correlate per-zone HR with BG drop rate across historical runs. Slide 5-min windows across aligned HR + glucose streams, classify each window by HR zone, compute BG slope. Show avg/median mmol/L change per 10 min for each training zone, confidence levels, and fuel adjustment suggestions. The single most actionable insight for T1D training.
-
-### 2. Readiness-Adaptive Training
-
-Use HRV, resting HR, sleep score, and recent BG variability to suggest workout intensity adjustments. "Your HRV is 15% below baseline — consider swapping Thursday's intervals for an easy run."
-
-### 3. Aerobic Decoupling Tracker
+### 1. Aerobic Decoupling Tracker
 
 Track cardiac drift (pace:HR ratio) across easy and long runs over time. A decreasing decoupling percentage indicates improving aerobic fitness. Flag runs where decoupling exceeds 5%.
 
-### 4. GAP for Trail Readiness
-
-Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness for EcoTrail's terrain.
-
-### 5. Efficiency Factor Trend
+### 2. Efficiency Factor Trend
 
 Plot EF (normalized pace / avg HR) over weeks. Rising EF = getting fitter at the same effort. Useful for tracking aerobic base development without racing.
 
-### 6. Post-Run Report Card
+### 3. GAP for Trail Readiness
 
-Auto-generated summary after each completed run: BG management score (time in range during run), pacing accuracy vs plan, HR zone compliance, fueling adherence. Single card with pass/flag indicators.
+Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness for EcoTrail's terrain.
 
-### 8. Auto-Suggest Fuel Rates from BG Model
+### 4. Readiness-Adaptive Training
 
-The BG model's `targetFuelRates` can feed back into plan generation — instead of manually tuning `fuelEasy`/`fuelLong`/`fuelInterval`, the app prompts "BG model suggests updating fuelEasy to 10 g/10min — apply?" Based on regression across runs at different fuel rates, or extrapolation when data is limited.
-
-**When to revisit:** When at least one zone reaches "medium" confidence (10+ observations) AND the model has regression data (2+ distinct fuel rates tried in the same zone with 3+ runs each). Until then, the Intel tab target display is sufficient. Check back after ~15-20 completed runs with BG data, or when you've intentionally varied fuel rates across a few runs to give the model something to regress on.
-
-**Implementation:** Never silently override — always a confirmation prompt. Show current vs suggested, the model's confidence level, and the method (regression vs extrapolation) so the decision is informed.
-
-### 9. Live CGM via xDrip
-
-xDrip can push glucose data to a web server continuously. If the app ingests this feed, it unlocks pre-run BG awareness: the pre-run card could show current BG and warn if it's in a band with historically worse drop rates, suggest delaying the run or taking extra carbs. Also enables live mid-run alerts (not on the watch, but viewable post-hoc or via a companion). Requires: xDrip webhook/API config, a lightweight endpoint to receive and store readings, and a polling mechanism in the app.
+Use HRV, resting HR, sleep score, and recent BG variability to suggest workout intensity adjustments. "Your HRV is 15% below baseline — consider swapping Thursday's intervals for an easy run." Blocked on data source — Garmin Connect API or manual input needed.
 
 ---
 
-## Backlog (Original Ideas)
+## Backlog
 
 ### Segment-aligned glucose overlay
 
