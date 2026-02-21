@@ -164,7 +164,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   if (!description) return [];
 
   const sections: WorkoutSection[] = [];
-  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk)\s+)?(\d+(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
 
   // Split into section blocks
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
@@ -198,7 +198,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
       if (stepMatch) {
         const maxPct = parseInt(stepMatch[4], 10);
         steps.push({
-          label: stepMatch[1] && stepMatch[1] !== "Walk" ? stepMatch[1] : undefined,
+          label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
           duration: stepMatch[2],
           zone: classifyZone(maxPct),
           bpmRange: stepMatch[5],
@@ -239,10 +239,10 @@ function toMinutes(value: number, unit: string, avgPercent: number): number {
 function parseSectionSegments(section: string): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
   const stepMatches = Array.from(
-    section.matchAll(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:Uphill\s+|Downhill\s+|Walk\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/g),
+    section.matchAll(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/g),
   );
   for (const m of stepMatches) {
-    const value = parseInt(m[1], 10);
+    const value = parseFloat(m[1]);
     const unit = m[2];
     const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
     segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });
@@ -261,9 +261,9 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   // Warmup
   const warmupMatch = description.match(/(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
   if (warmupMatch) {
-    const wuStep = warmupMatch[0].match(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(\d+)(s|m|km)\s+(\d+)-(\d+)%/);
+    const wuStep = warmupMatch[0].match(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/);
     if (wuStep) {
-      const value = parseInt(wuStep[1], 10);
+      const value = parseFloat(wuStep[1]);
       const unit = wuStep[2];
       const avgPercent = (parseInt(wuStep[3], 10) + parseInt(wuStep[4], 10)) / 2;
       segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });

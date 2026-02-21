@@ -69,7 +69,7 @@ const generateQualityRun = (
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
-      description: createWorkoutText(wu, [s("30m", "easy")], cd, 1, notes),
+      description: createWorkoutText(wu, [s("30m", "easy", "Easy")], cd, 1, notes),
       external_id: `${ctx.prefix}-thu-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
@@ -84,7 +84,7 @@ const generateQualityRun = (
   switch (sessionType) {
     case "short-intervals": {
       reps = 6 + Math.floor(progress * 2);
-      steps = [s("2m", "tempo"), s("2m", "walk")];
+      steps = [s("2m", "tempo", "Fast"), s("2m", "walk")];
       notes = "Short, punchy efforts to build leg speed and running economy. Run each rep at a strong, controlled effort — not a flat-out sprint. Focus on quick cadence and light feet. Walk the recovery — let your HR come back down fully before the next rep.";
       break;
     }
@@ -97,7 +97,7 @@ const generateQualityRun = (
     case "long-intervals": {
       const workMin = 4 + Math.floor(progress * 2);
       reps = 4;
-      steps = [s(`${workMin}m`, "tempo"), s("2m", "walk")];
+      steps = [s(`${workMin}m`, "tempo", "Fast"), s("2m", "walk")];
       notes = "Longer intervals to develop your threshold and teach your body to clear lactate at pace. These should feel 'comfortably hard' — you can speak a few words but not hold a conversation. Stay relaxed in your shoulders and hands. Walk the recovery fully. Each rep should feel the same effort, not faster as you go.";
       break;
     }
@@ -105,13 +105,13 @@ const generateQualityRun = (
       const distM = 600 + Math.floor(progress * 2) * 200;
       reps = distM >= 1000 ? 6 : 8;
       const distKm = (distM / 1000).toFixed(1);
-      steps = [s(`${distKm}km`, "tempo"), s("0.2km", "walk")];
+      steps = [s(`${distKm}km`, "tempo", "Fast"), s("0.2km", "walk")];
       notes = `Track-style reps to sharpen your pace awareness. Run each ${distM}m at a consistent, controlled pace — aim to hit the same split every rep rather than going out too fast. Walk the 200m recovery. These build the specific speed and confidence you need on race day.`;
       break;
     }
     case "race-pace-intervals": {
       reps = 5;
-      steps = [s("5m", "steady"), s("2m", "walk")];
+      steps = [s("5m", "steady", "Race Pace"), s("2m", "walk")];
       notes = "Race pace practice. The goal is to lock in what race effort feels like so it becomes automatic on the day. These should feel controlled and sustainable — not hard. Focus on rhythm: steady breathing, relaxed form, consistent pace. Walk the recovery. If it feels too easy, you're doing it right.";
       break;
     }
@@ -173,8 +173,8 @@ const generateEasyRun = (
     const lines = [
       notes, "",
       "Warmup", `- ${wu}`, "",
-      "Main set", `- ${s(`${duration}m`, "easy")}`, "",
-      "Strides 4x", `- ${s("20s", "hard")}`, `- ${s("1m", "easy")}`, "",
+      "Main set", `- ${s(`${duration}m`, "easy", "Easy")}`, "",
+      "Strides 4x", `- ${s("20s", "hard", "Stride")}`, `- ${s("1m", "easy", "Easy")}`, "",
       "Cooldown", `- ${cd}`, "",
     ];
     return {
@@ -190,7 +190,7 @@ const generateEasyRun = (
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createWorkoutText(wu, [s(`${duration}m`, "easy")], cd, 1, notes),
+    description: createWorkoutText(wu, [s(`${duration}m`, "easy", "Easy")], cd, 1, notes),
     external_id: `${ctx.prefix}-tue-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -214,7 +214,7 @@ const generateBonusRun = (
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Sat Bonus Easy ${ctx.prefix}`,
-    description: createWorkoutText(s("10m", "easy"), [s("30m", "easy")], s("5m", "easy"), 1, notes),
+    description: createWorkoutText(s("10m", "easy"), [s("30m", "easy", "Easy")], s("5m", "easy"), 1, notes),
     external_id: `${ctx.prefix}-sat-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -290,16 +290,16 @@ const generateLongRun = (
     const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(mainKm * 0.4));
     const easyBeforeKm = Math.floor((mainKm - rpBlockKm) / 2);
     const easyAfterKm = mainKm - rpBlockKm - easyBeforeKm;
-    mainSteps = [s(`${easyBeforeKm}km`, "easy"), s(`${rpBlockKm}km`, "steady"), s(`${easyAfterKm}km`, "easy")];
+    mainSteps = [s(`${easyBeforeKm}km`, "easy", "Easy"), s(`${rpBlockKm}km`, "steady", "Race Pace"), s(`${easyAfterKm}km`, "easy", "Easy")];
     notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
   } else if (longRunVariant === "progressive" && mainKm >= 4) {
     const easyKm = Math.ceil(mainKm * 0.5);
     const steadyKm = Math.max(Math.floor(mainKm * 0.3), 1);
     const tempoKm = mainKm - easyKm - steadyKm;
-    mainSteps = [s(`${easyKm}km`, "easy"), s(`${steadyKm}km`, "steady"), s(`${tempoKm}km`, "tempo")];
+    mainSteps = [s(`${easyKm}km`, "easy", "Easy"), s(`${steadyKm}km`, "steady", "Race Pace"), s(`${tempoKm}km`, "tempo", "Fast")];
     notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
-    mainSteps = [s(`${mainKm}km`, "easy")];
+    mainSteps = [s(`${mainKm}km`, "easy", "Easy")];
     if (isRecoveryWeek) {
       notes = "Recovery week long run — shorter distance to let your body absorb the training. Run the whole thing easy and enjoy being out there. No pace pressure today.";
     } else if (isTaper) {

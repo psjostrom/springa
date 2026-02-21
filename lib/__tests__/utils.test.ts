@@ -391,6 +391,30 @@ Cooldown
     expect(parseWorkoutSegments("Just a note")).toEqual([]);
     expect(parseWorkoutSegments("")).toEqual([]);
   });
+
+  it("parses distance intervals with decimal km and step labels", () => {
+    const desc = `Track-style reps.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 8x
+- Fast 0.8km 89-99% LTHR (150-167 bpm)
+- Walk 0.2km 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const segments = parseWorkoutSegments(desc);
+    // Warmup (10m) + 8 * (0.8km + 0.2km) + Cooldown (5m)
+    expect(segments.length).toBe(1 + 16 + 1);
+    // 0.8km at tempo pace (~4.89 min/km) ≈ 3.9m
+    expect(segments[1].duration).toBeGreaterThan(3);
+    expect(segments[1].duration).toBeLessThan(5);
+    // 0.2km at easy pace (~7 min/km) ≈ 1.4m
+    expect(segments[2].duration).toBeGreaterThan(1);
+    expect(segments[2].duration).toBeLessThan(2);
+  });
 });
 
 describe("estimateWorkoutDuration", () => {
@@ -638,6 +662,49 @@ Cooldown
   it("returns empty array for non-standard descriptions", () => {
     expect(parseWorkoutStructure("Just a note")).toEqual([]);
     expect(parseWorkoutStructure("")).toEqual([]);
+  });
+
+  it("parses distance intervals with decimal km values", () => {
+    const desc = `Track-style reps.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 8x
+- Fast 0.8km 89-99% LTHR (150-167 bpm)
+- Walk 0.2km 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(3);
+    const mainSet = sections[1];
+    expect(mainSet.name).toBe("Main set");
+    expect(mainSet.repeats).toBe(8);
+    expect(mainSet.steps).toHaveLength(2);
+    expect(mainSet.steps[0].duration).toBe("0.8km");
+    expect(mainSet.steps[0].zone).toBe("hard");
+    expect(mainSet.steps[1].duration).toBe("0.2km");
+  });
+
+  it("hides redundant step labels (Easy, Fast, Walk) but keeps Uphill/Downhill/Stride", () => {
+    const desc = `Notes.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- Uphill 2m 99-111% LTHR (167-188 bpm)
+- Easy 3m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const sections = parseWorkoutStructure(desc);
+    const mainSet = sections[1];
+    expect(mainSet.steps[0].label).toBe("Uphill");
+    expect(mainSet.steps[1].label).toBeUndefined(); // "Easy" filtered out
   });
 });
 
