@@ -59,8 +59,8 @@ const generateQualityRun = (
   const weekNum = weekIdx + 1;
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${weekNum.toString().padStart(2, "0")} Thu`;
-  const wu = s("10m", "easy");
-  const cd = s("5m", "easy");
+  const wu = s("10m", "easy", "Warmup");
+  const cd = s("5m", "easy", "Cooldown");
 
   const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
@@ -154,8 +154,8 @@ const generateEasyRun = (
       ? 20
       : 20 + Math.round(progress * 25);
 
-  const wu = s("10m", "easy");
-  const cd = s("5m", "easy");
+  const wu = s("10m", "easy", "Warmup");
+  const cd = s("5m", "easy", "Cooldown");
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
   const name = `W${weekNum.toString().padStart(2, "0")} Tue ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
@@ -214,7 +214,7 @@ const generateBonusRun = (
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Sat Bonus Easy ${ctx.prefix}`,
-    description: createWorkoutText(s("10m", "easy"), [s("30m", "easy", "Easy")], s("5m", "easy"), 1, notes),
+    description: createWorkoutText(s("10m", "easy", "Warmup"), [s("30m", "easy", "Easy")], s("5m", "easy", "Cooldown"), 1, notes),
     external_id: `${ctx.prefix}-sat-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -280,8 +280,8 @@ const generateLongRun = (
   }
 
   const mainKm = Math.max(km - 2, 1); // -1km WU, -1km CD
-  const wu = s("1km", "easy");
-  const cd = s("1km", "easy");
+  const wu = s("1km", "easy", "Warmup");
+  const cd = s("1km", "easy", "Cooldown");
 
   let mainSteps: string[];
   let notes: string;

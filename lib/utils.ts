@@ -164,7 +164,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   if (!description) return [];
 
   const sections: WorkoutSection[] = [];
-  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
 
   // Split into section blocks
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
@@ -198,7 +198,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
       if (stepMatch) {
         const maxPct = parseInt(stepMatch[4], 10);
         steps.push({
-          label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
+          label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval", "Warmup", "Cooldown"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
           duration: stepMatch[2],
           zone: classifyZone(maxPct),
           bpmRange: stepMatch[5],
