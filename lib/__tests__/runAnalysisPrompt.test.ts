@@ -243,11 +243,41 @@ describe("buildRunAnalysisPrompt", () => {
     expect(user).not.toContain("## HR Zone Compliance");
   });
 
-  it("system prompt contains pace zones and LTHR", () => {
+  it("system prompt contains pace zones, LTHR, and T1D safety rules", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
 
     expect(system).toContain("LTHR: 169");
-    expect(system).toContain("Easy 7:00-7:30/km");
+    expect(system).toContain("Easy: 7:00-7:30/km");
     expect(system).toContain("pump-off");
+    expect(system).toContain("NEVER suggest \"reducing carbs\"");
+    expect(system).toContain("MORE carbs, not fewer");
+  });
+
+  it("system prompt explains category-to-zone mapping", () => {
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+
+    expect(system).toContain("\"easy\" or \"long\" → should be in Z2");
+    expect(system).toContain("Avg HR above 132 means too hard");
+    expect(system).toContain("\"interval\" → main set in Z4");
+  });
+
+  it("system prompt connects intensity to BG drop", () => {
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+
+    expect(system).toContain("Higher intensity (higher HR zone) = MORE glucose uptake = FASTER BG drop");
+  });
+
+  it("system prompt has fuel adjustment guidance", () => {
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+
+    expect(system).toContain("grams of carbs per 10 minutes");
+    expect(system).toContain("+2g per 10min");
+  });
+
+  it("system prompt flags low start BG as risk", () => {
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+
+    expect(system).toContain("Starting below 9 is a risk factor");
+    expect(system).toContain("Below 8 is a serious concern");
   });
 });

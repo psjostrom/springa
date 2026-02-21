@@ -1,33 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
-// --- In-memory Redis mock (mimics Upstash JSON serialization) ---
-const store = new Map<string, string>();
-const mockGet = vi.fn((key: string) => {
-  const val = store.get(key);
-  return Promise.resolve(val !== undefined ? JSON.parse(val) : null);
-});
-const mockSet = vi.fn((key: string, value: unknown) => {
-  store.set(key, JSON.stringify(value));
-  return Promise.resolve("OK");
-});
-const mockDel = vi.fn((...keys: string[]) => {
-  for (const k of keys) store.delete(k);
-  return Promise.resolve(keys.length);
-});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { holder } = vi.hoisted(() => ({ holder: { db: null as any } }));
 
-vi.mock("@upstash/redis", () => ({
-  Redis: class {
-    get = mockGet;
-    set = mockSet;
-    del = mockDel;
-  },
-}));
+vi.mock("@libsql/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@libsql/client")>();
+  holder.db = actual.createClient({ url: "file::memory:" });
+  return { ...actual, createClient: () => holder.db };
+});
 
 const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => mockAuth() }));
-
-process.env.KV_REST_API_URL = "https://fake.upstash.io";
-process.env.KV_REST_API_TOKEN = "fake-token";
 
 import {
   saveXdripAuth,
@@ -35,6 +18,7 @@ import {
   getXdripReadings,
   monthKey,
   sha1,
+  SCHEMA_DDL,
 } from "../settings";
 import { POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as xdripGET } from "@/app/api/xdrip/route";
@@ -88,11 +72,36 @@ function putBGCache(body: unknown) {
   );
 }
 
-beforeEach(() => {
-  store.clear();
-  mockGet.mockClear();
-  mockSet.mockClear();
-  mockDel.mockClear();
+const testDb = () => holder.db;
+
+async function countReadings(email: string, month?: string): Promise<number> {
+  if (month) {
+    const [y, mo] = month.split("-").map(Number);
+    const start = Date.UTC(y, mo - 1, 1);
+    const end = Date.UTC(y, mo, 1);
+    const result = await testDb().execute({
+      sql: "SELECT COUNT(*) as cnt FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts < ?",
+      args: [email, start, end],
+    });
+    return result.rows[0].cnt as number;
+  }
+  const result = await testDb().execute({
+    sql: "SELECT COUNT(*) as cnt FROM xdrip_readings WHERE email = ?",
+    args: [email],
+  });
+  return result.rows[0].cnt as number;
+}
+
+beforeAll(async () => {
+  await testDb().executeMultiple(SCHEMA_DDL);
+});
+
+beforeEach(async () => {
+  await testDb().execute("DELETE FROM user_settings");
+  await testDb().execute("DELETE FROM xdrip_auth");
+  await testDb().execute("DELETE FROM xdrip_readings");
+  await testDb().execute("DELETE FROM bg_cache");
+  await testDb().execute("DELETE FROM run_analysis");
   mockAuth.mockReset();
 });
 
@@ -120,10 +129,8 @@ describe("end-to-end: settings → entries → xDrip GET", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).count).toBe(3);
 
-    // 4. Verify correct shard in store
-    expect(store.has(`xdrip:${EMAIL}:2026-02`)).toBe(true);
-    const shard = JSON.parse(store.get(`xdrip:${EMAIL}:2026-02`)!);
-    expect(shard).toHaveLength(3);
+    // 4. Verify readings stored in DB
+    expect(await countReadings(EMAIL, "2026-02")).toBe(3);
 
     // 5. GET readings back via xDrip route
     const getRes = await xdripGET();
@@ -138,8 +145,8 @@ describe("end-to-end: settings → entries → xDrip GET", () => {
 // ---------------------------------------------------------------------------
 // Cross-month sharding
 // ---------------------------------------------------------------------------
-describe("entries route: cross-month sharding", () => {
-  it("splits readings into separate monthly shards", async () => {
+describe("entries route: cross-month storage", () => {
+  it("stores readings from different months correctly", async () => {
     await saveXdripAuth(EMAIL, SECRET);
     const hash = sha1(SECRET);
 
@@ -151,10 +158,8 @@ describe("entries route: cross-month sharding", () => {
     ]);
     expect(res.status).toBe(200);
 
-    const jan = JSON.parse(store.get(`xdrip:${EMAIL}:2026-01`)!);
-    const feb = JSON.parse(store.get(`xdrip:${EMAIL}:2026-02`)!);
-    expect(jan).toHaveLength(2);
-    expect(feb).toHaveLength(2);
+    expect(await countReadings(EMAIL, "2026-01")).toBe(2);
+    expect(await countReadings(EMAIL, "2026-02")).toBe(2);
   });
 
   it("handles year rollover (Dec → Jan)", async () => {
@@ -166,8 +171,8 @@ describe("entries route: cross-month sharding", () => {
       reading(150, "2026-01-01T00:05:00Z"),
     ]);
 
-    expect(store.has(`xdrip:${EMAIL}:2025-12`)).toBe(true);
-    expect(store.has(`xdrip:${EMAIL}:2026-01`)).toBe(true);
+    expect(await countReadings(EMAIL, "2025-12")).toBe(1);
+    expect(await countReadings(EMAIL, "2026-01")).toBe(1);
   });
 });
 
@@ -188,8 +193,7 @@ describe("entries route: dedup and merge", () => {
       reading(155, "2026-02-20T10:05:00Z"),
     ]);
 
-    const shard = JSON.parse(store.get(`xdrip:${EMAIL}:2026-02`)!);
-    expect(shard).toHaveLength(2);
+    expect(await countReadings(EMAIL, "2026-02")).toBe(2);
   });
 
   it("merges new readings with existing and sorts chronologically", async () => {
@@ -204,10 +208,10 @@ describe("entries route: dedup and merge", () => {
       reading(155, "2026-02-20T10:05:00Z"), // between existing
     ]);
 
-    const shard = JSON.parse(store.get(`xdrip:${EMAIL}:2026-02`)!);
-    expect(shard).toHaveLength(3);
-    expect(shard[0].ts).toBeLessThan(shard[1].ts);
-    expect(shard[1].ts).toBeLessThan(shard[2].ts);
+    const readings = await getXdripReadings(EMAIL, ["2026-02"]);
+    expect(readings).toHaveLength(3);
+    expect(readings[0].ts).toBeLessThan(readings[1].ts);
+    expect(readings[1].ts).toBeLessThan(readings[2].ts);
   });
 });
 
@@ -266,28 +270,24 @@ describe("auth rejection", () => {
 // Default month range for getXdripReadings
 // ---------------------------------------------------------------------------
 describe("getXdripReadings default range", () => {
-  it("reads current + previous month, ignores older shards", async () => {
+  it("reads current + previous month, ignores older data", async () => {
     const now = new Date();
-    const curMonth = monthKey(now.getTime());
     const prev = new Date(now);
     prev.setMonth(prev.getMonth() - 1);
-    const prevMonth = monthKey(prev.getTime());
     const old = new Date(now);
     old.setMonth(old.getMonth() - 3);
-    const oldMonth = monthKey(old.getTime());
 
-    store.set(
-      `xdrip:${EMAIL}:${curMonth}`,
-      JSON.stringify([{ sgv: 145, mmol: 8.0, ts: now.getTime(), direction: "Flat" }]),
-    );
-    store.set(
-      `xdrip:${EMAIL}:${prevMonth}`,
-      JSON.stringify([{ sgv: 140, mmol: 7.8, ts: prev.getTime(), direction: "Flat" }]),
-    );
-    store.set(
-      `xdrip:${EMAIL}:${oldMonth}`,
-      JSON.stringify([{ sgv: 200, mmol: 11.1, ts: old.getTime(), direction: "Flat" }]),
-    );
+    // Insert readings across three different months
+    for (const [ts, sgv, mmol] of [
+      [now.getTime(), 145, 8.0],
+      [prev.getTime(), 140, 7.8],
+      [old.getTime(), 200, 11.1],
+    ] as [number, number, number][]) {
+      await testDb().execute({
+        sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+        args: [EMAIL, ts, mmol, sgv, "Flat"],
+      });
+    }
 
     const readings = await getXdripReadings(EMAIL);
     expect(readings).toHaveLength(2);
@@ -295,18 +295,14 @@ describe("getXdripReadings default range", () => {
   });
 
   it("reads specific months when provided", async () => {
-    store.set(
-      `xdrip:${EMAIL}:2025-06`,
-      JSON.stringify([
-        { sgv: 145, mmol: 8.0, ts: new Date("2025-06-15").getTime(), direction: "Flat" },
-      ]),
-    );
-    store.set(
-      `xdrip:${EMAIL}:2025-07`,
-      JSON.stringify([
-        { sgv: 150, mmol: 8.3, ts: new Date("2025-07-15").getTime(), direction: "Flat" },
-      ]),
-    );
+    await testDb().execute({
+      sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, new Date("2025-06-15").getTime(), 8.0, 145, "Flat"],
+    });
+    await testDb().execute({
+      sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, new Date("2025-07-15").getTime(), 8.3, 150, "Flat"],
+    });
 
     const readings = await getXdripReadings(EMAIL, ["2025-06"]);
     expect(readings).toHaveLength(1);
@@ -411,7 +407,7 @@ describe("bg-cache route", () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 describe("edge cases", () => {
-  it("entries POST with empty array returns count 0, no shards written", async () => {
+  it("entries POST with empty array returns count 0, no readings written", async () => {
     await saveXdripAuth(EMAIL, SECRET);
     const hash = sha1(SECRET);
 
@@ -419,9 +415,7 @@ describe("edge cases", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).count).toBe(0);
 
-    // No xdrip shard keys written
-    const shardKeys = [...store.keys()].filter((k) => k.startsWith("xdrip:runner"));
-    expect(shardKeys).toHaveLength(0);
+    expect(await countReadings(EMAIL)).toBe(0);
   });
 
   it("xDrip GET with no readings returns empty + null trend", async () => {
