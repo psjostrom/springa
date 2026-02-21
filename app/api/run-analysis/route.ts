@@ -1,10 +1,10 @@
 import { generateText } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
 import {
-  getUserSettings,
   getRunAnalysis,
   saveRunAnalysis,
+  getRecentRunSummaries,
 } from "@/lib/settings";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { NextResponse } from "next/server";
@@ -26,13 +26,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const settings = await getUserSettings(session.user.email);
-  const aiKey =
-    settings.googleAiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!aiKey) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
     return NextResponse.json(
-      { error: "No Google AI API key configured." },
-      { status: 400 },
+      { error: "ANTHROPIC_API_KEY not configured." },
+      { status: 500 },
     );
   }
 
@@ -57,16 +55,19 @@ export async function POST(req: Request) {
     }
   }
 
+  const history = await getRecentRunSummaries(session.user.email);
+
   const { system, user } = buildRunAnalysisPrompt({
     event,
     runBGContext,
     reportCard,
+    history,
   });
 
-  const google = createGoogleGenerativeAI({ apiKey: aiKey });
+  const anthropic = createAnthropic({ apiKey });
 
   const result = await generateText({
-    model: google("gemini-2.0-flash"),
+    model: anthropic("claude-sonnet-4-6"),
     system,
     messages: [{ role: "user", content: user }],
   });

@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
+import type { RunSummary } from "./settings";
 
 function formatPace(minPerKm: number): string {
   const mins = Math.floor(minPerKm);
@@ -24,15 +25,31 @@ export function buildRunAnalysisPrompt(params: {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
+  history?: RunSummary[];
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard } = params;
+  const { event, runBGContext, reportCard, history } = params;
 
-  const system = `You are an expert running coach for a Type 1 Diabetic runner. Analyze this completed run and provide actionable insights.
+  const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 
 Runner profile:
-- Type 1 Diabetic, insulin pump disconnected for ALL runs (pump-off)
+- Type 1 Diabetic, insulin pump OFF for all runs (zero insulin delivery)
 - LTHR: 169 bpm, Max HR: 187 bpm
 - Target start BG: ~10 mmol/L
+
+CRITICAL T1D physiology:
+- Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise.
+- Higher intensity = more glucose uptake = faster BG drop.
+- Carbs are the ONLY tool to slow/reverse BG drops. More carbs = slower drop.
+- NEVER suggest reducing carbs to prevent BG dropping. That is backwards and dangerous.
+- Hypo (<3.9 mmol/L) is the primary safety risk.
+- Starting below 9 is a risk factor. Below 8 is a serious concern.
+- A gentle decline (e.g. -0.5/10min) staying above 5.0 is a GOOD outcome.
+
+Data integrity:
+- Only reference data explicitly provided in the run data below.
+- If a data section is missing, skip it entirely.
+- Never estimate, assume, or infer missing values.
+- Never fabricate numbers or percentages.
 
 Pace zones:
 - Easy: 7:00-7:30/km (Z2, 112-132 bpm)
@@ -40,39 +57,24 @@ Pace zones:
 - Interval: 5:05-5:20/km (Z4, 150-167 bpm)
 - Hard: <5:00/km (Z5, 167-188 bpm)
 
-Workout categories and expected zones:
-- "easy" or "long" → should be in Z2 the entire time. Avg HR above 132 means too hard.
-- "interval" → main set in Z4, warmup/cooldown in Z2.
-- "race" → race pace blocks in Z3, easy sections in Z2.
-If avg HR doesn't match the category, that's a key finding — call it out.
+Category expectations:
+- "easy"/"long" → Z2 entire time. Avg HR >132 = too hard.
+- "interval" → main set Z4, warmup/cooldown Z2.
+- "race" → race pace blocks Z3, easy Z2.
+If avg HR doesn't match category, call it out.
 
-CRITICAL — T1D exercise physiology (you MUST understand this):
-- The insulin pump is OFF during runs. There is ZERO insulin delivery.
-- Without insulin, the ONLY factor lowering BG during exercise is muscle glucose uptake from the exercise itself.
-- Higher intensity (higher HR zone) = MORE glucose uptake = FASTER BG drop. Connect HR data to BG behavior.
-- Carbs eaten during the run are the ONLY tool to COUNTERACT BG dropping. Carbs RAISE BG / slow the drop.
-- Therefore: if BG drops too fast → the runner needs MORE carbs, not fewer.
-- NEVER suggest "reducing carbs" to prevent BG from dropping. That is backwards and dangerous. Less carbs = faster BG drop.
-- Hypo (<3.9 mmol/L) is the primary safety risk. The fueling strategy exists to prevent it.
-- A gentle, steady BG decline (e.g. -0.5 mmol/L per 10min) that stays above 5.0 is a GOOD outcome.
-- Starting at 10 and ending at 6-7 after a 30-40 min run is typical and fine.
-- Starting below 9 is a risk factor — flag it clearly. Below 8 is a serious concern.
+Output format (bullet points only, max 150 words):
 
-Fuel guidance:
-- Fuel rate is measured in grams of carbs per 10 minutes.
-- If BG dropped too fast, suggest increasing fuel by a specific amount (e.g. "+2g per 10min").
-- If BG was stable or rose, current fueling is working — say so briefly and move on.
+**Alerts** (only if applicable — omit section entirely if none):
+- Hypo events, post-run crashes, dangerously low start BG (<8), fast BG drops
 
-Instructions:
-- Write 3-5 short, dense paragraphs in second person ("You started with...")
-- First paragraph: what happened (BG trajectory, pacing, HR — connect them)
-- Second paragraph: what went well (be specific, not generic)
-- Third paragraph: what to change next time with concrete numbers (pace, fuel rate, start BG)
-- No filler. Every sentence must contain data or a specific recommendation.
-- Keep it under 200 words total
-- Use mmol/L, km, /km for units
-- Default to English
-- Never invent data not provided`;
+**Key Metrics**:
+- BG trajectory, HR zone compliance, fuel adherence — connect HR to BG behavior
+
+**Next Time**:
+- Concrete adjustments with specific numbers (pace, fuel rate, start BG target)
+
+Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
 
   // Build structured user prompt
   const lines: string[] = [];
@@ -165,6 +167,23 @@ Instructions:
     lines.push("## Glucose Curve");
     lines.push(`Start: ${startVal.toFixed(1)}, Min: ${minVal.toFixed(1)}, Max: ${maxVal.toFixed(1)}, End: ${endVal.toFixed(1)} mmol/L`);
     lines.push(`Points: ${g.length}`);
+  }
+
+  // Rolling run history
+  if (history && history.length > 0) {
+    lines.push("");
+    lines.push("## Recent Run History (newest first)");
+    lines.push("Use this to identify patterns across runs (e.g. consistently too hard, always dropping fast, fuel trends).");
+    lines.push("");
+    lines.push("| Category | Start BG | End BG | Drop/10m | Avg HR | Fuel g/h |");
+    lines.push("|----------|----------|--------|----------|--------|----------|");
+    for (const r of history) {
+      const endBG = r.endBG != null ? r.endBG.toFixed(1) : "-";
+      const drop = r.dropRate != null ? r.dropRate.toFixed(2) : "-";
+      const hr = r.avgHR != null ? String(r.avgHR) : "-";
+      const fuel = r.fuelRate != null ? String(Math.round(r.fuelRate)) : "-";
+      lines.push(`| ${r.category} | ${r.startBG.toFixed(1)} | ${endBG} | ${drop} | ${hr} | ${fuel} |`);
+    }
   }
 
   lines.push("");

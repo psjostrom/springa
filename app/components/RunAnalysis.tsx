@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { buildReportCard } from "@/lib/reportCard";
@@ -90,15 +91,8 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
       ) : error ? (
         <div className="text-sm text-[#b8a5d4] italic">{error}</div>
       ) : analysis ? (
-        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3">
-          {analysis.split("\n\n").map((paragraph, i) => (
-            <p
-              key={i}
-              className={`text-sm text-[#e2d9f3] leading-relaxed ${i > 0 ? "mt-2" : ""}`}
-            >
-              {paragraph}
-            </p>
-          ))}
+        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 text-sm text-[#e2d9f3] leading-relaxed prose-analysis">
+          <ReactMarkdown>{analysis}</ReactMarkdown>
         </div>
       ) : null}
     </div>

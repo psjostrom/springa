@@ -1,7 +1,6 @@
 import { streamText } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
-import { getUserSettings } from "@/lib/settings";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -10,18 +9,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const settings = await getUserSettings(session.user.email);
-  const aiKey = settings.googleAiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!aiKey) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
     return NextResponse.json(
-      { error: "No Google AI API key configured." },
-      { status: 400 },
+      { error: "ANTHROPIC_API_KEY not configured." },
+      { status: 500 },
     );
   }
 
   const { messages, context } = await req.json();
 
-  const google = createGoogleGenerativeAI({ apiKey: aiKey });
+  const anthropic = createAnthropic({ apiKey });
 
   // Convert UI messages (parts format) to core messages (content format)
   const coreMessages = messages.map((m: { role: string; parts?: { type: string; text?: string }[]; content?: string }) => ({
@@ -30,7 +28,7 @@ export async function POST(req: Request) {
   }));
 
   const result = streamText({
-    model: google("gemini-2.0-flash"),
+    model: anthropic("claude-sonnet-4-6"),
     system: context || undefined,
     messages: coreMessages,
   });

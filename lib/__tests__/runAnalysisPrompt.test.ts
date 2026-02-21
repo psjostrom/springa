@@ -91,7 +91,7 @@ describe("buildRunAnalysisPrompt", () => {
     });
 
     expect(result.system).toContain("Type 1 Diabetic");
-    expect(result.system).toContain("200 words");
+    expect(result.system).toContain("150 words");
     expect(result.user).toContain("W05 Tue Easy eco16");
   });
 
@@ -248,30 +248,30 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(system).toContain("LTHR: 169");
     expect(system).toContain("Easy: 7:00-7:30/km");
-    expect(system).toContain("pump-off");
-    expect(system).toContain("NEVER suggest \"reducing carbs\"");
-    expect(system).toContain("MORE carbs, not fewer");
+    expect(system).toContain("pump OFF");
+    expect(system).toContain("NEVER suggest reducing carbs");
+    expect(system).toContain("More carbs = slower drop");
   });
 
   it("system prompt explains category-to-zone mapping", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
 
-    expect(system).toContain("\"easy\" or \"long\" → should be in Z2");
-    expect(system).toContain("Avg HR above 132 means too hard");
-    expect(system).toContain("\"interval\" → main set in Z4");
+    expect(system).toContain("\"easy\"/\"long\" → Z2 entire time");
+    expect(system).toContain("Avg HR >132 = too hard");
+    expect(system).toContain("\"interval\" → main set Z4");
   });
 
   it("system prompt connects intensity to BG drop", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
 
-    expect(system).toContain("Higher intensity (higher HR zone) = MORE glucose uptake = FASTER BG drop");
+    expect(system).toContain("Higher intensity = more glucose uptake = faster BG drop");
   });
 
   it("system prompt has fuel adjustment guidance", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
 
-    expect(system).toContain("grams of carbs per 10 minutes");
-    expect(system).toContain("+2g per 10min");
+    expect(system).toContain("Carbs are the ONLY tool to slow/reverse BG drops");
+    expect(system).toContain("fuel rate");
   });
 
   it("system prompt flags low start BG as risk", () => {

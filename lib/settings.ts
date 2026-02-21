@@ -258,6 +258,62 @@ export async function saveXdripReadings(
   }
 }
 
+// --- Run history summaries ---
+
+export interface RunSummary {
+  activityId: string;
+  category: string;
+  fuelRate: number | null;
+  startBG: number;
+  endBG: number | null;
+  avgHR: number | null;
+  dropRate: number | null; // mmol/L per 10min
+}
+
+export async function getRecentRunSummaries(
+  email: string,
+  limit: number = 10,
+): Promise<RunSummary[]> {
+  const result = await db().execute({
+    sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.start_bg, b.glucose, b.hr
+          FROM bg_cache b
+          INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
+          WHERE b.email = ?
+          ORDER BY b.ROWID DESC
+          LIMIT ?`,
+    args: [email, limit],
+  });
+
+  return result.rows.map((r) => {
+    const glucose: { time: number; value: number }[] = JSON.parse(r.glucose as string);
+    const hr: { time: number; value: number }[] = JSON.parse(r.hr as string);
+
+    const endBG = glucose.length > 0 ? glucose[glucose.length - 1].value : null;
+    const avgHR = hr.length > 0
+      ? Math.round(hr.reduce((s, p) => s + p.value, 0) / hr.length)
+      : null;
+
+    let dropRate: number | null = null;
+    if (glucose.length >= 2) {
+      const durationSec = glucose[glucose.length - 1].time - glucose[0].time;
+      const duration10m = durationSec / 600;
+      if (duration10m > 0) {
+        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
+      }
+    }
+
+    return {
+      activityId: r.activity_id as string,
+      category: r.category as string,
+      fuelRate: r.fuel_rate as number | null,
+      startBG: r.start_bg as number,
+      endBG,
+      avgHR,
+      dropRate,
+    };
+  });
+}
+
 // --- Run analysis cache ---
 
 export async function getRunAnalysis(

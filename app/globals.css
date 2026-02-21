@@ -74,6 +74,13 @@ body {
   border-radius: 0.375rem;
 }
 
+/* Run analysis markdown */
+.prose-analysis p { margin-top: 0.5rem; }
+.prose-analysis p:first-child { margin-top: 0; }
+.prose-analysis strong { color: #c4b5fd; }
+.prose-analysis ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.25rem; }
+.prose-analysis li { margin-top: 0.125rem; }
+
 /* Suppress mobile tap highlight on interactive charts */
 .no-tap-highlight,
 .no-tap-highlight * {
