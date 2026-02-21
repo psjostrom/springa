@@ -26,6 +26,7 @@ export interface CachedActivity {
   startBG: number;
   glucose: { time: number; value: number }[];
   hr: { time: number; value: number }[];
+  runBGContext?: import("./runBGContext").RunBGContext | null;
 }
 
 function key(email: string) {
@@ -128,6 +129,27 @@ export async function getXdripReadings(
   );
 
   return results.flatMap((r) => r ?? []).sort((a, b) => a.ts - b.ts);
+}
+
+// --- Run analysis cache ---
+
+function runAnalysisKey(email: string, activityId: string) {
+  return `run-analysis:${email}:${activityId}`;
+}
+
+export async function getRunAnalysis(
+  email: string,
+  activityId: string,
+): Promise<string | null> {
+  return redis().get<string>(runAnalysisKey(email, activityId));
+}
+
+export async function saveRunAnalysis(
+  email: string,
+  activityId: string,
+  text: string,
+): Promise<void> {
+  await redis().set(runAnalysisKey(email, activityId), text);
 }
 
 /** Save readings into their monthly shards. Merges with existing data per shard. */

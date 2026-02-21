@@ -54,4 +54,9 @@ export const handlers = [
   http.get(`${API_BASE}/activity/:activityId/streams`, () => {
     return HttpResponse.json(sampleStreams);
   }),
+
+  // POST run analysis (LLM-generated post-run analysis)
+  http.post("/api/run-analysis", () => {
+    return HttpResponse.json({ analysis: "Test analysis." });
+  }),
 ];

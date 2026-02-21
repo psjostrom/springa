@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
+import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
 import { parseEventId, formatPace } from "@/lib/utils";
 import { getEventStyle } from "@/lib/eventStyles";
@@ -10,6 +11,7 @@ import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
 import { RunReportCard } from "./RunReportCard";
+import { RunAnalysis } from "./RunAnalysis";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { HRMiniChart } from "./HRMiniChart";
 
@@ -57,6 +59,7 @@ interface EventModalProps {
   /** Only relevant for completed events — shows a spinner while stream data loads. */
   isLoadingStreamData?: boolean;
   apiKey: string;
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
 export function EventModal({
@@ -66,6 +69,7 @@ export function EventModal({
   onDelete,
   isLoadingStreamData,
   apiKey,
+  runBGContexts,
 }: EventModalProps) {
   type ActionMode = "idle" | "editing" | "saving" | "confirming-delete" | "deleting";
   const [actionMode, setActionMode] = useState<ActionMode>("idle");
@@ -354,7 +358,12 @@ export function EventModal({
             </div>
 
             {/* Report Card */}
-            <RunReportCard event={selectedEvent} isLoadingStreamData={isLoadingStreamData} />
+            <RunReportCard event={selectedEvent} isLoadingStreamData={isLoadingStreamData} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} />
+
+            {/* Run Analysis */}
+            {selectedEvent.activityId && (
+              <RunAnalysis event={selectedEvent} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} />
+            )}
 
             {/* Carbs ingested */}
             <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">

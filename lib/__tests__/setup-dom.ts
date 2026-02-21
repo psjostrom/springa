@@ -83,6 +83,8 @@ vi.mock("lucide-react", () => {
     ChevronDown: icon("ChevronDown"),
     Info: icon("Info"),
     Pencil: icon("Pencil"),
+    Sparkles: icon("Sparkles"),
+    RefreshCw: icon("RefreshCw"),
   };
 });
 
