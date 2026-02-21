@@ -13,6 +13,7 @@ import { useBGModel } from "./hooks/useBGModel";
 import { useCurrentBG } from "./hooks/useCurrentBG";
 import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
+import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { Settings } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
@@ -123,7 +124,10 @@ function HomeContent() {
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
   // Live BG from xDrip
-  const { currentBG, trend, lastUpdate } = useCurrentBG();
+  const { currentBG, trend, lastUpdate, readings } = useCurrentBG();
+
+  // BG graph popover
+  const [showBGGraph, setShowBGGraph] = useState(false);
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
@@ -155,7 +159,7 @@ function HomeContent() {
           </h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
-            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} />
+            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={() => setShowBGGraph(true)} />
             <button
               onClick={() => setShowSettings(true)}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
@@ -198,6 +202,14 @@ function HomeContent() {
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-16 md:hidden flex-shrink-0" />
+
+      {showBGGraph && readings.length > 0 && (
+        <BGGraphPopover
+          readings={readings}
+          trend={trend}
+          onClose={() => setShowBGGraph(false)}
+        />
+      )}
 
       {showSettings && settings && (
         <SettingsModal

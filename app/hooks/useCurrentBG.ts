@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, useRef, useEffect } from "react";
+import type { XdripReading } from "@/lib/xdrip";
 
 interface CurrentBGData {
   currentBG: number | null;
@@ -8,6 +9,7 @@ interface CurrentBGData {
   trendSlope: number | null;
   lastUpdate: Date | null;
   loading: boolean;
+  readings: XdripReading[];
 }
 
 const POLL_INTERVAL = 60_000;
@@ -18,6 +20,7 @@ const EMPTY: CurrentBGData = {
   trendSlope: null,
   lastUpdate: null,
   loading: true,
+  readings: [],
 };
 
 function createBGStore() {
@@ -38,8 +41,10 @@ function createBGStore() {
       }
       const json = await res.json();
 
+      const readings: XdripReading[] = json.readings ?? [];
+
       if (!json.current) {
-        set({ currentBG: null, trend: null, trendSlope: null, lastUpdate: null, loading: false });
+        set({ currentBG: null, trend: null, trendSlope: null, lastUpdate: null, loading: false, readings });
         return;
       }
 
@@ -49,6 +54,7 @@ function createBGStore() {
         trendSlope: json.trend?.slope ?? null,
         lastUpdate: new Date(json.current.ts),
         loading: false,
+        readings,
       });
     } catch {
       set({ ...data, loading: false });

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-function bgColor(mmol: number): string {
+export function bgColor(mmol: number): string {
   if (mmol < 3.5 || mmol > 14.0) return "#ff3366";
   if (mmol < 4.0 || mmol > 10.0) return "#fbbf24";
   return "#39ff14";
@@ -19,12 +19,14 @@ interface CurrentBGPillProps {
   currentBG: number | null;
   trend: string | null;
   lastUpdate: Date | null;
+  onClick?: () => void;
 }
 
 export function CurrentBGPill({
   currentBG,
   trend,
   lastUpdate,
+  onClick,
 }: CurrentBGPillProps) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -41,8 +43,9 @@ export function CurrentBGPill({
   const color = bgColor(currentBG);
 
   return (
-    <div
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold border"
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold border transition-transform hover:scale-105 active:scale-95"
       style={{
         color,
         borderColor: color + "40",
@@ -58,6 +61,6 @@ export function CurrentBGPill({
       >
         {relativeTime(lastUpdate, now)}
       </span>
-    </div>
+    </button>
   );
 }
