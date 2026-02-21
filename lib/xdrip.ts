@@ -1,10 +1,20 @@
 // --- Types ---
+//
+// IMPORTANT: xDrip+ companion mode (used when CGM is connected to CamAPS FX
+// or similar AID) returns WRONG direction and delta fields. The direction lags
+// behind actual sgv changes by 2-3 readings (~10-15 min), measured at a 31%
+// mismatch rate across 550 readings. BG can be rising while direction still
+// says "FortyFiveDown". See: github.com/NightscoutFoundation/xDrip/issues/3787
+//
+// We NEVER trust the direction field from xDrip+. On ingestion, we recompute
+// direction from adjacent sgv values via recomputeDirections(). The Garmin
+// apps (SugarRun, SugarWave) do the same computation on-device.
 
 export interface XdripReading {
   sgv: number; // mg/dL (raw from Nightscout)
   mmol: number; // converted to mmol/L
   ts: number; // timestamp ms
-  direction: string; // Nightscout trend string
+  direction: string; // recomputed from sgv — NOT from xDrip+ API
 }
 
 // --- Nightscout direction → arrow ---
@@ -58,6 +68,42 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
   }
 
   return readings;
+}
+
+// --- Recompute direction from sgv values ---
+// xDrip+ companion mode returns stale/wrong direction fields (~31% error rate).
+// See: https://github.com/NightscoutFoundation/xDrip/issues/3787
+// This function recomputes direction for each reading from adjacent sgv values,
+// using the same mg/dL-per-5-min thresholds as SuperStable/xDrip+ internals.
+
+function directionFromDelta(deltaMgdlPer5min: number): string {
+  if (deltaMgdlPer5min <= -17.5) return "DoubleDown";
+  if (deltaMgdlPer5min <= -10) return "SingleDown";
+  if (deltaMgdlPer5min <= -5) return "FortyFiveDown";
+  if (deltaMgdlPer5min <= 5) return "Flat";
+  if (deltaMgdlPer5min <= 10) return "FortyFiveUp";
+  if (deltaMgdlPer5min <= 17.5) return "SingleUp";
+  return "DoubleUp";
+}
+
+export function recomputeDirections(readings: XdripReading[]): void {
+  for (let i = 0; i < readings.length; i++) {
+    if (i === 0) {
+      readings[i].direction = "NONE";
+      continue;
+    }
+    const prev = readings[i - 1];
+    const curr = readings[i];
+    const dtMs = curr.ts - prev.ts;
+    if (dtMs <= 0 || dtMs > 600000) {
+      // Gap > 10 min or invalid — can't compute reliably
+      readings[i].direction = "NONE";
+      continue;
+    }
+    const rawDelta = curr.sgv - prev.sgv;
+    const deltaPer5min = rawDelta / (dtMs / 300000);
+    readings[i].direction = directionFromDelta(deltaPer5min);
+  }
 }
 
 // --- Trend computation from stored readings ---

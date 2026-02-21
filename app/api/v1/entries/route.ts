@@ -5,7 +5,7 @@ import {
   saveXdripReadings,
   monthKey,
 } from "@/lib/settings";
-import { parseNightscoutEntries } from "@/lib/xdrip";
+import { parseNightscoutEntries, recomputeDirections } from "@/lib/xdrip";
 
 export async function POST(req: Request) {
   const apiSecret = req.headers.get("api-secret");
@@ -41,6 +41,10 @@ export async function POST(req: Request) {
 
   // Sort chronologically
   deduped.sort((a, b) => a.ts - b.ts);
+
+  // Recompute direction from sgv values — xDrip+ companion mode
+  // returns stale/wrong direction fields (issue #3787)
+  recomputeDirections(deduped);
 
   // Save back into monthly shards
   await saveXdripReadings(email, deduped);

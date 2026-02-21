@@ -17,14 +17,17 @@ export async function GET() {
   const trend = computeTrend(readings);
   const latest = readings[readings.length - 1];
 
+  // Prefer computed trend direction over stored per-reading direction
+  const currentDirection = trend?.direction ?? latest.direction;
+
   return NextResponse.json({
     readings,
     current: {
       mmol: latest.mmol,
       sgv: latest.sgv,
       ts: latest.ts,
-      direction: latest.direction,
-      arrow: trendArrow(trend?.direction ?? latest.direction),
+      direction: currentDirection,
+      arrow: trendArrow(currentDirection),
     },
     trend: trend
       ? {

@@ -35,7 +35,7 @@ export function CurrentBGPill({
     return () => clearInterval(id);
   }, []);
 
-  if (currentBG === null || lastUpdate === null) return null;
+  if (currentBG == null || lastUpdate == null) return null;
 
   // Don't show stale data (>15 min old)
   if (now - lastUpdate.getTime() > 15 * 60 * 1000) return null;
