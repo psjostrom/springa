@@ -1,8 +1,9 @@
 import { format, subDays, addDays, startOfDay } from "date-fns";
-import type { CalendarEvent } from "./types";
+import type { CalendarEvent, WorkoutCategory } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
+import type { RunBGContext } from "./runBGContext";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
@@ -14,6 +15,7 @@ interface CoachContext {
   trendArrow?: string | null;
   lastUpdate?: Date | null;
   readings?: XdripReading[];
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
 function formatPace(minPerKm: number): string {
@@ -43,7 +45,11 @@ function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { star
   return result;
 }
 
-function summarizeCompletedWorkouts(events: CalendarEvent[], bgModel: BGResponseModel | null): string {
+function summarizeCompletedWorkouts(
+  events: CalendarEvent[],
+  bgModel: BGResponseModel | null,
+  runBGContexts?: Map<string, RunBGContext>,
+): string {
   const today = startOfDay(new Date());
   const cutoff = subDays(today, 14);
 
@@ -76,9 +82,74 @@ function summarizeCompletedWorkouts(events: CalendarEvent[], bgModel: BGResponse
         bgText += ` | BG rate ${sign}${bg.avgRate.toFixed(2)}/10min`;
         parts.push(bgText);
       }
+
+      // Append pre/post context from RunBGContext
+      const ctx = runBGContexts?.get(actId);
+      if (ctx?.pre) {
+        const slopeSign = ctx.pre.entrySlope30m >= 0 ? "+" : "";
+        parts.push(`entry: ${slopeSign}${ctx.pre.entrySlope30m.toFixed(1)}/10m (${classifyEntryLabel(ctx.pre.entrySlope30m, ctx.pre.entryStability)})`);
+      }
+      if (ctx?.post) {
+        let recoveryText = `recovery 30m: ${ctx.post.recoveryDrop30m >= 0 ? "+" : ""}${ctx.post.recoveryDrop30m.toFixed(1)}, nadir ${ctx.post.nadirPostRun.toFixed(1)}`;
+        if (ctx.post.postRunHypo) recoveryText += " HYPO!";
+        parts.push(recoveryText);
+      }
+
       return `- ${parts.join(" | ")}`;
     })
     .join("\n");
+}
+
+function classifyEntryLabel(slope: number, stability: number): string {
+  if (slope < -1.0) return "crashing";
+  if (stability > 1.5) return "volatile";
+  if (Math.abs(slope) <= 0.3 && stability < 0.5) return "stable";
+  if (slope < -0.3) return "dropping";
+  if (slope > 0.3) return "rising";
+  return "unsteady";
+}
+
+export function summarizeRecoveryPatterns(
+  runBGContexts?: Map<string, RunBGContext>,
+): string {
+  if (!runBGContexts || runBGContexts.size === 0) {
+    return "No post-run recovery data available yet.";
+  }
+
+  const byCategory = new Map<WorkoutCategory, { drops: number[]; nadirs: number[]; hypos: number; total: number }>();
+
+  for (const ctx of runBGContexts.values()) {
+    if (!ctx.post) continue;
+
+    let entry = byCategory.get(ctx.category);
+    if (!entry) {
+      entry = { drops: [], nadirs: [], hypos: 0, total: 0 };
+      byCategory.set(ctx.category, entry);
+    }
+
+    entry.drops.push(ctx.post.recoveryDrop30m);
+    entry.nadirs.push(ctx.post.nadirPostRun);
+    if (ctx.post.postRunHypo) entry.hypos++;
+    entry.total++;
+  }
+
+  if (byCategory.size === 0) {
+    return "No post-run recovery data available yet.";
+  }
+
+  const lines: string[] = [];
+  for (const cat of ["easy", "long", "interval"] as WorkoutCategory[]) {
+    const entry = byCategory.get(cat);
+    if (!entry) continue;
+
+    const avgDrop = entry.drops.reduce((a, b) => a + b, 0) / entry.drops.length;
+    const avgNadir = entry.nadirs.reduce((a, b) => a + b, 0) / entry.nadirs.length;
+    lines.push(
+      `- ${cat}: avg 30m recovery ${avgDrop >= 0 ? "+" : ""}${avgDrop.toFixed(1)} mmol/L, avg nadir ${avgNadir.toFixed(1)}, ${entry.hypos}/${entry.total} post-hypos${entry.hypos > 0 ? " (!)" : ""}`,
+    );
+  }
+
+  return lines.join("\n");
 }
 
 function summarizeUpcomingWorkouts(events: CalendarEvent[]): string {
@@ -206,6 +277,10 @@ function summarizeFitness(insights: FitnessInsights | null): string {
 export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
+  const recoverySection = ctx.runBGContexts && ctx.runBGContexts.size > 0
+    ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
+    : "";
+
   return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (2026-06-13).
 
 ## Runner Profile
@@ -230,10 +305,10 @@ ${summarizeFitness(ctx.insights)}
 ${summarizeLiveBG(ctx)}
 
 ## Blood Glucose Model (historical)
-${summarizeBGModel(ctx.bgModel)}
+${summarizeBGModel(ctx.bgModel)}${recoverySection}
 
 ## Recent Completed Workouts (last 14 days)
-${summarizeCompletedWorkouts(ctx.events, ctx.bgModel)}
+${summarizeCompletedWorkouts(ctx.events, ctx.bgModel, ctx.runBGContexts)}
 
 ## Upcoming Planned Workouts (next 14 days)
 ${summarizeUpcomingWorkouts(ctx.events)}

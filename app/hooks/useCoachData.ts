@@ -6,6 +6,7 @@ import { buildSystemPrompt } from "@/lib/coachContext";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
+import type { RunBGContext } from "@/lib/runBGContext";
 
 interface UseCoachDataOptions {
   events: CalendarEvent[];
@@ -16,9 +17,10 @@ interface UseCoachDataOptions {
   trendArrow?: string | null;
   lastUpdate?: Date | null;
   readings?: XdripReading[];
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
-export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings }: UseCoachDataOptions) {
+export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
   const insights = useMemo(() => {
     if (events.length === 0) return null;
     const fitnessData = computeFitnessData(events, 365);
@@ -37,8 +39,9 @@ export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope
       trendArrow,
       lastUpdate,
       readings,
+      runBGContexts,
     });
-  }, [events, insights, bgModel, phaseInfo, currentBG, trendSlope, trendArrow, lastUpdate, readings]);
+  }, [events, insights, bgModel, phaseInfo, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts]);
 
   return { context, isLoading: events.length === 0 };
 }

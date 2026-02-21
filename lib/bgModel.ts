@@ -501,10 +501,12 @@ export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseMode
 
   const minPoints = SKIP_START + WINDOW_SIZE + SKIP_END;
 
-  for (const { hr, glucose, activityId, fuelRate, startBG, category } of cached) {
+  for (const act of cached) {
+    const { hr, glucose, activityId, fuelRate, startBG, category } = act;
     if (hr.length < minPoints) continue;
 
-    const entrySlope = computeEntrySlope(glucose);
+    const entrySlope = act.runBGContext?.pre?.entrySlope30m
+      ?? computeEntrySlope(glucose);
     const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category, entrySlope);
     if (obs.length > 0) {
       allObservations.push(...obs);

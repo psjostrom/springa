@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { buildSystemPrompt } from "../coachContext";
+import { buildSystemPrompt, summarizeRecoveryPatterns } from "../coachContext";
 import type { CalendarEvent } from "../types";
 import type { BGResponseModel, BGObservation } from "../bgModel";
 import type { FitnessInsights } from "../fitness";
+import type { RunBGContext } from "../runBGContext";
 
 // --- Helpers ---
 
@@ -472,5 +473,178 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("Run 0");
     expect(prompt).toContain("Run 9");
     expect(prompt).not.toContain("Run 10");
+  });
+
+  it("includes entry/recovery context when runBGContexts provided", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({
+        activityId: "run1",
+        date: yesterday,
+        name: "Easy Run eco16",
+      }),
+    ];
+
+    const runBGContexts = new Map<string, RunBGContext>([
+      ["run1", {
+        activityId: "run1",
+        category: "easy",
+        pre: { entrySlope30m: -0.3, entryStability: 0.2, startBG: 10, readingCount: 6 },
+        post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+        totalBGImpact: -5,
+      }],
+    ]);
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+      runBGContexts,
+    });
+
+    expect(prompt).toContain("entry: -0.3/10m (stable)");
+    expect(prompt).toContain("recovery 30m: -1.5, nadir 4.8");
+  });
+
+  it("appends HYPO! flag when post-run hypo", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday }),
+    ];
+
+    const runBGContexts = new Map<string, RunBGContext>([
+      ["run1", {
+        activityId: "run1",
+        category: "easy",
+        pre: null,
+        post: { recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8 },
+        totalBGImpact: null,
+      }],
+    ]);
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+      runBGContexts,
+    });
+
+    expect(prompt).toContain("HYPO!");
+  });
+
+  it("no entry/recovery text when runBGContexts is empty", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday }),
+    ];
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+    });
+
+    expect(prompt).not.toContain("entry:");
+    expect(prompt).not.toContain("recovery 30m:");
+  });
+
+  it("includes Post-Run Recovery Patterns section when data exists", () => {
+    const runBGContexts = new Map<string, RunBGContext>([
+      ["r1", {
+        activityId: "r1",
+        category: "easy",
+        pre: null,
+        post: { recoveryDrop30m: -0.5, nadirPostRun: 5.8, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 },
+        totalBGImpact: null,
+      }],
+      ["r2", {
+        activityId: "r2",
+        category: "long",
+        pre: null,
+        post: { recoveryDrop30m: -1.8, nadirPostRun: 4.2, timeToStable: null, postRunHypo: true, endBG: 6, readingCount: 8 },
+        totalBGImpact: null,
+      }],
+    ]);
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events: [],
+      runBGContexts,
+    });
+
+    expect(prompt).toContain("## Post-Run Recovery Patterns");
+    expect(prompt).toContain("easy: avg 30m recovery -0.5 mmol/L, avg nadir 5.8, 0/1 post-hypos");
+    expect(prompt).toContain("long: avg 30m recovery -1.8 mmol/L, avg nadir 4.2, 1/1 post-hypos (!)");
+  });
+
+  it("omits recovery section when runBGContexts is undefined", () => {
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events: [],
+    });
+
+    expect(prompt).not.toContain("Post-Run Recovery Patterns");
+  });
+});
+
+// --- summarizeRecoveryPatterns ---
+
+describe("summarizeRecoveryPatterns", () => {
+  it("groups by category correctly", () => {
+    const contexts = new Map<string, RunBGContext>([
+      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.7, nadirPostRun: 5.5, timeToStable: 15, postRunHypo: false, endBG: 6.5, readingCount: 5 }, totalBGImpact: null }],
+      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 4.0, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8 }, totalBGImpact: null }],
+    ]);
+
+    const result = summarizeRecoveryPatterns(contexts);
+    expect(result).toContain("easy:");
+    expect(result).toContain("long:");
+    expect(result).not.toContain("interval:");
+  });
+
+  it("calculates correct averages per category", () => {
+    const contexts = new Map<string, RunBGContext>([
+      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.4, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.6, nadirPostRun: 5.0, timeToStable: 15, postRunHypo: false, endBG: 6, readingCount: 5 }, totalBGImpact: null }],
+    ]);
+
+    const result = summarizeRecoveryPatterns(contexts);
+    // avg drop: (-0.4 + -0.6) / 2 = -0.5
+    expect(result).toContain("avg 30m recovery -0.5 mmol/L");
+    // avg nadir: (6.0 + 5.0) / 2 = 5.5
+    expect(result).toContain("avg nadir 5.5");
+  });
+
+  it("shows hypo counts as fraction", () => {
+    const contexts = new Map<string, RunBGContext>([
+      ["r1", { activityId: "r1", category: "long", pre: null, post: { recoveryDrop30m: -1.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "long", pre: null, post: { recoveryDrop30m: -1.0, nadirPostRun: 5.0, timeToStable: 20, postRunHypo: false, endBG: 6, readingCount: 8 }, totalBGImpact: null }],
+      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 4, readingCount: 8 }, totalBGImpact: null }],
+    ]);
+
+    const result = summarizeRecoveryPatterns(contexts);
+    expect(result).toContain("2/3 post-hypos (!)");
+  });
+
+  it("returns empty message when no contexts", () => {
+    expect(summarizeRecoveryPatterns(undefined)).toBe("No post-run recovery data available yet.");
+    expect(summarizeRecoveryPatterns(new Map())).toBe("No post-run recovery data available yet.");
+  });
+
+  it("returns empty message when all contexts have no post data", () => {
+    const contexts = new Map<string, RunBGContext>([
+      ["r1", { activityId: "r1", category: "easy", pre: { entrySlope30m: 0, entryStability: 0.2, startBG: 10, readingCount: 6 }, post: null, totalBGImpact: null }],
+    ]);
+
+    const result = summarizeRecoveryPatterns(contexts);
+    expect(result).toBe("No post-run recovery data available yet.");
   });
 });

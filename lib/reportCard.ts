@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "./types";
+import type { RunBGContext } from "./runBGContext";
 
 // --- Types ---
 
@@ -25,10 +26,27 @@ export interface FuelScore {
   pct: number; // 0-100+
 }
 
+export interface EntryTrendScore {
+  rating: Rating;
+  slope30m: number; // mmol/L per 10min
+  stability: number; // std dev
+  label: string; // "Stable" | "Dropping" | "Rising" | "Crashing" | "Volatile"
+}
+
+export interface RecoveryScore {
+  rating: Rating;
+  drop30m: number;
+  nadir: number;
+  postHypo: boolean;
+  label: string; // "Clean" | "Dipping" | "Crashed"
+}
+
 export interface ReportCard {
   bg: BGScore | null;
   hrZone: HRZoneScore | null;
   fuel: FuelScore | null;
+  entryTrend: EntryTrendScore | null;
+  recovery: RecoveryScore | null;
 }
 
 // --- Scoring Functions ---
@@ -117,10 +135,61 @@ export function scoreFuel(event: CalendarEvent): FuelScore | null {
   return { rating, actual, planned, pct };
 }
 
-export function buildReportCard(event: CalendarEvent): ReportCard {
+export function scoreEntryTrend(ctx: RunBGContext | null | undefined): EntryTrendScore | null {
+  if (!ctx?.pre) return null;
+
+  const { entrySlope30m: slope, entryStability: stability } = ctx.pre;
+
+  // Bad: crashing or volatile
+  if (slope < -1.0) {
+    return { rating: "bad", slope30m: slope, stability, label: "Crashing" };
+  }
+  if (stability > 1.5) {
+    return { rating: "bad", slope30m: slope, stability, label: "Volatile" };
+  }
+
+  // Good: stable
+  if (Math.abs(slope) <= 0.3 && stability < 0.5) {
+    return { rating: "good", slope30m: slope, stability, label: "Stable" };
+  }
+
+  // Ok: mild drop, rise, or unsteady
+  let label: string;
+  if (slope < -0.3) label = "Dropping";
+  else if (slope > 0.3) label = "Rising";
+  else label = "Unsteady";
+
+  return { rating: "ok", slope30m: slope, stability, label };
+}
+
+export function scoreRecovery(ctx: RunBGContext | null | undefined): RecoveryScore | null {
+  if (!ctx?.post) return null;
+
+  const { recoveryDrop30m: drop30m, nadirPostRun: nadir, postRunHypo: postHypo } = ctx.post;
+
+  // Bad: hypo, severe drop, or nadir at/below hypo threshold
+  if (postHypo || drop30m < -2.0 || nadir <= 3.9) {
+    return { rating: "bad", drop30m, nadir, postHypo, label: "Crashed" };
+  }
+
+  // Good: clean recovery
+  if (drop30m >= -1.0 && nadir > 4.5) {
+    return { rating: "good", drop30m, nadir, postHypo, label: "Clean" };
+  }
+
+  // Ok: dipping
+  return { rating: "ok", drop30m, nadir, postHypo, label: "Dipping" };
+}
+
+export function buildReportCard(
+  event: CalendarEvent,
+  runBGContext?: RunBGContext | null,
+): ReportCard {
   return {
     bg: scoreBG(event),
     hrZone: scoreHRZone(event),
     fuel: scoreFuel(event),
+    entryTrend: scoreEntryTrend(runBGContext),
+    recovery: scoreRecovery(runBGContext),
   };
 }

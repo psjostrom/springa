@@ -3,9 +3,12 @@ import {
   scoreBG,
   scoreHRZone,
   scoreFuel,
+  scoreEntryTrend,
+  scoreRecovery,
   buildReportCard,
 } from "../reportCard";
 import type { CalendarEvent } from "../types";
+import type { RunBGContext, PreRunContext, PostRunContext } from "../runBGContext";
 
 // --- Helpers ---
 
@@ -304,5 +307,203 @@ describe("buildReportCard", () => {
     expect(report.bg).toBeNull();
     expect(report.hrZone).not.toBeNull();
     expect(report.fuel).toBeNull();
+  });
+
+  it("populates entryTrend and recovery when RunBGContext provided", () => {
+    const event = makeEvent({
+      streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
+      hrZones: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
+      totalCarbs: 60,
+      carbsIngested: 55,
+    });
+    const ctx: RunBGContext = {
+      activityId: "test-1",
+      category: "easy",
+      pre: { entrySlope30m: -0.2, entryStability: 0.3, startBG: 10, readingCount: 6 },
+      post: { recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      totalBGImpact: -4,
+    };
+    const report = buildReportCard(event, ctx);
+    expect(report.bg).not.toBeNull();
+    expect(report.hrZone).not.toBeNull();
+    expect(report.fuel).not.toBeNull();
+    expect(report.entryTrend).not.toBeNull();
+    expect(report.recovery).not.toBeNull();
+  });
+
+  it("entryTrend and recovery are null when no RunBGContext", () => {
+    const event = makeEvent({
+      streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
+    });
+    const report = buildReportCard(event);
+    expect(report.entryTrend).toBeNull();
+    expect(report.recovery).toBeNull();
+  });
+
+  it("handles partial RunBGContext (pre only)", () => {
+    const ctx: RunBGContext = {
+      activityId: "test-1",
+      category: "easy",
+      pre: { entrySlope30m: -0.2, entryStability: 0.3, startBG: 10, readingCount: 6 },
+      post: null,
+      totalBGImpact: null,
+    };
+    const report = buildReportCard(makeEvent(), ctx);
+    expect(report.entryTrend).not.toBeNull();
+    expect(report.recovery).toBeNull();
+  });
+
+  it("handles partial RunBGContext (post only)", () => {
+    const ctx: RunBGContext = {
+      activityId: "test-1",
+      category: "easy",
+      pre: null,
+      post: { recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      totalBGImpact: null,
+    };
+    const report = buildReportCard(makeEvent(), ctx);
+    expect(report.entryTrend).toBeNull();
+    expect(report.recovery).not.toBeNull();
+  });
+});
+
+// --- Entry Trend Scoring ---
+
+function makeCtxWithPre(pre: PreRunContext): RunBGContext {
+  return {
+    activityId: "test",
+    category: "easy",
+    pre,
+    post: null,
+    totalBGImpact: null,
+  };
+}
+
+function makeCtxWithPost(post: PostRunContext): RunBGContext {
+  return {
+    activityId: "test",
+    category: "easy",
+    pre: null,
+    post,
+    totalBGImpact: null,
+  };
+}
+
+describe("scoreEntryTrend", () => {
+  it("stable entry (slope 0, stability 0.2) → good, Stable", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: 0, entryStability: 0.2, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("good");
+    expect(score.label).toBe("Stable");
+  });
+
+  it("mild drop (slope -0.5, stability 0.3) → ok, Dropping", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.5, entryStability: 0.3, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("ok");
+    expect(score.label).toBe("Dropping");
+  });
+
+  it("mild rise (slope +0.5, stability 0.3) → ok, Rising", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: 0.5, entryStability: 0.3, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("ok");
+    expect(score.label).toBe("Rising");
+  });
+
+  it("crashing entry (slope -1.5) → bad, Crashing", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -1.5, entryStability: 0.3, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("bad");
+    expect(score.label).toBe("Crashing");
+  });
+
+  it("volatile entry (stability 2.0) → bad, Volatile", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: 0, entryStability: 2.0, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("bad");
+    expect(score.label).toBe("Volatile");
+  });
+
+  it("null pre context → returns null", () => {
+    const ctx: RunBGContext = { activityId: "test", category: "easy", pre: null, post: null, totalBGImpact: null };
+    expect(scoreEntryTrend(ctx)).toBeNull();
+  });
+
+  it("null ctx → returns null", () => {
+    expect(scoreEntryTrend(null)).toBeNull();
+    expect(scoreEntryTrend(undefined)).toBeNull();
+  });
+
+  it("boundary: slope exactly -1.0 → ok (not bad)", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -1.0, entryStability: 0.3, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("ok");
+  });
+
+  it("boundary: slope exactly -0.3 → good (not ok)", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.3, entryStability: 0.3, startBG: 10, readingCount: 6 });
+    const score = scoreEntryTrend(ctx)!;
+    expect(score.rating).toBe("good");
+  });
+});
+
+// --- Recovery Scoring ---
+
+describe("scoreRecovery", () => {
+  it("clean recovery (drop -0.5, nadir 6.0, no hypo) → good, Clean", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("good");
+    expect(score.label).toBe("Clean");
+  });
+
+  it("dipping (drop -1.5, nadir 4.3) → ok, Dipping", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -1.5, nadirPostRun: 4.3, timeToStable: 20, postRunHypo: false, endBG: 7.0, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("ok");
+    expect(score.label).toBe("Dipping");
+  });
+
+  it("crashed (drop -2.5, nadir 3.5, hypo) → bad, Crashed", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("bad");
+    expect(score.label).toBe("Crashed");
+  });
+
+  it("post-hypo alone triggers bad even with mild drop", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 7.0, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("bad");
+    expect(score.label).toBe("Crashed");
+  });
+
+  it("null post context → returns null", () => {
+    const ctx: RunBGContext = { activityId: "test", category: "easy", pre: null, post: null, totalBGImpact: null };
+    expect(scoreRecovery(ctx)).toBeNull();
+  });
+
+  it("null ctx → returns null", () => {
+    expect(scoreRecovery(null)).toBeNull();
+    expect(scoreRecovery(undefined)).toBeNull();
+  });
+
+  it("boundary: drop exactly -1.0 → good (not ok)", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -1.0, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("good");
+  });
+
+  it("boundary: nadir exactly 3.9 → bad", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 3.9, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("bad");
+  });
+
+  it("boundary: nadir 4.5 → ok (not good)", () => {
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -1.5, nadirPostRun: 4.5, timeToStable: 15, postRunHypo: false, endBG: 7.0, readingCount: 8 });
+    const score = scoreRecovery(ctx)!;
+    expect(score.rating).toBe("ok");
   });
 });

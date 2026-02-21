@@ -1,11 +1,14 @@
 "use client";
 
 import type { CalendarEvent } from "@/lib/types";
+import type { RunBGContext } from "@/lib/runBGContext";
 import {
   buildReportCard,
   type BGScore,
   type HRZoneScore,
   type FuelScore,
+  type EntryTrendScore,
+  type RecoveryScore,
 } from "@/lib/reportCard";
 
 const RATING_COLORS = {
@@ -67,6 +70,38 @@ function FuelCell({ score }: { score: FuelScore }) {
   );
 }
 
+function EntryTrendCell({ score }: { score: EntryTrendScore }) {
+  const sign = score.slope30m >= 0 ? "+" : "";
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-[#b8a5d4] text-xs">Pre-Run</div>
+      <div className="flex items-center gap-1.5">
+        <Dot rating={score.rating} />
+        <span className="text-white text-sm font-semibold">{score.label}</span>
+      </div>
+      <div className="text-[#b8a5d4] text-xs">
+        {sign}{score.slope30m.toFixed(1)}/10m
+      </div>
+    </div>
+  );
+}
+
+function RecoveryCell({ score }: { score: RecoveryScore }) {
+  const sign = score.drop30m >= 0 ? "+" : "";
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="text-[#b8a5d4] text-xs">Recovery</div>
+      <div className="flex items-center gap-1.5">
+        <Dot rating={score.rating} />
+        <span className="text-white text-sm font-semibold">{score.label}</span>
+      </div>
+      <div className="text-[#b8a5d4] text-xs">
+        30m: {sign}{score.drop30m.toFixed(1)}, low {score.nadir.toFixed(1)}
+      </div>
+    </div>
+  );
+}
+
 function SkeletonCell({ label }: { label: string }) {
   return (
     <div className="flex flex-col gap-1">
@@ -79,42 +114,65 @@ function SkeletonCell({ label }: { label: string }) {
 interface RunReportCardProps {
   event: CalendarEvent;
   isLoadingStreamData?: boolean;
+  runBGContext?: RunBGContext | null;
 }
 
-export function RunReportCard({ event, isLoadingStreamData }: RunReportCardProps) {
+export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunReportCardProps) {
   if (event.type !== "completed") return null;
 
-  const report = buildReportCard(event);
+  const report = buildReportCard(event, runBGContext);
   const streamLoading = isLoadingStreamData && !event.streamData;
   const hrLoading = isLoadingStreamData && !event.hrZones;
 
   // Nothing to show and not loading
-  if (!report.bg && !report.hrZone && !report.fuel && !streamLoading && !hrLoading) {
+  if (!report.bg && !report.hrZone && !report.fuel && !report.entryTrend && !report.recovery && !streamLoading && !hrLoading) {
     return null;
   }
 
+  const hasSecondRow = report.entryTrend || report.recovery;
+
   return (
-    <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-3 gap-3 text-sm mt-3">
-      {streamLoading && !report.bg ? (
-        <SkeletonCell label="Blood Glucose" />
-      ) : report.bg ? (
-        <BGCell score={report.bg} />
-      ) : (
-        <div />
-      )}
+    <div className="space-y-2 mt-3">
+      {/* Row 1: BG, HR Zone, Fuel */}
+      <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-3 gap-3 text-sm">
+        {streamLoading && !report.bg ? (
+          <SkeletonCell label="Blood Glucose" />
+        ) : report.bg ? (
+          <BGCell score={report.bg} />
+        ) : (
+          <div />
+        )}
 
-      {hrLoading && !report.hrZone ? (
-        <SkeletonCell label="HR Zone" />
-      ) : report.hrZone ? (
-        <HRCell score={report.hrZone} />
-      ) : (
-        <div />
-      )}
+        {hrLoading && !report.hrZone ? (
+          <SkeletonCell label="HR Zone" />
+        ) : report.hrZone ? (
+          <HRCell score={report.hrZone} />
+        ) : (
+          <div />
+        )}
 
-      {report.fuel ? (
-        <FuelCell score={report.fuel} />
-      ) : (
-        <div />
+        {report.fuel ? (
+          <FuelCell score={report.fuel} />
+        ) : (
+          <div />
+        )}
+      </div>
+
+      {/* Row 2: Pre-Run, Recovery */}
+      {hasSecondRow && (
+        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-2 gap-3 text-sm">
+          {report.entryTrend ? (
+            <EntryTrendCell score={report.entryTrend} />
+          ) : (
+            <div />
+          )}
+
+          {report.recovery ? (
+            <RecoveryCell score={report.recovery} />
+          ) : (
+            <div />
+          )}
+        </div>
       )}
     </div>
   );

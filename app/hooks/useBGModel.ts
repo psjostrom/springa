@@ -9,7 +9,9 @@ import {
 } from "@/lib/bgModel";
 import type { CachedActivity } from "@/lib/settings";
 import type { CalendarEvent } from "@/lib/types";
+import type { XdripReading } from "@/lib/xdrip";
 import { getWorkoutCategory } from "@/lib/utils";
+import { buildRunBGContexts, type RunBGContext } from "@/lib/runBGContext";
 
 const BG_MODEL_MAX_ACTIVITIES = 15;
 const LS_KEY = "bgcache";
@@ -53,11 +55,12 @@ async function saveBGCacheRemote(data: CachedActivity[]): Promise<void> {
   }
 }
 
-export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: CalendarEvent[]) {
+export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: CalendarEvent[], xdripReadings?: XdripReading[]) {
   const [bgModel, setBgModel] = useState<BGResponseModel | null>(null);
   const [bgModelLoading, setBgModelLoading] = useState(false);
   const [bgModelProgress, setBgModelProgress] = useState({ done: 0, total: 0 });
   const [bgActivityNames, setBgActivityNames] = useState<Map<string, string>>(new Map());
+  const [runBGContexts, setRunBGContexts] = useState<Map<string, RunBGContext>>(new Map());
   const loadedRef = useRef(false);
 
   // L1: instant render from localStorage (once)
@@ -145,6 +148,18 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         // Merge: cached (still relevant) + newly fetched
         const allCached = [...cachedMap.values(), ...newCached];
 
+        // Compute RunBGContexts from xDrip readings
+        if (xdripReadings && xdripReadings.length > 0) {
+          const contexts = buildRunBGContexts(completedRuns, xdripReadings);
+          if (!cancelled) setRunBGContexts(contexts);
+
+          // Enrich cached activities with RunBGContext
+          for (const c of allCached) {
+            const ctx = contexts.get(c.activityId);
+            if (ctx) c.runBGContext = ctx;
+          }
+        }
+
         // Save merged cache (fire and forget)
         if (newCached.length > 0) {
           writeLocalCache(allCached);
@@ -165,5 +180,5 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
     return () => { cancelled = true; };
   }, [apiKey, enabled, sharedEvents]);
 
-  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames };
+  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts };
 }

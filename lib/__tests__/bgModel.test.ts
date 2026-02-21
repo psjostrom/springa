@@ -1016,4 +1016,47 @@ describe("buildBGModelFromCached", () => {
     const model = buildBGModelFromCached([cached]);
     expect(model.categories.easy!.avgFuelRate).toBeNull();
   });
+
+  it("prefers runBGContext entry slope over in-run computed slope", () => {
+    const cached = makeCached("a1", "easy", 48, 20, (i) => 10 - i * 0.1);
+    // Inject a runBGContext with a specific entry slope
+    cached.runBGContext = {
+      activityId: "a1",
+      category: "easy",
+      pre: { entrySlope30m: -0.8, entryStability: 0.3, startBG: 10, readingCount: 6 },
+      post: null,
+      totalBGImpact: null,
+    };
+
+    const model = buildBGModelFromCached([cached]);
+    // All observations should use the runBGContext entry slope
+    for (const obs of model.observations) {
+      expect(obs.entrySlope).toBe(-0.8);
+    }
+  });
+
+  it("falls back to computeEntrySlope when runBGContext is absent", () => {
+    const cached = makeCached("a1", "easy", 48, 20, (i) => 10 - i * 0.1);
+    // No runBGContext
+    const model = buildBGModelFromCached([cached]);
+    // Observations should still have an entry slope (computed from in-run data)
+    const withSlope = model.observations.filter((o) => o.entrySlope != null);
+    expect(withSlope.length).toBeGreaterThan(0);
+  });
+
+  it("falls back when runBGContext.pre is null", () => {
+    const cached = makeCached("a1", "easy", 48, 20, (i) => 10 - i * 0.1);
+    cached.runBGContext = {
+      activityId: "a1",
+      category: "easy",
+      pre: null,
+      post: null,
+      totalBGImpact: null,
+    };
+
+    const model = buildBGModelFromCached([cached]);
+    // Should fall back to computed entry slope, not null
+    const withSlope = model.observations.filter((o) => o.entrySlope != null);
+    expect(withSlope.length).toBeGreaterThan(0);
+  });
 });

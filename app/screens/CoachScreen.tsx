@@ -10,12 +10,13 @@ import { useCoachData } from "../hooks/useCoachData";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
+import type { RunBGContext } from "@/lib/runBGContext";
 
 const SUGGESTIONS = [
   "How's my training load looking?",
-  "What should I eat before Sunday's long run?",
-  "Am I ready for 12km this weekend?",
   "Analyze my BG trends",
+  "What can we conclude about my BG before, during and after runs?",
+  "How am I progresing for the Ecotrail 16km?",
 ];
 
 function getMessageText(parts: Array<{ type: string; text?: string }>): string {
@@ -34,9 +35,20 @@ interface CoachScreenProps {
   trendArrow?: string | null;
   lastUpdate?: Date | null;
   readings?: XdripReading[];
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
-export function CoachScreen({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings }: CoachScreenProps) {
+export function CoachScreen({
+  events,
+  phaseInfo,
+  bgModel,
+  currentBG,
+  trendSlope,
+  trendArrow,
+  lastUpdate,
+  readings,
+  runBGContexts,
+}: CoachScreenProps) {
   const { context, isLoading: contextLoading } = useCoachData({
     events,
     phaseInfo,
@@ -46,6 +58,7 @@ export function CoachScreen({ events, phaseInfo, bgModel, currentBG, trendSlope,
     trendArrow,
     lastUpdate,
     readings,
+    runBGContexts,
   });
 
   const contextRef = useRef(context);
@@ -103,7 +116,8 @@ export function CoachScreen({ events, phaseInfo, bgModel, currentBG, trendSlope,
             <div className="pt-8 pb-4">
               <h2 className="text-lg font-bold text-white mb-1">AI Coach</h2>
               <p className="text-sm text-[#b8a5d4] mb-6">
-                Ask about training, fueling, BG management, or upcoming workouts.
+                Ask about training, fueling, BG management, or upcoming
+                workouts.
               </p>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
@@ -133,13 +147,15 @@ export function CoachScreen({ events, phaseInfo, bgModel, currentBG, trendSlope,
             />
           ))}
 
-          {chatBusy && messages.length > 0 && getMessageText(messages[messages.length - 1].parts) === "" && (
-            <div className="flex justify-start">
-              <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-2xl px-4 py-2.5">
-                <Loader2 className="w-4 h-4 animate-spin text-[#b8a5d4]" />
+          {chatBusy &&
+            messages.length > 0 &&
+            getMessageText(messages[messages.length - 1].parts) === "" && (
+              <div className="flex justify-start">
+                <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-2xl px-4 py-2.5">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#b8a5d4]" />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           <div ref={bottomRef} />
         </div>

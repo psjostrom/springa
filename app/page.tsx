@@ -117,14 +117,14 @@ function HomeContent() {
   // Shared calendar events — single fetch for all screens
   const sharedCalendar = useSharedCalendarData(apiKey);
 
+  // Live BG from xDrip
+  const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
+
   // BG model — uses shared events, fetches streams independently
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames } = useBGModel(apiKey, true, sharedCalendar.events);
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts } = useBGModel(apiKey, true, sharedCalendar.events, readings);
 
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
-
-  // Live BG from xDrip
-  const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
 
   // BG graph popover
   const [showBGGraph, setShowBGGraph] = useState(false);
@@ -176,7 +176,7 @@ function HomeContent() {
           <PlannerScreen apiKey={apiKey} bgModel={bgModel} />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} />
+          <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
@@ -196,7 +196,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} />
+          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
       </div>
 
