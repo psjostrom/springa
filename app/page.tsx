@@ -124,7 +124,7 @@ function HomeContent() {
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
   // Live BG from xDrip
-  const { currentBG, trend, lastUpdate, readings } = useCurrentBG();
+  const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
 
   // BG graph popover
   const [showBGGraph, setShowBGGraph] = useState(false);
@@ -196,7 +196,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} />
+          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} />
         </div>
       </div>
 

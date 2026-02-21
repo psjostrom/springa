@@ -9,6 +9,7 @@ import { ChatInput } from "../components/ChatInput";
 import { useCoachData } from "../hooks/useCoachData";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
+import type { XdripReading } from "@/lib/xdrip";
 
 const SUGGESTIONS = [
   "How's my training load looking?",
@@ -28,13 +29,23 @@ interface CoachScreenProps {
   events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
+  currentBG?: number | null;
+  trendSlope?: number | null;
+  trendArrow?: string | null;
+  lastUpdate?: Date | null;
+  readings?: XdripReading[];
 }
 
-export function CoachScreen({ events, phaseInfo, bgModel }: CoachScreenProps) {
+export function CoachScreen({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings }: CoachScreenProps) {
   const { context, isLoading: contextLoading } = useCoachData({
     events,
     phaseInfo,
     bgModel,
+    currentBG,
+    trendSlope,
+    trendArrow,
+    lastUpdate,
+    readings,
   });
 
   const contextRef = useRef(context);

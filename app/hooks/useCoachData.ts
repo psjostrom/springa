@@ -5,14 +5,20 @@ import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import { buildSystemPrompt } from "@/lib/coachContext";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
+import type { XdripReading } from "@/lib/xdrip";
 
 interface UseCoachDataOptions {
   events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
+  currentBG?: number | null;
+  trendSlope?: number | null;
+  trendArrow?: string | null;
+  lastUpdate?: Date | null;
+  readings?: XdripReading[];
 }
 
-export function useCoachData({ events, phaseInfo, bgModel }: UseCoachDataOptions) {
+export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings }: UseCoachDataOptions) {
   const insights = useMemo(() => {
     if (events.length === 0) return null;
     const fitnessData = computeFitnessData(events, 365);
@@ -26,8 +32,13 @@ export function useCoachData({ events, phaseInfo, bgModel }: UseCoachDataOptions
       insights,
       bgModel,
       events,
+      currentBG,
+      trendSlope,
+      trendArrow,
+      lastUpdate,
+      readings,
     });
-  }, [events, insights, bgModel, phaseInfo]);
+  }, [events, insights, bgModel, phaseInfo, currentBG, trendSlope, trendArrow, lastUpdate, readings]);
 
   return { context, isLoading: events.length === 0 };
 }

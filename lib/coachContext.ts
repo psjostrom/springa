@@ -2,12 +2,18 @@ import { format, subDays, addDays, startOfDay } from "date-fns";
 import type { CalendarEvent } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
+import type { XdripReading } from "./xdrip";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
   insights: FitnessInsights | null;
   bgModel: BGResponseModel | null;
   events: CalendarEvent[];
+  currentBG?: number | null;
+  trendSlope?: number | null;
+  trendArrow?: string | null;
+  lastUpdate?: Date | null;
+  readings?: XdripReading[];
 }
 
 function formatPace(minPerKm: number): string {
@@ -149,6 +155,44 @@ function summarizeBGModel(bgModel: BGResponseModel | null): string {
   return lines.join("\n");
 }
 
+function formatClockTime(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function summarizeLiveBG(ctx: CoachContext): string {
+  if (ctx.currentBG == null || ctx.lastUpdate == null) {
+    return "No live CGM data available right now.";
+  }
+  const now = Date.now();
+  const ageMin = Math.round((now - ctx.lastUpdate.getTime()) / 60000);
+  if (ageMin > 15) {
+    return `Last reading: ${ctx.currentBG.toFixed(1)} mmol/L (${ageMin}m ago — stale, sensor may be offline).`;
+  }
+  const lines: string[] = [];
+  const parts = [`Current BG: ${ctx.currentBG.toFixed(1)} mmol/L`];
+  if (ctx.trendArrow) parts.push(`Trend: ${ctx.trendArrow}`);
+  if (ctx.trendSlope != null) {
+    parts.push(`Rate: ${ctx.trendSlope > 0 ? "+" : ""}${ctx.trendSlope.toFixed(2)} mmol/L per 10min`);
+  }
+  parts.push(`(${ageMin < 1 ? "just now" : `${ageMin}m ago`})`);
+  lines.push(parts.join(" | "));
+
+  // Last 30 min of readings
+  if (ctx.readings && ctx.readings.length > 0) {
+    const cutoff = now - 30 * 60 * 1000;
+    const recent = ctx.readings.filter((r) => r.ts >= cutoff).sort((a, b) => a.ts - b.ts);
+    if (recent.length >= 2) {
+      lines.push("Last 30 min readings:");
+      lines.push(recent.map((r) => `${formatClockTime(r.ts)} ${r.mmol.toFixed(1)}`).join(" → "));
+      const delta = recent[recent.length - 1].mmol - recent[0].mmol;
+      lines.push(`Net change: ${delta > 0 ? "+" : ""}${delta.toFixed(1)} mmol/L over ${Math.round((recent[recent.length - 1].ts - recent[0].ts) / 60000)}min`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function summarizeFitness(insights: FitnessInsights | null): string {
   if (!insights) return "Fitness data not loaded.";
   return [
@@ -182,7 +226,10 @@ export function buildSystemPrompt(ctx: CoachContext): string {
 ## Fitness Load
 ${summarizeFitness(ctx.insights)}
 
-## Blood Glucose Model
+## Live Blood Glucose
+${summarizeLiveBG(ctx)}
+
+## Blood Glucose Model (historical)
 ${summarizeBGModel(ctx.bgModel)}
 
 ## Recent Completed Workouts (last 14 days)
