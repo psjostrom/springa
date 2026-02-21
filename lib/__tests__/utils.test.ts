@@ -97,8 +97,8 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    // 78% = Z3 boundary (steady), 99% = Z5 boundary (hard)
-    expect(zones).toEqual(["steady", "hard"]);
+    // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
+    expect(zones).toEqual(["easy", "tempo"]);
   });
 
   it("extracts HR zones from a hills description", () => {
@@ -115,8 +115,8 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    // 78% = steady, 111% = hard
-    expect(zones).toEqual(["steady", "hard"]);
+    // midpoint(66,78)=72 → easy, midpoint(99,111)=105 → hard
+    expect(zones).toEqual(["easy", "hard"]);
   });
 
   it("extracts all zones from race pace sandwich long run", () => {
@@ -134,8 +134,8 @@ Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    // 78% = steady, 89% = tempo
-    expect(zones).toEqual(["steady", "tempo"]);
+    // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady
+    expect(zones).toEqual(["easy", "steady"]);
   });
 
   it("returns sorted zones low-to-high", () => {
@@ -147,14 +147,199 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const zones = parseWorkoutZones(desc);
-    // 78% = steady, 99% = hard
-    expect(zones[0]).toBe("steady");
-    expect(zones[1]).toBe("hard");
+    // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
+    expect(zones[0]).toBe("easy");
+    expect(zones[1]).toBe("tempo");
   });
 
   it("returns empty array for descriptions without HR zones", () => {
     expect(parseWorkoutZones("Just a note")).toEqual([]);
     expect(parseWorkoutZones("")).toEqual([]);
+  });
+});
+
+describe("zone classification integration — real workout descriptions", () => {
+  // Uses exact descriptions from CLAUDE.md Section 8.
+  // Verifies both parseWorkoutStructure (per-step zones) and parseWorkoutZones (distinct zones)
+  // produce correct labels matching the training plan's zone definitions.
+
+  it("Short Intervals: warmup/recovery = Easy, work = Interval", () => {
+    const desc = `Short, punchy efforts to build leg speed and running economy.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- Walk 2m 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");       // warmup
+    expect(structure[1].steps[0].zone).toBe("tempo");       // interval work
+    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "tempo"]);
+  });
+
+  it("Hills: warmup/downhill = Easy, uphill = Hard", () => {
+    const desc = `Hill reps build strength and power that translates directly to EcoTrail's terrain.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- Uphill 2m 99-111% LTHR (167-188 bpm)
+- Downhill 3m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");
+    expect(structure[1].steps[0].zone).toBe("hard");        // uphill
+    expect(structure[1].steps[1].zone).toBe("easy");        // downhill
+    expect(structure[2].steps[0].zone).toBe("easy");
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "hard"]);
+  });
+
+  it("Long Run — All Easy: every step = Easy", () => {
+    const desc = `Long run at easy pace. This is the most important run of the week.
+
+Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 6km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    for (const section of structure) {
+      for (const step of section.steps) {
+        expect(step.zone).toBe("easy");
+      }
+    }
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy"]);
+  });
+
+  it("Long Run — Race Pace Sandwich: easy sections = Easy, race pace block = Race Pace", () => {
+    const desc = `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 66-78% LTHR (112-132 bpm)
+- 3km 78-89% LTHR (132-150 bpm)
+- 3km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");        // warmup
+    expect(structure[1].steps[0].zone).toBe("easy");        // easy before RP
+    expect(structure[1].steps[1].zone).toBe("steady");      // race pace
+    expect(structure[1].steps[2].zone).toBe("easy");        // easy after RP
+    expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "steady"]);
+  });
+
+  it("Easy + Strides: main = Easy, strides = Hard, recovery = Easy", () => {
+    const desc = `Easy run with strides at the end.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 21m 66-78% LTHR (112-132 bpm)
+
+Strides 4x
+- 20s 99-111% LTHR (167-188 bpm)
+- 1m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");        // warmup
+    expect(structure[1].steps[0].zone).toBe("easy");        // main easy
+    expect(structure[2].steps[0].zone).toBe("hard");        // stride burst
+    expect(structure[2].steps[1].zone).toBe("easy");        // stride recovery
+    expect(structure[3].steps[0].zone).toBe("easy");        // cooldown
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "hard"]);
+  });
+
+  it("Distance Intervals: warm/cool = Easy, fast reps = Interval, walk = Easy", () => {
+    const desc = `Track-style reps for pacing practice.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 8x
+- Fast 0.8km 89-99% LTHR (150-167 bpm)
+- Walk 0.2km 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");
+    expect(structure[1].steps[0].zone).toBe("tempo");       // fast reps
+    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("easy");
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "tempo"]);
+  });
+
+  it("Race Pace Intervals: warm/cool = Easy, reps = Race Pace, walk = Easy", () => {
+    const desc = `Practice goal race pace in a structured session.
+
+Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 5x
+- 5m 78-89% LTHR (132-150 bpm)
+- Walk 2m 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");
+    expect(structure[1].steps[0].zone).toBe("steady");      // race pace reps
+    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("easy");
+
+    const zones = parseWorkoutZones(desc);
+    expect(zones).toEqual(["easy", "steady"]);
+  });
+
+  it("zone boundaries: 50-66% is easy (not sub-easy), 78-89% is steady (not easy or tempo)", () => {
+    // Walk recovery at 50-66% should still classify as easy (midpoint 58%)
+    // Race pace at 78-89% should classify as steady (midpoint 83.5%), not easy (max < 89) or tempo
+    const desc = `Main set
+- 5m 50-66% LTHR (85-112 bpm)
+- 5m 78-89% LTHR (132-150 bpm)`;
+
+    const structure = parseWorkoutStructure(desc);
+    expect(structure[0].steps[0].zone).toBe("easy");
+    expect(structure[0].steps[1].zone).toBe("steady");
   });
 });
 
@@ -721,9 +906,9 @@ Cooldown
     expect(sections[1].name).toBe("Main set");
     expect(sections[1].repeats).toBe(6);
     expect(sections[1].steps).toHaveLength(2);
-    // 99% = hard (Z5 boundary), 78% = steady (Z3 boundary)
-    expect(sections[1].steps[0].zone).toBe("hard");
-    expect(sections[1].steps[1].zone).toBe("steady");
+    // midpoint(89,99)=94 → tempo, midpoint(66,78)=72 → easy
+    expect(sections[1].steps[0].zone).toBe("tempo");
+    expect(sections[1].steps[1].zone).toBe("easy");
 
     expect(sections[2].name).toBe("Cooldown");
     expect(sections[2].steps[0].duration).toBe("5m");
@@ -786,10 +971,10 @@ Cooldown
     const sections = parseWorkoutStructure(desc);
     const mainSet = sections[1];
     expect(mainSet.steps).toHaveLength(3);
-    // 78% = steady, 89% = tempo, 78% = steady
-    expect(mainSet.steps[0].zone).toBe("steady");
-    expect(mainSet.steps[1].zone).toBe("tempo");
-    expect(mainSet.steps[2].zone).toBe("steady");
+    // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady, midpoint(66,78)=72 → easy
+    expect(mainSet.steps[0].zone).toBe("easy");
+    expect(mainSet.steps[1].zone).toBe("steady");
+    expect(mainSet.steps[2].zone).toBe("easy");
   });
 
   it("parses an easy + strides workout", () => {
@@ -841,7 +1026,8 @@ Cooldown
     expect(mainSet.repeats).toBe(8);
     expect(mainSet.steps).toHaveLength(2);
     expect(mainSet.steps[0].duration).toBe("0.8km");
-    expect(mainSet.steps[0].zone).toBe("hard");
+    // midpoint(89,99)=94 → tempo
+    expect(mainSet.steps[0].zone).toBe("tempo");
     expect(mainSet.steps[1].duration).toBe("0.2km");
   });
 

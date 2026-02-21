@@ -95,14 +95,15 @@ export function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
  */
 export function parseWorkoutZones(description: string): HRZoneName[] {
   const stepMatches = Array.from(
-    description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(m|km)\s+(\d+)-(\d+)%/g),
+    description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(\d+)-(\d+)%/g),
   );
   if (stepMatches.length === 0) return [];
 
   const zones = new Set<HRZoneName>();
   for (const m of stepMatches) {
-    const maxPct = parseInt(m[3], 10);
-    zones.add(classifyZone(maxPct));
+    const minPct = parseInt(m[1], 10);
+    const maxPct = parseInt(m[2], 10);
+    zones.add(classifyZone((minPct + maxPct) / 2));
   }
 
   const order: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
@@ -196,11 +197,12 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
     for (const line of lines) {
       const stepMatch = line.match(stepPattern);
       if (stepMatch) {
+        const minPct = parseInt(stepMatch[3], 10);
         const maxPct = parseInt(stepMatch[4], 10);
         steps.push({
           label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval", "Warmup", "Cooldown"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
           duration: stepMatch[2],
-          zone: classifyZone(maxPct),
+          zone: classifyZone((minPct + maxPct) / 2),
           bpmRange: stepMatch[5],
         });
       }
