@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
@@ -87,6 +87,10 @@ function HomeContent() {
     typeof window !== "undefined" ? parseTab(window.location.search) : "calendar"
   );
 
+  // BG graph popover
+  const [showBGGraph, setShowBGGraph] = useState(false);
+  const bgPushedRef = useRef(false);
+
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
@@ -95,7 +99,11 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => setActiveTab(parseTab(window.location.search));
+    const onPopState = () => {
+      setActiveTab(parseTab(window.location.search));
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has("bg")) setShowBGGraph(false);
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -126,8 +134,26 @@ function HomeContent() {
   // Phase info for progress screen
   const phaseInfo = usePhaseInfo("2026-06-13", 18);
 
-  // BG graph popover
-  const [showBGGraph, setShowBGGraph] = useState(false);
+  const openBGGraph = useCallback(() => {
+    setShowBGGraph(true);
+    const params = new URLSearchParams(window.location.search);
+    params.set("bg", "1");
+    window.history.pushState(null, "", `?${params.toString()}`);
+    bgPushedRef.current = true;
+  }, []);
+
+  const closeBGGraph = useCallback(() => {
+    setShowBGGraph(false);
+    if (bgPushedRef.current) {
+      bgPushedRef.current = false;
+      window.history.back();
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("bg");
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+    }
+  }, []);
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
@@ -159,7 +185,7 @@ function HomeContent() {
           </h1>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
-            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={() => setShowBGGraph(true)} />
+            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
             <button
               onClick={() => setShowSettings(true)}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
@@ -207,7 +233,7 @@ function HomeContent() {
         <BGGraphPopover
           readings={readings}
           trend={trend}
-          onClose={() => setShowBGGraph(false)}
+          onClose={closeBGGraph}
         />
       )}
 
