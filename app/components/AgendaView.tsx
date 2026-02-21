@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import { estimateWorkoutDuration, extractFuelRate, extractTotalCarbs, formatPace, formatDuration } from "@/lib/utils";
+import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, extractFuelRate, extractTotalCarbs, formatPace, formatDuration } from "@/lib/utils";
 import { getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -42,10 +42,12 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
         )}
         {event.type === "planned" && event.description && (() => {
           const est = estimateWorkoutDuration(event.description);
-          if (!est) return null;
+          const dist = estimateWorkoutDescriptionDistance(event.description);
+          if (!est && !dist) return null;
           return (
-            <div className="text-sm text-white mt-4">
-              {formatDuration(est * 60)}
+            <div className="text-sm text-white mt-4 space-y-0.5">
+              {est && <div>{est.estimated ? "~" : ""}{formatDuration(est.minutes * 60)}</div>}
+              {dist && <div className="text-[#b8a5d4]">{dist.estimated ? "~" : ""}{dist.km} km</div>}
             </div>
           );
         })()}

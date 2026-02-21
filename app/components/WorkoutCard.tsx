@@ -9,6 +9,7 @@ import {
   getZoneLabel,
   formatPace,
   estimateWorkoutDuration,
+  estimateWorkoutDescriptionDistance,
 } from "@/lib/utils";
 import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
 
@@ -88,6 +89,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
   }
 
   const estDuration = estimateWorkoutDuration(description);
+  const estDistance = estimateWorkoutDescriptionDistance(description);
   const zones = parseWorkoutZones(description);
   const notes = extractNotes(description);
 
@@ -104,9 +106,14 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
                 <line x1="8" y1="8.5" x2="10.5" y2="10.5" strokeWidth="2" strokeLinecap="round" />
               </svg>
               <span className="text-base font-bold text-[#ffb800]">
-                ~{estDuration} min
+                {estDuration.estimated ? "~" : ""}{estDuration.minutes} min
               </span>
             </div>
+          )}
+          {estDistance != null && (
+            <span className="text-base font-bold text-[#ffb800]">
+              {estDistance.estimated ? "~" : ""}{estDistance.km} km
+            </span>
           )}
           {fuel.fuelRate != null && (
             <span className="text-sm font-semibold text-[#ffb800]/80">

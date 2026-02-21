@@ -9,6 +9,7 @@ import {
   parseWorkoutSegments,
   estimateWorkoutDuration,
   estimateWorkoutDistance,
+  estimateWorkoutDescriptionDistance,
   extractFuelStatus,
   extractNotes,
   parseWorkoutStructure,
@@ -431,13 +432,169 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const duration = estimateWorkoutDuration(desc);
+    const result = estimateWorkoutDuration(desc);
     // 10 + 6*(2+2) + 5 = 39
-    expect(duration).toBe(39);
+    expect(result).toEqual({ minutes: 39, estimated: false });
   });
 
   it("returns null for unstructured descriptions", () => {
     expect(estimateWorkoutDuration("No workout here")).toBeNull();
+  });
+
+  it("marks duration as estimated when km-based steps are present", () => {
+    const desc = `Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 6km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDuration(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(true);
+  });
+
+  it("marks duration as exact when all steps are time-based", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 20m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDuration(desc);
+    expect(result).toEqual({ minutes: 35, estimated: false });
+  });
+
+  it("marks as estimated when mixing time and km steps", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDuration(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(true);
+    // 10 + (4 * 7.25) + 5 = 44
+    expect(result!.minutes).toBe(44);
+  });
+
+  it("handles strides with seconds as exact", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 21m 66-78% LTHR (112-132 bpm)
+
+Strides 4x
+- 20s 99-111% LTHR (167-188 bpm)
+- 1m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDuration(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(false);
+    // 10 + 21 + 4*(20/60 + 1) + 5 ≈ 41.3 → 41
+    expect(result!.minutes).toBe(41);
+  });
+
+  it("handles distance intervals (e.g. 800m) as estimated", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 8x
+- 0.8km 89-99% LTHR (150-167 bpm)
+- 0.2km 50-66% LTHR (85-112 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDuration(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(true);
+  });
+});
+
+describe("estimateWorkoutDescriptionDistance", () => {
+  it("returns exact distance for all-km workouts (long run)", () => {
+    const desc = `Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 6km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDescriptionDistance(desc);
+    expect(result).toEqual({ km: 8, estimated: false });
+  });
+
+  it("returns estimated distance for all-time workouts (intervals)", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDescriptionDistance(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(true);
+    // Should be reasonable: ~5-6 km for a 39-min mixed interval workout
+    expect(result!.km).toBeGreaterThan(4);
+    expect(result!.km).toBeLessThan(8);
+  });
+
+  it("returns estimated distance when mixing km and time steps", () => {
+    const desc = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set
+- 3km 78-89% LTHR (132-150 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDescriptionDistance(desc);
+    expect(result).not.toBeNull();
+    expect(result!.estimated).toBe(true);
+    // 10min/7.25 + 3km + 5min/7.25 ≈ 2.07 + 3 + 0.69 ≈ 5.1
+    expect(result!.km).toBeGreaterThan(4.5);
+    expect(result!.km).toBeLessThan(6);
+  });
+
+  it("returns exact distance for race pace sandwich (all km)", () => {
+    const desc = `Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 66-78% LTHR (112-132 bpm)
+- 3km 78-89% LTHR (132-150 bpm)
+- 3km 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+    const result = estimateWorkoutDescriptionDistance(desc);
+    expect(result).toEqual({ km: 12, estimated: false });
+  });
+
+  it("returns null for unstructured descriptions", () => {
+    expect(estimateWorkoutDescriptionDistance("No workout here")).toBeNull();
   });
 });
 

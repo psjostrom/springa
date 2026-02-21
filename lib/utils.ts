@@ -219,20 +219,22 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
 export interface WorkoutSegment {
   duration: number; // in minutes
   intensity: number; // average LTHR percentage (0-100)
+  estimated: boolean; // true if duration was converted from km using pace estimates
+  km: number | null; // original km value if distance-based, null if time-based
 }
 
 /** Convert a value+unit into minutes, using pace estimates for km distances. */
-function toMinutes(value: number, unit: string, avgPercent: number): number {
+function toMinutes(value: number, unit: string, avgPercent: number): { minutes: number; estimated: boolean; km: number | null } {
   if (unit === "km") {
     let pace: number;
     if (avgPercent >= 95) pace = PACE_ESTIMATES.hard;
     else if (avgPercent >= 88) pace = PACE_ESTIMATES.tempo;
     else if (avgPercent >= 80) pace = PACE_ESTIMATES.steady;
     else pace = PACE_ESTIMATES.easy;
-    return value * pace;
+    return { minutes: value * pace, estimated: true, km: value };
   }
-  if (unit === "s") return value / 60;
-  return value; // "m" = already minutes
+  if (unit === "s") return { minutes: value / 60, estimated: false, km: null };
+  return { minutes: value, estimated: false, km: null }; // "m" = already minutes
 }
 
 /** Parse step lines within a section, returning total duration and individual segments. */
@@ -245,7 +247,8 @@ function parseSectionSegments(section: string): WorkoutSegment[] {
     const value = parseFloat(m[1]);
     const unit = m[2];
     const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
-    segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });
+    const conv = toMinutes(value, unit, avgPercent);
+    segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
   }
   return segments;
 }
@@ -266,7 +269,8 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
       const value = parseFloat(wuStep[1]);
       const unit = wuStep[2];
       const avgPercent = (parseInt(wuStep[3], 10) + parseInt(wuStep[4], 10)) / 2;
-      segments.push({ duration: toMinutes(value, unit, avgPercent), intensity: avgPercent });
+      const conv = toMinutes(value, unit, avgPercent);
+      segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
     }
   }
 
@@ -312,11 +316,37 @@ export const getEstimatedDuration = (event: WorkoutEvent): number => {
   return 45;
 };
 
-export function estimateWorkoutDuration(description: string): number | null {
+export function estimateWorkoutDuration(description: string): { minutes: number; estimated: boolean } | null {
   const segments = parseWorkoutSegments(description);
   if (segments.length === 0) return null;
   const total = segments.reduce((sum, s) => sum + s.duration, 0);
-  return total > 0 ? Math.round(total) : null;
+  if (total <= 0) return null;
+  const estimated = segments.some((s) => s.estimated);
+  return { minutes: Math.round(total), estimated };
+}
+
+/** Estimate total distance (km) from a workout description. Returns exact km for distance-based workouts, estimated for time-based. */
+export function estimateWorkoutDescriptionDistance(description: string): { km: number; estimated: boolean } | null {
+  const segments = parseWorkoutSegments(description);
+  if (segments.length === 0) return null;
+  let totalKm = 0;
+  let hasTimeBasedSegment = false;
+  for (const seg of segments) {
+    if (seg.km != null) {
+      totalKm += seg.km;
+    } else {
+      hasTimeBasedSegment = true;
+      // Convert time → km using pace estimates
+      let pace: number;
+      if (seg.intensity >= 95) pace = PACE_ESTIMATES.hard;
+      else if (seg.intensity >= 88) pace = PACE_ESTIMATES.tempo;
+      else if (seg.intensity >= 80) pace = PACE_ESTIMATES.steady;
+      else pace = PACE_ESTIMATES.easy;
+      totalKm += seg.duration / pace;
+    }
+  }
+  if (totalKm <= 0) return null;
+  return { km: Math.round(totalKm * 10) / 10, estimated: hasTimeBasedSegment };
 }
 
 export const formatStep = (
@@ -416,8 +446,8 @@ export function estimateWorkoutDistance(event: CalendarEvent): number {
       ? PACE_ESTIMATES.tempo
       : PACE_ESTIMATES.easy;
 
-  const parsedMinutes = estimateWorkoutDuration(event.description);
-  if (parsedMinutes) return parsedMinutes / pace;
+  const parsed = estimateWorkoutDuration(event.description);
+  if (parsed) return parsed.minutes / pace;
 
   if (event.duration) return event.duration / 60 / pace;
 
@@ -431,8 +461,8 @@ export function estimatePlanEventDistance(event: WorkoutEvent): number {
 
   const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
   const pace = isInterval ? PACE_ESTIMATES.tempo : PACE_ESTIMATES.easy;
-  const mins = estimateWorkoutDuration(event.description);
-  if (mins) return mins / pace;
+  const parsed = estimateWorkoutDuration(event.description);
+  if (parsed) return parsed.minutes / pace;
   return 0;
 }
 

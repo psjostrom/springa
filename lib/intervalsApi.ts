@@ -424,7 +424,7 @@ async function fetchCalendarDataInner(
     let eventTotalCarbs: number | null = null;
     if (eventFuelRate != null) {
       const estDur = event.moving_time || event.duration || event.elapsed_time;
-      const estMinutes = estimateWorkoutDuration(eventDesc) ?? (estDur ? estDur / 60 : null);
+      const estMinutes = estimateWorkoutDuration(eventDesc)?.minutes ?? (estDur ? estDur / 60 : null);
       if (estMinutes != null) {
         eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
       }
