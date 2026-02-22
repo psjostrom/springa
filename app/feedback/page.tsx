@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { RunFeedbackRecord } from "@/lib/settings";
 
@@ -16,6 +16,18 @@ function formatDistance(meters: number): string {
 }
 
 export default function FeedbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
+        <p className="text-[#b8a5d4]">Laddar...</p>
+      </div>
+    }>
+      <FeedbackContent />
+    </Suspense>
+  );
+}
+
+function FeedbackContent() {
   const searchParams = useSearchParams();
   const ts = searchParams.get("ts");
 
