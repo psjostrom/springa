@@ -1,6 +1,7 @@
 import type { WorkoutCategory, DataPoint, IntervalsStream } from "./types";
 import type { CachedActivity } from "./settings";
 import { convertGlucoseToMmol } from "./utils";
+import { linearRegression } from "./math";
 
 // --- Types ---
 
@@ -133,7 +134,7 @@ export function analyzeBGByEntrySlope(observations: BGObservation[]): EntrySlope
   const results: EntrySlopeResponse[] = [];
 
   for (const slope of slopeNames) {
-    const obs = withSlope.filter((o) => classifyEntrySlope(o.entrySlope!) === slope);
+    const obs = withSlope.filter((o) => o.entrySlope != null && classifyEntrySlope(o.entrySlope) === slope);
     if (obs.length === 0) continue;
 
     const rates = obs.map((o) => o.bgRate);
@@ -206,40 +207,6 @@ export interface TargetFuelResult {
   confidence: "low" | "medium" | "high";
 }
 
-export function linearRegression(points: { x: number; y: number }[]): {
-  slope: number;
-  intercept: number;
-  rSquared: number;
-} {
-  const n = points.length;
-  if (n < 2) return { slope: 0, intercept: 0, rSquared: 0 };
-
-  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-  for (const p of points) {
-    sumX += p.x;
-    sumY += p.y;
-    sumXY += p.x * p.y;
-    sumXX += p.x * p.x;
-  }
-
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return { slope: 0, intercept: sumY / n, rSquared: 0 };
-
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-
-  // R-squared
-  const meanY = sumY / n;
-  let ssTot = 0, ssRes = 0;
-  for (const p of points) {
-    ssTot += (p.y - meanY) ** 2;
-    ssRes += (p.y - (slope * p.x + intercept)) ** 2;
-  }
-  const rSquared = ssTot === 0 ? 1 : 1 - ssRes / ssTot;
-
-  return { slope, intercept, rSquared };
-}
-
 const EXTRAPOLATION_FACTOR = 6; // g/h per 1.0 mmol/L/10min excess drop
 const ACCEPTABLE_DROP = -0.2; // mmol/L per 10min — a mild drop is normal during running
 const MIN_DROP_TO_SUGGEST = -0.5; // only suggest fuel increases beyond this threshold
@@ -267,13 +234,13 @@ export function calculateTargetFuelRates(observations: BGObservation[]): TargetF
     // Only suggest for categories where BG is dropping meaningfully
     if (avgRate >= MIN_DROP_TO_SUGGEST) continue;
 
-    const fuels = catObs.map((o) => o.fuelRate!);
+    const fuels = catObs.map((o) => o.fuelRate ?? 0);
     const currentAvgFuel = fuels.reduce((a, b) => a + b, 0) / fuels.length;
 
     // Group by distinct fuel rates
     const fuelGroups = new Map<number, BGObservation[]>();
     for (const obs of catObs) {
-      const key = obs.fuelRate!;
+      const key = obs.fuelRate ?? 0;
       const list = fuelGroups.get(key) ?? [];
       list.push(obs);
       fuelGroups.set(key, list);

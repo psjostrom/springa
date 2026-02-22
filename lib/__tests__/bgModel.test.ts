@@ -9,13 +9,13 @@ import {
   analyzeBGByStartLevel,
   classifyTimeBucket,
   analyzeBGByTime,
-  linearRegression,
   calculateTargetFuelRates,
   computeEntrySlope,
   classifyEntrySlope,
   analyzeBGByEntrySlope,
   type BGObservation,
 } from "../bgModel";
+import { linearRegression } from "../math";
 import type { CachedActivity } from "../settings";
 import type { IntervalsStream, DataPoint } from "../types";
 
@@ -810,7 +810,6 @@ describe("linearRegression", () => {
     const result = linearRegression([{ x: 1, y: 2 }]);
     expect(result.slope).toBe(0);
     expect(result.intercept).toBe(0);
-    expect(result.rSquared).toBe(0);
   });
 
   it("computes perfect fit for two points", () => {
@@ -820,7 +819,6 @@ describe("linearRegression", () => {
     ]);
     expect(result.slope).toBeCloseTo(2);
     expect(result.intercept).toBeCloseTo(0);
-    expect(result.rSquared).toBeCloseTo(1);
   });
 
   it("computes perfect fit for collinear points", () => {
@@ -833,18 +831,16 @@ describe("linearRegression", () => {
     ]);
     expect(result.slope).toBeCloseTo(3);
     expect(result.intercept).toBeCloseTo(1);
-    expect(result.rSquared).toBeCloseTo(1);
   });
 
-  it("computes r-squared < 1 for noisy data", () => {
+  it("handles noisy data", () => {
     const result = linearRegression([
       { x: 1, y: 2 },
       { x: 2, y: 5 },
       { x: 3, y: 4 },
       { x: 4, y: 8 },
     ]);
-    expect(result.rSquared).toBeGreaterThan(0);
-    expect(result.rSquared).toBeLessThan(1);
+    expect(result.slope).toBeGreaterThan(0);
   });
 });
 

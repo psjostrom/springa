@@ -1,6 +1,7 @@
 import type { XdripReading } from "./xdrip";
 import type { CalendarEvent } from "./types";
 import type { WorkoutCategory } from "./types";
+import { linearRegression } from "./math";
 
 // --- Types ---
 
@@ -78,29 +79,15 @@ export function findReadingsInWindow(
 export function computeSlope(readings: XdripReading[]): number | null {
   if (readings.length < MIN_READINGS) return null;
 
-  const n = readings.length;
-  let sumX = 0;
-  let sumY = 0;
-  let sumXY = 0;
-  let sumXX = 0;
-
-  // x = time in minutes from first reading, y = mmol
   const t0 = readings[0].ts;
-  for (const r of readings) {
-    const x = (r.ts - t0) / 60000; // minutes
-    const y = r.mmol;
-    sumX += x;
-    sumY += y;
-    sumXY += x * y;
-    sumXX += x * x;
-  }
+  const points = readings.map((r) => ({
+    x: (r.ts - t0) / 60000, // minutes
+    y: r.mmol,
+  }));
 
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return null;
-
+  const { slope } = linearRegression(points);
   // slope is mmol/L per minute → multiply by 10 for per-10-min
-  const slopePerMin = (n * sumXY - sumX * sumY) / denom;
-  return slopePerMin * 10;
+  return slope * 10;
 }
 
 /** Standard deviation of mmol values. Returns 0 for single value. */
