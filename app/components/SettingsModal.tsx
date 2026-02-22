@@ -178,14 +178,14 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <div className="flex items-center gap-2 mb-2">
               <Bell className="text-[#ff2d95]" size={16} />
               <span className="text-sm font-semibold text-[#c4b5fd]">
-                Notiser
+                Notifications
               </span>
             </div>
             <div className="flex items-center justify-between">
               {pushPermission === "granted" ? (
-                <span className="text-sm text-[#39ff14]">Aktiverade</span>
+                <span className="text-sm text-[#39ff14]">Enabled</span>
               ) : pushPermission === "denied" ? (
-                <span className="text-sm text-[#ff3366]">Blockerade i webbläsaren</span>
+                <span className="text-sm text-[#ff3366]">Blocked in browser</span>
               ) : (
                 <button
                   type="button"
@@ -195,7 +195,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   }}
                   className="px-4 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-sm text-[#ff2d95] hover:bg-[#3d2b5a] transition"
                 >
-                  Aktivera notiser
+                  Enable notifications
                 </button>
               )}
             </div>

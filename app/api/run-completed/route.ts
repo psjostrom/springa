@@ -39,8 +39,8 @@ export async function POST(req: Request) {
   }
 
   await sendPushToUser(email, {
-    title: "Hur gick rundan?",
-    body: parts.join(" \u2022 ") || "Runda klar!",
+    title: "How was the run?",
+    body: parts.join(" \u2022 ") || "Run complete!",
     url: "/feedback?ts=" + createdAt,
   });
 

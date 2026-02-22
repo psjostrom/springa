@@ -19,7 +19,7 @@ export default function FeedbackPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
-        <p className="text-[#b8a5d4]">Laddar...</p>
+        <p className="text-[#b8a5d4]">Loading...</p>
       </div>
     }>
       <FeedbackContent />
@@ -41,13 +41,13 @@ function FeedbackContent() {
 
   useEffect(() => {
     if (!ts) {
-      setError("Ingen runda hittad");
+      setError("No run found");
       setLoading(false);
       return;
     }
     fetch("/api/run-feedback?ts=" + ts)
       .then((r) => {
-        if (!r.ok) throw new Error("Kunde inte hämta data");
+        if (!r.ok) throw new Error("Failed to load data");
         return r.json();
       })
       .then((data: RunFeedbackRecord) => {
@@ -71,10 +71,10 @@ function FeedbackContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined }),
       });
-      if (!res.ok) throw new Error("Misslyckades");
+      if (!res.ok) throw new Error("Failed to save");
       setSubmitted(true);
     } catch {
-      setError("Kunde inte spara");
+      setError("Failed to save");
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +83,7 @@ function FeedbackContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
-        <p className="text-[#b8a5d4]">Laddar...</p>
+        <p className="text-[#b8a5d4]">Loading...</p>
       </div>
     );
   }
@@ -98,26 +98,26 @@ function FeedbackContent() {
 
   return (
     <div className="min-h-screen bg-[#0d0a1a] flex flex-col items-center p-4 pt-12">
-      <h1 className="text-2xl font-bold text-white mb-6">Hur gick rundan?</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">How was the run?</h1>
 
       {/* Run summary */}
       {feedback && (
         <div className="flex gap-3 mb-8 flex-wrap justify-center">
           {feedback.distance != null && (
             <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Distans</p>
+              <p className="text-xs text-[#b8a5d4]">Distance</p>
               <p className="text-lg font-bold text-white">{formatDistance(feedback.distance)}</p>
             </div>
           )}
           {feedback.duration != null && (
             <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Tid</p>
+              <p className="text-xs text-[#b8a5d4]">Time</p>
               <p className="text-lg font-bold text-white">{formatDuration(feedback.duration)}</p>
             </div>
           )}
           {feedback.avgHr != null && (
             <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Snittuls</p>
+              <p className="text-xs text-[#b8a5d4]">Avg HR</p>
               <p className="text-lg font-bold text-white">{Math.round(feedback.avgHr)}</p>
             </div>
           )}
@@ -127,7 +127,7 @@ function FeedbackContent() {
       {submitted ? (
         <div className="text-center">
           <p className="text-4xl mb-2">{rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
-          <p className="text-[#39ff14] text-lg font-bold">Tack!</p>
+          <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
           {comment && (
             <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
           )}
@@ -162,7 +162,7 @@ function FeedbackContent() {
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Kommentar (valfritt)"
+            placeholder="Comment (optional)"
             rows={3}
             className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm mb-4 resize-none"
           />
@@ -173,7 +173,7 @@ function FeedbackContent() {
             disabled={!rating || submitting}
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
-            {submitting ? "Sparar..." : "Spara"}
+            {submitting ? "Saving..." : "Save"}
           </button>
 
           {error && <p className="text-[#ff3366] text-sm mt-3">{error}</p>}
