@@ -126,10 +126,16 @@ function FeedbackContent() {
 
       {submitted ? (
         <div className="text-center">
-          <p className="text-4xl mb-2">{rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
-          <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
-          {comment && (
-            <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
+          {rating === "skipped" ? (
+            <p className="text-[#b8a5d4] text-lg">Skipped</p>
+          ) : (
+            <>
+              <p className="text-4xl mb-2">{rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
+              <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
+              {comment && (
+                <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -174,6 +180,31 @@ function FeedbackContent() {
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
+          </button>
+
+          <button
+            onClick={async () => {
+              if (!ts) return;
+              setSubmitting(true);
+              try {
+                const res = await fetch("/api/run-feedback", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ts: Number(ts), rating: "skipped" }),
+                });
+                if (!res.ok) throw new Error("Failed to save");
+                setRating("skipped");
+                setSubmitted(true);
+              } catch {
+                setError("Failed to save");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            disabled={submitting}
+            className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition"
+          >
+            Skip
           </button>
 
           {error && <p className="text-[#ff3366] text-sm mt-3">{error}</p>}

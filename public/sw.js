@@ -32,13 +32,31 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
-    data: { url: data.url || "/" },
+    data: { url: data.url || "/", ts: data.ts },
+    actions: data.ts ? [{ action: "skip", title: "Skip" }] : [],
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  // "Skip" action — POST skipped rating, no window open
+  if (event.action === "skip") {
+    const ts = event.notification.data?.ts;
+    if (ts) {
+      event.waitUntil(
+        fetch("/api/run-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ts: Number(ts), rating: "skipped" }),
+        })
+      );
+    }
+    return;
+  }
+
+  // Default tap — open feedback page
   const url = event.notification.data?.url || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

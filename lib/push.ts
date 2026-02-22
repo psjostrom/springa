@@ -11,6 +11,7 @@ interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  ts?: number;
 }
 
 export async function sendPushToUser(

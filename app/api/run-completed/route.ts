@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     title: "How was the run?",
     body: parts.join(" \u2022 ") || "Run complete!",
     url: "/feedback?ts=" + createdAt,
+    ts: createdAt,
   });
 
   return NextResponse.json({ ok: true, ts: createdAt });
