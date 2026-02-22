@@ -125,12 +125,11 @@ describe("generatePlan", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("all events have start_date_local with clean time (10:00 or 12:00)", () => {
+  it("all events have start_date_local with clean time (12:00)", () => {
     const plan = generate();
     for (const event of plan) {
       const date = event.start_date_local;
-      const isSunOrRace = event.name.includes("Sun") || event.name.includes("RACE DAY");
-      expect(date.getHours()).toBe(isSunOrRace ? 10 : 12);
+      expect(date.getHours()).toBe(12);
       expect(date.getMinutes()).toBe(0);
       expect(date.getSeconds()).toBe(0);
     }

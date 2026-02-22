@@ -15,7 +15,8 @@ import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
-import { Settings } from "lucide-react";
+import { PreRunOverlay } from "./components/PreRunOverlay";
+import { Settings, Activity } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
@@ -91,6 +92,12 @@ function HomeContent() {
   const [showBGGraph, setShowBGGraph] = useState(false);
   const bgPushedRef = useRef(false);
 
+  // Pre-run overlay
+  const [showPreRun, setShowPreRun] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("prerun")
+  );
+  const preRunPushedRef = useRef(false);
+
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
@@ -103,6 +110,7 @@ function HomeContent() {
       setActiveTab(parseTab(window.location.search));
       const params = new URLSearchParams(window.location.search);
       if (!params.has("bg")) setShowBGGraph(false);
+      if (!params.has("prerun")) setShowPreRun(false);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -156,6 +164,27 @@ function HomeContent() {
     }
   }, []);
 
+  const openPreRun = useCallback(() => {
+    setShowPreRun(true);
+    const params = new URLSearchParams(window.location.search);
+    params.set("prerun", "1");
+    window.history.pushState(null, "", `?${params.toString()}`);
+    preRunPushedRef.current = true;
+  }, []);
+
+  const closePreRun = useCallback(() => {
+    setShowPreRun(false);
+    if (preRunPushedRef.current) {
+      preRunPushedRef.current = false;
+      window.history.back();
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("prerun");
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+    }
+  }, []);
+
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
@@ -187,6 +216,15 @@ function HomeContent() {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
             <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
+            {currentBG != null && (
+              <button
+                onClick={openPreRun}
+                className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#39ff14] hover:bg-[#2a1f3d] transition"
+                title="Pre-run check"
+              >
+                <Activity size={20} />
+              </button>
+            )}
             <button
               onClick={() => setShowSettings(true)}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
@@ -230,6 +268,16 @@ function HomeContent() {
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-16 md:hidden flex-shrink-0" />
+
+      {showPreRun && currentBG != null && (
+        <PreRunOverlay
+          currentBG={currentBG}
+          trendSlope={trendSlope}
+          trend={trend}
+          bgModel={bgModel}
+          onClose={closePreRun}
+        />
+      )}
 
       {showBGGraph && readings.length > 0 && (
         <BGGraphPopover

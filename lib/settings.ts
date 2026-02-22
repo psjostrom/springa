@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   intervals_api_key  TEXT,
   google_ai_api_key  TEXT,
   xdrip_secret       TEXT,
-  race_date          TEXT
+  race_date          TEXT,
+  timezone           TEXT
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_auth (
@@ -79,6 +80,13 @@ CREATE TABLE IF NOT EXISTS run_feedback (
   avg_hr     REAL,
   PRIMARY KEY (email, created_at)
 );
+
+CREATE TABLE IF NOT EXISTS prerun_push_log (
+  email      TEXT NOT NULL,
+  event_date TEXT NOT NULL,
+  sent_at    INTEGER NOT NULL,
+  PRIMARY KEY (email, event_date)
+);
 `;
 
 // --- Types ---
@@ -88,6 +96,7 @@ export interface UserSettings {
   googleAiApiKey?: string;
   xdripSecret?: string;
   raceDate?: string;
+  timezone?: string;
 }
 
 export interface CachedActivity {
@@ -104,7 +113,7 @@ export interface CachedActivity {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -114,6 +123,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (r.google_ai_api_key) settings.googleAiApiKey = r.google_ai_api_key as string;
   if (r.xdrip_secret) settings.xdripSecret = r.xdrip_secret as string;
   if (r.race_date) settings.raceDate = r.race_date as string;
+  if (r.timezone) settings.timezone = r.timezone as string;
   return settings;
 }
 
@@ -122,19 +132,21 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date)
-          VALUES (?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone)
+          VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
             google_ai_api_key = COALESCE(excluded.google_ai_api_key, google_ai_api_key),
             xdrip_secret = COALESCE(excluded.xdrip_secret, xdrip_secret),
-            race_date = COALESCE(excluded.race_date, race_date)`,
+            race_date = COALESCE(excluded.race_date, race_date),
+            timezone = COALESCE(excluded.timezone, timezone)`,
     args: [
       email,
       partial.intervalsApiKey ?? null,
       partial.googleAiApiKey ?? null,
       partial.xdripSecret ?? null,
       partial.raceDate ?? null,
+      partial.timezone ?? null,
     ],
   });
 }
@@ -474,4 +486,53 @@ export async function updateRunFeedback(
     sql: "UPDATE run_feedback SET rating = ?, comment = ? WHERE email = ? AND created_at = ?",
     args: [rating, comment ?? null, email, createdAt],
   });
+}
+
+// --- Pre-run push dedup ---
+
+export async function getPrerunPushUsers(): Promise<string[]> {
+  const result = await db().execute({
+    sql: "SELECT DISTINCT email FROM push_subscriptions",
+    args: [],
+  });
+  return result.rows.map((r) => r.email as string);
+}
+
+export async function hasPrerunPushSent(
+  email: string,
+  eventDate: string,
+): Promise<boolean> {
+  const result = await db().execute({
+    sql: "SELECT 1 FROM prerun_push_log WHERE email = ? AND event_date = ?",
+    args: [email, eventDate],
+  });
+  return result.rows.length > 0;
+}
+
+export async function markPrerunPushSent(
+  email: string,
+  eventDate: string,
+): Promise<void> {
+  await db().execute({
+    sql: "INSERT OR IGNORE INTO prerun_push_log (email, event_date, sent_at) VALUES (?, ?, ?)",
+    args: [email, eventDate, Date.now()],
+  });
+}
+
+/** Fetch only recent xDrip readings (default: last 30 minutes). */
+export async function getRecentXdripReadings(
+  email: string,
+  withinMs: number = 30 * 60 * 1000,
+): Promise<XdripReading[]> {
+  const cutoff = Date.now() - withinMs;
+  const result = await db().execute({
+    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? ORDER BY ts",
+    args: [email, cutoff],
+  });
+  return result.rows.map((r) => ({
+    ts: r.ts as number,
+    mmol: r.mmol as number,
+    sgv: r.sgv as number,
+    direction: r.direction as string,
+  }));
 }

@@ -209,7 +209,7 @@ const generateBonusRun = (
 
   const s = makeStep(ctx);
   const weekNum = weekIdx + 1;
-  const notes = "Optional bonus run to add volume. This is extra credit — if your legs feel heavy from the week, skip it or walk instead. If you're feeling fresh, enjoy an easy 30 minutes. No pressure, no pace targets. Just move.";
+  const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 30 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
@@ -230,7 +230,7 @@ const generateLongRun = (
   const isRaceWeek = weekNum === ctx.totalWeeks;
   if (isRaceWeek) {
     return {
-      start_date_local: set(ctx.raceDate, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
+      start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY ${ctx.prefix}`,
       description: `RACE DAY! ${ctx.raceDist}km.\n\nGood luck!`,
       external_id: `${ctx.prefix}-race`,
@@ -312,7 +312,7 @@ const generateLongRun = (
   }
 
   return {
-    start_date_local: set(date, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
+    start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
     description: createWorkoutText(wu, mainSteps, cd, 1, notes),
     external_id: `${ctx.prefix}-sun-${weekNum}`,
