@@ -10,6 +10,7 @@ interface CoachContext {
   insights: FitnessInsights | null;
   bgModel: BGResponseModel | null;
   events: CalendarEvent[];
+  raceDate?: string;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -281,7 +282,8 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
     : "";
 
-  return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (2026-06-13).
+  const raceDateStr = ctx.raceDate || "2026-06-13";
+  return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (${raceDateStr}).
 
 ## Runner Profile
 - Age 40, 80kg, 185cm. Max HR 187, LTHR 169, LT Pace 4:53/km, VO2max 49.

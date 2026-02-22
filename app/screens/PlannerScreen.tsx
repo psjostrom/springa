@@ -26,11 +26,12 @@ function fuelDefault(bgModel: BGResponseModel | null | undefined, category: Work
 interface PlannerScreenProps {
   apiKey: string;
   bgModel?: BGResponseModel | null;
+  raceDate: string;
 }
 
-export function PlannerScreen({ apiKey, bgModel }: PlannerScreenProps) {
+export function PlannerScreen({ apiKey, bgModel, raceDate: initialRaceDate }: PlannerScreenProps) {
   const [raceName, setRaceName] = useState("EcoTrail");
-  const [raceDate, setRaceDate] = useState("2026-06-13");
+  const [raceDate, setRaceDate] = useState(initialRaceDate);
   const [raceDist, setRaceDist] = useState(16);
   const [lthr, setLthr] = useState(169);
   const [prefix, setPrefix] = useState("eco16");

@@ -16,6 +16,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [intervalsKey, setIntervalsKey] = useState(settings.intervalsApiKey ?? "");
   const [googleAiKey, setGoogleAiKey] = useState(settings.googleAiApiKey ?? "");
   const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
+  const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
@@ -56,6 +57,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     }
     if (xdripSecret.trim() !== (settings.xdripSecret ?? "")) {
       updates.xdripSecret = xdripSecret.trim();
+    }
+    if (raceDate !== (settings.raceDate ?? "")) {
+      updates.raceDate = raceDate;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
@@ -106,6 +110,19 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               onChange={(e) => setIntervalsKey(e.target.value)}
               className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
               placeholder="Intervals.icu API key"
+            />
+          </div>
+
+          {/* Race Date */}
+          <div>
+            <label className="block text-sm font-semibold text-[#c4b5fd] mb-1.5">
+              Race Date
+            </label>
+            <input
+              type="date"
+              value={raceDate}
+              onChange={(e) => setRaceDate(e.target.value)}
+              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
             />
           </div>
 

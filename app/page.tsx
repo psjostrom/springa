@@ -132,7 +132,8 @@ function HomeContent() {
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts } = useBGModel(apiKey, true, sharedCalendar.events, readings);
 
   // Phase info for progress screen
-  const phaseInfo = usePhaseInfo("2026-06-13", 18);
+  const raceDate = settings?.raceDate || "2026-06-13";
+  const phaseInfo = usePhaseInfo(raceDate, 18);
 
   const openBGGraph = useCallback(() => {
     setShowBGGraph(true);
@@ -199,7 +200,7 @@ function HomeContent() {
 
       <div className="flex-1 overflow-hidden">
         <div className={activeTab === "planner" ? "h-full" : "hidden"}>
-          <PlannerScreen apiKey={apiKey} bgModel={bgModel} />
+          <PlannerScreen apiKey={apiKey} bgModel={bgModel} raceDate={raceDate} />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
           <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} />
@@ -215,6 +216,7 @@ function HomeContent() {
             currentWeek={phaseInfo.week}
             totalWeeks={18}
             progress={phaseInfo.progress}
+            raceDate={raceDate}
             bgModel={bgModel}
             bgModelLoading={bgModelLoading}
             bgModelProgress={bgModelProgress}
@@ -222,7 +224,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
+          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
       </div>
 

@@ -12,6 +12,7 @@ interface UseCoachDataOptions {
   events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
+  raceDate?: string;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -20,7 +21,7 @@ interface UseCoachDataOptions {
   runBGContexts?: Map<string, RunBGContext>;
 }
 
-export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
+export function useCoachData({ events, phaseInfo, bgModel, raceDate, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
   const insights = useMemo(() => {
     if (events.length === 0) return null;
     const fitnessData = computeFitnessData(events, 365);
@@ -34,6 +35,7 @@ export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope
       insights,
       bgModel,
       events,
+      raceDate,
       currentBG,
       trendSlope,
       trendArrow,
@@ -41,7 +43,7 @@ export function useCoachData({ events, phaseInfo, bgModel, currentBG, trendSlope
       readings,
       runBGContexts,
     });
-  }, [events, insights, bgModel, phaseInfo, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts]);
+  }, [events, insights, bgModel, phaseInfo, raceDate, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts]);
 
   return { context, isLoading: events.length === 0 };
 }

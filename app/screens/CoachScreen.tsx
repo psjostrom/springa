@@ -30,6 +30,7 @@ interface CoachScreenProps {
   events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
+  raceDate?: string;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -42,6 +43,7 @@ export function CoachScreen({
   events,
   phaseInfo,
   bgModel,
+  raceDate,
   currentBG,
   trendSlope,
   trendArrow,
@@ -53,6 +55,7 @@ export function CoachScreen({
     events,
     phaseInfo,
     bgModel,
+    raceDate,
     currentBG,
     trendSlope,
     trendArrow,

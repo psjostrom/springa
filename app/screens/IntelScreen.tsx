@@ -26,10 +26,9 @@ interface IntelScreenProps {
   bgModel: BGResponseModel | null;
   bgModelLoading: boolean;
   bgModelProgress: { done: number; total: number };
+  raceDate: string;
   bgActivityNames: Map<string, string>;
 }
-
-const RACE_DATE = "2026-06-13";
 
 export function IntelScreen({
   events,
@@ -40,6 +39,7 @@ export function IntelScreen({
   currentWeek,
   totalWeeks,
   progress,
+  raceDate,
   bgModel,
   bgModelLoading,
   bgModelProgress,
@@ -109,7 +109,7 @@ export function IntelScreen({
         {/* Volume Trend */}
         <VolumeTrendChart
           events={events}
-          raceDate={RACE_DATE}
+          raceDate={raceDate}
           totalWeeks={totalWeeks}
         />
 
