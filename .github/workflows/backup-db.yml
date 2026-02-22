@@ -1,0 +1,16 @@
+name: Daily DB Backup
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tursodatabase/setup-cli@v1
+      - run: |
+          turso db destroy backup --yes || true
+          turso db create backup --from-db springa
+        env:
+          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
