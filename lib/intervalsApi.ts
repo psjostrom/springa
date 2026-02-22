@@ -1,4 +1,4 @@
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInDays, parseISO } from "date-fns";
 import type {
   WorkoutEvent,
   IntervalsStream,
@@ -10,7 +10,6 @@ import type {
 } from "./types";
 import { API_BASE, DEFAULT_LTHR } from "./constants";
 import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate, extractTotalCarbs, calculateWorkoutCarbs, estimateWorkoutDuration } from "./utils";
-import { isSameDay, parseISO } from "date-fns";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
@@ -260,7 +259,18 @@ export async function fetchCalendarData(
   const inflight = calendarInflight.get(cacheKey);
   if (inflight) return inflight;
 
-  const promise = fetchCalendarDataInner(apiKey, oldest, newest);
+  const promise = fetchCalendarDataInner(apiKey, oldest, newest).then(
+    ({ events, autoPairs }) => {
+      // Fire-and-forget: pair fallback-matched activities on Intervals.icu
+      for (const { eventId, activityId } of autoPairs) {
+        console.log(`Auto-pairing event ${eventId} with activity ${activityId}`);
+        pairEventWithActivity(apiKey, eventId, activityId).catch((err) =>
+          console.warn(`Failed to auto-pair event ${eventId}:`, err),
+        );
+      }
+      return events;
+    },
+  );
   calendarInflight.set(cacheKey, promise);
   promise.then(
     () => calendarInflight.delete(cacheKey),
@@ -269,11 +279,16 @@ export async function fetchCalendarData(
   return promise;
 }
 
+interface CalendarDataResult {
+  events: CalendarEvent[];
+  autoPairs: { eventId: number; activityId: string }[];
+}
+
 async function fetchCalendarDataInner(
   apiKey: string,
   oldest: string,
   newest: string,
-): Promise<CalendarEvent[]> {
+): Promise<CalendarDataResult> {
   const auth = authHeader(apiKey);
 
   const [activitiesRes, eventsRes] = await Promise.all([
@@ -294,6 +309,8 @@ async function fetchCalendarDataInner(
   const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
 
   const calendarEvents: CalendarEvent[] = [];
+  const autoPairs: { eventId: number; activityId: string }[] = [];
+  const fallbackClaimedEventIds = new Set<number>();
 
   const runActivities = activities.filter(
     (a) => a.type === "Run" || a.type === "VirtualRun",
@@ -337,19 +354,24 @@ async function fetchCalendarDataInner(
       activity.start_date_local || activity.start_date,
     );
 
-    // Prefer paired_activity_id (authoritative), fall back to name-based matching
-    const matchingEvent = pairedEventMap.get(activity.id) ?? events.find((event) => {
+    // Prefer paired_activity_id (authoritative), fall back to ±3 day exact name match
+    const authoritativeMatch = pairedEventMap.get(activity.id);
+    const fallbackMatch = !authoritativeMatch ? events.find((event) => {
       if (event.category !== "WORKOUT") return false;
       if (event.paired_activity_id) return false; // already claimed by another activity
       const eventDate = parseISO(event.start_date_local);
-      const sameDay = isSameDay(activityDate, eventDate);
-      const actName = activity.name?.toLowerCase() ?? "";
-      const evtName = event.name?.toLowerCase() ?? "";
-      const similarName =
-        actName.includes(evtName.substring(0, 10)) ||
-        evtName.includes(actName.substring(0, 10));
-      return sameDay && similarName;
-    });
+      const withinWindow = Math.abs(differenceInDays(activityDate, eventDate)) <= 3;
+      const actName = (activity.name ?? "").trim().toLowerCase();
+      const evtName = (event.name ?? "").trim().toLowerCase();
+      return withinWindow && actName === evtName;
+    }) : undefined;
+    const matchingEvent = authoritativeMatch ?? fallbackMatch;
+
+    // Track fallback matches for auto-pairing on Intervals.icu
+    if (fallbackMatch) {
+      autoPairs.push({ eventId: fallbackMatch.id, activityId: activity.id });
+      fallbackClaimedEventIds.add(fallbackMatch.id);
+    }
 
     const description =
       matchingEvent?.description || activity.description || "";
@@ -404,7 +426,8 @@ async function fetchCalendarDataInner(
   for (const event of events) {
     if (event.category !== "WORKOUT") continue;
 
-    // Skip events already represented by a completed activity
+    // Skip events already represented by a completed activity (paired or fallback-matched)
+    if (fallbackClaimedEventIds.has(event.id)) continue;
     if (event.paired_activity_id && activityMap.has(event.paired_activity_id)) {
       continue;
     }
@@ -449,7 +472,26 @@ async function fetchCalendarDataInner(
 
   calendarEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  return calendarEvents;
+  return { events: calendarEvents, autoPairs };
+}
+
+// --- EVENT PAIRING ---
+
+export async function pairEventWithActivity(
+  apiKey: string,
+  eventId: number,
+  activityId: string,
+): Promise<void> {
+  const auth = authHeader(apiKey);
+  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ paired_activity_id: activityId }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to pair event ${eventId} with activity ${activityId}: ${res.status} ${errorText}`);
+  }
 }
 
 // --- EVENT UPDATE ---

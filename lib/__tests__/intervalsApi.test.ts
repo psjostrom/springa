@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   fetchCalendarData,
+  pairEventWithActivity,
   updateEvent,
   uploadToIntervals,
   fetchActivityDetails,
@@ -143,7 +144,7 @@ describe("fetchCalendarData", () => {
     expect(result[0].description).toContain("FUEL PER 10: 8g");
   });
 
-  it("does not match activity and event on different days", async () => {
+  it("matches activity and event within ±3 days with exact name", async () => {
     const mockActivities = [
       {
         id: "123",
@@ -172,11 +173,50 @@ describe("fetchCalendarData", () => {
       if (url.includes("/events")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
       }
+      return Promise.resolve({ ok: false, text: () => Promise.resolve("") });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    // 2-day gap with exact name → should match (merged into completed)
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe("completed");
+    expect(result[0].description).toContain("FUEL PER 10: 8g");
+  });
+
+  it("does not match activity and event more than 3 days apart", async () => {
+    const mockActivities = [
+      {
+        id: "123",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "W01 Tue Easy eco16",
+        type: "Run",
+        distance: 5000,
+        moving_time: 1800,
+      },
+    ];
+    const mockEvents = [
+      {
+        id: 789,
+        category: "WORKOUT",
+        start_date_local: "2026-02-15T12:00:00",
+        name: "W01 Tue Easy eco16",
+        description: "PUMP ON - FUEL PER 10: 8g",
+      },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
+      }
       return Promise.resolve({ ok: false });
     }));
 
     const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
-    // Should have both: activity as completed + event as planned (different days = no match)
+    // 5-day gap → no match
     expect(result.length).toBe(2);
     expect(result.filter((e) => e.type === "completed").length).toBe(1);
     expect(result.filter((e) => e.type === "planned").length).toBe(1);
@@ -354,6 +394,56 @@ describe("fetchCalendarData", () => {
     const result = await fetchCalendarData("test-api-key", new Date("2026-06-01"), new Date("2026-06-30"));
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("race");
+  });
+
+  it("calls pair API for fallback-matched activity", async () => {
+    const mockActivities = [
+      {
+        id: "act-99",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "W01 Tue Easy eco16",
+        type: "Run",
+        distance: 5000,
+        moving_time: 1800,
+      },
+    ];
+    const mockEvents = [
+      {
+        id: 555,
+        category: "WORKOUT",
+        start_date_local: "2026-02-10T12:00:00",
+        name: "W01 Tue Easy eco16",
+        description: "Easy run",
+        // No paired_activity_id — forces fallback matching
+      },
+    ];
+
+    const fetchCalls: { url: string; method?: string; body?: string }[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
+      fetchCalls.push({ url, method: opts?.method, body: opts?.body as string });
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events/555") && opts?.method === "PUT") {
+        return Promise.resolve({ ok: true });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
+      }
+      return Promise.resolve({ ok: false, text: () => Promise.resolve("") });
+    }));
+
+    await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+
+    // Wait for fire-and-forget pair call to resolve
+    await new Promise((r) => setTimeout(r, 50));
+
+    const pairCall = fetchCalls.find(
+      (c) => c.url.includes("/events/555") && c.method === "PUT",
+    );
+    expect(pairCall).toBeDefined();
+    expect(JSON.parse(pairCall!.body!)).toEqual({ paired_activity_id: "act-99" });
   });
 
   it("filters to only Run and VirtualRun activities", async () => {
