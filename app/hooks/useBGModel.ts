@@ -148,18 +148,6 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         // Merge: cached (still relevant) + newly fetched
         const allCached = [...cachedMap.values(), ...newCached];
 
-        // Compute RunBGContexts from xDrip readings
-        if (xdripReadings && xdripReadings.length > 0) {
-          const contexts = buildRunBGContexts(completedRuns, xdripReadings);
-          if (!cancelled) setRunBGContexts(contexts);
-
-          // Enrich cached activities with RunBGContext
-          for (const c of allCached) {
-            const ctx = contexts.get(c.activityId);
-            if (ctx) c.runBGContext = ctx;
-          }
-        }
-
         // Save merged cache (fire and forget)
         if (newCached.length > 0) {
           writeLocalCache(allCached);
@@ -168,7 +156,11 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
         // Build model from all cached data
         const model = buildBGModelFromCached(allCached);
-        if (!cancelled) setBgModel(model);
+        if (!cancelled) {
+          setBgModel(model);
+          cachedRef.current = allCached;
+          completedRunsRef.current = completedRuns;
+        }
       } catch (err) {
         console.error("useBGModel: build failed", err);
         loadedRef.current = false;
@@ -179,6 +171,26 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
     return () => { cancelled = true; };
   }, [apiKey, enabled, sharedEvents]);
+
+  // Compute RunBGContexts separately so xdripReadings updates trigger recomputation
+  const cachedRef = useRef<CachedActivity[]>([]);
+  const completedRunsRef = useRef<CalendarEvent[]>([]);
+
+  useEffect(() => {
+    if (!xdripReadings || xdripReadings.length === 0 || completedRunsRef.current.length === 0) return;
+
+    const contexts = buildRunBGContexts(completedRunsRef.current, xdripReadings);
+    setRunBGContexts(contexts);
+
+    // Enrich cached activities with RunBGContext and rebuild model
+    const allCached = cachedRef.current;
+    for (const c of allCached) {
+      const ctx = contexts.get(c.activityId);
+      if (ctx) c.runBGContext = ctx;
+    }
+    const model = buildBGModelFromCached(allCached);
+    setBgModel(model);
+  }, [xdripReadings]);
 
   return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts };
 }
