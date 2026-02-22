@@ -263,7 +263,7 @@ export async function fetchCalendarData(
     ({ events, autoPairs }) => {
       // Fire-and-forget: pair fallback-matched activities on Intervals.icu
       for (const { eventId, activityId } of autoPairs) {
-        console.log(`Auto-pairing event ${eventId} with activity ${activityId}`);
+        // Fire-and-forget pair on Intervals.icu
         pairEventWithActivity(apiKey, eventId, activityId).catch((err) =>
           console.warn(`Failed to auto-pair event ${eventId}:`, err),
         );
@@ -284,39 +284,24 @@ interface CalendarDataResult {
   autoPairs: { eventId: number; activityId: string }[];
 }
 
-async function fetchCalendarDataInner(
-  apiKey: string,
-  oldest: string,
-  newest: string,
-): Promise<CalendarDataResult> {
-  const auth = authHeader(apiKey);
-
-  const [activitiesRes, eventsRes] = await Promise.all([
-    fetch(
-      `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
-      { headers: { Authorization: auth } },
-    ),
-    fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
-      headers: { Authorization: auth },
-    }),
-  ]);
-
-  if (!activitiesRes.ok) {
-    throw new Error(`Failed to fetch activities: ${activitiesRes.status}`);
-  }
-
-  const activities: IntervalsActivity[] = await activitiesRes.json();
-  const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
-
+/** Convert completed run activities into CalendarEvents and track auto-pair candidates. */
+function processActivities(
+  activities: IntervalsActivity[],
+  events: IntervalsEvent[],
+): {
+  calendarEvents: CalendarEvent[];
+  activityMap: Map<string, CalendarEvent>;
+  autoPairs: { eventId: number; activityId: string }[];
+  fallbackClaimedEventIds: Set<number>;
+} {
   const calendarEvents: CalendarEvent[] = [];
   const autoPairs: { eventId: number; activityId: string }[] = [];
   const fallbackClaimedEventIds = new Set<number>();
+  const activityMap = new Map<string, CalendarEvent>();
 
   const runActivities = activities.filter(
     (a) => a.type === "Run" || a.type === "VirtualRun",
   );
-
-  const activityMap = new Map<string, CalendarEvent>();
 
   // Build reverse lookup: activityId → planned event (authoritative link from Intervals.icu)
   const pairedEventMap = new Map<string, IntervalsEvent>();
@@ -326,7 +311,7 @@ async function fetchCalendarDataInner(
     }
   }
 
-  runActivities.forEach((activity) => {
+  for (const activity of runActivities) {
     const category = getWorkoutCategory(activity.name);
 
     let pace: number | undefined;
@@ -421,7 +406,18 @@ async function fetchCalendarDataInner(
 
     activityMap.set(activity.id, calendarEvent);
     calendarEvents.push(calendarEvent);
-  });
+  }
+
+  return { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds };
+}
+
+/** Convert planned/upcoming workout events into CalendarEvents (excluding already-completed ones). */
+function processPlannedEvents(
+  events: IntervalsEvent[],
+  activityMap: Map<string, CalendarEvent>,
+  fallbackClaimedEventIds: Set<number>,
+): CalendarEvent[] {
+  const calendarEvents: CalendarEvent[] = [];
 
   for (const event of events) {
     if (event.category !== "WORKOUT") continue;
@@ -470,9 +466,42 @@ async function fetchCalendarDataInner(
     });
   }
 
-  calendarEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return calendarEvents;
+}
 
-  return { events: calendarEvents, autoPairs };
+async function fetchCalendarDataInner(
+  apiKey: string,
+  oldest: string,
+  newest: string,
+): Promise<CalendarDataResult> {
+  const auth = authHeader(apiKey);
+
+  const [activitiesRes, eventsRes] = await Promise.all([
+    fetch(
+      `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
+      { headers: { Authorization: auth } },
+    ),
+    fetch(`${API_BASE}/athlete/0/events?oldest=${oldest}&newest=${newest}`, {
+      headers: { Authorization: auth },
+    }),
+  ]);
+
+  if (!activitiesRes.ok) {
+    throw new Error(`Failed to fetch activities: ${activitiesRes.status}`);
+  }
+
+  const activities: IntervalsActivity[] = await activitiesRes.json();
+  const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
+
+  const { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds } =
+    processActivities(activities, events);
+
+  const plannedEvents = processPlannedEvents(events, activityMap, fallbackClaimedEventIds);
+
+  const allEvents = [...calendarEvents, ...plannedEvents];
+  allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return { events: allEvents, autoPairs };
 }
 
 // --- EVENT PAIRING ---
@@ -556,7 +585,6 @@ export async function uploadToIntervals(
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
 
   try {
-    console.log("Deleting all future workouts...");
     const deleteRes = await fetch(
       `${API_BASE}/athlete/0/events?oldest=${todayStr}&newest=${endStr}&category=WORKOUT`,
       {

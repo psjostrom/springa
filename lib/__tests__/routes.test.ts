@@ -12,6 +12,14 @@ vi.mock("@libsql/client", async (importOriginal) => {
 const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => mockAuth() }));
 
+const mockSendNotification = vi.fn().mockResolvedValue({});
+vi.mock("web-push", () => ({
+  default: {
+    setVapidDetails: vi.fn(),
+    sendNotification: (...args: unknown[]) => mockSendNotification(...args),
+  },
+}));
+
 import {
   saveXdripAuth,
   lookupXdripUser,
@@ -30,6 +38,12 @@ import {
   GET as bgCacheGET,
   PUT as bgCachePUT,
 } from "@/app/api/bg-cache/route";
+import { POST as runCompletedPOST } from "@/app/api/run-completed/route";
+import {
+  GET as feedbackGET,
+  POST as feedbackPOST,
+} from "@/app/api/run-feedback/route";
+import { POST as pushSubscribePOST } from "@/app/api/push/subscribe/route";
 
 const EMAIL = "runner@example.com";
 const SECRET = "my-xdrip-secret";
@@ -102,7 +116,10 @@ beforeEach(async () => {
   await testDb().execute("DELETE FROM xdrip_readings");
   await testDb().execute("DELETE FROM bg_cache");
   await testDb().execute("DELETE FROM run_analysis");
+  await testDb().execute("DELETE FROM push_subscriptions");
+  await testDb().execute("DELETE FROM run_feedback");
   mockAuth.mockReset();
+  mockSendNotification.mockReset().mockResolvedValue({});
 });
 
 // ---------------------------------------------------------------------------
@@ -430,5 +447,229 @@ describe("edge cases", () => {
     expect(monthKey(new Date("2026-02-01T00:00:00Z").getTime())).toBe("2026-02");
     expect(monthKey(new Date("2026-01-31T23:59:59Z").getTime())).toBe("2026-01");
     expect(monthKey(new Date("2025-12-31T23:59:59Z").getTime())).toBe("2025-12");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Push subscribe route
+// ---------------------------------------------------------------------------
+
+function postPushSubscribe(body: unknown) {
+  return pushSubscribePOST(
+    new Request("http://localhost/api/push/subscribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+describe("push/subscribe route", () => {
+  it("saves subscription for authenticated user", async () => {
+    authedSession();
+    const res = await postPushSubscribe({
+      endpoint: "https://fcm.googleapis.com/fcm/send/abc123",
+      keys: { p256dh: "test-p256dh", auth: "test-auth" },
+    });
+    expect(res.status).toBe(200);
+
+    const rows = await testDb().execute({
+      sql: "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE email = ?",
+      args: [EMAIL],
+    });
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].endpoint).toBe("https://fcm.googleapis.com/fcm/send/abc123");
+  });
+
+  it("rejects unauthenticated request", async () => {
+    mockAuth.mockResolvedValue(null);
+    const res = await postPushSubscribe({
+      endpoint: "https://example.com",
+      keys: { p256dh: "x", auth: "y" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects invalid subscription body", async () => {
+    authedSession();
+    const res = await postPushSubscribe({ endpoint: "https://example.com" });
+    expect(res.status).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Run completed route
+// ---------------------------------------------------------------------------
+
+function postRunCompleted(apiSecret: string, body: unknown) {
+  return runCompletedPOST(
+    new Request("http://localhost/api/run-completed", {
+      method: "POST",
+      headers: {
+        "api-secret": apiSecret,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+describe("run-completed route", () => {
+  it("saves feedback and sends push notification", async () => {
+    await saveXdripAuth(EMAIL, SECRET);
+
+    // Add a push subscription so sendPushToUser has something to send to
+    await testDb().execute({
+      sql: "INSERT INTO push_subscriptions (email, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, "https://fcm.example.com/push/abc", "p256dh-val", "auth-val", Date.now()],
+    });
+
+    const res = await postRunCompleted(SECRET, {
+      distance: 5200,
+      duration: 1800000,
+      avgHr: 145,
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.ts).toBeTypeOf("number");
+
+    // Verify feedback record saved
+    const rows = await testDb().execute({
+      sql: "SELECT distance, duration, avg_hr FROM run_feedback WHERE email = ?",
+      args: [EMAIL],
+    });
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].distance).toBe(5200);
+
+    // Verify web-push was called
+    expect(mockSendNotification).toHaveBeenCalledOnce();
+    const pushSub = mockSendNotification.mock.calls[0][0];
+    expect(pushSub.endpoint).toBe("https://fcm.example.com/push/abc");
+  });
+
+  it("rejects missing api-secret", async () => {
+    const res = await runCompletedPOST(
+      new Request("http://localhost/api/run-completed", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects unknown api-secret", async () => {
+    const res = await postRunCompleted("wrong-secret", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("works with no push subscriptions (no notification sent)", async () => {
+    await saveXdripAuth(EMAIL, SECRET);
+    const res = await postRunCompleted(SECRET, { distance: 1000 });
+    expect(res.status).toBe(200);
+    expect(mockSendNotification).not.toHaveBeenCalled();
+  });
+
+  it("cleans up stale subscription on 410", async () => {
+    await saveXdripAuth(EMAIL, SECRET);
+    await testDb().execute({
+      sql: "INSERT INTO push_subscriptions (email, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, "https://stale.example.com/push", "p", "a", Date.now()],
+    });
+
+    mockSendNotification.mockRejectedValue({ statusCode: 410 });
+
+    const res = await postRunCompleted(SECRET, { distance: 3000 });
+    expect(res.status).toBe(200);
+
+    // Stale subscription should be deleted
+    const rows = await testDb().execute({
+      sql: "SELECT * FROM push_subscriptions WHERE email = ?",
+      args: [EMAIL],
+    });
+    expect(rows.rows).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Run feedback route
+// ---------------------------------------------------------------------------
+
+function getFeedback(ts: number) {
+  return feedbackGET(
+    new Request(`http://localhost/api/run-feedback?ts=${ts}`),
+  );
+}
+
+function postFeedback(body: unknown) {
+  return feedbackPOST(
+    new Request("http://localhost/api/run-feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+describe("run-feedback route", () => {
+  const TS = 1700000000000;
+
+  it("GET returns feedback record", async () => {
+    authedSession();
+    await testDb().execute({
+      sql: "INSERT INTO run_feedback (email, created_at, distance) VALUES (?, ?, ?)",
+      args: [EMAIL, TS, 5000],
+    });
+
+    const res = await getFeedback(TS);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.distance).toBe(5000);
+    expect(data.createdAt).toBe(TS);
+  });
+
+  it("GET returns 404 for unknown ts", async () => {
+    authedSession();
+    const res = await getFeedback(9999);
+    expect(res.status).toBe(404);
+  });
+
+  it("GET returns 400 without ts param", async () => {
+    authedSession();
+    const res = await feedbackGET(
+      new Request("http://localhost/api/run-feedback"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("POST updates rating and comment", async () => {
+    authedSession();
+    await testDb().execute({
+      sql: "INSERT INTO run_feedback (email, created_at, distance) VALUES (?, ?, ?)",
+      args: [EMAIL, TS, 5000],
+    });
+
+    const res = await postFeedback({ ts: TS, rating: "good", comment: "Felt great" });
+    expect(res.status).toBe(200);
+
+    const rows = await testDb().execute({
+      sql: "SELECT rating, comment FROM run_feedback WHERE email = ? AND created_at = ?",
+      args: [EMAIL, TS],
+    });
+    expect(rows.rows[0].rating).toBe("good");
+    expect(rows.rows[0].comment).toBe("Felt great");
+  });
+
+  it("POST rejects missing ts or rating", async () => {
+    authedSession();
+    const res = await postFeedback({ ts: TS });
+    expect(res.status).toBe(400);
+  });
+
+  it("GET/POST reject unauthenticated requests", async () => {
+    mockAuth.mockResolvedValue(null);
+    expect((await getFeedback(TS)).status).toBe(401);
+    expect((await postFeedback({ ts: TS, rating: "good" })).status).toBe(401);
   });
 });

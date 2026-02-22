@@ -142,6 +142,8 @@ export function FitnessChart({ data }: FitnessChartProps) {
             <button
               key={line}
               onClick={() => toggleLine(line)}
+              aria-pressed={active}
+              aria-label={`Toggle ${cfg.label}`}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                 active
                   ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"

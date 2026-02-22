@@ -250,6 +250,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             <button
               key={stream}
               onClick={() => toggleStream(stream)}
+              aria-pressed={isSelected}
+              aria-label={`Toggle ${config.label}`}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
                 isSelected
                   ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
