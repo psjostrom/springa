@@ -8,8 +8,9 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: tursodatabase/setup-cli@v1
+      - run: curl -sSfL https://get.tur.so/install.sh | bash
       - run: |
+          export PATH="$HOME/.turso:$PATH"
           turso db destroy backup --yes || true
           turso db create backup --from-db springa
         env:
