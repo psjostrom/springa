@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   fetchCalendarData,
-  pairEventWithActivity,
   updateEvent,
   uploadToIntervals,
   fetchActivityDetails,

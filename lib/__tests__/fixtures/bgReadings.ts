@@ -35,7 +35,7 @@ function interpolate(start: number, end: number, count: number): number[] {
 
 /** 2h of readings steady around 10 mmol/L (±0.2 noise) */
 export function stableAt10(startMs: number): XdripReading[] {
-  const values = Array.from({ length: 24 }, (_, i) => noisy(10, 0.2));
+  const values = Array.from({ length: 24 }, () => noisy(10, 0.2));
   return makeReadings(startMs, values);
 }
 

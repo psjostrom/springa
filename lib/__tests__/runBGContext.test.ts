@@ -9,7 +9,7 @@ import {
   buildRunBGContext,
   buildRunBGContexts,
 } from "../runBGContext";
-import { makeReadings, SCENARIOS } from "./fixtures/bgReadings";
+import { makeReadings } from "./fixtures/bgReadings";
 import type { CalendarEvent } from "../types";
 import type { XdripReading } from "../xdrip";
 
