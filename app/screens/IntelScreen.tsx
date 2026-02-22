@@ -27,6 +27,10 @@ interface IntelScreenProps {
   bgModelLoading: boolean;
   bgModelProgress: { done: number; total: number };
   raceDate: string;
+  raceDist?: number;
+  prefix?: string;
+  startKm?: number;
+  lthr?: number;
   bgActivityNames: Map<string, string>;
 }
 
@@ -40,6 +44,10 @@ export function IntelScreen({
   totalWeeks,
   progress,
   raceDate,
+  raceDist,
+  prefix,
+  startKm,
+  lthr,
   bgModel,
   bgModelLoading,
   bgModelProgress,
@@ -111,6 +119,10 @@ export function IntelScreen({
           events={events}
           raceDate={raceDate}
           totalWeeks={totalWeeks}
+          raceDist={raceDist}
+          prefix={prefix}
+          startKm={startKm}
+          lthr={lthr}
         />
 
         {/* BG Response Model */}

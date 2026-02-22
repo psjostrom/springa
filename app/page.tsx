@@ -141,7 +141,8 @@ function HomeContent() {
 
   // Phase info for progress screen
   const raceDate = settings?.raceDate || "2026-06-13";
-  const phaseInfo = usePhaseInfo(raceDate, 18);
+  const totalWeeks = settings?.totalWeeks ?? 18;
+  const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
 
   const openBGGraph = useCallback(() => {
     setShowBGGraph(true);
@@ -238,7 +239,17 @@ function HomeContent() {
 
       <div className="flex-1 overflow-hidden">
         <div className={activeTab === "planner" ? "h-full" : "hidden"}>
-          <PlannerScreen apiKey={apiKey} bgModel={bgModel} raceDate={raceDate} />
+          <PlannerScreen
+            apiKey={apiKey}
+            bgModel={bgModel}
+            raceDate={raceDate}
+            raceName={settings?.raceName}
+            raceDist={settings?.raceDist}
+            prefix={settings?.prefix}
+            totalWeeks={totalWeeks}
+            startKm={settings?.startKm}
+            lthr={settings?.lthr}
+          />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
           <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} />
@@ -252,9 +263,13 @@ function HomeContent() {
             onRetryLoad={sharedCalendar.reload}
             phaseName={phaseInfo.name}
             currentWeek={phaseInfo.week}
-            totalWeeks={18}
+            totalWeeks={totalWeeks}
             progress={phaseInfo.progress}
             raceDate={raceDate}
+            raceDist={settings?.raceDist}
+            prefix={settings?.prefix}
+            startKm={settings?.startKm}
+            lthr={settings?.lthr}
             bgModel={bgModel}
             bgModelLoading={bgModelLoading}
             bgModelProgress={bgModelProgress}

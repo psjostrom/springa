@@ -23,7 +23,13 @@ CREATE TABLE IF NOT EXISTS user_settings (
   google_ai_api_key  TEXT,
   xdrip_secret       TEXT,
   race_date          TEXT,
-  timezone           TEXT
+  timezone           TEXT,
+  race_name          TEXT,
+  race_dist          REAL,
+  prefix             TEXT,
+  total_weeks        INTEGER,
+  start_km           REAL,
+  lthr               INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_auth (
@@ -97,6 +103,12 @@ export interface UserSettings {
   xdripSecret?: string;
   raceDate?: string;
   timezone?: string;
+  raceName?: string;
+  raceDist?: number;
+  prefix?: string;
+  totalWeeks?: number;
+  startKm?: number;
+  lthr?: number;
 }
 
 export interface CachedActivity {
@@ -113,7 +125,7 @@ export interface CachedActivity {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -124,6 +136,12 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (r.xdrip_secret) settings.xdripSecret = r.xdrip_secret as string;
   if (r.race_date) settings.raceDate = r.race_date as string;
   if (r.timezone) settings.timezone = r.timezone as string;
+  if (r.race_name) settings.raceName = r.race_name as string;
+  if (r.race_dist != null) settings.raceDist = r.race_dist as number;
+  if (r.prefix) settings.prefix = r.prefix as string;
+  if (r.total_weeks != null) settings.totalWeeks = r.total_weeks as number;
+  if (r.start_km != null) settings.startKm = r.start_km as number;
+  if (r.lthr != null) settings.lthr = r.lthr as number;
   return settings;
 }
 
@@ -132,14 +150,20 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone)
-          VALUES (?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
             google_ai_api_key = COALESCE(excluded.google_ai_api_key, google_ai_api_key),
             xdrip_secret = COALESCE(excluded.xdrip_secret, xdrip_secret),
             race_date = COALESCE(excluded.race_date, race_date),
-            timezone = COALESCE(excluded.timezone, timezone)`,
+            timezone = COALESCE(excluded.timezone, timezone),
+            race_name = COALESCE(excluded.race_name, race_name),
+            race_dist = COALESCE(excluded.race_dist, race_dist),
+            prefix = COALESCE(excluded.prefix, prefix),
+            total_weeks = COALESCE(excluded.total_weeks, total_weeks),
+            start_km = COALESCE(excluded.start_km, start_km),
+            lthr = COALESCE(excluded.lthr, lthr)`,
     args: [
       email,
       partial.intervalsApiKey ?? null,
@@ -147,6 +171,12 @@ export async function saveUserSettings(
       partial.xdripSecret ?? null,
       partial.raceDate ?? null,
       partial.timezone ?? null,
+      partial.raceName ?? null,
+      partial.raceDist ?? null,
+      partial.prefix ?? null,
+      partial.totalWeeks ?? null,
+      partial.startKm ?? null,
+      partial.lthr ?? null,
     ],
   });
 }

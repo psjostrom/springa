@@ -1,14 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ChevronDown } from "lucide-react";
 import type { WorkoutEvent, WorkoutCategory } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { uploadToIntervals } from "@/lib/intervalsApi";
 import { generatePlan } from "@/lib/workoutGenerators";
-import { RaceSettings } from "../components/RaceSettings";
-import { PhysiologySettings } from "../components/PhysiologySettings";
-import { PlanStructureSettings } from "../components/PlanStructureSettings";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
@@ -27,16 +23,20 @@ interface PlannerScreenProps {
   apiKey: string;
   bgModel?: BGResponseModel | null;
   raceDate: string;
+  raceName?: string;
+  raceDist?: number;
+  prefix?: string;
+  totalWeeks?: number;
+  startKm?: number;
+  lthr?: number;
 }
 
-export function PlannerScreen({ apiKey, bgModel, raceDate: initialRaceDate }: PlannerScreenProps) {
-  const [raceName, setRaceName] = useState("EcoTrail");
-  const [raceDate, setRaceDate] = useState(initialRaceDate);
-  const [raceDist, setRaceDist] = useState(16);
-  const [lthr, setLthr] = useState(169);
-  const [prefix, setPrefix] = useState("eco16");
-  const [totalWeeks, setTotalWeeks] = useState(18);
-  const [startKm, setStartKm] = useState(8);
+export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
+  const raceDist = props.raceDist ?? 16;
+  const lthr = props.lthr ?? 169;
+  const prefix = props.prefix ?? "eco16";
+  const totalWeeks = props.totalWeeks ?? 18;
+  const startKm = props.startKm ?? 8;
   const [fuelInterval, setFuelInterval] = useState(() => fuelDefault(bgModel, "interval", DEFAULT_FUEL.interval));
   const [fuelLong, setFuelLong] = useState(() => fuelDefault(bgModel, "long", DEFAULT_FUEL.long));
   const [fuelEasy, setFuelEasy] = useState(() => fuelDefault(bgModel, "easy", DEFAULT_FUEL.easy));
@@ -45,7 +45,6 @@ export function PlannerScreen({ apiKey, bgModel, raceDate: initialRaceDate }: Pl
   const [statusMsg, setStatusMsg] = useState("");
 
   const chartData = useWeeklyVolumeData(planEvents);
-  const [settingsOpen, setSettingsOpen] = useState(true);
 
   const runGenerate = useCallback(
     (fi: number, fl: number, fe: number) => {
@@ -81,96 +80,57 @@ export function PlannerScreen({ apiKey, bgModel, raceDate: initialRaceDate }: Pl
     setIsUploading(false);
   };
 
-  const settingsPanel = (
-    <div className="space-y-4">
-      <RaceSettings
-        raceName={raceName}
-        raceDate={raceDate}
-        raceDist={raceDist}
-        onRaceNameChange={setRaceName}
-        onRaceDateChange={setRaceDate}
-        onRaceDistChange={setRaceDist}
-      />
-      <PhysiologySettings
-        lthr={lthr}
-        fuelEasy={fuelEasy}
-        fuelLong={fuelLong}
-        fuelInterval={fuelInterval}
-        onLthrChange={setLthr}
-        onFuelEasyChange={setFuelEasy}
-        onFuelLongChange={setFuelLong}
-        onFuelIntervalChange={setFuelInterval}
-      />
-      <PlanStructureSettings
-        prefix={prefix}
-        totalWeeks={totalWeeks}
-        startKm={startKm}
-        onPrefixChange={setPrefix}
-        onTotalWeeksChange={setTotalWeeks}
-        onStartKmChange={setStartKm}
-      />
-    </div>
-  );
-
-  const generateButton = (
-    <button
-      onClick={() => {
-        handleGenerate();
-        setSettingsOpen(false);
-      }}
-      className="w-full py-3 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20"
-    >
-      Generate Plan
-    </button>
-  );
+  const inputClass =
+    "w-full p-2 border border-[#3d2b5a] bg-[#1a1030] text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95] transition";
 
   return (
-    <div className="h-full bg-[#0d0a1a] flex flex-col md:flex-row text-white font-sans overflow-hidden">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-80 bg-[#1e1535] border-r border-[#3d2b5a] p-6 flex-col gap-6 shrink-0 overflow-y-auto h-full">
-        {settingsPanel}
-        <div className="mt-auto">{generateButton}</div>
-      </aside>
-
-      {/* Mobile + Main content */}
-      <main className="flex-1 bg-[#0d0a1a] overflow-y-auto h-full">
-        <div className="p-4 md:p-8">
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Mobile: collapsible settings */}
-            <div className="md:hidden">
-              <button
-                onClick={() => setSettingsOpen(!settingsOpen)}
-                className="w-full flex items-center justify-between bg-[#1e1535] p-3 rounded-lg border border-[#3d2b5a] text-sm font-semibold"
-              >
-                Settings
-                <ChevronDown
-                  size={18}
-                  className={`transition-transform ${settingsOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              {settingsOpen && (
-                <div className="bg-[#1e1535] p-4 rounded-b-lg border border-t-0 border-[#3d2b5a] space-y-4">
-                  {settingsPanel}
-                </div>
-              )}
-              <div className="mt-3">{generateButton}</div>
-            </div>
-
-            {planEvents.length > 0 && (
-              <div className="space-y-8">
-                <WeeklyVolumeChart data={chartData} />
-                <ActionBar
-                  workoutCount={planEvents.length}
-                  isUploading={isUploading}
-                  statusMsg={statusMsg}
-                  onUpload={handleUpload}
-                />
-                <WorkoutList events={planEvents} />
+    <div className="h-full overflow-y-auto bg-[#0d0a1a]">
+      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+        {/* Fuel rates + Generate */}
+        <div className="relative overflow-hidden bg-[#1e1535] border border-[#3d2b5a] rounded-xl p-4 md:p-5">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#ff2d95]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
+          <div className="relative flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#b8a5d4]">
+                Fuel rates <span className="text-[#7a6899]">g/h</span>
+              </span>
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                <label className="flex flex-col text-xs text-[#b8a5d4] gap-1">
+                  Easy
+                  <input type="number" value={fuelEasy} onChange={(e) => setFuelEasy(Number(e.target.value))} className={inputClass} />
+                </label>
+                <label className="flex flex-col text-xs text-[#b8a5d4] gap-1">
+                  Long
+                  <input type="number" value={fuelLong} onChange={(e) => setFuelLong(Number(e.target.value))} className={inputClass} />
+                </label>
+                <label className="flex flex-col text-xs text-[#b8a5d4] gap-1">
+                  Interval
+                  <input type="number" value={fuelInterval} onChange={(e) => setFuelInterval(Number(e.target.value))} className={inputClass} />
+                </label>
               </div>
-            )}
+            </div>
+            <button
+              onClick={handleGenerate}
+              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 shrink-0"
+            >
+              Generate Plan
+            </button>
           </div>
         </div>
-      </main>
+
+        {planEvents.length > 0 && (
+          <>
+            <WeeklyVolumeChart data={chartData} />
+            <ActionBar
+              workoutCount={planEvents.length}
+              isUploading={isUploading}
+              statusMsg={statusMsg}
+              onUpload={handleUpload}
+            />
+            <WorkoutList events={planEvents} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

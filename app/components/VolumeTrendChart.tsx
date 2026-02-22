@@ -24,6 +24,10 @@ interface VolumeTrendChartProps {
   events: CalendarEvent[];
   raceDate: string;
   totalWeeks: number;
+  raceDist?: number;
+  prefix?: string;
+  startKm?: number;
+  lthr?: number;
 }
 
 interface WeekData {
@@ -39,6 +43,10 @@ export function VolumeTrendChart({
   events,
   raceDate,
   totalWeeks,
+  raceDist,
+  prefix,
+  startKm,
+  lthr,
 }: VolumeTrendChartProps) {
 
   const data = useMemo(() => {
@@ -61,7 +69,7 @@ export function VolumeTrendChart({
     }));
 
     // Planned distances from the deterministic plan generator (covers all weeks)
-    const planEvents = generateFullPlan(raceDate, 16, "eco16", totalWeeks, 8, 169);
+    const planEvents = generateFullPlan(raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? 169);
     for (const pe of planEvents) {
       const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, {
         weekStartsOn: 1,
@@ -95,7 +103,7 @@ export function VolumeTrendChart({
     }
 
     return { weeks, currentWeekIdx };
-  }, [events, raceDate, totalWeeks]);
+  }, [events, raceDate, totalWeeks, raceDist, prefix, startKm, lthr]);
 
   if (events.length === 0) return null;
 
