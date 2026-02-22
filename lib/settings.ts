@@ -57,6 +57,27 @@ CREATE TABLE IF NOT EXISTS run_analysis (
   text        TEXT NOT NULL,
   PRIMARY KEY (email, activity_id)
 );
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  email      TEXT NOT NULL,
+  endpoint   TEXT NOT NULL,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (email, endpoint)
+);
+
+CREATE TABLE IF NOT EXISTS run_feedback (
+  email      TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  activity_id TEXT,
+  rating     TEXT,
+  comment    TEXT,
+  distance   REAL,
+  duration   REAL,
+  avg_hr     REAL,
+  PRIMARY KEY (email, created_at)
+);
 `;
 
 // --- Types ---
@@ -335,5 +356,117 @@ export async function saveRunAnalysis(
   await db().execute({
     sql: "INSERT OR REPLACE INTO run_analysis (email, activity_id, text) VALUES (?, ?, ?)",
     args: [email, activityId, text],
+  });
+}
+
+// --- Push subscriptions ---
+
+export interface PushSubscriptionRecord {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export async function savePushSubscription(
+  email: string,
+  sub: PushSubscriptionRecord,
+): Promise<void> {
+  await db().execute({
+    sql: `INSERT OR REPLACE INTO push_subscriptions (email, endpoint, p256dh, auth, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [email, sub.endpoint, sub.p256dh, sub.auth, Date.now()],
+  });
+}
+
+export async function getPushSubscriptions(
+  email: string,
+): Promise<PushSubscriptionRecord[]> {
+  const result = await db().execute({
+    sql: "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE email = ?",
+    args: [email],
+  });
+  return result.rows.map((r) => ({
+    endpoint: r.endpoint as string,
+    p256dh: r.p256dh as string,
+    auth: r.auth as string,
+  }));
+}
+
+export async function deletePushSubscription(
+  email: string,
+  endpoint: string,
+): Promise<void> {
+  await db().execute({
+    sql: "DELETE FROM push_subscriptions WHERE email = ? AND endpoint = ?",
+    args: [email, endpoint],
+  });
+}
+
+// --- Run feedback ---
+
+export interface RunFeedbackRecord {
+  email: string;
+  createdAt: number;
+  activityId?: string;
+  rating?: string;
+  comment?: string;
+  distance?: number;
+  duration?: number;
+  avgHr?: number;
+}
+
+export async function saveRunFeedback(
+  email: string,
+  feedback: {
+    createdAt: number;
+    distance?: number;
+    duration?: number;
+    avgHr?: number;
+  },
+): Promise<void> {
+  await db().execute({
+    sql: `INSERT INTO run_feedback (email, created_at, distance, duration, avg_hr)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [
+      email,
+      feedback.createdAt,
+      feedback.distance ?? null,
+      feedback.duration ?? null,
+      feedback.avgHr ?? null,
+    ],
+  });
+}
+
+export async function getRunFeedback(
+  email: string,
+  createdAt: number,
+): Promise<RunFeedbackRecord | null> {
+  const result = await db().execute({
+    sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr FROM run_feedback WHERE email = ? AND created_at = ?",
+    args: [email, createdAt],
+  });
+  if (result.rows.length === 0) return null;
+  const r = result.rows[0];
+  return {
+    email: r.email as string,
+    createdAt: r.created_at as number,
+    activityId: r.activity_id as string | undefined,
+    rating: r.rating as string | undefined,
+    comment: r.comment as string | undefined,
+    distance: r.distance as number | undefined,
+    duration: r.duration as number | undefined,
+    avgHr: r.avg_hr as number | undefined,
+  };
+}
+
+export async function updateRunFeedback(
+  email: string,
+  createdAt: number,
+  rating: string,
+  comment?: string,
+): Promise<void> {
+  await db().execute({
+    sql: "UPDATE run_feedback SET rating = ?, comment = ? WHERE email = ? AND created_at = ?",
+    args: [rating, comment ?? null, email, createdAt],
   });
 }

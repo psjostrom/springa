@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { X, Radio, Copy, RefreshCw, LogOut } from "lucide-react";
+import { X, Radio, Copy, RefreshCw, LogOut, Bell } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 interface SettingsModalProps {
@@ -18,6 +18,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default",
+  );
 
   // Close on Escape
   useEffect(() => {
@@ -168,6 +171,34 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 )}
               </div>
             )}
+          </div>
+
+          {/* Notifications */}
+          <div className="border-t border-[#3d2b5a] pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Bell className="text-[#ff2d95]" size={16} />
+              <span className="text-sm font-semibold text-[#c4b5fd]">
+                Notiser
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              {pushPermission === "granted" ? (
+                <span className="text-sm text-[#39ff14]">Aktiverade</span>
+              ) : pushPermission === "denied" ? (
+                <span className="text-sm text-[#ff3366]">Blockerade i webbläsaren</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const result = await Notification.requestPermission();
+                    setPushPermission(result);
+                  }}
+                  className="px-4 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-sm text-[#ff2d95] hover:bg-[#3d2b5a] transition"
+                >
+                  Aktivera notiser
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
