@@ -1,4 +1,4 @@
-const CACHE_NAME = "springa-v2";
+const CACHE_NAME = "springa-v3";
 const PRECACHE = ["/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
