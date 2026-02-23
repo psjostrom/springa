@@ -14,7 +14,7 @@ import {
 } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/utils";
@@ -32,6 +32,7 @@ interface CalendarViewProps {
   initialError: string | null;
   onRetryLoad?: () => void;
   runBGContexts?: Map<string, RunBGContext>;
+  paceTable?: PaceTable;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
@@ -40,7 +41,7 @@ function getWorkoutParam(): string | null {
   return new URLSearchParams(window.location.search).get("workout");
 }
 
-export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts }: CalendarViewProps) {
+export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -61,10 +62,10 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     return events.find((e) => e.id === selectedEventId) ?? null;
   }, [events, selectedEventId]);
 
-  // Seed local state once shared events arrive (setState during render — React-approved pattern)
-  const [seeded, setSeeded] = useState(false);
-  if (!seeded && initialEvents.length > 0) {
-    setSeeded(true);
+  // Sync local state when shared events change (setState during render — React-approved pattern)
+  const [prevInitial, setPrevInitial] = useState(initialEvents);
+  if (initialEvents !== prevInitial && initialEvents.length > 0) {
+    setPrevInitial(initialEvents);
     setEvents(initialEvents);
   }
 
@@ -403,6 +404,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
             <AgendaView
               events={agendaEvents}
               onSelectEvent={openWorkoutModal}
+              paceTable={paceTable}
             />
           </div>
         )}
@@ -418,6 +420,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           isLoadingStreamData={isLoadingStreamData}
           apiKey={apiKey}
           runBGContexts={runBGContexts}
+          paceTable={paceTable}
         />
       )}
     </div>

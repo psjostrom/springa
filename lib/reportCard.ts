@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
+import { BG_HYPO } from "./constants";
 
 // --- Types ---
 
@@ -58,7 +59,7 @@ export function scoreBG(event: CalendarEvent): BGScore | null {
   const startBG = glucose[0].value;
   const lastBG = glucose[glucose.length - 1].value;
   const minBG = Math.min(...glucose.map((p) => p.value));
-  const hypo = glucose.some((p) => p.value < 3.9);
+  const hypo = glucose.some((p) => p.value < BG_HYPO);
 
   // Duration in 10-min units (time is in seconds)
   const durationSec = glucose[glucose.length - 1].time - glucose[0].time;
@@ -168,7 +169,7 @@ export function scoreRecovery(ctx: RunBGContext | null | undefined): RecoverySco
   const { recoveryDrop30m: drop30m, nadirPostRun: nadir, postRunHypo: postHypo } = ctx.post;
 
   // Bad: hypo, severe drop, or nadir at/below hypo threshold
-  if (postHypo || drop30m < -2.0 || nadir <= 3.9) {
+  if (postHypo || drop30m < -2.0 || nadir <= BG_HYPO) {
     return { rating: "bad", drop30m, nadir, postHypo, label: "Crashed" };
   }
 

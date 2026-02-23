@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
 import { parseEventId, formatPace } from "@/lib/utils";
-import { getEventStyle } from "@/lib/eventStyles";
+import { getEventStatusBadge } from "@/lib/eventStyles";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
@@ -60,6 +60,7 @@ interface EventModalProps {
   isLoadingStreamData?: boolean;
   apiKey: string;
   runBGContexts?: Map<string, RunBGContext>;
+  paceTable?: PaceTable;
 }
 
 export function EventModal({
@@ -70,6 +71,7 @@ export function EventModal({
   isLoadingStreamData,
   apiKey,
   runBGContexts,
+  paceTable,
 }: EventModalProps) {
   type ActionMode = "idle" | "editing" | "saving" | "confirming-delete" | "deleting";
   const [actionMode, setActionMode] = useState<ActionMode>("idle");
@@ -174,21 +176,10 @@ export function EventModal({
               {selectedEvent.name}
             </h3>
             {(() => {
-              const now = new Date();
-              now.setHours(0, 0, 0, 0);
-              const isMissed =
-                selectedEvent.type === "planned" && selectedEvent.date < now;
+              const badge = getEventStatusBadge(selectedEvent);
               return (
-                <div
-                  className={`inline-block px-2 py-1 rounded text-sm font-medium mt-2 ${isMissed ? "bg-[#3d1525] text-[#ff6b8a]" : getEventStyle(selectedEvent)}`}
-                >
-                  {isMissed
-                    ? "Missed"
-                    : selectedEvent.type === "completed"
-                      ? "Completed"
-                      : selectedEvent.type === "race"
-                        ? "Race"
-                        : "Planned"}
+                <div className={`inline-block px-2 py-1 rounded text-sm font-medium mt-2 ${badge.className}`}>
+                  {badge.label}
                 </div>
               );
             })()}
@@ -279,7 +270,7 @@ export function EventModal({
         )}
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs}>
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable}>
             {selectedEvent.type === "completed" ? (
               selectedEvent.hrZones ? (
                 <HRMiniChart

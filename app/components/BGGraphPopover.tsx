@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type { XdripReading } from "@/lib/xdrip";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
+import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 
 interface BGGraphPopoverProps {
   readings: XdripReading[];
@@ -16,10 +17,6 @@ const HEIGHT = 200;
 const PAD = { top: 12, right: 12, bottom: 28, left: 36 };
 const CHART_W = WIDTH - PAD.left - PAD.right;
 const CHART_H = HEIGHT - PAD.top - PAD.bottom;
-
-// Target BG range
-const TARGET_LOW = 3.9;
-const TARGET_HIGH = 10.0;
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -139,11 +136,11 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-150 bg-black/70`}
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
       onClick={onClose}
     >
       <div
-        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up`}
+        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up"
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Header */}
@@ -196,29 +193,29 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
             {/* Target range band */}
             <rect
               x={PAD.left}
-              y={scaleY(TARGET_HIGH)}
+              y={scaleY(BG_STABLE_MAX)}
               width={CHART_W}
-              height={scaleY(TARGET_LOW) - scaleY(TARGET_HIGH)}
+              height={scaleY(BG_HYPO) - scaleY(BG_STABLE_MAX)}
               fill="#39ff1410"
             />
             {/* Dashed borders for target range */}
             <line
-              x1={PAD.left} y1={scaleY(TARGET_HIGH)}
-              x2={WIDTH - PAD.right} y2={scaleY(TARGET_HIGH)}
+              x1={PAD.left} y1={scaleY(BG_STABLE_MAX)}
+              x2={WIDTH - PAD.right} y2={scaleY(BG_STABLE_MAX)}
               stroke="#39ff1430" strokeDasharray="4 3" strokeWidth={0.5}
             />
             <line
-              x1={PAD.left} y1={scaleY(TARGET_LOW)}
-              x2={WIDTH - PAD.right} y2={scaleY(TARGET_LOW)}
+              x1={PAD.left} y1={scaleY(BG_HYPO)}
+              x2={WIDTH - PAD.right} y2={scaleY(BG_HYPO)}
               stroke="#39ff1430" strokeDasharray="4 3" strokeWidth={0.5}
             />
 
             {/* Low danger zone */}
             <rect
               x={PAD.left}
-              y={scaleY(TARGET_LOW)}
+              y={scaleY(BG_HYPO)}
               width={CHART_W}
-              height={scaleY(yMin) - scaleY(TARGET_LOW)}
+              height={scaleY(yMin) - scaleY(BG_HYPO)}
               fill="#ff336610"
             />
 

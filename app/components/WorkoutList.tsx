@@ -11,9 +11,9 @@ export function WorkoutList({ events }: WorkoutListProps) {
 			<h3 className="text-sm font-bold uppercase text-[#b8a5d4] tracking-wider">
 				Preview
 			</h3>
-			{events.map((ev, i) => (
+			{events.map((ev) => (
 				<div
-					key={i}
+					key={ev.external_id}
 					className="bg-[#1e1535] p-4 rounded border border-[#3d2b5a] flex flex-col gap-2 hover:border-[#ff2d95]/50 transition"
 				>
 					<div className="flex justify-between items-baseline">

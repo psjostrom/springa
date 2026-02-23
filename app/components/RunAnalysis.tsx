@@ -18,7 +18,7 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalysis = useCallback(
-    async (regenerate = false) => {
+    async (regenerate = false, signal?: AbortSignal) => {
       if (!event.activityId) return;
 
       setLoading(true);
@@ -37,6 +37,7 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
             reportCard,
             regenerate,
           }),
+          signal,
         });
 
         if (!res.ok) {
@@ -45,18 +46,21 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
         }
 
         const data = await res.json();
-        setAnalysis(data.analysis);
+        if (!signal?.aborted) setAnalysis(data.analysis);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load analysis");
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [event, runBGContext],
   );
 
   useEffect(() => {
-    fetchAnalysis();
+    const controller = new AbortController();
+    fetchAnalysis(false, controller.signal);
+    return () => controller.abort();
   }, [fetchAnalysis]);
 
   if (!event.activityId) return null;

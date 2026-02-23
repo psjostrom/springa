@@ -2,6 +2,7 @@ import type { XdripReading } from "./xdrip";
 import type { CalendarEvent } from "./types";
 import type { WorkoutCategory } from "./types";
 import { linearRegression } from "./math";
+import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
 
 // --- Types ---
 
@@ -36,10 +37,7 @@ const PRE_SLOPE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 const PRE_STABILITY_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
 const POST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 const POST_30M_MS = 30 * 60 * 1000; // 30 minutes
-const STABLE_RANGE_MIN = 4.0;
-const STABLE_RANGE_MAX = 10.0;
 const STABLE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const HYPO_THRESHOLD = 3.9;
 const MIN_READINGS = 2;
 
 // --- Utility functions ---
@@ -204,7 +202,7 @@ export function computePostRunContext(
   const nadirPostRun = Math.min(...postReadings.map((r) => r.mmol));
 
   // Post-run hypo
-  const postRunHypo = postReadings.some((r) => r.mmol < HYPO_THRESHOLD);
+  const postRunHypo = postReadings.some((r) => r.mmol < BG_HYPO);
 
   // Time to stable: minutes until BG stays in 4-10 for 15+ min
   const timeToStable = computeTimeToStable(postReadings, runEndMs);
@@ -230,7 +228,7 @@ function computeTimeToStable(
   let stableStart: number | null = null;
 
   for (const r of postReadings) {
-    const inRange = r.mmol >= STABLE_RANGE_MIN && r.mmol <= STABLE_RANGE_MAX;
+    const inRange = r.mmol >= BG_STABLE_MIN && r.mmol <= BG_STABLE_MAX;
 
     if (inRange) {
       if (stableStart === null) stableStart = r.ts;

@@ -296,8 +296,8 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
               {/* Preview cards */}
               {adaptedEvents.length > 0 && (
                 <div className="space-y-3">
-                  {adaptedEvents.map((event, i) => (
-                    <div key={i} className="bg-[#1a1030] border border-[#3d2b5a] rounded-lg p-3 space-y-2">
+                  {adaptedEvents.map((event) => (
+                    <div key={event.original.id} className="bg-[#1a1030] border border-[#3d2b5a] rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
                         <span className="text-xs text-[#7a6899]">{event.date}</span>

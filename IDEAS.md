@@ -1,70 +1,197 @@
 # Feature Ideas
 
+## Next
+
+### Readiness-Adaptive Training
+
+Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score, readiness, SpO2) and use it to modulate training intensity. Intervals.icu syncs this from Garmin Connect automatically — the data is already there.
+
+**Core logic:**
+- Compute rolling baselines (7-day and 28-day) for HRV and resting HR.
+- Flag "suppressed" days: HRV > 1 SD below baseline, or resting HR > 5 bpm above baseline.
+- When suppressed: suggest swapping the day's planned workout to easy. If already easy, suggest shorter duration.
+- Combine with existing TSB-based swap logic in `adaptPlan.ts` — wellness data adds a second signal alongside training load.
+
+**UI:**
+- Readiness indicator on the pre-run overlay (currently uses BG only — add wellness dimension).
+- Weekly wellness trend in Intel tab: HRV + resting HR sparklines with baseline bands.
+- Coach AI receives wellness context for richer advice.
+
+**API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily wellness records with `hrvRMSSD`, `restingHR`, `sleepScore`, `readiness`, `spO2`.
+
+### Aerobic Fitness Trend
+
+Single chart combining cardiac drift (aerobic decoupling) and efficiency factor over time. These measure the same underlying signal — pace:HR relationship — and belong together.
+
+**Aerobic decoupling:** Split each easy/long run into first and second half. Compute pace:HR ratio for each half. Decoupling % = (ratio₂ - ratio₁) / ratio₁ × 100. A decreasing trend indicates improving aerobic fitness. Flag runs where decoupling exceeds 5%.
+
+**Efficiency factor:** EF = normalized pace / avg HR, plotted per week. Rising EF = getting fitter at the same effort.
+
+**Data source:** Stream data (HR + pace) already fetched for completed runs. Computation is straightforward — no new API calls needed.
+
+**UI:** Line chart in Intel tab. Two y-axes: decoupling % (lower is better) and EF (higher is better). Trend lines showing direction over 4–8 week windows.
+
+### Pace Zone Auto-Calibration
+
+Build a full pace table from completed run data — not just easy zone. For each HR zone, collect segments where the runner held that zone for a minimum duration, compute median pace. Track how pace-per-zone changes over the training block.
+
+**Minimum segment durations:** Z1–Z2: 3 min, Z3: 2 min, Z4: 1 min. Z5 is always extrapolated — never measured directly. Short Z5 bursts (30s–2min) are polluted by acceleration/deceleration ramps and HR lag, producing noisier data than a simple projection. Fit a line through Z1–Z4 calibrated paces and project Z5 from the curve.
+
+Currently the pace table is hardcoded in `lib/constants.ts` (`FALLBACK_PACE_TABLE`). Generated workouts reference these static paces. With calibration, workout descriptions would use actual recent paces instead. Zones with insufficient data fall back to the hardcoded table until enough samples accumulate.
+
+**Data source:** HR + pace streams from completed activities. Zone boundaries from LTHR-based calculation (already implemented).
+
+**UI:** Pace table card in Intel tab showing current calibrated paces vs fallback. Trend arrows showing improvement/regression per zone.
+
+### Customizable Intel Dashboard
+
+Intel tab is currently a fixed stack of panels. Make each panel a discrete widget that can be reordered, shown, or hidden. Persisted per user.
+
+**Widgets (current panels, each becomes a widget):**
+- Volume Trend Chart
+- BG Response Model (category breakdown, scatter chart)
+- Fuel Rate Targets
+- Fitness Insights (CTL/ATL/TSB)
+- Fitness Chart (load trend)
+- HR Zone Breakdown
+- Pace Calibration
+
+**Interaction:**
+- Long-press (mobile) or drag handle (desktop) to enter reorder mode. Drag to rearrange.
+- Toggle visibility per widget — hidden widgets don't fetch data or render.
+- "Reset to default" restores the stock layout.
+- Layout stored in user settings (database) so it survives device switches.
+
+**Implementation approach:**
+- Widget registry: each widget declares its key, label, default order, and lazy-loaded component.
+- `IntelScreen` reads the user's layout from settings, renders widgets in stored order, skips hidden ones.
+- Drag-and-drop: `@dnd-kit/sortable` (already tree-shakeable, small footprint) or native HTML drag since the list is short.
+- Settings shape: `{ widgetOrder: string[], hiddenWidgets: string[] }` in user settings.
+
+### Segment-Aligned Glucose Overlay
+
+Overlay the glucose trace on the workout structure timeline so you can see exactly where BG drops relative to what you were doing. Currently glucose and workout structure are shown as separate concerns.
+
+**Implementation approach:**
+- Parse workout segments from description (warmup/main set intervals/cooldown) — `parseWorkoutStructure` already exists.
+- Align segment boundaries to the activity timeline using duration.
+- Render glucose line on top of segment-colored background bands in the stream chart.
+- Highlight BG drop rate per segment: "BG dropped 2.1 mmol during the 4×8min block."
+
+**Data source:** All data already fetched — glucose stream, HR stream, workout description. Just needs chart integration.
+
+---
+
+## Future
+
+### Race Day BG Simulation
+
+Time-stepping glucose forecast for full race duration. Inputs: starting BG, entry slope (rising/stable/dropping), pace plan (segments with target zones), and fueling schedule (grams at each interval). Output: predicted glucose curve with confidence bands at each 5-min step.
+
+The BG model has the building blocks — `bgByStartLevel` gives response by starting glucose, `bgByTime` gives decay over run duration, `targetFuelRates` gives the fuel→BG-rate relationship. Stitching these into a forward simulation is the missing piece.
+
+**Use case:** Rehearse race-day strategies before the event. "If I start at 12 mmol, fuel 65g/h, and pace at Z3 for 90 min — where does my glucose end up?" Run multiple scenarios, compare curves, pick the safest strategy. Reduces race-day BG surprises from "unknown" to "modeled risk."
+
+**UI:** Interactive simulator in Intel or dedicated Race tab. Sliders for start BG, fuel rate, intensity. Live-updating predicted glucose curve. Save/compare scenarios.
+
+### Cross-Run Pattern Discovery
+
+Correlate BG outcomes against variables the current per-category model ignores: time of day, days since last run, cumulative weekly load, entry slope, weather (temperature/humidity from external API). Surface hidden rules the runner can't see in individual run analyses.
+
+Examples: "Morning runs drop 40% more than evening at same fuel rate." "Runs after 2+ rest days start higher and drop slower." "BG stability degrades when weekly load exceeds 6 hours."
+
+**Implementation:** Extend `BGObservation` with `startHour`, `daysSinceLastRun`, `weeklyLoadSoFar`. Run multivariate analysis across all observations. Present as discovered rules with p-values and sample sizes, not just averages.
+
+**Prerequisite:** Needs 30+ runs with BG data across varied conditions to produce statistically meaningful splits.
+
+### GAP for Trail Readiness
+
+Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness. Elevation data (`total_elevation_gain`) is already fetched from Intervals.icu but unused.
+
+**Relevance:** Only matters if training includes significant elevation. Deprioritized until trail-specific training blocks appear in the plan.
+
+---
+
 ## Completed
 
-### Pre-run protocol card [x]
+### Pre-Run Protocol Card
 
-The fueling strategy is embedded as text in workout descriptions — `PUMP OFF - FUEL PER 10: 10g TOTAL: 75g`. It's designed for the Garmin display. But when reviewing a planned workout the night before or morning of, what you actually want is a structured, glanceable card: pump action, meal timing reminder, target start BG, how many gels/tabs to carry, intake schedule (every 10 min). All derivable from what's already in the description + workout duration. Zero new data, much better presentation for the planning use case.
+Structured pre-run overlay showing current BG with trend, readiness assessment (ready/heads-up/hold), 30-min BG forecast, and category-specific guidance (easy/long/interval). Derives pump action, fuel plan, and start-BG target from workout description + BG model. Three-level traffic-light readiness with specific reasons and recommendations.
 
-### Weekly volume trend chart [x]
+**Implementation:** `PreRunOverlay.tsx`, `lib/prerun.ts` (assessReadiness, estimateBGAt30m).
 
-A bar chart — one bar per week across the entire plan duration — split into completed (solid) vs remaining planned (faded). This makes the periodization visible: build phases growing, recovery weeks dropping, taper shrinking. It also immediately reveals if you're consistently missing sessions or falling behind volume targets.
+### Weekly Volume Trend Chart
 
-### BG Response Model [x]
+Bar chart across the entire plan duration — completed (green) vs planned (cyan) vs optional (purple), stacked per week. Makes periodization visible: build phases growing, recovery weeks dropping, taper shrinking. Reveals missed sessions and volume shortfalls at a glance.
 
-Category-based BG response analysis across easy/long/interval runs. 5-min sliding windows across aligned HR + glucose streams, BG slope per window, aggregated per workout category. Includes: confidence levels, fuel adjustment suggestions, BG by start level, BG by entry slope, BG by time decay, target fuel rate calculation (regression + extrapolation), scatter chart visualization.
+**Implementation:** `WeeklyVolumeChart.tsx` (planner), `VolumeTrendChart.tsx` (intel — advanced version with current-week highlight).
 
-**Future refinement — per-zone HR analysis:** Classify each window by HR zone (Z2/Z3/Z4) instead of workout category. This gives intensity-level insight ("in Z3 BG drops X") rather than category-level ("long runs drop Y"). The infrastructure is ready (HR stream aligned, sliding windows computing slopes) — just swap the classification key. **Revisit after 20+ runs with BG data and several mixed-intensity runs (sandwich/progressive long runs).** Until then, per-zone splits would have too few samples per zone to be meaningful.
+### BG Response Model
 
-### Auto-Suggest Fuel Rates [x]
+Category-based BG response analysis across easy/long/interval runs. 5-min sliding windows across aligned HR + glucose streams, BG slope per window, aggregated per workout category. Includes: confidence levels, fuel adjustment suggestions, BG by start level (< 8 / 8–10 / 10–12 / 12+ mmol/L), BG by entry slope (rising/stable/dropping), BG by time decay, target fuel rate calculation (regression + extrapolation), scatter chart visualization.
 
-Target fuel rates computed from BG model (regression or extrapolation) and auto-applied as defaults in the planner. Shown as informational targets in Intel tab.
+**Implementation:** `lib/bgModel.ts` (400+ lines, 85 unit tests).
 
-### Live CGM via xDrip [x]
+**Refinement — per-zone HR analysis:** Classify each window by HR zone (Z2/Z3/Z4) instead of workout category. Gives intensity-level insight ("in Z3 BG drops X mmol/10min") rather than category-level ("long runs drop Y"). Infrastructure ready — HR stream aligned, sliding windows computing slopes — just swap the classification key. Revisit after 20+ runs with BG data and several mixed-intensity runs. Until then, per-zone splits have too few samples per zone.
 
-xDrip pushes glucose data via Nightscout protocol. Readings persisted indefinitely for post-run analysis. Pre-run card shows current BG with trend.
+### Auto-Suggest Fuel Rates
 
-### Post-Run Report Card [x]
+Target fuel rates computed from BG model regression/extrapolation. Auto-applied as defaults when generating plans. Shown as informational targets in Intel tab with confidence indicators and current-vs-target comparison.
 
-3-column strip in EventModal (between stats card and carbs section) scoring each completed run on three axes: BG stability (drop rate + hypo detection), HR zone compliance (% time in target zone by workout category), and fuel adherence (actual vs planned carbs). Color-coded green/yellow/red dots. Skeleton shimmer while stream data loads. Scoring logic in `lib/reportCard.ts`, UI in `app/components/RunReportCard.tsx`, 32 unit tests.
+**Implementation:** `bgModel.ts` (targetFuelRates), `PlannerScreen.tsx` (fuelDefault), `BGResponsePanel.tsx` (display).
 
-**Future refinements:**
+### Live CGM via xDrip
+
+xDrip+ pushes glucose data via Nightscout protocol (`/api/v1/entries`). Readings persisted indefinitely for post-run analysis. Direction recomputed from adjacent sgv values — fixes xDrip+ companion mode's 31% stale-direction error rate. Current BG pill in header with trend arrow + slope. Readings fed to Coach AI and pre-run overlay.
+
+**Implementation:** `lib/xdrip.ts`, `app/api/v1/entries/route.ts`, `CurrentBGPill.tsx`, `BGGraphPopover.tsx`.
+
+### Post-Run Report Card
+
+5-axis scoring strip in EventModal for each completed run: BG stability (drop rate + hypo detection), HR zone compliance (% time in target zone by category), fuel adherence (actual vs planned carbs from Intervals.icu `carbs_ingested`), entry trend (pre-run slope classification), recovery (post-run BG drop + nadir). Color-coded green/yellow/red dots. Skeleton shimmer while stream data loads.
+
+**Implementation:** `lib/reportCard.ts`, `RunReportCard.tsx`, 54 unit tests.
+
+**Refinements:**
 - **Trend across runs:** Track report card scores over time to show improvement patterns (e.g., "BG management improving over last 5 long runs").
-- **Per-zone HR scoring for intervals:** Currently scores intervals against Z4 total, but mixed sessions (warmup Z2 + reps Z4 + recovery Z1) dilute the percentage. Could score only the work intervals against Z4.
+- **Per-zone HR scoring for intervals:** Currently scores intervals against Z4 total, but mixed sessions (warmup Z2 + reps Z4 + recovery Z1) dilute the percentage. Score only the work intervals against target zone.
 - **BG scoring by workout phase:** Score BG stability per segment (warmup/main/cooldown) instead of whole-run average, to pinpoint where management breaks down.
 
----
+### Adaptive Plan
 
-## Intel Features
+Adapts the next 4 upcoming planned runs based on recent performance. Three adaptation mechanisms:
 
-### 1. Aerobic Decoupling Tracker
+1. **Fuel adjustment** — pulls target fuel rates from BG model, adjusts planned fuel (capped at 1.5x current or 90 g/h).
+2. **Workout swap** — replaces intervals with easy runs when fatigued (TSB < -20 or ramp rate > 8 bpm/week).
+3. **AI coaching notes** — Claude generates 2-paragraph pre-workout notes referencing recent BG patterns, paces, HR, and run feedback. First-person "Coach" voice.
 
-Track cardiac drift (pace:HR ratio) across easy and long runs over time. A decreasing decoupling percentage indicates improving aerobic fitness. Flag runs where decoupling exceeds 5%.
+Triggered manually from Planner tab or automatically after submitting post-run feedback ("Adapt upcoming →"). Preview cards show diff before syncing to Intervals.icu.
 
-### 2. Efficiency Factor Trend
+**Implementation:** `lib/adaptPlan.ts` (rules), `lib/adaptPlanPrompt.ts` (prompt), `app/api/adapt-plan/route.ts` (endpoint with parallel Claude calls), `PlannerScreen.tsx` (UI + auto-adapt).
 
-Plot EF (normalized pace / avg HR) over weeks. Rising EF = getting fitter at the same effort. Useful for tracking aerobic base development without racing.
+### Coach AI Chat
 
-### 3. GAP for Trail Readiness
+Context-aware AI chat with streaming responses. Passes rich context: plan events, BG model, fitness insights (CTL/ATL/TSB), current BG + trend, xDrip readings, per-run BG contexts. Suggested prompts for common questions. Integrated as a main tab.
 
-Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness for EcoTrail's terrain.
+**Implementation:** `CoachScreen.tsx`, `app/api/chat/route.ts`, `ChatMessage.tsx`, `ChatInput.tsx`, `useCoachData.ts`.
 
-### 4. Readiness-Adaptive Training
+### Post-Run Feedback System
 
-Use HRV, resting HR, sleep score, and recent BG variability to suggest workout intensity adjustments. "Your HRV is 15% below baseline — consider swapping Thursday's intervals for an easy run." Blocked on data source — Garmin Connect API or manual input needed.
+Push notification triggered when SugarRun completes a run. Deep-links to feedback page showing distance/time/HR summary. Emoji rating (good/bad) + optional comment. Persisted to database. Recent feedback fed into adaptive plan AI prompt so coaching notes reference how runs felt.
 
----
+**Implementation:** `app/feedback/page.tsx`, `app/api/run-feedback/route.ts`, `app/api/run-completed/route.ts`, `lib/settings.ts` (getRecentFeedback).
 
-## Backlog
+### Push Notifications
 
-### Segment-aligned glucose overlay
+Web Push API (VAPID) with database-persisted subscriptions. Two triggers:
 
-The app already fetches both workout stream data (time, HR, pace) and glucose data. But they're shown as separate concerns — glucose in the analysis section, workout structure in the stream graph. The real insight comes from seeing them together: glucose trace overlaid on the workout segments (warmup, main set, cooldown), so you can see exactly where BG drops relative to what you were doing.
+1. **Post-run:** Fired when SugarRun reports a completed activity. Links to feedback page.
+2. **Pre-run:** Daily cron at 09:00 UTC (10:00 CET). Checks today's planned workout, runs readiness assessment, sends notification with BG status and workout summary.
 
-### Actual vs planned fuel logging
+**Implementation:** `lib/push.ts`, `app/api/push/subscribe/route.ts`, `app/api/cron/prerun-push/route.ts`, `public/sw.js`.
 
-The three-tier strategy is "experimental" and "actively being validated". But there's no structured way to record what actually happened. A simple input on completed events: actual carbs consumed, start BG, end BG, any hypo (y/n). Over 20-30 runs, this builds a real dataset.
+### Settings Management
 
-### Pace zone auto-calibration from completed runs
+Full settings UI: Intervals.icu API key, Google AI API key, xDrip secret (auto-generation), Nightscout URL (copy button), race parameters (name/date/distance), plan parameters (prefix/weeks/start km/LTHR), push notification toggle. All persisted to database.
 
-`buildEasyPaceFromHistory` already exists and calculates easy pace from historical data. But it only covers easy zone, and the fallback table is hardcoded. Building a full pace table from actual data — and showing how it changes over time — would make the zone targets in generated workouts more accurate.
+**Implementation:** `SettingsModal.tsx`, `app/api/settings/route.ts`, `lib/settings.ts`.

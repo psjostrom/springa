@@ -59,11 +59,11 @@ export function PreRunOverlay({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-150 bg-black/70`}
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
       onClick={onClose}
     >
       <div
-        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up`}
+        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up"
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Header */}

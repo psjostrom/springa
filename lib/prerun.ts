@@ -1,6 +1,7 @@
 import type { WorkoutCategory } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { classifyBGBand, classifyEntrySlope } from "./bgModel";
+import { BG_HIGH, BG_STABLE_MIN } from "./constants";
 
 // --- Types ---
 
@@ -44,7 +45,7 @@ function assessBGLevel(bg: number): { level: ReadinessLevel; reasons: string[]; 
       suggestions: ["Have 15-20g carbs and give it 10 minutes"],
     };
   }
-  if (bg <= 14.0) {
+  if (bg <= BG_HIGH) {
     return { level: "ready", reasons: [], suggestions: [] };
   }
   return {
@@ -117,7 +118,7 @@ function assessModel(
     result.predictedDrop = avgRate * 3;
     result.estimatedBGAt30m = currentBG + result.predictedDrop;
 
-    if (result.estimatedBGAt30m < 4.0) {
+    if (result.estimatedBGAt30m < BG_STABLE_MIN) {
       result.level = "caution";
       result.reasons.push("Model predicts hypo within 30 min");
       result.suggestions.push(`Forecast: ${result.estimatedBGAt30m.toFixed(1)} at 30 min`);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import type { StreamData } from "@/lib/types";
+import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 
 interface WorkoutStreamGraphProps {
   streamData: StreamData;
@@ -30,7 +31,7 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
     unit: "mmol/L",
     color: "#c4b5fd",
     strokeWidth: 3,
-    targetRange: { min: 3.9, max: 10.0, color: "#1a3d25" },
+    targetRange: { min: BG_HYPO, max: BG_STABLE_MAX, color: "#1a3d25" },
   },
   heartrate: {
     label: "Heart Rate",
@@ -64,6 +65,12 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   },
 };
 
+const WIDTH = 400;
+const HEIGHT = 180;
+const PAD_STREAM = { top: 25, right: 10, bottom: 30, left: 35 } as const;
+const CHART_WIDTH = WIDTH - PAD_STREAM.left - PAD_STREAM.right;
+const CHART_HEIGHT = HEIGHT - PAD_STREAM.top - PAD_STREAM.bottom;
+
 export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   const availableStreams = Object.keys(streamData).filter(
     (key) => streamData[key as StreamType],
@@ -88,25 +95,6 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   const [isHovering, setIsHovering] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  if (availableStreams.length === 0) return null;
-
-  const toggleStream = (stream: StreamType) => {
-    setSelectedStreams((prev) => {
-      if (prev.includes(stream)) {
-        // Don't allow deselecting all streams
-        if (prev.length === 1) return prev;
-        return prev.filter((s) => s !== stream);
-      }
-      return [...prev, stream];
-    });
-  };
-
-  const width = 400;
-  const height = 180;
-  const padding = { top: 25, right: 10, bottom: 30, left: 35 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-
   // Get max time from any selected stream
   const maxTime = Math.max(
     ...selectedStreams.map((stream) => {
@@ -115,17 +103,86 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     }),
   );
 
+  // Determine if we should use actual values (single stream) or normalized (multiple)
+  const useSingleStreamMode = selectedStreams.length === 1;
+
+  // Calculate global min/max for single stream mode
+  let globalMin = 0;
+  let globalMax = 100;
+  if (useSingleStreamMode && selectedStreams.length > 0) {
+    const data = streamData[selectedStreams[0]];
+    if (data && data.length > 0) {
+      const values = data.map((d) => d.value);
+      globalMin = Math.min(...values);
+      globalMax = Math.max(...values);
+      const paddingRange = (globalMax - globalMin) * 0.1;
+      globalMin = Math.max(0, globalMin - paddingRange);
+      globalMax = globalMax + paddingRange;
+    }
+  }
+
+  // Memoize expensive path + scale computation
+  const streamPathData = useMemo(() => {
+    return selectedStreams
+      .map((streamType) => {
+        const data = streamData[streamType];
+        if (!data || data.length === 0) return null;
+
+        const config = streamConfigs[streamType];
+        const values = data.map((d) => d.value);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+
+        const scaleX = (time: number) =>
+          (time / maxTime) * CHART_WIDTH + PAD_STREAM.left;
+
+        const scaleY = (value: number) => {
+          if (useSingleStreamMode) {
+            const normalized = (value - globalMin) / (globalMax - globalMin);
+            const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
+            return HEIGHT - PAD_STREAM.bottom - finalNormalized * CHART_HEIGHT;
+          } else {
+            const normalized = (value - minValue) / (maxValue - minValue);
+            const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
+            return HEIGHT - PAD_STREAM.bottom - finalNormalized * CHART_HEIGHT;
+          }
+        };
+
+        const pathData = data
+          .map((d, i) => {
+            const x = scaleX(d.time);
+            const y = scaleY(d.value);
+            return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+          })
+          .join(" ");
+
+        return { streamType, pathData, config, minValue, maxValue, data, scaleY };
+      })
+      .filter(Boolean) as { streamType: StreamType; pathData: string; config: typeof streamConfigs[StreamType]; minValue: number; maxValue: number; data: { time: number; value: number }[]; scaleY: (v: number) => number }[];
+  }, [streamData, selectedStreams, maxTime, useSingleStreamMode, globalMin, globalMax]);
+
+  if (availableStreams.length === 0) return null;
+
+  const toggleStream = (stream: StreamType) => {
+    setSelectedStreams((prev) => {
+      if (prev.includes(stream)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((s) => s !== stream);
+      }
+      return [...prev, stream];
+    });
+  };
+
   // Calculate time from mouse/touch position
   const getTimeFromPosition = (clientX: number) => {
     if (!svgRef.current) return null;
     const rect = svgRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
-    const svgX = (x / rect.width) * width;
+    const svgX = (x / rect.width) * WIDTH;
 
-    // Check if within chart bounds
-    if (svgX < padding.left || svgX > width - padding.right) return null;
+    if (svgX < PAD_STREAM.left || svgX > WIDTH - PAD_STREAM.right) return null;
 
-    const normalizedX = (svgX - padding.left) / chartWidth;
+    const normalizedX = (svgX - PAD_STREAM.left) / CHART_WIDTH;
     return normalizedX * maxTime;
   };
 
@@ -156,88 +213,19 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     setHoverTime(null);
   };
 
-  // Determine if we should use actual values (single stream) or normalized (multiple)
-  const useSingleStreamMode = selectedStreams.length === 1;
-
-  // Calculate global min/max for single stream mode
-  let globalMin = 0;
-  let globalMax = 100;
-  if (useSingleStreamMode && selectedStreams.length > 0) {
-    const data = streamData[selectedStreams[0]];
-    if (data && data.length > 0) {
-      const values = data.map((d) => d.value);
-      globalMin = Math.min(...values);
-      globalMax = Math.max(...values);
-      // Add padding to the range
-      const paddingRange = (globalMax - globalMin) * 0.1;
-      globalMin = Math.max(0, globalMin - paddingRange);
-      globalMax = globalMax + paddingRange;
+  // Derive hover values from memoized paths — cheap per-render lookup
+  const streamPaths = streamPathData.map((path) => {
+    let hoverValue: number | null = null;
+    let hoverY: number | null = null;
+    if (hoverTime !== null) {
+      const closest = path.data.reduce((prev, curr) =>
+        Math.abs(curr.time - hoverTime) < Math.abs(prev.time - hoverTime) ? curr : prev,
+      );
+      hoverValue = closest.value;
+      hoverY = path.scaleY(closest.value);
     }
-  }
-
-  // Normalize each stream to 0-100% scale (or actual values for single stream) and create paths
-  const streamPaths = selectedStreams
-    .map((streamType) => {
-      const data = streamData[streamType];
-      if (!data || data.length === 0) return null;
-
-      const config = streamConfigs[streamType];
-      const values = data.map((d) => d.value);
-      const minValue = Math.min(...values);
-      const maxValue = Math.max(...values);
-
-      const scaleX = (time: number) =>
-        (time / maxTime) * chartWidth + padding.left;
-
-      const scaleY = (value: number) => {
-        if (useSingleStreamMode) {
-          // Use actual values
-          const normalized = (value - globalMin) / (globalMax - globalMin);
-          const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
-          return height - padding.bottom - finalNormalized * chartHeight;
-        } else {
-          // Scale to 0-100%
-          const normalized = (value - minValue) / (maxValue - minValue);
-          const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
-          return height - padding.bottom - finalNormalized * chartHeight;
-        }
-      };
-
-      const pathData = data
-        .map((d, i) => {
-          const x = scaleX(d.time);
-          const y = scaleY(d.value);
-          return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-        })
-        .join(" ");
-
-      // Find value at hover time
-      let hoverValue = null;
-      let hoverY = null;
-      if (hoverTime !== null) {
-        // Find closest data point
-        const closest = data.reduce((prev, curr) => {
-          return Math.abs(curr.time - hoverTime) <
-            Math.abs(prev.time - hoverTime)
-            ? curr
-            : prev;
-        });
-        hoverValue = closest.value;
-        hoverY = scaleY(closest.value);
-      }
-
-      return {
-        streamType,
-        pathData,
-        config,
-        minValue,
-        maxValue,
-        data,
-        hoverValue,
-        hoverY,
-      };
-    })
-    .filter(Boolean);
+    return { ...path, hoverValue, hoverY };
+  });
 
   return (
     <div className="w-full">
@@ -303,7 +291,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       <div>
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${width} ${height}`}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="w-full cursor-crosshair"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
@@ -314,13 +302,13 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           {/* Grid lines */}
           {Array.from({ length: 5 }).map((_, i) => {
             const yPercent = i / 4;
-            const y = height - padding.bottom - yPercent * chartHeight;
+            const y = HEIGHT - PAD_STREAM.bottom - yPercent * CHART_HEIGHT;
             return (
               <line
                 key={i}
-                x1={padding.left}
+                x1={PAD_STREAM.left}
                 y1={y}
-                x2={width - padding.right}
+                x2={WIDTH - PAD_STREAM.right}
                 y2={y}
                 stroke="#3d2b5a"
                 strokeWidth="1"
@@ -331,7 +319,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           {/* Y-axis labels */}
           {Array.from({ length: 5 }).map((_, i) => {
             const yPercent = i / 4;
-            const y = height - padding.bottom - yPercent * chartHeight;
+            const y = HEIGHT - PAD_STREAM.bottom - yPercent * CHART_HEIGHT;
 
             let label = "";
             if (useSingleStreamMode && streamPaths.length > 0) {
@@ -351,7 +339,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             return (
               <text
                 key={i}
-                x={padding.left - 6}
+                x={PAD_STREAM.left - 6}
                 y={y + 4}
                 textAnchor="end"
                 fontSize="11"
@@ -384,10 +372,10 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             <>
               {/* Vertical line */}
               <line
-                x1={(hoverTime / maxTime) * chartWidth + padding.left}
-                y1={padding.top}
-                x2={(hoverTime / maxTime) * chartWidth + padding.left}
-                y2={height - padding.bottom}
+                x1={(hoverTime / maxTime) * CHART_WIDTH + PAD_STREAM.left}
+                y1={PAD_STREAM.top}
+                x2={(hoverTime / maxTime) * CHART_WIDTH + PAD_STREAM.left}
+                y2={HEIGHT - PAD_STREAM.bottom}
                 stroke="#b8a5d4"
                 strokeWidth="1"
                 strokeDasharray="4 2"
@@ -399,7 +387,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
                 return (
                   <circle
                     key={idx}
-                    cx={(hoverTime / maxTime) * chartWidth + padding.left}
+                    cx={(hoverTime / maxTime) * CHART_WIDTH + PAD_STREAM.left}
                     cy={path.hoverY}
                     r="4"
                     fill={path.config.color}
@@ -410,8 +398,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               })}
               {/* Time label */}
               <text
-                x={(hoverTime / maxTime) * chartWidth + padding.left}
-                y={padding.top - 5}
+                x={(hoverTime / maxTime) * CHART_WIDTH + PAD_STREAM.left}
+                y={PAD_STREAM.top - 5}
                 textAnchor="middle"
                 fontSize="11"
                 fill="#c4b5fd"
@@ -426,8 +414,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           {[0, 0.5, 1].map((frac) => (
             <text
               key={frac}
-              x={padding.left + frac * chartWidth}
-              y={height - padding.bottom + 14}
+              x={PAD_STREAM.left + frac * CHART_WIDTH}
+              y={HEIGHT - PAD_STREAM.bottom + 14}
               textAnchor="middle"
               fontSize="11"
               fill="#b8a5d4"
@@ -440,12 +428,12 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           {useSingleStreamMode && streamPaths.length > 0 && (
             <text
               x={10}
-              y={height / 2}
+              y={HEIGHT / 2}
               textAnchor="middle"
               fontSize="12"
               fill="#b8a5d4"
               fontWeight="500"
-              transform={`rotate(-90, 10, ${height / 2})`}
+              transform={`rotate(-90, 10, ${HEIGHT / 2})`}
             >
               {streamPaths[0]?.config.unit}
             </text>

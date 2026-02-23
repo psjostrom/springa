@@ -2,18 +2,19 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, extractFuelRate, extractTotalCarbs, formatPace, formatDuration } from "@/lib/utils";
-import { getEventIcon } from "@/lib/eventStyles";
+import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
 
 interface AgendaViewProps {
   events: CalendarEvent[];
   onSelectEvent: (event: CalendarEvent) => void;
+  paceTable?: PaceTable;
 }
 
-function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void }) {
+function EventCard({ event, isMissed, onSelect, paceTable }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable }) {
   return (
     <div
       data-event-id={event.id}
@@ -136,8 +137,8 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
             </div>
             <div className="flex flex-wrap gap-2">
               {(() => {
-                const est = estimateWorkoutDuration(event.description);
-                const dist = estimateWorkoutDescriptionDistance(event.description);
+                const est = estimateWorkoutDuration(event.description, paceTable);
+                const dist = estimateWorkoutDescriptionDistance(event.description, paceTable);
                 if (!est && !dist) return null;
                 const parts = [
                   est ? `${est.estimated ? "~" : ""}${est.minutes} min` : null,
@@ -174,6 +175,7 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
 export function AgendaView({
   events,
   onSelectEvent,
+  paceTable,
 }: AgendaViewProps) {
   const [view, setView] = useState<"upcoming" | "history">("upcoming");
 
@@ -207,8 +209,9 @@ export function AgendaView({
           <EventCard
             key={event.id}
             event={event}
-            isMissed={event.type === "planned" && event.date < now}
+            isMissed={isMissedEvent(event)}
             onSelect={() => onSelectEvent(event)}
+            paceTable={paceTable}
           />
         ))}
       </div>
@@ -230,8 +233,9 @@ export function AgendaView({
         <EventCard
           key={event.id}
           event={event}
-          isMissed={event.type === "planned" && event.date < now}
+          isMissed={isMissedEvent(event)}
           onSelect={() => onSelectEvent(event)}
+          paceTable={paceTable}
         />
       ))}
     </div>

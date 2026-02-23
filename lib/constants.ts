@@ -1,6 +1,13 @@
 import type { PaceTable, SpeedSessionType } from "./types";
 
 // --- CONSTANTS ---
+
+/** Blood glucose thresholds (mmol/L) */
+export const BG_HYPO = 3.9;
+export const BG_STABLE_MIN = 4.0;
+export const BG_STABLE_MAX = 10.0;
+export const BG_HIGH = 14.0;
+
 export const DEFAULT_LTHR = 169;
 export const CRASH_DROP_RATE = -3.0;
 export const SPIKE_RISE_RATE = 3.0;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useRef, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import type { XdripReading } from "@/lib/xdrip";
 
 interface CurrentBGData {
@@ -26,6 +26,8 @@ const EMPTY: CurrentBGData = {
 function createBGStore() {
   let data: CurrentBGData = EMPTY;
   const listeners = new Set<() => void>();
+  let interval: ReturnType<typeof setInterval> | undefined;
+  let refs = 0;
 
   function set(next: CurrentBGData) {
     data = next;
@@ -64,33 +66,28 @@ function createBGStore() {
   return {
     subscribe: (cb: () => void) => {
       listeners.add(cb);
-      return () => listeners.delete(cb);
+      // Start polling when first subscriber arrives
+      refs++;
+      if (refs === 1) {
+        poll();
+        interval = setInterval(poll, POLL_INTERVAL);
+      }
+      return () => {
+        listeners.delete(cb);
+        refs--;
+        if (refs === 0 && interval) {
+          clearInterval(interval);
+          interval = undefined;
+        }
+      };
     },
     getSnapshot: () => data,
-    poll,
   };
 }
 
-// Module-level singleton — one poll loop for the app
+// Module-level singleton — one poll loop shared across all consumers
 const store = createBGStore();
-let started = false;
 
 export function useCurrentBG(): CurrentBGData {
-  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  useEffect(() => {
-    if (!started) {
-      started = true;
-      store.poll();
-      intervalRef.current = setInterval(() => store.poll(), POLL_INTERVAL);
-    }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        started = false;
-      }
-    };
-  }, []);
-
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY);
 }
