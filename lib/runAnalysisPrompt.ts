@@ -2,12 +2,7 @@ import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
 import type { RunSummary } from "./settings";
-
-function formatPace(minPerKm: number): string {
-  const mins = Math.floor(minPerKm);
-  const secs = Math.round((minPerKm - mins) * 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
+import { formatPace } from "./utils";
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);

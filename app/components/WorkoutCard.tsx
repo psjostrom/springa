@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { HRZoneName } from "@/lib/types";
+import type { HRZoneName, PaceTable } from "@/lib/types";
 import { FALLBACK_PACE_TABLE, ZONE_COLORS } from "@/lib/constants";
 import {
   extractFuelStatus,
@@ -12,6 +12,7 @@ import {
   formatPace,
   estimateWorkoutDuration,
   estimateWorkoutDescriptionDistance,
+  calculateWorkoutCarbs,
 } from "@/lib/utils";
 import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ interface WorkoutCardProps {
   description: string;
   fuelRate?: number | null;
   totalCarbs?: number | null;
+  paceTable?: PaceTable;
   children?: React.ReactNode;
 }
 
@@ -73,12 +75,9 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs, children }: WorkoutCardProps) {
+export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs, paceTable, children }: WorkoutCardProps) {
   const descFuel = extractFuelStatus(description);
-  const fuel = {
-    fuelRate: propFuelRate ?? descFuel.fuelRate,
-    totalCarbs: propTotalCarbs ?? descFuel.totalCarbs,
-  };
+  const fuelRate = propFuelRate ?? descFuel.fuelRate;
   const sections = parseWorkoutStructure(description);
 
   // Fall back to raw text if parsing fails
@@ -90,8 +89,13 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
     );
   }
 
-  const estDuration = estimateWorkoutDuration(description);
-  const estDistance = estimateWorkoutDescriptionDistance(description);
+  const estDuration = estimateWorkoutDuration(description, paceTable);
+  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable);
+
+  // Recompute totalCarbs from calibrated duration when possible
+  const totalCarbs = (fuelRate != null && estDuration != null)
+    ? calculateWorkoutCarbs(estDuration.minutes, fuelRate)
+    : propTotalCarbs ?? descFuel.totalCarbs;
   const zones = parseWorkoutZones(description);
   const notes = extractNotes(description);
 
@@ -117,14 +121,14 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
               {estDistance.estimated ? "~" : ""}{estDistance.km} km
             </span>
           )}
-          {fuel.fuelRate != null && (
+          {fuelRate != null && (
             <span className="text-sm font-semibold text-[#ffb800]/80">
-              {fuel.fuelRate}g/h
+              {fuelRate}g/h
             </span>
           )}
-          {fuel.totalCarbs != null && (
+          {totalCarbs != null && (
             <span className="text-sm font-bold text-[#ffb800]">
-              {fuel.totalCarbs}g total
+              {totalCarbs}g total
             </span>
           )}
         </div>
@@ -143,7 +147,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
           <div className="mt-3 pt-3 border-t border-[#3d2b5a]">
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               {zones.map((zone) => {
-                const entry = getPaceForZone(FALLBACK_PACE_TABLE, zone);
+                const entry = getPaceForZone(paceTable ?? FALLBACK_PACE_TABLE, zone);
                 return (
                   <span key={zone} className="text-sm text-[#c4b5fd]">
                     <span className="font-semibold text-white">{getZoneLabel(zone)}</span>{" "}

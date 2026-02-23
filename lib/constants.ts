@@ -46,13 +46,6 @@ export const ZONE_COLORS = {
 } as const;
 
 
-export const PACE_ESTIMATES = {
-  easy: 7.25,
-  steady: 6.15,
-  tempo: 5.15,
-  hard: 4.75,
-} as const;
-
 /** LTHR zone boundaries as percentages. Used for HR-to-zone classification and color mapping. */
 export const ZONE_THRESHOLDS = {
   z5: 99,  // >= 99% LTHR

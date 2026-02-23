@@ -10,8 +10,81 @@ import {
 import type { CachedActivity } from "@/lib/settings";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
+import type { IntervalsStream, DataPoint } from "@/lib/types";
 import { getWorkoutCategory } from "@/lib/utils";
 import { buildRunBGContexts, type RunBGContext } from "@/lib/runBGContext";
+
+/** Extract minute-indexed pace/cadence/altitude DataPoints from raw streams. */
+export function extractExtraStreams(streams: IntervalsStream[]): {
+  pace: DataPoint[];
+  cadence: DataPoint[];
+  altitude: DataPoint[];
+} {
+  let timeData: number[] = [];
+  let velocityRaw: number[] = [];
+  let cadenceRaw: number[] = [];
+  let altitudeRaw: number[] = [];
+
+  for (const s of streams) {
+    if (s.type === "time") timeData = s.data;
+    if (s.type === "velocity_smooth") velocityRaw = s.data;
+    if (s.type === "cadence") cadenceRaw = s.data;
+    if (s.type === "altitude") altitudeRaw = s.data;
+  }
+
+  const pace: DataPoint[] = [];
+  const cadence: DataPoint[] = [];
+  const altitude: DataPoint[] = [];
+
+  if (timeData.length === 0) return { pace, cadence, altitude };
+
+  // Build minute-indexed maps (same pattern as alignStreams)
+  const paceByMin = new Map<number, number[]>();
+  const cadByMin = new Map<number, number[]>();
+  const altByMin = new Map<number, number[]>();
+
+  for (let i = 0; i < timeData.length; i++) {
+    const minute = Math.round(timeData[i] / 60);
+
+    if (i < velocityRaw.length && velocityRaw[i] > 0) {
+      const p = 1000 / (velocityRaw[i] * 60); // m/s → min/km
+      if (p >= 2.0 && p <= 12.0) {
+        const arr = paceByMin.get(minute) ?? [];
+        arr.push(p);
+        paceByMin.set(minute, arr);
+      }
+    }
+
+    if (i < cadenceRaw.length && cadenceRaw[i] > 0) {
+      const arr = cadByMin.get(minute) ?? [];
+      arr.push(cadenceRaw[i] * 2); // half-cadence → SPM
+      cadByMin.set(minute, arr);
+    }
+
+    if (i < altitudeRaw.length) {
+      const arr = altByMin.get(minute) ?? [];
+      arr.push(altitudeRaw[i]);
+      altByMin.set(minute, arr);
+    }
+  }
+
+  // Average per minute
+  for (const [min, vals] of paceByMin) {
+    pace.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
+  }
+  for (const [min, vals] of cadByMin) {
+    cadence.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
+  }
+  for (const [min, vals] of altByMin) {
+    altitude.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
+  }
+
+  pace.sort((a, b) => a.time - b.time);
+  cadence.sort((a, b) => a.time - b.time);
+  altitude.sort((a, b) => a.time - b.time);
+
+  return { pace, cadence, altitude };
+}
 
 const BG_MODEL_MAX_ACTIVITIES = 15;
 const LS_KEY = "bgcache";
@@ -132,6 +205,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
             const streams = streamMap.get(e.activityId!);
             const aligned = streams ? alignStreams(streams) : null;
             const cat = getWorkoutCategory(e.name);
+            const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
 
             // Cache even failed alignments (empty arrays) so we don't re-fetch
             newCached.push({
@@ -141,6 +215,10 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
               startBG: aligned?.glucose[0]?.value ?? 0,
               glucose: aligned?.glucose ?? [],
               hr: aligned?.hr ?? [],
+              pace: extra.pace,
+              cadence: extra.cadence,
+              altitude: extra.altitude,
+              activityDate: e.date.toISOString().slice(0, 10),
             });
           }
         }
@@ -192,5 +270,5 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
     setBgModel(model);
   }, [xdripReadings]);
 
-  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts };
+  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities: cachedRef.current };
 }

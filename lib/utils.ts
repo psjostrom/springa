@@ -5,7 +5,22 @@ import type {
   CalendarEvent,
   WorkoutEvent,
 } from "./types";
-import { FALLBACK_PACE_TABLE, PACE_ESTIMATES, classifyZone } from "./constants";
+import { FALLBACK_PACE_TABLE, classifyZone } from "./constants";
+
+/** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
+function paceForIntensity(avgPercent: number, table?: PaceTable): number {
+  const fb = FALLBACK_PACE_TABLE;
+  if (table) {
+    if (avgPercent >= 95) return table.hard?.avgPace ?? fb.hard!.avgPace;
+    if (avgPercent >= 88) return table.tempo?.avgPace ?? fb.tempo!.avgPace;
+    if (avgPercent >= 80) return table.steady?.avgPace ?? fb.steady!.avgPace;
+    return table.easy?.avgPace ?? fb.easy!.avgPace;
+  }
+  if (avgPercent >= 95) return fb.hard!.avgPace;
+  if (avgPercent >= 88) return fb.tempo!.avgPace;
+  if (avgPercent >= 80) return fb.steady!.avgPace;
+  return fb.easy!.avgPace;
+}
 
 // --- ZONE LABELS ---
 
@@ -36,50 +51,6 @@ export function getPaceForZone(
   zone: HRZoneName,
 ): ZonePaceEntry {
   return table[zone] ?? FALLBACK_PACE_TABLE[zone]!;
-}
-
-/**
- * Build easy pace from historical easy and long runs (excluding strides).
- * Returns a data-driven easy pace entry with avg HR, or null if no data.
- */
-export function buildEasyPaceFromHistory(
-  events: CalendarEvent[],
-): ZonePaceEntry | null {
-  const easyRuns = events.filter((e) => {
-    if (e.type !== "completed") return false;
-    if (!e.distance || !e.duration || !e.avgHr) return false;
-    const name = e.name.toLowerCase();
-    const isEasyOrLong =
-      name.includes("easy") || name.includes("long") || name.includes("bonus");
-    const hasStrides = name.includes("strides");
-    return isEasyOrLong && !hasStrides;
-  });
-
-  if (easyRuns.length === 0) return null;
-
-  let totalPace = 0;
-  let totalHr = 0;
-  let validCount = 0;
-
-  for (const e of easyRuns) {
-    const distKm = e.distance! / 1000;
-    if (distKm < 0.5) continue;
-    const durMin = e.duration! / 60;
-    const pace = durMin / distKm;
-    if (pace < 2.0 || pace > 12.0) continue;
-    totalPace += pace;
-    totalHr += e.avgHr!;
-    validCount++;
-  }
-
-  if (validCount === 0) return null;
-
-  return {
-    zone: "easy",
-    avgPace: totalPace / validCount,
-    sampleCount: validCount,
-    avgHr: Math.round(totalHr / validCount),
-  };
 }
 
 // --- HR ZONE CLASSIFICATION ---
@@ -226,21 +197,16 @@ export interface WorkoutSegment {
 }
 
 /** Convert a value+unit into minutes, using pace estimates for km distances. */
-function toMinutes(value: number, unit: string, avgPercent: number): { minutes: number; estimated: boolean; km: number | null } {
+function toMinutes(value: number, unit: string, avgPercent: number, table?: PaceTable): { minutes: number; estimated: boolean; km: number | null } {
   if (unit === "km") {
-    let pace: number;
-    if (avgPercent >= 95) pace = PACE_ESTIMATES.hard;
-    else if (avgPercent >= 88) pace = PACE_ESTIMATES.tempo;
-    else if (avgPercent >= 80) pace = PACE_ESTIMATES.steady;
-    else pace = PACE_ESTIMATES.easy;
-    return { minutes: value * pace, estimated: true, km: value };
+    return { minutes: value * paceForIntensity(avgPercent, table), estimated: true, km: value };
   }
   if (unit === "s") return { minutes: value / 60, estimated: false, km: null };
   return { minutes: value, estimated: false, km: null }; // "m" = already minutes
 }
 
 /** Parse step lines within a section, returning total duration and individual segments. */
-function parseSectionSegments(section: string): WorkoutSegment[] {
+function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
   const stepMatches = Array.from(
     section.matchAll(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/g),
@@ -249,7 +215,7 @@ function parseSectionSegments(section: string): WorkoutSegment[] {
     const value = parseFloat(m[1]);
     const unit = m[2];
     const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
-    const conv = toMinutes(value, unit, avgPercent);
+    const conv = toMinutes(value, unit, avgPercent, table);
     segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
   }
   return segments;
@@ -259,7 +225,7 @@ function parseSectionSegments(section: string): WorkoutSegment[] {
  * Parse a workout description into an ordered list of segments with duration and intensity.
  * Handles Warmup, Main set (with repeats), Strides (with repeats), and Cooldown.
  */
-export function parseWorkoutSegments(description: string): WorkoutSegment[] {
+export function parseWorkoutSegments(description: string, paceTable?: PaceTable): WorkoutSegment[] {
   if (!description) return [];
   const segments: WorkoutSegment[] = [];
 
@@ -271,7 +237,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
       const value = parseFloat(wuStep[1]);
       const unit = wuStep[2];
       const avgPercent = (parseInt(wuStep[3], 10) + parseInt(wuStep[4], 10)) / 2;
-      const conv = toMinutes(value, unit, avgPercent);
+      const conv = toMinutes(value, unit, avgPercent, paceTable);
       segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
     }
   }
@@ -281,7 +247,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   if (mainSetSection) {
     const repsMatch = mainSetSection[0].match(/Main set\s+(\d+)x/);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
-    const stepSegs = parseSectionSegments(mainSetSection[0]);
+    const stepSegs = parseSectionSegments(mainSetSection[0], paceTable);
     for (let r = 0; r < reps; r++) {
       segments.push(...stepSegs);
     }
@@ -292,7 +258,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   if (stridesSection) {
     const repsMatch = stridesSection[0].match(/Strides\s+(\d+)x/);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
-    const stepSegs = parseSectionSegments(stridesSection[0]);
+    const stepSegs = parseSectionSegments(stridesSection[0], paceTable);
     for (let r = 0; r < reps; r++) {
       segments.push(...stepSegs);
     }
@@ -301,7 +267,7 @@ export function parseWorkoutSegments(description: string): WorkoutSegment[] {
   // Cooldown
   const cooldownMatch = description.match(/\nCooldown[\s\S]*$/);
   if (cooldownMatch) {
-    const cdSegs = parseSectionSegments(cooldownMatch[0]);
+    const cdSegs = parseSectionSegments(cooldownMatch[0], paceTable);
     segments.push(...cdSegs);
   }
 
@@ -318,8 +284,8 @@ export const getEstimatedDuration = (event: WorkoutEvent): number => {
   return 45;
 };
 
-export function estimateWorkoutDuration(description: string): { minutes: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description);
+export function estimateWorkoutDuration(description: string, paceTable?: PaceTable): { minutes: number; estimated: boolean } | null {
+  const segments = parseWorkoutSegments(description, paceTable);
   if (segments.length === 0) return null;
   const total = segments.reduce((sum, s) => sum + s.duration, 0);
   if (total <= 0) return null;
@@ -328,8 +294,8 @@ export function estimateWorkoutDuration(description: string): { minutes: number;
 }
 
 /** Estimate total distance (km) from a workout description. Returns exact km for distance-based workouts, estimated for time-based. */
-export function estimateWorkoutDescriptionDistance(description: string): { km: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description);
+export function estimateWorkoutDescriptionDistance(description: string, paceTable?: PaceTable): { km: number; estimated: boolean } | null {
+  const segments = parseWorkoutSegments(description, paceTable);
   if (segments.length === 0) return null;
   let totalKm = 0;
   let hasTimeBasedSegment = false;
@@ -338,13 +304,7 @@ export function estimateWorkoutDescriptionDistance(description: string): { km: n
       totalKm += seg.km;
     } else {
       hasTimeBasedSegment = true;
-      // Convert time → km using pace estimates
-      let pace: number;
-      if (seg.intensity >= 95) pace = PACE_ESTIMATES.hard;
-      else if (seg.intensity >= 88) pace = PACE_ESTIMATES.tempo;
-      else if (seg.intensity >= 80) pace = PACE_ESTIMATES.steady;
-      else pace = PACE_ESTIMATES.easy;
-      totalKm += seg.duration / pace;
+      totalKm += seg.duration / paceForIntensity(seg.intensity, paceTable);
     }
   }
   if (totalKm <= 0) return null;
@@ -436,19 +396,18 @@ export function convertGlucoseToMmol(values: number[]): number[] {
 
 // --- DISTANCE ESTIMATION ---
 
-export function estimateWorkoutDistance(event: CalendarEvent): number {
+export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable): number {
   if (event.distance) {
     return event.distance / 1000;
   }
   const kmMatch = event.name.match(/\((\d+)km\)/);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 
-  const pace =
-    event.category === "interval"
-      ? PACE_ESTIMATES.tempo
-      : PACE_ESTIMATES.easy;
+  const pace = event.category === "interval"
+    ? paceForIntensity(90, paceTable)
+    : paceForIntensity(70, paceTable);
 
-  const parsed = estimateWorkoutDuration(event.description);
+  const parsed = estimateWorkoutDuration(event.description, paceTable);
   if (parsed) return parsed.minutes / pace;
 
   if (event.duration) return event.duration / 60 / pace;
@@ -457,13 +416,13 @@ export function estimateWorkoutDistance(event: CalendarEvent): number {
 }
 
 /** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
-export function estimatePlanEventDistance(event: WorkoutEvent): number {
+export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable): number {
   const kmMatch = event.name.match(/\((\d+)km\)/);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 
   const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
-  const pace = isInterval ? PACE_ESTIMATES.tempo : PACE_ESTIMATES.easy;
-  const parsed = estimateWorkoutDuration(event.description);
+  const pace = paceForIntensity(isInterval ? 90 : 70, paceTable);
+  const parsed = estimateWorkoutDuration(event.description, paceTable);
   if (parsed) return parsed.minutes / pace;
   return 0;
 }

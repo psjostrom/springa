@@ -5,11 +5,12 @@ import {
   getZoneLabel,
   parseWorkoutZones,
   getEstimatedDuration,
-  buildEasyPaceFromHistory,
   parseWorkoutSegments,
   estimateWorkoutDuration,
   estimateWorkoutDistance,
   estimateWorkoutDescriptionDistance,
+  estimatePlanEventDistance,
+  calculateWorkoutCarbs,
   extractFuelStatus,
   extractNotes,
   parseWorkoutStructure,
@@ -375,110 +376,6 @@ describe("getEstimatedDuration", () => {
       type: "Run",
     };
     expect(getEstimatedDuration(event)).toBe(45);
-  });
-});
-
-describe("buildEasyPaceFromHistory", () => {
-  it("calculates average pace from completed easy/long runs", () => {
-    const events: CalendarEvent[] = [
-      {
-        id: "1",
-        date: new Date(),
-        name: "Easy Run",
-        description: "",
-        type: "completed",
-        category: "easy",
-        distance: 5000,
-        duration: 2025,
-        avgHr: 125,
-      },
-      {
-        id: "2",
-        date: new Date(),
-        name: "Long Run",
-        description: "",
-        type: "completed",
-        category: "long",
-        distance: 8000,
-        duration: 3360,
-        avgHr: 128,
-      },
-    ];
-
-    const result = buildEasyPaceFromHistory(events);
-    expect(result).not.toBeNull();
-    expect(result!.zone).toBe("easy");
-    expect(result!.sampleCount).toBe(2);
-    expect(result!.avgPace).toBeCloseTo(6.875, 1);
-    expect(result!.avgHr).toBe(127);
-  });
-
-  it("excludes strides runs", () => {
-    const events: CalendarEvent[] = [
-      {
-        id: "1",
-        date: new Date(),
-        name: "Easy + Strides",
-        description: "",
-        type: "completed",
-        category: "easy",
-        distance: 5000,
-        duration: 2025,
-        avgHr: 125,
-      },
-    ];
-    expect(buildEasyPaceFromHistory(events)).toBeNull();
-  });
-
-  it("returns null when no matching runs", () => {
-    const events: CalendarEvent[] = [
-      {
-        id: "1",
-        date: new Date(),
-        name: "Intervals",
-        description: "",
-        type: "completed",
-        category: "interval",
-        distance: 5000,
-        duration: 1500,
-        avgHr: 160,
-      },
-    ];
-    expect(buildEasyPaceFromHistory(events)).toBeNull();
-  });
-
-  it("excludes planned events", () => {
-    const events: CalendarEvent[] = [
-      {
-        id: "1",
-        date: new Date(),
-        name: "Easy Run",
-        description: "",
-        type: "planned",
-        category: "easy",
-        distance: 5000,
-        duration: 2025,
-        avgHr: 125,
-      },
-    ];
-    expect(buildEasyPaceFromHistory(events)).toBeNull();
-  });
-
-  it("filters out unrealistic paces", () => {
-    const events: CalendarEvent[] = [
-      {
-        id: "1",
-        date: new Date(),
-        name: "Easy Run",
-        description: "",
-        type: "completed",
-        category: "easy",
-        distance: 100,
-        duration: 60,
-        avgHr: 120,
-      },
-    ];
-    expect(buildEasyPaceFromHistory(events)).toBeNull();
   });
 });
 
@@ -1091,5 +988,213 @@ Warmup
 
   it("returns null for description without sections", () => {
     expect(extractNotes("Just a note")).toBeNull();
+  });
+});
+
+// --- CALIBRATED PACE TABLE INTEGRATION ---
+
+// A fast runner's calibrated pace table
+const FAST_TABLE: PaceTable = {
+  easy: { zone: "easy", avgPace: 6.0, sampleCount: 10 },
+  steady: { zone: "steady", avgPace: 5.0, sampleCount: 8 },
+  tempo: { zone: "tempo", avgPace: 4.5, sampleCount: 5 },
+  hard: { zone: "hard", avgPace: 4.0, sampleCount: 0 },
+};
+
+// A slow runner's calibrated pace table
+const SLOW_TABLE: PaceTable = {
+  easy: { zone: "easy", avgPace: 8.0, sampleCount: 10 },
+  steady: { zone: "steady", avgPace: 7.0, sampleCount: 8 },
+  tempo: { zone: "tempo", avgPace: 6.0, sampleCount: 5 },
+  hard: { zone: "hard", avgPace: 5.5, sampleCount: 0 },
+};
+
+// Workout with km-based steps — duration depends on pace
+const KM_WORKOUT = `Warmup
+- 1km 66-78% LTHR (112-132 bpm)
+
+Main set
+- 4km 78-89% LTHR (132-150 bpm)
+
+Cooldown
+- 1km 66-78% LTHR (112-132 bpm)`;
+
+// Workout with time-based steps — duration does NOT depend on pace
+const TIME_WORKOUT = `Warmup
+- 10m 66-78% LTHR (112-132 bpm)
+
+Main set 6x
+- 2m 89-99% LTHR (150-167 bpm)
+- 2m 66-78% LTHR (112-132 bpm)
+
+Cooldown
+- 5m 66-78% LTHR (112-132 bpm)`;
+
+describe("parseWorkoutSegments with paceTable", () => {
+  it("uses calibrated paces for km-based steps", () => {
+    const fast = parseWorkoutSegments(KM_WORKOUT, FAST_TABLE);
+    const slow = parseWorkoutSegments(KM_WORKOUT, SLOW_TABLE);
+
+    // Same 4km main set — fast runner should have shorter duration
+    expect(fast[1].duration).toBeLessThan(slow[1].duration);
+    // Fast: 4km * 5.0 min/km = 20 min
+    expect(fast[1].duration).toBeCloseTo(20, 0);
+    // Slow: 4km * 7.0 min/km = 28 min
+    expect(slow[1].duration).toBeCloseTo(28, 0);
+  });
+
+  it("time-based steps are identical regardless of paceTable", () => {
+    const fast = parseWorkoutSegments(TIME_WORKOUT, FAST_TABLE);
+    const slow = parseWorkoutSegments(TIME_WORKOUT, SLOW_TABLE);
+    const none = parseWorkoutSegments(TIME_WORKOUT);
+
+    // All should have identical durations
+    expect(fast.length).toBe(none.length);
+    for (let i = 0; i < fast.length; i++) {
+      expect(fast[i].duration).toBe(slow[i].duration);
+      expect(fast[i].duration).toBe(none[i].duration);
+    }
+  });
+
+  it("falls back to FALLBACK_PACE_TABLE when no paceTable provided", () => {
+    const withTable = parseWorkoutSegments(KM_WORKOUT, FAST_TABLE);
+    const noTable = parseWorkoutSegments(KM_WORKOUT);
+
+    // Main set 4km at steady: fast table uses 5.0, FALLBACK uses 5.67
+    expect(withTable[1].duration).toBeCloseTo(4 * 5.0, 0);
+    expect(noTable[1].duration).toBeCloseTo(4 * FALLBACK_PACE_TABLE.steady!.avgPace, 0);
+  });
+});
+
+describe("estimateWorkoutDuration with paceTable", () => {
+  it("produces different durations for different pace tables on km workouts", () => {
+    const fast = estimateWorkoutDuration(KM_WORKOUT, FAST_TABLE);
+    const slow = estimateWorkoutDuration(KM_WORKOUT, SLOW_TABLE);
+
+    expect(fast).not.toBeNull();
+    expect(slow).not.toBeNull();
+    expect(fast!.minutes).toBeLessThan(slow!.minutes);
+  });
+
+  it("produces identical durations for time-based workouts regardless of pace table", () => {
+    const fast = estimateWorkoutDuration(TIME_WORKOUT, FAST_TABLE);
+    const none = estimateWorkoutDuration(TIME_WORKOUT);
+
+    expect(fast).not.toBeNull();
+    expect(none).not.toBeNull();
+    expect(fast!.minutes).toBe(none!.minutes);
+  });
+});
+
+describe("estimateWorkoutDescriptionDistance with paceTable", () => {
+  it("produces different distances for time-based workouts with different paces", () => {
+    const fast = estimateWorkoutDescriptionDistance(TIME_WORKOUT, FAST_TABLE);
+    const slow = estimateWorkoutDescriptionDistance(TIME_WORKOUT, SLOW_TABLE);
+
+    expect(fast).not.toBeNull();
+    expect(slow).not.toBeNull();
+    // Faster pace → more distance in same time
+    expect(fast!.km).toBeGreaterThan(slow!.km);
+  });
+
+  it("produces identical km for all-km workouts regardless of pace table", () => {
+    const fast = estimateWorkoutDescriptionDistance(KM_WORKOUT, FAST_TABLE);
+    const slow = estimateWorkoutDescriptionDistance(KM_WORKOUT, SLOW_TABLE);
+
+    expect(fast).not.toBeNull();
+    expect(slow).not.toBeNull();
+    expect(fast!.km).toBe(slow!.km);
+    expect(fast!.km).toBe(6); // 1 + 4 + 1
+    expect(fast!.estimated).toBe(false);
+  });
+});
+
+describe("estimateWorkoutDistance with paceTable", () => {
+  it("uses actual distance when available (ignores pace table)", () => {
+    const event: CalendarEvent = {
+      id: "1", date: new Date(), name: "Easy", description: "",
+      type: "completed", category: "easy", distance: 5500, duration: 2200,
+    };
+    expect(estimateWorkoutDistance(event, FAST_TABLE)).toBe(5.5);
+    expect(estimateWorkoutDistance(event, SLOW_TABLE)).toBe(5.5);
+  });
+
+  it("uses calibrated pace for time-based planned events", () => {
+    const event: CalendarEvent = {
+      id: "2", date: new Date(), name: "W01 Thu Short Intervals eco16",
+      description: TIME_WORKOUT, type: "planned", category: "interval",
+    };
+    const fast = estimateWorkoutDistance(event, FAST_TABLE);
+    const slow = estimateWorkoutDistance(event, SLOW_TABLE);
+    // Same 39 min workout — faster pace → more km
+    expect(fast).toBeGreaterThan(slow);
+  });
+
+  it("falls back to FALLBACK_PACE_TABLE without pace table", () => {
+    const event: CalendarEvent = {
+      id: "3", date: new Date(), name: "W01 Thu Easy eco16",
+      description: TIME_WORKOUT, type: "planned", category: "easy",
+    };
+    const withTable = estimateWorkoutDistance(event, FAST_TABLE);
+    const noTable = estimateWorkoutDistance(event);
+    // Should differ because FAST_TABLE differs from FALLBACK_PACE_TABLE
+    expect(withTable).not.toBe(noTable);
+  });
+});
+
+describe("estimatePlanEventDistance", () => {
+  it("extracts km from event name", () => {
+    const event: WorkoutEvent = {
+      start_date_local: new Date(), name: "W05 Sun Long (12km) eco16",
+      description: "", external_id: "test", type: "Run",
+    };
+    expect(estimatePlanEventDistance(event)).toBe(12);
+    expect(estimatePlanEventDistance(event, FAST_TABLE)).toBe(12);
+  });
+
+  it("estimates from description with calibrated paces", () => {
+    const event: WorkoutEvent = {
+      start_date_local: new Date(), name: "W01 Tue Short Intervals eco16",
+      description: TIME_WORKOUT, external_id: "test", type: "Run",
+    };
+    const fast = estimatePlanEventDistance(event, FAST_TABLE);
+    const slow = estimatePlanEventDistance(event, SLOW_TABLE);
+    const none = estimatePlanEventDistance(event);
+
+    // Faster pace → more km in same time
+    expect(fast).toBeGreaterThan(slow);
+    // Without table → uses FALLBACK_PACE_TABLE
+    expect(none).toBeGreaterThan(0);
+  });
+
+  it("returns 0 for events with no km and no description", () => {
+    const event: WorkoutEvent = {
+      start_date_local: new Date(), name: "W01 Thu Easy eco16",
+      description: "Just a note", external_id: "test", type: "Run",
+    };
+    expect(estimatePlanEventDistance(event)).toBe(0);
+  });
+});
+
+describe("totalCarbs recomputation with calibrated paces", () => {
+  it("produces different fuel totals for different pace tables", () => {
+    const fuelRate = 60; // 60 g/h
+    const fastDuration = estimateWorkoutDuration(KM_WORKOUT, FAST_TABLE)!;
+    const slowDuration = estimateWorkoutDuration(KM_WORKOUT, SLOW_TABLE)!;
+
+    const fastCarbs = calculateWorkoutCarbs(fastDuration.minutes, fuelRate);
+    const slowCarbs = calculateWorkoutCarbs(slowDuration.minutes, fuelRate);
+
+    // Slower runner takes longer → needs more carbs
+    expect(slowCarbs).toBeGreaterThan(fastCarbs);
+  });
+
+  it("time-based workouts produce identical fuel regardless of pace table", () => {
+    const fuelRate = 60;
+    const fastDuration = estimateWorkoutDuration(TIME_WORKOUT, FAST_TABLE)!;
+    const noneDuration = estimateWorkoutDuration(TIME_WORKOUT)!;
+
+    expect(calculateWorkoutCarbs(fastDuration.minutes, fuelRate))
+      .toBe(calculateWorkoutCarbs(noneDuration.minutes, fuelRate));
   });
 });

@@ -3,14 +3,17 @@
 import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
+import type { CachedActivity } from "@/lib/settings";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
+import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
 import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
 import { BGResponsePanel } from "../components/BGResponsePanel";
 import { BGScatterChart } from "../components/BGScatterChart";
+import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
 import { ErrorCard } from "../components/ErrorCard";
 
 interface IntelScreenProps {
@@ -32,6 +35,7 @@ interface IntelScreenProps {
   startKm?: number;
   lthr?: number;
   bgActivityNames: Map<string, string>;
+  cachedActivities: CachedActivity[];
 }
 
 export function IntelScreen({
@@ -52,6 +56,7 @@ export function IntelScreen({
   bgModelLoading,
   bgModelProgress,
   bgActivityNames,
+  cachedActivities,
 }: IntelScreenProps) {
   const fitnessData = useMemo(
     () => computeFitnessData(events, 180),
@@ -61,6 +66,22 @@ export function IntelScreen({
   const insights = useMemo(
     () => (fitnessData.length > 0 ? computeInsights(fitnessData, events) : null),
     [fitnessData, events],
+  );
+
+  const paceCalibration = useMemo(() => {
+    if (!lthr || cachedActivities.length === 0) return null;
+    const allSegments = cachedActivities.flatMap((a) =>
+      a.pace && a.pace.length > 0 && a.hr.length > 0
+        ? extractZoneSegments(a.hr, a.pace, lthr, a.activityId, a.activityDate ?? "")
+        : [],
+    );
+    if (allSegments.length === 0) return null;
+    return buildCalibratedPaceTable(allSegments);
+  }, [cachedActivities, lthr]);
+
+  const paceTable = useMemo(
+    () => paceCalibration ? toPaceTable(paceCalibration) : undefined,
+    [paceCalibration],
   );
 
   return (
@@ -123,7 +144,13 @@ export function IntelScreen({
           prefix={prefix}
           startKm={startKm}
           lthr={lthr}
+          paceTable={paceTable}
         />
+
+        {/* Pace Zones */}
+        {paceCalibration && lthr && (
+          <PaceCalibrationCard calibration={paceCalibration} lthr={lthr} />
+        )}
 
         {/* BG Response Model */}
         {bgModelLoading ? (

@@ -16,7 +16,7 @@ import {
   differenceInCalendarWeeks,
   parseISO,
 } from "date-fns";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/utils";
 import { generateFullPlan } from "@/lib/workoutGenerators";
 
@@ -28,6 +28,7 @@ interface VolumeTrendChartProps {
   prefix?: string;
   startKm?: number;
   lthr?: number;
+  paceTable?: PaceTable;
 }
 
 interface WeekData {
@@ -47,6 +48,7 @@ export function VolumeTrendChart({
   prefix,
   startKm,
   lthr,
+  paceTable,
 }: VolumeTrendChartProps) {
 
   const data = useMemo(() => {
@@ -75,7 +77,7 @@ export function VolumeTrendChart({
         weekStartsOn: 1,
       });
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-      const km = estimatePlanEventDistance(pe);
+      const km = estimatePlanEventDistance(pe, paceTable);
       const isOptional = /bonus|optional/i.test(pe.name);
       if (isOptional) {
         weeks[weekIdx].plannedOptional += km;
@@ -91,7 +93,7 @@ export function VolumeTrendChart({
         weekStartsOn: 1,
       });
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-      weeks[weekIdx].completed += estimateWorkoutDistance(event);
+      weeks[weekIdx].completed += estimateWorkoutDistance(event, paceTable);
     }
 
     // Compute totals and round
@@ -103,7 +105,7 @@ export function VolumeTrendChart({
     }
 
     return { weeks, currentWeekIdx };
-  }, [events, raceDate, totalWeeks, raceDist, prefix, startKm, lthr]);
+  }, [events, raceDate, totalWeeks, raceDist, prefix, startKm, lthr, paceTable]);
 
   if (events.length === 0) return null;
 

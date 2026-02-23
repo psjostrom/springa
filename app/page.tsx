@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
@@ -17,7 +17,9 @@ import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { PreRunOverlay } from "./components/PreRunOverlay";
 import { Settings, Play } from "lucide-react";
-import type { UserSettings } from "@/lib/settings";
+import type { UserSettings, CachedActivity } from "@/lib/settings";
+import type { StreamData } from "@/lib/types";
+import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
 
@@ -150,7 +152,44 @@ function HomeContent() {
   const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
 
   // BG model — uses shared events, fetches streams independently
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts } = useBGModel(apiKey, true, sharedCalendar.events, readings);
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useBGModel(apiKey, true, sharedCalendar.events, readings);
+
+  // Calibrated pace table from cached stream data
+  const paceTable = useMemo(() => {
+    const lthr = settings?.lthr;
+    if (!lthr || cachedActivities.length === 0) return undefined;
+    const allSegments = cachedActivities.flatMap((a) =>
+      a.pace && a.pace.length > 0 && a.hr.length > 0
+        ? extractZoneSegments(a.hr, a.pace, lthr, a.activityId, a.activityDate ?? "")
+        : [],
+    );
+    if (allSegments.length === 0) return undefined;
+    return toPaceTable(buildCalibratedPaceTable(allSegments));
+  }, [cachedActivities, settings?.lthr]);
+
+  // Enrich calendar events with cached stream data so graphs render on mount
+  const enrichedEvents = useMemo(() => {
+    if (cachedActivities.length === 0) return sharedCalendar.events;
+    const cacheMap = new Map<string, CachedActivity>(
+      cachedActivities.map((a) => [a.activityId, a]),
+    );
+    let changed = false;
+    const result = sharedCalendar.events.map((event) => {
+      if (event.type !== "completed" || event.streamData || !event.activityId) return event;
+      const cached = cacheMap.get(event.activityId);
+      if (!cached) return event;
+      const streamData: StreamData = {};
+      if (cached.glucose.length > 0) streamData.glucose = cached.glucose;
+      if (cached.hr.length > 0) streamData.heartrate = cached.hr;
+      if (cached.pace && cached.pace.length > 0) streamData.pace = cached.pace;
+      if (cached.cadence && cached.cadence.length > 0) streamData.cadence = cached.cadence;
+      if (cached.altitude && cached.altitude.length > 0) streamData.altitude = cached.altitude;
+      if (Object.keys(streamData).length === 0) return event;
+      changed = true;
+      return { ...event, streamData };
+    });
+    return changed ? result : sharedCalendar.events;
+  }, [sharedCalendar.events, cachedActivities]);
 
   // Phase info for progress screen
   const raceDate = settings?.raceDate || "2026-06-13";
@@ -265,19 +304,19 @@ function HomeContent() {
             totalWeeks={totalWeeks}
             startKm={settings?.startKm}
             lthr={settings?.lthr}
-            events={sharedCalendar.events}
+            events={enrichedEvents}
             runBGContexts={runBGContexts}
             autoAdapt={autoAdapt}
             onSyncDone={sharedCalendar.reload}
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={sharedCalendar.events} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} />
+          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} paceTable={paceTable} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
             apiKey={apiKey}
-            events={sharedCalendar.events}
+            events={enrichedEvents}
             eventsLoading={sharedCalendar.isLoading}
             eventsError={sharedCalendar.error}
             onRetryLoad={sharedCalendar.reload}
@@ -294,10 +333,11 @@ function HomeContent() {
             bgModelLoading={bgModelLoading}
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
+            cachedActivities={cachedActivities}
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={sharedCalendar.events} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
+          <CoachScreen events={enrichedEvents} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
       </div>
 

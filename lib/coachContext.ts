@@ -4,6 +4,7 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
+import { formatPace } from "./utils";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
@@ -17,12 +18,6 @@ interface CoachContext {
   lastUpdate?: Date | null;
   readings?: XdripReading[];
   runBGContexts?: Map<string, RunBGContext>;
-}
-
-function formatPace(minPerKm: number): string {
-  const mins = Math.floor(minPerKm);
-  const secs = Math.round((minPerKm - mins) * 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
