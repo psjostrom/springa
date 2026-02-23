@@ -38,12 +38,6 @@ export interface PlanContext {
   startKm: number;
   lthr: number;
   planStartMonday: Date;
-  zones: {
-    easy: { min: number; max: number };
-    steady: { min: number; max: number };
-    tempo: { min: number; max: number };
-    hard: { min: number; max: number };
-  };
 }
 
 export interface IntervalsActivity {

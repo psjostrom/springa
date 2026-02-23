@@ -528,7 +528,7 @@ export async function pairEventWithActivity(
 export async function updateEvent(
   apiKey: string,
   eventId: number,
-  updates: { start_date_local?: string; name?: string; description?: string },
+  updates: { start_date_local?: string; name?: string; description?: string; carbs_per_hour?: number },
 ): Promise<void> {
   const auth = authHeader(apiKey);
   const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
@@ -625,6 +625,38 @@ export async function uploadToIntervals(
     console.error("Upload failed:", error);
     throw error;
   }
+}
+
+/**
+ * Upsert events without deleting existing ones.
+ * Uses external_id for matching — existing events with same external_id are updated, new ones created.
+ */
+export async function upsertEvents(
+  apiKey: string,
+  events: WorkoutEvent[],
+): Promise<number> {
+  const auth = authHeader(apiKey);
+
+  const payload = events.map((e) => ({
+    category: "WORKOUT",
+    start_date_local: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+    name: e.name,
+    description: e.description,
+    external_id: e.external_id,
+    type: e.type,
+    ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate) }),
+  }));
+
+  const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
+    method: "POST",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API Error ${res.status}: ${errorText}`);
+  }
+  return payload.length;
 }
 
 export async function updateActivityCarbs(

@@ -8,7 +8,7 @@ import {
   set,
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
-import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
+import { SPEED_ROTATION, SPEED_SESSION_LABELS, HR_ZONE_BANDS } from "./constants";
 import { formatStep, createWorkoutText } from "./utils";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
@@ -18,7 +18,7 @@ const WALK_ZONE = { min: 0.50, max: 0.66 };
 function makeStep(ctx: PlanContext) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
     if (zone === "walk") return formatStep(duration, WALK_ZONE.min, WALK_ZONE.max, ctx.lthr, note ?? "Walk");
-    const z = ctx.zones[zone];
+    const z = HR_ZONE_BANDS[zone];
     return formatStep(duration, z.min, z.max, ctx.lthr, note);
   };
 }
@@ -350,12 +350,6 @@ export function generatePlan(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
     ),
-    zones: {
-      easy: { min: 0.66, max: 0.78 },
-      steady: { min: 0.78, max: 0.89 },
-      tempo: { min: 0.89, max: 0.99 },
-      hard: { min: 0.99, max: 1.11 },
-    },
   };
   const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
   return weekIndices.flatMap((i) => {
@@ -394,12 +388,6 @@ export function generateFullPlan(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
     ),
-    zones: {
-      easy: { min: 0.66, max: 0.78 },
-      steady: { min: 0.78, max: 0.89 },
-      tempo: { min: 0.89, max: 0.99 },
-      hard: { min: 0.99, max: 1.11 },
-    },
   };
   const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
   return weekIndices.flatMap((i) => {

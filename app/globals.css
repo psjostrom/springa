@@ -186,6 +186,11 @@ input[type="datetime-local"] {
   50%      { box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.2); }
 }
 
+@keyframes retro-adapt-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(108, 58, 237, 0.5), 0 0 30px rgba(108, 58, 237, 0.2); }
+  50%      { box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.2); }
+}
+
 @keyframes retro-scanline {
   0%   { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
@@ -210,6 +215,13 @@ input[type="datetime-local"] {
   background-size: 300% 300%;
   animation: retro-border-flow 3s ease infinite;
   box-shadow: 0 0 15px rgba(57, 255, 20, 0.3), 0 0 30px rgba(57, 255, 20, 0.1);
+  padding: 2px;
+}
+
+.retro-adapt-border {
+  background: linear-gradient(270deg, #6c3aed, #00ffff, #d946ef, #6c3aed);
+  background-size: 300% 300%;
+  animation: retro-border-flow 3s ease infinite, retro-adapt-glow 2s ease-in-out infinite;
   padding: 2px;
 }
 
@@ -263,4 +275,28 @@ input[type="datetime-local"] {
     animation: retro-scanline 1.5s linear infinite;
     pointer-events: none;
   }
+
+  .retro-btn-adapting {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(270deg, #6c3aed, #00ffff, #6c3aed);
+    background-size: 200% 200%;
+    animation: retro-border-flow 3s ease infinite;
+  }
+
+  .retro-btn-adapting::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    animation: retro-scanline 1.5s linear infinite;
+    pointer-events: none;
+  }
 }
+

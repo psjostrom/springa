@@ -88,6 +88,19 @@ function HomeContent() {
     typeof window !== "undefined" ? parseTab(window.location.search) : "calendar"
   );
 
+  // Auto-adapt: read from URL and clear to prevent re-trigger
+  const [autoAdapt] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("adapt") === "true") {
+      params.delete("adapt");
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+      return true;
+    }
+    return false;
+  });
+
   // BG graph popover
   const [showBGGraph, setShowBGGraph] = useState(false);
   const bgPushedRef = useRef(false);
@@ -249,6 +262,10 @@ function HomeContent() {
             totalWeeks={totalWeeks}
             startKm={settings?.startKm}
             lthr={settings?.lthr}
+            events={sharedCalendar.events}
+            runBGContexts={runBGContexts}
+            autoAdapt={autoAdapt}
+            onSyncDone={sharedCalendar.reload}
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>

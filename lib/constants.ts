@@ -54,6 +54,14 @@ export const ZONE_THRESHOLDS = {
   z2: 66,  // >= 66% LTHR
 } as const;
 
+/** HR zone bands as LTHR fractions. Single source of truth for workout generation. */
+export const HR_ZONE_BANDS = {
+  easy: { min: 0.66, max: 0.78 },
+  steady: { min: 0.78, max: 0.89 },
+  tempo: { min: 0.89, max: 0.99 },
+  hard: { min: 0.99, max: 1.11 },
+} as const;
+
 import type { HRZoneName } from "./types";
 
 /** Classify an LTHR percentage into a zone color. */

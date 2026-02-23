@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { HRZoneName } from "@/lib/types";
 import { FALLBACK_PACE_TABLE, ZONE_COLORS } from "@/lib/constants";
 import {
@@ -157,8 +159,17 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
 
       {/* Notes */}
       {notes && (
-        <div className="bg-[#2a1f3d] px-4 py-3 border-t border-[#3d2b5a]">
-          <p className="text-sm text-[#c4b5fd] leading-relaxed">{notes}</p>
+        <div className="bg-[#2a1f3d] px-4 py-3 border-t border-[#3d2b5a] text-sm text-[#c4b5fd] leading-relaxed">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+              em: ({ children }) => <em className="text-[#c4b5fd]">{children}</em>,
+            }}
+          >
+            {notes}
+          </ReactMarkdown>
         </div>
       )}
     </div>

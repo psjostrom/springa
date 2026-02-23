@@ -518,6 +518,31 @@ export async function updateRunFeedback(
   });
 }
 
+/** Fetch recent rated feedback for the adapt prompt. */
+export async function getRecentFeedback(
+  email: string,
+  limit: number = 10,
+): Promise<RunFeedbackRecord[]> {
+  const result = await db().execute({
+    sql: `SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr
+          FROM run_feedback
+          WHERE email = ? AND rating IS NOT NULL AND rating != 'skipped'
+          ORDER BY created_at DESC
+          LIMIT ?`,
+    args: [email, limit],
+  });
+  return result.rows.map((r) => ({
+    email: r.email as string,
+    createdAt: r.created_at as number,
+    activityId: r.activity_id as string | undefined,
+    rating: r.rating as string | undefined,
+    comment: r.comment as string | undefined,
+    distance: r.distance as number | undefined,
+    duration: r.duration as number | undefined,
+    avgHr: r.avg_hr as number | undefined,
+  }));
+}
+
 // --- Pre-run push dedup ---
 
 export async function getPrerunPushUsers(): Promise<string[]> {

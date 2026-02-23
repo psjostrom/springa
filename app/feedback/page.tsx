@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { RunFeedbackRecord } from "@/lib/settings";
 
@@ -135,6 +136,12 @@ function FeedbackContent() {
               {comment && (
                 <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
               )}
+              <Link
+                href="/?tab=planner&adapt=true"
+                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition"
+              >
+                Adapt upcoming &rarr;
+              </Link>
             </>
           )}
         </div>
