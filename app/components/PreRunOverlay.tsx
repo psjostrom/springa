@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
 import { assessReadiness, type ReadinessLevel } from "@/lib/prerun";
