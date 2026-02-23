@@ -16,7 +16,7 @@ import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { PreRunOverlay } from "./components/PreRunOverlay";
-import { Settings, Activity } from "lucide-react";
+import { Settings, Play } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
@@ -224,19 +224,22 @@ function HomeContent() {
     <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
       <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30 shadow-[0_2px_12px_rgba(255,45,149,0.15)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
-          <h1 className="text-xl md:text-2xl font-bold bg-[linear-gradient(135deg,#00ffff,#d946ef,#ff2d95)] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)]">
+          <button
+            onClick={() => handleTabChange("calendar")}
+            className="text-xl md:text-2xl font-bold bg-[linear-gradient(135deg,#00ffff,#d946ef,#ff2d95)] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.8)] hover:scale-105 active:scale-95 transition-all"
+          >
             Springa
-          </h1>
+          </button>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
             <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
             {currentBG != null && (
               <button
                 onClick={openPreRun}
-                className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#39ff14] hover:bg-[#2a1f3d] transition"
+                className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
                 title="Pre-run check"
               >
-                <Activity size={20} />
+                <Play size={20} />
               </button>
             )}
             <button

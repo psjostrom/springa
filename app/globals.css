@@ -33,6 +33,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+button,
+[role="button"],
+a,
+summary {
+  cursor: pointer;
+}
+
 /* Bottom sheet slide-up animation */
 @keyframes slide-up {
   from {
@@ -58,7 +65,7 @@ body {
   }
 
   .animate-slide-down {
-    animation: slide-down 0.25s ease-in forwards;
+    animation: slide-down 0.15s ease-in forwards;
   }
 }
 

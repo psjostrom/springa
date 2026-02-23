@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { XdripReading } from "@/lib/xdrip";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
@@ -27,14 +27,16 @@ function formatTime(ts: number): string {
 }
 
 export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps) {
-  const [isClosing, setIsClosing] = useState(false);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const handleClose = useCallback(() => {
-    setIsClosing(true);
-    setTimeout(onClose, 250);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   // Filter to last 3 hours
@@ -137,11 +139,11 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosing ? "bg-black/0" : "bg-black/70"}`}
-      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-150 bg-black/70`}
+      onClick={onClose}
     >
       <div
-        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up`}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Header */}

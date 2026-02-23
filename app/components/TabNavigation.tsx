@@ -26,10 +26,10 @@ export function TabNavigation({
 					<button
 						key={key}
 						onClick={() => onTabChange(key)}
-						className={`px-6 py-3 font-medium transition-colors relative ${
+						className={`px-6 py-3 font-medium transition-all relative ${
 							activeTab === key
 								? "text-[#ff69b4]"
-								: "text-[#c4b5fd] hover:text-white"
+								: "text-[#c4b5fd] hover:text-[#00ffff]"
 						}`}
 					>
 						{label}
@@ -41,15 +41,15 @@ export function TabNavigation({
 			</div>
 
 			{/* Mobile: fixed bottom tab bar with icons */}
-			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1e1535] border-t border-[#3d2b5a]" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1e1535] border-t border-[#3d2b5a] justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
 						onClick={() => onTabChange(key)}
-						className={`flex-1 flex flex-col items-center gap-0.5 py-2 ${
+						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							activeTab === key
 								? "text-[#ff69b4]"
-								: "text-[#c4b5fd]"
+								: "text-[#c4b5fd] hover:text-[#00ffff]"
 						}`}
 					>
 						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} style={activeTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #ff2d95)" } : undefined} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
 import { assessReadiness, type ReadinessLevel } from "@/lib/prerun";
@@ -39,12 +39,14 @@ export function PreRunOverlay({
   bgModel,
   onClose,
 }: PreRunOverlayProps) {
-  const [isClosing, setIsClosing] = useState(false);
   const [category, setCategory] = useState<WorkoutCategory>("easy");
 
-  const handleClose = useCallback(() => {
-    setIsClosing(true);
-    setTimeout(onClose, 250);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   const guidance = useMemo(
@@ -57,11 +59,11 @@ export function PreRunOverlay({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosing ? "bg-black/0" : "bg-black/70"}`}
-      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-150 bg-black/70`}
+      onClick={onClose}
     >
       <div
-        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className={`bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up`}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         {/* Header */}
@@ -79,7 +81,7 @@ export function PreRunOverlay({
             </span>
           </div>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="text-[#b8a5d4] hover:text-white text-xl leading-none px-1"
           >
             ✕
