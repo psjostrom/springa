@@ -17,7 +17,7 @@ export function CalendarScreen({ apiKey, initialEvents, isLoadingInitial, initia
   return (
     <div className="h-full bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
       <main className="flex-1 bg-[#0d0a1a] min-h-0 min-w-0">
-        <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
+        <div className="px-1 py-1 md:p-6 h-full flex flex-col overflow-hidden">
           <CalendarView apiKey={apiKey} initialEvents={initialEvents} isLoadingInitial={isLoadingInitial} initialError={initialError} onRetryLoad={onRetryLoad} runBGContexts={runBGContexts} />
         </div>
       </main>

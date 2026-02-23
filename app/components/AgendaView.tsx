@@ -35,22 +35,6 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
         <div className="text-sm text-[#b8a5d4]">
           {format(event.date, "MMM", { locale: enGB })}
         </div>
-        {event.type === "completed" && event.duration && (
-          <div className="text-sm text-white mt-4">
-            {formatDuration(event.duration)}
-          </div>
-        )}
-        {event.type === "planned" && event.description && (() => {
-          const est = estimateWorkoutDuration(event.description);
-          const dist = estimateWorkoutDescriptionDistance(event.description);
-          if (!est && !dist) return null;
-          return (
-            <div className="text-sm text-white mt-4 space-y-0.5">
-              {est && <div>{est.estimated ? "~" : ""}{formatDuration(est.minutes * 60)}</div>}
-              {dist && <div className="text-[#b8a5d4]">{dist.estimated ? "~" : ""}{dist.km} km</div>}
-            </div>
-          );
-        })()}
       </div>
 
       {/* Event Details */}
@@ -98,6 +82,11 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
         {event.type === "completed" && (
           <>
             <div className="flex flex-wrap gap-x-3 text-sm text-[#c4b5fd] mb-2">
+              {event.duration != null && (
+                <span className="font-semibold text-white">
+                  {formatDuration(event.duration)}
+                </span>
+              )}
               {event.distance && (
                 <span>
                   <span className="font-semibold text-white">
@@ -145,22 +134,36 @@ function EventCard({ event, isMissed, onSelect }: { event: CalendarEvent; isMiss
                 maxHeight={40}
               />
             </div>
-            {(() => {
-              const fuelRate = event.fuelRate ?? extractFuelRate(event.description);
-              if (fuelRate == null) return null;
-              const totalCarbs = event.totalCarbs ?? extractTotalCarbs(event.description);
-              const parts = [
-                `${fuelRate}g/h`,
-                totalCarbs != null
-                  ? `${totalCarbs}g total`
-                  : null,
-              ].filter(Boolean);
-              return (
-                <div className="text-sm font-medium text-[#ffb800] bg-[#2d1a35] border border-[#ffb800]/30 rounded px-2 py-0.5 inline-block">
-                  {parts.join(" · ")}
-                </div>
-              );
-            })()}
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const est = estimateWorkoutDuration(event.description);
+                const dist = estimateWorkoutDescriptionDistance(event.description);
+                if (!est && !dist) return null;
+                const parts = [
+                  est ? `${est.estimated ? "~" : ""}${est.minutes} min` : null,
+                  dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
+                ].filter(Boolean);
+                return (
+                  <div className="text-sm font-medium text-[#00ffff] bg-[#0d1a2a] border border-[#00ffff]/30 rounded px-2 py-0.5">
+                    {parts.join(" · ")}
+                  </div>
+                );
+              })()}
+              {(() => {
+                const fuelRate = event.fuelRate ?? extractFuelRate(event.description);
+                if (fuelRate == null) return null;
+                const totalCarbs = event.totalCarbs ?? extractTotalCarbs(event.description);
+                const parts = [
+                  `${fuelRate}g/h`,
+                  totalCarbs != null ? `${totalCarbs}g total` : null,
+                ].filter(Boolean);
+                return (
+                  <div className="text-sm font-medium text-[#ffb800] bg-[#2d1a35] border border-[#ffb800]/30 rounded px-2 py-0.5">
+                    {parts.join(" · ")}
+                  </div>
+                );
+              })()}
+            </div>
           </>
         )}
       </div>
@@ -213,7 +216,7 @@ export function AgendaView({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1 sm:space-y-2">
       {hasEarlier && (
         <button
           onClick={() => setView("history")}

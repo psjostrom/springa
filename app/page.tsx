@@ -299,7 +299,7 @@ function HomeContent() {
       </div>
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
-      <div className="h-16 md:hidden flex-shrink-0" />
+      <div className="h-12 md:hidden flex-shrink-0" />
 
       {showPreRun && currentBG != null && (
         <PreRunOverlay
