@@ -160,6 +160,7 @@ Rules:
       const date = new Date(fb.createdAt).toISOString().split("T")[0];
       const emoji = fb.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E";
       const parts = [`${date}: ${emoji}`];
+      if (fb.carbsG != null) parts.push(`${fb.carbsG}g carbs`);
       if (fb.comment) parts.push(`"${fb.comment}"`);
       lines.push(`- ${parts.join(" ")}`);
     }

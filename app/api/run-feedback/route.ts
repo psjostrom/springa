@@ -29,16 +29,17 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { ts, rating, comment } = body as {
+  const { ts, rating, comment, carbsG } = body as {
     ts: number;
     rating: string;
     comment?: string;
+    carbsG?: number;
   };
 
   if (!ts || !rating) {
     return NextResponse.json({ error: "Missing ts or rating" }, { status: 400 });
   }
 
-  await updateRunFeedback(session.user.email, ts, rating, comment);
+  await updateRunFeedback(session.user.email, ts, rating, comment, carbsG);
   return NextResponse.json({ ok: true });
 }
