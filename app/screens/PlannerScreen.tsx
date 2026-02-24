@@ -171,7 +171,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
     setIsAdapting(false);
   };
 
-  // Auto-adapt trigger from feedback flow
+  // Auto-adapt trigger from feedback flow — fires once on mount when autoAdapt is true
   const autoAdaptFired = useRef(false);
   useEffect(() => {
     if (props.autoAdapt && !autoAdaptFired.current && !isAdapting && bgModel && hasPlannedEvents) {

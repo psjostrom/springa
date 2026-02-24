@@ -90,18 +90,18 @@ function HomeContent() {
     typeof window !== "undefined" ? parseTab(window.location.search) : "calendar"
   );
 
-  // Auto-adapt: read from URL and clear to prevent re-trigger
-  const [autoAdapt] = useState(() => {
-    if (typeof window === "undefined") return false;
+  // Auto-adapt: read ?adapt=true on mount (cross-route nav from /feedback remounts HomeContent)
+  const [autoAdapt] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("adapt") === "true"
+  );
+
+  useEffect(() => {
+    if (!autoAdapt) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("adapt") === "true") {
-      params.delete("adapt");
-      const query = params.toString();
-      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-      return true;
-    }
-    return false;
-  });
+    params.delete("adapt");
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // BG graph popover
   const [showBGGraph, setShowBGGraph] = useState(false);
