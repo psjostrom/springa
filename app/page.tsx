@@ -20,6 +20,7 @@ import { Settings, Play } from "lucide-react";
 import type { UserSettings, CachedActivity } from "@/lib/settings";
 import type { StreamData } from "@/lib/types";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
+import { resolveLayout, type WidgetLayout } from "@/lib/widgetRegistry";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
 
@@ -196,6 +197,38 @@ function HomeContent() {
   const totalWeeks = settings?.totalWeeks ?? 18;
   const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
 
+  // Widget layout — derived from settings, debounced save
+  const widgetLayout = useMemo(
+    () => resolveLayout({ widgetOrder: settings?.widgetOrder, hiddenWidgets: settings?.hiddenWidgets }),
+    [settings?.widgetOrder, settings?.hiddenWidgets],
+  );
+
+  const widgetSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleWidgetLayoutChange = useCallback(
+    (layout: WidgetLayout) => {
+      // Optimistic local update
+      setSettings((prev) => ({
+        ...prev,
+        widgetOrder: layout.widgetOrder,
+        hiddenWidgets: layout.hiddenWidgets,
+      }));
+      // Debounced persist
+      if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
+      widgetSaveTimer.current = setTimeout(() => {
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            widgetOrder: layout.widgetOrder,
+            hiddenWidgets: layout.hiddenWidgets,
+          }),
+        });
+      }, 800);
+    },
+    [],
+  );
+
   const openBGGraph = useCallback(() => {
     setShowBGGraph(true);
     const params = new URLSearchParams(window.location.search);
@@ -334,6 +367,8 @@ function HomeContent() {
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
             cachedActivities={cachedActivities}
+            widgetLayout={widgetLayout}
+            onWidgetLayoutChange={handleWidgetLayoutChange}
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>

@@ -109,6 +109,8 @@ export interface UserSettings {
   totalWeeks?: number;
   startKm?: number;
   lthr?: number;
+  widgetOrder?: string[];
+  hiddenWidgets?: string[];
 }
 
 export interface CachedActivity {
@@ -127,9 +129,29 @@ export interface CachedActivity {
 
 // --- User settings ---
 
+let _settingsMigrated = false;
+async function migrateSettingsSchema(): Promise<void> {
+  if (_settingsMigrated) return;
+  _settingsMigrated = true;
+  for (const col of [
+    { name: "widget_order", type: "TEXT" },
+    { name: "hidden_widgets", type: "TEXT" },
+  ]) {
+    try {
+      await db().execute({
+        sql: `ALTER TABLE user_settings ADD COLUMN ${col.name} ${col.type}`,
+        args: [],
+      });
+    } catch {
+      // column already exists — expected
+    }
+  }
+}
+
 export async function getUserSettings(email: string): Promise<UserSettings> {
+  await migrateSettingsSchema();
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -146,6 +168,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (r.total_weeks != null) settings.totalWeeks = r.total_weeks as number;
   if (r.start_km != null) settings.startKm = r.start_km as number;
   if (r.lthr != null) settings.lthr = r.lthr as number;
+  if (r.widget_order) settings.widgetOrder = JSON.parse(r.widget_order as string);
+  if (r.hidden_widgets) settings.hiddenWidgets = JSON.parse(r.hidden_widgets as string);
   return settings;
 }
 
@@ -153,9 +177,10 @@ export async function saveUserSettings(
   email: string,
   partial: Partial<UserSettings>,
 ): Promise<void> {
+  await migrateSettingsSchema();
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, widget_order, hidden_widgets)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
             google_ai_api_key = COALESCE(excluded.google_ai_api_key, google_ai_api_key),
@@ -167,7 +192,9 @@ export async function saveUserSettings(
             prefix = COALESCE(excluded.prefix, prefix),
             total_weeks = COALESCE(excluded.total_weeks, total_weeks),
             start_km = COALESCE(excluded.start_km, start_km),
-            lthr = COALESCE(excluded.lthr, lthr)`,
+            lthr = COALESCE(excluded.lthr, lthr),
+            widget_order = COALESCE(excluded.widget_order, widget_order),
+            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets)`,
     args: [
       email,
       partial.intervalsApiKey ?? null,
@@ -181,6 +208,8 @@ export async function saveUserSettings(
       partial.totalWeeks ?? null,
       partial.startKm ?? null,
       partial.lthr ?? null,
+      partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
+      partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
     ],
   });
 }
