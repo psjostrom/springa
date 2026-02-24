@@ -143,7 +143,8 @@ export async function GET(req: Request) {
         });
 
         const { title, body } = formatGuidancePush(guidance, currentBG);
-        await sendPushToUser(email, { title, body, url: "/?prerun=1" });
+        const eventId = `event-${event.id}`;
+        await sendPushToUser(email, { title, body, url: `/?tab=calendar&workout=${eventId}` });
         await markPrerunPushSent(email, eventDateStr);
         sent++;
       }

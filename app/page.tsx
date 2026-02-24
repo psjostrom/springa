@@ -15,7 +15,6 @@ import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
-import { PreRunOverlay } from "./components/PreRunOverlay";
 import { Settings, Play } from "lucide-react";
 import type { UserSettings, CachedActivity } from "@/lib/settings";
 import type { StreamData } from "@/lib/types";
@@ -108,12 +107,6 @@ function HomeContent() {
   const [showBGGraph, setShowBGGraph] = useState(false);
   const bgPushedRef = useRef(false);
 
-  // Pre-run overlay
-  const [showPreRun, setShowPreRun] = useState(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("prerun")
-  );
-  const preRunPushedRef = useRef(false);
-
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
@@ -126,7 +119,6 @@ function HomeContent() {
       setActiveTab(parseTab(window.location.search));
       const params = new URLSearchParams(window.location.search);
       if (!params.has("bg")) setShowBGGraph(false);
-      if (!params.has("prerun")) setShowPreRun(false);
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -250,26 +242,42 @@ function HomeContent() {
     }
   }, []);
 
-  const openPreRun = useCallback(() => {
-    setShowPreRun(true);
-    const params = new URLSearchParams(window.location.search);
-    params.set("prerun", "1");
-    window.history.pushState(null, "", `?${params.toString()}`);
-    preRunPushedRef.current = true;
-  }, []);
+  // Find today's next planned workout and navigate to its modal
+  const todaysNextPlanned = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return enrichedEvents
+      .filter((e) => !e.activityId && e.date >= today && e.date < new Date(today.getTime() + 86400000))
+      .sort((a, b) => a.date.getTime() - b.date.getTime())[0] ?? null;
+  }, [enrichedEvents]);
 
-  const closePreRun = useCallback(() => {
-    setShowPreRun(false);
-    if (preRunPushedRef.current) {
-      preRunPushedRef.current = false;
-      window.history.back();
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      params.delete("prerun");
-      const query = params.toString();
-      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-    }
-  }, []);
+  const openNextWorkout = useCallback(() => {
+    if (!todaysNextPlanned) return;
+    setActiveTab("calendar");
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", "calendar");
+    params.set("workout", todaysNextPlanned.id);
+    window.history.pushState(null, "", `?${params.toString()}`);
+  }, [todaysNextPlanned]);
+
+  // Handle ?prerun=1 backward compat — strip param immediately, redirect once events load
+  const [hadPrerun] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("prerun")) return false;
+    params.delete("prerun");
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+    return true;
+  });
+
+  useEffect(() => {
+    if (!hadPrerun || !todaysNextPlanned) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", "calendar");
+    params.set("workout", todaysNextPlanned.id);
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, [hadPrerun, todaysNextPlanned]);
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
@@ -305,9 +313,9 @@ function HomeContent() {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
             <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
-            {currentBG != null && (
+            {todaysNextPlanned && currentBG != null && (
               <button
-                onClick={openPreRun}
+                onClick={openNextWorkout}
                 className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
                 title="Pre-run check"
               >
@@ -344,7 +352,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} paceTable={paceTable} />
+          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
@@ -378,16 +386,6 @@ function HomeContent() {
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
-
-      {showPreRun && currentBG != null && (
-        <PreRunOverlay
-          currentBG={currentBG}
-          trendSlope={trendSlope}
-          trend={trend}
-          bgModel={bgModel}
-          onClose={closePreRun}
-        />
-      )}
 
       {showBGGraph && readings.length > 0 && (
         <BGGraphPopover

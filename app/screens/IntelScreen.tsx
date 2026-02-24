@@ -293,7 +293,7 @@ export function IntelScreen({
                 {isFirst && (
                   <button
                     onClick={() => setEditMode(!editMode)}
-                    className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a]"
+                    className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-[#2a1f3d]/80 text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a]"
                     aria-label={editMode ? "Done editing" : "Edit layout"}
                   >
                     {editMode ? <Check size={14} /> : <Pencil size={14} />}

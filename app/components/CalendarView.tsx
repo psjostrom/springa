@@ -15,6 +15,7 @@ import {
 import { enGB } from "date-fns/locale";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
+import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/utils";
@@ -33,6 +34,7 @@ interface CalendarViewProps {
   onRetryLoad?: () => void;
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
+  bgModel?: BGResponseModel | null;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
@@ -41,7 +43,7 @@ function getWorkoutParam(): string | null {
   return new URLSearchParams(window.location.search).get("workout");
 }
 
-export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable }: CalendarViewProps) {
+export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -421,6 +423,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           apiKey={apiKey}
           runBGContexts={runBGContexts}
           paceTable={paceTable}
+          bgModel={bgModel}
         />
       )}
     </div>

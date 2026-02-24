@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { format } from "date-fns";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
+import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
-import { parseEventId, formatPace } from "@/lib/utils";
+import { parseEventId, formatPace, getWorkoutCategory } from "@/lib/utils";
 import { getEventStatusBadge } from "@/lib/eventStyles";
+import { useCurrentBG } from "../hooks/useCurrentBG";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
@@ -14,6 +16,7 @@ import { RunReportCard } from "./RunReportCard";
 import { RunAnalysis } from "./RunAnalysis";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { HRMiniChart } from "./HRMiniChart";
+import { PreRunReadiness } from "./PreRunReadiness";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -61,6 +64,7 @@ interface EventModalProps {
   apiKey: string;
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
+  bgModel?: BGResponseModel | null;
 }
 
 export function EventModal({
@@ -72,6 +76,7 @@ export function EventModal({
   apiKey,
   runBGContexts,
   paceTable,
+  bgModel,
 }: EventModalProps) {
   type ActionMode = "idle" | "editing" | "saving" | "confirming-delete" | "deleting";
   const [actionMode, setActionMode] = useState<ActionMode>("idle");
@@ -84,6 +89,14 @@ export function EventModal({
   const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-run readiness: show for today's planned events when BG is available
+  const { currentBG, trend, trendSlope } = useCurrentBG();
+  const showReadiness = !selectedEvent.activityId && isToday(selectedEvent.date) && currentBG != null;
+  const workoutCategory = useMemo(() => {
+    const raw = getWorkoutCategory(selectedEvent.name);
+    return raw === "other" ? "easy" : raw;
+  }, [selectedEvent.name]);
 
   useEffect(() => {
     setActionMode("idle");
@@ -267,6 +280,16 @@ export function EventModal({
           <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm">
             {error}
           </div>
+        )}
+
+        {showReadiness && currentBG != null && (
+          <PreRunReadiness
+            currentBG={currentBG}
+            trendSlope={trendSlope}
+            trend={trend}
+            bgModel={bgModel ?? null}
+            category={workoutCategory}
+          />
         )}
 
         {selectedEvent.description && (
