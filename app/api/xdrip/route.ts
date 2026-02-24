@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getXdripReadings } from "@/lib/settings";
-import { computeTrend, trendArrow } from "@/lib/xdrip";
+import { computeTrend, trendArrow, slopeToArrow } from "@/lib/xdrip";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -33,7 +33,7 @@ export async function GET() {
       ? {
           slope: trend.slope,
           direction: trend.direction,
-          arrow: trendArrow(trend.direction),
+          arrow: slopeToArrow(trend.slope),
         }
       : null,
   });

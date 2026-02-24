@@ -35,6 +35,12 @@ export function trendArrow(direction: string): string {
   return DIRECTION_ARROWS[direction] ?? "?";
 }
 
+/** Derive arrow directly from slope (mmol/L per 10min) — always consistent. */
+export function slopeToArrow(slopePer10min: number): string {
+  const deltaMgdlPer5 = slopePer10min * 18 / 2;
+  return trendArrow(directionFromDelta(deltaMgdlPer5));
+}
+
 // --- Parse Nightscout entries ---
 
 function isValidEntry(
