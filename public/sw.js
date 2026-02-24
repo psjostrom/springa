@@ -1,5 +1,5 @@
-const CACHE_NAME = "springa-v3";
-const PRECACHE = ["/icon-192.png", "/icon-512.png"];
+const CACHE_NAME = "springa-v4";
+const PRECACHE = ["/icon-192.png", "/icon-512.png", "/badge-96.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -31,7 +31,7 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    badge: "/badge-96.png",
     data: { url: data.url || "/", ts: data.ts },
     actions: data.ts ? [{ action: "skip", title: "Skip" }] : [],
   };
