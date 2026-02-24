@@ -255,21 +255,15 @@ export function IntelScreen({
     onWidgetLayoutChange({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
   };
 
+  const firstVisibleKey = editMode
+    ? widgetLayout.widgetOrder[0]
+    : widgetLayout.widgetOrder.find(
+        (k) => !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
+      );
+
   return (
     <div className="h-full overflow-y-auto bg-[#0d0a1a]">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-        {/* Edit mode toggle */}
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setEditMode(!editMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a]"
-            aria-label={editMode ? "Done editing" : "Edit layout"}
-          >
-            {editMode ? <Check size={14} /> : <Pencil size={14} />}
-            {editMode ? "Done" : "Edit"}
-          </button>
-        </div>
-
         {/* Widget loop */}
         {widgetLayout.widgetOrder.map((key, idx) => {
           const isHidden = widgetLayout.hiddenWidgets.includes(key);
@@ -279,6 +273,8 @@ export function IntelScreen({
           if (!editMode && isHidden) return null;
           // In normal mode, skip widgets with no data
           if (!editMode && !render) return null;
+
+          const isFirst = key === firstVisibleKey;
 
           return (
             <div key={key}>
@@ -293,17 +289,29 @@ export function IntelScreen({
                   onToggle={handleToggle}
                 />
               )}
-              {editMode && isHidden ? (
-                <div className="opacity-30 pointer-events-none select-none">
-                  <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
-                    <div className="text-xs text-[#6b5b8a] uppercase font-semibold">
-                      {LABEL_MAP.get(key) ?? key} (hidden)
+              <div className={isFirst ? "relative" : undefined}>
+                {isFirst && (
+                  <button
+                    onClick={() => setEditMode(!editMode)}
+                    className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a]"
+                    aria-label={editMode ? "Done editing" : "Edit layout"}
+                  >
+                    {editMode ? <Check size={14} /> : <Pencil size={14} />}
+                    {editMode ? "Done" : "Edit"}
+                  </button>
+                )}
+                {editMode && isHidden ? (
+                  <div className="opacity-30 pointer-events-none select-none">
+                    <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
+                      <div className="text-xs text-[#6b5b8a] uppercase font-semibold">
+                        {LABEL_MAP.get(key) ?? key} (hidden)
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                render?.()
-              )}
+                ) : (
+                  render?.()
+                )}
+              </div>
             </div>
           );
         })}
