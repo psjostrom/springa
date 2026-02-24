@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
 import { getRecentFeedback } from "@/lib/settings";
+import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
@@ -68,57 +69,62 @@ export async function POST(req: Request) {
   // 2. Generate AI notes in parallel (max 4)
   const anthropic = createAnthropic({ apiKey });
 
-  const withNotes = await Promise.all(
-    adapted.map(async (event): Promise<AdaptedEvent> => {
-      // Find recent completed runs of the same category
-      const cat = event.category;
-      const recentSameCategory = recentCompleted.filter(
-        (r) =>
-          r.type === "completed" &&
-          r.category === cat,
-      );
+  try {
+    const withNotes = await Promise.all(
+      adapted.map(async (event): Promise<AdaptedEvent> => {
+        // Find recent completed runs of the same category
+        const cat = event.category;
+        const recentSameCategory = recentCompleted.filter(
+          (r) =>
+            r.type === "completed" &&
+            r.category === cat,
+        );
 
-      const { system, user } = buildAdaptNotePrompt({
-        adapted: event,
-        recentSameCategory,
-        bgModel,
-        insights,
-        runBGContexts,
-        lthr,
-        recentFeedback,
-      });
-
-      try {
-        const result = await generateText({
-          model: anthropic("claude-sonnet-4-6"),
-          system,
-          messages: [{ role: "user", content: user }],
+        const { system, user } = buildAdaptNotePrompt({
+          adapted: event,
+          recentSameCategory,
+          bgModel,
+          insights,
+          runBGContexts,
+          lthr,
+          recentFeedback,
         });
 
-        const aiNotes = result.text;
-        const description = assembleDescription(
-          aiNotes,
-          event.structure,
-          event.fuelRate,
-          event.original.duration,
-        );
+        try {
+          const result = await generateText({
+            model: anthropic("claude-sonnet-4-6"),
+            system,
+            messages: [{ role: "user", content: user }],
+          });
 
-        return { ...event, notes: aiNotes, description };
-      } catch {
-        // Fall back to change summary if AI fails
-        const fallbackNotes = event.changes.length > 0
-          ? event.changes.map((c) => c.detail).join(". ") + "."
-          : "No changes.";
-        const description = assembleDescription(
-          fallbackNotes,
-          event.structure,
-          event.fuelRate,
-          event.original.duration,
-        );
-        return { ...event, notes: fallbackNotes, description };
-      }
-    }),
-  );
+          const aiNotes = result.text;
+          const description = assembleDescription(
+            aiNotes,
+            event.structure,
+            event.fuelRate,
+            event.original.duration,
+          );
 
-  return NextResponse.json({ adaptedEvents: withNotes });
+          return { ...event, notes: aiNotes, description };
+        } catch {
+          // Fall back to change summary if AI fails
+          const fallbackNotes = event.changes.length > 0
+            ? event.changes.map((c) => c.detail).join(". ") + "."
+            : "No changes.";
+          const description = assembleDescription(
+            fallbackNotes,
+            event.structure,
+            event.fuelRate,
+            event.original.duration,
+          );
+          return { ...event, notes: fallbackNotes, description };
+        }
+      }),
+    );
+
+    return NextResponse.json({ adaptedEvents: withNotes });
+  } catch (err) {
+    const { message, status } = formatAIError(err);
+    return NextResponse.json({ error: message }, { status });
+  }
 }

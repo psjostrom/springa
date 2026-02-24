@@ -7,6 +7,7 @@ import {
   getRecentRunSummaries,
 } from "@/lib/settings";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
+import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -66,16 +67,21 @@ export async function POST(req: Request) {
 
   const anthropic = createAnthropic({ apiKey });
 
-  const result = await generateText({
-    model: anthropic("claude-sonnet-4-6"),
-    system,
-    messages: [{ role: "user", content: user }],
-  });
+  try {
+    const result = await generateText({
+      model: anthropic("claude-sonnet-4-6"),
+      system,
+      messages: [{ role: "user", content: user }],
+    });
 
-  const analysis = result.text;
+    const analysis = result.text;
 
-  // Cache the result
-  await saveRunAnalysis(session.user.email, activityId, analysis);
+    // Cache the result
+    await saveRunAnalysis(session.user.email, activityId, analysis);
 
-  return NextResponse.json({ analysis });
+    return NextResponse.json({ analysis });
+  } catch (err) {
+    const { message, status } = formatAIError(err);
+    return NextResponse.json({ error: message }, { status });
+  }
 }
