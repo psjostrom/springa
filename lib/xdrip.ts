@@ -146,15 +146,11 @@ export function computeTrend(
   const slopePerMin = (n * sumXY - sumX * sumY) / denom;
   const slopePer10 = Math.round(slopePerMin * 10 * 100) / 100;
 
-  // Classify
-  let direction: string;
-  if (slopePer10 <= -2.0) direction = "DoubleDown";
-  else if (slopePer10 <= -1.0) direction = "SingleDown";
-  else if (slopePer10 <= -0.5) direction = "FortyFiveDown";
-  else if (slopePer10 < 0.5) direction = "Flat";
-  else if (slopePer10 < 1.0) direction = "FortyFiveUp";
-  else if (slopePer10 < 2.0) direction = "SingleUp";
-  else direction = "DoubleUp";
+  // Classify — thresholds derived from SuperStable/directionFromDelta:
+  // SuperStable uses mg/dL per 5min; convert: mgdl5 / 18 * 2 = mmol/L per 10min
+  // 5 → 0.56, 10 → 1.11, 17.5 → 1.94
+  const deltaMgdlPer5 = slopePer10 * 18 / 2;
+  const direction = directionFromDelta(deltaMgdlPer5);
 
   return { slope: slopePer10, direction };
 }
