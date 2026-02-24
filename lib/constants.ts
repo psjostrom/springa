@@ -7,6 +7,8 @@ export const BG_HYPO = 3.9;
 export const BG_STABLE_MIN = 4.0;
 export const BG_STABLE_MAX = 10.0;
 export const BG_HIGH = 14.0;
+/** Minimum forecast BG during exercise before triggering caution (mmol/L). */
+export const BG_EXERCISE_MIN = 5.5;
 
 export const DEFAULT_LTHR = 169;
 export const CRASH_DROP_RATE = -3.0;

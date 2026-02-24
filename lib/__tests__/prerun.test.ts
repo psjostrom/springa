@@ -41,13 +41,19 @@ describe("assessReadiness — BG level", () => {
     expect(g.reasons).toContain("BG too low to start");
   });
 
-  it("caution when BG 4.5-5.5", () => {
+  it("caution when BG 4.5-6.9", () => {
     const g = assessReadiness(makeInput({ currentBG: 5.0 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).toContain("BG on the low side");
   });
 
-  it("ready when BG 5.5-14.0", () => {
+  it("caution at 6.5", () => {
+    const g = assessReadiness(makeInput({ currentBG: 6.5 }));
+    expect(g.level).toBe("caution");
+    expect(g.reasons).toContain("BG on the low side");
+  });
+
+  it("ready when BG 7.0-14.0", () => {
     const g = assessReadiness(makeInput({ currentBG: 8.0 }));
     expect(g.level).toBe("ready");
   });
@@ -63,13 +69,13 @@ describe("assessReadiness — BG level", () => {
     expect(g.level).toBe("caution");
   });
 
-  it("exactly 5.5 is caution boundary", () => {
-    const g = assessReadiness(makeInput({ currentBG: 5.5 }));
+  it("6.9 is caution", () => {
+    const g = assessReadiness(makeInput({ currentBG: 6.9 }));
     expect(g.level).toBe("caution");
   });
 
-  it("5.6 is ready", () => {
-    const g = assessReadiness(makeInput({ currentBG: 5.6 }));
+  it("7.0 is ready", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.0 }));
     expect(g.level).toBe("ready");
   });
 
@@ -116,9 +122,10 @@ describe("assessReadiness — trend slope", () => {
     expect(g.level).toBe("caution"); // -0.5 is >= -0.5, so it's in the -0.5 to -0.3 range
   });
 
-  it("exactly -0.3 is ready", () => {
+  it("exactly -0.3 is caution", () => {
     const g = assessReadiness(makeInput({ trendSlope: -0.3 }));
-    expect(g.level).toBe("ready");
+    expect(g.level).toBe("caution");
+    expect(g.reasons).toContain("BG trending down");
   });
 });
 
@@ -171,6 +178,31 @@ describe("assessReadiness — historical model", () => {
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, category: "long" }));
     expect(g.targetFuel).toBe(45);
     expect(g.suggestions).toContain("Take 45g carbs/h");
+  });
+
+  it("caution when forecast drops below 5.5", () => {
+    const model = makeModel({
+      activitiesAnalyzed: 5,
+      bgByStartLevel: [
+        { band: "<8", avgRate: -0.5, medianRate: -0.5, sampleCount: 10, activityCount: 3 },
+      ],
+    });
+    // predicted drop = -0.5 * 3 = -1.5, estimated = 7.0 + (-1.5) = 5.5 → borderline
+    const g = assessReadiness(makeInput({ currentBG: 7.0, bgModel: model }));
+    expect(g.estimatedBGAt30m).toBeCloseTo(5.5);
+    expect(g.level).toBe("ready"); // 5.5 is NOT < 5.5
+
+    // Drop slightly more: -0.55 * 3 = -1.65, estimated = 7.0 - 1.65 = 5.35
+    const model2 = makeModel({
+      activitiesAnalyzed: 5,
+      bgByStartLevel: [
+        { band: "<8", avgRate: -0.55, medianRate: -0.55, sampleCount: 10, activityCount: 3 },
+      ],
+    });
+    const g2 = assessReadiness(makeInput({ currentBG: 7.0, bgModel: model2 }));
+    expect(g2.estimatedBGAt30m).toBeCloseTo(5.35);
+    expect(g2.level).toBe("caution");
+    expect(g2.reasons).toContain("Model predicts hypo within 30 min");
   });
 
   it("graceful degradation with empty model", () => {

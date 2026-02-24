@@ -1,7 +1,7 @@
 import type { WorkoutCategory } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { classifyBGBand, classifyEntrySlope } from "./bgModel";
-import { BG_HIGH, BG_STABLE_MIN } from "./constants";
+import { BG_HIGH, BG_EXERCISE_MIN } from "./constants";
 
 // --- Types ---
 
@@ -35,10 +35,10 @@ function assessBGLevel(bg: number): { level: ReadinessLevel; reasons: string[]; 
     return {
       level: "wait",
       reasons: ["BG too low to start"],
-      suggestions: ["Eat 15-20g fast carbs and wait until BG climbs above 5"],
+      suggestions: ["Eat 15-20g fast carbs and wait until BG climbs above 7"],
     };
   }
-  if (bg <= 5.5) {
+  if (bg < 7.0) {
     return {
       level: "caution",
       reasons: ["BG on the low side"],
@@ -70,7 +70,7 @@ function assessTrendSlope(slope: number | null): { level: ReadinessLevel; reason
       suggestions: ["Hold off until the trend levels out"],
     };
   }
-  if (slope < -0.3) {
+  if (slope <= -0.3) {
     return {
       level: "caution",
       reasons: ["BG trending down"],
@@ -118,7 +118,7 @@ function assessModel(
     result.predictedDrop = avgRate * 3;
     result.estimatedBGAt30m = currentBG + result.predictedDrop;
 
-    if (result.estimatedBGAt30m < BG_STABLE_MIN) {
+    if (result.estimatedBGAt30m < BG_EXERCISE_MIN) {
       result.level = "caution";
       result.reasons.push("Model predicts hypo within 30 min");
       result.suggestions.push(`Forecast: ${result.estimatedBGAt30m.toFixed(1)} at 30 min`);
