@@ -7,12 +7,14 @@
 Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score, readiness, SpO2) and use it to modulate training intensity. Intervals.icu syncs this from Garmin Connect automatically — the data is already there.
 
 **Core logic:**
+
 - Compute rolling baselines (7-day and 28-day) for HRV and resting HR.
 - Flag "suppressed" days: HRV > 1 SD below baseline, or resting HR > 5 bpm above baseline.
 - When suppressed: suggest swapping the day's planned workout to easy. If already easy, suggest shorter duration.
 - Combine with existing TSB-based swap logic in `adaptPlan.ts` — wellness data adds a second signal alongside training load.
 
 **UI:**
+
 - Readiness indicator on the pre-run overlay (currently uses BG only — add wellness dimension).
 - Weekly wellness trend in Intel tab: HRV + resting HR sparklines with baseline bands.
 - Coach AI receives wellness context for richer advice.
@@ -31,23 +33,12 @@ Single chart combining cardiac drift (aerobic decoupling) and efficiency factor 
 
 **UI:** Line chart in Intel tab. Two y-axes: decoupling % (lower is better) and EF (higher is better). Trend lines showing direction over 4–8 week windows.
 
-### Pace Zone Auto-Calibration
-
-Build a full pace table from completed run data — not just easy zone. For each HR zone, collect segments where the runner held that zone for a minimum duration, compute median pace. Track how pace-per-zone changes over the training block.
-
-**Minimum segment durations:** Z1–Z2: 3 min, Z3: 2 min, Z4: 1 min. Z5 is always extrapolated — never measured directly. Short Z5 bursts (30s–2min) are polluted by acceleration/deceleration ramps and HR lag, producing noisier data than a simple projection. Fit a line through Z1–Z4 calibrated paces and project Z5 from the curve.
-
-Currently the pace table is hardcoded in `lib/constants.ts` (`FALLBACK_PACE_TABLE`). Generated workouts reference these static paces. With calibration, workout descriptions would use actual recent paces instead. Zones with insufficient data fall back to the hardcoded table until enough samples accumulate.
-
-**Data source:** HR + pace streams from completed activities. Zone boundaries from LTHR-based calculation (already implemented).
-
-**UI:** Pace table card in Intel tab showing current calibrated paces vs fallback. Trend arrows showing improvement/regression per zone.
-
 ### Customizable Intel Dashboard
 
 Intel tab is currently a fixed stack of panels. Make each panel a discrete widget that can be reordered, shown, or hidden. Persisted per user.
 
 **Widgets (current panels, each becomes a widget):**
+
 - Volume Trend Chart
 - BG Response Model (category breakdown, scatter chart)
 - Fuel Rate Targets
@@ -57,12 +48,14 @@ Intel tab is currently a fixed stack of panels. Make each panel a discrete widge
 - Pace Calibration
 
 **Interaction:**
+
 - Long-press (mobile) or drag handle (desktop) to enter reorder mode. Drag to rearrange.
 - Toggle visibility per widget — hidden widgets don't fetch data or render.
 - "Reset to default" restores the stock layout.
 - Layout stored in user settings (database) so it survives device switches.
 
 **Implementation approach:**
+
 - Widget registry: each widget declares its key, label, default order, and lazy-loaded component.
 - `IntelScreen` reads the user's layout from settings, renders widgets in stored order, skips hidden ones.
 - Drag-and-drop: `@dnd-kit/sortable` (already tree-shakeable, small footprint) or native HTML drag since the list is short.
@@ -73,6 +66,7 @@ Intel tab is currently a fixed stack of panels. Make each panel a discrete widge
 Overlay the glucose trace on the workout structure timeline so you can see exactly where BG drops relative to what you were doing. Currently glucose and workout structure are shown as separate concerns.
 
 **Implementation approach:**
+
 - Parse workout segments from description (warmup/main set intervals/cooldown) — `parseWorkoutStructure` already exists.
 - Align segment boundaries to the activity timeline using duration.
 - Render glucose line on top of segment-colored background bands in the stream chart.
@@ -153,6 +147,7 @@ xDrip+ pushes glucose data via Nightscout protocol (`/api/v1/entries`). Readings
 **Implementation:** `lib/reportCard.ts`, `RunReportCard.tsx`, 54 unit tests.
 
 **Refinements:**
+
 - **Trend across runs:** Track report card scores over time to show improvement patterns (e.g., "BG management improving over last 5 long runs").
 - **Per-zone HR scoring for intervals:** Currently scores intervals against Z4 total, but mixed sessions (warmup Z2 + reps Z4 + recovery Z1) dilute the percentage. Score only the work intervals against target zone.
 - **BG scoring by workout phase:** Score BG stability per segment (warmup/main/cooldown) instead of whole-run average, to pinpoint where management breaks down.
@@ -195,3 +190,15 @@ Web Push API (VAPID) with database-persisted subscriptions. Two triggers:
 Full settings UI: Intervals.icu API key, Google AI API key, xDrip secret (auto-generation), Nightscout URL (copy button), race parameters (name/date/distance), plan parameters (prefix/weeks/start km/LTHR), push notification toggle. All persisted to database.
 
 **Implementation:** `SettingsModal.tsx`, `app/api/settings/route.ts`, `lib/settings.ts`.
+
+### Pace Zone Auto-Calibration
+
+Build a full pace table from completed run data — not just easy zone. For each HR zone, collect segments where the runner held that zone for a minimum duration, compute median pace. Track how pace-per-zone changes over the training block.
+
+**Minimum segment durations:** Z1–Z2: 3 min, Z3: 2 min, Z4: 1 min. Z5 is always extrapolated — never measured directly. Short Z5 bursts (30s–2min) are polluted by acceleration/deceleration ramps and HR lag, producing noisier data than a simple projection. Fit a line through Z1–Z4 calibrated paces and project Z5 from the curve.
+
+Currently the pace table is hardcoded in `lib/constants.ts` (`FALLBACK_PACE_TABLE`). Generated workouts reference these static paces. With calibration, workout descriptions would use actual recent paces instead. Zones with insufficient data fall back to the hardcoded table until enough samples accumulate.
+
+**Data source:** HR + pace streams from completed activities. Zone boundaries from LTHR-based calculation (already implemented).
+
+**UI:** Pace table card in Intel tab showing current calibrated paces vs fallback. Trend arrows showing improvement/regression per zone.
