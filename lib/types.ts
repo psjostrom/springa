@@ -64,6 +64,7 @@ export interface IntervalsActivity {
   icu_hr_zone_times?: number[];
   pace?: number;
   carbs_ingested?: number;
+  paired_event_id?: number | null;
 }
 
 export interface IntervalsEvent {

@@ -262,11 +262,13 @@ export async function fetchCalendarData(
   const promise = fetchCalendarDataInner(apiKey, oldest, newest).then(
     ({ events, autoPairs }) => {
       // Fire-and-forget: pair fallback-matched activities on Intervals.icu
+      if (autoPairs.length > 0) console.log(`[auto-pair] ${autoPairs.length} fallback pairs to sync`);
       for (const { eventId, activityId } of autoPairs) {
-        // Fire-and-forget pair on Intervals.icu
-        pairEventWithActivity(apiKey, eventId, activityId).catch((err) =>
-          console.warn(`Failed to auto-pair event ${eventId}:`, err),
-        );
+        pairEventWithActivity(apiKey, eventId, activityId)
+          .then(() => console.log(`[auto-pair] SUCCESS paired event ${eventId} → activity ${activityId}`))
+          .catch((err) =>
+            console.warn(`[auto-pair] FAILED to pair event ${eventId} → activity ${activityId}:`, err),
+          );
       }
       return events;
     },
@@ -303,11 +305,18 @@ function processActivities(
     (a) => a.type === "Run" || a.type === "VirtualRun",
   );
 
-  // Build reverse lookup: activityId → planned event (authoritative link from Intervals.icu)
+  console.log(`[auto-pair] ${runActivities.length} run activities, ${events.length} events`);
+
+  // Build reverse lookups for authoritative pairing (both directions)
+  // event.paired_activity_id → activityId → event
   const pairedEventMap = new Map<string, IntervalsEvent>();
+  const eventById = new Map<number, IntervalsEvent>();
   for (const event of events) {
-    if (event.category === "WORKOUT" && event.paired_activity_id) {
-      pairedEventMap.set(event.paired_activity_id, event);
+    if (event.category === "WORKOUT") {
+      eventById.set(event.id, event);
+      if (event.paired_activity_id) {
+        pairedEventMap.set(event.paired_activity_id, event);
+      }
     }
   }
 
@@ -339,23 +348,52 @@ function processActivities(
       activity.start_date_local || activity.start_date,
     );
 
-    // Prefer paired_activity_id (authoritative), fall back to ±3 day exact name match
-    const authoritativeMatch = pairedEventMap.get(activity.id);
+    // Prefer authoritative link (either direction), fall back to ±3 day exact name match
+    const authoritativeMatch = pairedEventMap.get(activity.id)
+      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined)
+      ?? undefined;
+
+    const rejections: string[] = [];
     const fallbackMatch = !authoritativeMatch ? events.find((event) => {
       if (event.category !== "WORKOUT") return false;
-      if (event.paired_activity_id) return false; // already claimed by another activity
-      const eventDate = parseISO(event.start_date_local);
-      const withinWindow = Math.abs(differenceInDays(activityDate, eventDate)) <= 3;
       const actName = (activity.name ?? "").trim().toLowerCase();
       const evtName = (event.name ?? "").trim().toLowerCase();
-      return withinWindow && actName === evtName;
+      if (event.paired_activity_id) {
+        rejections.push(`${event.id}|${event.name}|paired→${event.paired_activity_id}`);
+        return false;
+      }
+      if (fallbackClaimedEventIds.has(event.id)) {
+        rejections.push(`${event.id}|${event.name}|claimed`);
+        return false;
+      }
+      const eventDate = parseISO(event.start_date_local);
+      const dayDiff = Math.abs(differenceInDays(activityDate, eventDate));
+      const withinWindow = dayDiff <= 3;
+      const nameMatch = actName === evtName;
+      if (!withinWindow) {
+        rejections.push(`${event.id}|${event.name}|dayDiff=${dayDiff}`);
+      } else if (!nameMatch) {
+        rejections.push(`${event.id}|${event.name}|name≠"${actName}"`);
+      }
+      return withinWindow && nameMatch;
     }) : undefined;
     const matchingEvent = authoritativeMatch ?? fallbackMatch;
+
+    // Log: fallback match → one line; eco16 with no match → detail block; otherwise silent
+    if (fallbackMatch) {
+      console.log(`[auto-pair] fallback: activity "${activity.name}" → event ${fallbackMatch.id}`);
+    } else if (!matchingEvent && (activity.name ?? "").toLowerCase().includes("eco16")) {
+      console.log(`[auto-pair] UNMATCHED eco16 activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
+      for (const r of rejections) console.log(`[auto-pair]   rejected: ${r}`);
+    }
 
     // Track fallback matches for auto-pairing on Intervals.icu
     if (fallbackMatch) {
       autoPairs.push({ eventId: fallbackMatch.id, activityId: activity.id });
       fallbackClaimedEventIds.add(fallbackMatch.id);
+    } else if (matchingEvent) {
+      // Authoritative match — claim the event so processPlannedEvents skips it
+      fallbackClaimedEventIds.add(matchingEvent.id);
     }
 
     const description =
@@ -424,8 +462,9 @@ function processPlannedEvents(
 
     // Skip events already represented by a completed activity (paired or fallback-matched)
     if (fallbackClaimedEventIds.has(event.id)) continue;
-    if (event.paired_activity_id && activityMap.has(event.paired_activity_id)) {
-      continue;
+    if (event.paired_activity_id && activityMap.has(event.paired_activity_id)) continue;
+    if (event.paired_activity_id && !activityMap.has(event.paired_activity_id)) {
+      console.log(`[auto-pair] event ${event.id} "${event.name}" has paired_activity_id=${event.paired_activity_id} but activity not in activityMap`);
     }
 
     const name = event.name || "";
@@ -512,14 +551,15 @@ export async function pairEventWithActivity(
   activityId: string,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+  // Intervals.icu ignores paired_activity_id on event PUT — pairing is set via the activity side
+  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ paired_activity_id: activityId }),
+    body: JSON.stringify({ paired_event_id: eventId }),
   });
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Failed to pair event ${eventId} with activity ${activityId}: ${res.status} ${errorText}`);
+    throw new Error(`Failed to pair activity ${activityId} with event ${eventId}: ${res.status} ${errorText}`);
   }
 }
 

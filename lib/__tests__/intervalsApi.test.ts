@@ -439,10 +439,10 @@ describe("fetchCalendarData", () => {
     await new Promise((r) => setTimeout(r, 50));
 
     const pairCall = fetchCalls.find(
-      (c) => c.url.includes("/events/555") && c.method === "PUT",
+      (c) => c.url.includes("/activity/act-99") && c.method === "PUT",
     );
     expect(pairCall).toBeDefined();
-    expect(JSON.parse(pairCall!.body!)).toEqual({ paired_activity_id: "act-99" });
+    expect(JSON.parse(pairCall!.body!)).toEqual({ paired_event_id: 555 });
   });
 
   it("filters to only Run and VirtualRun activities", async () => {
