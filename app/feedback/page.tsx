@@ -188,6 +188,7 @@ function FeedbackContent() {
               inputMode="numeric"
               value={carbsG}
               onChange={(e) => setCarbsG(e.target.value)}
+              onFocus={(e) => e.target.select()}
               placeholder={prescribedCarbsG != null ? `${prescribedCarbsG} (prescribed)` : "e.g. 40"}
               className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
             />
