@@ -52,13 +52,15 @@ function FeedbackContent() {
         if (!r.ok) throw new Error("Failed to load data");
         return r.json();
       })
-      .then((data: RunFeedbackRecord) => {
+      .then((data: RunFeedbackRecord & { prescribedCarbsG?: number }) => {
         setFeedback(data);
         if (data.rating) {
           setRating(data.rating);
           setComment(data.comment ?? "");
           if (data.carbsG != null) setCarbsG(String(data.carbsG));
           setSubmitted(true);
+        } else if (data.prescribedCarbsG != null) {
+          setCarbsG(String(data.prescribedCarbsG));
         }
       })
       .catch((e) => setError(e.message))
