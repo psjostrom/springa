@@ -38,6 +38,7 @@ function FeedbackContent() {
   const [rating, setRating] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [carbsG, setCarbsG] = useState<string>("");
+  const [prescribedCarbsG, setPrescribedCarbsG] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -59,8 +60,9 @@ function FeedbackContent() {
           setComment(data.comment ?? "");
           if (data.carbsG != null) setCarbsG(String(data.carbsG));
           setSubmitted(true);
-        } else if (data.prescribedCarbsG != null) {
-          setCarbsG(String(data.prescribedCarbsG));
+        }
+        if (data.prescribedCarbsG != null) {
+          setPrescribedCarbsG(data.prescribedCarbsG);
         }
       })
       .catch((e) => setError(e.message))
@@ -74,7 +76,7 @@ function FeedbackContent() {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined, carbsG: carbsG ? Number(carbsG) : undefined }),
+        body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined, carbsG: carbsG ? Number(carbsG) : prescribedCarbsG ?? undefined }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setSubmitted(true);
@@ -137,8 +139,8 @@ function FeedbackContent() {
             <>
               <p className="text-4xl mb-2">{rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
               <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
-              {carbsG && (
-                <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {carbsG}g</p>
+              {(carbsG || prescribedCarbsG) && (
+                <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {carbsG || prescribedCarbsG}g</p>
               )}
               {comment && (
                 <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
@@ -186,7 +188,7 @@ function FeedbackContent() {
               inputMode="numeric"
               value={carbsG}
               onChange={(e) => setCarbsG(e.target.value)}
-              placeholder="e.g. 40"
+              placeholder={prescribedCarbsG != null ? `${prescribedCarbsG} (prescribed)` : "e.g. 40"}
               className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
             />
           </div>
