@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { RunFeedbackRecord } from "@/lib/settings";
+import type { RunFeedbackRecord } from "@/lib/feedbackDb";
 
 function formatDuration(ms: number): string {
   const totalSec = Math.round(ms / 1000);

@@ -4,7 +4,7 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
-import { formatPace } from "./utils";
+import { formatPace } from "./format";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };

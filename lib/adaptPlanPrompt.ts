@@ -3,7 +3,7 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import type { AdaptedEvent } from "./adaptPlan";
-import type { RunFeedbackRecord } from "./settings";
+import type { RunFeedbackRecord } from "./feedbackDb";
 
 interface PromptInput {
   adapted: AdaptedEvent;

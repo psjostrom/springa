@@ -16,7 +16,7 @@ import {
   type BGObservation,
 } from "../bgModel";
 import { linearRegression } from "../math";
-import type { CachedActivity } from "../settings";
+import type { CachedActivity } from "../bgCacheDb";
 import type { IntervalsStream, DataPoint } from "../types";
 
 // Helper: create streams from arrays

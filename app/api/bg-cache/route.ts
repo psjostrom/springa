@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getBGCache, saveBGCache, type CachedActivity } from "@/lib/settings";
+import { getBGCache, saveBGCache, type CachedActivity } from "@/lib/bgCacheDb";
 import { NextResponse } from "next/server";
 
 export async function GET() {

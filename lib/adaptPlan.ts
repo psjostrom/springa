@@ -2,7 +2,8 @@ import type { CalendarEvent, WorkoutCategory, WorkoutEvent } from "./types";
 import type { TargetFuelResult, BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
-import { formatStep, createWorkoutText } from "./utils";
+import { formatStep, createWorkoutText } from "./descriptionBuilder";
+import { extractStructure } from "./descriptionParser";
 import { HR_ZONE_BANDS } from "./constants";
 
 // --- Types ---
@@ -32,42 +33,6 @@ export interface AdaptationInput {
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   prefix: string;
-}
-
-// --- Description parsing ---
-
-/**
- * Split a workout description into notes (preamble) and structure (Warmup/Main/Cooldown).
- * Reuses the same regex as extractNotes() in lib/utils.ts:131.
- */
-export function parseDescription(description: string): {
-  notes: string;
-  structure: string;
-} {
-  if (!description) return { notes: "", structure: "" };
-
-  const firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
-  if (firstSectionIdx === -1) {
-    return { notes: description.trim(), structure: "" };
-  }
-
-  const preamble = description.slice(0, firstSectionIdx).trim();
-  const structure = description.slice(firstSectionIdx).trim();
-
-  // Filter FUEL/PUMP/Trail lines from notes (same logic as extractNotes)
-  const noteLines = preamble.split("\n").filter((l) => {
-    const trimmed = l.trim();
-    if (trimmed.length === 0) return false;
-    if (/^FUEL PER 10:/i.test(trimmed)) return false;
-    if (/^PUMP/i.test(trimmed)) return false;
-    if (/^\(Trail\)$/i.test(trimmed)) return false;
-    return true;
-  });
-
-  return {
-    notes: noteLines.join("\n"),
-    structure,
-  };
 }
 
 /**
@@ -239,7 +204,7 @@ export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
 
   return upcomingEvents.map((event) => {
     const changes: AdaptationChange[] = [];
-    const { structure } = parseDescription(event.description);
+    const structure = extractStructure(event.description);
     const category = event.category as WorkoutCategory | "race" | "other";
 
     // 1. Fuel adjustment

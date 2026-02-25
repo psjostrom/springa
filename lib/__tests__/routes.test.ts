@@ -20,14 +20,14 @@ vi.mock("web-push", () => ({
   },
 }));
 
+import { SCHEMA_DDL } from "../db";
 import {
   saveXdripAuth,
   lookupXdripUser,
   getXdripReadings,
   monthKey,
   sha1,
-  SCHEMA_DDL,
-} from "../settings";
+} from "../xdripDb";
 import { POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as xdripGET } from "@/app/api/xdrip/route";
 import {

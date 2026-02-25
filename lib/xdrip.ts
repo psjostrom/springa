@@ -10,6 +10,8 @@
 // direction from adjacent sgv values via recomputeDirections(). The Garmin
 // apps (SugarRun, SugarWave) do the same computation on-device.
 
+import { MGDL_TO_MMOL } from "./constants";
+
 export interface XdripReading {
   sgv: number; // mg/dL (raw from Nightscout)
   mmol: number; // converted to mmol/L
@@ -37,7 +39,7 @@ export function trendArrow(direction: string): string {
 
 /** Derive arrow directly from slope (mmol/L per 10min) — always consistent. */
 export function slopeToArrow(slopePer10min: number): string {
-  const deltaMgdlPer5 = slopePer10min * 18 / 2;
+  const deltaMgdlPer5 = slopePer10min * MGDL_TO_MMOL / 2;
   return trendArrow(directionFromDelta(deltaMgdlPer5));
 }
 
@@ -67,7 +69,7 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
 
     readings.push({
       sgv: entry.sgv,
-      mmol: Math.round((entry.sgv / 18.018) * 10) / 10,
+      mmol: Math.round((entry.sgv / MGDL_TO_MMOL) * 10) / 10,
       ts,
       direction: entry.direction ?? "NONE",
     });
@@ -153,9 +155,9 @@ export function computeTrend(
   const slopePer10 = Math.round(slopePerMin * 10 * 100) / 100;
 
   // Classify — thresholds derived from SuperStable/directionFromDelta:
-  // SuperStable uses mg/dL per 5min; convert: mgdl5 / 18 * 2 = mmol/L per 10min
+  // SuperStable uses mg/dL per 5min; convert: mgdl5 / MGDL_TO_MMOL * 2 = mmol/L per 10min
   // 5 → 0.56, 10 → 1.11, 17.5 → 1.94
-  const deltaMgdlPer5 = slopePer10 * 18 / 2;
+  const deltaMgdlPer5 = slopePer10 * MGDL_TO_MMOL / 2;
   const direction = directionFromDelta(deltaMgdlPer5);
 
   return { slope: slopePer10, direction };

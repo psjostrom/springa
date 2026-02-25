@@ -10,6 +10,9 @@ export const BG_HIGH = 14.0;
 /** Minimum forecast BG during exercise before triggering caution (mmol/L). */
 export const BG_EXERCISE_MIN = 5.5;
 
+/** mg/dL → mmol/L conversion factor. */
+export const MGDL_TO_MMOL = 18.018;
+
 export const DEFAULT_LTHR = 169;
 export const CRASH_DROP_RATE = -3.0;
 export const SPIKE_RISE_RATE = 3.0;
@@ -81,4 +84,30 @@ export function classifyZone(lthrPercent: number): HRZoneName {
   if (lthrPercent >= ZONE_THRESHOLDS.z4) return "tempo";
   if (lthrPercent >= ZONE_THRESHOLDS.z3) return "steady";
   return "easy";
+}
+
+/** Classify avgHr into a zone name based on LTHR ratio (Garmin LTHR zones) */
+export function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
+  return classifyZone((avgHr / lthr) * 100);
+}
+
+export function getWorkoutCategory(
+  name: string,
+): "long" | "interval" | "easy" | "other" {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes("long")) return "long";
+  if (
+    lowerName.includes("interval") ||
+    lowerName.includes("hills") ||
+    lowerName.includes("tempo") ||
+    lowerName.includes("race pace")
+  )
+    return "interval";
+  if (
+    lowerName.includes("easy") ||
+    lowerName.includes("bonus") ||
+    lowerName.includes("strides")
+  )
+    return "easy";
+  return "other";
 }

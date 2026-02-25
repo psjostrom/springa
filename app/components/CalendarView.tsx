@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useModalURL } from "../hooks/useModalURL";
 import {
   format,
   startOfMonth,
@@ -18,7 +19,7 @@ import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
-import { parseEventId } from "@/lib/utils";
+import { parseEventId } from "@/lib/format";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
@@ -39,10 +40,6 @@ interface CalendarViewProps {
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
-function getWorkoutParam(): string | null {
-  return new URLSearchParams(window.location.search).get("workout");
-}
-
 export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -53,10 +50,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     typeof window !== "undefined" && window.innerWidth < 768 ? "agenda" : "month"
   );
 
-  // Lazy init: read ?workout= from URL on first render
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(() =>
-    typeof window !== "undefined" ? getWorkoutParam() : null
-  );
+  // Modal URL state — reads/writes ?workout= param with proper history handling
+  const modal = useModalURL("workout");
+  const selectedEventId = modal.value;
 
   // Derive selectedEvent from events + selectedEventId (replaces enrichment effect)
   const selectedEvent = useMemo(() => {
@@ -83,13 +79,6 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     handleDragLeave,
     handleDrop,
   } = useDragDrop(apiKey, setEvents);
-
-  // Sync URL → selectedEventId on popstate (back/forward)
-  useEffect(() => {
-    const onPopState = () => setSelectedEventId(getWorkoutParam());
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
 
   // Derive loading state: completed event without stream data that hasn't failed
   const fetchedStreamIdsRef = useRef(new Set<string>());
@@ -162,40 +151,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     return events.filter((event) => isSameDay(event.date, date));
   }, [events]);
 
-  // Track whether we pushed a modal entry onto the history stack
-  const modalPushedRef = useRef(false);
-
-  // Open modal by updating URL — set selectedEventId immediately so the
-  // modal appears without waiting for the URL roundtrip.
-  const openWorkoutModal = (event: CalendarEvent) => {
-    setSelectedEventId(event.id);
-
-    const params = new URLSearchParams(window.location.search);
-    const wasOpen = params.has("workout");
-    params.set("workout", event.id);
-    const url = `?${params.toString()}`;
-
-    if (wasOpen) {
-      window.history.replaceState(null, "", url);
-    } else {
-      window.history.pushState(null, "", url);
-      modalPushedRef.current = true;
-    }
-  };
-
-  // Close modal by removing URL param
-  const closeWorkoutModal = useCallback(() => {
-    setSelectedEventId(null);
-    if (modalPushedRef.current) {
-      modalPushedRef.current = false;
-      window.history.back();
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      params.delete("workout");
-      const query = params.toString();
-      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-    }
-  }, []);
+  const openWorkoutModal = (event: CalendarEvent) => modal.open(event.id);
+  const closeWorkoutModal = modal.close;
 
   // Handle Escape key to close modal
   useEffect(() => {

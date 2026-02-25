@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
 import { updateEvent } from "@/lib/intervalsApi";
-import { parseEventId } from "@/lib/utils";
+import { parseEventId } from "@/lib/format";
 
 export function useDragDrop(
   apiKey: string,

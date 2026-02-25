@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useReducer } from "react";
 import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
@@ -6,7 +6,8 @@ import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
-import { parseEventId, formatPace, getWorkoutCategory } from "@/lib/utils";
+import { parseEventId, formatPace } from "@/lib/format";
+import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
 import { useCurrentBG } from "../hooks/useCurrentBG";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
@@ -54,6 +55,85 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
   );
 }
 
+// --- Modal state machine ---
+
+type EditMode =
+  | { kind: "idle" }
+  | { kind: "editing-date"; editDate: string }
+  | { kind: "saving-date"; editDate: string }
+  | { kind: "confirming-delete" }
+  | { kind: "deleting" }
+  | { kind: "editing-carbs"; carbsValue: string }
+  | { kind: "saving-carbs"; carbsValue: string };
+
+interface ModalState {
+  editMode: EditMode;
+  error: string | null;
+  savedCarbs: number | null;
+  isClosing: boolean;
+}
+
+type ModalAction =
+  | { type: "START_EDIT_DATE"; date: string }
+  | { type: "SET_EDIT_DATE"; date: string }
+  | { type: "SAVE_DATE" }
+  | { type: "DATE_SAVED" }
+  | { type: "DATE_SAVE_FAILED"; error: string }
+  | { type: "CONFIRM_DELETE" }
+  | { type: "DELETE" }
+  | { type: "DELETE_FAILED"; error: string }
+  | { type: "START_EDIT_CARBS"; value: string }
+  | { type: "SET_CARBS_VALUE"; value: string }
+  | { type: "SAVE_CARBS" }
+  | { type: "CARBS_SAVED" }
+  | { type: "CANCEL" }
+  | { type: "RESET" }
+  | { type: "SET_SAVED_CARBS"; value: number | null }
+  | { type: "START_CLOSING" };
+
+const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, isClosing: false };
+
+function modalReducer(state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case "START_EDIT_DATE":
+      return { ...state, editMode: { kind: "editing-date", editDate: action.date }, error: null };
+    case "SET_EDIT_DATE":
+      if (state.editMode.kind !== "editing-date") return state;
+      return { ...state, editMode: { ...state.editMode, editDate: action.date } };
+    case "SAVE_DATE":
+      if (state.editMode.kind !== "editing-date") return state;
+      return { ...state, editMode: { kind: "saving-date", editDate: state.editMode.editDate } };
+    case "DATE_SAVED":
+      return INITIAL_MODAL_STATE;
+    case "DATE_SAVE_FAILED":
+      if (state.editMode.kind !== "saving-date") return state;
+      return { ...state, editMode: { kind: "editing-date", editDate: state.editMode.editDate }, error: action.error };
+    case "CONFIRM_DELETE":
+      return { ...state, editMode: { kind: "confirming-delete" }, error: null };
+    case "DELETE":
+      return { ...state, editMode: { kind: "deleting" } };
+    case "DELETE_FAILED":
+      return { ...state, editMode: { kind: "confirming-delete" }, error: action.error };
+    case "START_EDIT_CARBS":
+      return { ...state, editMode: { kind: "editing-carbs", carbsValue: action.value }, error: null };
+    case "SET_CARBS_VALUE":
+      if (state.editMode.kind !== "editing-carbs") return state;
+      return { ...state, editMode: { ...state.editMode, carbsValue: action.value } };
+    case "SAVE_CARBS":
+      if (state.editMode.kind !== "editing-carbs") return state;
+      return { ...state, editMode: { kind: "saving-carbs", carbsValue: state.editMode.carbsValue } };
+    case "CARBS_SAVED":
+    case "CANCEL":
+      return { ...state, editMode: { kind: "idle" } as EditMode, error: null };
+    case "RESET":
+      return INITIAL_MODAL_STATE;
+    case "SET_SAVED_CARBS":
+      return { ...state, savedCarbs: action.value };
+    case "START_CLOSING":
+      return { ...state, isClosing: true };
+  }
+}
+
 interface EventModalProps {
   event: CalendarEvent;
   onClose: () => void;
@@ -78,17 +158,12 @@ export function EventModal({
   paceTable,
   bgModel,
 }: EventModalProps) {
-  type ActionMode = "idle" | "editing" | "saving" | "confirming-delete" | "deleting";
-  const [actionMode, setActionMode] = useState<ActionMode>("idle");
-  const [editDate, setEditDate] = useState("");
+  const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
 
-  // Carbs ingested editing
-  const [editingCarbs, setEditingCarbs] = useState(false);
-  const [carbsValue, setCarbsValue] = useState("");
-  const [savingCarbs, setSavingCarbs] = useState(false);
-  const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Extract values from discriminated union for JSX convenience
+  const { editMode } = state;
+  const editDate = editMode.kind === "editing-date" || editMode.kind === "saving-date" ? editMode.editDate : "";
+  const carbsValue = editMode.kind === "editing-carbs" || editMode.kind === "saving-carbs" ? editMode.carbsValue : "";
 
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
@@ -99,17 +174,11 @@ export function EventModal({
   }, [selectedEvent.name]);
 
   useEffect(() => {
-    setActionMode("idle");
-    setEditDate("");
-    setEditingCarbs(false);
-    setCarbsValue("");
-    setSavedCarbs(null);
-    setIsClosing(false);
-    setError(null);
+    dispatch({ type: "RESET" });
   }, [selectedEvent.id]);
 
   const handleClose = useCallback(() => {
-    setIsClosing(true);
+    dispatch({ type: "START_CLOSING" });
     const isMobile = window.innerWidth < 640;
     if (isMobile) {
       setTimeout(onClose, 250);
@@ -124,15 +193,14 @@ export function EventModal({
     const actId = selectedEvent.activityId;
     if (!actId) return;
 
-    setSavingCarbs(true);
+    dispatch({ type: "SAVE_CARBS" });
     try {
       await updateActivityCarbs(apiKey, actId, val);
-      setSavedCarbs(val);
-      setEditingCarbs(false);
+      dispatch({ type: "SET_SAVED_CARBS", value: val });
+      dispatch({ type: "CARBS_SAVED" });
     } catch (err) {
       console.error("Failed to update carbs:", err);
-    } finally {
-      setSavingCarbs(false);
+      dispatch({ type: "CANCEL" });
     }
   };
 
@@ -141,7 +209,7 @@ export function EventModal({
     const numericId = parseEventId(selectedEvent.id);
     if (isNaN(numericId)) return;
 
-    setActionMode("saving");
+    dispatch({ type: "SAVE_DATE" });
     try {
       const newDateLocal = editDate.includes("T")
         ? editDate + ":00"
@@ -150,31 +218,30 @@ export function EventModal({
 
       const newDate = new Date(newDateLocal);
       onDateSaved(selectedEvent.id, newDate);
-      setActionMode("idle");
+      dispatch({ type: "DATE_SAVED" });
     } catch (err) {
       console.error("Failed to update event:", err);
-      setError("Failed to update event. Please try again.");
-      setActionMode("editing");
+      dispatch({ type: "DATE_SAVE_FAILED", error: "Failed to update event. Please try again." });
     }
   };
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosing ? "bg-black/0" : "bg-black/70"}`}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${state.isClosing ? "bg-black/0" : "bg-black/70"}`}
       onClick={handleClose}
     >
       <div
-        className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
-            {actionMode === "editing" || actionMode === "saving" ? (
+            {editMode.kind === "editing-date" || editMode.kind === "saving-date" ? (
               <div className="flex items-center gap-2 mb-1">
                 <input
                   type="datetime-local"
                   value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
+                  onChange={(e) => dispatch({ type: "SET_EDIT_DATE", date: e.target.value })}
                   className="border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
                 />
               </div>
@@ -198,69 +265,62 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {actionMode === "idle" && (
+            {editMode.kind === "idle" && (
               <>
                 {selectedEvent.type === "planned" && (
                   <button
-                    onClick={() => {
-                      setEditDate(format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm"));
-                      setActionMode("editing");
-                    }}
+                    onClick={() => dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") })}
                     className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
                   >
                     Edit
                   </button>
                 )}
                 <button
-                  onClick={() => setActionMode("confirming-delete")}
+                  onClick={() => dispatch({ type: "CONFIRM_DELETE" })}
                   className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
                 >
                   Delete
                 </button>
               </>
             )}
-            {(actionMode === "confirming-delete" || actionMode === "deleting") && (
+            {(editMode.kind === "confirming-delete" || editMode.kind === "deleting") && (
               <>
                 <span className="text-sm text-[#ff6b8a]">Delete this workout?</span>
                 <button
                   onClick={async () => {
-                    setActionMode("deleting");
+                    dispatch({ type: "DELETE" });
                     try {
                       await onDelete(selectedEvent.id);
                     } catch {
-                      setActionMode("confirming-delete");
-                      setError("Failed to delete event. Please try again.");
+                      dispatch({ type: "DELETE_FAILED", error: "Failed to delete event. Please try again." });
                     }
                   }}
-                  disabled={actionMode === "deleting"}
+                  disabled={editMode.kind === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#ff3366] hover:bg-[#e0294f] text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {actionMode === "deleting" ? "Deleting..." : "Confirm"}
+                  {editMode.kind === "deleting" ? "Deleting..." : "Confirm"}
                 </button>
                 <button
-                  onClick={() => setActionMode("idle")}
-                  disabled={actionMode === "deleting"}
+                  onClick={() => dispatch({ type: "CANCEL" })}
+                  disabled={editMode.kind === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
               </>
             )}
-            {(actionMode === "editing" || actionMode === "saving") && (
+            {(editMode.kind === "editing-date" || editMode.kind === "saving-date") && (
               <>
                 <button
                   onClick={saveEventEdit}
-                  disabled={actionMode === "saving"}
+                  disabled={editMode.kind === "saving-date"}
                   className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
                 >
-                  {actionMode === "saving" ? "Saving..." : "Save"}
+                  {editMode.kind === "saving-date" ? "Saving..." : "Save"}
                 </button>
                 <button
-                  onClick={() => {
-                    setActionMode("idle");
-                    setEditDate("");
-                  }}
-                  disabled={actionMode === "saving"}
+                  onClick={() => dispatch({ type: "CANCEL" })}
+                  disabled={editMode.kind === "saving-date"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
@@ -276,9 +336,9 @@ export function EventModal({
           </div>
         </div>
 
-        {error && (
+        {state.error && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm">
-            {error}
+            {state.error}
           </div>
         )}
 
@@ -383,31 +443,31 @@ export function EventModal({
             <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
-                {editingCarbs ? (
+                {editMode.kind === "editing-carbs" || editMode.kind === "saving-carbs" ? (
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
                       min="0"
                       value={carbsValue}
-                      onChange={(e) => setCarbsValue(e.target.value)}
+                      onChange={(e) => dispatch({ type: "SET_CARBS_VALUE", value: e.target.value })}
                       className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === "Enter") saveCarbs();
-                        if (e.key === "Escape") setEditingCarbs(false);
+                        if (e.key === "Escape") dispatch({ type: "CANCEL" });
                       }}
                     />
                     <span className="text-sm text-[#b8a5d4]">g</span>
                     <button
                       onClick={saveCarbs}
-                      disabled={savingCarbs}
+                      disabled={editMode.kind === "saving-carbs"}
                       className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
                     >
-                      {savingCarbs ? "..." : "Save"}
+                      {editMode.kind === "saving-carbs" ? "..." : "Save"}
                     </button>
                     <button
-                      onClick={() => setEditingCarbs(false)}
-                      disabled={savingCarbs}
+                      onClick={() => dispatch({ type: "CANCEL" })}
+                      disabled={editMode.kind === "saving-carbs"}
                       className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
                     >
                       ✕
@@ -416,14 +476,13 @@ export function EventModal({
                 ) : (
                   <button
                     onClick={() => {
-                      const current = savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? 0;
-                      setCarbsValue(String(current));
-                      setEditingCarbs(true);
+                      const current = state.savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? 0;
+                      dispatch({ type: "START_EDIT_CARBS", value: String(current) });
                     }}
                     className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
                   >
-                    {savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? "—"}g
-                    {selectedEvent.carbsIngested == null && savedCarbs == null && (
+                    {state.savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? "—"}g
+                    {selectedEvent.carbsIngested == null && state.savedCarbs == null && (
                       <span className="text-xs font-normal text-[#b8a5d4]">(planned)</span>
                     )}
                     <Pencil className="w-3 h-3 text-[#b8a5d4]" />

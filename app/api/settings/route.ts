@@ -2,9 +2,9 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
-  saveXdripAuth,
   type UserSettings,
 } from "@/lib/settings";
+import { saveXdripAuth } from "@/lib/xdripDb";
 import { NextResponse } from "next/server";
 
 export async function GET() {

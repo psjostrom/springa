@@ -10,11 +10,8 @@ vi.mock("@libsql/client", async (importOriginal) => {
   return { ...actual, createClient: () => holder.db };
 });
 
-import {
-  getUserSettings,
-  saveUserSettings,
-  SCHEMA_DDL,
-} from "../settings";
+import { SCHEMA_DDL } from "../db";
+import { getUserSettings, saveUserSettings } from "../settings";
 
 const testDb = () => holder.db;
 

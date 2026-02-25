@@ -7,14 +7,10 @@ import {
   extractNotes,
   parseWorkoutStructure,
   parseWorkoutZones,
-  getPaceForZone,
-  getZoneLabel,
-  formatPace,
-  estimateWorkoutDuration,
-  estimateWorkoutDescriptionDistance,
-  calculateWorkoutCarbs,
-} from "@/lib/utils";
-import type { WorkoutSection, WorkoutStep } from "@/lib/utils";
+} from "@/lib/descriptionParser";
+import type { WorkoutSection, WorkoutStep } from "@/lib/descriptionParser";
+import { getPaceForZone, getZoneLabel, formatPace } from "@/lib/format";
+import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateWorkoutCarbs } from "@/lib/workoutMath";
 
 interface WorkoutCardProps {
   description: string;

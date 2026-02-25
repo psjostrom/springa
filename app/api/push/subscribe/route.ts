@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { savePushSubscription } from "@/lib/settings";
+import { savePushSubscription } from "@/lib/pushDb";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {

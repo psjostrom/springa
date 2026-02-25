@@ -3,7 +3,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
 import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
-import { getRecentFeedback } from "@/lib/settings";
+import { getRecentFeedback } from "@/lib/feedbackDb";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";

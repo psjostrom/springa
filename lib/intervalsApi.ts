@@ -1,4 +1,4 @@
-import { format, addDays, differenceInDays, parseISO } from "date-fns";
+import { format, addDays } from "date-fns";
 import type {
   WorkoutEvent,
   IntervalsStream,
@@ -9,14 +9,16 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { API_BASE, DEFAULT_LTHR } from "./constants";
-import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate, extractTotalCarbs, calculateWorkoutCarbs, estimateWorkoutDuration } from "./utils";
+import { convertGlucoseToMmol } from "./bgModel";
+import { extractRawStreams } from "./streams";
+import {
+  processActivities,
+  processPlannedEvents,
+  calculateHRZones,
+  type CalendarDataResult,
+} from "./calendarPipeline";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
-
-/** Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description regex. */
-function resolveFuelRate(carbsPerHour: number | null | undefined, description: string): number | null {
-  return carbsPerHour ?? extractFuelRate(description);
-}
 
 // --- STREAM FETCHING ---
 
@@ -106,30 +108,6 @@ export async function fetchStreamBatch(
   return results;
 }
 
-// --- HR ZONE CALCULATION ---
-
-function calculateHRZones(
-  hrData: number[],
-  lthr: number = DEFAULT_LTHR,
-): HRZoneData {
-  const zones: HRZoneData = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
-
-  const z1Max = lthr * 0.66;
-  const z2Max = lthr * 0.78;
-  const z3Max = lthr * 0.89;
-  const z4Max = lthr * 0.99;
-
-  hrData.forEach((hr) => {
-    if (hr <= z1Max) zones.z1++;
-    else if (hr <= z2Max) zones.z2++;
-    else if (hr <= z3Max) zones.z3++;
-    else if (hr <= z4Max) zones.z4++;
-    else zones.z5++;
-  });
-
-  return zones;
-}
-
 // --- ACTIVITY DETAILS ---
 
 export async function fetchActivityDetails(
@@ -144,26 +122,7 @@ export async function fetchActivityDetails(
 }> {
   try {
     const streams = await fetchStreams(activityId, apiKey);
-
-    let timeData: number[] = [];
-    let hrData: number[] = [];
-    let glucoseData: number[] = [];
-    let velocityData: number[] = [];
-    let cadenceData: number[] = [];
-    let altitudeData: number[] = [];
-
-    for (const s of streams) {
-      if (s.type === "time") timeData = s.data;
-      if (s.type === "heartrate") hrData = s.data;
-      if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
-        glucoseData = s.data;
-      }
-      if (s.type === "velocity_smooth") {
-        velocityData = s.data;
-      }
-      if (s.type === "cadence") cadenceData = s.data;
-      if (s.type === "altitude") altitudeData = s.data;
-    }
+    const { time: timeData, heartrate: hrData, glucose: glucoseData, velocity: velocityData, cadence: cadenceData, altitude: altitudeData } = extractRawStreams(streams);
 
     const paceData = velocityData.map((v) => {
       if (v === 0 || v < 0.001) return null;
@@ -279,233 +238,6 @@ export async function fetchCalendarData(
     () => calendarInflight.delete(cacheKey),
   );
   return promise;
-}
-
-interface CalendarDataResult {
-  events: CalendarEvent[];
-  autoPairs: { eventId: number; activityId: string }[];
-}
-
-/** Convert completed run activities into CalendarEvents and track auto-pair candidates. */
-function processActivities(
-  activities: IntervalsActivity[],
-  events: IntervalsEvent[],
-): {
-  calendarEvents: CalendarEvent[];
-  activityMap: Map<string, CalendarEvent>;
-  autoPairs: { eventId: number; activityId: string }[];
-  fallbackClaimedEventIds: Set<number>;
-} {
-  const calendarEvents: CalendarEvent[] = [];
-  const autoPairs: { eventId: number; activityId: string }[] = [];
-  const fallbackClaimedEventIds = new Set<number>();
-  const activityMap = new Map<string, CalendarEvent>();
-
-  const runActivities = activities.filter(
-    (a) => a.type === "Run" || a.type === "VirtualRun",
-  );
-
-  console.log(`[auto-pair] ${runActivities.length} run activities, ${events.length} events`);
-
-  // Build reverse lookups for authoritative pairing (both directions)
-  // event.paired_activity_id → activityId → event
-  const pairedEventMap = new Map<string, IntervalsEvent>();
-  const eventById = new Map<number, IntervalsEvent>();
-  for (const event of events) {
-    if (event.category === "WORKOUT") {
-      eventById.set(event.id, event);
-      if (event.paired_activity_id) {
-        pairedEventMap.set(event.paired_activity_id, event);
-      }
-    }
-  }
-
-  for (const activity of runActivities) {
-    const category = getWorkoutCategory(activity.name);
-
-    let pace: number | undefined;
-    if (activity.distance && activity.moving_time) {
-      const distanceKm = activity.distance / 1000;
-      const durationMin = activity.moving_time / 60;
-      pace = durationMin / distanceKm;
-    }
-
-    let hrZones: HRZoneData | undefined;
-    if (
-      activity.icu_hr_zone_times &&
-      activity.icu_hr_zone_times.length >= 5
-    ) {
-      hrZones = {
-        z1: activity.icu_hr_zone_times[0],
-        z2: activity.icu_hr_zone_times[1],
-        z3: activity.icu_hr_zone_times[2],
-        z4: activity.icu_hr_zone_times[3],
-        z5: activity.icu_hr_zone_times[4],
-      };
-    }
-
-    const activityDate = parseISO(
-      activity.start_date_local || activity.start_date,
-    );
-
-    // Prefer authoritative link (either direction), fall back to ±3 day exact name match
-    const authoritativeMatch = pairedEventMap.get(activity.id)
-      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined)
-      ?? undefined;
-
-    const rejections: string[] = [];
-    const fallbackMatch = !authoritativeMatch ? events.find((event) => {
-      if (event.category !== "WORKOUT") return false;
-      const actName = (activity.name ?? "").trim().toLowerCase();
-      const evtName = (event.name ?? "").trim().toLowerCase();
-      if (event.paired_activity_id) {
-        rejections.push(`${event.id}|${event.name}|paired→${event.paired_activity_id}`);
-        return false;
-      }
-      if (fallbackClaimedEventIds.has(event.id)) {
-        rejections.push(`${event.id}|${event.name}|claimed`);
-        return false;
-      }
-      const eventDate = parseISO(event.start_date_local);
-      const dayDiff = Math.abs(differenceInDays(activityDate, eventDate));
-      const withinWindow = dayDiff <= 3;
-      const nameMatch = actName === evtName;
-      if (!withinWindow) {
-        rejections.push(`${event.id}|${event.name}|dayDiff=${dayDiff}`);
-      } else if (!nameMatch) {
-        rejections.push(`${event.id}|${event.name}|name≠"${actName}"`);
-      }
-      return withinWindow && nameMatch;
-    }) : undefined;
-    const matchingEvent = authoritativeMatch ?? fallbackMatch;
-
-    // Log: fallback match → one line; eco16 with no match → detail block; otherwise silent
-    if (fallbackMatch) {
-      console.log(`[auto-pair] fallback: activity "${activity.name}" → event ${fallbackMatch.id}`);
-    } else if (!matchingEvent && (activity.name ?? "").toLowerCase().includes("eco16")) {
-      console.log(`[auto-pair] UNMATCHED eco16 activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
-      for (const r of rejections) console.log(`[auto-pair]   rejected: ${r}`);
-    }
-
-    // Track fallback matches for auto-pairing on Intervals.icu
-    if (fallbackMatch) {
-      autoPairs.push({ eventId: fallbackMatch.id, activityId: activity.id });
-      fallbackClaimedEventIds.add(fallbackMatch.id);
-    } else if (matchingEvent) {
-      // Authoritative match — claim the event so processPlannedEvents skips it
-      fallbackClaimedEventIds.add(matchingEvent.id);
-    }
-
-    const description =
-      matchingEvent?.description || activity.description || "";
-
-    const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
-
-    // Calculate total carbs from fuel rate and duration
-    let totalCarbs: number | null = null;
-    if (fuelRate != null) {
-      const durationMinutes = activity.moving_time ? activity.moving_time / 60 : null;
-      if (durationMinutes != null) {
-        totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
-      }
-    }
-    if (totalCarbs == null) {
-      totalCarbs = extractTotalCarbs(description);
-    }
-
-    // Actual carbs ingested: from activity API field, default to planned totalCarbs
-    const carbsIngested = activity.carbs_ingested ?? totalCarbs;
-
-    const calendarEvent: CalendarEvent = {
-      id: `activity-${activity.id}`,
-      date: activityDate,
-      name: activity.name,
-      description,
-      type: "completed",
-      category,
-      distance: activity.distance,
-      duration: activity.moving_time,
-      avgHr: activity.average_heartrate || activity.average_hr,
-      maxHr: activity.max_heartrate || activity.max_hr,
-      load: activity.icu_training_load,
-      intensity: activity.icu_intensity,
-      pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
-      calories: activity.calories,
-      // Garmin reports half-cadence (steps per foot); double to get full SPM
-      cadence: activity.average_cadence
-        ? activity.average_cadence * 2
-        : undefined,
-      hrZones,
-      fuelRate,
-      totalCarbs,
-      carbsIngested,
-      activityId: activity.id,
-    };
-
-    activityMap.set(activity.id, calendarEvent);
-    calendarEvents.push(calendarEvent);
-  }
-
-  return { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds };
-}
-
-/** Convert planned/upcoming workout events into CalendarEvents (excluding already-completed ones). */
-function processPlannedEvents(
-  events: IntervalsEvent[],
-  activityMap: Map<string, CalendarEvent>,
-  fallbackClaimedEventIds: Set<number>,
-): CalendarEvent[] {
-  const calendarEvents: CalendarEvent[] = [];
-
-  for (const event of events) {
-    if (event.category !== "WORKOUT") continue;
-
-    // Skip events already represented by a completed activity (paired or fallback-matched)
-    if (fallbackClaimedEventIds.has(event.id)) continue;
-    if (event.paired_activity_id && activityMap.has(event.paired_activity_id)) continue;
-    if (event.paired_activity_id && !activityMap.has(event.paired_activity_id)) {
-      console.log(`[auto-pair] event ${event.id} "${event.name}" has paired_activity_id=${event.paired_activity_id} but activity not in activityMap`);
-    }
-
-    const name = event.name || "";
-    const eventDate = parseISO(event.start_date_local);
-    const eventDesc = event.description || "";
-
-    const isRace = name.toLowerCase().includes("race");
-    const category = isRace ? "race" : getWorkoutCategory(name);
-
-    const eventFuelRate = resolveFuelRate(event.carbs_per_hour, eventDesc);
-
-    // Calculate total carbs from fuel rate and estimated duration.
-    // Prefer our description-based estimate (uses our pace zones) over the
-    // API's duration which Intervals.icu computes with its own pace config.
-    let eventTotalCarbs: number | null = null;
-    if (eventFuelRate != null) {
-      const estDur = event.moving_time || event.duration || event.elapsed_time;
-      const estMinutes = estimateWorkoutDuration(eventDesc)?.minutes ?? (estDur ? estDur / 60 : null);
-      if (estMinutes != null) {
-        eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
-      }
-    }
-    if (eventTotalCarbs == null) {
-      eventTotalCarbs = extractTotalCarbs(eventDesc);
-    }
-
-    calendarEvents.push({
-      id: `event-${event.id}`,
-      date: eventDate,
-      name,
-      description: eventDesc,
-      type: isRace ? "race" : "planned",
-      category,
-      distance: event.distance || 0,
-      duration: event.moving_time || event.duration || event.elapsed_time,
-      fuelRate: eventFuelRate,
-      totalCarbs: eventTotalCarbs,
-    });
-  }
-
-  return calendarEvents;
 }
 
 async function fetchCalendarDataInner(

@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
 import { format } from "date-fns";
-import {
-  getPrerunPushUsers,
-  getUserSettings,
-  saveUserSettings,
-  getRecentXdripReadings,
-  getBGCache,
-  hasPrerunPushSent,
-  markPrerunPushSent,
-} from "@/lib/settings";
+import { getUserSettings } from "@/lib/settings";
+import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
+import { getRecentXdripReadings } from "@/lib/xdripDb";
+import { getBGCache } from "@/lib/bgCacheDb";
 import { computeTrend } from "@/lib/xdrip";
 import { buildBGModelFromCached } from "@/lib/bgModel";
-import { getWorkoutCategory } from "@/lib/utils";
+import { getWorkoutCategory } from "@/lib/constants";
 import { assessReadiness, formatGuidancePush } from "@/lib/prerun";
 import { sendPushToUser } from "@/lib/push";
 import { authHeader } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
+import { nowInTimezone, resolveTimezone } from "@/lib/intervalsHelpers";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -24,34 +20,6 @@ export const dynamic = "force-dynamic";
 const STALE_THRESHOLD_MS = 15 * 60 * 1000;
 const WINDOW_MIN_MS = 1.5 * 60 * 60 * 1000;
 const WINDOW_MAX_MS = 2.5 * 60 * 60 * 1000;
-
-/**
- * Get current time expressed in a given IANA timezone.
- * Both this and `new Date(start_date_local)` go through the same
- * server-local parse, so the difference between them is correct.
- */
-function nowInTimezone(tz: string): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
-}
-
-/** Resolve timezone: use cached value or fetch from Intervals.icu and cache it. */
-async function resolveTimezone(
-  email: string,
-  cached: string | undefined,
-  apiKey: string,
-): Promise<string | null> {
-  if (cached) return cached;
-
-  const res = await fetch(`${API_BASE}/athlete/0`, {
-    headers: { Authorization: authHeader(apiKey) },
-  });
-  if (!res.ok) return null;
-
-  const athlete = await res.json();
-  const tz: string = athlete.timezone ?? "UTC";
-  await saveUserSettings(email, { timezone: tz });
-  return tz;
-}
 
 export async function GET(req: Request) {
   const authValue = req.headers.get("authorization");

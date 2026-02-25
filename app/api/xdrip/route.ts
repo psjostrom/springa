@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getXdripReadings } from "@/lib/settings";
+import { getXdripReadings } from "@/lib/xdripDb";
 import { computeTrend, trendArrow, slopeToArrow } from "@/lib/xdrip";
 import { NextResponse } from "next/server";
 

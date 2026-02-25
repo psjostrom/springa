@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractExtraStreams } from "@/app/hooks/useBGModel";
+import { extractExtraStreams } from "@/lib/streams";
 import type { IntervalsStream } from "../types";
 
 function stream(type: string, data: number[]): IntervalsStream {

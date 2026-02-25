@@ -1,16 +1,8 @@
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
-import type { RunSummary } from "./settings";
-import { formatPace } from "./utils";
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m > 0 ? `${h}h${m}m` : `${h}h`;
-}
+import type { RunSummary } from "./runAnalysisDb";
+import { formatPace, formatDuration } from "./format";
 
 function ratingLabel(rating: "good" | "ok" | "bad"): string {
   return rating === "good" ? "Good" : rating === "ok" ? "OK" : "Bad";

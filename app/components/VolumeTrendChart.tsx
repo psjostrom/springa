@@ -17,7 +17,7 @@ import {
   parseISO,
 } from "date-fns";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
-import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/utils";
+import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/workoutMath";
 import { generateFullPlan } from "@/lib/workoutGenerators";
 
 interface VolumeTrendChartProps {

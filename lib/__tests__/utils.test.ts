@@ -1,20 +1,20 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatPace,
-  getPaceForZone,
-  getZoneLabel,
   parseWorkoutZones,
-  getEstimatedDuration,
   parseWorkoutSegments,
+  extractFuelStatus,
+  extractNotes,
+  parseWorkoutStructure,
+} from "../descriptionParser";
+import { formatPace, getPaceForZone, getZoneLabel } from "../format";
+import {
+  getEstimatedDuration,
   estimateWorkoutDuration,
   estimateWorkoutDistance,
   estimateWorkoutDescriptionDistance,
   estimatePlanEventDistance,
   calculateWorkoutCarbs,
-  extractFuelStatus,
-  extractNotes,
-  parseWorkoutStructure,
-} from "../utils";
+} from "../workoutMath";
 import { FALLBACK_PACE_TABLE } from "../constants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
 

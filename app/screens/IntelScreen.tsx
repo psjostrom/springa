@@ -12,7 +12,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
-import type { CachedActivity } from "@/lib/settings";
+import type { CachedActivity } from "@/lib/bgCacheDb";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";

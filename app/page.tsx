@@ -1,6 +1,9 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useModalURL } from "./hooks/useModalURL";
+import { usePaceTable } from "./hooks/usePaceTable";
+import { useEnrichedEvents } from "./hooks/useEnrichedEvents";
 import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { ApiKeySetup } from "./components/ApiKeySetup";
@@ -16,9 +19,7 @@ import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { Settings, Play } from "lucide-react";
-import type { UserSettings, CachedActivity } from "@/lib/settings";
-import type { StreamData } from "@/lib/types";
-import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
+import type { UserSettings } from "@/lib/settings";
 import { resolveLayout, type WidgetLayout } from "@/lib/widgetRegistry";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
@@ -104,8 +105,7 @@ function HomeContent() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // BG graph popover
-  const [showBGGraph, setShowBGGraph] = useState(false);
-  const bgPushedRef = useRef(false);
+  const bgGraph = useModalURL("bg");
 
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
@@ -115,11 +115,7 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => {
-      setActiveTab(parseTab(window.location.search));
-      const params = new URLSearchParams(window.location.search);
-      if (!params.has("bg")) setShowBGGraph(false);
-    };
+    const onPopState = () => setActiveTab(parseTab(window.location.search));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -148,41 +144,10 @@ function HomeContent() {
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useBGModel(apiKey, true, sharedCalendar.events, readings);
 
   // Calibrated pace table from cached stream data
-  const paceTable = useMemo(() => {
-    const lthr = settings?.lthr;
-    if (!lthr || cachedActivities.length === 0) return undefined;
-    const allSegments = cachedActivities.flatMap((a) =>
-      a.pace && a.pace.length > 0 && a.hr.length > 0
-        ? extractZoneSegments(a.hr, a.pace, lthr, a.activityId, a.activityDate ?? "")
-        : [],
-    );
-    if (allSegments.length === 0) return undefined;
-    return toPaceTable(buildCalibratedPaceTable(allSegments));
-  }, [cachedActivities, settings?.lthr]);
+  const paceTable = usePaceTable(cachedActivities, settings?.lthr);
 
   // Enrich calendar events with cached stream data so graphs render on mount
-  const enrichedEvents = useMemo(() => {
-    if (cachedActivities.length === 0) return sharedCalendar.events;
-    const cacheMap = new Map<string, CachedActivity>(
-      cachedActivities.map((a) => [a.activityId, a]),
-    );
-    let changed = false;
-    const result = sharedCalendar.events.map((event) => {
-      if (event.type !== "completed" || event.streamData || !event.activityId) return event;
-      const cached = cacheMap.get(event.activityId);
-      if (!cached) return event;
-      const streamData: StreamData = {};
-      if (cached.glucose.length > 0) streamData.glucose = cached.glucose;
-      if (cached.hr.length > 0) streamData.heartrate = cached.hr;
-      if (cached.pace && cached.pace.length > 0) streamData.pace = cached.pace;
-      if (cached.cadence && cached.cadence.length > 0) streamData.cadence = cached.cadence;
-      if (cached.altitude && cached.altitude.length > 0) streamData.altitude = cached.altitude;
-      if (Object.keys(streamData).length === 0) return event;
-      changed = true;
-      return { ...event, streamData };
-    });
-    return changed ? result : sharedCalendar.events;
-  }, [sharedCalendar.events, cachedActivities]);
+  const enrichedEvents = useEnrichedEvents(sharedCalendar.events, cachedActivities);
 
   // Phase info for progress screen
   const raceDate = settings?.raceDate || "2026-06-13";
@@ -221,26 +186,8 @@ function HomeContent() {
     [],
   );
 
-  const openBGGraph = useCallback(() => {
-    setShowBGGraph(true);
-    const params = new URLSearchParams(window.location.search);
-    params.set("bg", "1");
-    window.history.pushState(null, "", `?${params.toString()}`);
-    bgPushedRef.current = true;
-  }, []);
-
-  const closeBGGraph = useCallback(() => {
-    setShowBGGraph(false);
-    if (bgPushedRef.current) {
-      bgPushedRef.current = false;
-      window.history.back();
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      params.delete("bg");
-      const query = params.toString();
-      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-    }
-  }, []);
+  const openBGGraph = bgGraph.open;
+  const closeBGGraph = bgGraph.close;
 
   // Find today's next planned workout and navigate to its modal
   const todaysNextPlanned = useMemo(() => {
@@ -387,7 +334,7 @@ function HomeContent() {
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
 
-      {showBGGraph && readings.length > 0 && (
+      {bgGraph.value != null && readings.length > 0 && (
         <BGGraphPopover
           readings={readings}
           trend={trend}

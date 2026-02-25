@@ -1,14 +1,10 @@
-import type {
-  HRZoneName,
-  PaceTable,
-  ZonePaceEntry,
-  CalendarEvent,
-  WorkoutEvent,
-} from "./types";
+import type { HRZoneName, PaceTable } from "./types";
 import { FALLBACK_PACE_TABLE, classifyZone } from "./constants";
 
+// --- PACE LOOKUP ---
+
 /** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
-function paceForIntensity(avgPercent: number, table?: PaceTable): number {
+export function paceForIntensity(avgPercent: number, table?: PaceTable): number {
   const fb = FALLBACK_PACE_TABLE;
   if (table) {
     if (avgPercent >= 95) return table.hard?.avgPace ?? fb.hard!.avgPace;
@@ -22,43 +18,7 @@ function paceForIntensity(avgPercent: number, table?: PaceTable): number {
   return fb.easy!.avgPace;
 }
 
-// --- ZONE LABELS ---
-
-const ZONE_LABELS: Record<HRZoneName, string> = {
-  easy: "Easy",
-  steady: "Race Pace",
-  tempo: "Interval",
-  hard: "Hard",
-};
-
-export function getZoneLabel(zone: HRZoneName): string {
-  return ZONE_LABELS[zone];
-}
-
-// --- PACE ---
-
-/** Format decimal pace (e.g. 6.15) as "6:09" */
-export function formatPace(paceMinPerKm: number): string {
-  const totalSeconds = Math.round(paceMinPerKm * 60);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-/** Returns data-driven entry or falls back to hardcoded values */
-export function getPaceForZone(
-  table: PaceTable,
-  zone: HRZoneName,
-): ZonePaceEntry {
-  return table[zone] ?? FALLBACK_PACE_TABLE[zone]!;
-}
-
-// --- HR ZONE CLASSIFICATION ---
-
-/** Classify avgHr into a zone name based on LTHR ratio (Garmin LTHR zones) */
-export function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
-  return classifyZone((avgHr / lthr) * 100);
-}
+// --- ZONE PARSING ---
 
 /**
  * Parse a workout description and return all distinct HR zones used,
@@ -81,7 +41,7 @@ export function parseWorkoutZones(description: string): HRZoneName[] {
   return order.filter((z) => zones.has(z));
 }
 
-// --- PRE-RUN CARD PARSING ---
+// --- FUEL EXTRACTION ---
 
 export interface FuelStatus {
   fuelRate: number | null;
@@ -95,6 +55,23 @@ export function extractFuelStatus(description: string): FuelStatus {
     totalCarbs: extractTotalCarbs(description),
   };
 }
+
+/** Extract fuel rate from description and convert to g/h (e.g., "FUEL PER 10: 10g" -> 60) */
+export function extractFuelRate(description: string): number | null {
+  const newMatch = description.match(/FUEL PER 10:\s*(\d+)g/i);
+  if (newMatch) return parseInt(newMatch[1], 10) * 6;
+
+  const oldMatch = description.match(/FUEL:\s*(\d+)g\/10m/i);
+  return oldMatch ? parseInt(oldMatch[1], 10) * 6 : null;
+}
+
+/** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
+export function extractTotalCarbs(description: string): number | null {
+  const match = description.match(/TOTAL:\s*(\d+)g/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+// --- NOTES EXTRACTION ---
 
 /** Extract notes/flavor text from between any header lines and the first section header. */
 export function extractNotes(description: string): string | null {
@@ -114,6 +91,16 @@ export function extractNotes(description: string): string | null {
   });
   return noteLines.length > 0 ? noteLines.join(" ") : null;
 }
+
+/** Extract the workout structure (everything from the first section header onward). */
+export function extractStructure(description: string): string {
+  if (!description) return "";
+  const firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
+  if (firstSectionIdx === -1) return "";
+  return description.slice(firstSectionIdx).trim();
+}
+
+// --- STRUCTURE PARSING ---
 
 export interface WorkoutStep {
   label?: string;         // "Uphill", "Downhill", or undefined
@@ -187,7 +174,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   return sections;
 }
 
-// --- WORKOUT DESCRIPTION PARSING ---
+// --- SEGMENT PARSING ---
 
 export interface WorkoutSegment {
   duration: number; // in minutes
@@ -272,198 +259,4 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   return segments;
-}
-
-// --- HELPER FUNCTIONS ---
-
-export const getEstimatedDuration = (event: WorkoutEvent): number => {
-  if (event.name.includes("Long")) {
-    const match = event.name.match(/(\d+)km/);
-    if (match) return parseInt(match[1], 10) * 6;
-  }
-  return 45;
-};
-
-export function estimateWorkoutDuration(description: string, paceTable?: PaceTable): { minutes: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description, paceTable);
-  if (segments.length === 0) return null;
-  const total = segments.reduce((sum, s) => sum + s.duration, 0);
-  if (total <= 0) return null;
-  const estimated = segments.some((s) => s.estimated);
-  return { minutes: Math.round(total), estimated };
-}
-
-/** Estimate total distance (km) from a workout description. Returns exact km for distance-based workouts, estimated for time-based. */
-export function estimateWorkoutDescriptionDistance(description: string, paceTable?: PaceTable): { km: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description, paceTable);
-  if (segments.length === 0) return null;
-  let totalKm = 0;
-  let hasTimeBasedSegment = false;
-  for (const seg of segments) {
-    if (seg.km != null) {
-      totalKm += seg.km;
-    } else {
-      hasTimeBasedSegment = true;
-      totalKm += seg.duration / paceForIntensity(seg.intensity, paceTable);
-    }
-  }
-  if (totalKm <= 0) return null;
-  return { km: Math.round(totalKm * 10) / 10, estimated: hasTimeBasedSegment };
-}
-
-export const formatStep = (
-  duration: string,
-  minPct: number,
-  maxPct: number,
-  lthr: number,
-  note?: string,
-): string => {
-  const minBpm = Math.floor(lthr * minPct);
-  const maxBpm = Math.ceil(lthr * maxPct);
-  const core = `${duration} ${Math.floor(minPct * 100)}-${Math.ceil(maxPct * 100)}% LTHR (${minBpm}-${maxBpm} bpm)`;
-  return note ? `${note} ${core}` : core;
-};
-
-export const calculateWorkoutCarbs = (
-  durationMinutes: number,
-  fuelRateGPerHour: number,
-): number => {
-  return Math.round((durationMinutes / 60) * fuelRateGPerHour);
-};
-
-export const createWorkoutText = (
-  warmup: string,
-  mainSteps: string[],
-  cooldown: string,
-  repeats: number = 1,
-  notes?: string,
-): string => {
-  const lines: string[] = [];
-
-  if (notes) {
-    lines.push(notes, "");
-  }
-
-  lines.push(
-    "Warmup",
-    `- ${warmup}`,
-    "",
-    repeats > 1 ? `Main set ${repeats}x` : "Main set",
-    ...mainSteps.map((s) => `- ${s}`),
-    "",
-    "Cooldown",
-    `- ${cooldown}`,
-    "",
-  );
-
-  return lines.join("\n");
-};
-
-// --- CALENDAR HELPERS ---
-// (Extracted from CalendarView.tsx)
-
-/** Extract fuel rate from description and convert to g/h (e.g., "FUEL PER 10: 10g" -> 60) */
-export const extractFuelRate = (description: string): number | null => {
-  const newMatch = description.match(/FUEL PER 10:\s*(\d+)g/i);
-  if (newMatch) return parseInt(newMatch[1], 10) * 6;
-
-  const oldMatch = description.match(/FUEL:\s*(\d+)g\/10m/i);
-  return oldMatch ? parseInt(oldMatch[1], 10) * 6 : null;
-};
-
-/** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
-export const extractTotalCarbs = (description: string): number | null => {
-  const match = description.match(/TOTAL:\s*(\d+)g/i);
-  return match ? parseInt(match[1], 10) : null;
-};
-
-// --- GLUCOSE CONVERSION ---
-
-/** Smart glucose conversion: converts mg/dL to mmol/L only when needed */
-export function convertGlucoseToMmol(values: number[]): number[] {
-  if (values.length === 0) return values;
-
-  const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
-  const maxValue = Math.max(...values);
-
-  const needsConversion = avgValue > 15 || maxValue > 20;
-
-  if (needsConversion) {
-    return values.map((v) => v / 18.018);
-  }
-  return values;
-}
-
-// --- DISTANCE ESTIMATION ---
-
-export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable): number {
-  if (event.distance) {
-    return event.distance / 1000;
-  }
-  const kmMatch = event.name.match(/\((\d+)km\)/);
-  if (kmMatch) return parseInt(kmMatch[1], 10);
-
-  const pace = event.category === "interval"
-    ? paceForIntensity(90, paceTable)
-    : paceForIntensity(70, paceTable);
-
-  const parsed = estimateWorkoutDuration(event.description, paceTable);
-  if (parsed) return parsed.minutes / pace;
-
-  if (event.duration) return event.duration / 60 / pace;
-
-  return 0;
-}
-
-/** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
-export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable): number {
-  const kmMatch = event.name.match(/\((\d+)km\)/);
-  if (kmMatch) return parseInt(kmMatch[1], 10);
-
-  const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
-  const pace = paceForIntensity(isInterval ? 90 : 70, paceTable);
-  const parsed = estimateWorkoutDuration(event.description, paceTable);
-  if (parsed) return parsed.minutes / pace;
-  return 0;
-}
-
-// --- ID PARSING ---
-
-/** Extract numeric event ID from prefixed string (e.g. "event-1002" → 1002). Returns NaN for non-event IDs. */
-export function parseEventId(id: string): number {
-  return parseInt(id.replace("event-", ""), 10);
-}
-
-// --- DURATION FORMATTING ---
-
-/** Format seconds as "Xh Ym" or "Ym". */
-export function formatDuration(seconds: number): string {
-  const totalMins = Math.floor(seconds / 60);
-  const hours = Math.floor(totalMins / 60);
-  const mins = totalMins % 60;
-  if (hours > 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  return `${mins}m`;
-}
-
-// --- WORKOUT CATEGORIZATION ---
-
-export function getWorkoutCategory(
-  name: string,
-): "long" | "interval" | "easy" | "other" {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("long")) return "long";
-  if (
-    lowerName.includes("interval") ||
-    lowerName.includes("hills") ||
-    lowerName.includes("tempo") ||
-    lowerName.includes("race pace")
-  )
-    return "interval";
-  if (
-    lowerName.includes("easy") ||
-    lowerName.includes("bonus") ||
-    lowerName.includes("strides")
-  )
-    return "easy";
-  return "other";
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { lookupXdripUser, saveRunFeedback, sha1 } from "@/lib/settings";
+import { lookupXdripUser, sha1 } from "@/lib/xdripDb";
+import { saveRunFeedback } from "@/lib/feedbackDb";
 import { sendPushToUser } from "@/lib/push";
 
 export async function POST(req: Request) {

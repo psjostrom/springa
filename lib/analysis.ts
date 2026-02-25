@@ -1,8 +1,11 @@
 import { addDays, format } from "date-fns";
 import type { AnalysisResult, IntervalsActivity, IntervalsEvent } from "./types";
 import { API_BASE } from "./constants";
-import { convertGlucoseToMmol, getWorkoutCategory, extractFuelRate } from "./utils";
+import { convertGlucoseToMmol } from "./bgModel";
+import { getWorkoutCategory } from "./constants";
+import { extractFuelRate } from "./descriptionParser";
 import { fetchStreams, authHeader } from "./intervalsApi";
+import { extractRawStreams } from "./streams";
 
 async function analyzeRun(
   run: IntervalsActivity,
@@ -14,15 +17,7 @@ async function analyzeRun(
   plotData: { time: number; glucose: number }[];
 }> {
   const streams = await fetchStreams(run.id, apiKey);
-  let tData: number[] = [];
-  let gData: number[] = [];
-
-  for (const s of streams) {
-    if (s.type === "time") tData = s.data;
-    if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
-      gData = s.data;
-    }
-  }
+  const { time: tData, glucose: gData } = extractRawStreams(streams);
 
   let plotData: { time: number; glucose: number }[] = [];
   let trend = 0.0;

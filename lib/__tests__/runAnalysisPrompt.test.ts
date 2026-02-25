@@ -216,7 +216,7 @@ describe("buildRunAnalysisPrompt", () => {
     const { user: long } = buildRunAnalysisPrompt({
       event: makeEvent({ duration: 5400 }),
     });
-    expect(long).toContain("Duration: 1h30m");
+    expect(long).toContain("Duration: 1h 30m");
 
     const { user: exactHour } = buildRunAnalysisPrompt({
       event: makeEvent({ duration: 3600 }),

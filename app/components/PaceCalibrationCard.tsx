@@ -5,7 +5,7 @@ import type { HRZoneName } from "@/lib/types";
 import type { CalibratedPaceTable } from "@/lib/paceCalibration";
 import { computeZonePaceTrend } from "@/lib/paceCalibration";
 import { ZONE_COLORS } from "@/lib/constants";
-import { formatPace } from "@/lib/utils";
+import { formatPace } from "@/lib/format";
 
 interface PaceCalibrationCardProps {
   calibration: CalibratedPaceTable;

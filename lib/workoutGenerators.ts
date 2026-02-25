@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, HR_ZONE_BANDS } from "./constants";
-import { formatStep, createWorkoutText } from "./utils";
+import { formatStep, createWorkoutText } from "./descriptionBuilder";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 const WALK_ZONE = { min: 0.50, max: 0.66 };

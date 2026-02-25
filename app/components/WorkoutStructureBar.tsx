@@ -1,5 +1,5 @@
 import { getZoneColor } from "@/lib/constants";
-import { parseWorkoutSegments } from "@/lib/utils";
+import { parseWorkoutSegments } from "@/lib/descriptionParser";
 
 interface WorkoutStructureBarProps {
   description: string;

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  parseDescription,
   assembleDescription,
   adaptFuelRate,
   shouldSwapToEasy,
   reconstructExternalId,
   applyAdaptations,
 } from "../adaptPlan";
+import { extractNotes, extractStructure } from "../descriptionParser";
 import type { FitnessInsights } from "../fitness";
 import type { CalendarEvent } from "../types";
 import type { BGResponseModel, TargetFuelResult } from "../bgModel";
@@ -75,44 +75,39 @@ function makeBGModel(targets: TargetFuelResult[] = []): BGResponseModel {
 
 // --- Tests ---
 
-describe("parseDescription", () => {
-  it("splits notes and structure at Warmup boundary", () => {
+describe("extractStructure", () => {
+  it("extracts structure starting at Warmup", () => {
     const desc = "Speed session\nPUMP OFF - FUEL PER 10: 5g\n\nWarmup\n- 10m easy\n\nMain set\n- 6x 2m fast";
-    const result = parseDescription(desc);
+    const structure = extractStructure(desc);
 
-    expect(result.notes).toBe("Speed session");
-    expect(result.structure).toContain("Warmup");
-    expect(result.structure).toContain("Main set");
+    expect(structure).toContain("Warmup");
+    expect(structure).toContain("Main set");
+    expect(structure).not.toContain("Speed session");
   });
 
-  it("filters FUEL and PUMP lines from notes", () => {
-    const desc = "Trail run\nFUEL PER 10: 10g TOTAL: 75g\nPUMP OFF\n(Trail)\n\nWarmup\n- 10m easy";
-    const result = parseDescription(desc);
-
-    expect(result.notes).toBe("Trail run");
-    expect(result.notes).not.toContain("FUEL");
-    expect(result.notes).not.toContain("PUMP");
-    expect(result.notes).not.toContain("(Trail)");
-  });
-
-  it("returns full text as notes when no Warmup section", () => {
-    const desc = "Just a note with no structure";
-    const result = parseDescription(desc);
-
-    expect(result.notes).toBe("Just a note with no structure");
-    expect(result.structure).toBe("");
+  it("returns empty when no Warmup section", () => {
+    expect(extractStructure("Just a note with no structure")).toBe("");
   });
 
   it("handles empty description", () => {
-    const result = parseDescription("");
-    expect(result.notes).toBe("");
-    expect(result.structure).toBe("");
+    expect(extractStructure("")).toBe("");
+  });
+});
+
+describe("extractNotes (description splitting)", () => {
+  it("extracts notes filtering FUEL/PUMP lines", () => {
+    const desc = "Trail run\nFUEL PER 10: 10g TOTAL: 75g\nPUMP OFF\n(Trail)\n\nWarmup\n- 10m easy";
+    const notes = extractNotes(desc);
+
+    expect(notes).toBe("Trail run");
   });
 
-  it("preserves multi-line notes", () => {
-    const desc = "Line 1\nLine 2\n\nWarmup\n- 10m";
-    const result = parseDescription(desc);
-    expect(result.notes).toBe("Line 1\nLine 2");
+  it("returns null when no Warmup section", () => {
+    expect(extractNotes("Just a note with no structure")).toBeNull();
+  });
+
+  it("handles empty description", () => {
+    expect(extractNotes("")).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { getPushSubscriptions, deletePushSubscription } from "./settings";
+import { getPushSubscriptions, deletePushSubscription } from "./pushDb";
 
 webpush.setVapidDetails(
   "mailto:push@springa.vercel.app",

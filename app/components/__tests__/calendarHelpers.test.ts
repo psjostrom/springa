@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractFuelRate,
   extractTotalCarbs,
-} from "@/lib/utils";
+} from "@/lib/descriptionParser";
 
 describe("extractFuelRate", () => {
   it("extracts fuel rate from new format (returns g/h)", () => {

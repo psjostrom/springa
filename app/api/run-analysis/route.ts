@@ -5,7 +5,7 @@ import {
   getRunAnalysis,
   saveRunAnalysis,
   getRecentRunSummaries,
-} from "@/lib/settings";
+} from "@/lib/runAnalysisDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";

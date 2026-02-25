@@ -4,7 +4,7 @@ import {
   getXdripReadings,
   saveXdripReadings,
   monthKey,
-} from "@/lib/settings";
+} from "@/lib/xdripDb";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/xdrip";
 
 export async function POST(req: Request) {
