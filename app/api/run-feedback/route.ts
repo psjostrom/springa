@@ -9,7 +9,7 @@ async function computePrescribedCarbs(apiKey: string, durationMs: number, runDat
   try {
     const res = await fetch(
       `${API_BASE}/athlete/0/events?oldest=${dateStr}T00:00:00&newest=${dateStr}T23:59:59`,
-      { headers: { Authorization: "Basic " + btoa("API_KEY:" + apiKey) } },
+      { headers: { Authorization: "Basic " + Buffer.from("API_KEY:" + apiKey).toString("base64") } },
     );
     if (!res.ok) return null;
     const events = await res.json();
