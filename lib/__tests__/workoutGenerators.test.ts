@@ -95,6 +95,42 @@ describe("generatePlan", () => {
     }
   });
 
+  it("includes Garmin intensity= tags on all step lines", () => {
+    const plan = generateFull();
+    for (const event of plan) {
+      if (event.name.includes("RACE DAY")) continue;
+      const stepLines = event.description.split("\n").filter((l: string) => l.startsWith("- "));
+      expect(stepLines.length).toBeGreaterThan(0);
+      for (const line of stepLines) {
+        expect(line).toMatch(/intensity=(warmup|active|recovery|cooldown)$/);
+      }
+    }
+  });
+
+  it("maps intensity tags correctly for hills workout", () => {
+    const plan = generateFull();
+    const hills = plan.find((e) => e.name.includes("Hills"));
+    expect(hills).toBeDefined();
+    const steps = hills!.description.split("\n").filter((l: string) => l.startsWith("- "));
+    // Warmup → warmup, Uphill → active, Downhill → recovery, Cooldown → cooldown
+    expect(steps[0]).toContain("intensity=warmup");
+    expect(steps[1]).toContain("intensity=active");
+    expect(steps[2]).toContain("intensity=recovery");
+    expect(steps[steps.length - 1]).toContain("intensity=cooldown");
+  });
+
+  it("maps intensity tags correctly for short intervals workout", () => {
+    const plan = generateFull();
+    const intervals = plan.find((e) => e.name.includes("Short Intervals"));
+    expect(intervals).toBeDefined();
+    const steps = intervals!.description.split("\n").filter((l: string) => l.startsWith("- "));
+    // Warmup → warmup, Fast → active, Walk → recovery, Cooldown → cooldown
+    expect(steps[0]).toContain("intensity=warmup");
+    expect(steps[1]).toContain("intensity=active");
+    expect(steps[2]).toContain("intensity=recovery");
+    expect(steps[steps.length - 1]).toContain("intensity=cooldown");
+  });
+
   it("rotates speed session types", () => {
     const plan = generate();
     const speedSessions = plan

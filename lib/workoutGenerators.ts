@@ -14,12 +14,22 @@ import { formatStep, createWorkoutText } from "./utils";
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 const WALK_ZONE = { min: 0.50, max: 0.66 };
 
+/** Derive Garmin step intensity from the step's note and zone.
+ *  Controls what the watch voices: "Warm Up", "Run", "Recovery", "Cooldown". */
+function garminIntensity(zone: ZoneName | "walk", note?: string): string {
+  if (note === "Warmup") return "warmup";
+  if (note === "Cooldown") return "cooldown";
+  if (zone === "walk" || note === "Downhill") return "recovery";
+  return "active";
+}
+
 /** Create zone-aware step helper that captures ctx. */
 function makeStep(ctx: PlanContext) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    if (zone === "walk") return formatStep(duration, WALK_ZONE.min, WALK_ZONE.max, ctx.lthr, note ?? "Walk");
-    const z = HR_ZONE_BANDS[zone];
-    return formatStep(duration, z.min, z.max, ctx.lthr, note);
+    const step = zone === "walk"
+      ? formatStep(duration, WALK_ZONE.min, WALK_ZONE.max, ctx.lthr, note ?? "Walk")
+      : formatStep(duration, HR_ZONE_BANDS[zone].min, HR_ZONE_BANDS[zone].max, ctx.lthr, note);
+    return `${step} intensity=${garminIntensity(zone, note)}`;
   };
 }
 
