@@ -42,6 +42,7 @@ export async function GET(req: Request) {
 
   // Compute prescribed carbs from the planned event's carbs_per_hour
   let prescribedCarbsG: number | null = null;
+  let _debug: string | null = null;
   try {
     if (feedback.duration != null) {
       const settings = await getUserSettings(session.user.email);
@@ -51,13 +52,18 @@ export async function GET(req: Request) {
           feedback.duration,
           new Date(Number(ts)),
         );
+        _debug = `key=${settings.intervalsApiKey.slice(0, 4)}... dur=${feedback.duration} date=${new Date(Number(ts)).toISOString()} result=${prescribedCarbsG}`;
+      } else {
+        _debug = "no api key in settings";
       }
+    } else {
+      _debug = `duration is ${feedback.duration}`;
     }
-  } catch {
-    // Non-critical — just skip prescribed carbs
+  } catch (e) {
+    _debug = `error: ${e instanceof Error ? e.message : String(e)}`;
   }
 
-  return NextResponse.json({ ...feedback, prescribedCarbsG });
+  return NextResponse.json({ ...feedback, prescribedCarbsG, _debug });
 }
 
 export async function POST(req: Request) {
