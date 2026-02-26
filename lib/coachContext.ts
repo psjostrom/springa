@@ -4,6 +4,7 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
+import type { RunFeedbackRecord } from "./feedbackDb";
 import { formatPace } from "./format";
 
 interface CoachContext {
@@ -18,6 +19,7 @@ interface CoachContext {
   lastUpdate?: Date | null;
   readings?: XdripReading[];
   runBGContexts?: Map<string, RunBGContext>;
+  recentFeedback?: RunFeedbackRecord[];
 }
 
 function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
@@ -45,12 +47,13 @@ function summarizeCompletedWorkouts(
   events: CalendarEvent[],
   bgModel: BGResponseModel | null,
   runBGContexts?: Map<string, RunBGContext>,
+  feedbackByActivity?: Map<string, RunFeedbackRecord>,
 ): string {
-  const today = startOfDay(new Date());
-  const cutoff = subDays(today, 14);
+  const now = new Date();
+  const cutoff = subDays(startOfDay(now), 14);
 
   const completed = events
-    .filter((e) => e.type === "completed" && e.date >= cutoff && e.date <= today)
+    .filter((e) => e.type === "completed" && e.date >= cutoff && e.date <= now)
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .slice(0, 10);
 
@@ -86,9 +89,19 @@ function summarizeCompletedWorkouts(
         parts.push(`entry: ${slopeSign}${ctx.pre.entrySlope30m.toFixed(1)}/10m (${classifyEntryLabel(ctx.pre.entrySlope30m, ctx.pre.entryStability)})`);
       }
       if (ctx?.post) {
-        let recoveryText = `recovery 30m: ${ctx.post.recoveryDrop30m >= 0 ? "+" : ""}${ctx.post.recoveryDrop30m.toFixed(1)}, nadir ${ctx.post.nadirPostRun.toFixed(1)}`;
+        let recoveryText = `recovery 30m: ${ctx.post.recoveryDrop30m >= 0 ? "+" : ""}${ctx.post.recoveryDrop30m.toFixed(1)}, lowest post-run ${ctx.post.nadirPostRun.toFixed(1)}`;
         if (ctx.post.postRunHypo) recoveryText += " HYPO!";
         parts.push(recoveryText);
+      }
+
+      // Append runner feedback
+      const fb = feedbackByActivity?.get(actId);
+      if (fb) {
+        const fbParts: string[] = [];
+        if (fb.rating) fbParts.push(fb.rating);
+        if (fb.carbsG != null) fbParts.push(`${fb.carbsG}g reported`);
+        if (fb.comment) fbParts.push(`"${fb.comment}"`);
+        if (fbParts.length > 0) parts.push(`feedback: ${fbParts.join(", ")}`);
       }
 
       return `- ${parts.join(" | ")}`;
@@ -141,10 +154,38 @@ export function summarizeRecoveryPatterns(
     const avgDrop = entry.drops.reduce((a, b) => a + b, 0) / entry.drops.length;
     const avgNadir = entry.nadirs.reduce((a, b) => a + b, 0) / entry.nadirs.length;
     lines.push(
-      `- ${cat}: avg 30m recovery ${avgDrop >= 0 ? "+" : ""}${avgDrop.toFixed(1)} mmol/L, avg nadir ${avgNadir.toFixed(1)}, ${entry.hypos}/${entry.total} post-hypos${entry.hypos > 0 ? " (!)" : ""}`,
+      `- ${cat}: avg 30m recovery ${avgDrop >= 0 ? "+" : ""}${avgDrop.toFixed(1)} mmol/L, avg lowest post-run ${avgNadir.toFixed(1)}, ${entry.hypos}/${entry.total} post-hypos${entry.hypos > 0 ? " (!)" : ""}`,
     );
   }
 
+  return lines.join("\n");
+}
+
+function summarizeUnmatchedFeedback(
+  events: CalendarEvent[],
+  recentFeedback?: RunFeedbackRecord[],
+): string {
+  if (!recentFeedback || recentFeedback.length === 0) return "";
+
+  const completedActivityIds = new Set(
+    events.filter((e) => e.type === "completed").map((e) => e.activityId ?? e.id.replace("activity-", "")),
+  );
+
+  const unmatched = recentFeedback.filter(
+    (fb) => fb.activityId && !completedActivityIds.has(fb.activityId),
+  );
+
+  if (unmatched.length === 0) return "";
+
+  const lines = ["\n## Other recent run feedback"];
+  for (const fb of unmatched) {
+    const date = new Date(fb.createdAt).toISOString().split("T")[0];
+    const parts = [date];
+    if (fb.rating) parts.push(fb.rating);
+    if (fb.carbsG != null) parts.push(`${fb.carbsG}g carbs`);
+    if (fb.comment) parts.push(`"${fb.comment}"`);
+    lines.push(`- ${parts.join(", ")}`);
+  }
   return lines.join("\n");
 }
 
@@ -273,6 +314,10 @@ function summarizeFitness(insights: FitnessInsights | null): string {
 export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
+  const feedbackMap = ctx.recentFeedback
+    ? new Map(ctx.recentFeedback.filter((fb) => fb.activityId).map((fb) => [fb.activityId!, fb]))
+    : undefined;
+
   const recoverySection = ctx.runBGContexts && ctx.runBGContexts.size > 0
     ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
     : "";
@@ -305,8 +350,8 @@ ${summarizeLiveBG(ctx)}
 ${summarizeBGModel(ctx.bgModel)}${recoverySection}
 
 ## Recent Completed Workouts (last 14 days)
-${summarizeCompletedWorkouts(ctx.events, ctx.bgModel, ctx.runBGContexts)}
-
+${summarizeCompletedWorkouts(ctx.events, ctx.bgModel, ctx.runBGContexts, feedbackMap)}
+${summarizeUnmatchedFeedback(ctx.events, ctx.recentFeedback)}
 ## Upcoming Planned Workouts (next 14 days)
 ${summarizeUpcomingWorkouts(ctx.events)}
 

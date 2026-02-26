@@ -70,27 +70,56 @@ export async function updateRunFeedback(
   rating: string,
   comment?: string,
   carbsG?: number,
+  activityId?: string,
 ): Promise<void> {
   await migrateFeedbackSchema();
   await db().execute({
-    sql: "UPDATE run_feedback SET rating = ?, comment = ?, carbs_g = ? WHERE email = ? AND created_at = ?",
-    args: [rating, comment ?? null, carbsG ?? null, email, createdAt],
+    sql: "UPDATE run_feedback SET rating = ?, comment = ?, carbs_g = ?, activity_id = COALESCE(?, activity_id) WHERE email = ? AND created_at = ?",
+    args: [rating, comment ?? null, carbsG ?? null, activityId ?? null, email, createdAt],
   });
 }
 
-/** Fetch recent rated feedback for the adapt prompt. */
+/** Fetch feedback for a specific activity. */
+export async function getRunFeedbackByActivity(
+  email: string,
+  activityId: string,
+): Promise<RunFeedbackRecord | null> {
+  await migrateFeedbackSchema();
+  const result = await db().execute({
+    sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g FROM run_feedback WHERE email = ? AND activity_id = ?",
+    args: [email, activityId],
+  });
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  return {
+    email: row.email as string,
+    createdAt: row.created_at as number,
+    activityId: row.activity_id as string | undefined,
+    rating: row.rating as string | undefined,
+    comment: row.comment as string | undefined,
+    distance: row.distance as number | undefined,
+    duration: row.duration as number | undefined,
+    avgHr: row.avg_hr as number | undefined,
+    carbsG: row.carbs_g as number | undefined,
+  };
+}
+
+/** Fetch recent rated feedback for AI consumers. */
 export async function getRecentFeedback(
   email: string,
-  limit: number = 10,
+  sinceDays: number = 14,
+  limit: number = 20,
 ): Promise<RunFeedbackRecord[]> {
   await migrateFeedbackSchema();
+  const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
   const result = await db().execute({
     sql: `SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g
           FROM run_feedback
           WHERE email = ? AND rating IS NOT NULL AND rating != 'skipped'
+            AND created_at >= ?
           ORDER BY created_at DESC
           LIMIT ?`,
-    args: [email, limit],
+    args: [email, cutoff, limit],
   });
   return result.rows.map((row) => ({
     email: row.email as string,

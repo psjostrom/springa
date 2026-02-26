@@ -36,7 +36,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const recentFeedback = await getRecentFeedback(session.user.email);
+  const feedbackList = await getRecentFeedback(session.user.email);
+  const feedbackByActivity = new Map(
+    feedbackList
+      .filter((fb) => fb.activityId)
+      .map((fb) => [fb.activityId!, fb]),
+  );
 
   const body = (await req.json()) as RequestBody;
   const {
@@ -87,7 +92,7 @@ export async function POST(req: Request) {
           insights,
           runBGContexts,
           lthr,
-          recentFeedback,
+          feedbackByActivity,
         });
 
         try {

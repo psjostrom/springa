@@ -12,7 +12,7 @@ interface PromptInput {
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
-  recentFeedback?: RunFeedbackRecord[];
+  feedbackByActivity?: Map<string, RunFeedbackRecord>;
 }
 
 /**
@@ -22,7 +22,7 @@ export function buildAdaptNotePrompt(input: PromptInput): {
   system: string;
   user: string;
 } {
-  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, recentFeedback } =
+  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, feedbackByActivity } =
     input;
 
   const system = `You are Coach — writing pre-workout notes for an experienced T1D runner (pump OFF, LTHR ${lthr}). Write in first person ("I've bumped your fuel…"). Never say "BG model", "the system", or "the data."
@@ -40,9 +40,9 @@ Rules:
 - LTHR is the **absolute ceiling**, not a target. Long intervals are tempo (zone 3–4), typically 10–20 bpm below LTHR. Never tell the runner to "keep HR under LTHR" for intervals — give a specific target range based on the workout type and recent HR data.
 - Cite specific BG values, dates, paces, and HR from the data. These make the note useful.
 - Never echo model internals: no sample counts, no window counts, no fitness/load numbers, no drop rates as raw stats.
-- Fuel adjustments go both ways: increase if BG drops too fast, decrease if BG runs high.
+- Fuel adjustments go both ways: increase if BG drops too fast, decrease if BG runs high. NEVER frame a fuel decrease as a response to a BG crash or bad run — that's backwards. If recent feedback reports a crash, the note should either justify increasing fuel or explain why the current rate is being held despite the crash (e.g. different category, different conditions).
 - Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
-- If recent feedback mentions a hypo or bad run, connect it to what's different this time.
+- If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
 - If the workout was swapped to easy, explain why.
 - Only state distances and durations that appear in the data below. Never guess or infer distances from workout names.`;
 
@@ -74,6 +74,7 @@ Rules:
 
   // 2. Recent same-category runs
   const recentRuns = recentSameCategory.slice(0, 5);
+  const shownFeedbackIds = new Set<string>();
   if (recentRuns.length > 0) {
     lines.push("");
     lines.push(`## Recent ${adapted.category} runs`);
@@ -95,7 +96,32 @@ Rules:
       if (run.distance) parts.push(`${(run.distance / 1000).toFixed(1)}km`);
       if (run.avgHr) parts.push(`HR ${run.avgHr}`);
       if (run.fuelRate != null) parts.push(`fuel ${Math.round(run.fuelRate)}g/h`);
+      const fb = run.activityId ? feedbackByActivity?.get(run.activityId) : undefined;
+      if (fb) {
+        if (fb.rating) parts.push(`rating: ${fb.rating}`);
+        if (fb.carbsG != null) parts.push(`reported carbs: ${fb.carbsG}g`);
+        if (fb.comment) parts.push(`"${fb.comment}"`);
+        if (run.activityId) shownFeedbackIds.add(run.activityId);
+      }
       lines.push(`- ${parts.join(", ")}`);
+    }
+  }
+
+  // 2b. Cross-category feedback not shown inline above
+  if (feedbackByActivity && feedbackByActivity.size > 0) {
+    const remaining = [...feedbackByActivity.entries()]
+      .filter(([id]) => !shownFeedbackIds.has(id));
+    if (remaining.length > 0) {
+      lines.push("");
+      lines.push("## Other recent run feedback");
+      for (const [, fb] of remaining) {
+        const date = new Date(fb.createdAt).toISOString().split("T")[0];
+        const parts = [date];
+        if (fb.rating) parts.push(fb.rating);
+        if (fb.carbsG != null) parts.push(`${fb.carbsG}g carbs`);
+        if (fb.comment) parts.push(`"${fb.comment}"`);
+        lines.push(`- ${parts.join(", ")}`);
+      }
     }
   }
 
@@ -149,20 +175,6 @@ Rules:
       lines.push(
         `Went hypo after: ${hypoCount} of ${categoryContexts.length} runs`,
       );
-    }
-  }
-
-  // 6. Recent run feedback
-  if (recentFeedback && recentFeedback.length > 0) {
-    lines.push("");
-    lines.push("## Recent run feedback");
-    for (const fb of recentFeedback) {
-      const date = new Date(fb.createdAt).toISOString().split("T")[0];
-      const emoji = fb.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E";
-      const parts = [`${date}: ${emoji}`];
-      if (fb.carbsG != null) parts.push(`${fb.carbsG}g carbs`);
-      if (fb.comment) parts.push(`"${fb.comment}"`);
-      lines.push(`- ${parts.join(" ")}`);
     }
   }
 

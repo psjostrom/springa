@@ -4,6 +4,7 @@ import type { CalendarEvent } from "../types";
 import type { BGResponseModel, BGObservation } from "../bgModel";
 import type { FitnessInsights } from "../fitness";
 import type { RunBGContext } from "../runBGContext";
+import type { RunFeedbackRecord } from "../feedbackDb";
 
 // --- Helpers ---
 
@@ -504,7 +505,7 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("entry: -0.3/10m (stable)");
-    expect(prompt).toContain("recovery 30m: -1.5, nadir 4.8");
+    expect(prompt).toContain("recovery 30m: -1.5, lowest post-run 4.8");
   });
 
   it("appends HYPO! flag when post-run hypo", () => {
@@ -578,8 +579,8 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("## Post-Run Recovery Patterns");
-    expect(prompt).toContain("easy: avg 30m recovery -0.5 mmol/L, avg nadir 5.8, 0/1 post-hypos");
-    expect(prompt).toContain("long: avg 30m recovery -1.8 mmol/L, avg nadir 4.2, 1/1 post-hypos (!)");
+    expect(prompt).toContain("easy: avg 30m recovery -0.5 mmol/L, avg lowest post-run 5.8, 0/1 post-hypos");
+    expect(prompt).toContain("long: avg 30m recovery -1.8 mmol/L, avg lowest post-run 4.2, 1/1 post-hypos (!)");
   });
 
   it("omits recovery section when runBGContexts is undefined", () => {
@@ -619,8 +620,8 @@ describe("summarizeRecoveryPatterns", () => {
     const result = summarizeRecoveryPatterns(contexts);
     // avg drop: (-0.4 + -0.6) / 2 = -0.5
     expect(result).toContain("avg 30m recovery -0.5 mmol/L");
-    // avg nadir: (6.0 + 5.0) / 2 = 5.5
-    expect(result).toContain("avg nadir 5.5");
+    // avg lowest post-run: (6.0 + 5.0) / 2 = 5.5
+    expect(result).toContain("avg lowest post-run 5.5");
   });
 
   it("shows hypo counts as fraction", () => {
@@ -646,5 +647,94 @@ describe("summarizeRecoveryPatterns", () => {
 
     const result = summarizeRecoveryPatterns(contexts);
     expect(result).toBe("No post-run recovery data available yet.");
+  });
+});
+
+// --- Feedback in completed workouts ---
+
+describe("buildSystemPrompt with feedback", () => {
+  it("includes feedback rating and comment inline with completed workout", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
+    ];
+
+    const recentFeedback: RunFeedbackRecord[] = [
+      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run1", rating: "bad", comment: "BG crashed hard" },
+    ];
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+      recentFeedback,
+    });
+
+    expect(prompt).toContain("feedback: bad");
+    expect(prompt).toContain('"BG crashed hard"');
+  });
+
+  it("includes feedback carbs inline with completed workout", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
+    ];
+
+    const recentFeedback: RunFeedbackRecord[] = [
+      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run1", rating: "good", carbsG: 45 },
+    ];
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+      recentFeedback,
+    });
+
+    expect(prompt).toContain("feedback: good, 45g reported");
+  });
+
+  it("shows unmatched feedback in separate section", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
+    ];
+
+    const recentFeedback: RunFeedbackRecord[] = [
+      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run999", rating: "bad", comment: "BG crashed" },
+    ];
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+      recentFeedback,
+    });
+
+    // Not inline with the run (different activityId)
+    expect(prompt).not.toContain("feedback:");
+    // But shown in "Other recent run feedback"
+    expect(prompt).toContain("Other recent run feedback");
+    expect(prompt).toContain("BG crashed");
+  });
+
+  it("works without feedback (undefined)", () => {
+    const yesterday = new Date("2026-02-18T10:00:00Z");
+    const events: CalendarEvent[] = [
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
+    ];
+
+    const prompt = buildSystemPrompt({
+      phaseInfo: basePhaseInfo,
+      insights: null,
+      bgModel: null,
+      events,
+    });
+
+    expect(prompt).not.toContain("feedback:");
+    expect(prompt).toContain("Easy Run eco16");
   });
 });

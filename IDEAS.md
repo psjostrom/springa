@@ -2,6 +2,30 @@
 
 ## Next
 
+### AI Data Audit
+
+Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. Nobody has a clear map of what each consumer receives, what it's missing, and where the gaps create bad advice. The "BG crashed → trim fuel" incident happened because the adapt prompt had feedback but lacked cross-category visibility. The coach gave a BG-only response because it had no HR zones, no workout structure, no planned-vs-actual comparison.
+
+**Deliverable:** A matrix — rows are data dimensions (HR zones, workout structure, feedback, BG streams, recovery patterns, fitness load, pace splits, planned fuel, etc.), columns are AI consumers (adapt-plan, coach, run-analysis). Each cell: present / absent / partial. Then prioritize filling the gaps that cause the worst advice.
+
+### Rich Workout Context for Coach AI
+
+The coach summary line per completed workout is skeletal: date, name, distance, avg pace, avg HR, load, carbs. It drops most of what `CalendarEvent` actually carries: category, duration, HR zone breakdown, planned workout structure (description), planned fuel rate, cadence, max HR. The AI has no idea whether you nailed the intervals or drifted, how much time you spent in each zone, or what the workout was even supposed to be.
+
+**What's missing and why it matters:**
+
+- **HR zone breakdown (`hrZones`)** — "42min in Z2, 12min in Z4" tells a completely different story than "avg HR 144." For intervals, the AI can't assess execution quality without knowing time-in-zone per rep vs recovery.
+- **Category** — the coach doesn't know if a run was easy/long/interval. It infers from the name, which is fragile.
+- **Workout description** — the prescribed structure (warmup → 4×5min at tempo → cooldown). Without this, the AI can't compare planned vs actual.
+- **Duration** — total time matters for fuel assessment and training load context.
+- **Planned fuel rate** — planned vs actual carbs comparison requires knowing what was prescribed.
+- **Cadence, max HR** — secondary but useful for form and effort ceiling analysis.
+
+**Design considerations:**
+
+- Token budget: HR zone breakdowns and descriptions add significant prompt length. For 10 completed workouts, this could add 2-3K tokens. May need to show full detail for the last 3-5 runs and compact summaries for older ones.
+- The adapt prompt already gets richer per-run context (BG patterns, recovery, entry slopes). The coach should match or exceed that level of detail since the coach is the general-purpose AI consumer.
+
 ### Readiness-Adaptive Training
 
 Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score, readiness, SpO2) and use it to modulate training intensity. Intervals.icu syncs this from Garmin Connect automatically — the data is already there.
@@ -20,6 +44,20 @@ Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score
 - Coach AI receives wellness context for richer advice.
 
 **API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily wellness records with `hrvRMSSD`, `restingHR`, `sleepScore`, `readiness`, `spO2`.
+
+### Feedback-Aware Fuel Adaptation
+
+`applyAdaptations` sets fuel rates purely from the BG model's statistical target — observed drop rates, historical fuel, regression/extrapolation. It has no concept of how the runner *felt*. A "bad" rating with "BG crashed, needed an extra gel" doesn't move the needle because the rule-based system never sees feedback.
+
+This creates a disconnect: the runner reports a crash, triggers adapt, and watches fuel go *down* because the model's cross-run average says the category is fine. The AI narrates it, making it worse — it references the crash and then explains a decrease, which reads as tone-deaf even when the model is technically correct for that category.
+
+**Problem:** Fuel adaptation is statistically-driven but experientially-blind. The BG model answers "what does the average run look like?" but not "what just happened and how should we react?" Recent feedback — especially negative feedback — should act as a short-term override or bias on the target fuel rate, not just context for the AI narrator.
+
+**Design questions:**
+- How much weight should a single "bad" run carry vs the model's N-run average?
+- Should feedback bias decay over time (strong today, fading over 7 days)?
+- Cross-category: a crash on a steady run might not mean easy runs need more fuel. But if the crash was BG-entry related (dropping before the run), it's relevant everywhere.
+- Should the bias be directional only (bad = never decrease, good = allow decrease) or quantitative (bad + specific drop rate → bump by X g/h)?
 
 ### Aerobic Fitness Trend
 
