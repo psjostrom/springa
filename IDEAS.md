@@ -136,6 +136,20 @@ Examples: "Morning runs drop 40% more than evening at same fuel rate." "Runs aft
 
 **Prerequisite:** Needs 30+ runs with BG data across varied conditions to produce statistically meaningful splits.
 
+### Auto-Sync HR Metrics from Intervals.icu
+
+LTHR and max HR are currently manual settings the runner has to update by hand. But Garmin Connect already tracks these (measured LTHR, observed max HR), and Intervals.icu syncs them from Garmin. If we pull these values from the Intervals.icu athlete API, the app can auto-update LTHR and max HR — and by extension, all HR zones — without the runner touching settings.
+
+**Why it matters:** Stale LTHR means wrong zone boundaries. Every workout description, every report card HR compliance score, every pace calibration zone boundary depends on LTHR. If the runner's LTHR drifts from 169 to 172 over a training block and the setting doesn't follow, all zone-based scoring and workout targeting is slightly off. Auto-sync eliminates that drift.
+
+**API:** `GET /api/v1/athlete/0` on Intervals.icu returns athlete profile fields including `lthr`, `max_hr`, and potentially resting HR. Need to verify which fields are populated from Garmin sync vs manually entered on Intervals.icu.
+
+**Design questions:**
+- Should we auto-update silently, or show a notification when values change ("LTHR updated from 169 → 172, zones recalculated")?
+- How often to poll? On every calendar fetch, or a separate daily check?
+- What if Intervals.icu has no value (runner hasn't synced from Garmin)? Fall back to the manual setting.
+- Should we store historical LTHR values to track fitness progression over time?
+
 ### GAP for Trail Readiness
 
 Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness. Elevation data (`total_elevation_gain`) is already fetched from Intervals.icu but unused.
