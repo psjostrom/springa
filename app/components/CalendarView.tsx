@@ -111,7 +111,6 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
             e.id === selectedEventId
               ? {
                   ...e,
-                  hrZones: details.hrZones,
                   streamData: details.streamData,
                   avgHr: details.avgHr || e.avgHr,
                   maxHr: details.maxHr || e.maxHr,

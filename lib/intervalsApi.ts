@@ -3,18 +3,16 @@ import type {
   WorkoutEvent,
   IntervalsStream,
   IntervalsEvent,
-  HRZoneData,
   StreamData,
   CalendarEvent,
   IntervalsActivity,
 } from "./types";
-import { API_BASE, DEFAULT_LTHR } from "./constants";
+import { API_BASE } from "./constants";
 import { convertGlucoseToMmol } from "./bgModel";
 import { extractRawStreams } from "./streams";
 import {
   processActivities,
   processPlannedEvents,
-  calculateHRZones,
   type CalendarDataResult,
 } from "./calendarPipeline";
 
@@ -113,9 +111,7 @@ export async function fetchStreamBatch(
 export async function fetchActivityDetails(
   activityId: string,
   apiKey: string,
-  lthr: number = DEFAULT_LTHR,
 ): Promise<{
-  hrZones?: HRZoneData;
   streamData?: StreamData;
   avgHr?: number;
   maxHr?: number;
@@ -132,14 +128,12 @@ export async function fetchActivityDetails(
     });
 
     const result: {
-      hrZones?: HRZoneData;
       streamData?: StreamData;
       avgHr?: number;
       maxHr?: number;
     } = {};
 
     if (hrData.length > 0) {
-      result.hrZones = calculateHRZones(hrData, lthr);
       result.avgHr = Math.round(
         hrData.reduce((a, b) => a + b, 0) / hrData.length,
       );

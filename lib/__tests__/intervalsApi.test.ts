@@ -605,7 +605,6 @@ describe("fetchActivityDetails", () => {
     }));
 
     const result = await fetchActivityDetails("123", "test-key");
-    expect(result.hrZones).toBeDefined();
     expect(result.streamData).toBeDefined();
     expect(result.avgHr).toBeDefined();
     expect(result.maxHr).toBe(150);

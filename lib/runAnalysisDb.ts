@@ -57,8 +57,8 @@ export async function getRecentRunSummaries(
 
     let dropRate: number | null = null;
     if (glucose.length >= 2) {
-      const durationSec = glucose[glucose.length - 1].time - glucose[0].time;
-      const duration10m = durationSec / 600;
+      const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
+      const duration10m = durationMin / 10;
       if (duration10m > 0) {
         dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
       }

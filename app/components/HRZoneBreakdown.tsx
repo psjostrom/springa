@@ -9,11 +9,15 @@ interface HRZoneBreakdownProps {
 }
 
 function formatTime(seconds: number): string {
+	const secs = Math.round(seconds % 60);
 	const mins = Math.floor(seconds / 60);
-	if (mins < 60) return `${mins}m`;
-	const hours = Math.floor(mins / 60);
-	const remainingMins = mins % 60;
-	return `${hours}h${remainingMins}m`;
+	if (mins >= 60) {
+		const hours = Math.floor(mins / 60);
+		const remainingMins = mins % 60;
+		return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
+	}
+	if (mins === 0) return `${secs}s`;
+	return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
 const ZONES = [

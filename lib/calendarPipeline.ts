@@ -5,7 +5,7 @@ import type {
   CalendarEvent,
   IntervalsActivity,
 } from "./types";
-import { DEFAULT_LTHR, getWorkoutCategory } from "./constants";
+import { getWorkoutCategory } from "./constants";
 import { extractFuelRate, extractTotalCarbs } from "./descriptionParser";
 import { calculateWorkoutCarbs, estimateWorkoutDuration } from "./workoutMath";
 
@@ -17,28 +17,6 @@ export interface CalendarDataResult {
 /** Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description regex. */
 export function resolveFuelRate(carbsPerHour: number | null | undefined, description: string): number | null {
   return carbsPerHour ?? extractFuelRate(description);
-}
-
-export function calculateHRZones(
-  hrData: number[],
-  lthr: number = DEFAULT_LTHR,
-): HRZoneData {
-  const zones: HRZoneData = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
-
-  const z1Max = lthr * 0.66;
-  const z2Max = lthr * 0.78;
-  const z3Max = lthr * 0.89;
-  const z4Max = lthr * 0.99;
-
-  hrData.forEach((hr) => {
-    if (hr <= z1Max) zones.z1++;
-    else if (hr <= z2Max) zones.z2++;
-    else if (hr <= z3Max) zones.z3++;
-    else if (hr <= z4Max) zones.z4++;
-    else zones.z5++;
-  });
-
-  return zones;
 }
 
 /** Convert completed run activities into CalendarEvents and track auto-pair candidates. */
