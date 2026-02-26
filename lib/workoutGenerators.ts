@@ -19,7 +19,7 @@ const WALK_ZONE = { min: 0.50, max: 0.66 };
 function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   if (note === "Warmup") return "warmup";
   if (note === "Cooldown") return "cooldown";
-  if (zone === "walk" || note === "Downhill") return "recovery";
+  if (zone === "walk" || note === "Downhill") return "rest";
   return "active";
 }
 

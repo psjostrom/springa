@@ -102,7 +102,7 @@ describe("generatePlan", () => {
       const stepLines = event.description.split("\n").filter((l: string) => l.startsWith("- "));
       expect(stepLines.length).toBeGreaterThan(0);
       for (const line of stepLines) {
-        expect(line).toMatch(/intensity=(warmup|active|recovery|cooldown)$/);
+        expect(line).toMatch(/intensity=(warmup|active|rest|cooldown)$/);
       }
     }
   });
@@ -115,7 +115,7 @@ describe("generatePlan", () => {
     // Warmup → warmup, Uphill → active, Downhill → recovery, Cooldown → cooldown
     expect(steps[0]).toContain("intensity=warmup");
     expect(steps[1]).toContain("intensity=active");
-    expect(steps[2]).toContain("intensity=recovery");
+    expect(steps[2]).toContain("intensity=rest");
     expect(steps[steps.length - 1]).toContain("intensity=cooldown");
   });
 
@@ -127,7 +127,7 @@ describe("generatePlan", () => {
     // Warmup → warmup, Fast → active, Walk → recovery, Cooldown → cooldown
     expect(steps[0]).toContain("intensity=warmup");
     expect(steps[1]).toContain("intensity=active");
-    expect(steps[2]).toContain("intensity=recovery");
+    expect(steps[2]).toContain("intensity=rest");
     expect(steps[steps.length - 1]).toContain("intensity=cooldown");
   });
 
