@@ -13,7 +13,7 @@ const TS = "1771934400000";
 const feedbackResponse = {
   email: "test@example.com",
   createdAt: Number(TS),
-  activityId: null,
+  activityId: "i12345",
   rating: null,
   comment: null,
   distance: 5500,
@@ -81,8 +81,9 @@ describe("Feedback page — prescribed carbs", () => {
       expect(screen.getByText("5.5 km")).toBeInTheDocument();
     });
 
-    // Type a different value
+    // Clear pre-filled value and type a different one
     const carbsInput = screen.getByPlaceholderText("41 (prescribed)");
+    await user.clear(carbsInput);
     await user.type(carbsInput, "55");
 
     // Rate good, save

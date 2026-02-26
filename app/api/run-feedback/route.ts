@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/settings";
 import { getRunFeedback, updateRunFeedback } from "@/lib/feedbackDb";
-import { computePrescribedCarbs } from "@/lib/intervalsHelpers";
+import { fetchRunContext } from "@/lib/intervalsHelpers";
+import { updateActivityCarbs } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -21,24 +22,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Compute prescribed carbs from the planned event's carbs_per_hour
+  // Fetch activityId and prescribed carbs from Intervals.icu
+  let activityId: string | null = null;
   let prescribedCarbsG: number | null = null;
   try {
     if (feedback.duration != null) {
       const settings = await getUserSettings(session.user.email);
       if (settings.intervalsApiKey) {
-        prescribedCarbsG = await computePrescribedCarbs(
+        const ctx = await fetchRunContext(
           settings.intervalsApiKey,
           feedback.duration,
           new Date(Number(ts)),
         );
+        activityId = ctx.activityId;
+        prescribedCarbsG = ctx.prescribedCarbsG;
       }
     }
   } catch {
-    // Non-critical — just skip prescribed carbs
+    // Intervals.icu unavailable — form will be disabled (no activityId), user can reload
   }
 
-  return NextResponse.json({ ...feedback, prescribedCarbsG });
+  return NextResponse.json({ ...feedback, activityId, prescribedCarbsG });
 }
 
 export async function POST(req: Request) {
@@ -48,17 +52,31 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { ts, rating, comment, carbsG } = body as {
+  const { ts, rating, comment, carbsG, activityId } = body as {
     ts: number;
     rating: string;
     comment?: string;
     carbsG?: number;
+    activityId?: string;
   };
 
   if (!ts || !rating) {
     return NextResponse.json({ error: "Missing ts or rating" }, { status: 400 });
   }
 
-  await updateRunFeedback(session.user.email, ts, rating, comment, carbsG);
+  await updateRunFeedback(session.user.email, ts, rating, comment, carbsG, activityId);
+
+  // Sync carbs to Intervals.icu if we have both
+  if (carbsG != null && activityId) {
+    try {
+      const settings = await getUserSettings(session.user.email);
+      if (settings.intervalsApiKey) {
+        await updateActivityCarbs(settings.intervalsApiKey, activityId, carbsG);
+      }
+    } catch {
+      // Non-critical — carbs saved locally, Intervals.icu sync failed
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

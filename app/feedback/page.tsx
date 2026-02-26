@@ -39,6 +39,7 @@ function FeedbackContent() {
   const [comment, setComment] = useState("");
   const [carbsG, setCarbsG] = useState<string>("");
   const [prescribedCarbsG, setPrescribedCarbsG] = useState<number | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,8 +54,9 @@ function FeedbackContent() {
         if (!r.ok) throw new Error("Failed to load data");
         return r.json();
       })
-      .then((data: RunFeedbackRecord & { prescribedCarbsG?: number }) => {
+      .then((data: RunFeedbackRecord & { prescribedCarbsG?: number; activityId?: string }) => {
         setFeedback(data);
+        if (data.activityId) setActivityId(data.activityId);
         if (data.rating) {
           setRating(data.rating);
           setComment(data.comment ?? "");
@@ -63,6 +65,10 @@ function FeedbackContent() {
         }
         if (data.prescribedCarbsG != null) {
           setPrescribedCarbsG(data.prescribedCarbsG);
+          // Pre-fill carbs with prescribed value if not already submitted
+          if (!data.rating && data.carbsG == null) {
+            setCarbsG(String(data.prescribedCarbsG));
+          }
         }
       })
       .catch((e) => setError(e.message))
@@ -76,7 +82,7 @@ function FeedbackContent() {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined, carbsG: carbsG ? Number(carbsG) : prescribedCarbsG ?? undefined }),
+        body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined, carbsG: carbsG ? Number(carbsG) : undefined, activityId: activityId ?? undefined }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setSubmitted(true);
@@ -129,6 +135,13 @@ function FeedbackContent() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Activity not found warning */}
+      {!loading && !activityId && !submitted && (
+        <p className="text-[#fbbf24] text-xs mb-4 text-center max-w-sm">
+          Activity not found on Intervals.icu yet — carbs won&apos;t sync.
+        </p>
       )}
 
       {submitted ? (
@@ -205,7 +218,7 @@ function FeedbackContent() {
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={!rating || submitting}
+            disabled={!rating || !activityId || submitting}
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
@@ -219,7 +232,7 @@ function FeedbackContent() {
                 const res = await fetch("/api/run-feedback", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ ts: Number(ts), rating: "skipped" }),
+                  body: JSON.stringify({ ts: Number(ts), rating: "skipped", activityId: activityId ?? undefined }),
                 });
                 if (!res.ok) throw new Error("Failed to save");
                 setRating("skipped");
@@ -231,7 +244,7 @@ function FeedbackContent() {
               }
             }}
             disabled={submitting}
-            className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition"
+            className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition disabled:opacity-40"
           >
             Skip
           </button>

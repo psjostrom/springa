@@ -1,34 +1,70 @@
 import { API_BASE } from "./constants";
 import { authHeader } from "./intervalsApi";
 import { saveUserSettings } from "./settings";
+import type { IntervalsActivity } from "./types";
 
 const MS_PER_HOUR = 3_600_000;
 
-// --- Prescribed carbs ---
+// --- Run context (activityId + prescribed carbs) ---
 
-/** Look up today's planned WORKOUT event and compute prescribed carbs from carbs_per_hour × duration. */
-export async function computePrescribedCarbs(
+export interface RunContext {
+  activityId: string | null;
+  prescribedCarbsG: number | null;
+}
+
+/** Fetch the latest activity and compute prescribed carbs for a given run date. */
+export async function fetchRunContext(
   apiKey: string,
   durationMs: number,
   runDate: Date,
-): Promise<number | null> {
+): Promise<RunContext> {
   const dateStr = runDate.toISOString().slice(0, 10);
-  try {
-    const res = await fetch(
+  const auth = authHeader(apiKey);
+
+  const [activitiesRes, eventsRes] = await Promise.all([
+    fetch(
+      `${API_BASE}/athlete/0/activities?oldest=${dateStr}&newest=${dateStr}`,
+      { headers: { Authorization: auth } },
+    ),
+    fetch(
       `${API_BASE}/athlete/0/events?oldest=${dateStr}T00:00:00&newest=${dateStr}T23:59:59`,
-      { headers: { Authorization: authHeader(apiKey) } },
+      { headers: { Authorization: auth } },
+    ),
+  ]);
+
+  // Find the most recent running activity by start_date_local
+  let activityId: string | null = null;
+  if (activitiesRes.ok) {
+    const activities: IntervalsActivity[] = await activitiesRes.json();
+    const runs = activities.filter(
+      (a) => a.type === "Run" || a.type === "VirtualRun",
     );
-    if (!res.ok) return null;
-    const events = await res.json();
+    if (runs.length > 0) {
+      const sorted = runs.sort((a, b) =>
+        (b.start_date_local ?? b.start_date).localeCompare(
+          a.start_date_local ?? a.start_date,
+        ),
+      );
+      activityId = sorted[0].id;
+    }
+  }
+
+  // Compute prescribed carbs from any WORKOUT event with carbs_per_hour
+  let prescribedCarbsG: number | null = null;
+  if (eventsRes.ok) {
+    const events = await eventsRes.json();
     const planned = events.find(
       (e: { category: string; carbs_per_hour?: number }) =>
         e.category === "WORKOUT" && e.carbs_per_hour != null,
     );
-    if (!planned?.carbs_per_hour) return null;
-    return Math.round(planned.carbs_per_hour * (durationMs / MS_PER_HOUR));
-  } catch {
-    return null;
+    if (planned?.carbs_per_hour) {
+      prescribedCarbsG = Math.round(
+        planned.carbs_per_hour * (durationMs / MS_PER_HOUR),
+      );
+    }
   }
+
+  return { activityId, prescribedCarbsG };
 }
 
 // --- Timezone ---
