@@ -17,7 +17,9 @@ export interface BGScore {
 export interface HRZoneScore {
   rating: Rating;
   targetZone: string; // e.g. "Z2", "Z4"
-  pctInTarget: number; // 0-100
+  pctInTarget: number; // 0-100 — for intervals: % of expected rep time spent in target zone
+  zoneTimes?: { z1: number; z2: number; z3: number; z4: number; z5: number };
+  expectedRepSec?: number; // intervals only: total expected rep time in seconds
 }
 
 export interface FuelScore {
@@ -50,6 +52,41 @@ export interface ReportCard {
   recovery: RecoveryScore | null;
 }
 
+// --- Description Parsing ---
+
+/** Parse expected rep time from structured workout descriptions.
+ *  E.g. "Main set 4x\n- 4m 89-99% LTHR" → { totalRepSec: 960, targetZone: "Z4" } */
+export function parseExpectedRepTime(description: string): {
+  repCount: number;
+  repDurationSec: number;
+  totalRepSec: number;
+  targetZone: "Z4" | "Z5";
+} | null {
+  const headerMatch = description.match(/^(?:Main set|Strides)\s+(\d+)x\s*$/m);
+  if (!headerMatch) return null;
+
+  const repCount = parseInt(headerMatch[1], 10);
+  const afterHeader = description.slice(
+    description.indexOf(headerMatch[0]) + headerMatch[0].length,
+  );
+
+  // First step after header is the hard effort: "- (Uphill )?2m 89-99% LTHR" or "- 20s 99-111% LTHR"
+  const stepMatch = afterHeader.match(
+    /^-\s+(?:Uphill\s+)?(\d+)(m|s)\s+(\d+)-\d+%\s+LTHR/m,
+  );
+  if (!stepMatch) return null;
+
+  const duration = parseInt(stepMatch[1], 10);
+  const unit = stepMatch[2];
+  const minPct = parseInt(stepMatch[3], 10);
+
+  const repDurationSec = unit === "m" ? duration * 60 : duration;
+  const totalRepSec = repCount * repDurationSec;
+  const targetZone: "Z4" | "Z5" = minPct >= 99 ? "Z5" : "Z4";
+
+  return { repCount, repDurationSec, totalRepSec, targetZone };
+}
+
 // --- Scoring Functions ---
 
 export function scoreBG(event: CalendarEvent): BGScore | null {
@@ -61,9 +98,9 @@ export function scoreBG(event: CalendarEvent): BGScore | null {
   const minBG = Math.min(...glucose.map((p) => p.value));
   const hypo = glucose.some((p) => p.value < BG_HYPO);
 
-  // Duration in 10-min units (time is in seconds)
-  const durationSec = glucose[glucose.length - 1].time - glucose[0].time;
-  const duration10m = durationSec / 600;
+  // Duration in 10-min units (time is in minutes from intervalsApi)
+  const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
+  const duration10m = durationMin / 10;
   const dropRate = duration10m > 0 ? (lastBG - startBG) / duration10m : 0;
 
   let rating: Rating;
@@ -94,8 +131,25 @@ export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
     targetSeconds = z2;
     targetZone = "Z2";
   } else if (cat === "interval") {
-    targetSeconds = z4;
-    targetZone = "Z4";
+    // Score against expected rep time, not total workout time
+    const repInfo = parseExpectedRepTime(event.description || "");
+    if (!repInfo) return null;
+
+    const actualRepSec = repInfo.targetZone === "Z5" ? z5 : z4;
+    const compliance = (actualRepSec / repInfo.totalRepSec) * 100;
+
+    let rating: Rating;
+    if (compliance >= 60) rating = "good";
+    else if (compliance >= 40) rating = "ok";
+    else rating = "bad";
+
+    return {
+      rating,
+      targetZone: repInfo.targetZone,
+      pctInTarget: compliance,
+      zoneTimes: { z1, z2, z3, z4, z5 },
+      expectedRepSec: repInfo.totalRepSec,
+    };
   } else {
     // race / other — use Z2+Z3 combined
     targetSeconds = z2 + z3;
@@ -113,7 +167,7 @@ export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
     rating = "bad";
   }
 
-  return { rating, targetZone, pctInTarget };
+  return { rating, targetZone, pctInTarget, zoneTimes: { z1, z2, z3, z4, z5 } };
 }
 
 export function scoreFuel(event: CalendarEvent): FuelScore | null {

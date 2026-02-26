@@ -6,6 +6,7 @@ import {
   scoreEntryTrend,
   scoreRecovery,
   buildReportCard,
+  parseExpectedRepTime,
 } from "../reportCard";
 import type { CalendarEvent } from "../types";
 import type { RunBGContext, PreRunContext, PostRunContext } from "../runBGContext";
@@ -25,7 +26,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 }
 
 function glucoseStream(values: number[], intervalSec = 300) {
-  return values.map((value, i) => ({ time: i * intervalSec, value }));
+  return values.map((value, i) => ({ time: i * intervalSec / 60, value }));
 }
 
 // --- BG Scoring ---
@@ -104,12 +105,12 @@ describe("scoreBG", () => {
   });
 
   it("calculates dropRate correctly with non-standard intervals", () => {
-    // 2 points, 600 sec apart (10 min), drop of 2.0
+    // 2 points, 10 min apart, drop of 2.0 → -2.0/10m
     const event = makeEvent({
       streamData: {
         glucose: [
           { time: 0, value: 10.0 },
-          { time: 600, value: 8.0 },
+          { time: 10, value: 8.0 },
         ],
       },
     });
@@ -164,14 +165,52 @@ describe("scoreHRZone", () => {
     expect(result.targetZone).toBe("Z2");
   });
 
-  it("targets Z4 for interval sessions", () => {
+  it("returns null for interval without parseable description", () => {
     const event = makeEvent({
       category: "interval",
       hrZones: { z1: 100, z2: 300, z3: 200, z4: 800, z5: 100 },
     });
+    expect(scoreHRZone(event)).toBeNull();
+  });
+
+  it("scores interval by rep compliance (actual Z4 vs expected rep time)", () => {
+    // 4x4m = 960s expected. 600s actual Z4 = 62.5% → good
+    const event = makeEvent({
+      category: "interval",
+      description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 4x\n- 4m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)",
+      hrZones: { z1: 360, z2: 900, z3: 480, z4: 600, z5: 0 },
+    });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z4");
-    expect(result.pctInTarget).toBeCloseTo((800 / 1500) * 100);
+    expect(result.expectedRepSec).toBe(960);
+    expect(result.pctInTarget).toBeCloseTo(62.5);
+    expect(result.rating).toBe("good");
+  });
+
+  it("scores hills by rep compliance against Z5", () => {
+    // 6x2m uphill = 720s expected Z5. 400s actual = 55.6% → ok
+    const event = makeEvent({
+      category: "interval",
+      description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)",
+      hrZones: { z1: 200, z2: 1200, z3: 300, z4: 200, z5: 400 },
+    });
+    const result = scoreHRZone(event)!;
+    expect(result.targetZone).toBe("Z5");
+    expect(result.expectedRepSec).toBe(720);
+    expect(result.pctInTarget).toBeCloseTo((400 / 720) * 100);
+    expect(result.rating).toBe("ok");
+  });
+
+  it("rates bad when reps barely reached target zone", () => {
+    // 4x4m = 960s expected. 120s actual Z4 = 12.5% → bad
+    const event = makeEvent({
+      category: "interval",
+      description: "Main set 4x\n- 4m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)",
+      hrZones: { z1: 500, z2: 900, z3: 800, z4: 120, z5: 0 },
+    });
+    const result = scoreHRZone(event)!;
+    expect(result.pctInTarget).toBeCloseTo(12.5);
+    expect(result.rating).toBe("bad");
   });
 
   it("rates good when >= 60% in target", () => {
@@ -505,5 +544,54 @@ describe("scoreRecovery", () => {
     const ctx = makeCtxWithPost({ recoveryDrop30m: -1.5, nadirPostRun: 4.5, timeToStable: 15, postRunHypo: false, endBG: 7.0, readingCount: 8 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("ok");
+  });
+});
+
+// --- parseExpectedRepTime ---
+
+describe("parseExpectedRepTime", () => {
+  it("parses short intervals (6x 2m at Z4)", () => {
+    const desc = "Short intervals.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- 2m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)";
+    const result = parseExpectedRepTime(desc)!;
+    expect(result.repCount).toBe(6);
+    expect(result.repDurationSec).toBe(120);
+    expect(result.totalRepSec).toBe(720);
+    expect(result.targetZone).toBe("Z4");
+  });
+
+  it("parses long intervals (4x 5m at Z4)", () => {
+    const desc = "Main set 4x\n- 5m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)";
+    const result = parseExpectedRepTime(desc)!;
+    expect(result.repCount).toBe(4);
+    expect(result.repDurationSec).toBe(300);
+    expect(result.totalRepSec).toBe(1200);
+    expect(result.targetZone).toBe("Z4");
+  });
+
+  it("parses hills (6x 2m uphill at Z5)", () => {
+    const desc = "Main set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)";
+    const result = parseExpectedRepTime(desc)!;
+    expect(result.repCount).toBe(6);
+    expect(result.repDurationSec).toBe(120);
+    expect(result.totalRepSec).toBe(720);
+    expect(result.targetZone).toBe("Z5");
+  });
+
+  it("parses strides (4x 20s at Z5)", () => {
+    const desc = "Easy run with strides.\n\nStrides 4x\n- 20s 99-111% LTHR (167-188 bpm)\n- 1m 66-78% LTHR (112-132 bpm)";
+    const result = parseExpectedRepTime(desc)!;
+    expect(result.repCount).toBe(4);
+    expect(result.repDurationSec).toBe(20);
+    expect(result.totalRepSec).toBe(80);
+    expect(result.targetZone).toBe("Z5");
+  });
+
+  it("returns null for easy run (no main set)", () => {
+    const desc = "Easy run at easy pace.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 20m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)";
+    expect(parseExpectedRepTime(desc)).toBeNull();
+  });
+
+  it("returns null for empty description", () => {
+    expect(parseExpectedRepTime("")).toBeNull();
   });
 });
