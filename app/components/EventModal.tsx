@@ -173,6 +173,14 @@ export function EventModal({
     return raw === "other" ? "easy" : raw;
   }, [selectedEvent.name]);
 
+  // When the BG model has a data-driven fuel rate for today's category, prefer it
+  // over the static prescribed rate from the event.
+  const modelFuelRate = useMemo(() => {
+    if (!showReadiness || !bgModel) return null;
+    const target = bgModel.targetFuelRates.find((t) => t.category === workoutCategory);
+    return target?.targetFuelRate ?? null;
+  }, [showReadiness, bgModel, workoutCategory]);
+
   useEffect(() => {
     dispatch({ type: "RESET" });
   }, [selectedEvent.id]);
@@ -353,7 +361,7 @@ export function EventModal({
         )}
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable}>
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable}>
             {selectedEvent.type === "completed" ? (
               selectedEvent.hrZones ? (
                 <HRMiniChart

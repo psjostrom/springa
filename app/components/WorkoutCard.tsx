@@ -15,6 +15,8 @@ import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateW
 interface WorkoutCardProps {
   description: string;
   fuelRate?: number | null;
+  /** When set, dims the fuel rate and shows this label in parentheses (e.g. "plan"). */
+  fuelRateNote?: string;
   totalCarbs?: number | null;
   paceTable?: PaceTable;
   children?: React.ReactNode;
@@ -71,7 +73,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: propTotalCarbs, paceTable, children }: WorkoutCardProps) {
+export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote, totalCarbs: propTotalCarbs, paceTable, children }: WorkoutCardProps) {
   const descFuel = extractFuelStatus(description);
   const fuelRate = propFuelRate ?? descFuel.fuelRate;
   const sections = parseWorkoutStructure(description);
@@ -118,8 +120,8 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, totalCarbs: p
             </span>
           )}
           {fuelRate != null && (
-            <span className="text-sm font-semibold text-[#ffb800]/80">
-              {fuelRate}g/h
+            <span className={`text-sm font-semibold ${fuelRateNote ? "text-[#ffb800]/40" : "text-[#ffb800]/80"}`}>
+              {fuelRate}g/h{fuelRateNote && ` (${fuelRateNote})`}
             </span>
           )}
           {totalCarbs != null && (

@@ -95,7 +95,7 @@ export function getWorkoutCategory(
   name: string,
 ): "long" | "interval" | "easy" | "other" {
   const lowerName = name.toLowerCase();
-  if (lowerName.includes("long")) return "long";
+  // Check "interval" before "long" so "Long Intervals" → interval, not long
   if (
     lowerName.includes("interval") ||
     lowerName.includes("hills") ||
@@ -103,6 +103,7 @@ export function getWorkoutCategory(
     lowerName.includes("race pace")
   )
     return "interval";
+  if (lowerName.includes("long")) return "long";
   if (
     lowerName.includes("easy") ||
     lowerName.includes("bonus") ||
