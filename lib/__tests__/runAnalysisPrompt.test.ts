@@ -258,7 +258,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(system).toContain("\"easy\"/\"long\" → Z2 entire time");
     expect(system).toContain("Avg HR >132 = too hard");
-    expect(system).toContain("\"interval\" → main set Z4");
+    expect(system).toContain("\"interval\" → reps target Z4");
   });
 
   it("system prompt connects intensity to BG drop", () => {

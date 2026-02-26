@@ -6,6 +6,7 @@ import {
   saveRunAnalysis,
   getRecentRunSummaries,
 } from "@/lib/runAnalysisDb";
+import { getRunFeedbackByActivity } from "@/lib/feedbackDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
@@ -56,13 +57,17 @@ export async function POST(req: Request) {
     }
   }
 
-  const history = await getRecentRunSummaries(session.user.email);
+  const [history, feedback] = await Promise.all([
+    getRecentRunSummaries(session.user.email),
+    getRunFeedbackByActivity(session.user.email, activityId),
+  ]);
 
   const { system, user } = buildRunAnalysisPrompt({
     event,
     runBGContext,
     reportCard,
     history,
+    athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,
   });
 
   const anthropic = createAnthropic({ apiKey });

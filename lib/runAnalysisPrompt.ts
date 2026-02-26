@@ -13,8 +13,9 @@ export function buildRunAnalysisPrompt(params: {
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   history?: RunSummary[];
+  athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, history } = params;
+  const { event, runBGContext, reportCard, history, athleteFeedback } = params;
 
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 
@@ -37,6 +38,7 @@ Data integrity:
 - If a data section is missing, skip it entirely.
 - Never estimate, assume, or infer missing values.
 - Never fabricate numbers or percentages.
+- If Athlete Feedback is provided, incorporate their observations and fuel notes into the analysis. Their firsthand experience is important context.
 
 Pace zones:
 - Easy: 7:00-7:30/km (Z2, 112-132 bpm)
@@ -46,7 +48,7 @@ Pace zones:
 
 Category expectations:
 - "easy"/"long" → Z2 entire time. Avg HR >132 = too hard.
-- "interval" → main set Z4, warmup/cooldown Z2.
+- "interval" → reps target Z4 (or Z5 for hills/strides), warmup/cooldown Z2, recovery walks Z1. IMPORTANT: for intervals, judge HR performance ONLY by rep compliance (actual Z4 time / expected rep time), NOT by % of total run time. Z4 as % of total time will always be low because warmup, cooldown, and walk recovery are by design not Z4. Z3 time during reps is normal HR ramp-up.
 - "race" → race pace blocks Z3, easy Z2.
 If avg HR doesn't match category, call it out.
 
@@ -133,14 +135,46 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push(`Rating: ${ratingLabel(f.rating)}`);
   }
 
+  // Athlete's own feedback
+  if (athleteFeedback && (athleteFeedback.rating || athleteFeedback.comment)) {
+    lines.push("");
+    lines.push("## Athlete Feedback");
+    if (athleteFeedback.rating) lines.push(`Rating: ${athleteFeedback.rating}`);
+    if (athleteFeedback.comment) lines.push(`Notes: ${athleteFeedback.comment}`);
+    if (athleteFeedback.carbsG != null) lines.push(`Carbs reported: ${athleteFeedback.carbsG}g`);
+  }
+
   // HR zone compliance
   if (reportCard?.hrZone) {
     const hr = reportCard.hrZone;
     lines.push("");
     lines.push("## HR Zone Compliance");
     lines.push(`Target zone: ${hr.targetZone}`);
-    lines.push(`% in target: ${Math.round(hr.pctInTarget)}%`);
+    if (hr.expectedRepSec != null) {
+      // Interval: compliance is actual Z4/Z5 time vs expected rep time
+      const actualSec = hr.zoneTimes
+        ? (hr.targetZone === "Z5" ? hr.zoneTimes.z5 : hr.zoneTimes.z4)
+        : 0;
+      lines.push(`Expected rep time: ${formatDuration(hr.expectedRepSec)}`);
+      lines.push(`Actual ${hr.targetZone} time: ${formatDuration(Math.round(actualSec))}`);
+      lines.push(`Rep compliance: ${Math.round(hr.pctInTarget)}%`);
+    } else {
+      lines.push(`% in target: ${Math.round(hr.pctInTarget)}%`);
+    }
+    if (hr.zoneTimes) {
+      const zt = hr.zoneTimes;
+      lines.push(`Zone split: Z1 ${formatDuration(Math.round(zt.z1))}, Z2 ${formatDuration(Math.round(zt.z2))}, Z3 ${formatDuration(Math.round(zt.z3))}, Z4 ${formatDuration(Math.round(zt.z4))}, Z5 ${formatDuration(Math.round(zt.z5))}`);
+    }
     lines.push(`Rating: ${ratingLabel(hr.rating)}`);
+  } else if (event.hrZones) {
+    // No score (e.g. unparseable interval description), emit raw zone breakdown
+    const z = event.hrZones;
+    const total = z.z1 + z.z2 + z.z3 + z.z4 + z.z5;
+    if (total > 0) {
+      lines.push("");
+      lines.push("## HR Zone Distribution");
+      lines.push(`Zone split: Z1 ${formatDuration(z.z1)}, Z2 ${formatDuration(z.z2)}, Z3 ${formatDuration(z.z3)}, Z4 ${formatDuration(z.z4)}, Z5 ${formatDuration(z.z5)}`);
+    }
   }
 
   // Glucose curve summary from stream data
