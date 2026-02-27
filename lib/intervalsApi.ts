@@ -42,6 +42,21 @@ export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: numb
   }
 }
 
+// --- ACTIVITY FETCHING ---
+
+export async function fetchActivitiesByDateRange(
+  apiKey: string,
+  oldest: string,
+  newest: string,
+): Promise<IntervalsActivity[]> {
+  const res = await fetch(
+    `${API_BASE}/athlete/0/activities?oldest=${oldest}&newest=${newest}&cols=*`,
+    { headers: { Authorization: authHeader(apiKey) } },
+  );
+  if (!res.ok) return [];
+  return (await res.json()) as IntervalsActivity[];
+}
+
 // --- STREAM FETCHING ---
 
 const RETRY_DELAYS = [1000, 2000, 4000]; // ms — backoff for 429s

@@ -22,7 +22,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [prefix, setPrefix] = useState(settings.prefix ?? "");
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
-  const [lthr, setLthr] = useState(settings.lthr ?? "");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
@@ -84,10 +83,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     const skVal = startKm === "" ? undefined : Number(startKm);
     if (skVal !== settings.startKm) {
       updates.startKm = skVal;
-    }
-    const lthrVal = lthr === "" ? undefined : Number(lthr);
-    if (lthrVal !== settings.lthr) {
-      updates.lthr = lthrVal;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
@@ -194,7 +189,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-[#b8a5d4] mb-1">Total Weeks</label>
                   <input
@@ -217,18 +212,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="8"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#b8a5d4] mb-1">LTHR</label>
-                  <input
-                    type="number"
-                    min={100}
-                    max={220}
-                    value={lthr}
-                    onChange={(e) => { setLthr(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                    placeholder="169"
                   />
                 </div>
               </div>

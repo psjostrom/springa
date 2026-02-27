@@ -34,14 +34,23 @@ export async function saveRunAnalysis(
   });
 }
 
-export async function getRecentRunHistory(
+export interface CachedRunRow {
+  activityId: string;
+  category: string;
+  fuelRate: number | null;
+  startBG: number;
+  glucose: { time: number; value: number }[];
+  hr: { time: number; value: number }[];
+  activityDate: string | null;
+}
+
+export async function getRecentAnalyzedRuns(
   email: string,
   limit = 10,
-): Promise<RunHistoryEntry[]> {
+): Promise<CachedRunRow[]> {
   const result = await db().execute({
     sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.start_bg, b.glucose, b.hr,
-                 b.activity_date, b.name, b.distance, b.duration, b.avg_pace,
-                 b.avg_hr, b.max_hr, b.load, b.carbs_ingested
+                 b.activity_date
           FROM bg_cache b
           INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
           WHERE b.email = ?
@@ -50,47 +59,13 @@ export async function getRecentRunHistory(
     args: [email, limit],
   });
 
-  return result.rows.map((row) => {
-    const glucose = JSON.parse(row.glucose as string) as { time: number; value: number }[];
-    const hr = JSON.parse(row.hr as string) as { time: number; value: number }[];
-
-    const endBG = glucose.length > 0 ? glucose[glucose.length - 1].value : null;
-    const avgHRFromStream = hr.length > 0
-      ? Math.round(hr.reduce((sum, point) => sum + point.value, 0) / hr.length)
-      : null;
-
-    let dropRate: number | null = null;
-    if (glucose.length >= 2) {
-      const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
-      const duration10m = durationMin / 10;
-      if (duration10m > 0) {
-        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
-      }
-    }
-
-    const dateStr = row.activity_date as string | null;
-
-    const event: CalendarEvent = {
-      id: `activity-${row.activity_id as string}`,
-      activityId: row.activity_id as string,
-      date: dateStr ? new Date(dateStr) : new Date(),
-      name: (row.name as string) || `${row.category as string} run`,
-      description: "",
-      type: "completed",
-      category: (row.category as string) as CalendarEvent["category"],
-      distance: row.distance as number | undefined,
-      duration: row.duration as number | undefined,
-      pace: row.avg_pace as number | undefined,
-      avgHr: (row.avg_hr as number | undefined) ?? avgHRFromStream ?? undefined,
-      maxHr: row.max_hr as number | undefined,
-      load: row.load as number | undefined,
-      fuelRate: row.fuel_rate as number | null,
-      carbsIngested: row.carbs_ingested as number | null,
-    };
-
-    return {
-      event,
-      bgSummary: { startBG: row.start_bg as number, endBG, dropRate },
-    };
-  });
+  return result.rows.map((row) => ({
+    activityId: row.activity_id as string,
+    category: row.category as string,
+    fuelRate: row.fuel_rate as number | null,
+    startBG: row.start_bg as number,
+    glucose: JSON.parse(row.glucose as string) as { time: number; value: number }[],
+    hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
+    activityDate: (row.activity_date as string | null) ?? null,
+  }));
 }

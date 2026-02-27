@@ -4,16 +4,19 @@ import { auth } from "@/lib/auth";
 import {
   getRunAnalysis,
   saveRunAnalysis,
-  getRecentRunHistory,
+  getRecentAnalyzedRuns,
+  type RunHistoryEntry,
 } from "@/lib/runAnalysisDb";
 import { getRunFeedbackByActivity, getRecentFeedback } from "@/lib/feedbackDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { getUserSettings } from "@/lib/settings";
+import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
+import type { CachedRunRow } from "@/lib/runAnalysisDb";
 
 interface RequestBody {
   activityId: string;
@@ -21,6 +24,61 @@ interface RequestBody {
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   regenerate?: boolean;
+}
+
+function buildRunHistory(
+  rows: CachedRunRow[],
+  activityMap: Map<string, IntervalsActivity>,
+): RunHistoryEntry[] {
+  return rows.map((row) => {
+    const { glucose, hr, activityId, category, activityDate } = row;
+
+    const endBG = glucose.length > 0 ? glucose[glucose.length - 1].value : null;
+    const avgHRFromStream = hr.length > 0
+      ? Math.round(hr.reduce((sum, point) => sum + point.value, 0) / hr.length)
+      : null;
+
+    let dropRate: number | null = null;
+    if (glucose.length >= 2) {
+      const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
+      const duration10m = durationMin / 10;
+      if (duration10m > 0) {
+        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
+      }
+    }
+
+    const activity = activityMap.get(activityId);
+
+    const distanceKm = activity?.distance ? activity.distance / 1000 : undefined;
+    const durationMinCalc = activity?.moving_time ? activity.moving_time / 60 : undefined;
+    let pace: number | undefined;
+    if (distanceKm && durationMinCalc && distanceKm > 0) {
+      pace = durationMinCalc / distanceKm;
+    }
+
+    const event: CalendarEvent = {
+      id: `activity-${activityId}`,
+      activityId,
+      date: activityDate ? new Date(activityDate) : new Date(),
+      name: activity?.name ?? `${category} run`,
+      description: "",
+      type: "completed",
+      category: category as CalendarEvent["category"],
+      distance: activity?.distance,
+      duration: activity?.moving_time,
+      pace: activity?.pace ? 1000 / (activity.pace * 60) : pace,
+      avgHr: (activity?.average_heartrate ?? activity?.average_hr) ?? avgHRFromStream ?? undefined,
+      maxHr: activity?.max_heartrate ?? activity?.max_hr,
+      load: activity?.icu_training_load,
+      fuelRate: row.fuelRate,
+      carbsIngested: activity?.carbs_ingested ?? null,
+    };
+
+    return {
+      event,
+      bgSummary: { startBG: row.startBG, endBG, dropRate },
+    };
+  });
 }
 
 export async function POST(req: Request) {
@@ -58,12 +116,38 @@ export async function POST(req: Request) {
     }
   }
 
-  const [history, feedback, recentFeedback, settings] = await Promise.all([
-    getRecentRunHistory(session.user.email),
+  const settings = await getUserSettings(session.user.email);
+
+  const [rows, feedback, recentFeedback, profile] = await Promise.all([
+    getRecentAnalyzedRuns(session.user.email),
     getRunFeedbackByActivity(session.user.email, activityId),
     getRecentFeedback(session.user.email),
-    getUserSettings(session.user.email),
+    settings.intervalsApiKey
+      ? fetchAthleteProfile(settings.intervalsApiKey)
+      : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
   ]);
+
+  // Batch-fetch activity metadata from Intervals.icu for the date range
+  const activityMap = new Map<string, IntervalsActivity>();
+  if (settings.intervalsApiKey && rows.length > 0) {
+    const dates = rows
+      .map((r) => r.activityDate)
+      .filter((d): d is string => !!d);
+    if (dates.length > 0) {
+      const oldest = dates.reduce((a, b) => (a < b ? a : b));
+      const newest = dates.reduce((a, b) => (a > b ? a : b));
+      try {
+        const activities = await fetchActivitiesByDateRange(settings.intervalsApiKey, oldest, newest);
+        for (const a of activities) {
+          activityMap.set(a.id, a);
+        }
+      } catch {
+        // API unavailable — build history without metadata
+      }
+    }
+  }
+
+  const history = buildRunHistory(rows, activityMap);
 
   const historyFeedbackMap = new Map(
     recentFeedback
@@ -78,9 +162,9 @@ export async function POST(req: Request) {
     history,
     historyFeedback: historyFeedbackMap,
     athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,
-    lthr: settings.lthr,
-    maxHr: settings.maxHr,
-    hrZones: settings.hrZones,
+    lthr: profile.lthr,
+    maxHr: profile.maxHr,
+    hrZones: profile.hrZones,
   });
 
   const anthropic = createAnthropic({ apiKey });

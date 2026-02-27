@@ -19,6 +19,6 @@
 ## Cleanup
 
 - [x] ~~Fix React prop warnings from Recharts mock in test output~~ — Filter non-HTML props in `setup-dom.ts` mock
-- [ ] **Remove cached Intervals.icu profile data from `user_settings`.** `lthr`, `max_hr`, `hr_zones`, `profile_synced_at` are copies of `GET /api/v1/athlete/0`. Fetch from source instead. Only `intervals_api_key` (credential) needs to be stored.
-- [ ] **Remove Intervals.icu activity metadata from `bg_cache`.** Columns `name`, `distance`, `duration`, `avg_pace`, `avg_hr`, `max_hr`, `load`, `carbs_ingested` duplicate data from the activity API. Keep only the streams (glucose, hr, pace, cadence, altitude) and computed values (start_bg, run_bg_context). `getRecentRunHistory` in `runAnalysisDb.ts` needs to join with Intervals.icu data at read time instead of reading stale scalars from cache.
+- [x] ~~**Remove cached Intervals.icu profile data from `user_settings`.**~~ Dropped `lthr`, `max_hr`, `hr_zones`, `profile_synced_at`. Profile fetched from API on every settings load.
+- [x] ~~**Remove Intervals.icu activity metadata from `bg_cache`.**~~ Dropped `name`, `distance`, `duration`, `avg_pace`, `avg_hr`, `max_hr`, `load`, `carbs_ingested`. `getRecentAnalyzedRuns` returns streams only; route joins with API data at read time.
 - [x] ~~**Drop `distance`, `duration`, `avg_hr` columns from live `run_feedback` table.**~~ Columns dropped from live Turso DB.

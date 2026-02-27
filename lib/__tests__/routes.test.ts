@@ -12,6 +12,11 @@ vi.mock("@libsql/client", async (importOriginal) => {
 const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => mockAuth() }));
 
+const mockFetchAthleteProfile = vi.fn().mockResolvedValue({});
+vi.mock("@/lib/intervalsApi", () => ({
+  fetchAthleteProfile: (...args: unknown[]) => mockFetchAthleteProfile(...args),
+}));
+
 const mockSendNotification = vi.fn().mockResolvedValue({});
 vi.mock("web-push", () => ({
   default: {
@@ -119,6 +124,7 @@ beforeEach(async () => {
   await testDb().execute("DELETE FROM push_subscriptions");
   await testDb().execute("DELETE FROM run_feedback");
   mockAuth.mockReset();
+  mockFetchAthleteProfile.mockReset().mockResolvedValue({});
   mockSendNotification.mockReset().mockResolvedValue({});
 });
 

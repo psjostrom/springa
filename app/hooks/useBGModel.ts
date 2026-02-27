@@ -112,14 +112,6 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
               cadence: extra.cadence,
               altitude: extra.altitude,
               activityDate: e.date.toISOString().slice(0, 10),
-              name: e.name,
-              distance: e.distance,
-              duration: e.duration,
-              avgPace: e.pace,
-              avgHr: e.avgHr,
-              maxHr: e.maxHr,
-              load: e.load,
-              carbsIngested: e.carbsIngested,
             });
           }
         }

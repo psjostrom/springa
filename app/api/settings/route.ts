@@ -2,8 +2,6 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
-  shouldSyncProfile,
-  markProfileSynced,
   type UserSettings,
 } from "@/lib/settings";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
@@ -18,24 +16,15 @@ export async function GET() {
 
   const settings = await getUserSettings(session.user.email);
 
-  // Auto-sync athlete profile from Intervals.icu (at most once per 24h)
+  // Fetch athlete profile from Intervals.icu on every request (no DB cache)
   if (settings.intervalsApiKey) {
     try {
-      const needsSync = await shouldSyncProfile(session.user.email);
-      if (needsSync) {
-        const profile = await fetchAthleteProfile(settings.intervalsApiKey);
-        const updates: Partial<UserSettings> = {};
-        if (profile.lthr && profile.lthr !== settings.lthr) updates.lthr = profile.lthr;
-        if (profile.maxHr && profile.maxHr !== settings.maxHr) updates.maxHr = profile.maxHr;
-        if (profile.hrZones && JSON.stringify(profile.hrZones) !== JSON.stringify(settings.hrZones)) updates.hrZones = profile.hrZones;
-        if (Object.keys(updates).length > 0) {
-          await saveUserSettings(session.user.email, updates);
-          Object.assign(settings, updates);
-        }
-        await markProfileSynced(session.user.email);
-      }
+      const profile = await fetchAthleteProfile(settings.intervalsApiKey);
+      if (profile.lthr) settings.lthr = profile.lthr;
+      if (profile.maxHr) settings.maxHr = profile.maxHr;
+      if (profile.hrZones) settings.hrZones = profile.hrZones;
     } catch {
-      // Intervals.icu unavailable — serve cached settings
+      // Intervals.icu unavailable — return settings without profile fields
     }
   }
 
@@ -49,6 +38,11 @@ export async function PUT(req: Request) {
   }
 
   const body = (await req.json()) as Partial<UserSettings>;
+
+  // Profile fields are read-only from Intervals.icu — strip before saving
+  delete body.lthr;
+  delete body.maxHr;
+  delete body.hrZones;
 
   // xDrip secret needs special handling for reverse auth mapping
   if (body.xdripSecret) {

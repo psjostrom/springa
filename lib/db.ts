@@ -26,12 +26,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   prefix             TEXT,
   total_weeks        INTEGER,
   start_km           REAL,
-  lthr               INTEGER,
   widget_order       TEXT,
-  hidden_widgets     TEXT,
-  max_hr             INTEGER,
-  hr_zones           TEXT,
-  profile_synced_at  TEXT
+  hidden_widgets     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_auth (
@@ -62,14 +58,6 @@ CREATE TABLE IF NOT EXISTS bg_cache (
   cadence        TEXT,
   altitude       TEXT,
   activity_date  TEXT,
-  name           TEXT,
-  distance       REAL,
-  duration       REAL,
-  avg_pace       REAL,
-  avg_hr         INTEGER,
-  max_hr         INTEGER,
-  load           REAL,
-  carbs_ingested REAL,
   PRIMARY KEY (email, activity_id)
 );
 
