@@ -1,4 +1,4 @@
-import { db, runMigration, addColumns } from "./db";
+import { db } from "./db";
 
 // --- Types ---
 
@@ -20,36 +20,9 @@ export interface UserSettings {
   hiddenWidgets?: string[];
 }
 
-// --- Migration ---
-
-async function migrateSettingsSchema(): Promise<void> {
-  await runMigration("settings", () =>
-    addColumns("user_settings", [
-      { name: "widget_order", type: "TEXT" },
-      { name: "hidden_widgets", type: "TEXT" },
-    ]),
-  );
-  await runMigration("settings_max_hr", () =>
-    addColumns("user_settings", [
-      { name: "max_hr", type: "INTEGER" },
-    ]),
-  );
-  await runMigration("settings_hr_zones", () =>
-    addColumns("user_settings", [
-      { name: "hr_zones", type: "TEXT" },
-    ]),
-  );
-  await runMigration("settings_profile_synced_at", () =>
-    addColumns("user_settings", [
-      { name: "profile_synced_at", type: "TEXT" },
-    ]),
-  );
-}
-
 // --- CRUD ---
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
-  await migrateSettingsSchema();
   const result = await db().execute({
     sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, max_hr, hr_zones, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
     args: [email],
@@ -79,7 +52,6 @@ export async function saveUserSettings(
   email: string,
   partial: Partial<UserSettings>,
 ): Promise<void> {
-  await migrateSettingsSchema();
   await db().execute({
     sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, max_hr, hr_zones, widget_order, hidden_widgets)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -125,7 +97,6 @@ export async function saveUserSettings(
 const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
 
 export async function shouldSyncProfile(email: string): Promise<boolean> {
-  await migrateSettingsSchema();
   const result = await db().execute({
     sql: "SELECT profile_synced_at FROM user_settings WHERE email = ?",
     args: [email],

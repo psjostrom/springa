@@ -1,8 +1,10 @@
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
-import type { RunSummary } from "./runAnalysisDb";
+import type { RunHistoryEntry } from "./runAnalysisDb";
+import type { RunFeedbackRecord } from "./feedbackDb";
 import { formatPace, formatDuration } from "./format";
+import { formatRunLine } from "./runLine";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR, HR_ZONE_BANDS } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
@@ -14,13 +16,14 @@ export function buildRunAnalysisPrompt(params: {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
-  history?: RunSummary[];
+  history?: RunHistoryEntry[];
+  historyFeedback?: Map<string, RunFeedbackRecord>;
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, history, athleteFeedback } = params;
+  const { event, runBGContext, reportCard, history, historyFeedback, athleteFeedback } = params;
   const lthr = params.lthr ?? DEFAULT_LTHR;
   const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
   const easyMaxBpm = params.hrZones?.length === 5
@@ -202,15 +205,13 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push("");
     lines.push("## Recent Run History (newest first)");
     lines.push("Use this to identify patterns across runs (e.g. consistently too hard, always dropping fast, fuel trends).");
-    lines.push("");
-    lines.push("| Category | Start BG | End BG | Drop/10m | Avg HR | Fuel g/h |");
-    lines.push("|----------|----------|--------|----------|--------|----------|");
-    for (const r of history) {
-      const endBG = r.endBG != null ? r.endBG.toFixed(1) : "-";
-      const drop = r.dropRate != null ? r.dropRate.toFixed(2) : "-";
-      const hr = r.avgHR != null ? String(r.avgHR) : "-";
-      const fuel = r.fuelRate != null ? String(Math.round(r.fuelRate)) : "-";
-      lines.push(`| ${r.category} | ${r.startBG.toFixed(1)} | ${endBG} | ${drop} | ${hr} | ${fuel} |`);
+    for (const h of history) {
+      const fb = h.event.activityId ? historyFeedback?.get(h.event.activityId) : undefined;
+      lines.push(formatRunLine(
+        h.event,
+        { date: true, name: true, category: true, distance: true, pace: true, avgHr: true, fuelRate: true },
+        { bgSummary: h.bgSummary, feedback: fb },
+      ));
     }
   }
 

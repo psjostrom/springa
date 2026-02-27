@@ -5,10 +5,10 @@ import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
 import type { RunFeedbackRecord } from "./feedbackDb";
-import { formatPace } from "./format";
 import type { PaceTable } from "./types";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
+import { formatRunLine } from "./runLine";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
@@ -70,59 +70,18 @@ function summarizeCompletedWorkouts(
 
   return completed
     .map((e) => {
-      const parts = [format(e.date, "yyyy-MM-dd"), e.name];
-      if (e.distance) parts.push(`${(e.distance / 1000).toFixed(1)}km`);
-      if (e.pace) parts.push(`pace ${formatPace(e.pace)}/km`);
-      if (e.avgHr) parts.push(`avgHR ${e.avgHr}`);
-      if (e.load) parts.push(`load ${e.load}`);
-      if (e.carbsIngested) parts.push(`carbs ${e.carbsIngested}g`);
       const actId = e.activityId ?? e.id.replace("activity-", "");
-      const bg = bgMap.get(actId);
-      if (bg) {
-        const sign = bg.avgRate >= 0 ? "+" : "";
-        let bgText = `startBG ${bg.startBG.toFixed(1)}`;
-        if (bg.entrySlope != null) {
-          const slopeSign = bg.entrySlope >= 0 ? "+" : "";
-          bgText += ` (entry ${slopeSign}${bg.entrySlope.toFixed(1)}/10m)`;
-        }
-        bgText += ` | BG rate ${sign}${bg.avgRate.toFixed(2)}/10min`;
-        parts.push(bgText);
-      }
-
-      // Append pre/post context from RunBGContext
-      const ctx = runBGContexts?.get(actId);
-      if (ctx?.pre) {
-        const slopeSign = ctx.pre.entrySlope30m >= 0 ? "+" : "";
-        parts.push(`entry: ${slopeSign}${ctx.pre.entrySlope30m.toFixed(1)}/10m (${classifyEntryLabel(ctx.pre.entrySlope30m, ctx.pre.entryStability)})`);
-      }
-      if (ctx?.post) {
-        let recoveryText = `recovery 30m: ${ctx.post.recoveryDrop30m >= 0 ? "+" : ""}${ctx.post.recoveryDrop30m.toFixed(1)}, lowest post-run ${ctx.post.nadirPostRun.toFixed(1)}`;
-        if (ctx.post.postRunHypo) recoveryText += " HYPO!";
-        parts.push(recoveryText);
-      }
-
-      // Append runner feedback
-      const fb = feedbackByActivity?.get(actId);
-      if (fb) {
-        const fbParts: string[] = [];
-        if (fb.rating) fbParts.push(fb.rating);
-        if (fb.carbsG != null) fbParts.push(`${fb.carbsG}g reported`);
-        if (fb.comment) fbParts.push(`"${fb.comment}"`);
-        if (fbParts.length > 0) parts.push(`feedback: ${fbParts.join(", ")}`);
-      }
-
-      return `- ${parts.join(" | ")}`;
+      return formatRunLine(
+        e,
+        { date: true, name: true, category: true, distance: true, duration: true, pace: true, avgHr: true, maxHr: true, load: true, fuelRate: true, carbsIngested: true, hrZones: true },
+        {
+          bgStartAndRate: bgMap.get(actId),
+          runBGContext: runBGContexts?.get(actId),
+          feedback: feedbackByActivity?.get(actId),
+        },
+      );
     })
     .join("\n");
-}
-
-function classifyEntryLabel(slope: number, stability: number): string {
-  if (slope < -1.0) return "crashing";
-  if (stability > 1.5) return "volatile";
-  if (Math.abs(slope) <= 0.3 && stability < 0.5) return "stable";
-  if (slope < -0.3) return "dropping";
-  if (slope > 0.3) return "rising";
-  return "unsteady";
 }
 
 export function summarizeRecoveryPatterns(

@@ -101,9 +101,10 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       const insights = computeInsights(fitnessData, calendarEvents);
 
       // Filter upcoming planned (next 4) + recent completed (last 7)
-      const now = new Date();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const upcoming = calendarEvents
-        .filter((e) => e.type === "planned" && e.date >= now)
+        .filter((e) => e.type === "planned" && e.date >= today)
         .sort((a, b) => a.date.getTime() - b.date.getTime())
         .slice(0, 4);
 

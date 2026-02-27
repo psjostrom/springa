@@ -1,4 +1,4 @@
-import { db, runMigration, addColumns } from "./db";
+import { db } from "./db";
 
 export interface RunFeedbackRecord {
   email: string;
@@ -10,12 +10,6 @@ export interface RunFeedbackRecord {
   duration?: number;
   avgHr?: number;
   carbsG?: number;
-}
-
-async function migrateFeedbackSchema(): Promise<void> {
-  await runMigration("feedback", () =>
-    addColumns("run_feedback", [{ name: "carbs_g", type: "REAL" }]),
-  );
 }
 
 export async function saveRunFeedback(
@@ -44,7 +38,6 @@ export async function getRunFeedback(
   email: string,
   createdAt: number,
 ): Promise<RunFeedbackRecord | null> {
-  await migrateFeedbackSchema();
   const result = await db().execute({
     sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g FROM run_feedback WHERE email = ? AND created_at = ?",
     args: [email, createdAt],
@@ -72,7 +65,6 @@ export async function updateRunFeedback(
   carbsG?: number,
   activityId?: string,
 ): Promise<void> {
-  await migrateFeedbackSchema();
   await db().execute({
     sql: "UPDATE run_feedback SET rating = ?, comment = ?, carbs_g = ?, activity_id = COALESCE(?, activity_id) WHERE email = ? AND created_at = ?",
     args: [rating, comment ?? null, carbsG ?? null, activityId ?? null, email, createdAt],
@@ -84,7 +76,6 @@ export async function getRunFeedbackByActivity(
   email: string,
   activityId: string,
 ): Promise<RunFeedbackRecord | null> {
-  await migrateFeedbackSchema();
   const result = await db().execute({
     sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g FROM run_feedback WHERE email = ? AND activity_id = ?",
     args: [email, activityId],
@@ -110,7 +101,6 @@ export async function updateFeedbackCarbsByActivity(
   activityId: string,
   carbsG: number,
 ): Promise<boolean> {
-  await migrateFeedbackSchema();
   const result = await db().execute({
     sql: "UPDATE run_feedback SET carbs_g = ? WHERE email = ? AND activity_id = ?",
     args: [carbsG, email, activityId],
@@ -124,7 +114,6 @@ export async function getRecentFeedback(
   sinceDays: number = 14,
   limit: number = 20,
 ): Promise<RunFeedbackRecord[]> {
-  await migrateFeedbackSchema();
   const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
   const result = await db().execute({
     sql: `SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g

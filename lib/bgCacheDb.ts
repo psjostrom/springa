@@ -1,4 +1,4 @@
-import { db, runMigration, addColumns } from "./db";
+import { db } from "./db";
 import type { WorkoutCategory } from "./types";
 import type { RunBGContext } from "./runBGContext";
 
@@ -14,23 +14,23 @@ export interface CachedActivity {
   cadence?: { time: number; value: number }[];
   altitude?: { time: number; value: number }[];
   activityDate?: string;
-}
-
-async function migrateBGCacheSchema(): Promise<void> {
-  await runMigration("bg_cache", () =>
-    addColumns("bg_cache", [
-      { name: "pace", type: "TEXT" },
-      { name: "cadence", type: "TEXT" },
-      { name: "altitude", type: "TEXT" },
-      { name: "activity_date", type: "TEXT" },
-    ]),
-  );
+  // CalendarEvent metadata (for history in run-analysis prompt)
+  name?: string;
+  distance?: number;
+  duration?: number;
+  avgPace?: number;
+  avgHr?: number;
+  maxHr?: number;
+  load?: number;
+  carbsIngested?: number | null;
 }
 
 export async function getBGCache(email: string): Promise<CachedActivity[]> {
-  await migrateBGCacheSchema();
   const result = await db().execute({
-    sql: "SELECT activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date FROM bg_cache WHERE email = ?",
+    sql: `SELECT activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context,
+                 pace, cadence, altitude, activity_date,
+                 name, distance, duration, avg_pace, avg_hr, max_hr, load, carbs_ingested
+          FROM bg_cache WHERE email = ?`,
     args: [email],
   });
   return result.rows.map((row) => ({
@@ -45,6 +45,14 @@ export async function getBGCache(email: string): Promise<CachedActivity[]> {
     cadence: row.cadence ? JSON.parse(row.cadence as string) : [],
     altitude: row.altitude ? JSON.parse(row.altitude as string) : [],
     activityDate: (row.activity_date as string) || undefined,
+    name: (row.name as string) || undefined,
+    distance: row.distance as number | undefined,
+    duration: row.duration as number | undefined,
+    avgPace: row.avg_pace as number | undefined,
+    avgHr: row.avg_hr as number | undefined,
+    maxHr: row.max_hr as number | undefined,
+    load: row.load as number | undefined,
+    carbsIngested: row.carbs_ingested as number | null | undefined,
   }));
 }
 
@@ -52,13 +60,12 @@ export async function saveBGCache(
   email: string,
   data: CachedActivity[],
 ): Promise<void> {
-  await migrateBGCacheSchema();
   await db().batch(
     [
       { sql: "DELETE FROM bg_cache WHERE email = ?", args: [email] },
       ...data.map((a) => ({
-        sql: `INSERT INTO bg_cache (email, activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO bg_cache (email, activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date, name, distance, duration, avg_pace, avg_hr, max_hr, load, carbs_ingested)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           email,
           a.activityId,
@@ -72,6 +79,14 @@ export async function saveBGCache(
           a.cadence && a.cadence.length > 0 ? JSON.stringify(a.cadence) : null,
           a.altitude && a.altitude.length > 0 ? JSON.stringify(a.altitude) : null,
           a.activityDate ?? null,
+          a.name ?? null,
+          a.distance ?? null,
+          a.duration ?? null,
+          a.avgPace ?? null,
+          a.avgHr ?? null,
+          a.maxHr ?? null,
+          a.load ?? null,
+          a.carbsIngested ?? null,
         ],
       })),
     ],

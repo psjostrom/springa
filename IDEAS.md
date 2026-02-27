@@ -2,6 +2,25 @@
 
 ## Next
 
+### Analysis → Adapt: Close the Learning Loop
+
+Run analysis produces the best actionable advice in the app — specific, data-backed, context-aware recommendations like "target start BG ≥10.5 for intervals", "treat the trend not the number", "add 15-20g at run start if below 9." But it's a dead end. The advice lives in the run_analysis table and the runner's memory. When the next interval session comes up and the adapt flow writes pre-workout notes, it re-derives conclusions from the same raw data independently. It might reach the same insights. It might not.
+
+**The problem:** Three consecutive interval sessions ended with BG at 4.4–4.6. The run analysis correctly identified the pattern, connected it to low start BG and pre-run downward trends, and prescribed concrete fixes. But the adapt prompt for the next interval session doesn't see any of that. It sees raw BG streams, feedback ratings, and model averages — and has to rediscover the pattern from scratch.
+
+**The fix:** Feed recent same-category analysis text into the adapt prompt. The analysis is already stored per activity in `run_analysis`. When `buildAdaptNotePrompt` prepares the context for an upcoming interval session, include the 1-2 most recent interval analyses. The adapt AI then builds on validated conclusions instead of starting from zero.
+
+**Implementation:**
+
+1. In `adaptPlanPrompt.ts`: accept an optional `recentAnalyses` param (array of `{ date: string, text: string }`).
+2. Add a `## Recent coaching analysis` section to the prompt, after the recent runs section. Include full analysis text — it's already concise (150 word target, though it runs longer).
+3. In `app/api/adapt-plan/route.ts`: for each adapted event, query `run_analysis` joined with `bg_cache` filtered by the same category, limit 2, ordered by recency. Pass the text into the prompt builder.
+4. Update the adapt system prompt to tell the AI: "Recent coaching analysis is provided below. Build on these conclusions — don't contradict them without new evidence. If the runner followed the advice and it worked, acknowledge it. If they didn't follow it, reinforce it."
+
+**Token budget:** Each analysis is ~150-300 words (~200-400 tokens). Two analyses = 400-800 tokens. The adapt prompt is already ~1500-2000 tokens. This is a modest increase for a large quality gain.
+
+**Why this matters beyond intervals:** Easy runs crash too. Long runs are the highest-risk format. Every category benefits from the AI building on its own prior recommendations rather than treating each workout as if it's never seen the runner before.
+
 ### AI Data Audit
 
 Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. Nobody has a clear map of what each consumer receives, what it's missing, and where the gaps create bad advice. The "BG crashed → trim fuel" incident happened because the adapt prompt had feedback but lacked cross-category visibility. The coach gave a BG-only response because it had no HR zones, no workout structure, no planned-vs-actual comparison.

@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth";
 import {
   getRunAnalysis,
   saveRunAnalysis,
-  getRecentRunSummaries,
+  getRecentRunHistory,
 } from "@/lib/runAnalysisDb";
-import { getRunFeedbackByActivity } from "@/lib/feedbackDb";
+import { getRunFeedbackByActivity, getRecentFeedback } from "@/lib/feedbackDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { getUserSettings } from "@/lib/settings";
 import { formatAIError } from "@/lib/aiError";
@@ -58,17 +58,23 @@ export async function POST(req: Request) {
     }
   }
 
-  const [history, feedback, settings] = await Promise.all([
-    getRecentRunSummaries(session.user.email),
+  const [history, feedback, recentFeedback, settings] = await Promise.all([
+    getRecentRunHistory(session.user.email),
     getRunFeedbackByActivity(session.user.email, activityId),
+    getRecentFeedback(session.user.email),
     getUserSettings(session.user.email),
   ]);
+
+  const historyFeedbackMap = new Map(
+    recentFeedback.filter((fb) => fb.activityId).map((fb) => [fb.activityId!, fb]),
+  );
 
   const { system, user } = buildRunAnalysisPrompt({
     event,
     runBGContext,
     reportCard,
     history,
+    historyFeedback: historyFeedbackMap,
     athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,
     lthr: settings.lthr,
     maxHr: settings.maxHr,

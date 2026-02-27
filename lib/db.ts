@@ -28,7 +28,12 @@ CREATE TABLE IF NOT EXISTS user_settings (
   prefix             TEXT,
   total_weeks        INTEGER,
   start_km           REAL,
-  lthr               INTEGER
+  lthr               INTEGER,
+  widget_order       TEXT,
+  hidden_widgets     TEXT,
+  max_hr             INTEGER,
+  hr_zones           TEXT,
+  profile_synced_at  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_auth (
@@ -55,6 +60,18 @@ CREATE TABLE IF NOT EXISTS bg_cache (
   glucose        TEXT NOT NULL,
   hr             TEXT NOT NULL,
   run_bg_context TEXT,
+  pace           TEXT,
+  cadence        TEXT,
+  altitude       TEXT,
+  activity_date  TEXT,
+  name           TEXT,
+  distance       REAL,
+  duration       REAL,
+  avg_pace       REAL,
+  avg_hr         INTEGER,
+  max_hr         INTEGER,
+  load           REAL,
+  carbs_ingested REAL,
   PRIMARY KEY (email, activity_id)
 );
 
@@ -83,6 +100,7 @@ CREATE TABLE IF NOT EXISTS run_feedback (
   distance   REAL,
   duration   REAL,
   avg_hr     REAL,
+  carbs_g    REAL,
   PRIMARY KEY (email, created_at)
 );
 
@@ -94,25 +112,3 @@ CREATE TABLE IF NOT EXISTS prerun_push_log (
 );
 `;
 
-// --- Schema migration helpers (idempotent, run-once per process) ---
-
-const _migrated = new Set<string>();
-
-export async function runMigration(name: string, fn: () => Promise<void>): Promise<void> {
-  if (_migrated.has(name)) return;
-  _migrated.add(name);
-  await fn();
-}
-
-export async function addColumns(table: string, cols: { name: string; type: string }[]): Promise<void> {
-  for (const col of cols) {
-    try {
-      await db().execute({
-        sql: `ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`,
-        args: [],
-      });
-    } catch {
-      // column already exists — expected
-    }
-  }
-}

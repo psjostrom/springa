@@ -4,6 +4,7 @@ import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import type { AdaptedEvent } from "./adaptPlan";
 import type { RunFeedbackRecord } from "./feedbackDb";
+import { formatRunLine } from "./runLine";
 
 interface PromptInput {
   adapted: AdaptedEvent;
@@ -80,32 +81,14 @@ Rules:
     lines.push("");
     lines.push(`## Recent ${adapted.category} runs`);
     for (const run of recentRuns) {
-      const parts: string[] = [
-        run.date.toISOString().split("T")[0],
-      ];
       const ctx = run.activityId ? runBGContexts[run.activityId] : undefined;
-      if (ctx?.pre) parts.push(`start BG ${ctx.pre.startBG.toFixed(1)}`);
-      if (ctx?.post) {
-        parts.push(`end BG ${ctx.post.endBG.toFixed(1)}`);
-        parts.push(`lowest in 2h after run ${ctx.post.nadirPostRun.toFixed(1)}`);
-        if (ctx.post.postRunHypo) parts.push("hypo in recovery (after run ended)");
-      }
-      if (run.pace) {
-        const paceMin = Math.floor(run.pace);
-        const paceSec = Math.round((run.pace - paceMin) * 60);
-        parts.push(`pace ${paceMin}:${String(paceSec).padStart(2, "0")}/km`);
-      }
-      if (run.distance) parts.push(`${(run.distance / 1000).toFixed(1)}km`);
-      if (run.avgHr) parts.push(`HR ${run.avgHr}`);
-      if (run.fuelRate != null) parts.push(`fuel ${Math.round(run.fuelRate)}g/h`);
       const fb = run.activityId ? feedbackByActivity?.get(run.activityId) : undefined;
-      if (fb) {
-        if (fb.rating) parts.push(`rating: ${fb.rating}`);
-        if (fb.carbsG != null) parts.push(`reported carbs: ${fb.carbsG}g`);
-        if (fb.comment) parts.push(`"${fb.comment}"`);
-        if (run.activityId) shownFeedbackIds.add(run.activityId);
-      }
-      lines.push(`- ${parts.join(", ")}`);
+      if (fb && run.activityId) shownFeedbackIds.add(run.activityId);
+      lines.push(formatRunLine(
+        run,
+        { date: true, pace: true, distance: true, avgHr: true, fuelRate: true },
+        { runBGContext: ctx ?? null, feedback: fb },
+      ));
     }
   }
 
