@@ -77,18 +77,17 @@ export function processActivities(
     }
 
     const activityDate = parseISO(
-      activity.start_date_local || activity.start_date,
+      activity.start_date_local ?? activity.start_date,
     );
 
     // Prefer authoritative link (either direction), fall back to ±3 day exact name match
     const authoritativeMatch = pairedEventMap.get(activity.id)
-      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined)
-      ?? undefined;
+      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined);
 
     const rejections: string[] = [];
     const fallbackMatch = !authoritativeMatch ? events.find((event) => {
       if (event.category !== "WORKOUT") return false;
-      const actName = (activity.name ?? "").trim().toLowerCase();
+      const actName = activity.name.trim().toLowerCase();
       const evtName = (event.name ?? "").trim().toLowerCase();
       if (event.paired_activity_id) {
         rejections.push(`${event.id}|${event.name}|paired→${event.paired_activity_id}`);
@@ -114,7 +113,7 @@ export function processActivities(
     // Log: fallback match → one line; eco16 with no match → detail block; otherwise silent
     if (fallbackMatch) {
       console.log(`[auto-pair] fallback: activity "${activity.name}" → event ${fallbackMatch.id}`);
-    } else if (!matchingEvent && (activity.name ?? "").toLowerCase().includes("eco16")) {
+    } else if (!matchingEvent && activity.name.toLowerCase().includes("eco16")) {
       console.log(`[auto-pair] UNMATCHED eco16 activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
       for (const r of rejections) console.log(`[auto-pair]   rejected: ${r}`);
     }
@@ -129,7 +128,7 @@ export function processActivities(
     }
 
     const description =
-      matchingEvent?.description || activity.description || "";
+      matchingEvent?.description ?? activity.description ?? "";
 
     const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
 
@@ -141,9 +140,7 @@ export function processActivities(
         totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
       }
     }
-    if (totalCarbs == null) {
-      totalCarbs = extractTotalCarbs(description);
-    }
+    totalCarbs ??= extractTotalCarbs(description);
 
     // Actual carbs ingested: from activity API field, default to planned totalCarbs
     const carbsIngested = activity.carbs_ingested ?? totalCarbs;
@@ -157,8 +154,8 @@ export function processActivities(
       category,
       distance: activity.distance,
       duration: activity.moving_time,
-      avgHr: activity.average_heartrate || activity.average_hr,
-      maxHr: activity.max_heartrate || activity.max_hr,
+      avgHr: activity.average_heartrate ?? activity.average_hr,
+      maxHr: activity.max_heartrate ?? activity.max_hr,
       load: activity.icu_training_load,
       intensity: activity.icu_intensity,
       pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
@@ -199,9 +196,9 @@ export function processPlannedEvents(
       console.log(`[auto-pair] event ${event.id} "${event.name}" has paired_activity_id=${event.paired_activity_id} but activity not in activityMap`);
     }
 
-    const name = event.name || "";
+    const name = event.name ?? "";
     const eventDate = parseISO(event.start_date_local);
-    const eventDesc = event.description || "";
+    const eventDesc = event.description ?? "";
 
     const isRace = name.toLowerCase().includes("race");
     const category = isRace ? "race" : getWorkoutCategory(name);
@@ -211,15 +208,13 @@ export function processPlannedEvents(
     // Calculate total carbs from fuel rate and estimated duration.
     let eventTotalCarbs: number | null = null;
     if (eventFuelRate != null) {
-      const estDur = event.moving_time || event.duration || event.elapsed_time;
+      const estDur = event.moving_time ?? event.duration ?? event.elapsed_time;
       const estMinutes = estimateWorkoutDuration(eventDesc)?.minutes ?? (estDur ? estDur / 60 : null);
       if (estMinutes != null) {
         eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
       }
     }
-    if (eventTotalCarbs == null) {
-      eventTotalCarbs = extractTotalCarbs(eventDesc);
-    }
+    eventTotalCarbs ??= extractTotalCarbs(eventDesc);
 
     calendarEvents.push({
       id: `event-${event.id}`,
@@ -228,8 +223,8 @@ export function processPlannedEvents(
       description: eventDesc,
       type: isRace ? "race" : "planned",
       category,
-      distance: event.distance || 0,
-      duration: event.moving_time || event.duration || event.elapsed_time,
+      distance: event.distance ?? 0,
+      duration: event.moving_time ?? event.duration ?? event.elapsed_time,
       fuelRate: eventFuelRate,
       totalCarbs: eventTotalCarbs,
     });

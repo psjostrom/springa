@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body: unknown = await req.json();
   const newReadings = parseNightscoutEntries(body);
   if (newReadings.length === 0) {
     return NextResponse.json({ ok: true, count: 0 });

@@ -39,7 +39,7 @@ const ATL_DAYS = 7;
  */
 export function computeFitnessData(
   events: CalendarEvent[],
-  historyDays: number = 365,
+  historyDays = 365,
 ): FitnessDataPoint[] {
   const today = startOfDay(new Date());
   const startDate = addDays(today, -historyDays);
@@ -49,7 +49,7 @@ export function computeFitnessData(
   for (const event of events) {
     if (event.type !== "completed" || !event.load) continue;
     const key = format(startOfDay(event.date), "yyyy-MM-dd");
-    dailyLoads.set(key, (dailyLoads.get(key) || 0) + event.load);
+    dailyLoads.set(key, (dailyLoads.get(key) ?? 0) + event.load);
   }
 
   const totalDays = differenceInCalendarDays(today, startDate) + 1;
@@ -65,7 +65,7 @@ export function computeFitnessData(
   for (let i = 0; i < rampUpDays; i++) {
     const d = addDays(rampUpStart, i);
     const key = format(d, "yyyy-MM-dd");
-    const load = dailyLoads.get(key) || 0;
+    const load = dailyLoads.get(key) ?? 0;
     ctl += (load - ctl) / CTL_DAYS;
     atl += (load - atl) / ATL_DAYS;
   }
@@ -74,7 +74,7 @@ export function computeFitnessData(
   for (let i = 0; i < totalDays; i++) {
     const d = addDays(startDate, i);
     const key = format(d, "yyyy-MM-dd");
-    const load = dailyLoads.get(key) || 0;
+    const load = dailyLoads.get(key) ?? 0;
 
     ctl += (load - ctl) / CTL_DAYS;
     atl += (load - atl) / ATL_DAYS;
@@ -117,7 +117,7 @@ export function computeInsights(
   events: CalendarEvent[],
 ): FitnessInsights {
   const today = startOfDay(new Date());
-  const latest = fitnessData[fitnessData.length - 1];
+  const latest = fitnessData.at(-1);
   const currentCtl = latest?.ctl ?? 0;
   const currentAtl = latest?.atl ?? 0;
   const currentTsb = latest?.tsb ?? 0;

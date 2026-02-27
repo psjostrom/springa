@@ -60,7 +60,7 @@ function GlucoseChart({
 							width={35}
 							tickLine={false}
 							axisLine={false}
-							tickFormatter={(number) => number.toFixed(1)}
+							tickFormatter={(v: number) => v.toFixed(1)}
 						/>
 						<Tooltip
 							contentStyle={{
@@ -71,9 +71,9 @@ function GlucoseChart({
 								color: "#fff",
 							}}
 							formatter={(
-								value: number | string | Array<number | string> | undefined,
+								value: number | string | (number | string)[] | undefined,
 							) => {
-								if (value === undefined || value === null)
+								if (value == null)
 									return ["-", "mmol/L"];
 								if (Array.isArray(value)) return [value.join(", "), "mmol/L"];
 								const num = Number(value);
@@ -127,7 +127,8 @@ export function AnalysisSection({
 			</h3>
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 				{activeCards.map(({ type, key, title }) => {
-					const analysis = analysisMap[key]!;
+					const analysis = analysisMap[key];
+					if (!analysis) return null;
 					return (
 						<div key={type} className="space-y-2 min-w-0">
 							<GlucoseChart plotData={analysis.plotData} title={title} />
@@ -137,7 +138,7 @@ export function AnalysisSection({
 									<input
 										type="number"
 										value={fuelValues[type]}
-										onChange={(e) => onFuelChange(type, Number(e.target.value))}
+										onChange={(e) => { onFuelChange(type, Number(e.target.value)); }}
 										className={fuelInputClass}
 									/>
 									<span className="text-[#b8a5d4]">g/h</span>

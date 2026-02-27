@@ -62,7 +62,7 @@ export function parseExpectedRepTime(description: string): {
   totalRepSec: number;
   targetZone: "Z4" | "Z5";
 } | null {
-  const headerMatch = description.match(/^(?:Main set|Strides)\s+(\d+)x\s*$/m);
+  const headerMatch = /^(?:Main set|Strides)\s+(\d+)x\s*$/m.exec(description);
   if (!headerMatch) return null;
 
   const repCount = parseInt(headerMatch[1], 10);
@@ -71,9 +71,7 @@ export function parseExpectedRepTime(description: string): {
   );
 
   // First step after header is the hard effort: "- (Uphill )?2m 89-99% LTHR" or "- 20s 99-111% LTHR"
-  const stepMatch = afterHeader.match(
-    /^-\s+(?:Uphill\s+)?(\d+)(m|s)\s+(\d+)-\d+%\s+LTHR/m,
-  );
+  const stepMatch = /^-\s+(?:Uphill\s+)?(\d+)(m|s)\s+(\d+)-\d+%\s+LTHR/m.exec(afterHeader);
   if (!stepMatch) return null;
 
   const duration = parseInt(stepMatch[1], 10);

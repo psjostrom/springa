@@ -77,9 +77,9 @@ function HomeContent() {
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
-      .then((data) => setSettings(data))
-      .catch(() => setSettings({}))
-      .finally(() => setSettingsLoading(false));
+      .then((data: UserSettings) => { setSettings(data); })
+      .catch(() => { setSettings({}); })
+      .finally(() => { setSettingsLoading(false); });
   }, []);
 
   const parseTab = (search: string): Tab => {
@@ -115,9 +115,9 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => setActiveTab(parseTab(window.location.search));
+    const onPopState = () => { setActiveTab(parseTab(window.location.search)); };
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    return () => { window.removeEventListener("popstate", onPopState); };
   }, []);
 
   const saveSettings = useCallback(
@@ -150,7 +150,7 @@ function HomeContent() {
   const enrichedEvents = useEnrichedEvents(sharedCalendar.events, cachedActivities);
 
   // Phase info for progress screen
-  const raceDate = settings?.raceDate || "2026-06-13";
+  const raceDate = settings?.raceDate ?? "2026-06-13";
   const totalWeeks = settings?.totalWeeks ?? 18;
   const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
 
@@ -173,7 +173,7 @@ function HomeContent() {
       // Debounced persist
       if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
       widgetSaveTimer.current = setTimeout(() => {
-        fetch("/api/settings", {
+        void fetch("/api/settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -195,7 +195,7 @@ function HomeContent() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return enrichedEvents
       .filter((e) => !e.activityId && e.date >= today && e.date < new Date(today.getTime() + 86400000))
-      .sort((a, b) => a.date.getTime() - b.date.getTime())[0] ?? null;
+      .sort((a, b) => a.date.getTime() - b.date.getTime()).at(0) ?? null;
   }, [enrichedEvents]);
 
   const openNextWorkout = useCallback(() => {
@@ -244,7 +244,7 @@ function HomeContent() {
   if (settingsLoading) return splashFallback;
 
   if (!apiKey) {
-    return <ApiKeySetup onSubmit={saveSettings} />;
+    return <ApiKeySetup onSubmit={(keys) => { void saveSettings(keys); }} />;
   }
 
   return (
@@ -252,7 +252,7 @@ function HomeContent() {
       <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30 shadow-[0_2px_12px_rgba(255,45,149,0.15)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
-            onClick={() => handleTabChange("calendar")}
+            onClick={() => { handleTabChange("calendar"); }}
             className="text-xl md:text-2xl font-bold bg-[linear-gradient(135deg,#00ffff,#d946ef,#ff2d95)] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.8)] hover:scale-105 active:scale-95 transition-all"
           >
             Springa
@@ -270,7 +270,7 @@ function HomeContent() {
               </button>
             )}
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => { setShowSettings(true); }}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
               title="Settings"
             >
@@ -295,11 +295,11 @@ function HomeContent() {
             events={enrichedEvents}
             runBGContexts={runBGContexts}
             autoAdapt={autoAdapt}
-            onSyncDone={sharedCalendar.reload}
+            onSyncDone={() => { void sharedCalendar.reload(); }}
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={sharedCalendar.reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
+          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={() => { void sharedCalendar.reload(); }} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
@@ -307,7 +307,7 @@ function HomeContent() {
             events={enrichedEvents}
             eventsLoading={sharedCalendar.isLoading}
             eventsError={sharedCalendar.error}
-            onRetryLoad={sharedCalendar.reload}
+            onRetryLoad={() => { void sharedCalendar.reload(); }}
             phaseName={phaseInfo.name}
             currentWeek={phaseInfo.week}
             totalWeeks={totalWeeks}
@@ -347,7 +347,7 @@ function HomeContent() {
           email={session?.user?.email ?? ""}
           settings={settings}
           onSave={updateSettings}
-          onClose={() => setShowSettings(false)}
+          onClose={() => { setShowSettings(false); }}
         />
       )}
     </div>

@@ -231,7 +231,7 @@ function computeTimeToStable(
     const inRange = r.mmol >= BG_STABLE_MIN && r.mmol <= BG_STABLE_MAX;
 
     if (inRange) {
-      if (stableStart === null) stableStart = r.ts;
+      stableStart ??= r.ts;
       if (r.ts - stableStart >= STABLE_DURATION_MS) {
         return Math.round((stableStart - runEndMs) / 60000);
       }
@@ -249,7 +249,7 @@ export function buildRunBGContext(
   readings: XdripReading[],
 ): RunBGContext | null {
   if (event.type !== "completed") return null;
-  if (!event.duration || !event.date) return null;
+  if (!event.duration) return null;
   if (!event.activityId) return null;
 
   const category = event.category;
@@ -285,7 +285,7 @@ export function buildRunBGContexts(
   readings: XdripReading[],
 ): Map<string, RunBGContext> {
   const map = new Map<string, RunBGContext>();
-  if (!readings || readings.length === 0) return map;
+  if (readings.length === 0) return map;
 
   // Ensure readings are sorted by timestamp
   const sorted = [...readings].sort((a, b) => a.ts - b.ts);

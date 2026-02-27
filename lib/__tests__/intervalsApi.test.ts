@@ -540,7 +540,7 @@ describe("uploadToIntervals", () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
       if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
       if (opts?.method === "POST") {
-        capturedBody = JSON.parse(opts?.body as string);
+        capturedBody = JSON.parse(opts.body as string);
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }
       return Promise.resolve({ ok: false });
@@ -560,7 +560,7 @@ describe("uploadToIntervals", () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
       if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
       if (opts?.method === "POST") {
-        capturedBody = JSON.parse(opts?.body as string);
+        capturedBody = JSON.parse(opts.body as string);
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }
       return Promise.resolve({ ok: false });

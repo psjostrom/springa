@@ -31,7 +31,7 @@ function createBGStore() {
 
   function set(next: CurrentBGData) {
     data = next;
-    listeners.forEach((l) => l());
+    listeners.forEach((l) => { l(); });
   }
 
   async function poll() {
@@ -41,7 +41,11 @@ function createBGStore() {
         set({ ...data, loading: false });
         return;
       }
-      const json = await res.json();
+      const json = (await res.json()) as {
+        current?: { mmol: number; arrow?: string; ts: number };
+        trend?: { arrow?: string; slope?: number };
+        readings?: XdripReading[];
+      };
 
       const readings: XdripReading[] = json.readings ?? [];
 
@@ -69,8 +73,8 @@ function createBGStore() {
       // Start polling when first subscriber arrives
       refs++;
       if (refs === 1) {
-        poll();
-        interval = setInterval(poll, POLL_INTERVAL);
+        void poll();
+        interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
       }
       return () => {
         listeners.delete(cb);

@@ -25,10 +25,10 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
   const copyUrl = async () => {
     await navigator.clipboard.writeText(nightscoutUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { setCopied(false); }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!intervalsKey.trim()) {
       setError("Intervals.icu API key is required");
@@ -101,7 +101,7 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
               id="googleAiKey"
               type="text"
               value={googleAiKey}
-              onChange={(e) => setGoogleAiKey(e.target.value)}
+              onChange={(e) => { setGoogleAiKey(e.target.value); }}
               className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4]"
               placeholder="Needed for Coach tab"
             />
@@ -130,7 +130,7 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
                 id="xdripSecret"
                 type="text"
                 value={xdripSecret}
-                onChange={(e) => setXdripSecret(e.target.value)}
+                onChange={(e) => { setXdripSecret(e.target.value); }}
                 className="flex-1 px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#39ff14] focus:border-transparent placeholder:text-[#b8a5d4] text-sm font-mono"
                 placeholder="Secret for xDrip sync"
               />
@@ -153,7 +153,7 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
                   </code>
                   <button
                     type="button"
-                    onClick={copyUrl}
+                    onClick={() => { void copyUrl(); }}
                     className="shrink-0 p-1.5 rounded bg-[#2a1f3d] border border-[#3d2b5a] text-[#c4b5fd] hover:text-[#39ff14] transition"
                     title="Copy URL"
                   >

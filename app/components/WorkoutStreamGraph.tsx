@@ -240,7 +240,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           return (
             <button
               key={stream}
-              onClick={() => toggleStream(stream)}
+              onClick={() => { toggleStream(stream); }}
               aria-pressed={isSelected}
               aria-label={`Toggle ${config.label}`}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
@@ -265,9 +265,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       {/* Legend showing current ranges or hover values */}
       <div className="flex gap-2 sm:gap-4 mb-3 text-sm flex-wrap min-h-[2.5rem]">
         {streamPaths.map((path, idx) => {
-          if (!path) return null;
           const { config, minValue, maxValue, hoverValue } = path;
-          const formatVal = config.formatValue || ((v: number) => v.toFixed(1));
+          const formatVal = config.formatValue ?? ((v: number) => v.toFixed(1));
           return (
             <div key={idx} className="flex items-center gap-1 sm:gap-2">
               <div
@@ -328,8 +327,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
             if (useSingleStreamMode && streamPaths.length > 0) {
               // Show actual values
               const actualValue = globalMin + yPercent * (globalMax - globalMin);
-              const config = streamPaths[0]?.config;
-              if (config?.formatValue) {
+              const config = streamPaths[0].config;
+              if (config.formatValue) {
                 label = config.formatValue(actualValue);
               } else {
                 label = actualValue.toFixed(1);
@@ -354,21 +353,18 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
           })}
 
           {/* Data lines */}
-          {streamPaths.map((path, idx) => {
-            if (!path) return null;
-            return (
+          {streamPaths.map((path, idx) => (
               <path
                 key={idx}
                 d={path.pathData}
                 fill="none"
                 stroke={path.config.color}
-                strokeWidth={path.config.strokeWidth || 2}
+                strokeWidth={path.config.strokeWidth ?? 2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 opacity="0.9"
               />
-            );
-          })}
+          ))}
 
           {/* Hover line and dots */}
           {isHovering && hoverTime !== null && (
@@ -386,7 +382,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
               />
               {/* Dots on each line */}
               {streamPaths.map((path, idx) => {
-                if (!path || path.hoverY === null) return null;
+                if (path.hoverY === null) return null;
                 return (
                   <circle
                     key={idx}

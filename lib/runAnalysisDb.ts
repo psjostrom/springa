@@ -36,7 +36,7 @@ export async function saveRunAnalysis(
 
 export async function getRecentRunHistory(
   email: string,
-  limit: number = 10,
+  limit = 10,
 ): Promise<RunHistoryEntry[]> {
   const result = await db().execute({
     sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.start_bg, b.glucose, b.hr,
@@ -51,8 +51,8 @@ export async function getRecentRunHistory(
   });
 
   return result.rows.map((row) => {
-    const glucose: { time: number; value: number }[] = JSON.parse(row.glucose as string);
-    const hr: { time: number; value: number }[] = JSON.parse(row.hr as string);
+    const glucose = JSON.parse(row.glucose as string) as { time: number; value: number }[];
+    const hr = JSON.parse(row.hr as string) as { time: number; value: number }[];
 
     const endBG = glucose.length > 0 ? glucose[glucose.length - 1].value : null;
     const avgHRFromStream = hr.length > 0
@@ -74,7 +74,7 @@ export async function getRecentRunHistory(
       id: `activity-${row.activity_id as string}`,
       activityId: row.activity_id as string,
       date: dateStr ? new Date(dateStr) : new Date(),
-      name: (row.name as string) || `${row.category} run`,
+      name: (row.name as string) || `${row.category as string} run`,
       description: "",
       type: "completed",
       category: (row.category as string) as CalendarEvent["category"],

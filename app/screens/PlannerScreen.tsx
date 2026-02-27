@@ -74,7 +74,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       const count = await uploadToIntervals(apiKey, planEvents);
       setStatusMsg(`Uploaded ${count} workouts.`);
     } catch (e) {
-      setStatusMsg(`Error: ${e}`);
+      setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
     setIsUploading(false);
   };
@@ -146,11 +146,11 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
         throw new Error(err);
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as { adaptedEvents: AdaptedEvent[] };
       setAdaptedEvents(data.adaptedEvents);
       setAdaptStatus(`Adapted ${data.adaptedEvents.length} workouts`);
     } catch (e) {
-      setAdaptStatus(`Error: ${e}`);
+      setAdaptStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
     setIsAdapting(false);
   };
@@ -160,7 +160,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
   useEffect(() => {
     if (props.autoAdapt && !autoAdaptFired.current && !isAdapting && bgModel && hasPlannedEvents) {
       autoAdaptFired.current = true;
-      handleAdapt();
+      void handleAdapt();
     }
   }, [props.autoAdapt, bgModel, hasPlannedEvents]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -192,7 +192,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       setSyncDone(true);
       props.onSyncDone?.();
     } catch (e) {
-      setAdaptStatus(`Sync error: ${e}`);
+      setAdaptStatus(`Sync error: ${e instanceof Error ? e.message : String(e)}`);
     }
     setIsSyncing(false);
   };
@@ -239,7 +239,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
               workoutCount={planEvents.length}
               isUploading={isUploading}
               statusMsg={statusMsg}
-              onUpload={handleUpload}
+              onUpload={() => { void handleUpload(); }}
             />
             <WorkoutList events={planEvents} />
           </>
@@ -256,7 +256,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
                   {isAdapting ? "Adapting..." : "Adapt Upcoming"}
                 </span>
                 <button
-                  onClick={handleAdapt}
+                  onClick={() => { void handleAdapt(); }}
                   disabled={isAdapting}
                   className={`py-2 px-5 text-white rounded-lg font-bold transition text-sm ${
                     isAdapting
@@ -313,7 +313,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
                   ))}
 
                   <button
-                    onClick={handleSync}
+                    onClick={() => { void handleSync(); }}
                     disabled={isSyncing || syncDone}
                     className={`w-full py-2.5 rounded-lg font-bold transition text-sm ${
                       syncDone

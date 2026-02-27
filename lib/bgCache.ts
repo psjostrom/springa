@@ -6,7 +6,7 @@ const LS_KEY = "bgcache";
 export function readLocalCache(): CachedActivity[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return raw ? (JSON.parse(raw) as CachedActivity[]) : [];
   } catch {
     return [];
   }
@@ -24,7 +24,7 @@ export async function fetchBGCache(): Promise<CachedActivity[]> {
   try {
     const res = await fetch("/api/bg-cache");
     if (!res.ok) return [];
-    return await res.json();
+    return (await res.json()) as CachedActivity[];
   } catch {
     return [];
   }

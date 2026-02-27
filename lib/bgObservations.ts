@@ -120,7 +120,7 @@ export function extractObservations(
     for (let m = t; m < t + WINDOW_SIZE; m++) {
       const g = gMap.get(m);
       if (g != null) {
-        if (gStart == null) gStart = g;
+        gStart ??= g;
         gEnd = g;
       }
     }

@@ -33,7 +33,7 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
   // Filter to last 3 hours
@@ -108,11 +108,11 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
     setScrubIdx(idx);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => handlePointerMove(e.clientX);
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => { handlePointerMove(e.clientX); };
   const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
     if (e.touches.length > 0) handlePointerMove(e.touches[0].clientX);
   };
-  const handlePointerEnd = () => setScrubIdx(null);
+  const handlePointerEnd = () => { setScrubIdx(null); };
 
   const scrubReading = scrubIdx !== null ? data[scrubIdx] : null;
 
@@ -141,7 +141,7 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
     >
       <div
         className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up"
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         {/* Header */}
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">

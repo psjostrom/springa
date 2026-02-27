@@ -41,11 +41,11 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
         });
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `HTTP ${res.status}`);
+          const data = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(data.error ?? `HTTP ${res.status}`);
         }
 
-        const data = await res.json();
+        const data = await res.json() as { analysis: string };
         if (!signal?.aborted) setAnalysis(data.analysis);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -59,8 +59,8 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchAnalysis(false, controller.signal);
-    return () => controller.abort();
+    void fetchAnalysis(false, controller.signal);
+    return () => { controller.abort(); };
   }, [fetchAnalysis]);
 
   if (!event.activityId) return null;
@@ -75,7 +75,7 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
         </div>
         {analysis && !loading && (
           <button
-            onClick={() => fetchAnalysis(true)}
+            onClick={() => { void fetchAnalysis(true); }}
             className="p-1 text-[#b8a5d4] hover:text-white transition-colors"
             aria-label="Regenerate analysis"
           >

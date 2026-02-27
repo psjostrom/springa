@@ -39,7 +39,7 @@ export async function fetchRunContext(
 
   // Find the most recent running activity by start_date_local
   const activities: IntervalsActivity[] = activitiesRes.ok
-    ? await activitiesRes.json()
+    ? ((await activitiesRes.json()) as IntervalsActivity[])
     : [];
   const activity =
     activities
@@ -48,7 +48,7 @@ export async function fetchRunContext(
         (b.start_date_local ?? b.start_date).localeCompare(
           a.start_date_local ?? a.start_date,
         ),
-      )[0] ?? null;
+      ).at(0) ?? null;
 
   const activityId = activity?.id ?? null;
   const distance = activity?.distance ?? null;
@@ -59,7 +59,7 @@ export async function fetchRunContext(
 
   // Compute prescribed carbs from any WORKOUT event with carbs_per_hour
   const events: { category: string; carbs_per_hour?: number }[] =
-    eventsRes.ok ? await eventsRes.json() : [];
+    eventsRes.ok ? ((await eventsRes.json()) as { category: string; carbs_per_hour?: number }[]) : [];
   const planned = events.find(
     (e) => e.category === "WORKOUT" && e.carbs_per_hour != null,
   );
@@ -95,7 +95,7 @@ export async function resolveTimezone(
   });
   if (!res.ok) return null;
 
-  const athlete = await res.json();
+  const athlete = (await res.json()) as { timezone?: string };
   const tz: string = athlete.timezone ?? "UTC";
   await saveUserSettings(email, { timezone: tz });
   return tz;

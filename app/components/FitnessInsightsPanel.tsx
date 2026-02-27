@@ -222,7 +222,7 @@ function StatCard({
       onClick={onClick}
     >
       <div className="text-sm text-[#b8a5d4] mb-1">{label}</div>
-      <div className={`text-xl font-bold ${color || "text-white"}`}>{value}</div>
+      <div className={`text-xl font-bold ${color ?? "text-white"}`}>{value}</div>
       {sub && <div className="text-sm text-[#c4b5fd] mt-0.5">{sub}</div>}
     </div>
   );
@@ -263,7 +263,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         <MetricPopover
           metricKey={popover.key}
           anchorRect={popover.rect}
-          onClose={() => setPopover(null)}
+          onClose={() => { setPopover(null); }}
           insights={insights}
         />
       )}
@@ -271,7 +271,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Form Zone Banner */}
       <div
         className={`${formStyle.bg} ${formStyle.border} border rounded-xl p-4 flex items-center gap-3 cursor-pointer active:opacity-80 transition-opacity`}
-        onClick={(e) => handleTap("form", e)}
+        onClick={(e) => { handleTap("form", e); }}
       >
         <FormIcon className={`w-6 h-6 ${formStyle.text} flex-shrink-0`} />
         <div className="flex-1">
@@ -302,17 +302,17 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           value={insights.currentCtl.toString()}
           sub={`Peak: ${insights.peakCtl}`}
           color="text-[#00ffff]"
-          onClick={(e) => handleTap("ctl", e)}
+          onClick={(e) => { handleTap("ctl", e); }}
         />
         <StatCard
           label="Fatigue (ATL)"
           value={insights.currentAtl.toString()}
           color="text-[#c4b5fd]"
-          onClick={(e) => handleTap("atl", e)}
+          onClick={(e) => { handleTap("atl", e); }}
         />
         <div
           className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
-          onClick={(e) => handleTap("trend", e)}
+          onClick={(e) => { handleTap("trend", e); }}
         >
           <div className="text-sm text-[#b8a5d4] mb-1">Fitness Trend</div>
           <div className="flex items-center gap-1.5">
@@ -328,7 +328,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         </div>
         <div
           className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
-          onClick={(e) => handleTap("ramp", e)}
+          onClick={(e) => { handleTap("ramp", e); }}
         >
           <div className="text-sm text-[#b8a5d4] mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
@@ -353,7 +353,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       <div className="grid grid-cols-2 gap-3">
         <div
           className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
-          onClick={(e) => handleTap("load7", e)}
+          onClick={(e) => { handleTap("load7", e); }}
         >
           <div className="text-sm text-[#b8a5d4] mb-1">Last 7 days</div>
           <div className="text-lg font-bold text-white">
@@ -368,7 +368,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         </div>
         <div
           className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
-          onClick={(e) => handleTap("load28", e)}
+          onClick={(e) => { handleTap("load28", e); }}
         >
           <div className="text-sm text-[#b8a5d4] mb-1">Last 28 days</div>
           <div className="text-lg font-bold text-white">

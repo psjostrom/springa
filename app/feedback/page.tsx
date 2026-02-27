@@ -17,7 +17,7 @@ function formatDuration(ms: number): string {
   const totalSec = Math.round(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
-  return min + ":" + String(sec).padStart(2, "0");
+  return `${min}:${String(sec).padStart(2, "0")}`;
 }
 
 function formatDistance(meters: number): string {
@@ -79,8 +79,8 @@ function FeedbackContent() {
           }
         }
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
+      .finally(() => { setLoading(false); });
   }, [ts]);
 
   const handleSubmit = async () => {
@@ -146,7 +146,7 @@ function FeedbackContent() {
       )}
 
       {/* Activity not found warning */}
-      {!loading && !activityId && !submitted && (
+      {!activityId && !submitted && (
         <p className="text-[#fbbf24] text-xs mb-4 text-center max-w-sm">
           Activity not found on Intervals.icu yet — carbs won&apos;t sync.
         </p>
@@ -180,7 +180,7 @@ function FeedbackContent() {
           {/* Rating buttons */}
           <div className="flex gap-6 mb-6">
             <button
-              onClick={() => setRating("good")}
+              onClick={() => { setRating("good"); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 rating === "good"
                   ? "border-[#39ff14] bg-[#39ff14]/10"
@@ -190,7 +190,7 @@ function FeedbackContent() {
               {"\uD83D\uDC4D"}
             </button>
             <button
-              onClick={() => setRating("bad")}
+              onClick={() => { setRating("bad"); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 rating === "bad"
                   ? "border-[#ff3366] bg-[#ff3366]/10"
@@ -208,7 +208,7 @@ function FeedbackContent() {
               type="number"
               inputMode="numeric"
               value={carbsG}
-              onChange={(e) => setCarbsG(e.target.value)}
+              onChange={(e) => { setCarbsG(e.target.value); }}
               placeholder={prescribedCarbsG != null ? `${prescribedCarbsG} (prescribed)` : "e.g. 40"}
               className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
             />
@@ -217,7 +217,7 @@ function FeedbackContent() {
           {/* Comment */}
           <textarea
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            onChange={(e) => { setComment(e.target.value); }}
             placeholder="Comment (optional)"
             rows={3}
             className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm mb-4 resize-none"
@@ -225,7 +225,7 @@ function FeedbackContent() {
 
           {/* Submit */}
           <button
-            onClick={handleSubmit}
+            onClick={() => { void handleSubmit(); }}
             disabled={!rating || !activityId || submitting}
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
@@ -233,23 +233,25 @@ function FeedbackContent() {
           </button>
 
           <button
-            onClick={async () => {
+            onClick={() => {
               if (!ts) return;
               setSubmitting(true);
-              try {
-                const res = await fetch("/api/run-feedback", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ ts: Number(ts), rating: "skipped", activityId: activityId ?? undefined }),
-                });
-                if (!res.ok) throw new Error("Failed to save");
-                setRating("skipped");
-                setSubmitted(true);
-              } catch {
-                setError("Failed to save");
-              } finally {
-                setSubmitting(false);
-              }
+              void (async () => {
+                try {
+                  const res = await fetch("/api/run-feedback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ts: Number(ts), rating: "skipped", activityId: activityId ?? undefined }),
+                  });
+                  if (!res.ok) throw new Error("Failed to save");
+                  setRating("skipped");
+                  setSubmitted(true);
+                } catch {
+                  setError("Failed to save");
+                } finally {
+                  setSubmitting(false);
+                }
+              })();
             }}
             disabled={submitting}
             className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition disabled:opacity-40"

@@ -76,14 +76,14 @@ export async function updateFeedbackCarbsByActivity(
     sql: "UPDATE run_feedback SET carbs_g = ? WHERE email = ? AND activity_id = ?",
     args: [carbsG, email, activityId],
   });
-  return (result.rowsAffected ?? 0) > 0;
+  return result.rowsAffected > 0;
 }
 
 /** Fetch recent rated feedback for AI consumers. */
 export async function getRecentFeedback(
   email: string,
-  sinceDays: number = 14,
-  limit: number = 20,
+  sinceDays = 14,
+  limit = 20,
 ): Promise<RunFeedbackRecord[]> {
   const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
   const result = await db().execute({

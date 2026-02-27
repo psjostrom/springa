@@ -46,7 +46,7 @@ export const DayCell = React.memo(function DayCell({
   return (
     <div
       onDragOver={onDragOver}
-      onDragEnter={() => onDragEnter(dateKey)}
+      onDragEnter={() => { onDragEnter(dateKey); }}
       onDragLeave={onDragLeave}
       onDrop={(e) => { e.preventDefault(); onDrop(e, day); }}
       className={`bg-[#1e1535] p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
@@ -69,9 +69,9 @@ export const DayCell = React.memo(function DayCell({
             <button
               key={event.id}
               draggable={event.type === "planned"}
-              onDragStart={(e) => onDragStart(e, event)}
+              onDragStart={(e) => { onDragStart(e, event); }}
               onDragEnd={onDragEnd}
-              onClick={() => onEventClick(event)}
+              onClick={() => { onEventClick(event); }}
               className={`text-sm p-1 rounded cursor-pointer hover:opacity-80 transition ${getEventStyle(event)} text-left w-full ${
                 draggedEventId === event.id ? "opacity-50" : ""
               }`}

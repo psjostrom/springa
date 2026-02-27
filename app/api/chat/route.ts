@@ -18,20 +18,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, context } = await req.json();
+  const body = (await req.json()) as {
+    messages: { role: string; parts?: { type: string; text?: string }[]; content?: string }[];
+    context?: string;
+  };
+  const { messages, context } = body;
 
   const anthropic = createAnthropic({ apiKey });
 
   // Convert UI messages (parts format) to core messages (content format)
-  const coreMessages = messages.map((m: { role: string; parts?: { type: string; text?: string }[]; content?: string }) => ({
-    role: m.role,
+  const coreMessages = messages.map((m) => ({
+    role: m.role as "user" | "assistant",
     content: m.content ?? m.parts?.filter((p) => p.type === "text").map((p) => p.text).join("") ?? "",
   }));
 
   try {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
-      system: context || undefined,
+      system: context ?? undefined,
       messages: coreMessages,
     });
 

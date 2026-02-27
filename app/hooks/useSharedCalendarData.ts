@@ -38,7 +38,7 @@ export function useSharedCalendarData(apiKey: string) {
   useEffect(() => {
     if (!apiKey || loadedRef.current) return;
     loadedRef.current = true;
-    load();
+    void load();
   }, [apiKey, load]);
 
   return { events, isLoading, error, reload: load };

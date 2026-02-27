@@ -311,12 +311,12 @@ function getConfidence(count: number): "low" | "medium" | "high" {
 
 /** Build BG response model from activity streams, grouped by workout category. */
 export function buildBGModel(
-  activitiesData: Array<{
+  activitiesData: {
     streams: IntervalsStream[];
     activityId: string;
     fuelRate: number | null; // g/h, null if unknown
     category: WorkoutCategory;
-  }>,
+  }[],
 ): BGResponseModel {
   const allObservations: BGObservation[] = [];
   let analyzed = 0;

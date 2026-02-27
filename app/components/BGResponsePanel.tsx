@@ -128,7 +128,7 @@ function CategoryCard({
 
       {/* Expandable activity breakdown */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => { setExpanded(!expanded); }}
         className="flex items-center gap-1 mt-2 text-xs text-[#8b7ba8] hover:text-[#c4b5fd] transition-colors w-full"
       >
         <ChevronDown

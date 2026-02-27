@@ -75,7 +75,7 @@ export function useDragDrop(
     }
   }, [draggedEvent, apiKey, setEvents]);
 
-  const clearDragError = useCallback(() => setDragError(null), []);
+  const clearDragError = useCallback(() => { setDragError(null); }, []);
 
   return {
     draggedEvent,

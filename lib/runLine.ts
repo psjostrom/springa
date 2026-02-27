@@ -47,7 +47,7 @@ export function formatRunLine(
 
   if (opts.date !== false) parts.push(format(event.date, "yyyy-MM-dd"));
   if (opts.name) parts.push(event.name);
-  if (opts.category && event.category) parts.push(`(${event.category})`);
+  if (opts.category) parts.push(`(${event.category})`);
   if (opts.distance && event.distance) parts.push(`${(event.distance / 1000).toFixed(1)}km`);
   if (opts.duration && event.duration) parts.push(formatDuration(event.duration));
   if (opts.pace && event.pace) parts.push(`pace ${formatPace(event.pace)}/km`);

@@ -129,7 +129,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     return null;
   }
 
-  const hasSecondRow = report.entryTrend || report.recovery;
+  const hasSecondRow = report.entryTrend ?? report.recovery;
 
   return (
     <div className="space-y-2 mt-3">

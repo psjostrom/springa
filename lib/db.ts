@@ -2,14 +2,12 @@ import { createClient, type Client } from "@libsql/client";
 
 // --- Singleton database client ---
 
-let _db: Client;
+let _db: Client | undefined;
 export function db() {
-  if (!_db) {
-    _db = createClient({
-      url: process.env.TURSO_DATABASE_URL!,
-      authToken: process.env.TURSO_AUTH_TOKEN!,
-    });
-  }
+  // Non-null assertions: env vars are required in production (set in Vercel config).
+  // In tests, createClient is mocked so these values are never used.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  _db ??= createClient({ url: process.env.TURSO_DATABASE_URL!, authToken: process.env.TURSO_AUTH_TOKEN! });
   return _db;
 }
 

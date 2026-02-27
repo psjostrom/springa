@@ -203,7 +203,7 @@ export function buildCalibratedPaceTable(
 export function computeZonePaceTrend(
   segments: ZoneSegment[],
   zone: HRZoneName,
-  windowDays: number = 90,
+  windowDays = 90,
 ): number | null {
   const zoneSegs = segments.filter((s) => s.zone === zone && s.activityDate);
   if (zoneSegs.length < 3) return null;

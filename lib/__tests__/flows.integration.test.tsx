@@ -22,7 +22,7 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
       initialEvents={events}
       isLoadingInitial={isLoading}
       initialError={error}
-      onRetryLoad={reload}
+      onRetryLoad={() => { void reload(); }}
     />
   );
 }

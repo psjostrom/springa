@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   await sendPushToUser(email, {
     title: "\uD83C\uDFC3 Run complete!",
     body: "How was it?",
-    url: "/feedback?ts=" + ts,
+    url: `/feedback?ts=${ts}`,
     ts,
   });
 

@@ -39,7 +39,7 @@ export function buildZoneBlock(lthr: number, maxHr?: number, paceTable?: PaceTab
     const hi = zoneBpm ? zoneBpm[zone].hi : bpm(lthr, HR_ZONE_BANDS[zone].max, maxHr);
     const label = getZoneLabel(zone);
     const zNum = garminZoneNum[zone];
-    const entry = table[zone] ?? FALLBACK_PACE_TABLE[zone]!;
+    const entry = table[zone] ?? FALLBACK_PACE_TABLE[zone] ?? { zone, avgPace: 7.25, sampleCount: 0 };
     const paceStr = zone === "hard"
       ? `<${formatPace(entry.avgPace)}/km`
       : `~${formatPace(entry.avgPace)}/km`;

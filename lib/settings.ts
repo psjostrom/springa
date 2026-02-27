@@ -42,9 +42,9 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.lthr != null) settings.lthr = row.lthr as number;
   if (row.max_hr != null) settings.maxHr = row.max_hr as number;
-  if (row.hr_zones) settings.hrZones = JSON.parse(row.hr_zones as string);
-  if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string);
-  if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string);
+  if (row.hr_zones) settings.hrZones = JSON.parse(row.hr_zones as string) as number[];
+  if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
+  if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string) as string[];
   return settings;
 }
 

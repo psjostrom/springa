@@ -25,7 +25,7 @@ export function TabNavigation({
 				{TABS.map(({ key, label }) => (
 					<button
 						key={key}
-						onClick={() => onTabChange(key)}
+						onClick={() => { onTabChange(key); }}
 						className={`px-6 py-3 font-medium transition-all relative ${
 							activeTab === key
 								? "text-[#ff69b4]"
@@ -45,7 +45,7 @@ export function TabNavigation({
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
-						onClick={() => onTabChange(key)}
+						onClick={() => { onTabChange(key); }}
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							activeTab === key
 								? "text-[#ff69b4]"

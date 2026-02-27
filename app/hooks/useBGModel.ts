@@ -46,11 +46,11 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
     loadedRef.current = true;
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       setBgModelLoading(true);
       try {
         const completedRuns = sharedEvents
-          .filter((e) => e.type === "completed" && e.activityId && e.category !== "other" && e.category !== "race")
+          .filter((e): e is CalendarEvent & { activityId: string } => e.type === "completed" && !!e.activityId && e.category !== "other" && e.category !== "race")
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .slice(0, BG_MODEL_MAX_ACTIVITIES);
 
@@ -66,11 +66,11 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         }
         setBgActivityNames(nameMap);
 
-        const wantedIds = new Set(completedRuns.map((e) => e.activityId!));
+        const wantedIds = new Set(completedRuns.map((e) => e.activityId));
 
         // Fetch cache
         const cached = await fetchBGCache();
-        if (cancelled) return;
+        if (cancelled) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
 
         const cachedMap = new Map(
           cached
@@ -80,7 +80,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
         // Diff: find uncached activity IDs
         const uncachedRuns = completedRuns.filter(
-          (e) => !cachedMap.has(e.activityId!),
+          (e) => !cachedMap.has(e.activityId),
         );
 
         const newCached: CachedActivity[] = [];
@@ -88,21 +88,21 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         if (uncachedRuns.length > 0) {
           setBgModelProgress({ done: 0, total: uncachedRuns.length });
 
-          const uncachedIds = uncachedRuns.map((e) => e.activityId!);
+          const uncachedIds = uncachedRuns.map((e) => e.activityId);
           const streamMap = await fetchStreamBatch(apiKey, uncachedIds, 3, (done, total) => {
             if (!cancelled) setBgModelProgress({ done, total });
           });
-          if (cancelled) return;
+          if (cancelled) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
 
           for (const e of uncachedRuns) {
-            const streams = streamMap.get(e.activityId!);
+            const streams = streamMap.get(e.activityId);
             const aligned = streams ? alignStreams(streams) : null;
             const cat = getWorkoutCategory(e.name);
             const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
 
             // Cache even failed alignments (empty arrays) so we don't re-fetch
             newCached.push({
-              activityId: e.activityId!,
+              activityId: e.activityId,
               category: cat === "other" ? "easy" : cat,
               fuelRate: e.fuelRate ?? null,
               startBG: aligned?.glucose[0]?.value ?? 0,
@@ -130,12 +130,12 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         // Save merged cache (fire and forget)
         if (newCached.length > 0) {
           writeLocalCache(allCached);
-          saveBGCacheRemote(allCached);
+          void saveBGCacheRemote(allCached);
         }
 
         // Build model from all cached data
         const model = buildBGModelFromCached(allCached);
-        if (!cancelled) {
+        if (!cancelled) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
           setBgModel(model);
           cachedRef.current = allCached;
           completedRunsRef.current = completedRuns;
@@ -144,7 +144,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         console.error("useBGModel: build failed", err);
         loadedRef.current = false;
       } finally {
-        if (!cancelled) setBgModelLoading(false);
+        if (!cancelled) setBgModelLoading(false); // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
       }
     })();
 

@@ -17,7 +17,7 @@ export function createWorkoutText(
   warmup: string,
   mainSteps: string[],
   cooldown: string,
-  repeats: number = 1,
+  repeats = 1,
   notes?: string,
 ): string {
   const lines: string[] = [];

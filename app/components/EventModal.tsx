@@ -32,7 +32,7 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
 
   useEffect(() => {
     if (open) document.addEventListener("click", close, true);
-    return () => document.removeEventListener("click", close, true);
+    return () => { document.removeEventListener("click", close, true); };
   }, [open, close]);
 
   return (
@@ -41,7 +41,7 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
       <button
         type="button"
         aria-label={`Info about ${label.split(" ")[0].toLowerCase()}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); }}
         className="text-[#b8a5d4] hover:text-white transition-colors"
       >
         <Info className="w-3 h-3" />
@@ -209,7 +209,7 @@ export function EventModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ activityId: actId, carbsG: val }),
-      }).catch(() => {}); // best-effort — Intervals.icu is the source of truth
+      }).catch(() => undefined); // best-effort — Intervals.icu is the source of truth
       dispatch({ type: "SET_SAVED_CARBS", value: val });
       dispatch({ type: "CARBS_SAVED" });
     } catch (err) {
@@ -246,7 +246,7 @@ export function EventModal({
     >
       <div
         className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -255,7 +255,7 @@ export function EventModal({
                 <input
                   type="datetime-local"
                   value={editDate}
-                  onChange={(e) => dispatch({ type: "SET_EDIT_DATE", date: e.target.value })}
+                  onChange={(e) => { dispatch({ type: "SET_EDIT_DATE", date: e.target.value }); }}
                   className="border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
                 />
               </div>
@@ -283,14 +283,14 @@ export function EventModal({
               <>
                 {selectedEvent.type === "planned" && (
                   <button
-                    onClick={() => dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") })}
+                    onClick={() => { dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") }); }}
                     className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition"
                   >
                     Edit
                   </button>
                 )}
                 <button
-                  onClick={() => dispatch({ type: "CONFIRM_DELETE" })}
+                  onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
                   className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
                 >
                   Delete
@@ -301,13 +301,11 @@ export function EventModal({
               <>
                 <span className="text-sm text-[#ff6b8a]">Delete this workout?</span>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     dispatch({ type: "DELETE" });
-                    try {
-                      await onDelete(selectedEvent.id);
-                    } catch {
+                    void onDelete(selectedEvent.id).catch(() => {
                       dispatch({ type: "DELETE_FAILED", error: "Failed to delete event. Please try again." });
-                    }
+                    });
                   }}
                   disabled={editMode.kind === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#ff3366] hover:bg-[#e0294f] text-white rounded-lg transition disabled:opacity-50"
@@ -315,7 +313,7 @@ export function EventModal({
                   {editMode.kind === "deleting" ? "Deleting..." : "Confirm"}
                 </button>
                 <button
-                  onClick={() => dispatch({ type: "CANCEL" })}
+                  onClick={() => { dispatch({ type: "CANCEL" }); }}
                   disabled={editMode.kind === "deleting"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
@@ -326,14 +324,14 @@ export function EventModal({
             {(editMode.kind === "editing-date" || editMode.kind === "saving-date") && (
               <>
                 <button
-                  onClick={saveEventEdit}
+                  onClick={() => { void saveEventEdit(); }}
                   disabled={editMode.kind === "saving-date"}
                   className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "saving-date" ? "Saving..." : "Save"}
                 </button>
                 <button
-                  onClick={() => dispatch({ type: "CANCEL" })}
+                  onClick={() => { dispatch({ type: "CANCEL" }); }}
                   disabled={editMode.kind === "saving-date"}
                   className="px-3 py-1.5 text-sm bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded-lg transition disabled:opacity-50"
                 >
@@ -356,7 +354,7 @@ export function EventModal({
           </div>
         )}
 
-        {showReadiness && currentBG != null && (
+        {showReadiness && (
           <PreRunReadiness
             currentBG={currentBG}
             trendSlope={trendSlope}
@@ -463,24 +461,24 @@ export function EventModal({
                       type="number"
                       min="0"
                       value={carbsValue}
-                      onChange={(e) => dispatch({ type: "SET_CARBS_VALUE", value: e.target.value })}
+                      onChange={(e) => { dispatch({ type: "SET_CARBS_VALUE", value: e.target.value }); }}
                       className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
                       autoFocus
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") saveCarbs();
+                        if (e.key === "Enter") void saveCarbs();
                         if (e.key === "Escape") dispatch({ type: "CANCEL" });
                       }}
                     />
                     <span className="text-sm text-[#b8a5d4]">g</span>
                     <button
-                      onClick={saveCarbs}
+                      onClick={() => { void saveCarbs(); }}
                       disabled={editMode.kind === "saving-carbs"}
                       className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
                     >
                       {editMode.kind === "saving-carbs" ? "..." : "Save"}
                     </button>
                     <button
-                      onClick={() => dispatch({ type: "CANCEL" })}
+                      onClick={() => { dispatch({ type: "CANCEL" }); }}
                       disabled={editMode.kind === "saving-carbs"}
                       className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
                     >
@@ -542,14 +540,14 @@ export function EventModal({
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="skeleton h-40 w-full" />
               </div>
-            ) : selectedEvent.type === "completed" ? (
+            ) : (
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="text-sm text-[#b8a5d4] italic">
                   Detailed workout data (graphs) not available for this
                   activity
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         )}
       </div>

@@ -169,7 +169,7 @@ function summarizeUpcomingWorkouts(events: CalendarEvent[]): string {
   return planned
     .map((e) => {
       const parts = [format(e.date, "yyyy-MM-dd"), e.name];
-      if (e.category) parts.push(`(${e.category})`);
+      parts.push(`(${e.category})`);
       if (e.fuelRate) parts.push(`fuel ${e.fuelRate}g/h`);
       return `- ${parts.join(" | ")}`;
     })
@@ -281,14 +281,14 @@ export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
   const feedbackMap = ctx.recentFeedback
-    ? new Map(ctx.recentFeedback.filter((fb) => fb.activityId).map((fb) => [fb.activityId!, fb]))
+    ? new Map(ctx.recentFeedback.filter((fb): fb is RunFeedbackRecord & { activityId: string } => !!fb.activityId).map((fb) => [fb.activityId, fb]))
     : undefined;
 
   const recoverySection = ctx.runBGContexts && ctx.runBGContexts.size > 0
     ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
     : "";
 
-  const raceDateStr = ctx.raceDate || "2026-06-13";
+  const raceDateStr = ctx.raceDate ?? "2026-06-13";
   const lthr = ctx.lthr ?? DEFAULT_LTHR;
   const maxHr = ctx.maxHr ?? DEFAULT_MAX_HR;
   return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (${raceDateStr}).

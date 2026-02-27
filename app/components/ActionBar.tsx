@@ -38,7 +38,7 @@ export function ActionBar({
 		);
 	}
 
-	if (statusMsg?.includes("Error")) {
+	if (statusMsg.includes("Error")) {
 		return (
 			<div className={`${POSITION} retro-error-border rounded-lg`}>
 				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">

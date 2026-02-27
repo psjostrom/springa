@@ -31,8 +31,8 @@ export function CurrentBGPill({
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
+    const id = setInterval(() => { setNow(Date.now()); }, 30_000);
+    return () => { clearInterval(id); };
   }, []);
 
   if (currentBG == null || lastUpdate == null) return null;

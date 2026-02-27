@@ -171,13 +171,13 @@ export function reconstructExternalId(
   prefix: string,
 ): string | null {
   if (/RACE\s+DAY/i.test(name)) {
-    const raceWeekMatch = name.match(/W(\d+)/i);
+    const raceWeekMatch = /W(\d+)/i.exec(name);
     if (raceWeekMatch) return `${prefix}-race-${parseInt(raceWeekMatch[1], 10)}`;
     return `${prefix}-race`;
   }
 
   // Extract week number — handles both "W05 Long..." and legacy "W05 Sun Long..."
-  const weekMatch = name.match(/W(\d+)/i);
+  const weekMatch = /W(\d+)/i.exec(name);
   if (!weekMatch) return null;
   const week = String(parseInt(weekMatch[1], 10));
 

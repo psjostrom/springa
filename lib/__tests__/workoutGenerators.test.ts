@@ -4,7 +4,7 @@ import { getDay } from "date-fns";
 
 describe("generatePlan", () => {
   const defaultArgs = {
-    bgModel: null as null,
+    bgModel: null,
     raceDateStr: "2026-06-13",
     raceDist: 16,
     prefix: "eco16",
@@ -266,7 +266,7 @@ describe("generatePlan", () => {
 
     // Extract race pace km from each sandwich run
     const rpKms = sandwichRuns.map((lr) => {
-      const match = lr.description.match(/(\d+)km\s+78-89%/);
+      const match = /(\d+)km\s+78-89%/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
 
@@ -283,7 +283,7 @@ describe("generatePlan", () => {
     );
 
     const distances = longRuns.map((lr) => {
-      const match = lr.name.match(/\((\d+)km\)/);
+      const match = /\((\d+)km\)/.exec(lr.name);
       return match ? parseInt(match[1], 10) : 0;
     });
 
@@ -298,7 +298,7 @@ describe("generatePlan", () => {
     const recoveryRuns = plan.filter((e) => e.name.includes("[RECOVERY]"));
     expect(recoveryRuns.length).toBeGreaterThan(0);
     for (const run of recoveryRuns) {
-      const match = run.name.match(/\((\d+)km\)/);
+      const match = /\((\d+)km\)/.exec(run.name);
       expect(match).not.toBeNull();
       // Recovery runs reset to startKm (8)
       expect(parseInt(match![1], 10)).toBe(8);
@@ -309,7 +309,7 @@ describe("generatePlan", () => {
     const plan = generateFull();
     const taperRuns = plan.filter((e) => e.name.includes("[TAPER]"));
     expect(taperRuns.length).toBe(1);
-    const match = taperRuns[0].name.match(/\((\d+)km\)/);
+    const match = /\((\d+)km\)/.exec(taperRuns[0].name);
     expect(match).not.toBeNull();
     // Taper is 50% of race distance (16 * 0.5 = 8)
     expect(parseInt(match![1], 10)).toBe(8);
@@ -320,7 +320,7 @@ describe("generatePlan", () => {
     const raceTests = plan.filter((e) => e.name.includes("[RACE TEST]"));
     expect(raceTests.length).toBeGreaterThan(0);
     for (const rt of raceTests) {
-      const match = rt.name.match(/\((\d+)km\)/);
+      const match = /\((\d+)km\)/.exec(rt.name);
       expect(match).not.toBeNull();
       expect(parseInt(match![1], 10)).toBe(16);
     }

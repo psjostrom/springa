@@ -76,7 +76,7 @@ function WidgetEditBar({
         {label}
       </span>
       <button
-        onClick={() => onMove(widgetKey, "up")}
+        onClick={() => { onMove(widgetKey, "up"); }}
         disabled={isFirst}
         className="p-1 rounded text-[#c4b5fd] hover:text-[#00ffff] disabled:opacity-30 disabled:hover:text-[#c4b5fd] transition"
         aria-label="Move up"
@@ -84,7 +84,7 @@ function WidgetEditBar({
         <ChevronUp size={16} />
       </button>
       <button
-        onClick={() => onMove(widgetKey, "down")}
+        onClick={() => { onMove(widgetKey, "down"); }}
         disabled={isLast}
         className="p-1 rounded text-[#c4b5fd] hover:text-[#00ffff] disabled:opacity-30 disabled:hover:text-[#c4b5fd] transition"
         aria-label="Move down"
@@ -92,7 +92,7 @@ function WidgetEditBar({
         <ChevronDown size={16} />
       </button>
       <button
-        onClick={() => onToggle(widgetKey)}
+        onClick={() => { onToggle(widgetKey); }}
         className={`p-1 rounded transition ${isHidden ? "text-[#6b5b8a] hover:text-[#c4b5fd]" : "text-[#c4b5fd] hover:text-[#00ffff]"}`}
         aria-label={isHidden ? "Show widget" : "Hide widget"}
       >
@@ -218,7 +218,7 @@ export function IntelScreen({
     ),
     "pace-zones":
       paceCalibration && lthr
-        ? () => <PaceCalibrationCard calibration={paceCalibration} lthr={lthr!} />
+        ? () => <PaceCalibrationCard calibration={paceCalibration} lthr={lthr} />
         : null,
     "bg-response": bgModelLoading
       ? () => (
@@ -292,7 +292,7 @@ export function IntelScreen({
               <div className={isFirst ? "relative" : undefined}>
                 {isFirst && (
                   <button
-                    onClick={() => setEditMode(!editMode)}
+                    onClick={() => { setEditMode(!editMode); }}
                     className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-[#2a1f3d]/80 text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a]"
                     aria-label={editMode ? "Done editing" : "Edit layout"}
                   >

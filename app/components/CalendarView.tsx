@@ -83,11 +83,10 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   // Derive loading state: completed event without stream data that hasn't failed
   const fetchedStreamIdsRef = useRef(new Set<string>());
   const [streamFetchDone, setStreamFetchDone] = useState(new Set<string>());
-  const isLoadingStreamData = !!(
+  const isLoadingStreamData =
     selectedEvent?.type === "completed" &&
-    !selectedEvent?.streamData &&
-    !streamFetchDone.has(selectedEvent.id)
-  );
+    !selectedEvent.streamData &&
+    !streamFetchDone.has(selectedEvent.id);
 
   // Lazy-load stream data when modal opens for a completed workout
   useEffect(() => {
@@ -95,7 +94,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     if (fetchedStreamIdsRef.current.has(selectedEventId)) return;
 
     const event = events.find((e) => e.id === selectedEventId);
-    if (!event || event.type !== "completed" || event.streamData) return;
+    if (event?.type !== "completed" || event.streamData) return;
 
     const activityId = selectedEventId.replace("activity-", "");
     if (!activityId) return;
@@ -112,14 +111,14 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               ? {
                   ...e,
                   streamData: details.streamData,
-                  avgHr: details.avgHr || e.avgHr,
-                  maxHr: details.maxHr || e.maxHr,
+                  avgHr: details.avgHr ?? e.avgHr,
+                  maxHr: details.maxHr ?? e.maxHr,
                 }
               : e,
           ),
         );
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!cancelled) console.error("Error loading stream data:", err);
       })
       .finally(() => {
@@ -150,7 +149,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     return events.filter((event) => isSameDay(event.date, date));
   }, [events]);
 
-  const openWorkoutModal = (event: CalendarEvent) => modal.open(event.id);
+  const openWorkoutModal = (event: CalendarEvent) => { modal.open(event.id); };
   const closeWorkoutModal = modal.close;
 
   // Handle Escape key to close modal
@@ -162,7 +161,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     };
 
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+    return () => { window.removeEventListener("keydown", handleEscape); };
   }, [selectedEventId, closeWorkoutModal]);
 
   // Handle date save from modal
@@ -219,7 +218,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = useCallback(
-    (_e: React.DragEvent, day: Date) => { handleDrop(day); },
+    (_e: React.DragEvent, day: Date) => { void handleDrop(day); },
     [handleDrop],
   );
 
@@ -250,9 +249,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
         {viewMode !== "agenda" && (
           <div className="flex items-center justify-between mb-2">
             <button
-              onClick={() =>
-                viewMode === "week" ? navigateWeek("prev") : navigateMonth("prev")
-              }
+              onClick={() => {
+                if (viewMode === "week") { navigateWeek("prev"); } else { navigateMonth("prev"); }
+              }}
               className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
             >
               <ChevronLeft size={20} />
@@ -268,9 +267,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               )}
             </h2>
             <button
-              onClick={() =>
-                viewMode === "week" ? navigateWeek("next") : navigateMonth("next")
-              }
+              onClick={() => {
+                if (viewMode === "week") { navigateWeek("next"); } else { navigateMonth("next"); }
+              }}
               className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
             >
               <ChevronRight size={20} />
@@ -281,7 +280,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           {(["month", "week", "agenda"] as const).map((mode) => (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => { setViewMode(mode); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
                   ? "bg-[#ff2d95] text-white shadow-lg shadow-[#ff2d95]/20"
@@ -304,7 +303,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
         {initialError && (
           <div className="flex items-center justify-center py-12">
-            <ErrorCard message={initialError} onRetry={onRetryLoad ?? (() => {})} />
+            <ErrorCard message={initialError} onRetry={onRetryLoad ?? (() => undefined)} />
           </div>
         )}
 

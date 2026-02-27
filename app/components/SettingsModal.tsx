@@ -35,7 +35,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
   const generateSecret = () => {
@@ -49,7 +49,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const copyUrl = async () => {
     await navigator.clipboard.writeText(nightscoutUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { setCopied(false); }, 2000);
   };
 
   const handleSave = async () => {
@@ -67,15 +67,15 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate;
     }
-    if (raceName.toString().trim() !== (settings.raceName ?? "")) {
-      updates.raceName = raceName.toString().trim();
+    if (raceName.trim() !== (settings.raceName ?? "")) {
+      updates.raceName = raceName.trim();
     }
     const rdVal = raceDist === "" ? undefined : Number(raceDist);
     if (rdVal !== settings.raceDist) {
       updates.raceDist = rdVal;
     }
-    if (prefix.toString().trim() !== (settings.prefix ?? "")) {
-      updates.prefix = prefix.toString().trim();
+    if (prefix.trim() !== (settings.prefix ?? "")) {
+      updates.prefix = prefix.trim();
     }
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
     if (twVal !== settings.totalWeeks) {
@@ -117,7 +117,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           <div className="flex items-center justify-between">
             <span className="text-sm text-[#c4b5fd] truncate">{email}</span>
             <button
-              onClick={() => signOut()}
+              onClick={() => { void signOut(); }}
               className="flex items-center gap-1.5 text-sm text-[#b8a5d4] hover:text-[#ff3366] transition"
             >
               <LogOut size={14} />
@@ -135,7 +135,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <input
               type="text"
               value={intervalsKey}
-              onChange={(e) => setIntervalsKey(e.target.value)}
+              onChange={(e) => { setIntervalsKey(e.target.value); }}
               className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
               placeholder="Intervals.icu API key"
             />
@@ -149,7 +149,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <input
               type="date"
               value={raceDate}
-              onChange={(e) => setRaceDate(e.target.value)}
+              onChange={(e) => { setRaceDate(e.target.value); }}
               className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
             />
           </div>
@@ -165,7 +165,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 <input
                   type="text"
                   value={raceName}
-                  onChange={(e) => setRaceName(e.target.value)}
+                  onChange={(e) => { setRaceName(e.target.value); }}
                   className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                   placeholder="e.g. EcoTrail"
                 />
@@ -178,7 +178,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     min={5}
                     max={100}
                     value={raceDist}
-                    onChange={(e) => setRaceDist(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="16"
                   />
@@ -188,7 +188,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <input
                     type="text"
                     value={prefix}
-                    onChange={(e) => setPrefix(e.target.value)}
+                    onChange={(e) => { setPrefix(e.target.value); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="eco16"
                   />
@@ -202,7 +202,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     min={4}
                     max={30}
                     value={totalWeeks}
-                    onChange={(e) => setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="18"
                   />
@@ -214,7 +214,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     min={2}
                     max={30}
                     value={startKm}
-                    onChange={(e) => setStartKm(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="8"
                   />
@@ -226,7 +226,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     min={100}
                     max={220}
                     value={lthr}
-                    onChange={(e) => setLthr(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => { setLthr(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="169"
                   />
@@ -243,7 +243,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <input
               type="text"
               value={googleAiKey}
-              onChange={(e) => setGoogleAiKey(e.target.value)}
+              onChange={(e) => { setGoogleAiKey(e.target.value); }}
               className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
               placeholder="Needed for Coach tab"
             />
@@ -262,7 +262,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               <input
                 type="text"
                 value={xdripSecret}
-                onChange={(e) => setXdripSecret(e.target.value)}
+                onChange={(e) => { setXdripSecret(e.target.value); }}
                 className="flex-1 px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#39ff14] focus:border-transparent placeholder:text-[#b8a5d4] text-sm font-mono"
                 placeholder="Secret for xDrip sync"
               />
@@ -285,7 +285,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   </code>
                   <button
                     type="button"
-                    onClick={copyUrl}
+                    onClick={() => { void copyUrl(); }}
                     className="shrink-0 p-1.5 rounded bg-[#2a1f3d] border border-[#3d2b5a] text-[#c4b5fd] hover:text-[#39ff14] transition"
                     title="Copy URL"
                   >
@@ -315,9 +315,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               ) : (
                 <button
                   type="button"
-                  onClick={async () => {
-                    const result = await Notification.requestPermission();
-                    setPushPermission(result);
+                  onClick={() => {
+                    void Notification.requestPermission()
+                      .then((result) => { setPushPermission(result); })
+                      .catch(() => { setPushPermission("denied"); });
                   }}
                   className="px-4 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-sm text-[#ff2d95] hover:bg-[#3d2b5a] transition"
                 >
@@ -330,7 +331,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
 
         <div className="px-6 py-4 border-t border-[#3d2b5a]">
           <button
-            onClick={handleSave}
+            onClick={() => { void handleSave(); }}
             disabled={saving}
             className="w-full py-2.5 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-50"
           >

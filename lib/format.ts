@@ -36,7 +36,7 @@ export function getPaceForZone(
   table: PaceTable,
   zone: HRZoneName,
 ): ZonePaceEntry {
-  return table[zone] ?? FALLBACK_PACE_TABLE[zone]!;
+  return table[zone] ?? FALLBACK_PACE_TABLE[zone] ?? { zone, avgPace: 7.25, sampleCount: 0 };
 }
 
 /** Extract numeric event ID from prefixed string (e.g. "event-1002" → 1002). Returns NaN for non-event IDs. */

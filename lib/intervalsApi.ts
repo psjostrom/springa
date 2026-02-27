@@ -26,10 +26,10 @@ export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: numb
       headers: { Authorization: authHeader(apiKey) },
     });
     if (!res.ok) return {};
-    const data = await res.json();
+    const data = (await res.json()) as { sportSettings?: { types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[] };
     // LTHR, max_hr, and hr_zones live inside sportSettings[], keyed by sport type
     const runSettings = Array.isArray(data.sportSettings)
-      ? data.sportSettings.find((s: { types: string[] }) => s.types?.includes("Run"))
+      ? data.sportSettings.find((s) => s.types?.includes("Run"))
       : null;
     if (!runSettings) return {};
     const result: { lthr?: number; maxHr?: number; hrZones?: number[] } = {};
@@ -71,7 +71,7 @@ export async function fetchStreams(
     try {
       const res = await fetch(url, { headers: { Authorization: auth } });
       if (res.ok) {
-        return await res.json();
+        return (await res.json()) as IntervalsStream[];
       }
       if (res.status === 429 && attempt < RETRY_DELAYS.length) {
         console.warn(`Rate limited on activity ${activityId}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
@@ -102,7 +102,7 @@ const BATCH_DELAY_MS = 500; // pause between batches to avoid 429s
 export async function fetchStreamBatch(
   apiKey: string,
   activityIds: string[],
-  concurrency: number = 2,
+  concurrency = 2,
   onProgress?: (completed: number, total: number) => void,
 ): Promise<Map<string, IntervalsStream[]>> {
   const results = new Map<string, IntervalsStream[]>();
@@ -242,9 +242,9 @@ export async function fetchCalendarData(
       if (autoPairs.length > 0) console.log(`[auto-pair] ${autoPairs.length} fallback pairs to sync`);
       for (const { eventId, activityId } of autoPairs) {
         pairEventWithActivity(apiKey, eventId, activityId)
-          .then(() => console.log(`[auto-pair] SUCCESS paired event ${eventId} → activity ${activityId}`))
-          .catch((err) =>
-            console.warn(`[auto-pair] FAILED to pair event ${eventId} → activity ${activityId}:`, err),
+          .then(() => { console.log(`[auto-pair] SUCCESS paired event ${eventId} → activity ${activityId}`); })
+          .catch((err: unknown) =>
+            { console.warn(`[auto-pair] FAILED to pair event ${eventId} → activity ${activityId}:`, err); },
           );
       }
       return events;
@@ -279,8 +279,8 @@ async function fetchCalendarDataInner(
     throw new Error(`Failed to fetch activities: ${activitiesRes.status}`);
   }
 
-  const activities: IntervalsActivity[] = await activitiesRes.json();
-  const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
+  const activities = (await activitiesRes.json()) as IntervalsActivity[];
+  const events: IntervalsEvent[] = eventsRes.ok ? ((await eventsRes.json()) as IntervalsEvent[]) : [];
 
   const { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds } =
     processActivities(activities, events);

@@ -55,14 +55,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { ts, rating, comment, carbsG, activityId } = body as {
+  const body = (await req.json()) as {
     ts: number;
     rating: string;
     comment?: string;
     carbsG?: number;
     activityId?: string;
   };
+  const { ts, rating, comment, carbsG, activityId } = body;
 
   if (!ts || !rating) {
     return NextResponse.json({ error: "Missing ts or rating" }, { status: 400 });
@@ -92,8 +92,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { activityId, carbsG } = body as { activityId?: string; carbsG?: number };
+  const body = (await req.json()) as { activityId?: string; carbsG?: number };
+  const { activityId, carbsG } = body;
 
   if (!activityId || carbsG == null) {
     return NextResponse.json({ error: "Missing activityId or carbsG" }, { status: 400 });

@@ -21,7 +21,7 @@ const SUGGESTIONS = [
   "How am I progresing for the Ecotrail 16km?",
 ];
 
-function getMessageText(parts: Array<{ type: string; text?: string }>): string {
+function getMessageText(parts: { type: string; text?: string }[]): string {
   return parts
     .filter((p) => p.type === "text" && p.text)
     .map((p) => p.text)
@@ -66,7 +66,7 @@ export function CoachScreen({
     fetch("/api/recent-feedback")
       .then((r) => (r.ok ? r.json() : []))
       .then(setRecentFeedback)
-      .catch(() => setRecentFeedback([]));
+      .catch(() => { setRecentFeedback([]); });
   }, []);
 
   const { context, isLoading: contextLoading } = useCoachData({
@@ -121,7 +121,7 @@ export function CoachScreen({
     const msg = text ?? input;
     if (!msg.trim() || chatBusy) return;
     setInput("");
-    sendMessage({ text: msg });
+    void sendMessage({ text: msg });
   };
 
   const showWelcome = messages.length === 0 && !contextLoading;
@@ -149,7 +149,7 @@ export function CoachScreen({
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => handleSend(s)}
+                    onClick={() => { handleSend(s); }}
                     className="text-sm px-3 py-1.5 rounded-full border border-[#3d2b5a] bg-[#1e1535] text-[#c4b5fd] hover:border-[#ff2d95]/50 hover:text-white transition-colors"
                   >
                     {s}
@@ -191,7 +191,7 @@ export function CoachScreen({
       <ChatInput
         value={input}
         onChange={setInput}
-        onSubmit={() => handleSend()}
+        onSubmit={() => { handleSend(); }}
         isLoading={chatBusy || contextLoading}
       />
     </div>

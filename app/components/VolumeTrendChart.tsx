@@ -162,7 +162,7 @@ export function VolumeTrendChart({
                   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.3)",
                   fontSize: "12px",
                 }}
-                labelFormatter={(_label, payload) => {
+                labelFormatter={(_label, payload: readonly { payload?: { week?: string } }[] | undefined) => {
                   const week = payload?.[0]?.payload?.week;
                   if (!week) return "";
                   return `Week ${parseInt(week.replace("W", ""), 10)}`;

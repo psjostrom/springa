@@ -1,4 +1,4 @@
-import type { CalendarEvent, WorkoutCategory } from "./types";
+import type { CalendarEvent } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
@@ -111,7 +111,7 @@ Rules:
   }
 
   // 3. BG patterns for category
-  const cat = adapted.category as WorkoutCategory;
+  const cat = adapted.category;
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const catData = bgModel.categories[cat];
     if (catData) {
@@ -142,14 +142,13 @@ Rules:
   // 5. Recovery patterns for category
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const categoryContexts = Object.values(runBGContexts).filter(
-      (ctx) => ctx.category === cat && ctx.post != null,
+      (ctx): ctx is RunBGContext & { post: NonNullable<RunBGContext["post"]> } =>
+        ctx.category === cat && ctx.post != null,
     );
     if (categoryContexts.length > 0) {
-      const nadirs = categoryContexts
-        .filter((c) => c.post != null)
-        .map((c) => c.post!.nadirPostRun);
+      const nadirs = categoryContexts.map((c) => c.post.nadirPostRun);
       const hypoCount = categoryContexts.filter(
-        (c) => c.post?.postRunHypo,
+        (c) => c.post.postRunHypo,
       ).length;
       const avgNadir =
         nadirs.reduce((a, b) => a + b, 0) / nadirs.length;

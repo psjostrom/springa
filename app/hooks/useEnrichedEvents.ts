@@ -27,6 +27,6 @@ export function useEnrichedEvents(
       changed = true;
       return { ...event, streamData };
     });
-    return changed ? result : events;
+    return changed ? result : events; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in map callback
   }, [events, cachedActivities]);
 }

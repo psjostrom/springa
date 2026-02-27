@@ -23,7 +23,7 @@ function PushSubscriptionManager() {
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) return;
 
-    navigator.serviceWorker.ready.then(async (reg) => {
+    void navigator.serviceWorker.ready.then(async (reg) => {
       try {
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -50,7 +50,7 @@ function PushSubscriptionManager() {
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
   }, []);
 

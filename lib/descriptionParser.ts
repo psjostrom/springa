@@ -4,18 +4,22 @@ import { FALLBACK_PACE_TABLE, classifyZone } from "./constants";
 // --- PACE LOOKUP ---
 
 /** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
+/** Safe accessor for FALLBACK_PACE_TABLE entries (all four zones are always populated). */
+function fallbackPace(zone: HRZoneName): number {
+  return FALLBACK_PACE_TABLE[zone]?.avgPace ?? 7.25;
+}
+
 export function paceForIntensity(avgPercent: number, table?: PaceTable): number {
-  const fb = FALLBACK_PACE_TABLE;
   if (table) {
-    if (avgPercent >= 95) return table.hard?.avgPace ?? fb.hard!.avgPace;
-    if (avgPercent >= 88) return table.tempo?.avgPace ?? fb.tempo!.avgPace;
-    if (avgPercent >= 80) return table.steady?.avgPace ?? fb.steady!.avgPace;
-    return table.easy?.avgPace ?? fb.easy!.avgPace;
+    if (avgPercent >= 95) return table.hard?.avgPace ?? fallbackPace("hard");
+    if (avgPercent >= 88) return table.tempo?.avgPace ?? fallbackPace("tempo");
+    if (avgPercent >= 80) return table.steady?.avgPace ?? fallbackPace("steady");
+    return table.easy?.avgPace ?? fallbackPace("easy");
   }
-  if (avgPercent >= 95) return fb.hard!.avgPace;
-  if (avgPercent >= 88) return fb.tempo!.avgPace;
-  if (avgPercent >= 80) return fb.steady!.avgPace;
-  return fb.easy!.avgPace;
+  if (avgPercent >= 95) return fallbackPace("hard");
+  if (avgPercent >= 88) return fallbackPace("tempo");
+  if (avgPercent >= 80) return fallbackPace("steady");
+  return fallbackPace("easy");
 }
 
 // --- ZONE PARSING ---
@@ -58,16 +62,16 @@ export function extractFuelStatus(description: string): FuelStatus {
 
 /** Extract fuel rate from description and convert to g/h (e.g., "FUEL PER 10: 10g" -> 60) */
 export function extractFuelRate(description: string): number | null {
-  const newMatch = description.match(/FUEL PER 10:\s*(\d+)g/i);
+  const newMatch = /FUEL PER 10:\s*(\d+)g/i.exec(description);
   if (newMatch) return parseInt(newMatch[1], 10) * 6;
 
-  const oldMatch = description.match(/FUEL:\s*(\d+)g\/10m/i);
+  const oldMatch = /FUEL:\s*(\d+)g\/10m/i.exec(description);
   return oldMatch ? parseInt(oldMatch[1], 10) * 6 : null;
 }
 
 /** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
 export function extractTotalCarbs(description: string): number | null {
-  const match = description.match(/TOTAL:\s*(\d+)g/i);
+  const match = /TOTAL:\s*(\d+)g/i.exec(description);
   return match ? parseInt(match[1], 10) : null;
 }
 
@@ -143,7 +147,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
     const headerText = headers[i].name;
 
     // Extract repeats
-    const repeatsMatch = headerText.match(/(\d+)x$/);
+    const repeatsMatch = /(\d+)x$/.exec(headerText);
     const repeats = repeatsMatch ? parseInt(repeatsMatch[1], 10) : undefined;
 
     // Clean section name
@@ -153,7 +157,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
     const steps: WorkoutStep[] = [];
     const lines = block.split("\n");
     for (const line of lines) {
-      const stepMatch = line.match(stepPattern);
+      const stepMatch = stepPattern.exec(line);
       if (stepMatch) {
         const minPct = parseInt(stepMatch[3], 10);
         const maxPct = parseInt(stepMatch[4], 10);
@@ -217,9 +221,9 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   const segments: WorkoutSegment[] = [];
 
   // Warmup
-  const warmupMatch = description.match(/(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/);
+  const warmupMatch = /(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/.exec(description);
   if (warmupMatch) {
-    const wuStep = warmupMatch[0].match(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/);
+    const wuStep = /-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/.exec(warmupMatch[0]);
     if (wuStep) {
       const value = parseFloat(wuStep[1]);
       const unit = wuStep[2];
@@ -230,9 +234,9 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Main set (with optional repeats)
-  const mainSetSection = description.match(/\nMain set[\s\S]*?(?=\nStrides|\nCooldown|$)/);
+  const mainSetSection = /\nMain set[\s\S]*?(?=\nStrides|\nCooldown|$)/.exec(description);
   if (mainSetSection) {
-    const repsMatch = mainSetSection[0].match(/Main set\s+(\d+)x/);
+    const repsMatch = /Main set\s+(\d+)x/.exec(mainSetSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
     const stepSegs = parseSectionSegments(mainSetSection[0], paceTable);
     for (let r = 0; r < reps; r++) {
@@ -241,9 +245,9 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Strides (with optional repeats)
-  const stridesSection = description.match(/\nStrides\s+\d+x[\s\S]*?(?=\nCooldown|$)/);
+  const stridesSection = /\nStrides\s+\d+x[\s\S]*?(?=\nCooldown|$)/.exec(description);
   if (stridesSection) {
-    const repsMatch = stridesSection[0].match(/Strides\s+(\d+)x/);
+    const repsMatch = /Strides\s+(\d+)x/.exec(stridesSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
     const stepSegs = parseSectionSegments(stridesSection[0], paceTable);
     for (let r = 0; r < reps; r++) {
@@ -252,7 +256,7 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Cooldown
-  const cooldownMatch = description.match(/\nCooldown[\s\S]*$/);
+  const cooldownMatch = /\nCooldown[\s\S]*$/.exec(description);
   if (cooldownMatch) {
     const cdSegs = parseSectionSegments(cooldownMatch[0], paceTable);
     segments.push(...cdSegs);

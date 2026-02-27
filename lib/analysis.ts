@@ -30,7 +30,7 @@ async function analyzeRun(
   } else if (matchedEvent?.carbs_per_hour != null) {
     currentFuel = matchedEvent.carbs_per_hour;
   } else {
-    const descFuel = extractFuelRate(run.description || "");
+    const descFuel = extractFuelRate(run.description ?? "");
     if (descFuel != null) currentFuel = descFuel;
   }
 
@@ -74,8 +74,8 @@ export async function analyzeHistory(
       ),
     ]);
     if (!activitiesRes.ok) throw new Error("Failed to fetch activities");
-    const activities: IntervalsActivity[] = await activitiesRes.json();
-    const events: IntervalsEvent[] = eventsRes.ok ? await eventsRes.json() : [];
+    const activities = (await activitiesRes.json()) as IntervalsActivity[];
+    const events: IntervalsEvent[] = eventsRes.ok ? ((await eventsRes.json()) as IntervalsEvent[]) : [];
 
     // Build a map of paired_activity_id -> event for quick lookup
     const eventByActivity = new Map<string, IntervalsEvent>();

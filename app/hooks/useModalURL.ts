@@ -23,11 +23,11 @@ export function useModalURL(paramName: string): {
       setValue(new URLSearchParams(window.location.search).get(paramName));
     };
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    return () => { window.removeEventListener("popstate", onPopState); };
   }, [paramName]);
 
   const open = useCallback(
-    (newValue: string = "1") => {
+    (newValue = "1") => {
       setValue(newValue);
       const params = new URLSearchParams(window.location.search);
       const wasOpen = params.has(paramName);

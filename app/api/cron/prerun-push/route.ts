@@ -64,7 +64,7 @@ export async function GET(req: Request) {
         skipped++;
         continue;
       }
-      const events: IntervalsEvent[] = await eventsRes.json();
+      const events = (await eventsRes.json()) as IntervalsEvent[];
 
       // Filter for WORKOUT events starting 1.5–2.5h from now (in user's timezone)
       const upcoming = events.filter((e) => {

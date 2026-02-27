@@ -12,7 +12,7 @@ interface HRMiniChartProps {
   lthr?: number;
 }
 
-const getHRColor = (hr: number, lthr: number = 169): string => {
+const getHRColor = (hr: number, lthr = 169): string => {
   return getZoneColor((hr / lthr) * 100);
 };
 
@@ -75,7 +75,7 @@ export function HRMiniChart({
     { time: z5, height: 100, color: ZONE_COLORS.z5 },
   ];
 
-  const segments: Array<{ width: number; height: number; color: string }> = [];
+  const segments: { width: number; height: number; color: string }[] = [];
 
   zones.forEach((zone) => {
     if (zone.time > 0) {

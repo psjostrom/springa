@@ -123,8 +123,8 @@ describe("parseNightscoutEntries", () => {
 describe("computeTrend", () => {
   function makeReadings(
     values: number[],
-    intervalMin: number = 5,
-    startTs: number = 1708300000000,
+    intervalMin = 5,
+    startTs = 1708300000000,
   ): XdripReading[] {
     return values.map((mmol, i) => ({
       sgv: Math.round(mmol * 18.018),

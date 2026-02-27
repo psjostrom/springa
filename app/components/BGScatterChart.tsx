@@ -47,8 +47,8 @@ function xTickFormatter(value: number): string {
 }
 
 export function BGScatterChart({ model }: BGScatterChartProps) {
-  const scatterData: Array<{ x: number; y: number; category: WorkoutCategory }> = [];
-  const avgMarkers: Array<{ x: number; y: number; category: WorkoutCategory }> = [];
+  const scatterData: { x: number; y: number; category: WorkoutCategory }[] = [];
+  const avgMarkers: { x: number; y: number; category: WorkoutCategory }[] = [];
 
   for (const cat of CATEGORY_ORDER) {
     const catObs = model.observations.filter((o) => o.category === cat);
@@ -128,7 +128,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 }}
               />
               <Tooltip
-                content={({ payload }) => {
+                content={({ payload }: { payload?: readonly { payload: unknown }[] }) => {
                   if (!payload?.[0]) return null;
                   const d = payload[0].payload as {
                     category: WorkoutCategory;

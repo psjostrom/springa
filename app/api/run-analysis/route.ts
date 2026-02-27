@@ -66,7 +66,9 @@ export async function POST(req: Request) {
   ]);
 
   const historyFeedbackMap = new Map(
-    recentFeedback.filter((fb) => fb.activityId).map((fb) => [fb.activityId!, fb]),
+    recentFeedback
+      .filter((fb): fb is typeof fb & { activityId: string } => !!fb.activityId)
+      .map((fb) => [fb.activityId, fb]),
   );
 
   const { system, user } = buildRunAnalysisPrompt({
