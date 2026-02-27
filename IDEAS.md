@@ -2,25 +2,6 @@
 
 ## Next
 
-### Analysis → Adapt: Close the Learning Loop
-
-Run analysis produces the best actionable advice in the app — specific, data-backed, context-aware recommendations like "target start BG ≥10.5 for intervals", "treat the trend not the number", "add 15-20g at run start if below 9." But it's a dead end. The advice lives in the run_analysis table and the runner's memory. When the next interval session comes up and the adapt flow writes pre-workout notes, it re-derives conclusions from the same raw data independently. It might reach the same insights. It might not.
-
-**The problem:** Three consecutive interval sessions ended with BG at 4.4–4.6. The run analysis correctly identified the pattern, connected it to low start BG and pre-run downward trends, and prescribed concrete fixes. But the adapt prompt for the next interval session doesn't see any of that. It sees raw BG streams, feedback ratings, and model averages — and has to rediscover the pattern from scratch.
-
-**The fix:** Feed recent same-category analysis text into the adapt prompt. The analysis is already stored per activity in `run_analysis`. When `buildAdaptNotePrompt` prepares the context for an upcoming interval session, include the 1-2 most recent interval analyses. The adapt AI then builds on validated conclusions instead of starting from zero.
-
-**Implementation:**
-
-1. In `adaptPlanPrompt.ts`: accept an optional `recentAnalyses` param (array of `{ date: string, text: string }`).
-2. Add a `## Recent coaching analysis` section to the prompt, after the recent runs section. Include full analysis text — it's already concise (150 word target, though it runs longer).
-3. In `app/api/adapt-plan/route.ts`: for each adapted event, query `run_analysis` joined with `bg_cache` filtered by the same category, limit 2, ordered by recency. Pass the text into the prompt builder.
-4. Update the adapt system prompt to tell the AI: "Recent coaching analysis is provided below. Build on these conclusions — don't contradict them without new evidence. If the runner followed the advice and it worked, acknowledge it. If they didn't follow it, reinforce it."
-
-**Token budget:** Each analysis is ~150-300 words (~200-400 tokens). Two analyses = 400-800 tokens. The adapt prompt is already ~1500-2000 tokens. This is a modest increase for a large quality gain.
-
-**Why this matters beyond intervals:** Easy runs crash too. Long runs are the highest-risk format. Every category benefits from the AI building on its own prior recommendations rather than treating each workout as if it's never seen the runner before.
-
 ### AI Data Audit
 
 Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. Nobody has a clear map of what each consumer receives, what it's missing, and where the gaps create bad advice. The "BG crashed → trim fuel" incident happened because the adapt prompt had feedback but lacked cross-category visibility. The coach gave a BG-only response because it had no HR zones, no workout structure, no planned-vs-actual comparison.
@@ -174,6 +155,32 @@ LTHR and max HR are currently manual settings the runner has to update by hand. 
 Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness. Elevation data (`total_elevation_gain`) is already fetched from Intervals.icu but unused.
 
 **Relevance:** Only matters if training includes significant elevation. Deprioritized until trail-specific training blocks appear in the plan.
+
+---
+
+## Rejected
+
+### Analysis → Adapt: Feed Prior Analysis Into Pre-Workout Notes
+
+**Proposal:** Run analysis produces specific, actionable advice ("target start BG ≥10.5 for intervals", "add 15-20g at run start if below 9"). Feed the 1-2 most recent same-category analysis texts into the adapt prompt so the pre-workout AI builds on prior conclusions instead of re-deriving from scratch.
+
+**Why it was rejected (2026-02-27):**
+
+After deep investigation of both prompt builders, the data each receives, and side-by-side comparison of actual outputs:
+
+**1. The adapt AI already has the same raw data.** The adapt prompt receives recent same-category runs via `formatRunLine` (start/end BG, entry slopes, recovery nadirs, HR, paces, fuel rates), runner feedback (ratings + comments), BG model patterns, and recovery stats. The run analysis was derived FROM this data. Feeding the derivative alongside the source is redundant — the adapt AI can and does reach the same conclusions independently. Tested 2026-02-27: the adapt notes correctly referenced a BG crash, the pre-run swing, and set appropriate fuel rates without seeing any analysis text.
+
+**2. Chaining AI outputs creates an authority problem.** The second AI treats the first AI's conclusions as ground truth. If the analysis made a subtly wrong recommendation, the adapt AI anchors on it instead of reasoning from data. Two AIs agreeing with each other is not the same as one AI reasoning correctly. The system prompt would say "don't contradict without new evidence" — but the adapt AI has no mechanism to evaluate whether the prior analysis was right.
+
+**3. Staleness.** An analysis from 3 weeks ago carries advice that may no longer apply — the runner's fitness, BG patterns, and fueling have evolved. But the adapt AI is told to "build on these conclusions," so it defers to stale recommendations instead of reading the current data fresh.
+
+**4. The actionable advice falls into two buckets, and neither benefits from chaining.** Workout parameters (fuel rate, pacing) are already adjusted by the rule-based system via the BG model. Runner behavior (start BG target, pre-run protocol) can't be controlled by the adapt note — it's a behavioral reminder that the runner already knows from reading the analysis.
+
+**5. Token cost for diminishing returns.** ~2800 extra input tokens per adapt call (4 events × ~700 tokens) for advice the AI can derive from data it already has.
+
+**6. What actually matters is the feedback, and it already flows.** A "bad" rating with "BG crashed hard, was trending down before the run" is ground truth. The adapt prompt already receives this via `feedbackByActivity`. That's what moves the needle — not a prior AI's interpretation of it.
+
+**Better alternative:** If the adapt notes are ever missing cross-run pattern detection, the fix is a more explicit system prompt instruction ("look for patterns across the recent runs — recurring low start BG, consistent crashes, feedback trends"), not chained AI outputs. Cheaper, more robust, no staleness.
 
 ---
 
