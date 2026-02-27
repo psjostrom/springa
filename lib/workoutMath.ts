@@ -1,12 +1,13 @@
 import type { CalendarEvent, WorkoutEvent, PaceTable } from "./types";
 import { parseWorkoutSegments, paceForIntensity } from "./descriptionParser";
+import { DEFAULT_WORKOUT_DURATION_MINUTES } from "./constants";
 
 export function getEstimatedDuration(event: WorkoutEvent): number {
   if (event.name.includes("Long")) {
     const match = event.name.match(/(\d+)km/);
     if (match) return parseInt(match[1], 10) * 6;
   }
-  return 45;
+  return DEFAULT_WORKOUT_DURATION_MINUTES;
 }
 
 export function estimateWorkoutDuration(description: string, paceTable?: PaceTable): { minutes: number; estimated: boolean } | null {

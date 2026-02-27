@@ -175,6 +175,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">Distance (km)</label>
                   <input
                     type="number"
+                    min={5}
+                    max={100}
                     value={raceDist}
                     onChange={(e) => setRaceDist(e.target.value === "" ? "" : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
@@ -197,6 +199,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">Total Weeks</label>
                   <input
                     type="number"
+                    min={4}
+                    max={30}
                     value={totalWeeks}
                     onChange={(e) => setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
@@ -207,6 +211,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">Start km</label>
                   <input
                     type="number"
+                    min={2}
+                    max={30}
                     value={startKm}
                     onChange={(e) => setStartKm(e.target.value === "" ? "" : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
@@ -217,6 +223,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">LTHR</label>
                   <input
                     type="number"
+                    min={100}
+                    max={220}
                     value={lthr}
                     onChange={(e) => setLthr(e.target.value === "" ? "" : Number(e.target.value))}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"

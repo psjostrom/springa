@@ -9,10 +9,11 @@ Audit from 2026-02-18. Items ranked by value.
 - ~~Zone color/label duplication~~ → `ZONE_COLORS` constant in constants.ts (`1694c5f`)
 - ~~Repeated error UI pattern~~ → `<ErrorCard>` component (`9bb29e9`)
 
-## LOW
+- ~~`streamPaths` memoization~~ → `useMemo` in WorkoutStreamGraph
+- ~~Input validation~~ → `min`/`max` on SettingsModal number inputs
+- ~~Magic numbers~~ → `CALENDAR_LOOKBACK_MONTHS`, `DEFAULT_WORKOUT_DURATION_MINUTES`, `ACTIVITY_HISTORY_DAYS` in constants.ts
 
-- `streamPaths` in WorkoutStreamGraph computed every render — should be `useMemo`
-- `parseWorkoutSegments` in utils.ts repeats the same regex/parse/push pattern 4 times for each section type
-- No min/max validation on PlannerScreen number inputs (totalWeeks, startKm, raceDist)
-- Magic numbers (24-month lookback, default 45min duration) scattered instead of in constants
-- Non-null assertion in `getPaceForZone` fallback
+## WONTFIX
+
+- `parseWorkoutSegments` duplication — intentional; warmup single-step parsing is load-bearing
+- Non-null assertion in `getPaceForZone` — safe; `FALLBACK_PACE_TABLE` is exhaustive over `HRZoneName`

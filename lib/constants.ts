@@ -20,6 +20,13 @@ export const SPIKE_RISE_RATE = 3.0;
 export const DEFAULT_CARBS_G = 10;
 export const API_BASE = "https://intervals.icu/api/v1";
 
+/** Number of months to look back when fetching calendar data. */
+export const CALENDAR_LOOKBACK_MONTHS = 24;
+/** Default estimated duration (minutes) when workout parsing fails. */
+export const DEFAULT_WORKOUT_DURATION_MINUTES = 45;
+/** Number of days of activity history to analyze. */
+export const ACTIVITY_HISTORY_DAYS = 45;
+
 export const FALLBACK_PACE_TABLE: PaceTable = {
   easy: { zone: "easy", avgPace: 7.25, sampleCount: 0 },
   steady: { zone: "steady", avgPace: 5.67, sampleCount: 0 },

@@ -1,6 +1,6 @@
 import { addDays, format } from "date-fns";
 import type { AnalysisResult, IntervalsActivity, IntervalsEvent } from "./types";
-import { API_BASE } from "./constants";
+import { API_BASE, ACTIVITY_HISTORY_DAYS } from "./constants";
 import { convertGlucoseToMmol } from "./bgModel";
 import { getWorkoutCategory } from "./constants";
 import { extractFuelRate } from "./descriptionParser";
@@ -58,7 +58,7 @@ export async function analyzeHistory(
 ): Promise<AnalysisResult> {
   const auth = authHeader(apiKey);
   const today = new Date();
-  const startDate = addDays(today, -45);
+  const startDate = addDays(today, -ACTIVITY_HISTORY_DAYS);
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(today, "yyyy-MM-dd");
 

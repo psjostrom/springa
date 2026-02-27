@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
 import { fetchCalendarData } from "@/lib/intervalsApi";
+import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
 import type { CalendarEvent } from "@/lib/types";
 
 /**
@@ -22,7 +23,7 @@ export function useSharedCalendarData(apiKey: string) {
     setIsLoading(true);
     setError(null);
     try {
-      const start = startOfMonth(subMonths(new Date(), 24));
+      const start = startOfMonth(subMonths(new Date(), CALENDAR_LOOKBACK_MONTHS));
       const end = endOfMonth(addMonths(new Date(), 6));
       const data = await fetchCalendarData(apiKey, start, end);
       setEvents(data);

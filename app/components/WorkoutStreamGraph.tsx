@@ -161,6 +161,23 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
       .filter(Boolean) as { streamType: StreamType; pathData: string; config: typeof streamConfigs[StreamType]; minValue: number; maxValue: number; data: { time: number; value: number }[]; scaleY: (v: number) => number }[];
   }, [streamData, selectedStreams, maxTime, useSingleStreamMode, globalMin, globalMax]);
 
+  const streamPaths = useMemo(
+    () =>
+      streamPathData.map((path) => {
+        let hoverValue: number | null = null;
+        let hoverY: number | null = null;
+        if (hoverTime !== null) {
+          const closest = path.data.reduce((prev, curr) =>
+            Math.abs(curr.time - hoverTime) < Math.abs(prev.time - hoverTime) ? curr : prev,
+          );
+          hoverValue = closest.value;
+          hoverY = path.scaleY(closest.value);
+        }
+        return { ...path, hoverValue, hoverY };
+      }),
+    [streamPathData, hoverTime],
+  );
+
   if (availableStreams.length === 0) return null;
 
   const toggleStream = (stream: StreamType) => {
@@ -212,20 +229,6 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     setIsHovering(false);
     setHoverTime(null);
   };
-
-  // Derive hover values from memoized paths — cheap per-render lookup
-  const streamPaths = streamPathData.map((path) => {
-    let hoverValue: number | null = null;
-    let hoverY: number | null = null;
-    if (hoverTime !== null) {
-      const closest = path.data.reduce((prev, curr) =>
-        Math.abs(curr.time - hoverTime) < Math.abs(prev.time - hoverTime) ? curr : prev,
-      );
-      hoverValue = closest.value;
-      hoverY = path.scaleY(closest.value);
-    }
-    return { ...path, hoverValue, hoverY };
-  });
 
   return (
     <div className="w-full">
