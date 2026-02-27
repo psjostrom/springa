@@ -18,6 +18,30 @@ import {
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
+// --- ATHLETE PROFILE ---
+
+export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[] }> {
+  try {
+    const res = await fetch(`${API_BASE}/athlete/0`, {
+      headers: { Authorization: authHeader(apiKey) },
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    // LTHR, max_hr, and hr_zones live inside sportSettings[], keyed by sport type
+    const runSettings = Array.isArray(data.sportSettings)
+      ? data.sportSettings.find((s: { types: string[] }) => s.types?.includes("Run"))
+      : null;
+    if (!runSettings) return {};
+    const result: { lthr?: number; maxHr?: number; hrZones?: number[] } = {};
+    if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
+    if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
+    if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
+    return result;
+  } catch {
+    return {};
+  }
+}
+
 // --- STREAM FETCHING ---
 
 const RETRY_DELAYS = [1000, 2000, 4000]; // ms — backoff for 429s

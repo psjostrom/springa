@@ -10,6 +10,7 @@ import { useCoachData } from "../hooks/useCoachData";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
+import type { PaceTable } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { RunFeedbackRecord } from "@/lib/feedbackDb";
 
@@ -32,6 +33,10 @@ interface CoachScreenProps {
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
   raceDate?: string;
+  lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -45,6 +50,10 @@ export function CoachScreen({
   phaseInfo,
   bgModel,
   raceDate,
+  lthr,
+  maxHr,
+  hrZones,
+  paceTable,
   currentBG,
   trendSlope,
   trendArrow,
@@ -65,6 +74,10 @@ export function CoachScreen({
     phaseInfo,
     bgModel,
     raceDate,
+    lthr,
+    maxHr,
+    hrZones,
+    paceTable,
     currentBG,
     trendSlope,
     trendArrow,

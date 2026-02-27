@@ -8,12 +8,17 @@ import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { RunFeedbackRecord } from "@/lib/feedbackDb";
+import type { PaceTable } from "@/lib/types";
 
 interface UseCoachDataOptions {
   events: CalendarEvent[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
   raceDate?: string;
+  lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -23,7 +28,7 @@ interface UseCoachDataOptions {
   recentFeedback?: RunFeedbackRecord[];
 }
 
-export function useCoachData({ events, phaseInfo, bgModel, raceDate, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback }: UseCoachDataOptions) {
+export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback }: UseCoachDataOptions) {
   const insights = useMemo(() => {
     if (events.length === 0) return null;
     const fitnessData = computeFitnessData(events, 365);
@@ -38,6 +43,10 @@ export function useCoachData({ events, phaseInfo, bgModel, raceDate, currentBG, 
       bgModel,
       events,
       raceDate,
+      lthr,
+      maxHr,
+      hrZones,
+      paceTable,
       currentBG,
       trendSlope,
       trendArrow,
@@ -46,7 +55,7 @@ export function useCoachData({ events, phaseInfo, bgModel, raceDate, currentBG, 
       runBGContexts,
       recentFeedback,
     });
-  }, [events, insights, bgModel, phaseInfo, raceDate, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback]);
+  }, [events, insights, bgModel, phaseInfo, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback]);
 
   return { context, isLoading: events.length === 0 };
 }

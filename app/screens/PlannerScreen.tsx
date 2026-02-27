@@ -15,6 +15,7 @@ import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
+import { DEFAULT_LTHR } from "@/lib/constants";
 
 interface PlannerScreenProps {
   apiKey: string;
@@ -34,7 +35,7 @@ interface PlannerScreenProps {
 
 export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
   const raceDist = props.raceDist ?? 16;
-  const lthr = props.lthr ?? 169;
+  const lthr = props.lthr ?? DEFAULT_LTHR;
   const prefix = props.prefix ?? "eco16";
   const totalWeeks = props.totalWeeks ?? 18;
   const startKm = props.startKm ?? 8;

@@ -2,8 +2,11 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
+  shouldSyncProfile,
+  markProfileSynced,
   type UserSettings,
 } from "@/lib/settings";
+import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { saveXdripAuth } from "@/lib/xdripDb";
 import { NextResponse } from "next/server";
 
@@ -14,6 +17,28 @@ export async function GET() {
   }
 
   const settings = await getUserSettings(session.user.email);
+
+  // Auto-sync athlete profile from Intervals.icu (at most once per 24h)
+  if (settings.intervalsApiKey) {
+    try {
+      const needsSync = await shouldSyncProfile(session.user.email);
+      if (needsSync) {
+        const profile = await fetchAthleteProfile(settings.intervalsApiKey);
+        const updates: Partial<UserSettings> = {};
+        if (profile.lthr && profile.lthr !== settings.lthr) updates.lthr = profile.lthr;
+        if (profile.maxHr && profile.maxHr !== settings.maxHr) updates.maxHr = profile.maxHr;
+        if (profile.hrZones && JSON.stringify(profile.hrZones) !== JSON.stringify(settings.hrZones)) updates.hrZones = profile.hrZones;
+        if (Object.keys(updates).length > 0) {
+          await saveUserSettings(session.user.email, updates);
+          Object.assign(settings, updates);
+        }
+        await markProfileSynced(session.user.email);
+      }
+    } catch {
+      // Intervals.icu unavailable — serve cached settings
+    }
+  }
+
   return NextResponse.json(settings);
 }
 

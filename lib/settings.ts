@@ -14,6 +14,8 @@ export interface UserSettings {
   totalWeeks?: number;
   startKm?: number;
   lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
   widgetOrder?: string[];
   hiddenWidgets?: string[];
 }
@@ -27,6 +29,21 @@ async function migrateSettingsSchema(): Promise<void> {
       { name: "hidden_widgets", type: "TEXT" },
     ]),
   );
+  await runMigration("settings_max_hr", () =>
+    addColumns("user_settings", [
+      { name: "max_hr", type: "INTEGER" },
+    ]),
+  );
+  await runMigration("settings_hr_zones", () =>
+    addColumns("user_settings", [
+      { name: "hr_zones", type: "TEXT" },
+    ]),
+  );
+  await runMigration("settings_profile_synced_at", () =>
+    addColumns("user_settings", [
+      { name: "profile_synced_at", type: "TEXT" },
+    ]),
+  );
 }
 
 // --- CRUD ---
@@ -34,7 +51,7 @@ async function migrateSettingsSchema(): Promise<void> {
 export async function getUserSettings(email: string): Promise<UserSettings> {
   await migrateSettingsSchema();
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, max_hr, hr_zones, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -51,6 +68,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.total_weeks != null) settings.totalWeeks = row.total_weeks as number;
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.lthr != null) settings.lthr = row.lthr as number;
+  if (row.max_hr != null) settings.maxHr = row.max_hr as number;
+  if (row.hr_zones) settings.hrZones = JSON.parse(row.hr_zones as string);
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string);
   if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string);
   return settings;
@@ -62,8 +81,8 @@ export async function saveUserSettings(
 ): Promise<void> {
   await migrateSettingsSchema();
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, widget_order, hidden_widgets)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, lthr, max_hr, hr_zones, widget_order, hidden_widgets)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
             google_ai_api_key = COALESCE(excluded.google_ai_api_key, google_ai_api_key),
@@ -76,6 +95,8 @@ export async function saveUserSettings(
             total_weeks = COALESCE(excluded.total_weeks, total_weeks),
             start_km = COALESCE(excluded.start_km, start_km),
             lthr = COALESCE(excluded.lthr, lthr),
+            max_hr = COALESCE(excluded.max_hr, max_hr),
+            hr_zones = COALESCE(excluded.hr_zones, hr_zones),
             widget_order = COALESCE(excluded.widget_order, widget_order),
             hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets)`,
     args: [
@@ -91,8 +112,33 @@ export async function saveUserSettings(
       partial.totalWeeks ?? null,
       partial.startKm ?? null,
       partial.lthr ?? null,
+      partial.maxHr ?? null,
+      partial.hrZones ? JSON.stringify(partial.hrZones) : null,
       partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
       partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
     ],
+  });
+}
+
+// --- Profile sync throttle ---
+
+const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
+
+export async function shouldSyncProfile(email: string): Promise<boolean> {
+  await migrateSettingsSchema();
+  const result = await db().execute({
+    sql: "SELECT profile_synced_at FROM user_settings WHERE email = ?",
+    args: [email],
+  });
+  if (result.rows.length === 0) return false;
+  const syncedAt = result.rows[0].profile_synced_at as string | null;
+  if (!syncedAt) return true;
+  return Date.now() - new Date(syncedAt).getTime() > PROFILE_SYNC_INTERVAL_MS;
+}
+
+export async function markProfileSynced(email: string): Promise<void> {
+  await db().execute({
+    sql: "UPDATE user_settings SET profile_synced_at = ? WHERE email = ?",
+    args: [new Date().toISOString(), email],
   });
 }

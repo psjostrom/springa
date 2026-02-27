@@ -246,8 +246,9 @@ describe("buildRunAnalysisPrompt", () => {
   it("system prompt contains pace zones, LTHR, and T1D safety rules", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
 
-    expect(system).toContain("LTHR: 169");
-    expect(system).toContain("Easy: 7:00-7:30/km");
+    expect(system).toContain("LTHR 168 bpm, Max HR 189 bpm");
+    expect(system).toContain("Easy: ~7:15/km");
+    expect(system).toContain("111-131 bpm");
     expect(system).toContain("pump OFF");
     expect(system).toContain("NEVER suggest reducing carbs");
     expect(system).toContain("More carbs = slower drop");

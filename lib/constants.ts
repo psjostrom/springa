@@ -13,7 +13,8 @@ export const BG_EXERCISE_MIN = 5.5;
 /** mg/dL → mmol/L conversion factor. */
 export const MGDL_TO_MMOL = 18.018;
 
-export const DEFAULT_LTHR = 169;
+export const DEFAULT_LTHR = 168;
+export const DEFAULT_MAX_HR = 189;
 export const CRASH_DROP_RATE = -3.0;
 export const SPIKE_RISE_RATE = 3.0;
 export const DEFAULT_CARBS_G = 10;

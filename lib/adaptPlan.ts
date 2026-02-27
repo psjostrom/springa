@@ -4,7 +4,7 @@ import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
-import { HR_ZONE_BANDS } from "./constants";
+import { HR_ZONE_BANDS, DEFAULT_LTHR } from "./constants";
 import { getCurrentFuelRate } from "./fuelRate";
 
 // --- Types ---
@@ -143,7 +143,7 @@ export function shouldSwapToEasy(
  * Uses the same formatStep + createWorkoutText pipeline as workoutGenerators.
  */
 function buildEasyStructure(duration?: number, lthr?: number): string {
-  const l = lthr ?? 169;
+  const l = lthr ?? DEFAULT_LTHR;
   const ez = HR_ZONE_BANDS.easy;
   const durationMin = duration ? Math.round(duration / 60) : 40;
   const mainMin = Math.max(durationMin - 15, 20);

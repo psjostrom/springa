@@ -19,6 +19,7 @@ import {
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/workoutMath";
 import { generateFullPlan } from "@/lib/workoutGenerators";
+import { DEFAULT_LTHR } from "@/lib/constants";
 
 interface VolumeTrendChartProps {
   events: CalendarEvent[];
@@ -71,7 +72,7 @@ export function VolumeTrendChart({
     }));
 
     // Planned distances from the deterministic plan generator (covers all weeks)
-    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? 169);
+    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR);
     for (const pe of planEvents) {
       const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, {
         weekStartsOn: 1,

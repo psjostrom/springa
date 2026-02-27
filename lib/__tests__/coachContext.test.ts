@@ -93,8 +93,9 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("Type 1 Diabetic");
-    expect(prompt).toContain("LTHR 169");
-    expect(prompt).toContain("7:00-7:30/km");
+    expect(prompt).toContain("LTHR 168 bpm, Max HR 189 bpm");
+    expect(prompt).toContain("~7:15/km");
+    expect(prompt).toContain("111-131 bpm");
     expect(prompt).toContain("Build (week 5, 28% through plan)");
   });
 

@@ -6,6 +6,9 @@ import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
 import type { RunFeedbackRecord } from "./feedbackDb";
 import { formatPace } from "./format";
+import type { PaceTable } from "./types";
+import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
+import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
@@ -13,6 +16,10 @@ interface CoachContext {
   bgModel: BGResponseModel | null;
   events: CalendarEvent[];
   raceDate?: string;
+  lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
   currentBG?: number | null;
   trendSlope?: number | null;
   trendArrow?: string | null;
@@ -323,19 +330,18 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     : "";
 
   const raceDateStr = ctx.raceDate || "2026-06-13";
+  const lthr = ctx.lthr ?? DEFAULT_LTHR;
+  const maxHr = ctx.maxHr ?? DEFAULT_MAX_HR;
   return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (${raceDateStr}).
 
 ## Runner Profile
-- Age 40, 80kg, 185cm. Max HR 187, LTHR 169, LT Pace 4:53/km, VO2max 49.
+- Age 40, 80kg, 185cm. ${buildProfileLine(lthr, maxHr)}, LT Pace 4:53/km, VO2max 49.
 - Restarted running ~8 months ago. Longest distance: 10km. Currently 3-4x/week.
 - Type 1 Diabetic (since 2009). Ypsomed pump + CamAPS FX + Dexcom G6.
 - All runs are pump-off. Target start BG ~10 mmol/L.
 
 ## Pace Zones
-- Easy: 7:00-7:30/km (Z2, 112-132 bpm)
-- Race Pace: 5:35-5:45/km (Z3, 132-150 bpm)
-- Interval: 5:05-5:20/km (Z4, 150-167 bpm)
-- Hard/Strides: <5:00/km (Z5, 167-188 bpm)
+${buildZoneBlock(lthr, maxHr, ctx.paceTable, ctx.hrZones)}
 
 ## Current Status (${today})
 - Training phase: ${ctx.phaseInfo.name} (week ${ctx.phaseInfo.week}, ${Math.round(ctx.phaseInfo.progress)}% through plan)

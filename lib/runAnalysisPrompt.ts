@@ -3,6 +3,8 @@ import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
 import type { RunSummary } from "./runAnalysisDb";
 import { formatPace, formatDuration } from "./format";
+import { DEFAULT_LTHR, DEFAULT_MAX_HR, HR_ZONE_BANDS } from "./constants";
+import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
 function ratingLabel(rating: "good" | "ok" | "bad"): string {
   return rating === "good" ? "Good" : rating === "ok" ? "OK" : "Bad";
@@ -14,14 +16,22 @@ export function buildRunAnalysisPrompt(params: {
   reportCard?: ReportCard | null;
   history?: RunSummary[];
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
+  lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
 }): { system: string; user: string } {
   const { event, runBGContext, reportCard, history, athleteFeedback } = params;
+  const lthr = params.lthr ?? DEFAULT_LTHR;
+  const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
+  const easyMaxBpm = params.hrZones?.length === 5
+    ? params.hrZones[1]
+    : Math.ceil(lthr * HR_ZONE_BANDS.easy.max);
 
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 
 Runner profile:
 - Type 1 Diabetic, insulin pump OFF for all runs (zero insulin delivery)
-- LTHR: 169 bpm, Max HR: 187 bpm
+- ${buildProfileLine(lthr, maxHr)}
 - Target start BG: ~10 mmol/L
 
 CRITICAL T1D physiology:
@@ -41,13 +51,10 @@ Data integrity:
 - If Athlete Feedback is provided, incorporate their observations and fuel notes into the analysis. Their firsthand experience is important context.
 
 Pace zones:
-- Easy: 7:00-7:30/km (Z2, 112-132 bpm)
-- Race Pace: 5:35-5:45/km (Z3, 132-150 bpm)
-- Interval: 5:05-5:20/km (Z4, 150-167 bpm)
-- Hard: <5:00/km (Z5, 167-188 bpm)
+${buildZoneBlock(lthr, maxHr, undefined, params.hrZones)}
 
 Category expectations:
-- "easy"/"long" → Z2 entire time. Avg HR >132 = too hard.
+- "easy"/"long" → Z2 entire time. Avg HR >${easyMaxBpm} = too hard.
 - "interval" → reps target Z4 (or Z5 for hills/strides), warmup/cooldown Z2, recovery walks Z1. IMPORTANT: for intervals, judge HR performance ONLY by rep compliance (actual Z4 time / expected rep time), NOT by % of total run time. Z4 as % of total time will always be low because warmup, cooldown, and walk recovery are by design not Z4. Z3 time during reps is normal HR ramp-up.
 - "race" → race pace blocks Z3, easy Z2.
 If avg HR doesn't match category, call it out.

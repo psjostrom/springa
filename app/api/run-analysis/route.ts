@@ -8,6 +8,7 @@ import {
 } from "@/lib/runAnalysisDb";
 import { getRunFeedbackByActivity } from "@/lib/feedbackDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
+import { getUserSettings } from "@/lib/settings";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
@@ -57,9 +58,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const [history, feedback] = await Promise.all([
+  const [history, feedback, settings] = await Promise.all([
     getRecentRunSummaries(session.user.email),
     getRunFeedbackByActivity(session.user.email, activityId),
+    getUserSettings(session.user.email),
   ]);
 
   const { system, user } = buildRunAnalysisPrompt({
@@ -68,6 +70,9 @@ export async function POST(req: Request) {
     reportCard,
     history,
     athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,
+    lthr: settings.lthr,
+    maxHr: settings.maxHr,
+    hrZones: settings.hrZones,
   });
 
   const anthropic = createAnthropic({ apiKey });
