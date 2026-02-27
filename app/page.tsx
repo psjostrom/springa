@@ -18,7 +18,7 @@ import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
-import { Settings, Play } from "lucide-react";
+import { Settings } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { resolveLayout, type WidgetLayout } from "@/lib/widgetRegistry";
 
@@ -189,43 +189,6 @@ function HomeContent() {
   const openBGGraph = bgGraph.open;
   const closeBGGraph = bgGraph.close;
 
-  // Find today's next planned workout and navigate to its modal
-  const todaysNextPlanned = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return enrichedEvents
-      .filter((e) => !e.activityId && e.date >= today && e.date < new Date(today.getTime() + 86400000))
-      .sort((a, b) => a.date.getTime() - b.date.getTime()).at(0) ?? null;
-  }, [enrichedEvents]);
-
-  const openNextWorkout = useCallback(() => {
-    if (!todaysNextPlanned) return;
-    setActiveTab("calendar");
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", "calendar");
-    params.set("workout", todaysNextPlanned.id);
-    window.history.pushState(null, "", `?${params.toString()}`);
-  }, [todaysNextPlanned]);
-
-  // Handle ?prerun=1 backward compat — strip param immediately, redirect once events load
-  const [hadPrerun] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    if (!params.has("prerun")) return false;
-    params.delete("prerun");
-    const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-    return true;
-  });
-
-  useEffect(() => {
-    if (!hadPrerun || !todaysNextPlanned) return;
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", "calendar");
-    params.set("workout", todaysNextPlanned.id);
-    window.history.replaceState(null, "", `?${params.toString()}`);
-  }, [hadPrerun, todaysNextPlanned]);
-
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
@@ -260,15 +223,6 @@ function HomeContent() {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
             <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
-            {todaysNextPlanned && currentBG != null && (
-              <button
-                onClick={openNextWorkout}
-                className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
-                title="Pre-run check"
-              >
-                <Play size={20} />
-              </button>
-            )}
             <button
               onClick={() => { setShowSettings(true); }}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
