@@ -348,7 +348,7 @@ describe("getEstimatedDuration", () => {
   it("estimates long run duration from km in name", () => {
     const event: WorkoutEvent = {
       start_date_local: new Date(),
-      name: "W01 Sun Long (8km) eco16",
+      name: "W01 Long (8km) eco16",
       description: "",
       external_id: "test",
       type: "Run",
@@ -359,7 +359,7 @@ describe("getEstimatedDuration", () => {
   it("returns 45 for non-long workouts", () => {
     const event: WorkoutEvent = {
       start_date_local: new Date(),
-      name: "W01 Tue Short Intervals eco16",
+      name: "W01 Short Intervals eco16",
       description: "",
       external_id: "test",
       type: "Run",
@@ -370,7 +370,7 @@ describe("getEstimatedDuration", () => {
   it("returns 45 for easy runs", () => {
     const event: WorkoutEvent = {
       start_date_local: new Date(),
-      name: "W01 Thu Easy eco16",
+      name: "W01 Easy eco16",
       description: "",
       external_id: "test",
       type: "Run",
@@ -685,7 +685,7 @@ describe("estimateWorkoutDistance", () => {
     const event: CalendarEvent = {
       id: "1",
       date: new Date(),
-      name: "W03 Tue Easy eco16",
+      name: "W03 Easy eco16",
       description: "",
       type: "completed",
       category: "easy",
@@ -700,7 +700,7 @@ describe("estimateWorkoutDistance", () => {
     const event: CalendarEvent = {
       id: "2",
       date: new Date(),
-      name: "W05 Sun Long (12km) eco16",
+      name: "W05 Long (12km) eco16",
       description: "",
       type: "planned",
       category: "long",
@@ -724,7 +724,7 @@ Cooldown
     const event: CalendarEvent = {
       id: "3",
       date: new Date(),
-      name: "W01 Thu Short Intervals eco16",
+      name: "W01 Short Intervals eco16",
       description: desc,
       type: "planned",
       category: "interval",
@@ -739,7 +739,7 @@ Cooldown
     const event: CalendarEvent = {
       id: "4",
       date: new Date(),
-      name: "W01 Tue Easy eco16",
+      name: "W01 Easy eco16",
       description: "No structured workout",
       type: "planned",
       category: "easy",
@@ -1121,7 +1121,7 @@ describe("estimateWorkoutDistance with paceTable", () => {
 
   it("uses calibrated pace for time-based planned events", () => {
     const event: CalendarEvent = {
-      id: "2", date: new Date(), name: "W01 Thu Short Intervals eco16",
+      id: "2", date: new Date(), name: "W01 Short Intervals eco16",
       description: TIME_WORKOUT, type: "planned", category: "interval",
     };
     const fast = estimateWorkoutDistance(event, FAST_TABLE);
@@ -1132,7 +1132,7 @@ describe("estimateWorkoutDistance with paceTable", () => {
 
   it("falls back to FALLBACK_PACE_TABLE without pace table", () => {
     const event: CalendarEvent = {
-      id: "3", date: new Date(), name: "W01 Thu Easy eco16",
+      id: "3", date: new Date(), name: "W01 Easy eco16",
       description: TIME_WORKOUT, type: "planned", category: "easy",
     };
     const withTable = estimateWorkoutDistance(event, FAST_TABLE);
@@ -1145,7 +1145,7 @@ describe("estimateWorkoutDistance with paceTable", () => {
 describe("estimatePlanEventDistance", () => {
   it("extracts km from event name", () => {
     const event: WorkoutEvent = {
-      start_date_local: new Date(), name: "W05 Sun Long (12km) eco16",
+      start_date_local: new Date(), name: "W05 Long (12km) eco16",
       description: "", external_id: "test", type: "Run",
     };
     expect(estimatePlanEventDistance(event)).toBe(12);
@@ -1154,7 +1154,7 @@ describe("estimatePlanEventDistance", () => {
 
   it("estimates from description with calibrated paces", () => {
     const event: WorkoutEvent = {
-      start_date_local: new Date(), name: "W01 Tue Short Intervals eco16",
+      start_date_local: new Date(), name: "W01 Short Intervals eco16",
       description: TIME_WORKOUT, external_id: "test", type: "Run",
     };
     const fast = estimatePlanEventDistance(event, FAST_TABLE);
@@ -1169,7 +1169,7 @@ describe("estimatePlanEventDistance", () => {
 
   it("returns 0 for events with no km and no description", () => {
     const event: WorkoutEvent = {
-      start_date_local: new Date(), name: "W01 Thu Easy eco16",
+      start_date_local: new Date(), name: "W01 Easy eco16",
       description: "Just a note", external_id: "test", type: "Run",
     };
     expect(estimatePlanEventDistance(event)).toBe(0);

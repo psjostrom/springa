@@ -157,31 +157,39 @@ function buildEasyStructure(duration?: number, lthr?: number): string {
 
 /**
  * Reconstruct external_id from event name pattern.
- * "W12 Thu Short-Intervals eco16" → "eco16-thu-12"
- * "RACE DAY eco16" → "eco16-race-{totalWeeks}"
+ * "W12 Short Intervals eco16" → "eco16-speed-12"
+ * "W05 Long (12km) eco16" → "eco16-long-5"
+ * "W01 Easy eco16" → "eco16-easy-1"
+ * "W03 Bonus Easy eco16" → "eco16-bonus-3"
+ * "RACE DAY eco16" → "eco16-race"
+ *
+ * Also handles legacy day-based names for existing events:
+ * "W12 Thu Short-Intervals eco16" → "eco16-speed-12"
  */
 export function reconstructExternalId(
   name: string,
   prefix: string,
 ): string | null {
-  // Match "RACE DAY" pattern first (before weekday, since race names also contain W{n} {Day})
   if (/RACE\s+DAY/i.test(name)) {
     const raceWeekMatch = name.match(/W(\d+)/i);
-    if (raceWeekMatch) {
-      return `${prefix}-race-${raceWeekMatch[1]}`;
-    }
+    if (raceWeekMatch) return `${prefix}-race-${parseInt(raceWeekMatch[1], 10)}`;
     return `${prefix}-race`;
   }
 
-  // Match "W{week} {day}" pattern
-  const weekDayMatch = name.match(/W(\d+)\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
-  if (weekDayMatch) {
-    const week = weekDayMatch[1];
-    const day = weekDayMatch[2].toLowerCase();
-    return `${prefix}-${day}-${week}`;
+  // Extract week number — handles both "W05 Long..." and legacy "W05 Sun Long..."
+  const weekMatch = name.match(/W(\d+)/i);
+  if (!weekMatch) return null;
+  const week = String(parseInt(weekMatch[1], 10));
+
+  // Classify by workout type keywords
+  if (/\bLong\b/i.test(name)) return `${prefix}-long-${week}`;
+  if (/\bBonus\b/i.test(name)) return `${prefix}-bonus-${week}`;
+  if (/Short.?Intervals|Hills|Long.?Intervals|Distance.?Intervals|Race.?Pace.?Intervals/i.test(name)) {
+    return `${prefix}-speed-${week}`;
   }
 
-  return null;
+  // Default: easy run (includes "Easy", "Easy + Strides", shakeout, etc.)
+  return `${prefix}-easy-${week}`;
 }
 
 // --- Orchestrator ---

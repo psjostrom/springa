@@ -70,7 +70,7 @@ const generateQualityRun = (
   const s = makeStep(ctx);
   const weekNum = weekIdx + 1;
   const progress = weekIdx / ctx.totalWeeks;
-  const prefixName = `W${weekNum.toString().padStart(2, "0")} Thu`;
+  const prefixName = `W${weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "easy", "Warmup");
   const cd = s("5m", "easy", "Cooldown");
 
@@ -82,7 +82,7 @@ const generateQualityRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
       description: createWorkoutText(wu, [s("30m", "easy", "Easy")], cd, 1, notes),
-      external_id: `${ctx.prefix}-thu-${weekNum}`,
+      external_id: `${ctx.prefix}-speed-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -133,7 +133,7 @@ const generateQualityRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `${prefixName} ${label} ${ctx.prefix}`,
     description: createWorkoutText(wu, steps, cd, reps, notes),
-    external_id: `${ctx.prefix}-thu-${weekNum}`,
+    external_id: `${ctx.prefix}-speed-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelInterval,
   };
@@ -170,7 +170,7 @@ const generateEasyRun = (
   const cd = s("5m", "easy", "Cooldown");
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
-  const name = `W${weekNum.toString().padStart(2, "0")} Tue ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
+  const name = `W${weekNum.toString().padStart(2, "0")} ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
   let notes: string;
   if (isRaceWeek) {
@@ -193,7 +193,7 @@ const generateEasyRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
-      external_id: `${ctx.prefix}-tue-${weekNum}`,
+      external_id: `${ctx.prefix}-easy-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -203,7 +203,7 @@ const generateEasyRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createWorkoutText(wu, [s(`${duration}m`, "easy", "Easy")], cd, 1, notes),
-    external_id: `${ctx.prefix}-tue-${weekNum}`,
+    external_id: `${ctx.prefix}-easy-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -225,9 +225,9 @@ const generateBonusRun = (
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${weekNum.toString().padStart(2, "0")} Sat Bonus Easy ${ctx.prefix}`,
+    name: `W${weekNum.toString().padStart(2, "0")} Bonus Easy ${ctx.prefix}`,
     description: createWorkoutText(s("10m", "easy", "Warmup"), [s("30m", "easy", "Easy")], s("5m", "easy", "Cooldown"), 1, notes),
-    external_id: `${ctx.prefix}-sat-${weekNum}`,
+    external_id: `${ctx.prefix}-bonus-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -325,9 +325,9 @@ const generateLongRun = (
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${weekNum.toString().padStart(2, "0")} Sun Long (${km}km)${type} ${ctx.prefix}`,
+    name: `W${weekNum.toString().padStart(2, "0")} Long (${km}km)${type} ${ctx.prefix}`,
     description: createWorkoutText(wu, mainSteps, cd, 1, notes),
-    external_id: `${ctx.prefix}-sun-${weekNum}`,
+    external_id: `${ctx.prefix}-long-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelLong,
     distance: km,

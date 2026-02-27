@@ -8,7 +8,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
     id: "test-1",
     date: new Date("2026-02-15T10:00:00"),
-    name: "W05 Tue Easy eco16",
+    name: "W05 Easy eco16",
     description: "",
     type: "completed",
     category: "easy",
@@ -92,7 +92,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(result.system).toContain("Type 1 Diabetic");
     expect(result.system).toContain("150 words");
-    expect(result.user).toContain("W05 Tue Easy eco16");
+    expect(result.user).toContain("W05 Easy eco16");
   });
 
   it("includes run basics in user prompt", () => {

@@ -41,7 +41,7 @@ describe("generatePlan", () => {
 
   it("names long runs with 'Long' not 'LR'", () => {
     const plan = generate();
-    const longRuns = plan.filter((e) => e.name.includes("Sun"));
+    const longRuns = plan.filter((e) => e.external_id.includes("-long-"));
     for (const lr of longRuns) {
       if (!lr.name.includes("RACE DAY")) {
         expect(lr.name).toContain("Long");
@@ -52,7 +52,7 @@ describe("generatePlan", () => {
 
   it("names Saturday runs with 'Bonus'", () => {
     const plan = generate();
-    const satRuns = plan.filter((e) => e.name.includes("Sat"));
+    const satRuns = plan.filter((e) => e.external_id.includes("-bonus-"));
     for (const run of satRuns) {
       expect(run.name).toContain("Bonus");
     }
@@ -67,9 +67,9 @@ describe("generatePlan", () => {
 
   it("skips speed sessions on recovery weeks (every 4th week)", () => {
     const plan = generate();
-    const w4Thu = plan.find((e) => e.name.startsWith("W04 Thu"));
-    if (w4Thu) {
-      expect(w4Thu.name).toContain("Easy");
+    const w4Speed = plan.find((e) => e.external_id === "eco16-speed-4");
+    if (w4Speed) {
+      expect(w4Speed.name).toContain("Easy");
     }
   });
 
@@ -132,7 +132,7 @@ describe("generatePlan", () => {
   it("rotates speed session types", () => {
     const plan = generate();
     const speedSessions = plan
-      .filter((e) => e.name.includes("Thu") && !e.name.includes("Easy"))
+      .filter((e) => e.external_id.includes("-speed-") && !e.name.includes("Easy"))
       .map((e) => e.name);
 
     const types = new Set<string>();
@@ -185,38 +185,38 @@ describe("generatePlan", () => {
 
   // --- DAY-OF-WEEK ASSIGNMENTS ---
 
-  it("assigns Tue sessions to Tuesday (day 2)", () => {
+  it("assigns easy sessions to Tuesday (day 2)", () => {
     const plan = generateFull();
-    const tueSessions = plan.filter((e) => e.name.includes(" Tue "));
-    expect(tueSessions.length).toBeGreaterThan(0);
-    for (const event of tueSessions) {
+    const easySessions = plan.filter((e) => e.external_id.includes("-easy-"));
+    expect(easySessions.length).toBeGreaterThan(0);
+    for (const event of easySessions) {
       expect(getDay(event.start_date_local)).toBe(2);
     }
   });
 
-  it("assigns Thu sessions to Thursday (day 4)", () => {
+  it("assigns speed sessions to Thursday (day 4)", () => {
     const plan = generateFull();
-    const thuSessions = plan.filter((e) => e.name.includes(" Thu "));
-    expect(thuSessions.length).toBeGreaterThan(0);
-    for (const event of thuSessions) {
+    const speedSessions = plan.filter((e) => e.external_id.includes("-speed-"));
+    expect(speedSessions.length).toBeGreaterThan(0);
+    for (const event of speedSessions) {
       expect(getDay(event.start_date_local)).toBe(4);
     }
   });
 
-  it("assigns Sat sessions to Saturday (day 6)", () => {
+  it("assigns bonus sessions to Saturday (day 6)", () => {
     const plan = generateFull();
-    const satSessions = plan.filter((e) => e.name.includes(" Sat "));
-    expect(satSessions.length).toBeGreaterThan(0);
-    for (const event of satSessions) {
+    const bonusSessions = plan.filter((e) => e.external_id.includes("-bonus-"));
+    expect(bonusSessions.length).toBeGreaterThan(0);
+    for (const event of bonusSessions) {
       expect(getDay(event.start_date_local)).toBe(6);
     }
   });
 
-  it("assigns Sun long runs to Sunday (day 0)", () => {
+  it("assigns long runs to Sunday (day 0)", () => {
     const plan = generateFull();
-    const sunSessions = plan.filter((e) => e.name.includes(" Sun "));
-    expect(sunSessions.length).toBeGreaterThan(0);
-    for (const event of sunSessions) {
+    const longSessions = plan.filter((e) => e.external_id.includes("-long-"));
+    expect(longSessions.length).toBeGreaterThan(0);
+    for (const event of longSessions) {
       expect(getDay(event.start_date_local)).toBe(0);
     }
   });
@@ -226,7 +226,7 @@ describe("generatePlan", () => {
   it("rotates long runs between all-easy, sandwich, and progressive", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
-      (e) => e.name.includes("Sun Long") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
+      (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     // At least some should have race pace sections (sandwich or progressive)
     expect(longRuns.some((lr) => lr.description.includes("78-89%"))).toBe(true);
@@ -241,7 +241,7 @@ describe("generatePlan", () => {
   it("progressive long runs build from easy through steady to tempo", () => {
     const plan = generateFull();
     const progressiveRuns = plan.filter(
-      (e) => e.name.includes("Sun Long") && e.description.includes("Progressive"),
+      (e) => e.external_id.includes("-long-") && e.description.includes("Progressive"),
     );
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
@@ -260,7 +260,7 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.name.includes("Sun Long") && e.description.includes("78-89%"),
+      (e) => e.external_id.includes("-long-") && e.description.includes("78-89%"),
     );
     if (sandwichRuns.length < 2) return;
 
@@ -279,7 +279,7 @@ describe("generatePlan", () => {
   it("increases long run total distance progressively", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
-      (e) => e.name.includes("Sun Long") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
+      (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
     );
 
     const distances = longRuns.map((lr) => {

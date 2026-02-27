@@ -421,7 +421,7 @@ describe("buildSystemPrompt", () => {
     const events: CalendarEvent[] = [
       makeEvent({
         date: tomorrow,
-        name: "Thu Short Intervals eco16",
+        name: "Short Intervals eco16",
         type: "planned",
         category: "interval",
         fuelRate: 30,
@@ -435,7 +435,7 @@ describe("buildSystemPrompt", () => {
       events,
     });
 
-    expect(prompt).toContain("Thu Short Intervals eco16");
+    expect(prompt).toContain("Short Intervals eco16");
     expect(prompt).toContain("(interval)");
     expect(prompt).toContain("fuel 30g/h");
   });

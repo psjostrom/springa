@@ -18,7 +18,7 @@ import { updateEvent } from "@/lib/intervalsApi";
 const planned: CalendarEvent = {
   id: "event-100",
   date: new Date("2026-03-10T14:00:00"),
-  name: "W02 Tue Easy eco16",
+  name: "W02 Easy eco16",
   description: "",
   type: "planned",
   category: "easy",
@@ -27,7 +27,7 @@ const planned: CalendarEvent = {
 const completed: CalendarEvent = {
   id: "event-200",
   date: new Date("2026-03-08T10:00:00"),
-  name: "W01 Sun Long (8km) eco16",
+  name: "W01 Long (8km) eco16",
   description: "",
   type: "completed",
   category: "long",
