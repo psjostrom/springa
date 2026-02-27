@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { RunFeedbackRecord } from "@/lib/feedbackDb";
 
+/** API response merges feedback record with Intervals.icu activity data. */
+interface FeedbackResponse extends RunFeedbackRecord {
+  distance?: number;
+  duration?: number;
+  avgHr?: number;
+  prescribedCarbsG?: number;
+}
+
 function formatDuration(ms: number): string {
   const totalSec = Math.round(ms / 1000);
   const min = Math.floor(totalSec / 60);
@@ -32,7 +40,7 @@ function FeedbackContent() {
   const searchParams = useSearchParams();
   const ts = searchParams.get("ts");
 
-  const [feedback, setFeedback] = useState<RunFeedbackRecord | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rating, setRating] = useState<string | null>(null);
@@ -54,7 +62,7 @@ function FeedbackContent() {
         if (!r.ok) throw new Error("Failed to load data");
         return r.json();
       })
-      .then((data: RunFeedbackRecord & { prescribedCarbsG?: number; activityId?: string }) => {
+      .then((data: FeedbackResponse) => {
         setFeedback(data);
         if (data.activityId) setActivityId(data.activityId);
         if (data.rating) {

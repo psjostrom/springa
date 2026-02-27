@@ -524,23 +524,18 @@ describe("run-completed route", () => {
       args: [EMAIL, "https://fcm.example.com/push/abc", "p256dh-val", "auth-val", Date.now()],
     });
 
-    const res = await postRunCompleted(SECRET, {
-      distance: 5200,
-      duration: 1800000,
-      avgHr: 145,
-    });
+    const res = await postRunCompleted(SECRET, {});
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(data.ts).toBeTypeOf("number");
 
-    // Verify feedback record saved
+    // No feedback row created — row is created when user submits feedback
     const rows = await testDb().execute({
-      sql: "SELECT distance, duration, avg_hr FROM run_feedback WHERE email = ?",
+      sql: "SELECT * FROM run_feedback WHERE email = ?",
       args: [EMAIL],
     });
-    expect(rows.rows).toHaveLength(1);
-    expect(rows.rows[0].distance).toBe(5200);
+    expect(rows.rows).toHaveLength(0);
 
     // Verify web-push was called
     expect(mockSendNotification).toHaveBeenCalledOnce();
@@ -566,7 +561,7 @@ describe("run-completed route", () => {
 
   it("works with no push subscriptions (no notification sent)", async () => {
     await saveXdripAuth(EMAIL, SECRET);
-    const res = await postRunCompleted(SECRET, { distance: 1000 });
+    const res = await postRunCompleted(SECRET, {});
     expect(res.status).toBe(200);
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
@@ -580,7 +575,7 @@ describe("run-completed route", () => {
 
     mockSendNotification.mockRejectedValue({ statusCode: 410 });
 
-    const res = await postRunCompleted(SECRET, { distance: 3000 });
+    const res = await postRunCompleted(SECRET, {});
     expect(res.status).toBe(200);
 
     // Stale subscription should be deleted
@@ -615,24 +610,29 @@ function postFeedback(body: unknown) {
 describe("run-feedback route", () => {
   const TS = 1700000000000;
 
-  it("GET returns feedback record", async () => {
+  it("GET returns data for any ts (no row required)", async () => {
+    authedSession();
+    const res = await getFeedback(TS);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.createdAt).toBe(TS);
+    expect(data.rating).toBeNull();
+    // distance/duration/avgHr come from Intervals.icu, not the DB
+    expect(data.distance).toBeUndefined();
+  });
+
+  it("GET returns existing feedback when submitted", async () => {
     authedSession();
     await testDb().execute({
-      sql: "INSERT INTO run_feedback (email, created_at, distance) VALUES (?, ?, ?)",
-      args: [EMAIL, TS, 5000],
+      sql: "INSERT INTO run_feedback (email, created_at, rating, comment) VALUES (?, ?, ?, ?)",
+      args: [EMAIL, TS, "good", "Felt great"],
     });
 
     const res = await getFeedback(TS);
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.distance).toBe(5000);
-    expect(data.createdAt).toBe(TS);
-  });
-
-  it("GET returns 404 for unknown ts", async () => {
-    authedSession();
-    const res = await getFeedback(9999);
-    expect(res.status).toBe(404);
+    expect(data.rating).toBe("good");
+    expect(data.comment).toBe("Felt great");
   });
 
   it("GET returns 400 without ts param", async () => {
@@ -643,13 +643,8 @@ describe("run-feedback route", () => {
     expect(res.status).toBe(400);
   });
 
-  it("POST updates rating and comment", async () => {
+  it("POST creates feedback record", async () => {
     authedSession();
-    await testDb().execute({
-      sql: "INSERT INTO run_feedback (email, created_at, distance) VALUES (?, ?, ?)",
-      args: [EMAIL, TS, 5000],
-    });
-
     const res = await postFeedback({ ts: TS, rating: "good", comment: "Felt great" });
     expect(res.status).toBe(200);
 

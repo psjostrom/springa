@@ -6,31 +6,22 @@ export interface RunFeedbackRecord {
   activityId?: string;
   rating?: string;
   comment?: string;
-  distance?: number;
-  duration?: number;
-  avgHr?: number;
   carbsG?: number;
 }
 
+/** Create a feedback record when the user submits their rating. */
 export async function saveRunFeedback(
   email: string,
-  feedback: {
-    createdAt: number;
-    distance?: number;
-    duration?: number;
-    avgHr?: number;
-  },
+  createdAt: number,
+  rating: string,
+  comment?: string,
+  carbsG?: number,
+  activityId?: string,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO run_feedback (email, created_at, distance, duration, avg_hr)
-          VALUES (?, ?, ?, ?, ?)`,
-    args: [
-      email,
-      feedback.createdAt,
-      feedback.distance ?? null,
-      feedback.duration ?? null,
-      feedback.avgHr ?? null,
-    ],
+    sql: `INSERT OR REPLACE INTO run_feedback (email, created_at, rating, comment, carbs_g, activity_id)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [email, createdAt, rating, comment ?? null, carbsG ?? null, activityId ?? null],
   });
 }
 
@@ -39,7 +30,7 @@ export async function getRunFeedback(
   createdAt: number,
 ): Promise<RunFeedbackRecord | null> {
   const result = await db().execute({
-    sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g FROM run_feedback WHERE email = ? AND created_at = ?",
+    sql: "SELECT email, created_at, activity_id, rating, comment, carbs_g FROM run_feedback WHERE email = ? AND created_at = ?",
     args: [email, createdAt],
   });
   if (result.rows.length === 0) return null;
@@ -50,25 +41,8 @@ export async function getRunFeedback(
     activityId: row.activity_id as string | undefined,
     rating: row.rating as string | undefined,
     comment: row.comment as string | undefined,
-    distance: row.distance as number | undefined,
-    duration: row.duration as number | undefined,
-    avgHr: row.avg_hr as number | undefined,
     carbsG: row.carbs_g as number | undefined,
   };
-}
-
-export async function updateRunFeedback(
-  email: string,
-  createdAt: number,
-  rating: string,
-  comment?: string,
-  carbsG?: number,
-  activityId?: string,
-): Promise<void> {
-  await db().execute({
-    sql: "UPDATE run_feedback SET rating = ?, comment = ?, carbs_g = ?, activity_id = COALESCE(?, activity_id) WHERE email = ? AND created_at = ?",
-    args: [rating, comment ?? null, carbsG ?? null, activityId ?? null, email, createdAt],
-  });
 }
 
 /** Fetch feedback for a specific activity. */
@@ -77,7 +51,7 @@ export async function getRunFeedbackByActivity(
   activityId: string,
 ): Promise<RunFeedbackRecord | null> {
   const result = await db().execute({
-    sql: "SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g FROM run_feedback WHERE email = ? AND activity_id = ?",
+    sql: "SELECT email, created_at, activity_id, rating, comment, carbs_g FROM run_feedback WHERE email = ? AND activity_id = ?",
     args: [email, activityId],
   });
   if (result.rows.length === 0) return null;
@@ -88,9 +62,6 @@ export async function getRunFeedbackByActivity(
     activityId: row.activity_id as string | undefined,
     rating: row.rating as string | undefined,
     comment: row.comment as string | undefined,
-    distance: row.distance as number | undefined,
-    duration: row.duration as number | undefined,
-    avgHr: row.avg_hr as number | undefined,
     carbsG: row.carbs_g as number | undefined,
   };
 }
@@ -116,7 +87,7 @@ export async function getRecentFeedback(
 ): Promise<RunFeedbackRecord[]> {
   const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
   const result = await db().execute({
-    sql: `SELECT email, created_at, activity_id, rating, comment, distance, duration, avg_hr, carbs_g
+    sql: `SELECT email, created_at, activity_id, rating, comment, carbs_g
           FROM run_feedback
           WHERE email = ? AND rating IS NOT NULL AND rating != 'skipped'
             AND created_at >= ?
@@ -130,9 +101,6 @@ export async function getRecentFeedback(
     activityId: row.activity_id as string | undefined,
     rating: row.rating as string | undefined,
     comment: row.comment as string | undefined,
-    distance: row.distance as number | undefined,
-    duration: row.duration as number | undefined,
-    avgHr: row.avg_hr as number | undefined,
     carbsG: row.carbs_g as number | undefined,
   }));
 }

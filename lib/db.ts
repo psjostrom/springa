@@ -97,9 +97,6 @@ CREATE TABLE IF NOT EXISTS run_feedback (
   activity_id TEXT,
   rating     TEXT,
   comment    TEXT,
-  distance   REAL,
-  duration   REAL,
-  avg_hr     REAL,
   carbs_g    REAL,
   PRIMARY KEY (email, created_at)
 );

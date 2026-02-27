@@ -1,9 +1,22 @@
 import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/settings";
-import { getRunFeedback, updateRunFeedback, updateFeedbackCarbsByActivity } from "@/lib/feedbackDb";
-import { fetchRunContext } from "@/lib/intervalsHelpers";
+import { getRunFeedback, saveRunFeedback, updateFeedbackCarbsByActivity } from "@/lib/feedbackDb";
+import { fetchRunContext, type RunContext } from "@/lib/intervalsHelpers";
 import { updateActivityCarbs } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
+
+async function fetchActivityContext(
+  email: string,
+  ts: number,
+): Promise<RunContext | null> {
+  try {
+    const settings = await getUserSettings(email);
+    if (!settings.intervalsApiKey) return null;
+    return await fetchRunContext(settings.intervalsApiKey, new Date(ts));
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -17,32 +30,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing ts" }, { status: 400 });
   }
 
+  // Fetch activity data from Intervals.icu (source of truth)
+  const ctx = await fetchActivityContext(session.user.email, Number(ts));
+
+  // Check if user already submitted feedback for this run
   const feedback = await getRunFeedback(session.user.email, Number(ts));
-  if (!feedback) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
 
-  // Fetch activityId and prescribed carbs from Intervals.icu
-  let activityId: string | null = null;
-  let prescribedCarbsG: number | null = null;
-  try {
-    if (feedback.duration != null) {
-      const settings = await getUserSettings(session.user.email);
-      if (settings.intervalsApiKey) {
-        const ctx = await fetchRunContext(
-          settings.intervalsApiKey,
-          feedback.duration,
-          new Date(Number(ts)),
-        );
-        activityId = ctx.activityId;
-        prescribedCarbsG = ctx.prescribedCarbsG;
-      }
-    }
-  } catch {
-    // Intervals.icu unavailable — form will be disabled (no activityId), user can reload
-  }
-
-  return NextResponse.json({ ...feedback, activityId, prescribedCarbsG });
+  return NextResponse.json({
+    createdAt: Number(ts),
+    rating: feedback?.rating ?? null,
+    comment: feedback?.comment ?? null,
+    carbsG: feedback?.carbsG ?? null,
+    distance: ctx?.distance ?? undefined,
+    duration: ctx?.movingTimeMs ?? undefined,
+    avgHr: ctx?.avgHr ?? undefined,
+    activityId: ctx?.activityId ?? null,
+    prescribedCarbsG: ctx?.prescribedCarbsG ?? null,
+  });
 }
 
 export async function POST(req: Request) {
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing ts or rating" }, { status: 400 });
   }
 
-  await updateRunFeedback(session.user.email, ts, rating, comment, carbsG, activityId);
+  await saveRunFeedback(session.user.email, ts, rating, comment, carbsG, activityId);
 
   // Sync carbs to Intervals.icu if we have both
   if (carbsG != null && activityId) {

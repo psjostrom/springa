@@ -5,17 +5,22 @@ import type { IntervalsActivity } from "./types";
 
 const MS_PER_HOUR = 3_600_000;
 
-// --- Run context (activityId + prescribed carbs) ---
+// --- Run context (activityId + activity stats + prescribed carbs) ---
 
 export interface RunContext {
   activityId: string | null;
   prescribedCarbsG: number | null;
+  /** Distance in meters (from Intervals.icu activity). */
+  distance: number | null;
+  /** Duration in milliseconds (from Intervals.icu activity moving_time). */
+  movingTimeMs: number | null;
+  /** Average heart rate in bpm (from Intervals.icu activity). */
+  avgHr: number | null;
 }
 
 /** Fetch the latest activity and compute prescribed carbs for a given run date. */
 export async function fetchRunContext(
   apiKey: string,
-  durationMs: number,
   runDate: Date,
 ): Promise<RunContext> {
   const dateStr = runDate.toISOString().slice(0, 10);
@@ -33,38 +38,37 @@ export async function fetchRunContext(
   ]);
 
   // Find the most recent running activity by start_date_local
-  let activityId: string | null = null;
-  if (activitiesRes.ok) {
-    const activities: IntervalsActivity[] = await activitiesRes.json();
-    const runs = activities.filter(
-      (a) => a.type === "Run" || a.type === "VirtualRun",
-    );
-    if (runs.length > 0) {
-      const sorted = runs.sort((a, b) =>
+  const activities: IntervalsActivity[] = activitiesRes.ok
+    ? await activitiesRes.json()
+    : [];
+  const activity =
+    activities
+      .filter((a) => a.type === "Run" || a.type === "VirtualRun")
+      .sort((a, b) =>
         (b.start_date_local ?? b.start_date).localeCompare(
           a.start_date_local ?? a.start_date,
         ),
-      );
-      activityId = sorted[0].id;
-    }
-  }
+      )[0] ?? null;
+
+  const activityId = activity?.id ?? null;
+  const distance = activity?.distance ?? null;
+  const movingTimeMs =
+    activity?.moving_time != null ? activity.moving_time * 1000 : null;
+  const avgHr =
+    activity?.average_hr ?? activity?.average_heartrate ?? null;
 
   // Compute prescribed carbs from any WORKOUT event with carbs_per_hour
-  let prescribedCarbsG: number | null = null;
-  if (eventsRes.ok) {
-    const events = await eventsRes.json();
-    const planned = events.find(
-      (e: { category: string; carbs_per_hour?: number }) =>
-        e.category === "WORKOUT" && e.carbs_per_hour != null,
-    );
-    if (planned?.carbs_per_hour) {
-      prescribedCarbsG = Math.round(
-        planned.carbs_per_hour * (durationMs / MS_PER_HOUR),
-      );
-    }
-  }
+  const events: { category: string; carbs_per_hour?: number }[] =
+    eventsRes.ok ? await eventsRes.json() : [];
+  const planned = events.find(
+    (e) => e.category === "WORKOUT" && e.carbs_per_hour != null,
+  );
+  const prescribedCarbsG =
+    planned?.carbs_per_hour && movingTimeMs != null
+      ? Math.round(planned.carbs_per_hour * (movingTimeMs / MS_PER_HOUR))
+      : null;
 
-  return { activityId, prescribedCarbsG };
+  return { activityId, prescribedCarbsG, distance, movingTimeMs, avgHr };
 }
 
 // --- Timezone ---
