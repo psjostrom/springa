@@ -182,6 +182,44 @@ describe("fetchCalendarData", () => {
     expect(result[0].description).toContain("FUEL PER 10: 8g");
   });
 
+  it("matches activity with Garmin location prefix to event name", async () => {
+    const mockActivities = [
+      {
+        id: "456",
+        start_date: "2026-02-10T10:00:00",
+        start_date_local: "2026-02-10T10:00:00",
+        name: "Järfälla - W03 Bonus Easy eco16",
+        type: "Run",
+        distance: 6352,
+        moving_time: 3200,
+      },
+    ];
+    const mockEvents = [
+      {
+        id: 999,
+        category: "WORKOUT",
+        start_date_local: "2026-02-10T12:00:00",
+        name: "W03 Bonus Easy eco16",
+        description: "Easy run.",
+      },
+    ];
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/activities")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockActivities) });
+      }
+      if (url.includes("/events")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockEvents) });
+      }
+      return Promise.resolve({ ok: false, text: () => Promise.resolve("") });
+    }));
+
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe("completed");
+    expect(result[0].description).toContain("Easy run.");
+  });
+
   it("does not match activity and event more than 3 days apart", async () => {
     const mockActivities = [
       {

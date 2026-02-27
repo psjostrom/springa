@@ -100,7 +100,7 @@ export function processActivities(
       const eventDate = parseISO(event.start_date_local);
       const dayDiff = Math.abs(differenceInDays(activityDate, eventDate));
       const withinWindow = dayDiff <= 3;
-      const nameMatch = actName === evtName;
+      const nameMatch = actName === evtName || (evtName.length > 0 && actName.endsWith(evtName));
       if (!withinWindow) {
         rejections.push(`${event.id}|${event.name}|dayDiff=${dayDiff}`);
       } else if (!nameMatch) {
