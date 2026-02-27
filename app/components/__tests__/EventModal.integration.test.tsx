@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { CalendarEvent } from "@/lib/types";
 import { EventModal } from "../EventModal";
 import "../..//../lib/__tests__/setup-dom";
@@ -54,6 +54,50 @@ const baseCompleted: CalendarEvent = {
 
 const noop = () => {};
 const noopAsync = async () => {};
+
+const baseRace: CalendarEvent = {
+  id: "e300",
+  date: new Date("2026-06-13T09:00:00"),
+  name: "EcoTrail 16km",
+  description: "Race day!",
+  type: "race",
+  category: "race",
+  fuelRate: 60,
+  totalCarbs: 120,
+};
+
+describe("EventModal race event", () => {
+  it("renders Race badge for race event", () => {
+    const { container } = render(
+      <EventModal
+        event={baseRace}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Badge text
+    expect(container.textContent).toContain("Race");
+    // Race badge uses pink (#ff2d95)
+    const badge = container.querySelector("[class*='ff2d95']");
+    expect(badge).not.toBeNull();
+  });
+
+  it("renders event name for race event", () => {
+    render(
+      <EventModal
+        event={baseRace}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+    expect(screen.getByText("EcoTrail 16km")).toBeInTheDocument();
+  });
+});
 
 describe("EventModal zone bar", () => {
   it("renders WorkoutStructureBar for a planned event with a description", () => {

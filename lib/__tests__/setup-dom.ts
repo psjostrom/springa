@@ -28,14 +28,19 @@ vi.mock("next-auth/react", () => ({
 }));
 
 // --- Recharts mock ---
-// jsdom can't measure SVG layout; mock all Recharts components
+// jsdom can't measure SVG layout; mock all Recharts components.
+// Only pass data-* and aria-* attrs to the div to avoid React unknown-prop warnings.
 vi.mock("recharts", () => {
   function createMock(name: string) {
     const Mock = React.forwardRef(function MockComponent(
       { children, ...props }: React.PropsWithChildren<Record<string, unknown>>,
       ref: React.Ref<HTMLDivElement>,
     ) {
-      return React.createElement("div", { "data-testid": `mock-${name}`, ref, ...props }, children);
+      const htmlProps: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(props)) {
+        if (k.startsWith("data-") || k.startsWith("aria-")) htmlProps[k] = v;
+      }
+      return React.createElement("div", { "data-testid": `mock-${name}`, ref, ...htmlProps }, children);
     });
     Mock.displayName = `Mock${name}`;
     return Mock;

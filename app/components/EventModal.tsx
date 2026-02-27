@@ -204,6 +204,12 @@ export function EventModal({
     dispatch({ type: "SAVE_CARBS" });
     try {
       await updateActivityCarbs(apiKey, actId, val);
+      // Sync to feedback DB so analysis prompt sees updated carbs
+      fetch("/api/run-feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activityId: actId, carbsG: val }),
+      }).catch(() => {}); // best-effort — Intervals.icu is the source of truth
       dispatch({ type: "SET_SAVED_CARBS", value: val });
       dispatch({ type: "CARBS_SAVED" });
     } catch (err) {

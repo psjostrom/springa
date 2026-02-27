@@ -6,6 +6,7 @@ export interface WorkoutEvent {
   external_id: string;
   type: "Run";
   fuelRate?: number; // g/h (carbs per hour)
+  distance?: number; // km (first-class; generators populate this for long runs)
 }
 
 export interface AnalysisResult {

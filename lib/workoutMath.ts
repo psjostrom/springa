@@ -3,6 +3,7 @@ import { parseWorkoutSegments, paceForIntensity } from "./descriptionParser";
 import { DEFAULT_WORKOUT_DURATION_MINUTES } from "./constants";
 
 export function getEstimatedDuration(event: WorkoutEvent): number {
+  if (event.distance) return event.distance * 6;
   if (event.name.includes("Long")) {
     const match = event.name.match(/(\d+)km/);
     if (match) return parseInt(match[1], 10) * 6;
@@ -65,6 +66,7 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
 
 /** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
 export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable): number {
+  if (event.distance) return event.distance;
   const kmMatch = event.name.match(/\((\d+)km\)/);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 

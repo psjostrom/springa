@@ -104,6 +104,20 @@ export async function getRunFeedbackByActivity(
   };
 }
 
+/** Update carbs on a feedback record by activity ID. */
+export async function updateFeedbackCarbsByActivity(
+  email: string,
+  activityId: string,
+  carbsG: number,
+): Promise<boolean> {
+  await migrateFeedbackSchema();
+  const result = await db().execute({
+    sql: "UPDATE run_feedback SET carbs_g = ? WHERE email = ? AND activity_id = ?",
+    args: [carbsG, email, activityId],
+  });
+  return (result.rowsAffected ?? 0) > 0;
+}
+
 /** Fetch recent rated feedback for AI consumers. */
 export async function getRecentFeedback(
   email: string,

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/settings";
-import { getRunFeedback, updateRunFeedback } from "@/lib/feedbackDb";
+import { getRunFeedback, updateRunFeedback, updateFeedbackCarbsByActivity } from "@/lib/feedbackDb";
 import { fetchRunContext } from "@/lib/intervalsHelpers";
 import { updateActivityCarbs } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
@@ -78,5 +78,23 @@ export async function POST(req: Request) {
     }
   }
 
+  return NextResponse.json({ ok: true });
+}
+
+/** Sync carbs from EventModal back to feedback DB. */
+export async function PATCH(req: Request) {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { activityId, carbsG } = body as { activityId?: string; carbsG?: number };
+
+  if (!activityId || carbsG == null) {
+    return NextResponse.json({ error: "Missing activityId or carbsG" }, { status: 400 });
+  }
+
+  await updateFeedbackCarbsByActivity(session.user.email, activityId, carbsG);
   return NextResponse.json({ ok: true });
 }

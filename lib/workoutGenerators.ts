@@ -330,6 +330,7 @@ const generateLongRun = (
     external_id: `${ctx.prefix}-sun-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelLong,
+    distance: km,
   };
 };
 
