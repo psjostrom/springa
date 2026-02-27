@@ -4,9 +4,7 @@ import { getDay } from "date-fns";
 
 describe("generatePlan", () => {
   const defaultArgs = {
-    fuelInterval: 5,
-    fuelLong: 10,
-    fuelEasy: 8,
+    bgModel: null as null,
     raceDateStr: "2026-06-13",
     raceDist: 16,
     prefix: "eco16",
@@ -18,7 +16,7 @@ describe("generatePlan", () => {
   function generate(overrides: Partial<typeof defaultArgs> = {}) {
     const args = { ...defaultArgs, ...overrides };
     return generatePlan(
-      args.fuelInterval, args.fuelLong, args.fuelEasy,
+      args.bgModel,
       args.raceDateStr, args.raceDist, args.prefix,
       args.totalWeeks, args.startKm, args.lthr,
     );

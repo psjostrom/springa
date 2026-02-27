@@ -1,10 +1,11 @@
 import type { CalendarEvent, WorkoutCategory, WorkoutEvent } from "./types";
-import type { TargetFuelResult, BGResponseModel } from "./bgModel";
+import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
 import { HR_ZONE_BANDS } from "./constants";
+import { getCurrentFuelRate } from "./fuelRate";
 
 // --- Types ---
 
@@ -72,48 +73,38 @@ export function assembleDescription(
 // --- Fuel rate adjustment ---
 
 /**
- * Adjust fuel rate using BG model targets.
- * Returns target fuel rate if available for category, otherwise returns current.
+ * Adjust fuel rate using the canonical getCurrentFuelRate resolution.
+ * Compares against event's current fuelRate. If different → change record.
  */
 export function adaptFuelRate(
   current: number | null,
   category: WorkoutCategory | "race" | "other",
-  targets: TargetFuelResult[],
-  categoryAvgFuel: number | null,
+  bgModel: BGResponseModel,
 ): { rate: number | null; change: AdaptationChange | null } {
-  // Only adapt workout categories with targets
   if (category === "race" || category === "other") {
     return { rate: current, change: null };
   }
 
-  const target = targets.find((t) => t.category === category);
-  if (target) {
-    const targetRate = Math.round(target.targetFuelRate);
-    if (current != null && targetRate !== current) {
-      return {
-        rate: targetRate,
-        change: {
-          type: "fuel",
-          detail: `Fuel: ${current} → ${targetRate} g/h (BG model target)`,
-        },
-      };
-    }
-    return { rate: targetRate, change: null };
-  }
-
-  // Fall back to category average if no target and no current
-  if (current == null && categoryAvgFuel != null) {
-    const avg = Math.round(categoryAvgFuel);
+  const resolved = getCurrentFuelRate(category, bgModel);
+  if (current != null && resolved !== current) {
     return {
-      rate: avg,
+      rate: resolved,
       change: {
         type: "fuel",
-        detail: `Fuel: set to ${avg} g/h (category average)`,
+        detail: `Fuel: ${current} → ${resolved} g/h (BG model target)`,
       },
     };
   }
-
-  return { rate: current, change: null };
+  if (current == null) {
+    return {
+      rate: resolved,
+      change: {
+        type: "fuel",
+        detail: `Fuel: set to ${resolved} g/h (BG model target)`,
+      },
+    };
+  }
+  return { rate: resolved, change: null };
 }
 
 // --- Workout swap ---
@@ -208,15 +199,10 @@ export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
     const category = event.category as WorkoutCategory | "race" | "other";
 
     // 1. Fuel adjustment
-    const categoryData =
-      category !== "race" && category !== "other"
-        ? bgModel.categories[category]
-        : null;
     const { rate: adjustedFuel, change: fuelChange } = adaptFuelRate(
       event.fuelRate ?? null,
       category,
-      bgModel.targetFuelRates,
-      categoryData?.avgFuelRate ?? null,
+      bgModel,
     );
     if (fuelChange) changes.push(fuelChange);
 

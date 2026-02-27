@@ -2,6 +2,7 @@ import type { WorkoutCategory } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { classifyBGBand, classifyEntrySlope } from "./bgModel";
 import { BG_HIGH, BG_EXERCISE_MIN } from "./constants";
+import { getCurrentFuelRate } from "./fuelRate";
 
 // --- Types ---
 
@@ -126,18 +127,9 @@ function assessModel(
   }
 
   // Pull target fuel rate for category
-  const fuelData = bgModel.targetFuelRates.find((f) => f.category === category);
-  if (fuelData) {
-    result.targetFuel = fuelData.targetFuelRate;
-    result.suggestions.push(`Take ${fuelData.targetFuelRate}g carbs/h`);
-  } else {
-    // Fall back to category avg fuel rate
-    const catData = bgModel.categories[category];
-    if (catData?.avgFuelRate) {
-      result.targetFuel = Math.round(catData.avgFuelRate);
-      result.suggestions.push(`Take ${result.targetFuel}g carbs/h`);
-    }
-  }
+  const resolvedFuel = getCurrentFuelRate(category, bgModel);
+  result.targetFuel = resolvedFuel;
+  result.suggestions.push(`Take ${resolvedFuel}g carbs/h`);
 
   return result;
 }

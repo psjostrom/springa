@@ -148,8 +148,8 @@ describe("assembleDescription", () => {
 
 describe("adaptFuelRate", () => {
   it("returns target fuel when available for category", () => {
-    const targets = [makeTarget("interval", 36)];
-    const { rate, change } = adaptFuelRate(30, "interval", targets, 28);
+    const bgModel = makeBGModel([makeTarget("interval", 36)]);
+    const { rate, change } = adaptFuelRate(30, "interval", bgModel);
 
     expect(rate).toBe(36);
     expect(change).not.toBeNull();
@@ -157,31 +157,36 @@ describe("adaptFuelRate", () => {
   });
 
   it("returns original when target matches current", () => {
-    const targets = [makeTarget("easy", 48)];
-    const { rate, change } = adaptFuelRate(48, "easy", targets, 45);
+    const bgModel = makeBGModel([makeTarget("easy", 48)]);
+    const { rate, change } = adaptFuelRate(48, "easy", bgModel);
 
     expect(rate).toBe(48);
     expect(change).toBeNull();
   });
 
-  it("returns original when no target exists and current is set", () => {
-    const { rate, change } = adaptFuelRate(30, "interval", [], 28);
+  it("falls back to category average when no target exists", () => {
+    const bgModel = makeBGModel(); // has avgFuelRate 28 for interval
+    const { rate, change } = adaptFuelRate(30, "interval", bgModel);
 
-    expect(rate).toBe(30);
-    expect(change).toBeNull();
+    // getCurrentFuelRate resolves to Math.round(28) = 28
+    expect(rate).toBe(28);
+    expect(change).not.toBeNull();
+    expect(change!.detail).toContain("30 → 28");
   });
 
-  it("falls back to category average when no current and no target", () => {
-    const { rate, change } = adaptFuelRate(null, "easy", [], 45);
+  it("sets fuel when current is null", () => {
+    const bgModel = makeBGModel();
+    const { rate, change } = adaptFuelRate(null, "easy", bgModel);
 
+    // getCurrentFuelRate resolves to Math.round(45) = 45
     expect(rate).toBe(45);
     expect(change).not.toBeNull();
-    expect(change!.detail).toContain("category average");
+    expect(change!.detail).toContain("set to 45");
   });
 
   it("ignores race category", () => {
-    const targets = [makeTarget("easy", 50)];
-    const { rate, change } = adaptFuelRate(30, "race", targets, null);
+    const bgModel = makeBGModel([makeTarget("easy", 50)]);
+    const { rate, change } = adaptFuelRate(30, "race", bgModel);
 
     expect(rate).toBe(30);
     expect(change).toBeNull();
@@ -334,12 +339,12 @@ describe("applyAdaptations", () => {
     expect(result[0].externalId).toBe("eco16-thu-14");
   });
 
-  it("leaves easy runs unchanged when no targets", () => {
+  it("leaves easy runs unchanged when resolved rate matches current", () => {
     const events = [
       makeEvent({
         name: "W14 Tue Easy eco16",
         category: "easy",
-        fuelRate: 48,
+        fuelRate: 45, // matches bgModel avgFuelRate for easy
         description: "Easy run\n\nWarmup\n- 10m easy\n\nMain set\n- 30m Z2\n\nCooldown\n- 5m easy",
       }),
     ];
@@ -354,14 +359,14 @@ describe("applyAdaptations", () => {
       prefix: "eco16",
     });
 
-    expect(result[0].fuelRate).toBe(48);
+    expect(result[0].fuelRate).toBe(45);
     expect(result[0].swapped).toBe(false);
     expect(result[0].changes).toHaveLength(0);
   });
 
   it("handles multiple events", () => {
     const events = [
-      makeEvent({ id: "ev-1", name: "W14 Tue Easy eco16", category: "easy", fuelRate: 48 }),
+      makeEvent({ id: "ev-1", name: "W14 Tue Easy eco16", category: "easy", fuelRate: 45 }), // matches avgFuelRate
       makeEvent({ id: "ev-2", name: "W14 Thu Short-Intervals eco16", category: "interval", fuelRate: 30 }),
       makeEvent({ id: "ev-3", name: "W14 Sat Long Run eco16", category: "long", fuelRate: 60 }),
     ];
@@ -377,7 +382,7 @@ describe("applyAdaptations", () => {
     });
 
     expect(result).toHaveLength(3);
-    // Easy: no change
+    // Easy: no change (45 matches avgFuelRate)
     expect(result[0].changes).toHaveLength(0);
     // Interval: fuel change
     expect(result[1].fuelRate).toBe(36);

@@ -8,8 +8,10 @@ import {
   set,
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
+import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, HR_ZONE_BANDS } from "./constants";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
+import { getCurrentFuelRate } from "./fuelRate";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 const WALK_ZONE = { min: 0.50, max: 0.66 };
@@ -334,9 +336,7 @@ const generateLongRun = (
 // --- MAIN ORCHESTRATOR ---
 
 export function generatePlan(
-  fuelInterval: number,
-  fuelLong: number,
-  fuelEasy: number,
+  bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
   prefix: string,
@@ -347,9 +347,9 @@ export function generatePlan(
   const raceDate = parseISO(raceDateStr);
   const today = new Date();
   const ctx: PlanContext = {
-    fuelInterval,
-    fuelLong,
-    fuelEasy,
+    fuelInterval: getCurrentFuelRate("interval", bgModel),
+    fuelLong: getCurrentFuelRate("long", bgModel),
+    fuelEasy: getCurrentFuelRate("easy", bgModel),
     raceDate,
     raceDist,
     prefix,
@@ -376,6 +376,7 @@ export function generatePlan(
 
 /** Generate the full plan for all weeks (no date filtering). Used for plan-vs-actual comparisons. */
 export function generateFullPlan(
+  bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
   prefix: string,
@@ -385,9 +386,9 @@ export function generateFullPlan(
 ): WorkoutEvent[] {
   const raceDate = parseISO(raceDateStr);
   const ctx: PlanContext = {
-    fuelInterval: 30,
-    fuelLong: 60,
-    fuelEasy: 48,
+    fuelInterval: getCurrentFuelRate("interval", bgModel),
+    fuelLong: getCurrentFuelRate("long", bgModel),
+    fuelEasy: getCurrentFuelRate("easy", bgModel),
     raceDate,
     raceDist,
     prefix,
