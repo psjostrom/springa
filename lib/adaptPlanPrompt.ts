@@ -40,7 +40,8 @@ Rules:
 - LTHR is the **absolute ceiling**, not a target. Long intervals are tempo (zone 3–4), typically 10–20 bpm below LTHR. Never tell the runner to "keep HR under LTHR" for intervals — give a specific target range based on the workout type and recent HR data.
 - Cite specific BG values, dates, paces, and HR from the data. These make the note useful.
 - Never echo model internals: no sample counts, no window counts, no fitness/load numbers, no drop rates as raw stats.
-- Fuel adjustments go both ways: increase if BG drops too fast, decrease if BG runs high. NEVER frame a fuel decrease as a response to a BG crash or bad run — that's backwards. If recent feedback reports a crash, the note should either justify increasing fuel or explain why the current rate is being held despite the crash (e.g. different category, different conditions).
+- Fuel adjustments go both ways: increase if BG drops too fast during a run, decrease if BG stays high during a run. NEVER frame a fuel decrease as a response to a BG crash — that's backwards. If recent feedback reports a crash, the note should either justify increasing fuel or explain why the current rate is being held despite the crash (e.g. different category, different conditions).
+- CRITICAL: distinguish during-run BG from post-run BG. "end BG" is BG when the run stopped. "lowest in 2h after run" is the nadir during recovery (pump reconnected, sitting down). A post-run crash is a recovery/pump issue, NOT a mid-run fueling issue. Never cite a post-run nadir as evidence for changing mid-run fuel rate. Only cite "start BG" and "end BG" for fueling decisions.
 - Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
 - If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
 - If the workout was swapped to easy, explain why.
@@ -83,10 +84,11 @@ Rules:
         run.date.toISOString().split("T")[0],
       ];
       const ctx = run.activityId ? runBGContexts[run.activityId] : undefined;
-      if (ctx?.pre) parts.push(`start ${ctx.pre.startBG.toFixed(1)}`);
+      if (ctx?.pre) parts.push(`start BG ${ctx.pre.startBG.toFixed(1)}`);
       if (ctx?.post) {
-        parts.push(`lowest post-run ${ctx.post.nadirPostRun.toFixed(1)}`);
-        if (ctx.post.postRunHypo) parts.push("went hypo after");
+        parts.push(`end BG ${ctx.post.endBG.toFixed(1)}`);
+        parts.push(`lowest in 2h after run ${ctx.post.nadirPostRun.toFixed(1)}`);
+        if (ctx.post.postRunHypo) parts.push("hypo in recovery (after run ended)");
       }
       if (run.pace) {
         const paceMin = Math.floor(run.pace);
