@@ -276,6 +276,7 @@ function HomeContent() {
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
             cachedActivities={cachedActivities}
+            runBGContexts={runBGContexts}
             widgetLayout={widgetLayout}
             onWidgetLayoutChange={handleWidgetLayoutChange}
           />

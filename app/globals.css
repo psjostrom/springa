@@ -88,6 +88,23 @@ summary {
 .prose-analysis ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.25rem; }
 .prose-analysis li { margin-top: 0.125rem; }
 
+/* BG pattern discovery markdown */
+.prose-patterns h2 { font-size: 0.875rem; font-weight: 700; color: #c4b5fd; margin-top: 1rem; margin-bottom: 0.375rem; text-transform: uppercase; }
+.prose-patterns h2:first-child { margin-top: 0; }
+.prose-patterns h3 { font-size: 0.8125rem; font-weight: 600; color: #b8a5d4; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+.prose-patterns p { margin-top: 0.375rem; margin-bottom: 0.375rem; }
+.prose-patterns strong { color: #c4b5fd; }
+.prose-patterns ul, .prose-patterns ol { padding-left: 1.25rem; margin-top: 0.25rem; margin-bottom: 0.25rem; }
+.prose-patterns ul { list-style: disc; }
+.prose-patterns ol { list-style: decimal; }
+.prose-patterns li { margin-top: 0.125rem; }
+.prose-patterns table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; }
+.prose-patterns th { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid #3d2b5a; color: #b8a5d4; font-weight: 600; white-space: nowrap; }
+.prose-patterns td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #2a1f3d; }
+.prose-patterns tr:last-child td { border-bottom: none; }
+.prose-patterns hr { border-color: #3d2b5a; margin: 0.75rem 0; }
+.prose-patterns code { background: #2a1f3d; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; color: #00ffff; }
+
 /* Suppress mobile tap highlight on interactive charts */
 .no-tap-highlight,
 .no-tap-highlight * {

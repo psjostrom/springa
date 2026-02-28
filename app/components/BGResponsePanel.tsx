@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { Droplets, TrendingDown, AlertTriangle, ChevronDown } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult, EntrySlopeResponse } from "@/lib/bgModel";
 import { suggestFuelAdjustments } from "@/lib/bgModel";
-import type { WorkoutCategory } from "@/lib/types";
+import type { CalendarEvent, WorkoutCategory } from "@/lib/types";
+import type { RunBGContext } from "@/lib/runBGContext";
 
 interface BGResponsePanelProps {
   model: BGResponseModel;
   activityNames?: Map<string, string>;
+  events?: CalendarEvent[];
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
 const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
@@ -180,11 +185,53 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   );
 }
 
-export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) {
+export function BGResponsePanel({ model, activityNames, events, runBGContexts }: BGResponsePanelProps) {
   const suggestions = suggestFuelAdjustments(model);
   const categoryOrder: WorkoutCategory[] = ["easy", "long", "interval"];
   const activeCategories = categoryOrder.filter((c) => model.categories[c] != null);
   const names = activityNames ?? new Map<string, string>();
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [patterns, setPatterns] = useState<string | null>(null);
+  const [patternsExpanded, setPatternsExpanded] = useState(true);
+  const [patternsError, setPatternsError] = useState<string | null>(null);
+
+  const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
+
+  const handleDiscover = useCallback(async () => {
+    if (!events || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setPatternsError(null);
+    setPatterns(null);
+
+    // Convert Map to plain object for JSON serialization
+    const bgContexts: Record<string, RunBGContext> = {};
+    if (runBGContexts) {
+      for (const [key, value] of runBGContexts) {
+        bgContexts[key] = value;
+      }
+    }
+
+    try {
+      const res = await fetch("/api/bg-patterns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events, bgContexts }),
+      });
+
+      const data = (await res.json()) as { patterns?: string; error?: string };
+      if (!res.ok) {
+        setPatternsError(data.error ?? "Analysis failed");
+      } else {
+        setPatterns(data.patterns ?? null);
+        setPatternsExpanded(true);
+      }
+    } catch {
+      setPatternsError("Network error — try again");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [events, runBGContexts, isAnalyzing]);
 
   return (
     <div className="space-y-3">
@@ -195,9 +242,20 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
             BG Response by Workout
           </span>
         </div>
-        <span className="text-xs text-[#8b7ba8]">
-          {model.activitiesAnalyzed} runs analyzed
-        </span>
+        <div className="flex items-center gap-2">
+          {canDiscover && !isAnalyzing && (
+            <button
+              onClick={() => { void handleDiscover(); }}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
+            >
+              <Sparkles className="w-3 h-3" />
+              Discover Patterns
+            </button>
+          )}
+          <span className="text-xs text-[#8b7ba8]">
+            {model.activitiesAnalyzed} runs analyzed
+          </span>
+        </div>
       </div>
 
       {activeCategories.length === 0 ? (
@@ -247,6 +305,46 @@ export function BGResponsePanel({ model, activityNames }: BGResponsePanelProps) 
             <TimeDecaySection buckets={model.bgByTime} />
           )}
         </>
+      )}
+
+      {/* Pattern Discovery */}
+      {isAnalyzing && (
+        <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+          <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            <span className="text-sm">
+              Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {patternsError && (
+        <div className="bg-[#3d1525] rounded-lg border border-[#ff3366]/20 p-3 text-sm text-[#ff3366]">
+          {patternsError}
+        </div>
+      )}
+
+      {patterns && (
+        <div className="space-y-2">
+          <button
+            onClick={() => { setPatternsExpanded(!patternsExpanded); }}
+            className="flex items-center gap-1.5 w-full text-left"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#00ffff]" />
+            <span className="text-xs font-semibold uppercase text-[#b8a5d4] flex-1">
+              Cross-Run Patterns
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
+            />
+          </button>
+          {patternsExpanded && (
+            <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4 text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

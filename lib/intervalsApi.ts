@@ -432,6 +432,37 @@ export async function uploadToIntervals(
   }
 }
 
+// --- WELLNESS ---
+
+export interface WellnessEntry {
+  id: string; // date YYYY-MM-DD
+  restingHR?: number;
+  hrvRMSSD?: number;
+  sleepSecs?: number;
+  sleepScore?: number;
+  spO2?: number;
+  weight?: number;
+  atl?: number;
+  ctl?: number;
+}
+
+export async function fetchWellnessData(
+  apiKey: string,
+  oldest: string,
+  newest: string,
+): Promise<WellnessEntry[]> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/athlete/0/wellness?oldest=${oldest}&newest=${newest}`,
+      { headers: { Authorization: authHeader(apiKey) } },
+    );
+    if (!res.ok) return [];
+    return (await res.json()) as WellnessEntry[];
+  } catch {
+    return [];
+  }
+}
+
 export async function updateActivityCarbs(
   apiKey: string,
   activityId: string,
