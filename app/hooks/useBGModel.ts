@@ -27,6 +27,8 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
   const [bgModelProgress, setBgModelProgress] = useState({ done: 0, total: 0 });
   const [bgActivityNames, setBgActivityNames] = useState<Map<string, string>>(new Map());
   const [runBGContexts, setRunBGContexts] = useState<Map<string, RunBGContext>>(new Map());
+  const [completedRuns, setCompletedRuns] = useState<CalendarEvent[]>([]);
+  const [cachedActivities, setCachedActivities] = useState<CachedActivity[]>([]);
   const loadedRef = useRef(false);
 
   // L1: instant render from localStorage (once)
@@ -49,24 +51,24 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
     void (async () => {
       setBgModelLoading(true);
       try {
-        const completedRuns = sharedEvents
+        const runs = sharedEvents
           .filter((e): e is CalendarEvent & { activityId: string } => e.type === "completed" && !!e.activityId && e.category !== "other" && e.category !== "race")
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .slice(0, BG_MODEL_MAX_ACTIVITIES);
 
-        if (completedRuns.length === 0) {
+        if (runs.length === 0) {
           setBgModelLoading(false);
           return;
         }
 
         // Build name map
         const nameMap = new Map<string, string>();
-        for (const e of completedRuns) {
+        for (const e of runs) {
           if (e.activityId) nameMap.set(e.activityId, e.name);
         }
         setBgActivityNames(nameMap);
 
-        const wantedIds = new Set(completedRuns.map((e) => e.activityId));
+        const wantedIds = new Set(runs.map((e) => e.activityId));
 
         // Fetch cache
         const cached = await fetchBGCache();
@@ -79,7 +81,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         );
 
         // Diff: find uncached activity IDs
-        const uncachedRuns = completedRuns.filter(
+        const uncachedRuns = runs.filter(
           (e) => !cachedMap.has(e.activityId),
         );
 
@@ -129,8 +131,8 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         const model = buildBGModelFromCached(allCached);
         if (!cancelled) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
           setBgModel(model);
-          cachedRef.current = allCached;
-          completedRunsRef.current = completedRuns;
+          setCachedActivities(allCached);
+          setCompletedRuns(runs);
         }
       } catch (err) {
         console.error("useBGModel: build failed", err);
@@ -143,25 +145,21 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
     return () => { cancelled = true; };
   }, [apiKey, enabled, sharedEvents]);
 
-  // Compute RunBGContexts separately so xdripReadings updates trigger recomputation
-  const cachedRef = useRef<CachedActivity[]>([]);
-  const completedRunsRef = useRef<CalendarEvent[]>([]);
-
+  // Compute RunBGContexts when both completed runs and xDrip readings are available
   useEffect(() => {
-    if (!xdripReadings || xdripReadings.length === 0 || completedRunsRef.current.length === 0) return;
+    if (!xdripReadings || xdripReadings.length === 0 || completedRuns.length === 0) return;
 
-    const contexts = buildRunBGContexts(completedRunsRef.current, xdripReadings);
+    const contexts = buildRunBGContexts(completedRuns, xdripReadings);
     setRunBGContexts(contexts);
 
     // Enrich cached activities with RunBGContext and rebuild model
-    const allCached = cachedRef.current;
-    for (const c of allCached) {
+    for (const c of cachedActivities) {
       const ctx = contexts.get(c.activityId);
       if (ctx) c.runBGContext = ctx;
     }
-    const model = buildBGModelFromCached(allCached);
+    const model = buildBGModelFromCached(cachedActivities);
     setBgModel(model);
-  }, [xdripReadings]);
+  }, [xdripReadings, completedRuns, cachedActivities]);
 
-  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities: cachedRef.current };
+  return { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities };
 }

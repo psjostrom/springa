@@ -89,28 +89,11 @@ export async function POST(req: Request) {
 
   const xdripReadings = await getXdripReadings(session.user.email, [...neededMonths]);
 
-  // Debug: xDrip coverage
-  console.log(`[bg-patterns] xDrip: ${xdripReadings.length} readings, months=${[...neededMonths].join(",")}`);
-  if (xdripReadings.length > 0) {
-    console.log(`[bg-patterns] xDrip range: ${new Date(xdripReadings[0].ts).toISOString()} → ${new Date(xdripReadings[xdripReadings.length - 1].ts).toISOString()}`);
-  }
-
   // Build RunBGContexts from the full xDrip dataset
   const bgContextMap = buildRunBGContexts(completedEvents, xdripReadings);
   const bgContexts: Record<string, import("@/lib/runBGContext").RunBGContext> = {};
   for (const [key, value] of bgContextMap) {
     bgContexts[key] = value;
-  }
-
-  // Debug: per-run context with dates
-  for (const e of completedEvents) {
-    const ctx = e.activityId ? bgContexts[e.activityId] : undefined;
-    const dateStr = e.date.toISOString().slice(0, 16);
-    const preInfo = ctx?.pre ? `slope=${ctx.pre.entrySlope30m.toFixed(2)}, readings=${ctx.pre.readingCount}` : "null";
-    // Count xDrip readings in the 30-min window before this run
-    const runStartMs = e.date.getTime();
-    const preWindowReadings = xdripReadings.filter((r) => r.ts >= runStartMs - 30 * 60 * 1000 && r.ts < runStartMs);
-    console.log(`[bg-patterns] ${e.activityId} ${dateStr}: pre=${preInfo}, xdrip30m=${preWindowReadings.length}`);
   }
 
   // Build enriched run table

@@ -2,29 +2,53 @@
 
 ## Next
 
+### Cross-Run BG Pattern Discovery
+
+Surface hidden patterns in BG outcomes by correlating against every available variable across all completed runs. The per-category BG model answers "what does an average long run look like?" — this answers "what conditions make BG crash that I haven't noticed?"
+
+**Phase 1: AI-driven discovery (now).** Build one enriched row per completed run with every available variable. Send the full table to Claude with a discovery prompt. No statistical engine — Claude reasons about correlations, flags sample sizes, and explains potential causation vs coincidence. Works with current data volume (~30 runs).
+
+**Phase 2: Statistical engine (80+ runs).** Add proper multivariate analysis with p-values, effect sizes, and minimum sample guards. The variable enrichment from phase 1 carries over.
+
+**Variables per run (the table):**
+
+| Source | Variables |
+|---|---|
+| Activity (already have) | time of day, day of week, distance, duration, avg pace, avg HR, max HR, cadence, elevation gain, category |
+| BG data (already have) | starting BG, entry slope, avg drop rate, min BG, hypo flag, BG score |
+| Training context (already have) | days since last run, weekly km so far, CTL, ATL, TSB, training load |
+| Fuel (already have) | planned fuel rate (g/h), actual carbs ingested |
+| Wellness (one new API call) | HRV rMSSD, resting HR, sleep score, readiness, SpO2 |
+
+~25 variables. ~30 rows. ~3-4K tokens for the full dataset.
+
+**Wellness API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily records. One call covers the full training history. Match each run to its day's wellness data by date.
+
+**UI:** Button in Intel tab — "Discover BG patterns." Fetches wellness data, enriches run data, formats table, sends to Claude, renders the response as a discovery report.
+
+**Prompt design:** Ask Claude to find patterns in BG outcomes (drop rate, min BG, hypo) that correlate with any variable or combination of variables. Require minimum 5 observations per bucket. Flag interactions ("high fatigue AND low start BG together are worse than either alone"). Caveat small samples.
+
+**Example discoveries:**
+
+- "Morning runs (before 11:00) average -1.8/10min drop vs afternoon at -0.9/10min. 8 morning, 12 afternoon runs."
+- "Runs with sleep score < 70 had hypo events in 3/5 cases vs 1/15 when sleep > 70."
+- "TSB below -15 combined with starting BG under 9 produced the 3 worst BG outcomes. Either factor alone was manageable."
+
+### Ref Overhaul — Replace Refs With State-Driven Data Flow
+
+Multiple hooks use `useRef` to pass data between effects as a side-channel to avoid re-renders. This breaks React's dependency tracking — effects that read refs don't re-run when the ref changes, creating race conditions that are harder to diagnose than the re-renders they prevent.
+
+**Known bug:** `useBGModel.ts` stores `completedRunsRef` as a ref. The xDrip effect (line 150) depends on `[xdripReadings]` but reads `completedRunsRef.current`. If xDrip data arrives before activities finish loading, the effect short-circuits and never retries until the next xDrip poll (60s later). This causes `runBGContexts` to be empty when the user clicks "Discover Patterns" shortly after page load.
+
+**Fix:** Audit all `useRef` usage across hooks. Replace refs that carry data between effects with `useState` so React's dependency system handles re-runs automatically. Keep refs only for values that genuinely shouldn't trigger re-renders (DOM refs, "has already loaded" guards, abort flags).
+
+**Scope:** `useBGModel.ts` (`cachedRef`, `completedRunsRef`), and any other hooks using the same pattern. Full audit needed.
+
 ### AI Data Audit
 
 Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. Nobody has a clear map of what each consumer receives, what it's missing, and where the gaps create bad advice. The "BG crashed → trim fuel" incident happened because the adapt prompt had feedback but lacked cross-category visibility. The coach gave a BG-only response because it had no HR zones, no workout structure, no planned-vs-actual comparison.
 
 **Deliverable:** A matrix — rows are data dimensions (HR zones, workout structure, feedback, BG streams, recovery patterns, fitness load, pace splits, planned fuel, etc.), columns are AI consumers (adapt-plan, coach, run-analysis). Each cell: present / absent / partial. Then prioritize filling the gaps that cause the worst advice.
-
-### Rich Workout Context for Coach AI
-
-The coach summary line per completed workout is skeletal: date, name, distance, avg pace, avg HR, load, carbs. It drops most of what `CalendarEvent` actually carries: category, duration, HR zone breakdown, planned workout structure (description), planned fuel rate, cadence, max HR. The AI has no idea whether you nailed the intervals or drifted, how much time you spent in each zone, or what the workout was even supposed to be.
-
-**What's missing and why it matters:**
-
-- **HR zone breakdown (`hrZones`)** — "42min in Z2, 12min in Z4" tells a completely different story than "avg HR 144." For intervals, the AI can't assess execution quality without knowing time-in-zone per rep vs recovery.
-- **Category** — the coach doesn't know if a run was easy/long/interval. It infers from the name, which is fragile.
-- **Workout description** — the prescribed structure (warmup → 4×5min at tempo → cooldown). Without this, the AI can't compare planned vs actual.
-- **Duration** — total time matters for fuel assessment and training load context.
-- **Planned fuel rate** — planned vs actual carbs comparison requires knowing what was prescribed.
-- **Cadence, max HR** — secondary but useful for form and effort ceiling analysis.
-
-**Design considerations:**
-
-- Token budget: HR zone breakdowns and descriptions add significant prompt length. For 10 completed workouts, this could add 2-3K tokens. May need to show full detail for the last 3-5 runs and compact summaries for older ones.
-- The adapt prompt already gets richer per-run context (BG patterns, recovery, entry slopes). The coach should match or exceed that level of detail since the coach is the general-purpose AI consumer.
 
 ### Readiness-Adaptive Training
 
@@ -45,19 +69,25 @@ Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score
 
 **API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily wellness records with `hrvRMSSD`, `restingHR`, `sleepScore`, `readiness`, `spO2`.
 
-### Feedback-Aware Fuel Adaptation
+### BG Model Recency Weighting
 
-`applyAdaptations` sets fuel rates purely from the BG model's statistical target — observed drop rates, historical fuel, regression/extrapolation. It has no concept of how the runner *felt*. A "bad" rating with "BG crashed, needed an extra gel" doesn't move the needle because the rule-based system never sees feedback.
+The BG model treats all observations equally — a crash 3 months ago weighs the same as a crash yesterday. At small sample sizes (~15-20 runs per category) this is fine. As history grows, old data drowns out recent reality: the model's cross-run average won't react to a recent crash because it's diluted by months of "fine" runs.
 
-This creates a disconnect: the runner reports a crash, triggers adapt, and watches fuel go *down* because the model's cross-run average says the category is fine. The AI narrates it, making it worse — it references the crash and then explains a decrease, which reads as tone-deaf even when the model is technically correct for that category.
+**Fix:** Exponential decay on observation weights in `calculateTargetFuelRates`. Recent runs weigh more than older runs. Affects regression, extrapolation, and category averages. All consumers of `targetFuelRates` benefit (adapt, coach, Intel) without bolt-on guardrails.
 
-**Problem:** Fuel adaptation is statistically-driven but experientially-blind. The BG model answers "what does the average run look like?" but not "what just happened and how should we react?" Recent feedback — especially negative feedback — should act as a short-term override or bias on the target fuel rate, not just context for the AI narrator.
+**Design decisions (settled):**
 
-**Design questions:**
-- How much weight should a single "bad" run carry vs the model's N-run average?
-- Should feedback bias decay over time (strong today, fading over 7 days)?
-- Cross-category: a crash on a steady run might not mean easy runs need more fuel. But if the crash was BG-entry related (dropping before the run), it's relevant everywhere.
-- Should the bias be directional only (bad = never decrease, good = allow decrease) or quantitative (bad + specific drop rate → bump by X g/h)?
+- **Same-category only.** A crash on a long run doesn't change easy run targets.
+- **Bidirectional.** Recent improvement also surfaces faster — not just bad outcomes.
+- **No new data dependency.** Just weights existing observations by age. No report card lookup needed.
+
+**Open questions:**
+
+- **Decay half-life.** 2 weeks overreacts to one bad run. 4 weeks is a reasonable starting point (one training cycle). 8 weeks is too slow. Needs calibration.
+- **Small-sample guard.** With 5 observations, recency weighting amplifies outliers. Consider minimum sample size before applying decay (e.g., equal weighting until 10+ observations, then decay kicks in).
+- **Weighted regression.** `linearRegression` in `bgModel.ts` needs weighted variant. Weighted averages per fuel-rate group, then weighted least squares.
+
+**Parked (2026-02-27):** Premature at current scale. Equal weighting works when each category has ~15-20 observations. Revisit when any category exceeds ~40 observations — likely around week 8-10 of the plan (April 2026), well before the June 13 race. At that point old data from early training will be stale relative to the runner's evolved BG response and fitness.
 
 ### Aerobic Fitness Trend
 
@@ -70,34 +100,6 @@ Single chart combining cardiac drift (aerobic decoupling) and efficiency factor 
 **Data source:** Stream data (HR + pace) already fetched for completed runs. Computation is straightforward — no new API calls needed.
 
 **UI:** Line chart in Intel tab. Two y-axes: decoupling % (lower is better) and EF (higher is better). Trend lines showing direction over 4–8 week windows.
-
-### Customizable Intel Dashboard
-
-Intel tab is currently a fixed stack of panels. Make each panel a discrete widget that can be reordered, shown, or hidden. Persisted per user.
-
-**Widgets (current panels, each becomes a widget):**
-
-- Volume Trend Chart
-- BG Response Model (category breakdown, scatter chart)
-- Fuel Rate Targets
-- Fitness Insights (CTL/ATL/TSB)
-- Fitness Chart (load trend)
-- HR Zone Breakdown
-- Pace Calibration
-
-**Interaction:**
-
-- Long-press (mobile) or drag handle (desktop) to enter reorder mode. Drag to rearrange.
-- Toggle visibility per widget — hidden widgets don't fetch data or render.
-- "Reset to default" restores the stock layout.
-- Layout stored in user settings (database) so it survives device switches.
-
-**Implementation approach:**
-
-- Widget registry: each widget declares its key, label, default order, and lazy-loaded component.
-- `IntelScreen` reads the user's layout from settings, renders widgets in stored order, skips hidden ones.
-- Drag-and-drop: `@dnd-kit/sortable` (already tree-shakeable, small footprint) or native HTML drag since the list is short.
-- Settings shape: `{ widgetOrder: string[], hiddenWidgets: string[] }` in user settings.
 
 ### Segment-Aligned Glucose Overlay
 
@@ -126,35 +128,28 @@ The BG model has the building blocks — `bgByStartLevel` gives response by star
 
 **UI:** Interactive simulator in Intel or dedicated Race tab. Sliders for start BG, fuel rate, intensity. Live-updating predicted glucose curve. Save/compare scenarios.
 
-### Cross-Run Pattern Discovery
-
-Correlate BG outcomes against variables the current per-category model ignores: time of day, days since last run, cumulative weekly load, entry slope, weather (temperature/humidity from external API). Surface hidden rules the runner can't see in individual run analyses.
-
-Examples: "Morning runs drop 40% more than evening at same fuel rate." "Runs after 2+ rest days start higher and drop slower." "BG stability degrades when weekly load exceeds 6 hours."
-
-**Implementation:** Extend `BGObservation` with `startHour`, `daysSinceLastRun`, `weeklyLoadSoFar`. Run multivariate analysis across all observations. Present as discovered rules with p-values and sample sizes, not just averages.
-
-**Prerequisite:** Needs 30+ runs with BG data across varied conditions to produce statistically meaningful splits.
-
-### Auto-Sync HR Metrics from Intervals.icu
-
-LTHR and max HR are currently manual settings the runner has to update by hand. But Garmin Connect already tracks these (measured LTHR, observed max HR), and Intervals.icu syncs them from Garmin. If we pull these values from the Intervals.icu athlete API, the app can auto-update LTHR and max HR — and by extension, all HR zones — without the runner touching settings.
-
-**Why it matters:** Stale LTHR means wrong zone boundaries. Every workout description, every report card HR compliance score, every pace calibration zone boundary depends on LTHR. If the runner's LTHR drifts from 169 to 172 over a training block and the setting doesn't follow, all zone-based scoring and workout targeting is slightly off. Auto-sync eliminates that drift.
-
-**API:** `GET /api/v1/athlete/0` on Intervals.icu returns athlete profile fields including `lthr`, `max_hr`, and potentially resting HR. Need to verify which fields are populated from Garmin sync vs manually entered on Intervals.icu.
-
-**Design questions:**
-- Should we auto-update silently, or show a notification when values change ("LTHR updated from 169 → 172, zones recalculated")?
-- How often to poll? On every calendar fetch, or a separate daily check?
-- What if Intervals.icu has no value (runner hasn't synced from Garmin)? Fall back to the manual setting.
-- Should we store historical LTHR values to track fitness progression over time?
-
 ### GAP for Trail Readiness
 
 Grade-adjusted pace analysis using elevation data from completed runs. Compare GAP to flat-equivalent pace to assess trail-specific fitness. Elevation data (`total_elevation_gain`) is already fetched from Intervals.icu but unused.
 
 **Relevance:** Only matters if training includes significant elevation. Deprioritized until trail-specific training blocks appear in the plan.
+
+---
+
+## Maybe
+
+### Rich Workout Context for Coach AI — Last 10%
+
+The coach already receives category, distance, duration, pace, avgHR, maxHR, load, planned fuel rate, actual carbs, HR zone breakdown (Z1–Z5), BG start + rate, entry slope, recovery patterns, and user feedback per completed workout. That covers ~90% of useful context.
+
+**What's still missing:**
+
+- **Workout description** — the prescribed structure (warmup → 4×5min at tempo → cooldown). Enables planned-vs-actual comparison ("you were supposed to do 4×5min but Z4 time says you held 3 reps"). But the report card already scores HR zone compliance, so the coach mostly duplicates that unless asked a specific execution question. ~50–100 tokens per workout × 10 = 500–1000 extra tokens per prompt.
+- **Cadence** — marginal. Only relevant if specifically asking about form/fatigue breakdown.
+
+**Trigger to revisit:** If the coach gives vague answers to "how did I execute that session?" questions, add `description` to `RunLineOptions` in `lib/runLine.ts`. Until then, the token cost isn't justified.
+
+**Implementation:** `lib/coachContext.ts` (`summarizeCompletedWorkouts`), `lib/runLine.ts` (`formatRunLine` + `RunLineOptions`).
 
 ---
 
@@ -280,3 +275,15 @@ Currently the pace table is hardcoded in `lib/constants.ts` (`FALLBACK_PACE_TABL
 **Data source:** HR + pace streams from completed activities. Zone boundaries from LTHR-based calculation (already implemented).
 
 **UI:** Pace table card in Intel tab showing current calibrated paces vs fallback. Trend arrows showing improvement/regression per zone.
+
+### Customizable Intel Dashboard
+
+Widget-based Intel tab with reorderable, hideable panels. Widget registry declares key, label, default order, and component. Layout persisted in user settings DB (`widget_order`, `hidden_widgets`). Edit mode with up/down/eye buttons. Reset to default.
+
+**Implementation:** `lib/widgetRegistry.ts` (registry + `moveWidget`/`toggleWidget`), `IntelScreen.tsx` (edit mode UI), `lib/settings.ts` (persistence). 6 widget types: phase-tracker, fitness-insights, fitness-chart, volume-trend, pace-zones, bg-response.
+
+### Auto-Sync HR Metrics from Intervals.icu
+
+Auto-syncs LTHR, max HR, and HR zone boundaries from `GET /api/v1/athlete/0` (Run sport settings). Triggered on settings load with 24h throttle. Only updates DB when values change. Falls back to cached values on API error.
+
+**Implementation:** `lib/intervalsApi.ts` (`fetchAthleteProfile`), `app/api/settings/route.ts` (sync trigger), `lib/settings.ts` (`shouldSyncProfile`, `markProfileSynced`). DB columns: `lthr`, `max_hr`, `hr_zones`, `profile_synced_at`.

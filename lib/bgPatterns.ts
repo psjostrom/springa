@@ -4,7 +4,6 @@ import type { RunBGContext } from "./runBGContext";
 import type { FitnessDataPoint } from "./fitness";
 import type { WellnessEntry } from "./intervalsApi";
 import { scoreBG } from "./reportCard";
-import { computeEntrySlope } from "./bgModel";
 
 // --- Types ---
 
@@ -129,8 +128,7 @@ export function buildEnrichedRunTable(
     // Entry slope from RunBGContext
     const actId = event.activityId;
     const ctx = actId ? bgContexts[actId] : undefined;
-    const entrySlope = ctx?.pre?.entrySlope30m
-      ?? (event.streamData?.glucose ? computeEntrySlope(event.streamData.glucose) : null);
+    const entrySlope = ctx?.pre?.entrySlope30m ?? null;
 
     // Elevation gain from stream data
     let elevationGain: number | null = null;
@@ -163,10 +161,7 @@ export function buildEnrichedRunTable(
       hypo: bg.hypo,
       bgScore: bg.rating,
       entrySlope,
-      fuelRateGH: event.fuelRate
-        ?? (event.carbsIngested != null && event.duration
-          ? Math.round(event.carbsIngested / (event.duration / 3600))
-          : null),
+      fuelRateGH: event.fuelRate ?? null,
       carbsIngestedG: event.carbsIngested ?? null,
       daysSinceLastRun,
       weeklyKmSoFar: Math.round(weeklyKmSoFar * 10) / 10,

@@ -7,13 +7,10 @@ import remarkGfm from "remark-gfm";
 import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult, EntrySlopeResponse } from "@/lib/bgModel";
 import { suggestFuelAdjustments } from "@/lib/bgModel";
 import type { CalendarEvent, WorkoutCategory } from "@/lib/types";
-import type { RunBGContext } from "@/lib/runBGContext";
-
 interface BGResponsePanelProps {
   model: BGResponseModel;
   activityNames?: Map<string, string>;
   events?: CalendarEvent[];
-  runBGContexts?: Map<string, RunBGContext>;
 }
 
 const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
@@ -185,7 +182,7 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   );
 }
 
-export function BGResponsePanel({ model, activityNames, events, runBGContexts }: BGResponsePanelProps) {
+export function BGResponsePanel({ model, activityNames, events }: BGResponsePanelProps) {
   const suggestions = suggestFuelAdjustments(model);
   const categoryOrder: WorkoutCategory[] = ["easy", "long", "interval"];
   const activeCategories = categoryOrder.filter((c) => model.categories[c] != null);
@@ -204,19 +201,11 @@ export function BGResponsePanel({ model, activityNames, events, runBGContexts }:
     setPatternsError(null);
     setPatterns(null);
 
-    // Convert Map to plain object for JSON serialization
-    const bgContexts: Record<string, RunBGContext> = {};
-    if (runBGContexts) {
-      for (const [key, value] of runBGContexts) {
-        bgContexts[key] = value;
-      }
-    }
-
     try {
       const res = await fetch("/api/bg-patterns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events, bgContexts }),
+        body: JSON.stringify({ events }),
       });
 
       const data = (await res.json()) as { patterns?: string; error?: string };
@@ -231,7 +220,7 @@ export function BGResponsePanel({ model, activityNames, events, runBGContexts }:
     } finally {
       setIsAnalyzing(false);
     }
-  }, [events, runBGContexts, isAnalyzing]);
+  }, [events, isAnalyzing]);
 
   return (
     <div className="space-y-3">

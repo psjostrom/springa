@@ -15,7 +15,6 @@ import type { CalendarEvent } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
-import type { RunBGContext } from "@/lib/runBGContext";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 import type { WidgetKey, WidgetLayout } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
@@ -50,7 +49,6 @@ interface IntelScreenProps {
   lthr?: number;
   bgActivityNames: Map<string, string>;
   cachedActivities: CachedActivity[];
-  runBGContexts: Map<string, RunBGContext>;
   widgetLayout: WidgetLayout;
   onWidgetLayoutChange: (layout: WidgetLayout) => void;
 }
@@ -123,7 +121,6 @@ export function IntelScreen({
   bgModelProgress,
   bgActivityNames,
   cachedActivities,
-  runBGContexts,
   widgetLayout,
   onWidgetLayoutChange,
 }: IntelScreenProps) {
@@ -237,7 +234,7 @@ export function IntelScreen({
       : bgModel
         ? () => (
             <div className="space-y-4">
-              <BGResponsePanel model={bgModel} activityNames={bgActivityNames} events={events} runBGContexts={runBGContexts} />
+              <BGResponsePanel model={bgModel} activityNames={bgActivityNames} events={events} />
               <BGScatterChart model={bgModel} />
             </div>
           )
