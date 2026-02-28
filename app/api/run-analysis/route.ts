@@ -12,6 +12,8 @@ import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { getUserSettings } from "@/lib/settings";
 import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
 import { formatAIError } from "@/lib/aiError";
+import { signIn as glookoSignIn, fetchGlookoData, clearSession as clearGlookoSession } from "@/lib/glooko";
+import { buildInsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -117,6 +119,20 @@ export async function POST(req: Request) {
   }
 
   const settings = await getUserSettings(session.user.email);
+  const { glookoEmail, glookoPassword } = settings;
+  const runStartMs = event.date.getTime();
+
+  // Start Glooko fetch in parallel (doesn't depend on rows/feedback/profile)
+  const insulinContextP = glookoEmail && glookoPassword
+    ? glookoSignIn(glookoEmail, glookoPassword)
+        .then((gs) => fetchGlookoData(gs, new Date(runStartMs - 5 * 60 * 60 * 1000), new Date(runStartMs)))
+        .then((data) => buildInsulinContext(data, runStartMs))
+        .catch((err: unknown) => {
+          console.error("Glooko fetch failed (run-analysis):", err);
+          clearGlookoSession(glookoEmail);
+          return null;
+        })
+    : Promise.resolve(null);
 
   const [rows, feedback, recentFeedback, profile] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
@@ -155,10 +171,13 @@ export async function POST(req: Request) {
       .map((fb) => [fb.activityId, fb]),
   );
 
+  const insulinContext = await insulinContextP;
+
   const { system, user } = buildRunAnalysisPrompt({
     event,
     runBGContext,
     reportCard,
+    insulinContext,
     history,
     historyFeedback: historyFeedbackMap,
     athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,

@@ -2,10 +2,12 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
+  clearGlookoCredentials,
   type UserSettings,
 } from "@/lib/settings";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { saveXdripAuth } from "@/lib/xdripDb";
+import { signIn as glookoSignIn, clearSession as clearGlookoSession } from "@/lib/glooko";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -28,7 +30,12 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json(settings);
+  // Don't send Glooko password to the client — just indicate if it's configured
+  const response: Record<string, unknown> = { ...settings };
+  delete response.glookoPassword;
+  response.glookoConnected = !!(settings.glookoEmail && settings.glookoPassword);
+
+  return NextResponse.json(response);
 }
 
 export async function PUT(req: Request) {
@@ -50,9 +57,33 @@ export async function PUT(req: Request) {
     delete body.xdripSecret;
   }
 
+  // Handle Glooko disconnect: empty email means clear both fields
+  if ("glookoEmail" in body && !body.glookoEmail) {
+    await clearGlookoCredentials(session.user.email);
+    clearGlookoSession(body.glookoEmail ?? "");
+    delete body.glookoEmail;
+    delete body.glookoPassword;
+  }
+
+  // Verify Glooko credentials before saving
+  let glookoError: string | undefined;
+  if (body.glookoEmail && body.glookoPassword) {
+    try {
+      await glookoSignIn(body.glookoEmail, body.glookoPassword);
+    } catch (err: unknown) {
+      glookoError = err instanceof Error ? err.message : "Glooko sign-in failed";
+      clearGlookoSession(body.glookoEmail);
+      // Don't save invalid credentials
+      delete body.glookoEmail;
+      delete body.glookoPassword;
+    }
+  }
+
   if (Object.keys(body).length > 0) {
     await saveUserSettings(session.user.email, body);
   }
 
-  return NextResponse.json({ ok: true });
+  const result: Record<string, unknown> = { ok: true };
+  if (glookoError) result.glookoError = glookoError;
+  return NextResponse.json(result);
 }

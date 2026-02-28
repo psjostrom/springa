@@ -10,6 +10,8 @@ import {
   buildBGPatternPrompt,
 } from "@/lib/bgPatterns";
 import { formatAIError } from "@/lib/aiError";
+import { signIn as glookoSignIn, fetchGlookoData, clearSession as clearGlookoSession } from "@/lib/glooko";
+import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
 import { buildRunBGContexts } from "@/lib/runBGContext";
@@ -50,23 +52,12 @@ export async function POST(req: Request) {
   }
 
   const settings = await getUserSettings(session.user.email);
+  const { glookoEmail, glookoPassword } = settings;
 
   // Compute fitness data from events
   const fitnessData = computeFitnessData(events, 180);
 
-  // Fetch wellness data from Intervals.icu
-  const completedDates = events
-    .filter((e) => e.type === "completed")
-    .map((e) => format(e.date, "yyyy-MM-dd"));
-
-  let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
-  if (settings.intervalsApiKey && completedDates.length > 0) {
-    const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
-    const newest = completedDates.reduce((a, b) => (a > b ? a : b));
-    wellness = await fetchWellnessData(settings.intervalsApiKey, oldest, newest);
-  }
-
-  // Fetch xDrip readings server-side for the full date range of completed runs
+  // Identify completed runs (needed by wellness, xDrip, and Glooko)
   const completedEvents = events.filter((e) => e.type === "completed");
   if (completedEvents.length === 0) {
     return NextResponse.json(
@@ -74,6 +65,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  const completedDates = completedEvents.map((e) => format(e.date, "yyyy-MM-dd"));
   const timestamps = completedEvents.map((e) => e.date.getTime());
   const durations = completedEvents.map((e) => (e.duration ?? 0) * 1000);
 
@@ -81,7 +74,7 @@ export async function POST(req: Request) {
   const earliestMs = Math.min(...timestamps) - 60 * 60 * 1000;
   const latestMs = Math.max(...timestamps.map((t, i) => t + durations[i])) + 2 * 60 * 60 * 1000;
 
-  // Compute which months we need
+  // Compute which months we need for xDrip
   const neededMonths = new Set<string>();
   let cursor = earliestMs;
   while (cursor < latestMs) {
@@ -93,6 +86,29 @@ export async function POST(req: Request) {
   }
   neededMonths.add(monthKey(latestMs));
 
+  // Start Glooko fetch in parallel (doesn't depend on wellness or xDrip)
+  const glookoDataP = glookoEmail && glookoPassword
+    ? glookoSignIn(glookoEmail, glookoPassword)
+        .then((gs) => fetchGlookoData(
+          gs,
+          new Date(Math.min(...timestamps) - 5 * 60 * 60 * 1000),
+          new Date(Math.max(...timestamps)),
+        ))
+        .catch((err: unknown) => {
+          console.error("Glooko fetch failed (bg-patterns):", err);
+          clearGlookoSession(glookoEmail);
+          return null;
+        })
+    : Promise.resolve(null);
+
+  // Fetch wellness and xDrip readings (parallel with Glooko)
+  let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
+  if (settings.intervalsApiKey && completedDates.length > 0) {
+    const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
+    const newest = completedDates.reduce((a, b) => (a > b ? a : b));
+    wellness = await fetchWellnessData(settings.intervalsApiKey, oldest, newest);
+  }
+
   const xdripReadings = await getXdripReadings(session.user.email, [...neededMonths]);
 
   // Build RunBGContexts from the full xDrip dataset
@@ -102,12 +118,26 @@ export async function POST(req: Request) {
     bgContexts[key] = value;
   }
 
+  // Build insulin contexts from Glooko data
+  const insulinContexts: Record<string, InsulinContext> = {};
+  const glookoData = await glookoDataP;
+  if (glookoData) {
+    for (const event of completedEvents) {
+      if (!event.activityId) continue;
+      const ctx = buildInsulinContext(glookoData, event.date.getTime());
+      if (ctx) {
+        insulinContexts[event.activityId] = ctx;
+      }
+    }
+  }
+
   // Build enriched run table
   const enrichedRuns = buildEnrichedRunTable(
     events,
     fitnessData,
     wellness,
     bgContexts,
+    insulinContexts,
   );
 
   if (enrichedRuns.length < 5) {

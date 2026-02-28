@@ -3,6 +3,7 @@ import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
 import type { RunHistoryEntry } from "./runAnalysisDb";
 import type { RunFeedbackRecord } from "./feedbackDb";
+import type { InsulinContext } from "./insulinContext";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR, HR_ZONE_BANDS } from "./constants";
@@ -16,6 +17,7 @@ export function buildRunAnalysisPrompt(params: {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
+  insulinContext?: InsulinContext | null;
   history?: RunHistoryEntry[];
   historyFeedback?: Map<string, RunFeedbackRecord>;
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
@@ -23,7 +25,7 @@ export function buildRunAnalysisPrompt(params: {
   maxHr?: number;
   hrZones?: number[];
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, history, historyFeedback, athleteFeedback } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback } = params;
   const lthr = params.lthr ?? DEFAULT_LTHR;
   const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
   const easyMaxBpm = params.hrZones?.length === 5
@@ -45,6 +47,8 @@ CRITICAL T1D physiology:
 - Hypo (<3.9 mmol/L) is the primary safety risk.
 - Starting below 9 is a risk factor. Below 8 is a serious concern.
 - A gentle decline (e.g. -0.5/10min) staying above 5.0 is a GOOD outcome.
+- Insulin on board (IOB) at run start matters: residual bolus insulin accelerates BG drop on top of exercise-driven uptake. High IOB + exercise = compounding hypo risk.
+- Time since last meal affects entrySlope: a recent bolus (< 2h) means insulin is still peaking, which can cause steep pre-run BG drops even before the run starts.
 
 Data integrity:
 - Only reference data explicitly provided in the run data below.
@@ -114,6 +118,22 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
   }
   if (runBGContext?.pre) {
     lines.push(`Start BG (xDrip): ${runBGContext.pre.startBG.toFixed(1)} mmol/L`);
+  }
+
+  // Insulin & meal context (from Glooko)
+  if (insulinContext) {
+    lines.push("");
+    lines.push("## Insulin & Meal Context");
+    lines.push(`IOB at run start: ${insulinContext.iobAtStart} u`);
+    lines.push(`Time since last bolus: ${insulinContext.timeSinceLastBolus} min`);
+    lines.push(`Last bolus: ${insulinContext.lastBolusUnits} u`);
+    lines.push(`Time since last meal: ${insulinContext.timeSinceLastMeal} min`);
+    if (insulinContext.lastMealCarbs > 0) {
+      lines.push(`Last meal: ${insulinContext.lastMealCarbs}g carbs`);
+    }
+    if (insulinContext.expectedBGImpact > 0) {
+      lines.push(`Expected BG impact from IOB: ~${insulinContext.expectedBGImpact} mmol/L drop (IOB × ISF, rough estimate)`);
+    }
   }
 
   // Post-run context

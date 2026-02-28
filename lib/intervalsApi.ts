@@ -446,6 +446,18 @@ export interface WellnessEntry {
   ctl?: number;
 }
 
+interface WellnessApiRow {
+  id: string;
+  restingHR?: number;
+  hrv?: number; // Intervals.icu calls rMSSD "hrv"
+  sleepSecs?: number;
+  sleepScore?: number;
+  spO2?: number;
+  weight?: number;
+  atl?: number;
+  ctl?: number;
+}
+
 export async function fetchWellnessData(
   apiKey: string,
   oldest: string,
@@ -457,7 +469,18 @@ export async function fetchWellnessData(
       { headers: { Authorization: authHeader(apiKey) } },
     );
     if (!res.ok) return [];
-    return (await res.json()) as WellnessEntry[];
+    const rows = (await res.json()) as WellnessApiRow[];
+    return rows.map((r) => ({
+      id: r.id,
+      restingHR: r.restingHR,
+      hrvRMSSD: r.hrv,
+      sleepSecs: r.sleepSecs,
+      sleepScore: r.sleepScore,
+      spO2: r.spO2,
+      weight: r.weight,
+      atl: r.atl,
+      ctl: r.ctl,
+    }));
   } catch {
     return [];
   }

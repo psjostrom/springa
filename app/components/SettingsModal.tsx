@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { X, Radio, Copy, RefreshCw, LogOut, Bell } from "lucide-react";
+import { X, Radio, Copy, RefreshCw, LogOut, Bell, Syringe } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 interface SettingsModalProps {
   email: string;
   settings: UserSettings;
-  onSave: (partial: Partial<UserSettings>) => Promise<void>;
+  onSave: (partial: Partial<UserSettings>) => Promise<{ glookoError?: string }>;
   onClose: () => void;
 }
 
@@ -16,6 +16,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [intervalsKey, setIntervalsKey] = useState(settings.intervalsApiKey ?? "");
   const [googleAiKey, setGoogleAiKey] = useState(settings.googleAiApiKey ?? "");
   const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
+  const [glookoEmail, setGlookoEmail] = useState(settings.glookoEmail ?? "");
+  const [glookoPassword, setGlookoPassword] = useState("");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState(settings.raceDist ?? "");
@@ -24,6 +26,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [glookoError, setGlookoError] = useState("");
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
   );
@@ -63,6 +66,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (xdripSecret.trim() !== (settings.xdripSecret ?? "")) {
       updates.xdripSecret = xdripSecret.trim();
     }
+    if (glookoEmail.trim() !== (settings.glookoEmail ?? "")) {
+      updates.glookoEmail = glookoEmail.trim();
+    }
+    if (glookoPassword.trim()) {
+      updates.glookoPassword = glookoPassword.trim();
+    }
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate;
     }
@@ -85,10 +94,22 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       updates.startKm = skVal;
     }
     if (Object.keys(updates).length > 0) {
-      await onSave(updates);
+      const result = await onSave(updates);
+      if (result.glookoError) {
+        setGlookoError(result.glookoError);
+        setGlookoPassword("");
+        setSaving(false);
+        return;
+      }
     }
     setSaving(false);
     onClose();
+  };
+
+  const handleGlookoDisconnect = async () => {
+    setGlookoEmail("");
+    setGlookoPassword("");
+    await onSave({ glookoEmail: "" });
   };
 
   return (
@@ -280,6 +301,50 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 )}
               </div>
             )}
+          </div>
+
+          {/* Glooko */}
+          <div className="border-t border-[#3d2b5a] pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Syringe className="text-[#06b6d4]" size={16} />
+              <span className="text-sm font-semibold text-[#c4b5fd]">
+                Glooko (Insulin Data)
+              </span>
+              {!!settings.glookoEmail && (
+                <>
+                  <span className="text-xs text-[#39ff14]">Connected</span>
+                  <button
+                    type="button"
+                    onClick={() => { void handleGlookoDisconnect(); }}
+                    className="text-xs text-[#b8a5d4] hover:text-[#ff3366] transition ml-auto px-2 py-1 -mr-2"
+                  >
+                    Disconnect
+                  </button>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-[#b8a5d4] mb-3">
+              CamAPS FX syncs insulin & meal data to Glooko. Connect to add IOB and meal timing to run analysis.
+            </p>
+            <div className="space-y-2">
+              <input
+                type="email"
+                value={glookoEmail}
+                onChange={(e) => { setGlookoEmail(e.target.value); setGlookoError(""); }}
+                className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                placeholder="Glooko email"
+              />
+              <input
+                type="password"
+                value={glookoPassword}
+                onChange={(e) => { setGlookoPassword(e.target.value); setGlookoError(""); }}
+                className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                placeholder={settings.glookoEmail ? "Password saved (enter to change)" : "Glooko password"}
+              />
+              {glookoError && (
+                <p className="text-xs text-[#ff3366]">Sign-in failed. Check your credentials.</p>
+              )}
+            </div>
           </div>
 
           {/* Notifications */}

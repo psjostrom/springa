@@ -1,6 +1,7 @@
 import { format, differenceInCalendarDays, startOfDay } from "date-fns";
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
+import type { InsulinContext } from "./insulinContext";
 import type { FitnessDataPoint } from "./fitness";
 import type { WellnessEntry } from "./intervalsApi";
 import { scoreBG } from "./reportCard";
@@ -40,6 +41,10 @@ export interface EnrichedRun {
   restingHR: number | null;
   hrvRMSSD: number | null;
   sleepScore: number | null;
+  // Insulin (from Glooko)
+  iobAtStart: number | null;
+  timeSinceLastMeal: number | null;
+  timeSinceLastBolus: number | null;
 }
 
 // --- Table Builder ---
@@ -51,6 +56,7 @@ export function buildEnrichedRunTable(
   fitnessData: FitnessDataPoint[],
   wellness: WellnessEntry[],
   bgContexts: Record<string, RunBGContext>,
+  insulinContexts?: Record<string, InsulinContext>,
 ): EnrichedRun[] {
   // Only completed runs with BG data
   const completed = events.filter(
@@ -130,6 +136,9 @@ export function buildEnrichedRunTable(
     const ctx = actId ? bgContexts[actId] : undefined;
     const entrySlope = ctx?.pre?.entrySlope30m ?? null;
 
+    // Insulin context from Glooko
+    const insCtx = actId && insulinContexts ? insulinContexts[actId] : undefined;
+
     // Elevation gain from stream data
     let elevationGain: number | null = null;
     const alt = event.streamData?.altitude;
@@ -171,6 +180,9 @@ export function buildEnrichedRunTable(
       restingHR: well?.restingHR ?? null,
       hrvRMSSD: well?.hrvRMSSD ?? null,
       sleepScore: well?.sleepScore ?? null,
+      iobAtStart: insCtx?.iobAtStart ?? null,
+      timeSinceLastMeal: insCtx?.timeSinceLastMeal ?? null,
+      timeSinceLastBolus: insCtx?.timeSinceLastBolus ?? null,
     });
   }
 
@@ -208,6 +220,9 @@ const COLUMNS = [
   "rHR",
   "HRV",
   "sleep",
+  "IOB_u",
+  "mealMin",
+  "bolusMin",
 ] as const;
 
 function val(v: number | string | boolean | null): string {
@@ -249,6 +264,9 @@ export function formatRunTable(runs: EnrichedRun[]): string {
       val(r.restingHR),
       val(r.hrvRMSSD),
       val(r.sleepScore),
+      val(r.iobAtStart),
+      val(r.timeSinceLastMeal),
+      val(r.timeSinceLastBolus),
     ].join("\t"),
   );
   return [header, ...rows].join("\n");
@@ -262,12 +280,14 @@ export function buildBGPatternPrompt(
 ): { system: string; user: string } {
   const system = `You are a sports science analyst for a T1D runner. Pump always off during runs. Carbs are the only BG tool. ALL runs are fueled — empty cells in fuel_gh or carbs_g mean "not recorded," NEVER "zero fuel." Do not treat missing fuel data as a separate category or compare it against recorded values.
 
+Insulin columns: IOB_u = insulin on board at run start (units, Fiasp exponential decay, tau=55min). mealMin/bolusMin = minutes since last meal/bolus before the run. Pump is disconnected before running, so IOB decays without replenishment. Higher IOB and shorter meal/bolus gaps predict steeper BG drops.
+
 What "cross-run" means:
 The app already has a per-category BG model showing average drop rate by easy/long/interval. This analysis must find patterns ACROSS categories — variables that predict BG outcomes regardless of workout type. Do NOT report per-category averages, do NOT summarize dataset-level facts (e.g. "no hypos recorded"), and do NOT build a finding around a single outlier run. Every finding must span multiple runs (min 4).
 
 Output rules:
 - MAX 5 findings. Only cross-run signals.
-- Each finding: one markdown H3 header, 1-2 sentences with numbers, one small table if it helps. Done.
+- Each finding: one ### heading, 1-2 sentences with numbers, one small table if it helps. Done.
 - End with "## Gaps" — max 3 missing variables that would matter most.
 - Total output under 400 words.`;
 
