@@ -60,12 +60,16 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
   for (const entry of arr) {
     if (!isValidEntry(entry)) continue;
 
-    const ts =
+    const rawTs =
       typeof entry.date === "number"
         ? entry.date
         : typeof entry.dateString === "string"
           ? new Date(entry.dateString).getTime()
           : Date.now();
+
+    if (isNaN(rawTs)) continue;
+
+    const ts = rawTs;
 
     readings.push({
       sgv: entry.sgv,

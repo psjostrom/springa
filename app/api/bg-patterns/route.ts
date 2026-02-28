@@ -68,6 +68,12 @@ export async function POST(req: Request) {
 
   // Fetch xDrip readings server-side for the full date range of completed runs
   const completedEvents = events.filter((e) => e.type === "completed");
+  if (completedEvents.length === 0) {
+    return NextResponse.json(
+      { error: "No completed events provided" },
+      { status: 400 },
+    );
+  }
   const timestamps = completedEvents.map((e) => e.date.getTime());
   const durations = completedEvents.map((e) => (e.duration ?? 0) * 1000);
 

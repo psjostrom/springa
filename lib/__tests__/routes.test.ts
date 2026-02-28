@@ -26,13 +26,14 @@ vi.mock("web-push", () => ({
 }));
 
 import { SCHEMA_DDL } from "../db";
-import {
+import * as xdripDb from "../xdripDb";
+const {
   saveXdripAuth,
   lookupXdripUser,
   getXdripReadings,
   monthKey,
   sha1,
-} from "../xdripDb";
+} = xdripDb;
 import { POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as xdripGET } from "@/app/api/xdrip/route";
 import {
@@ -235,6 +236,61 @@ describe("entries route: dedup and merge", () => {
     expect(readings).toHaveLength(3);
     expect(readings[0].ts).toBeLessThan(readings[1].ts);
     expect(readings[1].ts).toBeLessThan(readings[2].ts);
+  });
+
+  it("only writes new/changed readings, not the full shard", async () => {
+    await saveXdripAuth(EMAIL, SECRET);
+    const hash = sha1(SECRET);
+
+    // Seed 100 readings (5-min intervals)
+    const seed = Array.from({ length: 100 }, (_, i) =>
+      reading(140 + (i % 20), `2026-02-20T${String(Math.floor(i / 12)).padStart(2, "0")}:${String((i % 12) * 5).padStart(2, "0")}:00Z`),
+    );
+    await postEntries(hash, seed);
+    expect(await countReadings(EMAIL, "2026-02")).toBe(100);
+
+    // Spy on saveXdripReadings for the next call
+    const spy = vi.spyOn(xdripDb, "saveXdripReadings");
+
+    // Post 1 new reading
+    await postEntries(hash, [
+      reading(165, "2026-02-20T09:00:00Z"),
+    ]);
+
+    // Should write only the new reading + at most a few direction-changed neighbors
+    expect(spy).toHaveBeenCalledOnce();
+    const writtenRows = spy.mock.calls[0][1];
+    expect(writtenRows.length).toBeLessThanOrEqual(5);
+    expect(writtenRows.length).toBeGreaterThanOrEqual(1);
+
+    // Data integrity: all 101 readings present
+    expect(await countReadings(EMAIL, "2026-02")).toBe(101);
+
+    spy.mockRestore();
+  });
+
+  it("writes nothing when all readings are duplicates", async () => {
+    await saveXdripAuth(EMAIL, SECRET);
+    const hash = sha1(SECRET);
+
+    await postEntries(hash, [
+      reading(145, "2026-02-20T10:00:00Z"),
+      reading(155, "2026-02-20T10:05:00Z"),
+    ]);
+
+    const spy = vi.spyOn(xdripDb, "saveXdripReadings");
+
+    // Re-post identical readings
+    await postEntries(hash, [
+      reading(145, "2026-02-20T10:00:00Z"),
+      reading(155, "2026-02-20T10:05:00Z"),
+    ]);
+
+    // Nothing changed — should not write at all
+    expect(spy).not.toHaveBeenCalled();
+    expect(await countReadings(EMAIL, "2026-02")).toBe(2);
+
+    spy.mockRestore();
   });
 });
 

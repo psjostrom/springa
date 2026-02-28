@@ -29,6 +29,10 @@ export async function POST(req: Request) {
 
   // Read existing data for affected shards only
   const existing = await getXdripReadings(email, affectedMonths);
+
+  // Snapshot existing directions so we can diff after recompute
+  const existingDir = new Map(existing.map((r) => [r.ts, r.direction]));
+
   const merged = [...existing, ...newReadings];
 
   // Deduplicate by timestamp
@@ -46,8 +50,15 @@ export async function POST(req: Request) {
   // returns stale/wrong direction fields (issue #3787)
   recomputeDirections(deduped);
 
-  // Save back into monthly shards
-  await saveXdripReadings(email, deduped);
+  // Only write readings that are new or whose direction changed
+  const toWrite = deduped.filter((r) => {
+    const prev = existingDir.get(r.ts);
+    return prev === undefined || prev !== r.direction;
+  });
+
+  if (toWrite.length > 0) {
+    await saveXdripReadings(email, toWrite);
+  }
 
   return NextResponse.json({ ok: true, count: newReadings.length });
 }
