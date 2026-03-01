@@ -14,7 +14,6 @@ interface SettingsModalProps {
 
 export function SettingsModal({ email, settings, onSave, onClose }: SettingsModalProps) {
   const [intervalsKey, setIntervalsKey] = useState(settings.intervalsApiKey ?? "");
-  const [googleAiKey, setGoogleAiKey] = useState(settings.googleAiApiKey ?? "");
   const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
   const [mylifeEmail, setMylifeEmail] = useState(settings.mylifeEmail ?? "");
   const [mylifePassword, setMylifePassword] = useState("");
@@ -59,9 +58,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     const updates: Partial<UserSettings> = {};
     if (intervalsKey.trim() !== (settings.intervalsApiKey ?? "")) {
       updates.intervalsApiKey = intervalsKey.trim();
-    }
-    if (googleAiKey.trim() !== (settings.googleAiApiKey ?? "")) {
-      updates.googleAiApiKey = googleAiKey.trim();
     }
     if (xdripSecret.trim() !== (settings.xdripSecret ?? "")) {
       updates.xdripSecret = xdripSecret.trim();
@@ -237,20 +233,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Google AI */}
-          <div>
-            <label className="block text-sm font-semibold text-[#c4b5fd] mb-1.5">
-              Google AI API Key <span className="font-normal text-[#b8a5d4]">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={googleAiKey}
-              onChange={(e) => { setGoogleAiKey(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-              placeholder="Needed for Coach tab"
-            />
           </div>
 
           {/* xDrip */}

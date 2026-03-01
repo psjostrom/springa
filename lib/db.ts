@@ -17,7 +17,6 @@ export const SCHEMA_DDL = `
 CREATE TABLE IF NOT EXISTS user_settings (
   email              TEXT PRIMARY KEY,
   intervals_api_key  TEXT,
-  google_ai_api_key  TEXT,
   xdrip_secret       TEXT,
   race_date          TEXT,
   timezone           TEXT,

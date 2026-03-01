@@ -31,14 +31,13 @@ describe("getUserSettings", () => {
 
   it("returns stored settings", async () => {
     await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key) VALUES (?, ?, ?)",
-      args: ["user@example.com", "abc123", "gai-key"],
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: ["user@example.com", "abc123"],
     });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
       intervalsApiKey: "abc123",
-      googleAiApiKey: "gai-key",
     });
   });
 
@@ -50,7 +49,6 @@ describe("getUserSettings", () => {
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({ intervalsApiKey: "abc123" });
-    expect(result).not.toHaveProperty("googleAiApiKey");
     expect(result).not.toHaveProperty("xdripSecret");
   });
 });
@@ -58,12 +56,12 @@ describe("getUserSettings", () => {
 describe("saveUserSettings", () => {
   it("merges partial settings with existing", async () => {
     await saveUserSettings("user@example.com", { intervalsApiKey: "existing-key" });
-    await saveUserSettings("user@example.com", { googleAiApiKey: "new-ai-key" });
+    await saveUserSettings("user@example.com", { xdripSecret: "new-secret" });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
       intervalsApiKey: "existing-key",
-      googleAiApiKey: "new-ai-key",
+      xdripSecret: "new-secret",
     });
   });
 
@@ -77,14 +75,14 @@ describe("saveUserSettings", () => {
   it("overwrites existing key values", async () => {
     await saveUserSettings("user@example.com", {
       intervalsApiKey: "old",
-      googleAiApiKey: "old-ai",
+      xdripSecret: "old-secret",
     });
     await saveUserSettings("user@example.com", { intervalsApiKey: "new" });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
       intervalsApiKey: "new",
-      googleAiApiKey: "old-ai",
+      xdripSecret: "old-secret",
     });
   });
 });

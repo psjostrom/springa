@@ -413,12 +413,11 @@ describe("settings route", () => {
   it("PUT saves and GET retrieves settings", async () => {
     authedSession();
 
-    await putSettings({ intervalsApiKey: "key-123", googleAiApiKey: "gai-456" });
+    await putSettings({ intervalsApiKey: "key-123" });
 
     const res = await settingsGET();
     const data = await res.json();
     expect(data.intervalsApiKey).toBe("key-123");
-    expect(data.googleAiApiKey).toBe("gai-456");
   });
 
   it("PUT with xdripSecret creates auth mapping separately", async () => {

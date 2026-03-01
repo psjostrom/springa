@@ -4,12 +4,11 @@ import { useState } from "react";
 import { Key, Radio, Copy, RefreshCw } from "lucide-react";
 
 interface ApiKeySetupProps {
-  onSubmit: (keys: { intervalsApiKey: string; googleAiApiKey?: string; xdripSecret?: string }) => void;
+  onSubmit: (keys: { intervalsApiKey: string; xdripSecret?: string }) => void;
 }
 
 export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
   const [intervalsKey, setIntervalsKey] = useState("");
-  const [googleAiKey, setGoogleAiKey] = useState("");
   const [xdripSecret, setXdripSecret] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -36,7 +35,6 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
     }
     onSubmit({
       intervalsApiKey: intervalsKey.trim(),
-      ...(googleAiKey.trim() && { googleAiApiKey: googleAiKey.trim() }),
       ...(xdripSecret.trim() && { xdripSecret: xdripSecret.trim() }),
     });
   };
@@ -87,32 +85,6 @@ export function ApiKeySetup({ onSubmit }: ApiKeySetupProps) {
               <li>Go to intervals.icu</li>
               <li>Settings &rarr; Developer</li>
               <li>Copy your API key</li>
-            </ol>
-          </div>
-
-          <div>
-            <label
-              htmlFor="googleAiKey"
-              className="block text-sm font-semibold text-[#c4b5fd] mb-2"
-            >
-              Google AI API Key <span className="font-normal text-[#b8a5d4]">(optional)</span>
-            </label>
-            <input
-              id="googleAiKey"
-              type="text"
-              value={googleAiKey}
-              onChange={(e) => { setGoogleAiKey(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4]"
-              placeholder="Needed for Coach tab"
-            />
-          </div>
-
-          <div className="bg-[#2a1f3d] rounded-lg p-3 text-sm text-[#c4b5fd] border border-[#3d2b5a]">
-            <p className="font-semibold mb-1">Google AI:</p>
-            <ol className="list-decimal list-inside space-y-1 text-[#c4b5fd]">
-              <li>Go to aistudio.google.com/apikey</li>
-              <li>Create or copy an API key</li>
-              <li>Without it, Coach tab won&apos;t work</li>
             </ol>
           </div>
 

@@ -121,7 +121,7 @@ function HomeContent() {
   }, []);
 
   const saveSettings = useCallback(
-    async (keys: { intervalsApiKey: string; googleAiApiKey?: string }) => {
+    async (keys: { intervalsApiKey: string }) => {
       await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
