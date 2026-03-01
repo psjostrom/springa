@@ -511,7 +511,7 @@ export async function updateActivityPreRunCarbs(
   const res = await fetch(`${API_BASE}/activity/${activityId}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ PreRunCarbsG: carbsG, PreRunCarbsMin: minBefore }),
+    body: JSON.stringify({ PreRunCarbsG: carbsG ?? 0, PreRunCarbsMin: minBefore ?? 0 }),
   });
   if (!res.ok) {
     const errorText = await res.text();

@@ -596,15 +596,15 @@ export function EventModal({
                       onClick={() => {
                         const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
                         const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
-                        dispatch({ type: "START_EDIT_PRERUN", g: g != null ? String(g) : "", min: min != null ? String(min) : "" });
+                        dispatch({ type: "START_EDIT_PRERUN", g: g ? String(g) : "", min: min ? String(min) : "" });
                       }}
                       className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
                     >
                       {(() => {
                         const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
                         const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
-                        if (g != null && min != null) return `${g}g, ${min} min before`;
-                        if (g != null) return `${g}g`;
+                        if (g && min) return `${g}g, ${min} min before`;
+                        if (g) return `${g}g`;
                         return "—";
                       })()}
                       <Pencil className="w-3 h-3 text-[#b8a5d4]" />

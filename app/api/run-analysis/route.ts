@@ -74,8 +74,8 @@ function buildRunHistory(
       load: activity?.icu_training_load,
       fuelRate: row.fuelRate,
       carbsIngested: activity?.carbs_ingested ?? null,
-      preRunCarbsG: activity?.PreRunCarbsG ?? null,
-      preRunCarbsMin: activity?.PreRunCarbsMin ?? null,
+      preRunCarbsG: activity?.PreRunCarbsG === 0 ? null : activity?.PreRunCarbsG ?? null,
+      preRunCarbsMin: activity?.PreRunCarbsMin === 0 ? null : activity?.PreRunCarbsMin ?? null,
     };
 
     return {

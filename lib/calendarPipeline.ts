@@ -9,6 +9,12 @@ import { getWorkoutCategory } from "./constants";
 import { extractFuelRate, extractTotalCarbs } from "./descriptionParser";
 import { calculateWorkoutCarbs, estimateWorkoutDuration } from "./workoutMath";
 
+/** Intervals.icu custom fields can't be null — 0 means "not set". */
+function nonZero(v: number | undefined): number | null {
+  if (v === undefined || v === 0) return null;
+  return v;
+}
+
 export interface CalendarDataResult {
   events: CalendarEvent[];
   autoPairs: { eventId: number; activityId: string }[];
@@ -169,8 +175,8 @@ export function processActivities(
       fuelRate,
       totalCarbs,
       carbsIngested,
-      preRunCarbsG: activity.PreRunCarbsG ?? null,
-      preRunCarbsMin: activity.PreRunCarbsMin ?? null,
+      preRunCarbsG: nonZero(activity.PreRunCarbsG),
+      preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
       activityId: activity.id,
     };
 
