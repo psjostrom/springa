@@ -70,25 +70,7 @@ const baseRace: CalendarEvent = {
 };
 
 describe("EventModal race event", () => {
-  it("renders Race badge for race event", () => {
-    const { container } = render(
-      <EventModal
-        event={baseRace}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-        apiKey="test"
-      />,
-    );
-
-    // Badge text
-    expect(container.textContent).toContain("Race");
-    // Race badge uses pink (#ff2d95)
-    const badge = container.querySelector("[class*='ff2d95']");
-    expect(badge).not.toBeNull();
-  });
-
-  it("renders event name for race event", () => {
+  it("renders Race badge and event name", () => {
     render(
       <EventModal
         event={baseRace}
@@ -98,13 +80,15 @@ describe("EventModal race event", () => {
         apiKey="test"
       />,
     );
+
+    expect(screen.getByText("Race")).toBeInTheDocument();
     expect(screen.getByText("EcoTrail 16km")).toBeInTheDocument();
   });
 });
 
-describe("EventModal zone bar", () => {
-  it("renders WorkoutStructureBar for a planned event with a description", () => {
-    const { container } = render(
+describe("EventModal workout card", () => {
+  it("renders workout structure for a planned event", () => {
+    render(
       <EventModal
         event={basePlanned}
         onClose={noop}
@@ -114,20 +98,16 @@ describe("EventModal zone bar", () => {
       />,
     );
 
-    // WorkoutStructureBar renders a flex container with colored divs based on segments.
-    // The bar sits inside WorkoutCard's structure area, between sections and zone paces.
-    // Each segment is a div with a backgroundColor style — check that multiple exist.
-    const structureArea = container.querySelector(".bg-\\[\\#1e1535\\]");
-    expect(structureArea).not.toBeNull();
-
-    // The zone bar wrapper has a border-t separator
-    const separators = structureArea!.querySelectorAll(".border-t");
-    // At least one separator for the zone bar children slot
-    expect(separators.length).toBeGreaterThanOrEqual(1);
+    // WorkoutCard renders the parsed structure as visible text
+    expect(screen.getByText("Warmup")).toBeInTheDocument();
+    expect(screen.getByText("Main set")).toBeInTheDocument();
+    expect(screen.getByText("6x")).toBeInTheDocument();
+    expect(screen.getByText("Cooldown")).toBeInTheDocument();
+    expect(screen.getByText("Planned")).toBeInTheDocument();
   });
 
-  it("renders HRMiniChart for a completed event with hrZones and streamData", () => {
-    const { container } = render(
+  it("renders stats for a completed event", () => {
+    render(
       <EventModal
         event={baseCompleted}
         onClose={noop}
@@ -137,24 +117,21 @@ describe("EventModal zone bar", () => {
       />,
     );
 
-    // HRMiniChart with hrData renders a flex container with gap-px and individual bars
-    const miniCharts = container.querySelectorAll(".gap-px");
-    expect(miniCharts.length).toBeGreaterThanOrEqual(1);
-
-    // Each bar has a backgroundColor matching HR zone color
-    const chart = miniCharts[0];
-    const bars = chart.querySelectorAll("div[style]");
-    expect(bars.length).toBeGreaterThan(0);
+    expect(screen.getByText("10.00 km")).toBeInTheDocument();
+    expect(screen.getByText("60 min")).toBeInTheDocument();
+    expect(screen.getByText("135 bpm")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();
   });
 
-  it("shows skeleton shimmer when loading stream data for completed event without hrZones", () => {
+  it("shows Heart Rate Zones heading while loading stream data", () => {
     const loading: CalendarEvent = {
       ...baseCompleted,
       hrZones: undefined,
       streamData: undefined,
     };
 
-    const { container } = render(
+    render(
       <EventModal
         event={loading}
         onClose={noop}
@@ -165,18 +142,18 @@ describe("EventModal zone bar", () => {
       />,
     );
 
-    const skeleton = container.querySelector(".skeleton");
-    expect(skeleton).not.toBeNull();
+    // HR zones heading is shown even during loading (skeleton content below it)
+    expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();
   });
 
-  it("renders no zone bar for completed event without hrZones and not loading", () => {
+  it("does not show Heart Rate Zones when no data and not loading", () => {
     const noZones: CalendarEvent = {
       ...baseCompleted,
       hrZones: undefined,
       streamData: undefined,
     };
 
-    const { container } = render(
+    render(
       <EventModal
         event={noZones}
         onClose={noop}
@@ -187,9 +164,7 @@ describe("EventModal zone bar", () => {
       />,
     );
 
-    // No skeleton, no mini chart
-    expect(container.querySelector(".skeleton")).toBeNull();
-    expect(container.querySelector(".gap-px")).toBeNull();
+    expect(screen.queryByText("Heart Rate Zones")).toBeNull();
   });
 });
 

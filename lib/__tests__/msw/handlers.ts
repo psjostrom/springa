@@ -59,4 +59,9 @@ export const handlers = [
   http.post("/api/run-analysis", () => {
     return HttpResponse.json({ analysis: "Test analysis." });
   }),
+
+  // GET xdrip BG readings (useCurrentBG polls this on mount)
+  http.get("/api/xdrip", () => {
+    return HttpResponse.json({ readings: [], trend: null });
+  }),
 ];
