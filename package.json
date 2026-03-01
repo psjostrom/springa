@@ -16,6 +16,7 @@
     "@ai-sdk/react": "^3.0.93",
     "@libsql/client": "^0.17.0",
     "ai": "^6.0.91",
+    "cheerio": "^1.2.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",

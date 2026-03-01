@@ -1,16 +1,19 @@
-import type { GlookoData } from "./glooko";
+import type { MyLifeData } from "./mylife";
 
 // --- Types ---
 
 export interface InsulinContext {
   lastBolusTime: string; // ISO 8601
   lastBolusUnits: number;
-  lastMealTime: string; // ISO 8601, from bolus carbsInput
+  lastMealTime: string; // ISO 8601
   lastMealCarbs: number; // grams
-  iobAtStart: number; // units, Fiasp exponential decay
+  iobAtStart: number; // units, Fiasp exponential decay (bolus only)
+  basalIOBAtStart: number; // units, IOB from basal delivery
+  totalIOBAtStart: number; // units, bolus + basal IOB combined
   timeSinceLastMeal: number; // minutes before run start
   timeSinceLastBolus: number; // minutes before run start
-  expectedBGImpact: number; // mmol/L, IOB × ISF (rough estimate)
+  expectedBGImpact: number; // mmol/L, totalIOB × ISF (rough estimate)
+  lastBasalRate: number; // U/h, most recent basal rate before run start
 }
 
 // --- Constants ---
@@ -29,7 +32,6 @@ const LOOKBACK_MS = 5 * 60 * 60 * 1000;
 /**
  * Insulin sensitivity factor (mmol/L per unit).
  * From CamAPS FX pump settings — flat 3.1 all day.
- * Rough estimate: how much 1u of insulin lowers BG.
  */
 const ISF = 3.1;
 
@@ -38,7 +40,6 @@ const ISF = 3.1;
 /**
  * Compute remaining IOB from a single bolus using Fiasp exponential decay.
  * Model: IOB(t) = dose * (1 + t/tau) * exp(-t/tau)
- * where tau = 55 min (Fiasp peak activity time).
  */
 function bolusIOB(bolusUnits: number, minutesAgo: number): number {
   if (minutesAgo < 0) return bolusUnits; // future bolus — full amount
@@ -46,90 +47,163 @@ function bolusIOB(bolusUnits: number, minutesAgo: number): number {
   return bolusUnits * (1 + ratio) * Math.exp(-ratio);
 }
 
+/**
+ * Compute IOB from basal rate segments.
+ * Each basal rate entry defines the rate from that timestamp until the next entry.
+ * We discretize into 1-minute intervals and compute IOB for each micro-dose.
+ */
+function basalIOB(
+  basalEntries: { timestamp: string; rate: number }[],
+  runStartMs: number,
+): number {
+  if (basalEntries.length === 0) return 0;
+
+  // Sort oldest first
+  const sorted = [...basalEntries].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  let iob = 0;
+  const lookbackStart = runStartMs - LOOKBACK_MS;
+
+  for (let i = 0; i < sorted.length; i++) {
+    const segStart = Math.max(
+      new Date(sorted[i].timestamp).getTime(),
+      lookbackStart,
+    );
+    const segEnd =
+      i + 1 < sorted.length
+        ? new Date(sorted[i + 1].timestamp).getTime()
+        : runStartMs;
+
+    // Only process segments before run start
+    const effectiveEnd = Math.min(segEnd, runStartMs);
+    if (segStart >= effectiveEnd) continue;
+
+    const rateUPerMin = sorted[i].rate / 60; // U/h → U/min
+    const durationMin = (effectiveEnd - segStart) / 60000;
+
+    // Approximate: compute IOB at the midpoint of each 5-min block
+    const blockSize = 5; // minutes
+    for (let t = 0; t < durationMin; t += blockSize) {
+      const blockDuration = Math.min(blockSize, durationMin - t);
+      const midpointMs = segStart + (t + blockDuration / 2) * 60000;
+      const minutesAgo = (runStartMs - midpointMs) / 60000;
+      const delivered = rateUPerMin * blockDuration;
+      iob += bolusIOB(delivered, minutesAgo);
+    }
+  }
+
+  return iob;
+}
+
 // --- Builder ---
 
 /**
- * Build InsulinContext for a run from Glooko bolus data.
+ * Build InsulinContext for a run from MyLife Cloud data.
  * Returns null if no relevant boluses found in the lookback window.
  *
- * CamAPS FX (hybrid closed-loop) delivers insulin via micro-boluses, not
- * scheduled basals. Carbs are embedded in bolus entries as carbsInput.
- * IOB uses Fiasp pharmacokinetic curve (tau=55min), not linear decay.
+ * MyLife Cloud provides separate events for boluses, carbs, and basal rates.
+ * Basal rates represent CamAPS FX algorithm decisions (micro-adjustments every ~10min).
+ * IOB includes both bolus and basal insulin using Fiasp pharmacokinetic curve.
  *
- * @param data - Glooko boluses for the relevant window
+ * @param data - MyLife events for the relevant window
  * @param runStartMs - run start timestamp in ms
  */
 export function buildInsulinContext(
-  data: GlookoData,
+  data: MyLifeData,
   runStartMs: number,
 ): InsulinContext | null {
   const lookbackStart = runStartMs - LOOKBACK_MS;
 
-  // --- Find boluses in the lookback window before run start ---
-  const relevantBoluses = data.boluses
-    .filter((b) => {
-      const ts = new Date(b.pumpTimestamp).getTime();
+  // --- Separate events by type ---
+  const boluses = data.events
+    .filter((e) => {
+      if (e.type !== "Bolus") return false;
+      const ts = new Date(e.timestamp).getTime();
       return ts >= lookbackStart && ts <= runStartMs;
     })
     .sort(
       (a, b) =>
-        new Date(b.pumpTimestamp).getTime() -
-        new Date(a.pumpTimestamp).getTime(),
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     ); // newest first
 
-  // --- Find meal events from bolus carbsInput (CamAPS FX embeds carbs in bolus entries) ---
-  const mealEvents: { timestamp: string; carbs: number }[] = [];
+  const carbEvents = data.events
+    .filter((e) => {
+      if (e.type !== "Carbohydrates" && e.type !== "Hypo Carbohydrates")
+        return false;
+      const ts = new Date(e.timestamp).getTime();
+      return ts >= lookbackStart && ts <= runStartMs;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    ); // newest first
 
-  for (const b of relevantBoluses) {
-    if (b.carbsInput != null && b.carbsInput > 0) {
-      mealEvents.push({
-        timestamp: b.pumpTimestamp,
-        carbs: b.carbsInput,
-      });
-    }
-  }
+  const basalEntries = data.events
+    .filter((e) => {
+      if (e.type !== "Basal rate") return false;
+      const ts = new Date(e.timestamp).getTime();
+      return ts >= lookbackStart && ts <= runStartMs;
+    })
+    .map((e) => ({ timestamp: e.timestamp, rate: e.value }));
 
-  // Sort meals newest first
-  mealEvents.sort(
-    (a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
+  console.log(`[InsulinCtx] Window: ${new Date(lookbackStart).toISOString()} → ${new Date(runStartMs).toISOString()}`);
+  console.log(`[InsulinCtx] In window: ${boluses.length} boluses, ${carbEvents.length} carb events, ${basalEntries.length} basal entries`);
 
   // Need at least one bolus in the window
-  if (relevantBoluses.length === 0) {
+  if (boluses.length === 0) {
+    console.log("[InsulinCtx] No boluses in window → returning null");
     return null;
   }
 
-  // --- Resolve last bolus and last meal ---
-  const lastBolusTime = relevantBoluses[0].pumpTimestamp;
-  const lastBolusUnits = relevantBoluses[0].insulinDelivered;
+  // --- Last bolus ---
+  const lastBolusTime = boluses[0].timestamp;
+  const lastBolusUnits = boluses[0].value;
   const lastBolusTs = new Date(lastBolusTime).getTime();
 
-  const lastMealTime = mealEvents.length > 0
-    ? mealEvents[0].timestamp
-    : relevantBoluses[0].pumpTimestamp;
-  const lastMealCarbs = mealEvents.length > 0
-    ? mealEvents[0].carbs
-    : 0;
+  // --- Last meal (from carb events) ---
+  const lastMealTime =
+    carbEvents.length > 0 ? carbEvents[0].timestamp : boluses[0].timestamp;
+  const lastMealCarbs = carbEvents.length > 0 ? carbEvents[0].value : 0;
   const lastMealTs = new Date(lastMealTime).getTime();
 
-  // --- IOB at run start ---
-  let iob = 0;
-  for (const b of relevantBoluses) {
-    const minutesAgo = (runStartMs - new Date(b.pumpTimestamp).getTime()) / 60000;
-    iob += bolusIOB(b.insulinDelivered, minutesAgo);
+  // --- Bolus IOB ---
+  let bolusIob = 0;
+  for (const b of boluses) {
+    const minutesAgo =
+      (runStartMs - new Date(b.timestamp).getTime()) / 60000;
+    bolusIob += bolusIOB(b.value, minutesAgo);
   }
 
-  const iobRounded = Math.round(iob * 100) / 100;
+  // --- Basal IOB ---
+  const basalIob = basalIOB(basalEntries, runStartMs);
 
-  return {
+  const bolusIobRounded = Math.round(bolusIob * 100) / 100;
+  const basalIobRounded = Math.round(basalIob * 100) / 100;
+  const totalIob = Math.round((bolusIob + basalIob) * 100) / 100;
+
+  // --- Last basal rate ---
+  const basalSorted = [...basalEntries].sort(
+    (a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
+  const lastBasalRate = basalSorted.length > 0 ? basalSorted[0].rate : 0;
+
+  const ctx: InsulinContext = {
     lastBolusTime,
     lastBolusUnits,
     lastMealTime,
     lastMealCarbs,
-    iobAtStart: iobRounded,
+    iobAtStart: bolusIobRounded,
+    basalIOBAtStart: basalIobRounded,
+    totalIOBAtStart: totalIob,
     timeSinceLastMeal: Math.round((runStartMs - lastMealTs) / 60000),
     timeSinceLastBolus: Math.round((runStartMs - lastBolusTs) / 60000),
-    expectedBGImpact: Math.round(iobRounded * ISF * 10) / 10,
+    expectedBGImpact: Math.round(totalIob * ISF * 10) / 10,
+    lastBasalRate,
   };
+
+  console.log("[InsulinCtx] Result:", JSON.stringify(ctx, null, 2));
+  return ctx;
 }

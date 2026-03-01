@@ -76,9 +76,10 @@ export function processActivities(
       };
     }
 
-    const activityDate = parseISO(
-      activity.start_date_local ?? activity.start_date,
-    );
+    // Prefer start_date (UTC, has Z suffix) — timezone-safe on any server.
+    // start_date_local has no timezone suffix and would be parsed as server-local
+    // time, which is wrong on Vercel (UTC) for CET users.
+    const activityDate = parseISO(activity.start_date);
 
     // Prefer authoritative link (either direction), fall back to ±3 day exact name match
     const authoritativeMatch = pairedEventMap.get(activity.id)

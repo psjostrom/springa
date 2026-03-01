@@ -41,10 +41,13 @@ export interface EnrichedRun {
   restingHR: number | null;
   hrvRMSSD: number | null;
   sleepScore: number | null;
-  // Insulin (from Glooko)
+  // Insulin (from MyLife Cloud)
   iobAtStart: number | null;
+  basalIOBAtStart: number | null;
+  totalIOBAtStart: number | null;
   timeSinceLastMeal: number | null;
   timeSinceLastBolus: number | null;
+  lastBasalRate: number | null;
 }
 
 // --- Table Builder ---
@@ -136,7 +139,7 @@ export function buildEnrichedRunTable(
     const ctx = actId ? bgContexts[actId] : undefined;
     const entrySlope = ctx?.pre?.entrySlope30m ?? null;
 
-    // Insulin context from Glooko
+    // Insulin context from MyLife Cloud
     const insCtx = actId && insulinContexts ? insulinContexts[actId] : undefined;
 
     // Elevation gain from stream data
@@ -181,8 +184,11 @@ export function buildEnrichedRunTable(
       hrvRMSSD: well?.hrvRMSSD ?? null,
       sleepScore: well?.sleepScore ?? null,
       iobAtStart: insCtx?.iobAtStart ?? null,
+      basalIOBAtStart: insCtx?.basalIOBAtStart ?? null,
+      totalIOBAtStart: insCtx?.totalIOBAtStart ?? null,
       timeSinceLastMeal: insCtx?.timeSinceLastMeal ?? null,
       timeSinceLastBolus: insCtx?.timeSinceLastBolus ?? null,
+      lastBasalRate: insCtx?.lastBasalRate ?? null,
     });
   }
 
@@ -220,9 +226,12 @@ const COLUMNS = [
   "rHR",
   "HRV",
   "sleep",
-  "IOB_u",
+  "bIOB_u",
+  "basIOB_u",
+  "tIOB_u",
   "mealMin",
   "bolusMin",
+  "basalR",
 ] as const;
 
 function val(v: number | string | boolean | null): string {
@@ -265,8 +274,11 @@ export function formatRunTable(runs: EnrichedRun[]): string {
       val(r.hrvRMSSD),
       val(r.sleepScore),
       val(r.iobAtStart),
+      val(r.basalIOBAtStart),
+      val(r.totalIOBAtStart),
       val(r.timeSinceLastMeal),
       val(r.timeSinceLastBolus),
+      val(r.lastBasalRate),
     ].join("\t"),
   );
   return [header, ...rows].join("\n");
@@ -280,7 +292,7 @@ export function buildBGPatternPrompt(
 ): { system: string; user: string } {
   const system = `You are a sports science analyst for a T1D runner. Pump always off during runs. Carbs are the only BG tool. ALL runs are fueled — empty cells in fuel_gh or carbs_g mean "not recorded," NEVER "zero fuel." Do not treat missing fuel data as a separate category or compare it against recorded values.
 
-Insulin columns: IOB_u = insulin on board at run start (units, Fiasp exponential decay, tau=55min). mealMin/bolusMin = minutes since last meal/bolus before the run. Pump is disconnected before running, so IOB decays without replenishment. Higher IOB and shorter meal/bolus gaps predict steeper BG drops.
+Insulin columns: bIOB_u = bolus IOB at run start (units, Fiasp exponential decay, tau=55min). basIOB_u = basal IOB from CamAPS FX algorithm (same decay model). tIOB_u = total IOB (bolus + basal). basalR = last basal rate before run (U/h, 0 means pump disconnected). mealMin/bolusMin = minutes since last meal/bolus before the run. Pump is disconnected before running, so IOB decays without replenishment. Higher IOB and shorter meal/bolus gaps predict steeper BG drops.
 
 What "cross-run" means:
 The app already has a per-category BG model showing average drop rate by easy/long/interval. This analysis must find patterns ACROSS categories — variables that predict BG outcomes regardless of workout type. Do NOT report per-category averages, do NOT summarize dataset-level facts (e.g. "no hypos recorded"), and do NOT build a finding around a single outlier run. Every finding must span multiple runs (min 4).

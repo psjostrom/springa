@@ -120,11 +120,14 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push(`Start BG (xDrip): ${runBGContext.pre.startBG.toFixed(1)} mmol/L`);
   }
 
-  // Insulin & meal context (from Glooko)
+  // Insulin & meal context (from MyLife Cloud)
   if (insulinContext) {
     lines.push("");
     lines.push("## Insulin & Meal Context");
-    lines.push(`IOB at run start: ${insulinContext.iobAtStart} u`);
+    lines.push(`Bolus IOB at run start: ${insulinContext.iobAtStart} u`);
+    lines.push(`Basal IOB at run start: ${insulinContext.basalIOBAtStart} u`);
+    lines.push(`Total IOB at run start: ${insulinContext.totalIOBAtStart} u`);
+    lines.push(`Last basal rate: ${insulinContext.lastBasalRate} U/h`);
     lines.push(`Time since last bolus: ${insulinContext.timeSinceLastBolus} min`);
     lines.push(`Last bolus: ${insulinContext.lastBolusUnits} u`);
     lines.push(`Time since last meal: ${insulinContext.timeSinceLastMeal} min`);
@@ -132,7 +135,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
       lines.push(`Last meal: ${insulinContext.lastMealCarbs}g carbs`);
     }
     if (insulinContext.expectedBGImpact > 0) {
-      lines.push(`Expected BG impact from IOB: ~${insulinContext.expectedBGImpact} mmol/L drop (IOB × ISF, rough estimate)`);
+      lines.push(`Expected BG impact from IOB: ~${insulinContext.expectedBGImpact} mmol/L drop (total IOB × ISF, rough estimate)`);
     }
   }
 

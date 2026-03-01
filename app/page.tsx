@@ -193,22 +193,22 @@ function HomeContent() {
   const [showSettings, setShowSettings] = useState(false);
 
   const updateSettings = useCallback(
-    async (partial: Partial<UserSettings>): Promise<{ glookoError?: string }> => {
+    async (partial: Partial<UserSettings>): Promise<{ mylifeError?: string }> => {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(partial),
       });
-      const result = await res.json() as { ok: boolean; glookoError?: string };
-      if (result.glookoError) {
-        // Don't merge Glooko fields — credentials were rejected
+      const result = await res.json() as { ok: boolean; mylifeError?: string };
+      if (result.mylifeError) {
+        // Don't merge MyLife fields — credentials were rejected
         const rest = Object.fromEntries(
-          Object.entries(partial).filter(([k]) => k !== "glookoEmail" && k !== "glookoPassword"),
+          Object.entries(partial).filter(([k]) => k !== "mylifeEmail" && k !== "mylifePassword"),
         );
         if (Object.keys(rest).length > 0) {
           setSettings((prev) => ({ ...prev, ...rest }));
         }
-        return { glookoError: result.glookoError };
+        return { mylifeError: result.mylifeError };
       }
       setSettings((prev) => ({ ...prev, ...partial }));
       return {};

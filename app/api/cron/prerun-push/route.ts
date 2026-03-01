@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { format } from "date-fns";
 import { getUserSettings } from "@/lib/settings";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
 import { getRecentXdripReadings } from "@/lib/xdripDb";
@@ -11,7 +10,7 @@ import { assessReadiness, formatGuidancePush } from "@/lib/prerun";
 import { sendPushToUser } from "@/lib/push";
 import { authHeader } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
-import { nowInTimezone, resolveTimezone } from "@/lib/intervalsHelpers";
+import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -51,9 +50,8 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // Compute "today" in the user's timezone
-      const nowLocal = nowInTimezone(timezone);
-      const todayLocal = format(nowLocal, "yyyy-MM-dd");
+      // Compute "today" in the user's timezone (DST-safe)
+      const todayLocal = todayInTimezone(timezone);
 
       // Fetch today's events from Intervals.icu
       const eventsRes = await fetch(
@@ -66,11 +64,11 @@ export async function GET(req: Request) {
       }
       const events = (await eventsRes.json()) as IntervalsEvent[];
 
-      // Filter for WORKOUT events starting 1.5–2.5h from now (in user's timezone)
+      // Filter for WORKOUT events starting 1.5–2.5h from now (DST-safe UTC math)
       const upcoming = events.filter((e) => {
         if (e.category !== "WORKOUT") return false;
-        const eventLocal = new Date(e.start_date_local);
-        const diffMs = eventLocal.getTime() - nowLocal.getTime();
+        const eventUtcMs = localToUtcMs(e.start_date_local, timezone);
+        const diffMs = eventUtcMs - now;
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
 

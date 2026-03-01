@@ -12,7 +12,7 @@ import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { getUserSettings } from "@/lib/settings";
 import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
 import { formatAIError } from "@/lib/aiError";
-import { signIn as glookoSignIn, fetchGlookoData, clearSession as clearGlookoSession } from "@/lib/glooko";
+import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
@@ -119,17 +119,24 @@ export async function POST(req: Request) {
   }
 
   const settings = await getUserSettings(session.user.email);
-  const { glookoEmail, glookoPassword } = settings;
+  const { mylifeEmail, mylifePassword } = settings;
+  const mylifeTz = settings.timezone ?? "Europe/Stockholm";
   const runStartMs = event.date.getTime();
 
-  // Start Glooko fetch in parallel (doesn't depend on rows/feedback/profile)
-  const insulinContextP = glookoEmail && glookoPassword
-    ? glookoSignIn(glookoEmail, glookoPassword)
-        .then((gs) => fetchGlookoData(gs, new Date(runStartMs - 5 * 60 * 60 * 1000), new Date(runStartMs)))
-        .then((data) => buildInsulinContext(data, runStartMs))
+  console.log(`[RunAnalysis] Activity ${activityId}, run start: ${event.date.toISOString()}`);
+  console.log(`[RunAnalysis] MyLife credentials: ${mylifeEmail ? "configured" : "NOT configured"}`);
+
+  // Start MyLife fetch in parallel (doesn't depend on rows/feedback/profile)
+  const insulinContextP = mylifeEmail && mylifePassword
+    ? mylifeSignIn(mylifeEmail, mylifePassword)
+        .then((session) => fetchMyLifeData(session, mylifeTz))
+        .then((data) => {
+          console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
+          return buildInsulinContext(data, runStartMs);
+        })
         .catch((err: unknown) => {
-          console.error("Glooko fetch failed (run-analysis):", err);
-          clearGlookoSession(glookoEmail);
+          console.error("[RunAnalysis] MyLife fetch failed:", err);
+          clearMyLifeSession(mylifeEmail);
           return null;
         })
     : Promise.resolve(null);
@@ -172,6 +179,7 @@ export async function POST(req: Request) {
   );
 
   const insulinContext = await insulinContextP;
+  console.log(`[RunAnalysis] Insulin context: ${insulinContext ? "built" : "null (no boluses in window or no credentials)"}`);
 
   const { system, user } = buildRunAnalysisPrompt({
     event,

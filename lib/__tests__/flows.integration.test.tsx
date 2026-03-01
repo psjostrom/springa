@@ -13,6 +13,15 @@ import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
 
+// Fix calendar to February 2026 so fixture dates are visible in the current-month view
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date("2026-02-15T12:00:00Z"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 /** Test wrapper that combines shared data hook + CalendarScreen, matching the prod wiring in page.tsx. */
 function TestCalendarScreen({ apiKey }: { apiKey: string }) {
   const { events, isLoading, error, reload } = useSharedCalendarData(apiKey);

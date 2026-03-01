@@ -10,7 +10,7 @@ import {
   buildBGPatternPrompt,
 } from "@/lib/bgPatterns";
 import { formatAIError } from "@/lib/aiError";
-import { signIn as glookoSignIn, fetchGlookoData, clearSession as clearGlookoSession } from "@/lib/glooko";
+import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
@@ -52,12 +52,13 @@ export async function POST(req: Request) {
   }
 
   const settings = await getUserSettings(session.user.email);
-  const { glookoEmail, glookoPassword } = settings;
+  const { mylifeEmail, mylifePassword } = settings;
+  const mylifeTz = settings.timezone ?? "Europe/Stockholm";
 
   // Compute fitness data from events
   const fitnessData = computeFitnessData(events, 180);
 
-  // Identify completed runs (needed by wellness, xDrip, and Glooko)
+  // Identify completed runs (needed by wellness, xDrip, and MyLife)
   const completedEvents = events.filter((e) => e.type === "completed");
   if (completedEvents.length === 0) {
     return NextResponse.json(
@@ -86,22 +87,18 @@ export async function POST(req: Request) {
   }
   neededMonths.add(monthKey(latestMs));
 
-  // Start Glooko fetch in parallel (doesn't depend on wellness or xDrip)
-  const glookoDataP = glookoEmail && glookoPassword
-    ? glookoSignIn(glookoEmail, glookoPassword)
-        .then((gs) => fetchGlookoData(
-          gs,
-          new Date(Math.min(...timestamps) - 5 * 60 * 60 * 1000),
-          new Date(Math.max(...timestamps)),
-        ))
+  // Start MyLife fetch in parallel (doesn't depend on wellness or xDrip)
+  const mylifeDataP = mylifeEmail && mylifePassword
+    ? mylifeSignIn(mylifeEmail, mylifePassword)
+        .then((session) => fetchMyLifeData(session, mylifeTz))
         .catch((err: unknown) => {
-          console.error("Glooko fetch failed (bg-patterns):", err);
-          clearGlookoSession(glookoEmail);
+          console.error("MyLife fetch failed (bg-patterns):", err);
+          clearMyLifeSession(mylifeEmail);
           return null;
         })
     : Promise.resolve(null);
 
-  // Fetch wellness and xDrip readings (parallel with Glooko)
+  // Fetch wellness and xDrip readings (parallel with MyLife)
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
   if (settings.intervalsApiKey && completedDates.length > 0) {
     const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
@@ -118,13 +115,13 @@ export async function POST(req: Request) {
     bgContexts[key] = value;
   }
 
-  // Build insulin contexts from Glooko data
+  // Build insulin contexts from MyLife data
   const insulinContexts: Record<string, InsulinContext> = {};
-  const glookoData = await glookoDataP;
-  if (glookoData) {
+  const mylifeData = await mylifeDataP;
+  if (mylifeData) {
     for (const event of completedEvents) {
       if (!event.activityId) continue;
-      const ctx = buildInsulinContext(glookoData, event.date.getTime());
+      const ctx = buildInsulinContext(mylifeData, event.date.getTime());
       if (ctx) {
         insulinContexts[event.activityId] = ctx;
       }

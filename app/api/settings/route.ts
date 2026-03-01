@@ -2,12 +2,12 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
-  clearGlookoCredentials,
+  clearMyLifeCredentials,
   type UserSettings,
 } from "@/lib/settings";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { saveXdripAuth } from "@/lib/xdripDb";
-import { signIn as glookoSignIn, clearSession as clearGlookoSession } from "@/lib/glooko";
+import { signIn as mylifeSignIn, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -30,10 +30,10 @@ export async function GET() {
     }
   }
 
-  // Don't send Glooko password to the client — just indicate if it's configured
+  // Don't send MyLife password to the client — just indicate if it's configured
   const response: Record<string, unknown> = { ...settings };
-  delete response.glookoPassword;
-  response.glookoConnected = !!(settings.glookoEmail && settings.glookoPassword);
+  delete response.mylifePassword;
+  response.mylifeConnected = !!(settings.mylifeEmail && settings.mylifePassword);
 
   return NextResponse.json(response);
 }
@@ -57,25 +57,29 @@ export async function PUT(req: Request) {
     delete body.xdripSecret;
   }
 
-  // Handle Glooko disconnect: empty email means clear both fields
-  if ("glookoEmail" in body && !body.glookoEmail) {
-    await clearGlookoCredentials(session.user.email);
-    clearGlookoSession(body.glookoEmail ?? "");
-    delete body.glookoEmail;
-    delete body.glookoPassword;
+  // Handle MyLife disconnect: empty email means clear both fields
+  if ("mylifeEmail" in body && !body.mylifeEmail) {
+    // Read current email to clear the correct cached session
+    const current = await getUserSettings(session.user.email);
+    if (current.mylifeEmail) {
+      clearMyLifeSession(current.mylifeEmail);
+    }
+    await clearMyLifeCredentials(session.user.email);
+    delete body.mylifeEmail;
+    delete body.mylifePassword;
   }
 
-  // Verify Glooko credentials before saving
-  let glookoError: string | undefined;
-  if (body.glookoEmail && body.glookoPassword) {
+  // Verify MyLife credentials before saving
+  let mylifeError: string | undefined;
+  if (body.mylifeEmail && body.mylifePassword) {
     try {
-      await glookoSignIn(body.glookoEmail, body.glookoPassword);
+      await mylifeSignIn(body.mylifeEmail, body.mylifePassword);
     } catch (err: unknown) {
-      glookoError = err instanceof Error ? err.message : "Glooko sign-in failed";
-      clearGlookoSession(body.glookoEmail);
+      mylifeError = err instanceof Error ? err.message : "MyLife sign-in failed";
+      clearMyLifeSession(body.mylifeEmail);
       // Don't save invalid credentials
-      delete body.glookoEmail;
-      delete body.glookoPassword;
+      delete body.mylifeEmail;
+      delete body.mylifePassword;
     }
   }
 
@@ -84,6 +88,6 @@ export async function PUT(req: Request) {
   }
 
   const result: Record<string, unknown> = { ok: true };
-  if (glookoError) result.glookoError = glookoError;
+  if (mylifeError) result.mylifeError = mylifeError;
   return NextResponse.json(result);
 }

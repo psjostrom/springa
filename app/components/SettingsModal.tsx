@@ -8,7 +8,7 @@ import type { UserSettings } from "@/lib/settings";
 interface SettingsModalProps {
   email: string;
   settings: UserSettings;
-  onSave: (partial: Partial<UserSettings>) => Promise<{ glookoError?: string }>;
+  onSave: (partial: Partial<UserSettings>) => Promise<{ mylifeError?: string }>;
   onClose: () => void;
 }
 
@@ -16,8 +16,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [intervalsKey, setIntervalsKey] = useState(settings.intervalsApiKey ?? "");
   const [googleAiKey, setGoogleAiKey] = useState(settings.googleAiApiKey ?? "");
   const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
-  const [glookoEmail, setGlookoEmail] = useState(settings.glookoEmail ?? "");
-  const [glookoPassword, setGlookoPassword] = useState("");
+  const [mylifeEmail, setMylifeEmail] = useState(settings.mylifeEmail ?? "");
+  const [mylifePassword, setMylifePassword] = useState("");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState(settings.raceDist ?? "");
@@ -26,7 +26,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [glookoError, setGlookoError] = useState("");
+  const [mylifeError, setMylifeError] = useState("");
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
   );
@@ -66,11 +66,11 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (xdripSecret.trim() !== (settings.xdripSecret ?? "")) {
       updates.xdripSecret = xdripSecret.trim();
     }
-    if (glookoEmail.trim() !== (settings.glookoEmail ?? "")) {
-      updates.glookoEmail = glookoEmail.trim();
+    if (mylifeEmail.trim() !== (settings.mylifeEmail ?? "")) {
+      updates.mylifeEmail = mylifeEmail.trim();
     }
-    if (glookoPassword.trim()) {
-      updates.glookoPassword = glookoPassword.trim();
+    if (mylifePassword.trim()) {
+      updates.mylifePassword = mylifePassword.trim();
     }
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate;
@@ -95,9 +95,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     }
     if (Object.keys(updates).length > 0) {
       const result = await onSave(updates);
-      if (result.glookoError) {
-        setGlookoError(result.glookoError);
-        setGlookoPassword("");
+      if (result.mylifeError) {
+        setMylifeError(result.mylifeError);
+        setMylifePassword("");
         setSaving(false);
         return;
       }
@@ -106,10 +106,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     onClose();
   };
 
-  const handleGlookoDisconnect = async () => {
-    setGlookoEmail("");
-    setGlookoPassword("");
-    await onSave({ glookoEmail: "" });
+  const handleMylifeDisconnect = async () => {
+    setMylifeEmail("");
+    setMylifePassword("");
+    await onSave({ mylifeEmail: "" });
   };
 
   return (
@@ -303,19 +303,19 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             )}
           </div>
 
-          {/* Glooko */}
+          {/* MyLife Cloud */}
           <div className="border-t border-[#3d2b5a] pt-4">
             <div className="flex items-center gap-2 mb-2">
               <Syringe className="text-[#06b6d4]" size={16} />
               <span className="text-sm font-semibold text-[#c4b5fd]">
-                Glooko (Insulin Data)
+                MyLife Cloud (Insulin Data)
               </span>
-              {!!settings.glookoEmail && (
+              {!!settings.mylifeEmail && (
                 <>
                   <span className="text-xs text-[#39ff14]">Connected</span>
                   <button
                     type="button"
-                    onClick={() => { void handleGlookoDisconnect(); }}
+                    onClick={() => { void handleMylifeDisconnect(); }}
                     className="text-xs text-[#b8a5d4] hover:text-[#ff3366] transition ml-auto px-2 py-1 -mr-2"
                   >
                     Disconnect
@@ -324,24 +324,24 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               )}
             </div>
             <p className="text-xs text-[#b8a5d4] mb-3">
-              CamAPS FX syncs insulin & meal data to Glooko. Connect to add IOB and meal timing to run analysis.
+              CamAPS FX syncs insulin & meal data to MyLife Cloud. Connect to add IOB, basal rates, and meal timing to run analysis.
             </p>
             <div className="space-y-2">
               <input
                 type="email"
-                value={glookoEmail}
-                onChange={(e) => { setGlookoEmail(e.target.value); setGlookoError(""); }}
+                value={mylifeEmail}
+                onChange={(e) => { setMylifeEmail(e.target.value); setMylifeError(""); }}
                 className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                placeholder="Glooko email"
+                placeholder="MyLife Cloud email"
               />
               <input
                 type="password"
-                value={glookoPassword}
-                onChange={(e) => { setGlookoPassword(e.target.value); setGlookoError(""); }}
+                value={mylifePassword}
+                onChange={(e) => { setMylifePassword(e.target.value); setMylifeError(""); }}
                 className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                placeholder={settings.glookoEmail ? "Password saved (enter to change)" : "Glooko password"}
+                placeholder={settings.mylifeEmail ? "Password saved (enter to change)" : "MyLife Cloud password"}
               />
-              {glookoError && (
+              {mylifeError && (
                 <p className="text-xs text-[#ff3366]">Sign-in failed. Check your credentials.</p>
               )}
             </div>

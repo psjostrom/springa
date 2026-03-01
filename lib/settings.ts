@@ -15,8 +15,8 @@ export interface UserSettings {
   startKm?: number;
   widgetOrder?: string[];
   hiddenWidgets?: string[];
-  glookoEmail?: string;
-  glookoPassword?: string;
+  mylifeEmail?: string;
+  mylifePassword?: string;
   // Profile data — fetched from Intervals.icu on every settings load, not stored in DB
   lthr?: number;
   maxHr?: number;
@@ -27,7 +27,7 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, glooko_email, glooko_password FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, mylife_email, mylife_password FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -45,8 +45,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
   if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string) as string[];
-  if (row.glooko_email) settings.glookoEmail = row.glooko_email as string;
-  if (row.glooko_password) settings.glookoPassword = row.glooko_password as string;
+  if (row.mylife_email) settings.mylifeEmail = row.mylife_email as string;
+  if (row.mylife_password) settings.mylifePassword = row.mylife_password as string;
   return settings;
 }
 
@@ -55,7 +55,7 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, glooko_email, glooko_password)
+    sql: `INSERT INTO user_settings (email, intervals_api_key, google_ai_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, mylife_email, mylife_password)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
@@ -70,8 +70,8 @@ export async function saveUserSettings(
             start_km = COALESCE(excluded.start_km, start_km),
             widget_order = COALESCE(excluded.widget_order, widget_order),
             hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets),
-            glooko_email = COALESCE(excluded.glooko_email, glooko_email),
-            glooko_password = COALESCE(excluded.glooko_password, glooko_password)`,
+            mylife_email = COALESCE(excluded.mylife_email, mylife_email),
+            mylife_password = COALESCE(excluded.mylife_password, mylife_password)`,
     args: [
       email,
       partial.intervalsApiKey ?? null,
@@ -86,15 +86,15 @@ export async function saveUserSettings(
       partial.startKm ?? null,
       partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
       partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
-      partial.glookoEmail ?? null,
-      partial.glookoPassword ?? null,
+      partial.mylifeEmail ?? null,
+      partial.mylifePassword ?? null,
     ],
   });
 }
 
-export async function clearGlookoCredentials(email: string): Promise<void> {
+export async function clearMyLifeCredentials(email: string): Promise<void> {
   await db().execute({
-    sql: "UPDATE user_settings SET glooko_email = NULL, glooko_password = NULL WHERE email = ?",
+    sql: "UPDATE user_settings SET mylife_email = NULL, mylife_password = NULL WHERE email = ?",
     args: [email],
   });
 }

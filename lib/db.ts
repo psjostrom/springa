@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   start_km           REAL,
   widget_order       TEXT,
   hidden_widgets     TEXT,
-  glooko_email       TEXT,
-  glooko_password    TEXT
+  mylife_email       TEXT,
+  mylife_password    TEXT
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_auth (
