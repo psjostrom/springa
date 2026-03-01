@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { memo, useState, useEffect, useRef, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
@@ -45,7 +45,7 @@ interface CoachScreenProps {
   runBGContexts?: Map<string, RunBGContext>;
 }
 
-export function CoachScreen({
+export const CoachScreen = memo(function CoachScreen({
   events,
   phaseInfo,
   bgModel,
@@ -196,4 +196,4 @@ export function CoachScreen({
       />
     </div>
   );
-}
+});

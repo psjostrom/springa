@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { memo, useState, useCallback, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { WorkoutEvent, CalendarEvent } from "@/lib/types";
@@ -33,7 +33,7 @@ interface PlannerScreenProps {
   onSyncDone?: () => void;
 }
 
-export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
+export const PlannerScreen = memo(function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
   const raceDist = props.raceDist ?? 16;
   const lthr = props.lthr ?? DEFAULT_LTHR;
   const prefix = props.prefix ?? "eco16";
@@ -334,4 +334,4 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       </div>
     </div>
   );
-}
+});

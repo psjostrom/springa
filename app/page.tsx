@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useModalURL } from "./hooks/useModalURL";
 import { usePaceTable } from "./hooks/usePaceTable";
@@ -91,8 +91,15 @@ function HomeContent() {
     p === "planner" ? "planner" : p === "intel" ? "intel" : p === "coach" ? "coach" : "calendar";
 
   const urlTab = parseTab(searchParams.get("tab"));
-  const [activeTab, setOptimisticTab] = useOptimistic(urlTab);
+  const [activeTab, setActiveTab] = useState(urlTab);
   const autoAdapt = searchParams.get("adapt") === "true";
+
+  // Sync tab from URL on cross-route navigation (e.g. /feedback → /?tab=planner)
+  const [prevUrlTab, setPrevUrlTab] = useState(urlTab);
+  if (prevUrlTab !== urlTab) {
+    setPrevUrlTab(urlTab);
+    setActiveTab(urlTab);
+  }
 
   // Strip ?adapt from URL after render — PlannerScreen latches it before the async update
   useEffect(() => {
@@ -107,11 +114,11 @@ function HomeContent() {
   const bgGraph = useModalURL("bg");
 
   const handleTabChange = useCallback((tab: Tab) => {
-    setOptimisticTab(tab);
+    setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
     params.set("tab", tab);
     router.push(`?${params.toString()}`, { scroll: false });
-  }, [router, setOptimisticTab]);
+  }, [router]);
 
   const saveSettings = useCallback(
     async (keys: { intervalsApiKey: string }) => {
@@ -128,19 +135,20 @@ function HomeContent() {
   const apiKey = settings?.intervalsApiKey ?? "";
 
   // Shared calendar events — single fetch for all screens
-  const sharedCalendar = useSharedCalendarData(apiKey);
+  const { events: calendarEvents, isLoading: calendarLoading, error: calendarError, reload: calendarReload } = useSharedCalendarData(apiKey);
+  const handleReload = useCallback(() => { void calendarReload(); }, [calendarReload]);
 
   // Live BG from xDrip
   const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
 
   // BG model — uses shared events, fetches streams independently
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useBGModel(apiKey, true, sharedCalendar.events, readings);
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useBGModel(apiKey, true, calendarEvents, readings);
 
   // Calibrated pace table from cached stream data
   const paceTable = usePaceTable(cachedActivities, settings?.lthr);
 
   // Enrich calendar events with cached stream data so graphs render on mount
-  const enrichedEvents = useEnrichedEvents(sharedCalendar.events, cachedActivities);
+  const enrichedEvents = useEnrichedEvents(calendarEvents, cachedActivities);
 
   // Phase info for progress screen
   const raceDate = settings?.raceDate ?? "2026-06-13";
@@ -254,19 +262,19 @@ function HomeContent() {
             events={enrichedEvents}
             runBGContexts={runBGContexts}
             autoAdapt={autoAdapt}
-            onSyncDone={() => { void sharedCalendar.reload(); }}
+            onSyncDone={handleReload}
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={sharedCalendar.isLoading} initialError={sharedCalendar.error} onRetryLoad={() => { void sharedCalendar.reload(); }} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
+          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={calendarLoading} initialError={calendarError} onRetryLoad={handleReload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen
             apiKey={apiKey}
             events={enrichedEvents}
-            eventsLoading={sharedCalendar.isLoading}
-            eventsError={sharedCalendar.error}
-            onRetryLoad={() => { void sharedCalendar.reload(); }}
+            eventsLoading={calendarLoading}
+            eventsError={calendarError}
+            onRetryLoad={handleReload}
             phaseName={phaseInfo.name}
             currentWeek={phaseInfo.week}
             totalWeeks={totalWeeks}

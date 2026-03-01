@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { memo, type ReactNode, useMemo, useState } from "react";
 import {
   Loader2,
   Pencil,
@@ -102,7 +102,7 @@ function WidgetEditBar({
   );
 }
 
-export function IntelScreen({
+export const IntelScreen = memo(function IntelScreen({
   events,
   eventsLoading,
   eventsError,
@@ -331,4 +331,4 @@ export function IntelScreen({
       </div>
     </div>
   );
-}
+});

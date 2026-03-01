@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Monitor, Activity, Bot, Layers, type LucideIcon } from "lucide-react";
 
 type Tab = "planner" | "calendar" | "intel" | "coach";
@@ -18,6 +19,20 @@ export function TabNavigation({
 	activeTab,
 	onTabChange,
 }: TabNavigationProps) {
+	// Local optimistic state — highlights instantly on click,
+	// syncs back from parent when activeTab prop catches up.
+	const [localTab, setLocalTab] = useState(activeTab);
+	const [prevActiveTab, setPrevActiveTab] = useState(activeTab);
+	if (prevActiveTab !== activeTab) {
+		setPrevActiveTab(activeTab);
+		setLocalTab(activeTab);
+	}
+
+	const handleClick = (key: Tab) => {
+		setLocalTab(key);
+		onTabChange(key);
+	};
+
 	return (
 		<>
 			{/* Desktop: horizontal text tabs in header */}
@@ -25,15 +40,15 @@ export function TabNavigation({
 				{TABS.map(({ key, label }) => (
 					<button
 						key={key}
-						onClick={() => { onTabChange(key); }}
+						onClick={() => { handleClick(key); }}
 						className={`px-6 py-3 font-medium transition-all relative ${
-							activeTab === key
+							localTab === key
 								? "text-[#ff69b4]"
 								: "text-[#c4b5fd] hover:text-[#00ffff]"
 						}`}
 					>
 						{label}
-						{activeTab === key && (
+						{localTab === key && (
 							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff2d95] shadow-[0_0_8px_#ff2d95]"></div>
 						)}
 					</button>
@@ -45,14 +60,14 @@ export function TabNavigation({
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
-						onClick={() => { onTabChange(key); }}
+						onClick={() => { handleClick(key); }}
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
-							activeTab === key
+							localTab === key
 								? "text-[#ff69b4]"
 								: "text-[#c4b5fd] hover:text-[#00ffff]"
 						}`}
 					>
-						<Icon size={22} strokeWidth={activeTab === key ? 2.5 : 2} style={activeTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #ff2d95)" } : undefined} />
+						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #ff2d95)" } : undefined} />
 						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}
