@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -192,14 +192,45 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
   const [patterns, setPatterns] = useState<string | null>(null);
   const [patternsExpanded, setPatternsExpanded] = useState(true);
   const [patternsError, setPatternsError] = useState<string | null>(null);
+  const [savedLatestActivityId, setSavedLatestActivityId] = useState<string | null>(null);
 
   const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
+
+  // Compute the latest completed activity ID with glucose data from props
+  const latestCompletedActivityId = useMemo(() => {
+    if (!events) return null;
+    const withGlucose = events
+      .filter((e) => e.type === "completed" && e.streamData?.glucose && e.activityId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return withGlucose[0]?.activityId ?? null;
+  }, [events]);
+
+  const isStale = patterns != null
+    && savedLatestActivityId != null
+    && latestCompletedActivityId != null
+    && savedLatestActivityId !== latestCompletedActivityId;
+
+  // Load saved patterns on mount
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/bg-patterns");
+        if (!res.ok) return;
+        const data = (await res.json()) as { patterns: string | null; latestActivityId?: string; analyzedAt?: number };
+        if (data.patterns) {
+          setPatterns(data.patterns);
+          setSavedLatestActivityId(data.latestActivityId ?? null);
+        }
+      } catch {
+        // Silent — not critical
+      }
+    })();
+  }, []);
 
   const handleDiscover = useCallback(async () => {
     if (!events || isAnalyzing) return;
     setIsAnalyzing(true);
     setPatternsError(null);
-    setPatterns(null);
 
     try {
       const res = await fetch("/api/bg-patterns", {
@@ -208,11 +239,12 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
         body: JSON.stringify({ events }),
       });
 
-      const data = (await res.json()) as { patterns?: string; error?: string };
+      const data = (await res.json()) as { patterns?: string; latestActivityId?: string; error?: string };
       if (!res.ok) {
         setPatternsError(data.error ?? "Analysis failed");
       } else {
         setPatterns(data.patterns ?? null);
+        setSavedLatestActivityId(data.latestActivityId ?? null);
         setPatternsExpanded(true);
       }
     } catch {
@@ -232,13 +264,22 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {canDiscover && !isAnalyzing && (
+          {canDiscover && !isAnalyzing && !patterns && (
             <button
               onClick={() => { void handleDiscover(); }}
               className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
             >
               <Sparkles className="w-3 h-3" />
               Discover Patterns
+            </button>
+          )}
+          {canDiscover && !isAnalyzing && isStale && (
+            <button
+              onClick={() => { void handleDiscover(); }}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#fbbf24] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
+            >
+              <Sparkles className="w-3 h-3" />
+              New run data — re-analyze
             </button>
           )}
           <span className="text-xs text-[#8b7ba8]">

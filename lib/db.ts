@@ -94,5 +94,12 @@ CREATE TABLE IF NOT EXISTS prerun_push_log (
   sent_at    INTEGER NOT NULL,
   PRIMARY KEY (email, event_date)
 );
+
+CREATE TABLE IF NOT EXISTS bg_patterns (
+  email              TEXT PRIMARY KEY,
+  latest_activity_id TEXT NOT NULL,
+  patterns_text      TEXT NOT NULL,
+  analyzed_at        INTEGER NOT NULL
+);
 `;
 

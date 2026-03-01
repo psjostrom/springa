@@ -17,6 +17,25 @@ import type { CalendarEvent } from "@/lib/types";
 import { buildRunBGContexts } from "@/lib/runBGContext";
 import { getXdripReadings, monthKey } from "@/lib/xdripDb";
 import { format } from "date-fns";
+import { getBGPatterns, saveBGPatterns } from "@/lib/bgPatternsDb";
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const saved = await getBGPatterns(session.user.email);
+  if (!saved) {
+    return NextResponse.json({ patterns: null });
+  }
+
+  return NextResponse.json({
+    patterns: saved.patternsText,
+    latestActivityId: saved.latestActivityId,
+    analyzedAt: saved.analyzedAt,
+  });
+}
 
 interface RequestBody {
   events: CalendarEvent[];
@@ -156,7 +175,17 @@ export async function POST(req: Request) {
       messages: [{ role: "user", content: user }],
     });
 
-    return NextResponse.json({ patterns: result.text });
+    // Find the most recent completed run with glucose data to track staleness
+    const withGlucose = completedEvents
+      .filter((e) => e.activityId && e.streamData?.glucose)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    const latestActivityId = withGlucose[0]?.activityId ?? "";
+
+    if (latestActivityId) {
+      await saveBGPatterns(session.user.email, latestActivityId, result.text);
+    }
+
+    return NextResponse.json({ patterns: result.text, latestActivityId });
   } catch (err) {
     const { message, status } = formatAIError(err);
     return NextResponse.json({ error: message }, { status });
