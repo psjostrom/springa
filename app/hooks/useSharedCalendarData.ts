@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
@@ -16,7 +16,6 @@ export function useSharedCalendarData(apiKey: string) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!apiKey) return;
@@ -36,8 +35,7 @@ export function useSharedCalendarData(apiKey: string) {
   }, [apiKey]);
 
   useEffect(() => {
-    if (!apiKey || loadedRef.current) return;
-    loadedRef.current = true;
+    if (!apiKey) return;
     void load();
   }, [apiKey, load]);
 

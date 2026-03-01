@@ -80,13 +80,11 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     handleDrop,
   } = useDragDrop(apiKey, setEvents);
 
-  // Derive loading state: completed event without stream data that hasn't failed
+  // Derive loading state: completed event without stream data (set to {} on error)
   const fetchedStreamIdsRef = useRef(new Set<string>());
-  const [streamFetchDone, setStreamFetchDone] = useState(new Set<string>());
   const isLoadingStreamData =
     selectedEvent?.type === "completed" &&
-    !selectedEvent.streamData &&
-    !streamFetchDone.has(selectedEvent.id);
+    !selectedEvent.streamData;
 
   // Lazy-load stream data when modal opens for a completed workout
   useEffect(() => {
@@ -110,7 +108,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
             e.id === selectedEventId
               ? {
                   ...e,
-                  streamData: details.streamData,
+                  streamData: details.streamData ?? {},
                   avgHr: details.avgHr ?? e.avgHr,
                   maxHr: details.maxHr ?? e.maxHr,
                 }
@@ -119,10 +117,13 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
         );
       })
       .catch((err: unknown) => {
-        if (!cancelled) console.error("Error loading stream data:", err);
-      })
-      .finally(() => {
-        if (!cancelled) setStreamFetchDone((prev) => new Set([...prev, selectedEventId]));
+        if (cancelled) return;
+        console.error("Error loading stream data:", err);
+        setEvents((prevEvents) =>
+          prevEvents.map((e) =>
+            e.id === selectedEventId ? { ...e, streamData: {} } : e,
+          ),
+        );
       });
 
     return () => { cancelled = true; };
