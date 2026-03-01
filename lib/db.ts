@@ -78,16 +78,6 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   PRIMARY KEY (email, endpoint)
 );
 
-CREATE TABLE IF NOT EXISTS run_feedback (
-  email      TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  activity_id TEXT,
-  rating     TEXT,
-  comment    TEXT,
-  carbs_g    REAL,
-  PRIMARY KEY (email, created_at)
-);
-
 CREATE TABLE IF NOT EXISTS prerun_push_log (
   email      TEXT NOT NULL,
   event_date TEXT NOT NULL,

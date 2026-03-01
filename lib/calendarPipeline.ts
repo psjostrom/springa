@@ -8,6 +8,7 @@ import type {
 import { getWorkoutCategory } from "./constants";
 import { extractFuelRate, extractTotalCarbs } from "./descriptionParser";
 import { calculateWorkoutCarbs, estimateWorkoutDuration } from "./workoutMath";
+import { nonEmpty } from "./format";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -177,6 +178,8 @@ export function processActivities(
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
       preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
+      rating: nonEmpty(activity.Rating),
+      feedbackComment: nonEmpty(activity.FeedbackComment),
       activityId: activity.id,
     };
 

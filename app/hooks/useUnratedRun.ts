@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { CalendarEvent } from "@/lib/types";
 
 interface UnratedRun {
@@ -9,57 +9,28 @@ interface UnratedRun {
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+// Computed at module load — not during render. Stale by hours at most, fine for a 7-day window.
+const CUTOFF = Date.now() - SEVEN_DAYS_MS;
 
 /**
  * Detect the most recent completed run (last 7 days) that hasn't been rated.
- * Calls POST /api/run-feedback/check with activity IDs from calendar events.
+ * Pure client-side — filters directly from CalendarEvent.rating field.
  */
 export function useUnratedRun(events: CalendarEvent[]): UnratedRun | null {
-  const [unrated, setUnrated] = useState<UnratedRun | null>(null);
-  const checkedRef = useRef<string>("");
+  return useMemo(() => {
+    const mostRecent = events
+      .filter(
+        (e): e is CalendarEvent & { activityId: string } =>
+          e.type === "completed" &&
+          typeof e.activityId === "string" &&
+          !e.rating &&
+          e.date.getTime() >= CUTOFF,
+      )
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .at(0);
 
-  useEffect(() => {
-    const cutoff = Date.now() - SEVEN_DAYS_MS;
-    const recentRuns = events.filter(
-      (e): e is CalendarEvent & { activityId: string } =>
-        e.type === "completed" &&
-        typeof e.activityId === "string" &&
-        e.date.getTime() >= cutoff,
-    );
-
-    if (recentRuns.length === 0) return;
-
-    const activityIds = recentRuns.map((e) => e.activityId);
-    const key = activityIds.slice().sort().join(",");
-    if (key === checkedRef.current) return;
-    checkedRef.current = key;
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/run-feedback/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ activityIds }),
-        });
-        if (!res.ok) return;
-        const { ratedIds } = (await res.json()) as { ratedIds: string[] };
-        const ratedSet = new Set(ratedIds);
-
-        const mostRecent = recentRuns
-          .filter((e) => !ratedSet.has(e.activityId))
-          .sort((a, b) => b.date.getTime() - a.date.getTime())
-          .at(0);
-
-        setUnrated(
-          mostRecent
-            ? { activityId: mostRecent.activityId, name: mostRecent.name }
-            : null,
-        );
-      } catch {
-        // Silently fail — banner just won't show
-      }
-    })();
+    return mostRecent
+      ? { activityId: mostRecent.activityId, name: mostRecent.name }
+      : null;
   }, [events]);
-
-  return unrated;
 }

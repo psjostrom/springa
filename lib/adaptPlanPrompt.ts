@@ -3,7 +3,6 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import type { AdaptedEvent } from "./adaptPlan";
-import type { RunFeedbackRecord } from "./feedbackDb";
 import { formatRunLine } from "./runLine";
 
 interface PromptInput {
@@ -13,7 +12,7 @@ interface PromptInput {
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
-  feedbackByActivity?: Map<string, RunFeedbackRecord>;
+  feedbackByActivity?: Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>;
 }
 
 /**
@@ -86,7 +85,7 @@ Rules:
       if (fb && run.activityId) shownFeedbackIds.add(run.activityId);
       lines.push(formatRunLine(
         run,
-        { date: true, pace: true, distance: true, avgHr: true, fuelRate: true },
+        { date: true, pace: true, distance: true, avgHr: true, fuelRate: true, feedback: true },
         { runBGContext: ctx ?? null, feedback: fb },
       ));
     }

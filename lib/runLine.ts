@@ -17,6 +17,7 @@ export interface RunLineOptions {
   carbsIngested?: boolean;
   preRunCarbs?: boolean;
   hrZones?: boolean;
+  feedback?: boolean;
 }
 
 export interface RunLineExtras {
@@ -108,8 +109,14 @@ export function formatRunLine(
     parts.push(recoveryText);
   }
 
-  // Extras: feedback
-  if (extras?.feedback) {
+  // Feedback: prefer event fields, fall back to extras
+  if (opts.feedback && (event.rating || event.feedbackComment || event.carbsIngested != null)) {
+    const fbParts: string[] = [];
+    if (event.rating) fbParts.push(event.rating);
+    if (event.carbsIngested != null) fbParts.push(`${event.carbsIngested}g reported`);
+    if (event.feedbackComment) fbParts.push(`"${event.feedbackComment}"`);
+    if (fbParts.length > 0) parts.push(`feedback: ${fbParts.join(", ")}`);
+  } else if (extras?.feedback) {
     const fb = extras.feedback;
     const fbParts: string[] = [];
     if (fb.rating) fbParts.push(fb.rating);

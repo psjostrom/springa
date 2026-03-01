@@ -7,11 +7,11 @@ import {
   getRecentAnalyzedRuns,
   type RunHistoryEntry,
 } from "@/lib/runAnalysisDb";
-import { getRunFeedbackByActivity, getRecentFeedback } from "@/lib/feedbackDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { getUserSettings } from "@/lib/settings";
 import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
 import { formatAIError } from "@/lib/aiError";
+import { nonEmpty } from "@/lib/format";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
@@ -76,6 +76,8 @@ function buildRunHistory(
       carbsIngested: activity?.carbs_ingested ?? null,
       preRunCarbsG: activity?.PreRunCarbsG === 0 ? null : activity?.PreRunCarbsG ?? null,
       preRunCarbsMin: activity?.PreRunCarbsMin === 0 ? null : activity?.PreRunCarbsMin ?? null,
+      rating: nonEmpty(activity?.Rating),
+      feedbackComment: nonEmpty(activity?.FeedbackComment),
     };
 
     return {
@@ -143,10 +145,8 @@ export async function POST(req: Request) {
         })
     : Promise.resolve(null);
 
-  const [rows, feedback, recentFeedback, profile] = await Promise.all([
+  const [rows, profile] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
-    getRunFeedbackByActivity(session.user.email, activityId),
-    getRecentFeedback(session.user.email),
     settings.intervalsApiKey
       ? fetchAthleteProfile(settings.intervalsApiKey)
       : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
@@ -174,14 +174,25 @@ export async function POST(req: Request) {
 
   const history = buildRunHistory(rows, activityMap);
 
-  const historyFeedbackMap = new Map(
-    recentFeedback
-      .filter((fb): fb is typeof fb & { activityId: string } => !!fb.activityId)
-      .map((fb) => [fb.activityId, fb]),
-  );
+  // Build history feedback from activity custom fields
+  const historyFeedbackMap = new Map<string, { rating?: string; comment?: string; carbsG?: number }>();
+  for (const [id, activity] of activityMap) {
+    if (nonEmpty(activity.Rating) ?? nonEmpty(activity.FeedbackComment)) {
+      historyFeedbackMap.set(id, {
+        rating: nonEmpty(activity.Rating) ?? undefined,
+        comment: nonEmpty(activity.FeedbackComment) ?? undefined,
+        carbsG: activity.carbs_ingested ?? undefined,
+      });
+    }
+  }
 
   const insulinContext = await insulinContextP;
   console.log(`[RunAnalysis] Insulin context: ${insulinContext ? "built" : "null (no boluses in window or no credentials)"}`);
+
+  // Current run feedback from CalendarEvent custom fields
+  const athleteFeedback = (event.rating || event.feedbackComment)
+    ? { rating: event.rating ?? undefined, comment: event.feedbackComment ?? undefined, carbsG: event.carbsIngested ?? undefined }
+    : undefined;
 
   const { system, user } = buildRunAnalysisPrompt({
     event,
@@ -190,7 +201,7 @@ export async function POST(req: Request) {
     insulinContext,
     history,
     historyFeedback: historyFeedbackMap,
-    athleteFeedback: feedback ? { rating: feedback.rating, comment: feedback.comment, carbsG: feedback.carbsG } : undefined,
+    athleteFeedback,
     lthr: profile.lthr,
     maxHr: profile.maxHr,
     hrZones: profile.hrZones,

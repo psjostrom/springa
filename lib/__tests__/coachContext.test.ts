@@ -4,8 +4,6 @@ import type { CalendarEvent } from "../types";
 import type { BGResponseModel, BGObservation } from "../bgModel";
 import type { FitnessInsights } from "../fitness";
 import type { RunBGContext } from "../runBGContext";
-import type { RunFeedbackRecord } from "../feedbackDb";
-
 // --- Helpers ---
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -657,11 +655,7 @@ describe("buildSystemPrompt with feedback", () => {
   it("includes feedback rating and comment inline with completed workout", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
-    ];
-
-    const recentFeedback: RunFeedbackRecord[] = [
-      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run1", rating: "bad", comment: "BG crashed hard" },
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16", rating: "bad", feedbackComment: "BG crashed hard" }),
     ];
 
     const prompt = buildSystemPrompt({
@@ -669,7 +663,6 @@ describe("buildSystemPrompt with feedback", () => {
       insights: null,
       bgModel: null,
       events,
-      recentFeedback,
     });
 
     expect(prompt).toContain("feedback: bad");
@@ -679,11 +672,7 @@ describe("buildSystemPrompt with feedback", () => {
   it("includes feedback carbs inline with completed workout", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
-    ];
-
-    const recentFeedback: RunFeedbackRecord[] = [
-      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run1", rating: "good", carbsG: 45 },
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16", rating: "good", carbsIngested: 45 }),
     ];
 
     const prompt = buildSystemPrompt({
@@ -691,38 +680,12 @@ describe("buildSystemPrompt with feedback", () => {
       insights: null,
       bgModel: null,
       events,
-      recentFeedback,
     });
 
     expect(prompt).toContain("feedback: good, 45g reported");
   });
 
-  it("shows unmatched feedback in separate section", () => {
-    const yesterday = new Date("2026-02-18T10:00:00Z");
-    const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
-    ];
-
-    const recentFeedback: RunFeedbackRecord[] = [
-      { email: "test@test.com", createdAt: yesterday.getTime(), activityId: "run999", rating: "bad", comment: "BG crashed" },
-    ];
-
-    const prompt = buildSystemPrompt({
-      phaseInfo: basePhaseInfo,
-      insights: null,
-      bgModel: null,
-      events,
-      recentFeedback,
-    });
-
-    // Not inline with the run (different activityId)
-    expect(prompt).not.toContain("feedback:");
-    // But shown in "Other recent run feedback"
-    expect(prompt).toContain("Other recent run feedback");
-    expect(prompt).toContain("BG crashed");
-  });
-
-  it("works without feedback (undefined)", () => {
+  it("works without feedback (no rating on event)", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
       makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),

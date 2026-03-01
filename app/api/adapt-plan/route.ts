@@ -3,7 +3,6 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
 import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
-import { getRecentFeedback } from "@/lib/feedbackDb";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
@@ -36,13 +35,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const feedbackList = await getRecentFeedback(session.user.email);
-  const feedbackByActivity = new Map(
-    feedbackList
-      .filter((fb): fb is typeof fb & { activityId: string } => !!fb.activityId)
-      .map((fb) => [fb.activityId, fb]),
-  );
-
   const body = (await req.json()) as RequestBody;
   const {
     upcomingEvents,
@@ -60,6 +52,19 @@ export async function POST(req: Request) {
   }
   for (const e of recentCompleted) {
     e.date = new Date(e.date);
+  }
+
+  // Build feedback map from CalendarEvent custom fields
+  const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();
+  for (const e of recentCompleted) {
+    if (e.activityId && (e.rating || e.feedbackComment)) {
+      feedbackByActivity.set(e.activityId, {
+        rating: e.rating ?? undefined,
+        comment: e.feedbackComment ?? undefined,
+        carbsG: e.carbsIngested ?? undefined,
+        createdAt: e.date.getTime(),
+      });
+    }
   }
 
   // 1. Apply rule-based adaptations (fuel + swap)

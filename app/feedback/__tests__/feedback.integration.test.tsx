@@ -8,11 +8,8 @@ import FeedbackPage from "../page";
 import { searchParamsState } from "@/lib/__tests__/setup-dom";
 import "@/lib/__tests__/setup-dom";
 
-const TS = "1771934400000";
-
 const feedbackResponse = {
-  email: "test@example.com",
-  createdAt: Number(TS),
+  createdAt: 1771934400000,
   activityId: "i12345",
   rating: null,
   comment: null,
@@ -45,7 +42,7 @@ describe("Feedback page — prescribed carbs", () => {
   it("submits prescribed carbs when user leaves input empty", async () => {
     installFeedbackHandlers();
     const user = userEvent.setup();
-    searchParamsState.current = new URLSearchParams(`ts=${TS}`);
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
 
     render(<FeedbackPage />);
 
@@ -65,7 +62,7 @@ describe("Feedback page — prescribed carbs", () => {
       expect(capturedPostBody).not.toBeNull();
     });
 
-    expect(capturedPostBody!.ts).toBe(Number(TS));
+    expect(capturedPostBody!.activityId).toBe("i12345");
     expect(capturedPostBody!.rating).toBe("good");
     expect(capturedPostBody!.carbsG).toBe(41);
   });
@@ -73,7 +70,7 @@ describe("Feedback page — prescribed carbs", () => {
   it("submits user-entered carbs instead of prescribed", async () => {
     installFeedbackHandlers();
     const user = userEvent.setup();
-    searchParamsState.current = new URLSearchParams(`ts=${TS}`);
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
 
     render(<FeedbackPage />);
 
@@ -99,7 +96,7 @@ describe("Feedback page — prescribed carbs", () => {
 
   it("shows default placeholder when no prescribed carbs", async () => {
     installFeedbackHandlers({ prescribedCarbsG: undefined });
-    searchParamsState.current = new URLSearchParams(`ts=${TS}`);
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
 
     render(<FeedbackPage />);
 

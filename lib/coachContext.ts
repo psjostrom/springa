@@ -4,7 +4,6 @@ import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { XdripReading } from "./xdrip";
 import type { RunBGContext } from "./runBGContext";
-import type { RunFeedbackRecord } from "./feedbackDb";
 import type { PaceTable } from "./types";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
@@ -26,7 +25,6 @@ interface CoachContext {
   lastUpdate?: Date | null;
   readings?: XdripReading[];
   runBGContexts?: Map<string, RunBGContext>;
-  recentFeedback?: RunFeedbackRecord[];
 }
 
 function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
@@ -54,7 +52,6 @@ function summarizeCompletedWorkouts(
   events: CalendarEvent[],
   bgModel: BGResponseModel | null,
   runBGContexts?: Map<string, RunBGContext>,
-  feedbackByActivity?: Map<string, RunFeedbackRecord>,
 ): string {
   const now = new Date();
   const cutoff = subDays(startOfDay(now), 14);
@@ -73,11 +70,10 @@ function summarizeCompletedWorkouts(
       const actId = e.activityId ?? e.id.replace("activity-", "");
       return formatRunLine(
         e,
-        { date: true, name: true, category: true, distance: true, duration: true, pace: true, avgHr: true, maxHr: true, load: true, fuelRate: true, carbsIngested: true, preRunCarbs: true, hrZones: true },
+        { date: true, name: true, category: true, distance: true, duration: true, pace: true, avgHr: true, maxHr: true, load: true, fuelRate: true, carbsIngested: true, preRunCarbs: true, hrZones: true, feedback: true },
         {
           bgStartAndRate: bgMap.get(actId),
           runBGContext: runBGContexts?.get(actId),
-          feedback: feedbackByActivity?.get(actId),
         },
       );
     })
@@ -124,34 +120,6 @@ export function summarizeRecoveryPatterns(
     );
   }
 
-  return lines.join("\n");
-}
-
-function summarizeUnmatchedFeedback(
-  events: CalendarEvent[],
-  recentFeedback?: RunFeedbackRecord[],
-): string {
-  if (!recentFeedback || recentFeedback.length === 0) return "";
-
-  const completedActivityIds = new Set(
-    events.filter((e) => e.type === "completed").map((e) => e.activityId ?? e.id.replace("activity-", "")),
-  );
-
-  const unmatched = recentFeedback.filter(
-    (fb) => fb.activityId && !completedActivityIds.has(fb.activityId),
-  );
-
-  if (unmatched.length === 0) return "";
-
-  const lines = ["\n## Other recent run feedback"];
-  for (const fb of unmatched) {
-    const date = new Date(fb.createdAt).toISOString().split("T")[0];
-    const parts = [date];
-    if (fb.rating) parts.push(fb.rating);
-    if (fb.carbsG != null) parts.push(`${fb.carbsG}g carbs`);
-    if (fb.comment) parts.push(`"${fb.comment}"`);
-    lines.push(`- ${parts.join(", ")}`);
-  }
   return lines.join("\n");
 }
 
@@ -280,10 +248,6 @@ function summarizeFitness(insights: FitnessInsights | null): string {
 export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const feedbackMap = ctx.recentFeedback
-    ? new Map(ctx.recentFeedback.filter((fb): fb is RunFeedbackRecord & { activityId: string } => !!fb.activityId).map((fb) => [fb.activityId, fb]))
-    : undefined;
-
   const recoverySection = ctx.runBGContexts && ctx.runBGContexts.size > 0
     ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
     : "";
@@ -315,8 +279,8 @@ ${summarizeLiveBG(ctx)}
 ${summarizeBGModel(ctx.bgModel)}${recoverySection}
 
 ## Recent Completed Workouts (last 14 days)
-${summarizeCompletedWorkouts(ctx.events, ctx.bgModel, ctx.runBGContexts, feedbackMap)}
-${summarizeUnmatchedFeedback(ctx.events, ctx.recentFeedback)}
+${summarizeCompletedWorkouts(ctx.events, ctx.bgModel, ctx.runBGContexts)}
+
 ## Upcoming Planned Workouts (next 14 days)
 ${summarizeUpcomingWorkouts(ctx.events)}
 

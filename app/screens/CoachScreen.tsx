@@ -12,8 +12,6 @@ import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import type { PaceTable } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
-import type { RunFeedbackRecord } from "@/lib/feedbackDb";
-
 const SUGGESTIONS = [
   "How's my training load looking?",
   "Analyze my BG trends",
@@ -61,14 +59,6 @@ export const CoachScreen = memo(function CoachScreen({
   readings,
   runBGContexts,
 }: CoachScreenProps) {
-  const [recentFeedback, setRecentFeedback] = useState<RunFeedbackRecord[]>();
-  useEffect(() => {
-    fetch("/api/recent-feedback")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setRecentFeedback)
-      .catch(() => { setRecentFeedback([]); });
-  }, []);
-
   const { context, isLoading: contextLoading } = useCoachData({
     events,
     phaseInfo,
@@ -84,7 +74,6 @@ export const CoachScreen = memo(function CoachScreen({
     lastUpdate,
     readings,
     runBGContexts,
-    recentFeedback,
   });
 
   const contextRef = useRef(context);

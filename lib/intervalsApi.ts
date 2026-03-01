@@ -519,6 +519,24 @@ export async function updateActivityPreRunCarbs(
   }
 }
 
+export async function updateActivityFeedback(
+  apiKey: string,
+  activityId: string,
+  rating: string,
+  comment?: string,
+): Promise<void> {
+  const auth = authHeader(apiKey);
+  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ Rating: rating, FeedbackComment: comment ?? "" }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update activity feedback: ${res.status} ${errorText}`);
+  }
+}
+
 export async function updateActivityCarbs(
   apiKey: string,
   activityId: string,

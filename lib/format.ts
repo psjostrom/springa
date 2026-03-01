@@ -43,3 +43,9 @@ export function getPaceForZone(
 export function parseEventId(id: string): number {
   return parseInt(id.replace("event-", ""), 10);
 }
+
+/** Convert empty string / undefined to null. Intervals.icu uses "" for unset text fields. */
+export function nonEmpty(v: string | undefined): string | null {
+  if (v === undefined || v === "") return null;
+  return v;
+}

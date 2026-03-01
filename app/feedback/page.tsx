@@ -3,13 +3,15 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { RunFeedbackRecord } from "@/lib/feedbackDb";
-
-/** API response merges feedback record with Intervals.icu activity data. */
-interface FeedbackResponse extends RunFeedbackRecord {
+interface FeedbackResponse {
+  createdAt: number;
+  rating: string | null;
+  comment: string | null;
+  carbsG: number | null;
   distance?: number;
   duration?: number;
   avgHr?: number;
+  activityId: string;
   prescribedCarbsG?: number;
   preRunCarbsG?: number | null;
   preRunCarbsMin?: number | null;
@@ -40,12 +42,12 @@ export default function FeedbackPage() {
 
 function FeedbackContent() {
   const searchParams = useSearchParams();
-  const ts = searchParams.get("ts");
   const activityIdParam = searchParams.get("activityId");
 
   const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [waitingForSync, setWaitingForSync] = useState(false);
   const [rating, setRating] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [carbsG, setCarbsG] = useState<string>("");
@@ -55,17 +57,22 @@ function FeedbackContent() {
   const [activityId, setActivityId] = useState<string | null>(activityIdParam);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [retrying, setRetrying] = useState(false);
 
   const fetchUrl = activityIdParam
     ? "/api/run-feedback?activityId=" + activityIdParam
-    : ts
-      ? "/api/run-feedback?ts=" + ts
-      : null;
+    : "/api/run-feedback";
 
   const loadFeedback = useCallback(async (url: string) => {
+    setWaitingForSync(false);
     const r = await fetch(url);
-    if (!r.ok) throw new Error("Failed to load data");
+    if (!r.ok) {
+      const body = (await r.json().catch(() => ({}))) as { retry?: boolean };
+      if (body.retry) {
+        setWaitingForSync(true);
+        return;
+      }
+      throw new Error("Failed to load data");
+    }
     const data = (await r.json()) as FeedbackResponse;
     setFeedback(data);
     if (data.activityId) setActivityId(data.activityId);
@@ -86,44 +93,25 @@ function FeedbackContent() {
   }, []);
 
   useEffect(() => {
-    if (!fetchUrl) {
-      setError("No run found");
-      setLoading(false);
-      return;
-    }
     loadFeedback(fetchUrl)
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
       .finally(() => { setLoading(false); });
   }, [fetchUrl, loadFeedback]);
 
-  const handleRetry = async () => {
-    if (!ts) return;
-    setRetrying(true);
-    try {
-      await loadFeedback("/api/run-feedback?ts=" + ts);
-    } catch {
-      // Still no activity — that's fine, user can retry again
-    } finally {
-      setRetrying(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    const key = activityIdParam ?? ts;
-    if (!key || !rating) return;
+    if (!activityId || !rating) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ts: activityIdParam ? feedback?.createdAt : Number(ts),
+          activityId,
           rating,
           comment: comment || undefined,
           carbsG: carbsG ? Number(carbsG) : undefined,
           preRunCarbsG: preRunCarbsG ? Number(preRunCarbsG) : undefined,
           preRunCarbsMin: preRunCarbsMin ? Number(preRunCarbsMin) : undefined,
-          activityId: activityId ?? undefined,
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
@@ -139,6 +127,26 @@ function FeedbackContent() {
     return (
       <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
         <p className="text-[#b8a5d4]">Loading...</p>
+      </div>
+    );
+  }
+
+  if (waitingForSync) {
+    return (
+      <div className="min-h-screen bg-[#0d0a1a] flex flex-col items-center justify-center p-4 gap-4">
+        <p className="text-[#b8a5d4]">Waiting for your run to sync from Garmin...</p>
+        <button
+          onClick={() => {
+            setLoading(true);
+            loadFeedback(fetchUrl)
+              .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
+              .finally(() => { setLoading(false); });
+          }}
+          disabled={loading}
+          className="px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -176,22 +184,6 @@ function FeedbackContent() {
               <p className="text-lg font-bold text-white">{Math.round(feedback.avgHr)}</p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Activity not synced — retry or dismiss */}
-      {!activityId && !submitted && (
-        <div className="text-center mb-4 max-w-sm">
-          <p className="text-[#fbbf24] text-xs mb-3">
-            Waiting for Garmin to sync. Try again in a minute, or rate later from the app.
-          </p>
-          <button
-            onClick={() => { void handleRetry(); }}
-            disabled={retrying}
-            className="px-4 py-2 text-sm font-medium text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
-          >
-            {retrying ? "Checking..." : "Retry"}
-          </button>
         </div>
       )}
 
@@ -307,13 +299,10 @@ function FeedbackContent() {
           <button
             onClick={() => {
               if (!activityId) {
-                // No activity synced yet — just dismiss without saving anything
                 setRating("skipped");
                 setSubmitted(true);
                 return;
               }
-              const key = activityIdParam ?? ts;
-              if (!key) return;
               setSubmitting(true);
               void (async () => {
                 try {
@@ -321,9 +310,8 @@ function FeedbackContent() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      ts: activityIdParam ? feedback?.createdAt : Number(ts),
-                      rating: "skipped",
                       activityId,
+                      rating: "skipped",
                     }),
                   });
                   if (!res.ok) throw new Error("Failed to save");

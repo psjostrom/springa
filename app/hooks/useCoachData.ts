@@ -7,7 +7,6 @@ import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import type { RunBGContext } from "@/lib/runBGContext";
-import type { RunFeedbackRecord } from "@/lib/feedbackDb";
 import type { PaceTable } from "@/lib/types";
 
 interface UseCoachDataOptions {
@@ -25,10 +24,9 @@ interface UseCoachDataOptions {
   lastUpdate?: Date | null;
   readings?: XdripReading[];
   runBGContexts?: Map<string, RunBGContext>;
-  recentFeedback?: RunFeedbackRecord[];
 }
 
-export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback }: UseCoachDataOptions) {
+export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
   const insights = useMemo(() => {
     if (events.length === 0) return null;
     const fitnessData = computeFitnessData(events, 365);
@@ -53,9 +51,8 @@ export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr
       lastUpdate,
       readings,
       runBGContexts,
-      recentFeedback,
     });
-  }, [events, insights, bgModel, phaseInfo, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts, recentFeedback]);
+  }, [events, insights, bgModel, phaseInfo, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts]);
 
   return { context, isLoading: events.length === 0 };
 }

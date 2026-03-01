@@ -13,8 +13,25 @@ const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => mockAuth() }));
 
 const mockFetchAthleteProfile = vi.fn().mockResolvedValue({});
+const mockFetchActivityById = vi.fn().mockResolvedValue(null);
+const mockFetchActivitiesByDateRange = vi.fn().mockResolvedValue([]);
+const mockUpdateActivityFeedback = vi.fn().mockResolvedValue(undefined);
+const mockUpdateActivityCarbs = vi.fn().mockResolvedValue(undefined);
+const mockUpdateActivityPreRunCarbs = vi.fn().mockResolvedValue(undefined);
+const mockAuthHeader = vi.fn().mockReturnValue("Basic test");
 vi.mock("@/lib/intervalsApi", () => ({
   fetchAthleteProfile: (...args: unknown[]) => mockFetchAthleteProfile(...args),
+  fetchActivityById: (...args: unknown[]) => mockFetchActivityById(...args),
+  fetchActivitiesByDateRange: (...args: unknown[]) => mockFetchActivitiesByDateRange(...args),
+  updateActivityFeedback: (...args: unknown[]) => mockUpdateActivityFeedback(...args),
+  updateActivityCarbs: (...args: unknown[]) => mockUpdateActivityCarbs(...args),
+  updateActivityPreRunCarbs: (...args: unknown[]) => mockUpdateActivityPreRunCarbs(...args),
+  authHeader: (...args: unknown[]) => mockAuthHeader(...args),
+}));
+
+const mockFetchRunContext = vi.fn().mockResolvedValue(null);
+vi.mock("@/lib/intervalsHelpers", () => ({
+  fetchRunContext: (...args: unknown[]) => mockFetchRunContext(...args),
 }));
 
 const mockSendNotification = vi.fn().mockResolvedValue({});
@@ -123,9 +140,12 @@ beforeEach(async () => {
   await testDb().execute("DELETE FROM bg_cache");
   await testDb().execute("DELETE FROM run_analysis");
   await testDb().execute("DELETE FROM push_subscriptions");
-  await testDb().execute("DELETE FROM run_feedback");
   mockAuth.mockReset();
   mockFetchAthleteProfile.mockReset().mockResolvedValue({});
+  mockFetchActivityById.mockReset().mockResolvedValue(null);
+  mockUpdateActivityFeedback.mockReset().mockResolvedValue(undefined);
+  mockUpdateActivityCarbs.mockReset().mockResolvedValue(undefined);
+  mockUpdateActivityPreRunCarbs.mockReset().mockResolvedValue(undefined);
   mockSendNotification.mockReset().mockResolvedValue({});
 });
 
@@ -589,14 +609,6 @@ describe("run-completed route", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
-    expect(data.ts).toBeTypeOf("number");
-
-    // No feedback row created — row is created when user submits feedback
-    const rows = await testDb().execute({
-      sql: "SELECT * FROM run_feedback WHERE email = ?",
-      args: [EMAIL],
-    });
-    expect(rows.rows).toHaveLength(0);
 
     // Verify web-push was called
     expect(mockSendNotification).toHaveBeenCalledOnce();
@@ -652,9 +664,9 @@ describe("run-completed route", () => {
 // Run feedback route
 // ---------------------------------------------------------------------------
 
-function getFeedback(ts: number) {
+function getFeedbackByActivity(activityId: string) {
   return feedbackGET(
-    new Request(`http://localhost/api/run-feedback?ts=${ts}`),
+    new Request(`http://localhost/api/run-feedback?activityId=${activityId}`),
   );
 }
 
@@ -669,63 +681,98 @@ function postFeedback(body: unknown) {
 }
 
 describe("run-feedback route", () => {
-  const TS = 1700000000000;
-
-  it("GET returns data for any ts (no row required)", async () => {
+  it("GET returns activity data from Intervals.icu", async () => {
     authedSession();
-    const res = await getFeedback(TS);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.createdAt).toBe(TS);
-    expect(data.rating).toBeNull();
-    // distance/duration/avgHr come from Intervals.icu, not the DB
-    expect(data.distance).toBeUndefined();
-  });
-
-  it("GET returns existing feedback when submitted", async () => {
-    authedSession();
+    // Set up user settings with API key
     await testDb().execute({
-      sql: "INSERT INTO run_feedback (email, created_at, rating, comment) VALUES (?, ?, ?, ?)",
-      args: [EMAIL, TS, "good", "Felt great"],
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: [EMAIL, "test-key"],
+    });
+    mockFetchActivityById.mockResolvedValue({
+      id: "i123",
+      start_date: "2026-02-20T10:00:00Z",
+      name: "Easy Run",
+      Rating: "good",
+      FeedbackComment: "Felt great",
+      carbs_ingested: 45,
+      distance: 5000,
+      moving_time: 2400,
+      average_hr: 128,
     });
 
-    const res = await getFeedback(TS);
+    const res = await getFeedbackByActivity("i123");
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.rating).toBe("good");
     expect(data.comment).toBe("Felt great");
+    expect(data.carbsG).toBe(45);
+    expect(data.distance).toBe(5000);
   });
 
-  it("GET returns 400 without ts param", async () => {
+  it("GET without activityId finds latest unrated run", async () => {
     authedSession();
-    const res = await feedbackGET(
-      new Request("http://localhost/api/run-feedback"),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("POST creates feedback record", async () => {
-    authedSession();
-    const res = await postFeedback({ ts: TS, rating: "good", comment: "Felt great" });
-    expect(res.status).toBe(200);
-
-    const rows = await testDb().execute({
-      sql: "SELECT rating, comment FROM run_feedback WHERE email = ? AND created_at = ?",
-      args: [EMAIL, TS],
+    await testDb().execute({
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: [EMAIL, "test-key"],
     });
-    expect(rows.rows[0].rating).toBe("good");
-    expect(rows.rows[0].comment).toBe("Felt great");
+    mockFetchActivitiesByDateRange.mockResolvedValue([
+      { id: "i100", start_date: "2026-03-01T08:00:00Z", type: "Run", Rating: "good", name: "Old" },
+      { id: "i200", start_date: "2026-03-01T14:00:00Z", type: "Run", Rating: "", name: "Latest", distance: 6000, moving_time: 3000, average_hr: 130 },
+    ]);
+
+    const res = await feedbackGET(new Request("http://localhost/api/run-feedback"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.activityId).toBe("i200");
   });
 
-  it("POST rejects missing ts or rating", async () => {
+  it("GET without activityId returns 404 with retry when no unrated run", async () => {
     authedSession();
-    const res = await postFeedback({ ts: TS });
+    await testDb().execute({
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: [EMAIL, "test-key"],
+    });
+    mockFetchActivitiesByDateRange.mockResolvedValue([]);
+
+    const res = await feedbackGET(new Request("http://localhost/api/run-feedback"));
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.retry).toBe(true);
+  });
+
+  it("GET returns 404 when activity not found", async () => {
+    authedSession();
+    await testDb().execute({
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: [EMAIL, "test-key"],
+    });
+    mockFetchActivityById.mockResolvedValue(null);
+
+    const res = await getFeedbackByActivity("i999");
+    expect(res.status).toBe(404);
+  });
+
+  it("POST writes feedback to Intervals.icu", async () => {
+    authedSession();
+    await testDb().execute({
+      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
+      args: [EMAIL, "test-key"],
+    });
+
+    const res = await postFeedback({ activityId: "i123", rating: "good", comment: "Felt great" });
+    expect(res.status).toBe(200);
+    expect(mockUpdateActivityFeedback).toHaveBeenCalledWith("test-key", "i123", "good", "Felt great");
+  });
+
+  it("POST rejects missing activityId or rating", async () => {
+    authedSession();
+    const res = await postFeedback({ activityId: "i123" });
     expect(res.status).toBe(400);
   });
 
   it("GET/POST reject unauthenticated requests", async () => {
     mockAuth.mockResolvedValue(null);
-    expect((await getFeedback(TS)).status).toBe(401);
-    expect((await postFeedback({ ts: TS, rating: "good" })).status).toBe(401);
+    expect((await getFeedbackByActivity("i123")).status).toBe(401);
+    expect((await postFeedback({ activityId: "i123", rating: "good" })).status).toBe(401);
   });
 });

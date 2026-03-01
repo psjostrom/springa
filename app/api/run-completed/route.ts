@@ -18,17 +18,16 @@ export async function POST(req: Request) {
   // Consume body (SugarRun sends empty JSON)
   try { await req.json(); } catch { /* tolerate missing/malformed body */ }
 
-  const ts = Date.now();
   try {
     await sendPushToUser(email, {
       title: "\uD83C\uDFC3 Run complete!",
       body: "How was it?",
-      url: `/feedback?ts=${ts}`,
-      ts,
+      url: "/feedback",
+      ts: Date.now(),
     });
   } catch (err) {
     console.warn("[run-completed] push failed:", err);
   }
 
-  return NextResponse.json({ ok: true, ts });
+  return NextResponse.json({ ok: true });
 }

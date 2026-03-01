@@ -2,7 +2,6 @@ import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
 import type { RunHistoryEntry } from "./runAnalysisDb";
-import type { RunFeedbackRecord } from "./feedbackDb";
 import type { InsulinContext } from "./insulinContext";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
@@ -19,7 +18,7 @@ export function buildRunAnalysisPrompt(params: {
   reportCard?: ReportCard | null;
   insulinContext?: InsulinContext | null;
   history?: RunHistoryEntry[];
-  historyFeedback?: Map<string, RunFeedbackRecord>;
+  historyFeedback?: Map<string, { rating?: string; comment?: string; carbsG?: number }>;
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
   lthr?: number;
   maxHr?: number;
