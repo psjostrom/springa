@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { getUserSettings } from "@/lib/settings";
 import { getRunFeedback, getRunFeedbackByActivity, saveRunFeedback, updateFeedbackCarbsByActivity } from "@/lib/feedbackDb";
 import { fetchRunContext, type RunContext } from "@/lib/intervalsHelpers";
-import { updateActivityCarbs, fetchActivityById, authHeader } from "@/lib/intervalsApi";
+import { updateActivityCarbs, updateActivityPreRunCarbs, fetchActivityById, authHeader } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity } from "@/lib/types";
@@ -87,6 +87,8 @@ export async function GET(req: Request) {
       avgHr: avgHr ?? undefined,
       activityId: activityIdParam,
       prescribedCarbsG,
+      preRunCarbsG: activity.PreRunCarbsG ?? null,
+      preRunCarbsMin: activity.PreRunCarbsMin ?? null,
     });
   }
 
@@ -118,9 +120,11 @@ export async function POST(req: Request) {
     rating: string;
     comment?: string;
     carbsG?: number;
+    preRunCarbsG?: number;
+    preRunCarbsMin?: number;
     activityId?: string;
   };
-  const { ts, rating, comment, carbsG, activityId } = body;
+  const { ts, rating, comment, carbsG, preRunCarbsG, preRunCarbsMin, activityId } = body;
 
   if (!ts || !rating) {
     return NextResponse.json({ error: "Missing ts or rating" }, { status: 400 });
@@ -129,11 +133,21 @@ export async function POST(req: Request) {
   await saveRunFeedback(session.user.email, ts, rating, comment, carbsG, activityId);
 
   // Sync carbs to Intervals.icu if we have both
-  if (carbsG != null && activityId) {
+  if (activityId && (carbsG != null || preRunCarbsG != null || preRunCarbsMin != null)) {
     try {
       const settings = await getUserSettings(session.user.email);
       if (settings.intervalsApiKey) {
-        await updateActivityCarbs(settings.intervalsApiKey, activityId, carbsG);
+        if (carbsG != null) {
+          await updateActivityCarbs(settings.intervalsApiKey, activityId, carbsG);
+        }
+        if (preRunCarbsG != null || preRunCarbsMin != null) {
+          await updateActivityPreRunCarbs(
+            settings.intervalsApiKey,
+            activityId,
+            preRunCarbsG ?? null,
+            preRunCarbsMin ?? null,
+          );
+        }
       }
     } catch {
       // Non-critical — carbs saved locally, Intervals.icu sync failed

@@ -73,7 +73,7 @@ function summarizeCompletedWorkouts(
       const actId = e.activityId ?? e.id.replace("activity-", "");
       return formatRunLine(
         e,
-        { date: true, name: true, category: true, distance: true, duration: true, pace: true, avgHr: true, maxHr: true, load: true, fuelRate: true, carbsIngested: true, hrZones: true },
+        { date: true, name: true, category: true, distance: true, duration: true, pace: true, avgHr: true, maxHr: true, load: true, fuelRate: true, carbsIngested: true, preRunCarbs: true, hrZones: true },
         {
           bgStartAndRate: bgMap.get(actId),
           runBGContext: runBGContexts?.get(actId),

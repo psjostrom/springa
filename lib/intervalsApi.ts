@@ -501,6 +501,24 @@ export async function fetchWellnessData(
   }
 }
 
+export async function updateActivityPreRunCarbs(
+  apiKey: string,
+  activityId: string,
+  carbsG: number | null,
+  minBefore: number | null,
+): Promise<void> {
+  const auth = authHeader(apiKey);
+  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+    method: "PUT",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ PreRunCarbsG: carbsG, PreRunCarbsMin: minBefore }),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update pre-run carbs: ${res.status} ${errorText}`);
+  }
+}
+
 export async function updateActivityCarbs(
   apiKey: string,
   activityId: string,

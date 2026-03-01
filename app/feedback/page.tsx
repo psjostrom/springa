@@ -11,6 +11,8 @@ interface FeedbackResponse extends RunFeedbackRecord {
   duration?: number;
   avgHr?: number;
   prescribedCarbsG?: number;
+  preRunCarbsG?: number | null;
+  preRunCarbsMin?: number | null;
 }
 
 function formatDuration(ms: number): string {
@@ -47,6 +49,8 @@ function FeedbackContent() {
   const [rating, setRating] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [carbsG, setCarbsG] = useState<string>("");
+  const [preRunCarbsG, setPreRunCarbsG] = useState<string>("");
+  const [preRunCarbsMin, setPreRunCarbsMin] = useState<string>("");
   const [prescribedCarbsG, setPrescribedCarbsG] = useState<number | null>(null);
   const [activityId, setActivityId] = useState<string | null>(activityIdParam);
   const [submitted, setSubmitted] = useState(false);
@@ -71,6 +75,8 @@ function FeedbackContent() {
       if (data.carbsG != null) setCarbsG(String(data.carbsG));
       setSubmitted(true);
     }
+    if (data.preRunCarbsG != null) setPreRunCarbsG(String(data.preRunCarbsG));
+    if (data.preRunCarbsMin != null) setPreRunCarbsMin(String(data.preRunCarbsMin));
     if (data.prescribedCarbsG != null) {
       setPrescribedCarbsG(data.prescribedCarbsG);
       if (!data.rating && data.carbsG == null) {
@@ -115,6 +121,8 @@ function FeedbackContent() {
           rating,
           comment: comment || undefined,
           carbsG: carbsG ? Number(carbsG) : undefined,
+          preRunCarbsG: preRunCarbsG ? Number(preRunCarbsG) : undefined,
+          preRunCarbsMin: preRunCarbsMin ? Number(preRunCarbsMin) : undefined,
           activityId: activityId ?? undefined,
         }),
       });
@@ -198,6 +206,9 @@ function FeedbackContent() {
               {(carbsG || prescribedCarbsG) && (
                 <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {carbsG || prescribedCarbsG}g</p>
               )}
+              {preRunCarbsG && (
+                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {preRunCarbsG}g{preRunCarbsMin ? `, ${preRunCarbsMin} min before` : ""}</p>
+              )}
               {comment && (
                 <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
               )}
@@ -247,6 +258,32 @@ function FeedbackContent() {
               placeholder={prescribedCarbsG != null ? `${prescribedCarbsG} (prescribed)` : "e.g. 40"}
               className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
             />
+          </div>
+
+          {/* Pre-run carbs */}
+          <div className="w-full max-w-sm mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs text-[#b8a5d4] mb-1">Pre-run carbs (g)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={preRunCarbsG}
+                onChange={(e) => { setPreRunCarbsG(e.target.value); }}
+                placeholder="e.g. 25"
+                className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-[#b8a5d4] mb-1">Min before run</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={preRunCarbsMin}
+                onChange={(e) => { setPreRunCarbsMin(e.target.value); }}
+                placeholder="e.g. 20"
+                className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              />
+            </div>
           </div>
 
           {/* Comment */}

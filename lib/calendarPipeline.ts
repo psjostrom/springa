@@ -169,6 +169,8 @@ export function processActivities(
       fuelRate,
       totalCarbs,
       carbsIngested,
+      preRunCarbsG: activity.PreRunCarbsG ?? null,
+      preRunCarbsMin: activity.PreRunCarbsMin ?? null,
       activityId: activity.id,
     };
 

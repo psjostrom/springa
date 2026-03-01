@@ -157,6 +157,15 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push(`Total BG impact (start to 2h post): ${runBGContext.totalBGImpact.toFixed(1)} mmol/L`);
   }
 
+  // Pre-run carbs
+  if (event.preRunCarbsG != null) {
+    lines.push("");
+    lines.push("## Pre-Run Carbs");
+    const parts = [`${event.preRunCarbsG}g`];
+    if (event.preRunCarbsMin != null) parts.push(`${event.preRunCarbsMin} min before start`);
+    lines.push(parts.join(", "));
+  }
+
   // Fuel
   if (reportCard?.fuel) {
     const f = reportCard.fuel;
@@ -232,7 +241,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
       const fb = h.event.activityId ? historyFeedback?.get(h.event.activityId) : undefined;
       lines.push(formatRunLine(
         h.event,
-        { date: true, name: true, category: true, distance: true, pace: true, avgHr: true, fuelRate: true },
+        { date: true, name: true, category: true, distance: true, pace: true, avgHr: true, fuelRate: true, preRunCarbs: true },
         { bgSummary: h.bgSummary, feedback: fb },
       ));
     }

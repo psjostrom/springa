@@ -5,7 +5,7 @@ import { Info, Pencil } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
-import { updateEvent, updateActivityCarbs } from "@/lib/intervalsApi";
+import { updateEvent, updateActivityCarbs, updateActivityPreRunCarbs } from "@/lib/intervalsApi";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
@@ -64,12 +64,15 @@ type EditMode =
   | { kind: "confirming-delete" }
   | { kind: "deleting" }
   | { kind: "editing-carbs"; carbsValue: string }
-  | { kind: "saving-carbs"; carbsValue: string };
+  | { kind: "saving-carbs"; carbsValue: string }
+  | { kind: "editing-prerun"; preRunG: string; preRunMin: string }
+  | { kind: "saving-prerun"; preRunG: string; preRunMin: string };
 
 interface ModalState {
   editMode: EditMode;
   error: string | null;
   savedCarbs: number | null;
+  savedPreRunCarbs: { g: number | null; min: number | null } | null;
   isClosing: boolean;
 }
 
@@ -86,12 +89,17 @@ type ModalAction =
   | { type: "SET_CARBS_VALUE"; value: string }
   | { type: "SAVE_CARBS" }
   | { type: "CARBS_SAVED" }
+  | { type: "START_EDIT_PRERUN"; g: string; min: string }
+  | { type: "SET_PRERUN_G"; value: string }
+  | { type: "SET_PRERUN_MIN"; value: string }
+  | { type: "SAVE_PRERUN" }
+  | { type: "PRERUN_SAVED"; g: number | null; min: number | null }
   | { type: "CANCEL" }
   | { type: "RESET" }
   | { type: "SET_SAVED_CARBS"; value: number | null }
   | { type: "START_CLOSING" };
 
-const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, isClosing: false };
+const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, savedPreRunCarbs: null, isClosing: false };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
@@ -122,6 +130,19 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
     case "SAVE_CARBS":
       if (state.editMode.kind !== "editing-carbs") return state;
       return { ...state, editMode: { kind: "saving-carbs", carbsValue: state.editMode.carbsValue } };
+    case "START_EDIT_PRERUN":
+      return { ...state, editMode: { kind: "editing-prerun", preRunG: action.g, preRunMin: action.min }, error: null };
+    case "SET_PRERUN_G":
+      if (state.editMode.kind !== "editing-prerun") return state;
+      return { ...state, editMode: { ...state.editMode, preRunG: action.value } };
+    case "SET_PRERUN_MIN":
+      if (state.editMode.kind !== "editing-prerun") return state;
+      return { ...state, editMode: { ...state.editMode, preRunMin: action.value } };
+    case "SAVE_PRERUN":
+      if (state.editMode.kind !== "editing-prerun") return state;
+      return { ...state, editMode: { kind: "saving-prerun", preRunG: state.editMode.preRunG, preRunMin: state.editMode.preRunMin } };
+    case "PRERUN_SAVED":
+      return { ...state, editMode: { kind: "idle" }, error: null, savedPreRunCarbs: { g: action.g, min: action.min } };
     case "CARBS_SAVED":
     case "CANCEL":
       return { ...state, editMode: { kind: "idle" } as EditMode, error: null };
@@ -214,6 +235,24 @@ export function EventModal({
       dispatch({ type: "CARBS_SAVED" });
     } catch (err) {
       console.error("Failed to update carbs:", err);
+      dispatch({ type: "CANCEL" });
+    }
+  };
+
+  const savePreRunCarbs = async () => {
+    if (editMode.kind !== "editing-prerun") return;
+    const actId = selectedEvent.activityId;
+    if (!actId) return;
+
+    const g = editMode.preRunG ? parseInt(editMode.preRunG, 10) : null;
+    const min = editMode.preRunMin ? parseInt(editMode.preRunMin, 10) : null;
+
+    dispatch({ type: "SAVE_PRERUN" });
+    try {
+      await updateActivityPreRunCarbs(apiKey, actId, g, min);
+      dispatch({ type: "PRERUN_SAVED", g, min });
+    } catch (err) {
+      console.error("Failed to update pre-run carbs:", err);
       dispatch({ type: "CANCEL" });
     }
   };
@@ -502,6 +541,78 @@ export function EventModal({
                 )}
               </div>
             </div>
+
+            {/* Pre-run carbs */}
+            {selectedEvent.activityId && (
+              <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-[#b8a5d4]">Pre-run carbs</div>
+                  {editMode.kind === "editing-prerun" || editMode.kind === "saving-prerun" ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={editMode.kind === "editing-prerun" ? editMode.preRunG : (editMode as { preRunG: string }).preRunG}
+                        onChange={(e) => { dispatch({ type: "SET_PRERUN_G", value: e.target.value }); }}
+                        placeholder="g"
+                        className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void savePreRunCarbs();
+                          if (e.key === "Escape") dispatch({ type: "CANCEL" });
+                        }}
+                      />
+                      <span className="text-sm text-[#b8a5d4]">g</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editMode.kind === "editing-prerun" ? editMode.preRunMin : (editMode as { preRunMin: string }).preRunMin}
+                        onChange={(e) => { dispatch({ type: "SET_PRERUN_MIN", value: e.target.value }); }}
+                        placeholder="min"
+                        className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void savePreRunCarbs();
+                          if (e.key === "Escape") dispatch({ type: "CANCEL" });
+                        }}
+                      />
+                      <span className="text-sm text-[#b8a5d4]">min before</span>
+                      <button
+                        onClick={() => { void savePreRunCarbs(); }}
+                        disabled={editMode.kind === "saving-prerun"}
+                        className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
+                      >
+                        {editMode.kind === "saving-prerun" ? "..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { dispatch({ type: "CANCEL" }); }}
+                        disabled={editMode.kind === "saving-prerun"}
+                        className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
+                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
+                        dispatch({ type: "START_EDIT_PRERUN", g: g != null ? String(g) : "", min: min != null ? String(min) : "" });
+                      }}
+                      className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
+                    >
+                      {(() => {
+                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
+                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
+                        if (g != null && min != null) return `${g}g, ${min} min before`;
+                        if (g != null) return `${g}g`;
+                        return "—";
+                      })()}
+                      <Pencil className="w-3 h-3 text-[#b8a5d4]" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* HR Zones */}
             {selectedEvent.hrZones ? (

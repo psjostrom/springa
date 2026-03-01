@@ -66,6 +66,8 @@ export interface IntervalsActivity {
   pace?: number;
   carbs_ingested?: number;
   paired_event_id?: number | null;
+  PreRunCarbsG?: number;
+  PreRunCarbsMin?: number;
 }
 
 export interface IntervalsEvent {
@@ -142,6 +144,8 @@ export interface CalendarEvent {
   fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
   totalCarbs?: number | null; // planned total carbs
   carbsIngested?: number | null; // actual carbs consumed (from activity)
+  preRunCarbsG?: number | null; // pre-run carbs grams (from Intervals.icu custom field)
+  preRunCarbsMin?: number | null; // minutes before run start (from Intervals.icu custom field)
   activityId?: string; // raw Intervals.icu activity ID for API calls
 }
 
