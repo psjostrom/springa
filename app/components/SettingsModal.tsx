@@ -2,21 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { X, Radio, Copy, RefreshCw, LogOut, Bell, Syringe } from "lucide-react";
+import { X, LogOut, Bell } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 
 interface SettingsModalProps {
   email: string;
   settings: UserSettings;
-  onSave: (partial: Partial<UserSettings>) => Promise<{ mylifeError?: string }>;
+  onSave: (partial: Partial<UserSettings>) => Promise<void>;
   onClose: () => void;
 }
 
 export function SettingsModal({ email, settings, onSave, onClose }: SettingsModalProps) {
-  const [intervalsKey, setIntervalsKey] = useState(settings.intervalsApiKey ?? "");
-  const [xdripSecret, setXdripSecret] = useState(settings.xdripSecret ?? "");
-  const [mylifeEmail, setMylifeEmail] = useState(settings.mylifeEmail ?? "");
-  const [mylifePassword, setMylifePassword] = useState("");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState(settings.raceDist ?? "");
@@ -24,8 +20,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [mylifeError, setMylifeError] = useState("");
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
   );
@@ -39,35 +33,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
-  const generateSecret = () => {
-    setXdripSecret(crypto.randomUUID());
-  };
-
-  const nightscoutUrl = xdripSecret
-    ? `https://${xdripSecret}@springa.vercel.app/api/v1/`
-    : "";
-
-  const copyUrl = async () => {
-    await navigator.clipboard.writeText(nightscoutUrl);
-    setCopied(true);
-    setTimeout(() => { setCopied(false); }, 2000);
-  };
-
   const handleSave = async () => {
     setSaving(true);
     const updates: Partial<UserSettings> = {};
-    if (intervalsKey.trim() !== (settings.intervalsApiKey ?? "")) {
-      updates.intervalsApiKey = intervalsKey.trim();
-    }
-    if (xdripSecret.trim() !== (settings.xdripSecret ?? "")) {
-      updates.xdripSecret = xdripSecret.trim();
-    }
-    if (mylifeEmail.trim() !== (settings.mylifeEmail ?? "")) {
-      updates.mylifeEmail = mylifeEmail.trim();
-    }
-    if (mylifePassword.trim()) {
-      updates.mylifePassword = mylifePassword.trim();
-    }
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate;
     }
@@ -90,22 +58,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       updates.startKm = skVal;
     }
     if (Object.keys(updates).length > 0) {
-      const result = await onSave(updates);
-      if (result.mylifeError) {
-        setMylifeError(result.mylifeError);
-        setMylifePassword("");
-        setSaving(false);
-        return;
-      }
+      await onSave(updates);
     }
     setSaving(false);
     onClose();
-  };
-
-  const handleMylifeDisconnect = async () => {
-    setMylifeEmail("");
-    setMylifePassword("");
-    await onSave({ mylifeEmail: "" });
   };
 
   return (
@@ -138,20 +94,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           </div>
 
           <div className="border-t border-[#3d2b5a]" />
-
-          {/* Intervals.icu */}
-          <div>
-            <label className="block text-sm font-semibold text-[#c4b5fd] mb-1.5">
-              Intervals.icu API Key
-            </label>
-            <input
-              type="text"
-              value={intervalsKey}
-              onChange={(e) => { setIntervalsKey(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-              placeholder="Intervals.icu API key"
-            />
-          </div>
 
           {/* Race Date */}
           <div>
@@ -232,100 +174,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* xDrip */}
-          <div className="border-t border-[#3d2b5a] pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Radio className="text-[#39ff14]" size={16} />
-              <span className="text-sm font-semibold text-[#c4b5fd]">
-                xDrip Integration
-              </span>
-            </div>
-
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={xdripSecret}
-                onChange={(e) => { setXdripSecret(e.target.value); }}
-                className="flex-1 px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#39ff14] focus:border-transparent placeholder:text-[#b8a5d4] text-sm font-mono"
-                placeholder="Secret for xDrip sync"
-              />
-              <button
-                type="button"
-                onClick={generateSecret}
-                className="px-3 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-[#39ff14] hover:bg-[#3d2b5a] transition"
-                title="Generate secret"
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-
-            {xdripSecret && (
-              <div className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a]">
-                <p className="text-xs text-[#b8a5d4] mb-1">Nightscout URL for xDrip:</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-[#39ff14] break-all flex-1">
-                    {nightscoutUrl}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => { void copyUrl(); }}
-                    className="shrink-0 p-1.5 rounded bg-[#2a1f3d] border border-[#3d2b5a] text-[#c4b5fd] hover:text-[#39ff14] transition"
-                    title="Copy URL"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-                {copied && (
-                  <p className="text-xs text-[#39ff14] mt-1">Copied!</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* MyLife Cloud */}
-          <div className="border-t border-[#3d2b5a] pt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Syringe className="text-[#06b6d4]" size={16} />
-              <span className="text-sm font-semibold text-[#c4b5fd]">
-                MyLife Cloud (Insulin Data)
-              </span>
-              {!!settings.mylifeEmail && (
-                <>
-                  <span className="text-xs text-[#39ff14]">Connected</span>
-                  <button
-                    type="button"
-                    onClick={() => { void handleMylifeDisconnect(); }}
-                    className="text-xs text-[#b8a5d4] hover:text-[#ff3366] transition ml-auto px-2 py-1 -mr-2"
-                  >
-                    Disconnect
-                  </button>
-                </>
-              )}
-            </div>
-            <p className="text-xs text-[#b8a5d4] mb-3">
-              CamAPS FX syncs insulin & meal data to MyLife Cloud. Connect to add IOB, basal rates, and meal timing to run analysis.
-            </p>
-            <div className="space-y-2">
-              <input
-                type="email"
-                value={mylifeEmail}
-                onChange={(e) => { setMylifeEmail(e.target.value); setMylifeError(""); }}
-                className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                placeholder="MyLife Cloud email"
-              />
-              <input
-                type="password"
-                value={mylifePassword}
-                onChange={(e) => { setMylifePassword(e.target.value); setMylifeError(""); }}
-                className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#06b6d4] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                placeholder={settings.mylifeEmail ? "Password saved (enter to change)" : "MyLife Cloud password"}
-              />
-              {mylifeError && (
-                <p className="text-xs text-[#ff3366]">Sign-in failed. Check your credentials.</p>
-              )}
             </div>
           </div>
 

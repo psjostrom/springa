@@ -15,27 +15,16 @@ export function db() {
 
 export const SCHEMA_DDL = `
 CREATE TABLE IF NOT EXISTS user_settings (
-  email              TEXT PRIMARY KEY,
-  intervals_api_key  TEXT,
-  xdrip_secret       TEXT,
-  race_date          TEXT,
-  timezone           TEXT,
-  race_name          TEXT,
-  race_dist          REAL,
-  prefix             TEXT,
-  total_weeks        INTEGER,
-  start_km           REAL,
-  widget_order       TEXT,
-  hidden_widgets     TEXT,
-  mylife_email       TEXT,
-  mylife_password    TEXT
+  email          TEXT PRIMARY KEY,
+  race_date      TEXT,
+  race_name      TEXT,
+  race_dist      REAL,
+  prefix         TEXT,
+  total_weeks    INTEGER,
+  start_km       REAL,
+  widget_order   TEXT,
+  hidden_widgets TEXT
 );
-
-CREATE TABLE IF NOT EXISTS xdrip_auth (
-  secret_hash  TEXT PRIMARY KEY,
-  email        TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_xdrip_auth_email ON xdrip_auth(email);
 
 CREATE TABLE IF NOT EXISTS xdrip_readings (
   email     TEXT NOT NULL,

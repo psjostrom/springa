@@ -8,7 +8,6 @@ import {
   type RunHistoryEntry,
 } from "@/lib/runAnalysisDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
-import { getUserSettings } from "@/lib/settings";
 import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
 import { formatAIError } from "@/lib/aiError";
 import { nonEmpty } from "@/lib/format";
@@ -122,9 +121,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const settings = await getUserSettings(session.user.email);
-  const { mylifeEmail, mylifePassword } = settings;
-  const mylifeTz = settings.timezone ?? "Europe/Stockholm";
+  const intervalsApiKey = process.env.INTERVALS_API_KEY;
+  const mylifeEmail = process.env.MYLIFE_EMAIL;
+  const mylifePassword = process.env.MYLIFE_PASSWORD;
+  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
   const runStartMs = event.date.getTime();
 
   console.log(`[RunAnalysis] Activity ${activityId}, run start: ${event.date.toISOString()}`);
@@ -147,14 +147,14 @@ export async function POST(req: Request) {
 
   const [rows, profile] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
-    settings.intervalsApiKey
-      ? fetchAthleteProfile(settings.intervalsApiKey)
+    intervalsApiKey
+      ? fetchAthleteProfile(intervalsApiKey)
       : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
   ]);
 
   // Batch-fetch activity metadata from Intervals.icu for the date range
   const activityMap = new Map<string, IntervalsActivity>();
-  if (settings.intervalsApiKey && rows.length > 0) {
+  if (intervalsApiKey && rows.length > 0) {
     const dates = rows
       .map((r) => r.activityDate)
       .filter((d): d is string => !!d);
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
       const oldest = dates.reduce((a, b) => (a < b ? a : b));
       const newest = dates.reduce((a, b) => (a > b ? a : b));
       try {
-        const activities = await fetchActivitiesByDateRange(settings.intervalsApiKey, oldest, newest);
+        const activities = await fetchActivitiesByDateRange(intervalsApiKey, oldest, newest);
         for (const a of activities) {
           activityMap.set(a.id, a);
         }

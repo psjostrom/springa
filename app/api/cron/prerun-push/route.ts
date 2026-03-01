@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getUserSettings } from "@/lib/settings";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
 import { getRecentXdripReadings } from "@/lib/xdripDb";
 import { getBGCache } from "@/lib/bgCacheDb";
@@ -32,31 +31,22 @@ export async function GET(req: Request) {
   let sent = 0;
   let skipped = 0;
 
+  const apiKey = process.env.INTERVALS_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: "No API key configured" }, { status: 500 });
+  }
+
+  const timezone = resolveTimezone();
+
   for (const email of emails) {
     try {
-      const settings = await getUserSettings(email);
-      if (!settings.intervalsApiKey) {
-        skipped++;
-        continue;
-      }
-
-      const timezone = await resolveTimezone(
-        email,
-        settings.timezone,
-        settings.intervalsApiKey,
-      );
-      if (!timezone) {
-        skipped++;
-        continue;
-      }
-
       // Compute "today" in the user's timezone (DST-safe)
       const todayLocal = todayInTimezone(timezone);
 
       // Fetch today's events from Intervals.icu
       const eventsRes = await fetch(
         `${API_BASE}/athlete/0/events?oldest=${todayLocal}&newest=${todayLocal}`,
-        { headers: { Authorization: authHeader(settings.intervalsApiKey) } },
+        { headers: { Authorization: authHeader(apiKey) } },
       );
       if (!eventsRes.ok) {
         skipped++;

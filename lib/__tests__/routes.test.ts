@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { holder } = vi.hoisted(() => ({ holder: { db: null as any } }));
@@ -45,8 +45,6 @@ vi.mock("web-push", () => ({
 import { SCHEMA_DDL } from "../db";
 import * as xdripDb from "../xdripDb";
 const {
-  saveXdripAuth,
-  lookupXdripUser,
   getXdripReadings,
   monthKey,
   sha1,
@@ -79,11 +77,11 @@ function authedSession() {
   mockAuth.mockResolvedValue({ user: { email: EMAIL } });
 }
 
-function postEntries(hash: string, body: unknown) {
+function postEntries(apiSecret: string, body: unknown) {
   return entriesPOST(
     new Request("http://localhost/api/v1/entries", {
       method: "POST",
-      headers: { "api-secret": hash, "content-type": "application/json" },
+      headers: { "api-secret": apiSecret, "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
   );
@@ -129,13 +127,24 @@ async function countReadings(email: string, month?: string): Promise<number> {
   return result.rows[0].cnt as number;
 }
 
+/** Seed a user_settings row for the test user. */
+async function seedUser() {
+  await testDb().execute({
+    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
+    args: [EMAIL],
+  });
+}
+
+// Store original env to restore after each test
+let origXdripSecret: string | undefined;
+let origIntervalsApiKey: string | undefined;
+
 beforeAll(async () => {
   await testDb().executeMultiple(SCHEMA_DDL);
 });
 
 beforeEach(async () => {
   await testDb().execute("DELETE FROM user_settings");
-  await testDb().execute("DELETE FROM xdrip_auth");
   await testDb().execute("DELETE FROM xdrip_readings");
   await testDb().execute("DELETE FROM bg_cache");
   await testDb().execute("DELETE FROM run_analysis");
@@ -147,24 +156,34 @@ beforeEach(async () => {
   mockUpdateActivityCarbs.mockReset().mockResolvedValue(undefined);
   mockUpdateActivityPreRunCarbs.mockReset().mockResolvedValue(undefined);
   mockSendNotification.mockReset().mockResolvedValue({});
+
+  // Save and set env vars for tests
+  origXdripSecret = process.env.XDRIP_SECRET;
+  origIntervalsApiKey = process.env.INTERVALS_API_KEY;
+  process.env.XDRIP_SECRET = SECRET;
+  process.env.INTERVALS_API_KEY = "test-key";
+});
+
+afterEach(() => {
+  // Restore env vars
+  if (origXdripSecret !== undefined) process.env.XDRIP_SECRET = origXdripSecret;
+  else process.env.XDRIP_SECRET = "";
+  if (origIntervalsApiKey !== undefined) process.env.INTERVALS_API_KEY = origIntervalsApiKey;
+  else process.env.INTERVALS_API_KEY = "";
 });
 
 // ---------------------------------------------------------------------------
-// Full pipeline: settings → entries POST → xDrip GET
+// Full pipeline: entries POST → xDrip GET
 // ---------------------------------------------------------------------------
-describe("end-to-end: settings → entries → xDrip GET", () => {
-  it("sets xdripSecret via settings, posts readings, reads them back", async () => {
+describe("end-to-end: entries → xDrip GET", () => {
+  it("posts readings with valid secret, reads them back", async () => {
     authedSession();
+    await seedUser();
 
-    // 1. Save xDrip secret through settings route
-    const putRes = await putSettings({ xdripSecret: SECRET });
-    expect(putRes.status).toBe(200);
-
-    // 2. Verify auth mapping works
+    // xDrip sends SHA1(secret) as api-secret
     const hash = sha1(SECRET);
-    expect(await lookupXdripUser(hash)).toBe(EMAIL);
 
-    // 3. POST readings via entries route
+    // POST readings via entries route
     const res = await postEntries(hash, [
       reading(145, "2026-02-20T10:00:00Z"),
       reading(155, "2026-02-20T10:05:00Z"),
@@ -173,10 +192,10 @@ describe("end-to-end: settings → entries → xDrip GET", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).count).toBe(3);
 
-    // 4. Verify readings stored in DB
+    // Verify readings stored in DB
     expect(await countReadings(EMAIL, "2026-02")).toBe(3);
 
-    // 5. GET readings back via xDrip route
+    // GET readings back via xDrip route
     const getRes = await xdripGET();
     expect(getRes.status).toBe(200);
     const data = await getRes.json();
@@ -191,7 +210,7 @@ describe("end-to-end: settings → entries → xDrip GET", () => {
 // ---------------------------------------------------------------------------
 describe("entries route: cross-month storage", () => {
   it("stores readings from different months correctly", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     const res = await postEntries(hash, [
@@ -207,7 +226,7 @@ describe("entries route: cross-month storage", () => {
   });
 
   it("handles year rollover (Dec → Jan)", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     await postEntries(hash, [
@@ -225,7 +244,7 @@ describe("entries route: cross-month storage", () => {
 // ---------------------------------------------------------------------------
 describe("entries route: dedup and merge", () => {
   it("deduplicates readings with identical timestamps", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     await postEntries(hash, [
@@ -241,7 +260,7 @@ describe("entries route: dedup and merge", () => {
   });
 
   it("merges new readings with existing and sorts chronologically", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     await postEntries(hash, [
@@ -259,7 +278,7 @@ describe("entries route: dedup and merge", () => {
   });
 
   it("only writes new/changed readings, not the full shard", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     // Seed 100 readings (5-min intervals)
@@ -290,7 +309,7 @@ describe("entries route: dedup and merge", () => {
   });
 
   it("writes nothing when all readings are duplicates", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     await postEntries(hash, [
@@ -327,8 +346,8 @@ describe("auth rejection", () => {
     expect((await entriesPOST(req)).status).toBe(401);
   });
 
-  it("entries POST: unknown api-secret → 401", async () => {
-    const res = await postEntries("unknown-hash", [
+  it("entries POST: wrong api-secret → 401", async () => {
+    const res = await postEntries("wrong-hash", [
       reading(145, "2026-02-20T10:00:00Z"),
     ]);
     expect(res.status).toBe(401);
@@ -351,7 +370,7 @@ describe("auth rejection", () => {
 
   it("settings PUT: no session → 401", async () => {
     mockAuth.mockResolvedValue(null);
-    expect((await putSettings({ intervalsApiKey: "x" })).status).toBe(401);
+    expect((await putSettings({ raceDate: "2026-06-13" })).status).toBe(401);
   });
 
   it("bg-cache GET: no session → 401", async () => {
@@ -410,59 +429,50 @@ describe("getXdripReadings default range", () => {
 });
 
 // ---------------------------------------------------------------------------
-// xDrip auth rotation
-// ---------------------------------------------------------------------------
-describe("xDrip auth rotation", () => {
-  it("old hash stops working when secret is rotated", async () => {
-    await saveXdripAuth(EMAIL, "secret-v1");
-    const hash1 = sha1("secret-v1");
-    expect(await lookupXdripUser(hash1)).toBe(EMAIL);
-
-    await saveXdripAuth(EMAIL, "secret-v2");
-    const hash2 = sha1("secret-v2");
-
-    expect(await lookupXdripUser(hash1)).toBeNull();
-    expect(await lookupXdripUser(hash2)).toBe(EMAIL);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Settings route
 // ---------------------------------------------------------------------------
 describe("settings route", () => {
-  it("PUT saves and GET retrieves settings", async () => {
+  it("PUT saves and GET retrieves race config", async () => {
     authedSession();
 
-    await putSettings({ intervalsApiKey: "key-123" });
+    await putSettings({ raceDate: "2026-06-13", raceName: "EcoTrail" });
 
     const res = await settingsGET();
     const data = await res.json();
-    expect(data.intervalsApiKey).toBe("key-123");
+    expect(data.raceDate).toBe("2026-06-13");
+    expect(data.raceName).toBe("EcoTrail");
   });
 
-  it("PUT with xdripSecret creates auth mapping separately", async () => {
+  it("GET returns API key from env var", async () => {
     authedSession();
+    await seedUser();
 
-    await putSettings({
-      xdripSecret: "my-secret",
-      intervalsApiKey: "key-123",
-    });
-
-    // Auth mapping created
-    expect(await lookupXdripUser(sha1("my-secret"))).toBe(EMAIL);
-
-    // Other settings saved
     const res = await settingsGET();
     const data = await res.json();
-    expect(data.intervalsApiKey).toBe("key-123");
-    expect(data.xdripSecret).toBe("my-secret");
+    expect(data.intervalsApiKey).toBe("test-key");
   });
 
-  it("PUT with only xdripSecret skips saveUserSettings for other fields", async () => {
+  it("GET returns connected booleans from env vars", async () => {
     authedSession();
-    await putSettings({ xdripSecret: "only-secret" });
+    await seedUser();
 
-    expect(await lookupXdripUser(sha1("only-secret"))).toBe(EMAIL);
+    const res = await settingsGET();
+    const data = await res.json();
+    expect(data.xdripConnected).toBe(true);
+    expect(data.mylifeConnected).toBe(false);
+  });
+
+  it("PUT ignores credential fields", async () => {
+    authedSession();
+
+    // Attempt to set credential fields — should be silently ignored
+    await putSettings({ raceDate: "2026-06-13", intervalsApiKey: "hacked" });
+
+    const res = await settingsGET();
+    const data = await res.json();
+    // API key comes from env, not the PUT body
+    expect(data.intervalsApiKey).toBe("test-key");
+    expect(data.raceDate).toBe("2026-06-13");
   });
 });
 
@@ -506,7 +516,7 @@ describe("bg-cache route", () => {
 // ---------------------------------------------------------------------------
 describe("edge cases", () => {
   it("entries POST with empty array returns count 0, no readings written", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const hash = sha1(SECRET);
 
     const res = await postEntries(hash, []);
@@ -596,8 +606,8 @@ function postRunCompleted(apiSecret: string, body: unknown) {
 }
 
 describe("run-completed route", () => {
-  it("saves feedback and sends push notification", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+  it("sends push notification on valid secret", async () => {
+    await seedUser();
 
     // Add a push subscription so sendPushToUser has something to send to
     await testDb().execute({
@@ -605,6 +615,7 @@ describe("run-completed route", () => {
       args: [EMAIL, "https://fcm.example.com/push/abc", "p256dh-val", "auth-val", Date.now()],
     });
 
+    // SugarRun sends raw secret
     const res = await postRunCompleted(SECRET, {});
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -627,20 +638,20 @@ describe("run-completed route", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rejects unknown api-secret", async () => {
+  it("rejects wrong api-secret", async () => {
     const res = await postRunCompleted("wrong-secret", {});
     expect(res.status).toBe(401);
   });
 
   it("works with no push subscriptions (no notification sent)", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     const res = await postRunCompleted(SECRET, {});
     expect(res.status).toBe(200);
     expect(mockSendNotification).not.toHaveBeenCalled();
   });
 
   it("cleans up stale subscription on 410", async () => {
-    await saveXdripAuth(EMAIL, SECRET);
+    await seedUser();
     await testDb().execute({
       sql: "INSERT INTO push_subscriptions (email, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)",
       args: [EMAIL, "https://stale.example.com/push", "p", "a", Date.now()],
@@ -683,11 +694,6 @@ function postFeedback(body: unknown) {
 describe("run-feedback route", () => {
   it("GET returns activity data from Intervals.icu", async () => {
     authedSession();
-    // Set up user settings with API key
-    await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: [EMAIL, "test-key"],
-    });
     mockFetchActivityById.mockResolvedValue({
       id: "i123",
       start_date: "2026-02-20T10:00:00Z",
@@ -711,10 +717,6 @@ describe("run-feedback route", () => {
 
   it("GET without activityId finds latest unrated run", async () => {
     authedSession();
-    await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: [EMAIL, "test-key"],
-    });
     mockFetchActivitiesByDateRange.mockResolvedValue([
       { id: "i100", start_date: "2026-03-01T08:00:00Z", type: "Run", Rating: "good", name: "Old" },
       { id: "i200", start_date: "2026-03-01T14:00:00Z", type: "Run", Rating: "", name: "Latest", distance: 6000, moving_time: 3000, average_hr: 130 },
@@ -728,10 +730,6 @@ describe("run-feedback route", () => {
 
   it("GET without activityId returns 404 with retry when no unrated run", async () => {
     authedSession();
-    await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: [EMAIL, "test-key"],
-    });
     mockFetchActivitiesByDateRange.mockResolvedValue([]);
 
     const res = await feedbackGET(new Request("http://localhost/api/run-feedback"));
@@ -742,10 +740,6 @@ describe("run-feedback route", () => {
 
   it("GET returns 404 when activity not found", async () => {
     authedSession();
-    await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: [EMAIL, "test-key"],
-    });
     mockFetchActivityById.mockResolvedValue(null);
 
     const res = await getFeedbackByActivity("i999");
@@ -754,10 +748,6 @@ describe("run-feedback route", () => {
 
   it("POST writes feedback to Intervals.icu", async () => {
     authedSession();
-    await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: [EMAIL, "test-key"],
-    });
 
     const res = await postFeedback({ activityId: "i123", rating: "good", comment: "Felt great" });
     expect(res.status).toBe(200);

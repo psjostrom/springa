@@ -31,58 +31,58 @@ describe("getUserSettings", () => {
 
   it("returns stored settings", async () => {
     await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: ["user@example.com", "abc123"],
+      sql: "INSERT INTO user_settings (email, race_date) VALUES (?, ?)",
+      args: ["user@example.com", "2026-06-13"],
     });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
-      intervalsApiKey: "abc123",
+      raceDate: "2026-06-13",
     });
   });
 
   it("only returns fields that have values", async () => {
     await testDb().execute({
-      sql: "INSERT INTO user_settings (email, intervals_api_key) VALUES (?, ?)",
-      args: ["user@example.com", "abc123"],
+      sql: "INSERT INTO user_settings (email, race_name) VALUES (?, ?)",
+      args: ["user@example.com", "EcoTrail"],
     });
 
     const result = await getUserSettings("user@example.com");
-    expect(result).toEqual({ intervalsApiKey: "abc123" });
-    expect(result).not.toHaveProperty("xdripSecret");
+    expect(result).toEqual({ raceName: "EcoTrail" });
+    expect(result).not.toHaveProperty("raceDate");
   });
 });
 
 describe("saveUserSettings", () => {
   it("merges partial settings with existing", async () => {
-    await saveUserSettings("user@example.com", { intervalsApiKey: "existing-key" });
-    await saveUserSettings("user@example.com", { xdripSecret: "new-secret" });
+    await saveUserSettings("user@example.com", { raceDate: "2026-06-13" });
+    await saveUserSettings("user@example.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
-      intervalsApiKey: "existing-key",
-      xdripSecret: "new-secret",
+      raceDate: "2026-06-13",
+      raceName: "EcoTrail",
     });
   });
 
   it("creates new entry when none exists", async () => {
-    await saveUserSettings("new@user.com", { intervalsApiKey: "first-key" });
+    await saveUserSettings("new@user.com", { prefix: "eco16" });
 
     const result = await getUserSettings("new@user.com");
-    expect(result).toEqual({ intervalsApiKey: "first-key" });
+    expect(result).toEqual({ prefix: "eco16" });
   });
 
   it("overwrites existing key values", async () => {
     await saveUserSettings("user@example.com", {
-      intervalsApiKey: "old",
-      xdripSecret: "old-secret",
+      raceDate: "2026-06-13",
+      raceName: "Old Race",
     });
-    await saveUserSettings("user@example.com", { intervalsApiKey: "new" });
+    await saveUserSettings("user@example.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("user@example.com");
     expect(result).toEqual({
-      intervalsApiKey: "new",
-      xdripSecret: "old-secret",
+      raceDate: "2026-06-13",
+      raceName: "EcoTrail",
     });
   });
 });

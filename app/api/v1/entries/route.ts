@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import {
-  lookupXdripUser,
+  sha1,
   getXdripReadings,
   saveXdripReadings,
   monthKey,
 } from "@/lib/xdripDb";
+import { db } from "@/lib/db";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/xdrip";
 
 export async function POST(req: Request) {
@@ -13,9 +14,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing api-secret" }, { status: 401 });
   }
 
-  const email = await lookupXdripUser(apiSecret);
-  if (!email) {
+  // xDrip sends SHA1(secret) as api-secret header
+  if (!process.env.XDRIP_SECRET || apiSecret !== sha1(process.env.XDRIP_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Get the single user's email for DB operations
+  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
+  const email = result.rows[0]?.email as string;
+  if (!email) {
+    return NextResponse.json({ error: "No user configured" }, { status: 401 });
   }
 
   const body: unknown = await req.json();

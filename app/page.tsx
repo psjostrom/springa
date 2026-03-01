@@ -7,7 +7,6 @@ import { usePaceTable } from "./hooks/usePaceTable";
 import { useEnrichedEvents } from "./hooks/useEnrichedEvents";
 import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
-import { ApiKeySetup } from "./components/ApiKeySetup";
 import { PlannerScreen } from "./screens/PlannerScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { IntelScreen } from "./screens/IntelScreen";
@@ -120,18 +119,6 @@ function HomeContent() {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router]);
 
-  const saveSettings = useCallback(
-    async (keys: { intervalsApiKey: string }) => {
-      await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(keys),
-      });
-      setSettings((prev) => ({ ...prev, ...keys }));
-    },
-    [],
-  );
-
   const apiKey = settings?.intervalsApiKey ?? "";
 
   // Shared calendar events — single fetch for all screens
@@ -194,34 +181,18 @@ function HomeContent() {
   const [showSettings, setShowSettings] = useState(false);
 
   const updateSettings = useCallback(
-    async (partial: Partial<UserSettings>): Promise<{ mylifeError?: string }> => {
-      const res = await fetch("/api/settings", {
+    async (partial: Partial<UserSettings>): Promise<void> => {
+      await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(partial),
       });
-      const result = await res.json() as { ok: boolean; mylifeError?: string };
-      if (result.mylifeError) {
-        // Don't merge MyLife fields — credentials were rejected
-        const rest = Object.fromEntries(
-          Object.entries(partial).filter(([k]) => k !== "mylifeEmail" && k !== "mylifePassword"),
-        );
-        if (Object.keys(rest).length > 0) {
-          setSettings((prev) => ({ ...prev, ...rest }));
-        }
-        return { mylifeError: result.mylifeError };
-      }
       setSettings((prev) => ({ ...prev, ...partial }));
-      return {};
     },
     [],
   );
 
   if (settingsLoading) return splashFallback;
-
-  if (!apiKey) {
-    return <ApiKeySetup onSubmit={(keys) => { void saveSettings(keys); }} />;
-  }
 
   return (
     <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">

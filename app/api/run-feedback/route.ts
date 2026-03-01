@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { getUserSettings } from "@/lib/settings";
 import {
   fetchActivityById,
   fetchActivitiesByDateRange,
@@ -83,8 +82,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const settings = await getUserSettings(session.user.email);
-  if (!settings.intervalsApiKey) {
+  const apiKey = process.env.INTERVALS_API_KEY;
+  if (!apiKey) {
     return NextResponse.json({ error: "No API key" }, { status: 400 });
   }
 
@@ -93,18 +92,18 @@ export async function GET(req: Request) {
 
   let activity: IntervalsActivity | null;
   if (activityIdParam) {
-    activity = await fetchActivityById(settings.intervalsApiKey, activityIdParam);
+    activity = await fetchActivityById(apiKey, activityIdParam);
     if (!activity) {
       return NextResponse.json({ error: "Activity not found" }, { status: 404 });
     }
   } else {
-    activity = await findLatestUnratedRun(settings.intervalsApiKey);
+    activity = await findLatestUnratedRun(apiKey);
     if (!activity) {
       return NextResponse.json({ error: "No unrated run found", retry: true }, { status: 404 });
     }
   }
 
-  const prescribedCarbsG = await computePrescribedCarbs(settings.intervalsApiKey, activity);
+  const prescribedCarbsG = await computePrescribedCarbs(apiKey, activity);
   return NextResponse.json(buildResponse(activity, prescribedCarbsG));
 }
 
@@ -128,21 +127,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing activityId or rating" }, { status: 400 });
   }
 
-  const settings = await getUserSettings(session.user.email);
-  if (!settings.intervalsApiKey) {
+  const apiKey = process.env.INTERVALS_API_KEY;
+  if (!apiKey) {
     return NextResponse.json({ error: "No API key" }, { status: 400 });
   }
 
   // Write Rating + FeedbackComment to Intervals.icu
-  await updateActivityFeedback(settings.intervalsApiKey, activityId, rating, comment);
+  await updateActivityFeedback(apiKey, activityId, rating, comment);
 
   // Sync carbs to Intervals.icu if provided
   if (carbsG != null) {
-    await updateActivityCarbs(settings.intervalsApiKey, activityId, carbsG);
+    await updateActivityCarbs(apiKey, activityId, carbsG);
   }
   if (preRunCarbsG != null || preRunCarbsMin != null) {
     await updateActivityPreRunCarbs(
-      settings.intervalsApiKey,
+      apiKey,
       activityId,
       preRunCarbsG ?? null,
       preRunCarbsMin ?? null,

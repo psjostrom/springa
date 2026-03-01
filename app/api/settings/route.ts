@@ -2,12 +2,9 @@ import { auth } from "@/lib/auth";
 import {
   getUserSettings,
   saveUserSettings,
-  clearMyLifeCredentials,
   type UserSettings,
 } from "@/lib/settings";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
-import { saveXdripAuth } from "@/lib/xdripDb";
-import { signIn as mylifeSignIn, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -18,10 +15,11 @@ export async function GET() {
 
   const settings = await getUserSettings(session.user.email);
 
-  // Fetch athlete profile from Intervals.icu on every request (no DB cache)
-  if (settings.intervalsApiKey) {
+  const apiKey = process.env.INTERVALS_API_KEY;
+  if (apiKey) {
+    settings.intervalsApiKey = apiKey;
     try {
-      const profile = await fetchAthleteProfile(settings.intervalsApiKey);
+      const profile = await fetchAthleteProfile(apiKey);
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
@@ -30,12 +28,10 @@ export async function GET() {
     }
   }
 
-  // Don't send MyLife password to the client — just indicate if it's configured
-  const response: Record<string, unknown> = { ...settings };
-  delete response.mylifePassword;
-  response.mylifeConnected = !!(settings.mylifeEmail && settings.mylifePassword);
+  settings.xdripConnected = !!process.env.XDRIP_SECRET;
+  settings.mylifeConnected = !!process.env.MYLIFE_EMAIL;
 
-  return NextResponse.json(response);
+  return NextResponse.json(settings);
 }
 
 export async function PUT(req: Request) {
@@ -46,48 +42,20 @@ export async function PUT(req: Request) {
 
   const body = (await req.json()) as Partial<UserSettings>;
 
-  // Profile fields are read-only from Intervals.icu — strip before saving
-  delete body.lthr;
-  delete body.maxHr;
-  delete body.hrZones;
+  // Only accept race config + widget fields — credentials are env vars now
+  const allowed: Partial<UserSettings> = {};
+  if (body.raceDate !== undefined) allowed.raceDate = body.raceDate;
+  if (body.raceName !== undefined) allowed.raceName = body.raceName;
+  if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
+  if (body.prefix !== undefined) allowed.prefix = body.prefix;
+  if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;
+  if (body.startKm !== undefined) allowed.startKm = body.startKm;
+  if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;
+  if (body.hiddenWidgets !== undefined) allowed.hiddenWidgets = body.hiddenWidgets;
 
-  // xDrip secret needs special handling for reverse auth mapping
-  if (body.xdripSecret) {
-    await saveXdripAuth(session.user.email, body.xdripSecret);
-    delete body.xdripSecret;
+  if (Object.keys(allowed).length > 0) {
+    await saveUserSettings(session.user.email, allowed);
   }
 
-  // Handle MyLife disconnect: empty email means clear both fields
-  if ("mylifeEmail" in body && !body.mylifeEmail) {
-    // Read current email to clear the correct cached session
-    const current = await getUserSettings(session.user.email);
-    if (current.mylifeEmail) {
-      clearMyLifeSession(current.mylifeEmail);
-    }
-    await clearMyLifeCredentials(session.user.email);
-    delete body.mylifeEmail;
-    delete body.mylifePassword;
-  }
-
-  // Verify MyLife credentials before saving
-  let mylifeError: string | undefined;
-  if (body.mylifeEmail && body.mylifePassword) {
-    try {
-      await mylifeSignIn(body.mylifeEmail, body.mylifePassword);
-    } catch (err: unknown) {
-      mylifeError = err instanceof Error ? err.message : "MyLife sign-in failed";
-      clearMyLifeSession(body.mylifeEmail);
-      // Don't save invalid credentials
-      delete body.mylifeEmail;
-      delete body.mylifePassword;
-    }
-  }
-
-  if (Object.keys(body).length > 0) {
-    await saveUserSettings(session.user.email, body);
-  }
-
-  const result: Record<string, unknown> = { ok: true };
-  if (mylifeError) result.mylifeError = mylifeError;
-  return NextResponse.json(result);
+  return NextResponse.json({ ok: true });
 }

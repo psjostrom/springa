@@ -1,7 +1,6 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
-import { getUserSettings } from "@/lib/settings";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { computeFitnessData } from "@/lib/fitness";
 import {
@@ -70,9 +69,10 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const settings = await getUserSettings(session.user.email);
-  const { mylifeEmail, mylifePassword } = settings;
-  const mylifeTz = settings.timezone ?? "Europe/Stockholm";
+  const intervalsApiKey = process.env.INTERVALS_API_KEY;
+  const mylifeEmail = process.env.MYLIFE_EMAIL;
+  const mylifePassword = process.env.MYLIFE_PASSWORD;
+  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
 
   // Compute fitness data from events
   const fitnessData = computeFitnessData(events, 180);
@@ -119,10 +119,10 @@ export async function POST(req: Request) {
 
   // Fetch wellness and xDrip readings (parallel with MyLife)
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
-  if (settings.intervalsApiKey && completedDates.length > 0) {
+  if (intervalsApiKey && completedDates.length > 0) {
     const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
     const newest = completedDates.reduce((a, b) => (a > b ? a : b));
-    wellness = await fetchWellnessData(settings.intervalsApiKey, oldest, newest);
+    wellness = await fetchWellnessData(intervalsApiKey, oldest, newest);
   }
 
   const xdripReadings = await getXdripReadings(session.user.email, [...neededMonths]);

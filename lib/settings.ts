@@ -3,10 +3,7 @@ import { db } from "./db";
 // --- Types ---
 
 export interface UserSettings {
-  intervalsApiKey?: string;
-  xdripSecret?: string;
   raceDate?: string;
-  timezone?: string;
   raceName?: string;
   raceDist?: number;
   prefix?: string;
@@ -14,9 +11,10 @@ export interface UserSettings {
   startKm?: number;
   widgetOrder?: string[];
   hiddenWidgets?: string[];
-  mylifeEmail?: string;
-  mylifePassword?: string;
-  // Profile data — fetched from Intervals.icu on every settings load, not stored in DB
+  // Non-DB fields — populated by the settings API route, not stored in DB
+  intervalsApiKey?: string;
+  xdripConnected?: boolean;
+  mylifeConnected?: boolean;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -26,16 +24,13 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, mylife_email, mylife_password FROM user_settings WHERE email = ?",
+    sql: "SELECT race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
   const row = result.rows[0];
   const settings: UserSettings = {};
-  if (row.intervals_api_key) settings.intervalsApiKey = row.intervals_api_key as string;
-  if (row.xdrip_secret) settings.xdripSecret = row.xdrip_secret as string;
   if (row.race_date) settings.raceDate = row.race_date as string;
-  if (row.timezone) settings.timezone = row.timezone as string;
   if (row.race_name) settings.raceName = row.race_name as string;
   if (row.race_dist != null) settings.raceDist = row.race_dist as number;
   if (row.prefix) settings.prefix = row.prefix as string;
@@ -43,8 +38,6 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
   if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string) as string[];
-  if (row.mylife_email) settings.mylifeEmail = row.mylife_email as string;
-  if (row.mylife_password) settings.mylifePassword = row.mylife_password as string;
   return settings;
 }
 
@@ -53,28 +46,20 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, xdrip_secret, race_date, timezone, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, mylife_email, mylife_password)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
-            intervals_api_key = COALESCE(excluded.intervals_api_key, intervals_api_key),
-            xdrip_secret = COALESCE(excluded.xdrip_secret, xdrip_secret),
             race_date = COALESCE(excluded.race_date, race_date),
-            timezone = COALESCE(excluded.timezone, timezone),
             race_name = COALESCE(excluded.race_name, race_name),
             race_dist = COALESCE(excluded.race_dist, race_dist),
             prefix = COALESCE(excluded.prefix, prefix),
             total_weeks = COALESCE(excluded.total_weeks, total_weeks),
             start_km = COALESCE(excluded.start_km, start_km),
             widget_order = COALESCE(excluded.widget_order, widget_order),
-            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets),
-            mylife_email = COALESCE(excluded.mylife_email, mylife_email),
-            mylife_password = COALESCE(excluded.mylife_password, mylife_password)`,
+            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets)`,
     args: [
       email,
-      partial.intervalsApiKey ?? null,
-      partial.xdripSecret ?? null,
       partial.raceDate ?? null,
-      partial.timezone ?? null,
       partial.raceName ?? null,
       partial.raceDist ?? null,
       partial.prefix ?? null,
@@ -82,15 +67,6 @@ export async function saveUserSettings(
       partial.startKm ?? null,
       partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
       partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
-      partial.mylifeEmail ?? null,
-      partial.mylifePassword ?? null,
     ],
-  });
-}
-
-export async function clearMyLifeCredentials(email: string): Promise<void> {
-  await db().execute({
-    sql: "UPDATE user_settings SET mylife_email = NULL, mylife_password = NULL WHERE email = ?",
-    args: [email],
   });
 }

@@ -1,6 +1,5 @@
 import { API_BASE } from "./constants";
 import { authHeader } from "./intervalsApi";
-import { saveUserSettings } from "./settings";
 import type { IntervalsActivity } from "./types";
 
 const MS_PER_HOUR = 3_600_000;
@@ -106,21 +105,7 @@ export function localToUtcMs(localDateStr: string, tz: string): number {
   return new Date(localDateStr + offset).getTime();
 }
 
-/** Resolve timezone: use cached value or fetch from Intervals.icu and cache it. */
-export async function resolveTimezone(
-  email: string,
-  cached: string | undefined,
-  apiKey: string,
-): Promise<string | null> {
-  if (cached) return cached;
-
-  const res = await fetch(`${API_BASE}/athlete/0`, {
-    headers: { Authorization: authHeader(apiKey) },
-  });
-  if (!res.ok) return null;
-
-  const athlete = (await res.json()) as { timezone?: string };
-  const tz: string = athlete.timezone ?? "UTC";
-  await saveUserSettings(email, { timezone: tz });
-  return tz;
+/** Resolve timezone from env var. */
+export function resolveTimezone(): string {
+  return process.env.TIMEZONE ?? "Europe/Stockholm";
 }

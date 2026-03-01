@@ -1,38 +1,9 @@
 import { createHash } from "crypto";
 import { db } from "./db";
-import { saveUserSettings } from "./settings";
 import type { XdripReading } from "./xdrip";
 
 export function sha1(input: string): string {
   return createHash("sha1").update(input).digest("hex");
-}
-
-export async function saveXdripAuth(
-  email: string,
-  secret: string,
-): Promise<void> {
-  const hash = sha1(secret);
-  await db().batch(
-    [
-      { sql: "DELETE FROM xdrip_auth WHERE email = ?", args: [email] },
-      {
-        sql: "INSERT INTO xdrip_auth (secret_hash, email) VALUES (?, ?)",
-        args: [hash, email],
-      },
-    ],
-    "write",
-  );
-  await saveUserSettings(email, { xdripSecret: secret });
-}
-
-export async function lookupXdripUser(
-  apiSecretHash: string,
-): Promise<string | null> {
-  const result = await db().execute({
-    sql: "SELECT email FROM xdrip_auth WHERE secret_hash = ?",
-    args: [apiSecretHash],
-  });
-  return result.rows.length > 0 ? (result.rows[0].email as string) : null;
 }
 
 /** Month key in YYYY-MM format from a timestamp in ms. */
