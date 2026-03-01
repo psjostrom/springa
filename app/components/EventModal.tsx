@@ -66,13 +66,16 @@ type EditMode =
   | { kind: "editing-carbs"; carbsValue: string }
   | { kind: "saving-carbs"; carbsValue: string }
   | { kind: "editing-prerun"; preRunG: string; preRunMin: string }
-  | { kind: "saving-prerun"; preRunG: string; preRunMin: string };
+  | { kind: "saving-prerun"; preRunG: string; preRunMin: string }
+  | { kind: "saving-feedback" };
 
 interface ModalState {
   editMode: EditMode;
   error: string | null;
   savedCarbs: number | null;
   savedPreRunCarbs: { g: number | null; min: number | null } | null;
+  savedRating: string | null;
+  savedComment: string | null;
   isClosing: boolean;
 }
 
@@ -94,12 +97,14 @@ type ModalAction =
   | { type: "SET_PRERUN_MIN"; value: string }
   | { type: "SAVE_PRERUN" }
   | { type: "PRERUN_SAVED"; g: number | null; min: number | null }
+  | { type: "SAVE_FEEDBACK" }
+  | { type: "FEEDBACK_SAVED"; rating: string; comment: string }
   | { type: "CANCEL" }
   | { type: "RESET" }
   | { type: "SET_SAVED_CARBS"; value: number | null }
   | { type: "START_CLOSING" };
 
-const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, savedPreRunCarbs: null, isClosing: false };
+const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, savedPreRunCarbs: null, savedRating: null, savedComment: null, isClosing: false };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
@@ -143,6 +148,10 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       return { ...state, editMode: { kind: "saving-prerun", preRunG: state.editMode.preRunG, preRunMin: state.editMode.preRunMin } };
     case "PRERUN_SAVED":
       return { ...state, editMode: { kind: "idle" }, error: null, savedPreRunCarbs: { g: action.g, min: action.min } };
+    case "SAVE_FEEDBACK":
+      return { ...state, editMode: { kind: "saving-feedback" } };
+    case "FEEDBACK_SAVED":
+      return { ...state, editMode: { kind: "idle" }, savedRating: action.rating, savedComment: action.comment };
     case "CARBS_SAVED":
     case "CANCEL":
       return { ...state, editMode: { kind: "idle" } as EditMode, error: null };
@@ -153,6 +162,44 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
     case "START_CLOSING":
       return { ...state, isClosing: true };
   }
+}
+
+function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: string) => void; isSaving: boolean }) {
+  const [rating, setRating] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => { setRating("good"); }}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
+        >
+          {"\ud83d\udc4d"}
+        </button>
+        <button
+          onClick={() => { setRating("bad"); }}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
+        >
+          {"\ud83d\udc4e"}
+        </button>
+      </div>
+      <textarea
+        value={comment}
+        onChange={(e) => { setComment(e.target.value); }}
+        placeholder="Optional comment..."
+        rows={2}
+        className="w-full border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95] resize-none"
+      />
+      <button
+        onClick={() => { if (rating) onSave(rating, comment); }}
+        disabled={!rating || isSaving}
+        className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
+      >
+        {isSaving ? "Saving..." : "Save"}
+      </button>
+    </div>
+  );
 }
 
 interface EventModalProps {
@@ -225,12 +272,6 @@ export function EventModal({
     dispatch({ type: "SAVE_CARBS" });
     try {
       await updateActivityCarbs(apiKey, actId, val);
-      // Sync to feedback DB so analysis prompt sees updated carbs
-      fetch("/api/run-feedback", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId: actId, carbsG: val }),
-      }).catch(() => undefined); // best-effort — Intervals.icu is the source of truth
       dispatch({ type: "SET_SAVED_CARBS", value: val });
       dispatch({ type: "CARBS_SAVED" });
     } catch (err) {
@@ -253,6 +294,22 @@ export function EventModal({
       dispatch({ type: "PRERUN_SAVED", g, min });
     } catch (err) {
       console.error("Failed to update pre-run carbs:", err);
+      dispatch({ type: "CANCEL" });
+    }
+  };
+
+  const saveFeedback = async (rating: string, comment: string) => {
+    const actId = selectedEvent.activityId;
+    if (!actId) return;
+    dispatch({ type: "SAVE_FEEDBACK" });
+    try {
+      await fetch("/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activityId: actId, rating, comment: comment || undefined }),
+      });
+      dispatch({ type: "FEEDBACK_SAVED", rating, comment });
+    } catch {
       dispatch({ type: "CANCEL" });
     }
   };
@@ -489,6 +546,30 @@ export function EventModal({
             {selectedEvent.activityId && (
               <RunAnalysis event={selectedEvent} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} />
             )}
+
+            {/* Feedback */}
+            {selectedEvent.activityId && (() => {
+              const rating = state.savedRating ?? selectedEvent.rating;
+              const comment = state.savedComment ?? selectedEvent.feedbackComment;
+              const hasRating = !!rating;
+              return (
+                <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
+                  <div className="text-sm text-[#b8a5d4] mb-2">Feedback</div>
+                  {hasRating ? (
+                    <div className="flex items-center gap-2 text-sm text-white">
+                      <span className="text-lg">{rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
+                      {comment && <span className="text-[#b8a5d4]">{comment}</span>}
+                    </div>
+                  ) : (
+                    <FeedbackForm
+                      key={selectedEvent.id}
+                      onSave={(r, c) => { void saveFeedback(r, c); }}
+                      isSaving={editMode.kind === "saving-feedback"}
+                    />
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Carbs ingested */}
             <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
