@@ -44,6 +44,21 @@ export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: numb
 
 // --- ACTIVITY FETCHING ---
 
+export async function fetchActivityById(
+  apiKey: string,
+  activityId: string,
+): Promise<IntervalsActivity | null> {
+  try {
+    const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+      headers: { Authorization: authHeader(apiKey) },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as IntervalsActivity;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchActivitiesByDateRange(
   apiKey: string,
   oldest: string,

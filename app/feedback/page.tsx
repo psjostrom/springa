@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { RunFeedbackRecord } from "@/lib/feedbackDb";
@@ -39,6 +39,7 @@ export default function FeedbackPage() {
 function FeedbackContent() {
   const searchParams = useSearchParams();
   const ts = searchParams.get("ts");
+  const activityIdParam = searchParams.get("activityId");
 
   const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,50 +48,75 @@ function FeedbackContent() {
   const [comment, setComment] = useState("");
   const [carbsG, setCarbsG] = useState<string>("");
   const [prescribedCarbsG, setPrescribedCarbsG] = useState<number | null>(null);
-  const [activityId, setActivityId] = useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(activityIdParam);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const fetchUrl = activityIdParam
+    ? "/api/run-feedback?activityId=" + activityIdParam
+    : ts
+      ? "/api/run-feedback?ts=" + ts
+      : null;
+
+  const loadFeedback = useCallback(async (url: string) => {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("Failed to load data");
+    const data = (await r.json()) as FeedbackResponse;
+    setFeedback(data);
+    if (data.activityId) setActivityId(data.activityId);
+    if (data.rating) {
+      setRating(data.rating);
+      setComment(data.comment ?? "");
+      if (data.carbsG != null) setCarbsG(String(data.carbsG));
+      setSubmitted(true);
+    }
+    if (data.prescribedCarbsG != null) {
+      setPrescribedCarbsG(data.prescribedCarbsG);
+      if (!data.rating && data.carbsG == null) {
+        setCarbsG(String(data.prescribedCarbsG));
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    if (!ts) {
+    if (!fetchUrl) {
       setError("No run found");
       setLoading(false);
       return;
     }
-    fetch("/api/run-feedback?ts=" + ts)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to load data");
-        return r.json();
-      })
-      .then((data: FeedbackResponse) => {
-        setFeedback(data);
-        if (data.activityId) setActivityId(data.activityId);
-        if (data.rating) {
-          setRating(data.rating);
-          setComment(data.comment ?? "");
-          if (data.carbsG != null) setCarbsG(String(data.carbsG));
-          setSubmitted(true);
-        }
-        if (data.prescribedCarbsG != null) {
-          setPrescribedCarbsG(data.prescribedCarbsG);
-          // Pre-fill carbs with prescribed value if not already submitted
-          if (!data.rating && data.carbsG == null) {
-            setCarbsG(String(data.prescribedCarbsG));
-          }
-        }
-      })
+    loadFeedback(fetchUrl)
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
       .finally(() => { setLoading(false); });
-  }, [ts]);
+  }, [fetchUrl, loadFeedback]);
+
+  const handleRetry = async () => {
+    if (!ts) return;
+    setRetrying(true);
+    try {
+      await loadFeedback("/api/run-feedback?ts=" + ts);
+    } catch {
+      // Still no activity — that's fine, user can retry again
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!ts || !rating) return;
+    const key = activityIdParam ?? ts;
+    if (!key || !rating) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ts: Number(ts), rating, comment: comment || undefined, carbsG: carbsG ? Number(carbsG) : undefined, activityId: activityId ?? undefined }),
+        body: JSON.stringify({
+          ts: activityIdParam ? feedback?.createdAt : Number(ts),
+          rating,
+          comment: comment || undefined,
+          carbsG: carbsG ? Number(carbsG) : undefined,
+          activityId: activityId ?? undefined,
+        }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setSubmitted(true);
@@ -145,11 +171,20 @@ function FeedbackContent() {
         </div>
       )}
 
-      {/* Activity not found warning */}
+      {/* Activity not synced — retry or dismiss */}
       {!activityId && !submitted && (
-        <p className="text-[#fbbf24] text-xs mb-4 text-center max-w-sm">
-          Activity not found on Intervals.icu yet — carbs won&apos;t sync.
-        </p>
+        <div className="text-center mb-4 max-w-sm">
+          <p className="text-[#fbbf24] text-xs mb-3">
+            Waiting for Garmin to sync. Try again in a minute, or rate later from the app.
+          </p>
+          <button
+            onClick={() => { void handleRetry(); }}
+            disabled={retrying}
+            className="px-4 py-2 text-sm font-medium text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
+          >
+            {retrying ? "Checking..." : "Retry"}
+          </button>
+        </div>
       )}
 
       {submitted ? (
@@ -234,14 +269,25 @@ function FeedbackContent() {
 
           <button
             onClick={() => {
-              if (!ts) return;
+              if (!activityId) {
+                // No activity synced yet — just dismiss without saving anything
+                setRating("skipped");
+                setSubmitted(true);
+                return;
+              }
+              const key = activityIdParam ?? ts;
+              if (!key) return;
               setSubmitting(true);
               void (async () => {
                 try {
                   const res = await fetch("/api/run-feedback", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ts: Number(ts), rating: "skipped", activityId: activityId ?? undefined }),
+                    body: JSON.stringify({
+                      ts: activityIdParam ? feedback?.createdAt : Number(ts),
+                      rating: "skipped",
+                      activityId,
+                    }),
                   });
                   if (!res.ok) throw new Error("Failed to save");
                   setRating("skipped");

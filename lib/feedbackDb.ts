@@ -79,6 +79,22 @@ export async function updateFeedbackCarbsByActivity(
   return result.rowsAffected > 0;
 }
 
+/** Check which activity IDs have been rated (non-skipped). */
+export async function getRatedActivityIds(
+  email: string,
+  activityIds: string[],
+): Promise<Set<string>> {
+  if (activityIds.length === 0) return new Set();
+  const placeholders = activityIds.map(() => "?").join(",");
+  const result = await db().execute({
+    sql: `SELECT activity_id FROM run_feedback
+          WHERE email = ? AND activity_id IN (${placeholders})
+            AND rating IS NOT NULL AND rating != 'skipped'`,
+    args: [email, ...activityIds],
+  });
+  return new Set(result.rows.map((r) => r.activity_id as string));
+}
+
 /** Fetch recent rated feedback for AI consumers. */
 export async function getRecentFeedback(
   email: string,

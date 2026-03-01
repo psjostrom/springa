@@ -18,6 +18,7 @@ import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
+import { UnratedRunBanner } from "./components/UnratedRunBanner";
 import { Settings } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { resolveLayout, type WidgetLayout } from "@/lib/widgetRegistry";
@@ -296,6 +297,8 @@ function HomeContent() {
           <CoachScreen events={enrichedEvents} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
       </div>
+
+      <UnratedRunBanner events={enrichedEvents} />
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
