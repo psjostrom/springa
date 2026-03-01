@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useModalURL } from "./hooks/useModalURL";
 import { usePaceTable } from "./hooks/usePaceTable";
 import { useEnrichedEvents } from "./hooks/useEnrichedEvents";
@@ -83,43 +84,34 @@ function HomeContent() {
       .finally(() => { setSettingsLoading(false); });
   }, []);
 
-  const parseTab = (search: string): Tab => {
-    const p = new URLSearchParams(search).get("tab");
-    return p === "planner" ? "planner" : p === "intel" ? "intel" : p === "coach" ? "coach" : "calendar";
-  };
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
-    typeof window !== "undefined" ? parseTab(window.location.search) : "calendar"
-  );
+  const parseTab = (p: string | null): Tab =>
+    p === "planner" ? "planner" : p === "intel" ? "intel" : p === "coach" ? "coach" : "calendar";
 
-  // Auto-adapt: read ?adapt=true on mount (cross-route nav from /feedback remounts HomeContent)
-  const [autoAdapt] = useState(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("adapt") === "true"
-  );
+  const urlTab = parseTab(searchParams.get("tab"));
+  const [activeTab, setOptimisticTab] = useOptimistic(urlTab);
+  const autoAdapt = searchParams.get("adapt") === "true";
 
+  // Strip ?adapt from URL after render — PlannerScreen latches it before the async update
   useEffect(() => {
     if (!autoAdapt) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParams.toString());
     params.delete("adapt");
     const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    router.replace(query ? `?${query}` : "/", { scroll: false });
+  }, [autoAdapt, searchParams, router]);
 
   // BG graph popover
   const bgGraph = useModalURL("bg");
 
   const handleTabChange = useCallback((tab: Tab) => {
-    setActiveTab(tab);
+    setOptimisticTab(tab);
     const params = new URLSearchParams(window.location.search);
     params.set("tab", tab);
-    window.history.pushState(null, "", `?${params.toString()}`);
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => { setActiveTab(parseTab(window.location.search)); };
-    window.addEventListener("popstate", onPopState);
-    return () => { window.removeEventListener("popstate", onPopState); };
-  }, []);
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, setOptimisticTab]);
 
   const saveSettings = useCallback(
     async (keys: { intervalsApiKey: string }) => {
