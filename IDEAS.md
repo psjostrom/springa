@@ -2,37 +2,31 @@
 
 ## Next
 
-### Cross-Run BG Pattern Discovery
+### Cross-Run BG Pattern Surfacing
 
-Surface hidden patterns in BG outcomes by correlating against every available variable across all completed runs. The per-category BG model answers "what does an average long run look like?" — this answers "what conditions make BG crash that I haven't noticed?"
+Cross-run pattern discovery (phase 1) is done — 34-column enriched run table, AI analysis via Claude Sonnet, cached in SQLite with staleness tracking. Currently the insights are locked in a single collapsible section on the Intel screen (`BGResponsePanel`) and never flow back into anything actionable.
 
-**Phase 1: AI-driven discovery (now).** Build one enriched row per completed run with every available variable. Send the full table to Claude with a discovery prompt. No statistical engine — Claude reasons about correlations, flags sample sizes, and explains potential causation vs coincidence. Works with current data volume (~30 runs).
+**MyLife Cloud latency:** Tested 2026-03-02. CamAPS FX → MyLife Cloud sync has **~2 hour delay** (0.1U test bolus at 10:15, appeared in logbook at 12:05). Sync is batched, not streaming — events arrive in chunks. Insulin data (IOB, time since bolus) is usable for retrospective analysis but **not real-time enough for pre-run decisions**. Pre-run surfacing must rely on variables available in real-time: xDrip BG + trend, Intervals.icu wellness, training load, time of day.
 
-**Phase 2: Statistical engine (80+ runs).** Add proper multivariate analysis with p-values, effect sizes, and minimum sample guards. The variable enrichment from phase 1 carries over.
+**Phase 2a: Feed patterns into AI consumers (easy wins).**
 
-**Variables per run (the table):**
+Patterns are stored as a text blob (markdown prose). AI consumers read natural language — appending the pattern text to their system prompts is trivial and immediately useful.
 
-| Source | Variables |
-|---|---|
-| Activity (already have) | time of day, day of week, distance, duration, avg pace, avg HR, max HR, cadence, elevation gain, category |
-| BG data (already have) | starting BG, entry slope, avg drop rate, min BG, hypo flag, BG score |
-| Training context (already have) | days since last run, weekly km so far, CTL, ATL, TSB, training load |
-| Fuel (already have) | planned fuel rate (g/h), actual carbs ingested |
-| Wellness (one new API call) | HRV rMSSD, resting HR, sleep score, readiness, SpO2 |
+1. **Adapt AI notes** (highest value). The only place the runner looks right before a run — the moment when carbs, timing, and plan changes are still actionable. The adapt prompt gets 5 same-category runs and per-category BG model, but the cross-run analysis is built from a 34-column table including wellness (sleep, HRV), insulin (IOB, time since bolus), time-of-day, and cross-category interactions — variables the adapt prompt never sees. Patterns involving those variables are genuinely new information. Fetch `getBGPatterns()`, append to user prompt under `## Cross-Run BG Patterns`.
 
-~25 variables. ~30 rows. ~3-4K tokens for the full dataset.
+2. **Run analysis AI** (nice-to-have). Retrospective but helps the runner understand why a run went well or poorly. Can connect a crash to a known cross-run signal instead of diagnosing in isolation.
 
-**Wellness API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily records. One call covers the full training history. Match each run to its day's wellness data by date.
+3. **Coach AI.** Not actively used today, but should be as good as possible for when it is. No cost to include — same `getBGPatterns()` append.
 
-**UI:** Button in Intel tab — "Discover BG patterns." Fetches wellness data, enriches run data, formats table, sends to Claude, renders the response as a discovery report.
+**Phase 2b: Rule-based consumers (harder, requires structured output).**
 
-**Prompt design:** Ask Claude to find patterns in BG outcomes (drop rate, min BG, hypo) that correlate with any variable or combination of variables. Require minimum 5 observations per bucket. Flag interactions ("high fatigue AND low start BG together are worse than either alone"). Caveat small samples.
+Pre-run readiness, report card scoring, and push notifications use fixed thresholds. Personalizing these from patterns requires parsing prose into structured findings (variable, direction, threshold, confidence, n). Bigger design change — revisit after phase 2a proves value.
 
-**Example discoveries:**
+**Phase 3: Statistical engine (80+ runs).** Proper multivariate analysis with p-values, effect sizes, and minimum sample guards. The variable enrichment from phase 1 carries over.
 
-- "Morning runs (before 11:00) average -1.8/10min drop vs afternoon at -0.9/10min. 8 morning, 12 afternoon runs."
-- "Runs with sleep score < 70 had hypo events in 3/5 cases vs 1/15 when sleep > 70."
-- "TSB below -15 combined with starting BG under 9 produced the 3 worst BG outcomes. Either factor alone was manageable."
+**Current implementation:** `lib/bgPatterns.ts` (enrichment + prompt), `lib/bgPatternsDb.ts` (storage), `app/api/bg-patterns/route.ts` (endpoint), `BGResponsePanel.tsx` (display — Intel screen only).
+
+**Not worth it:** Workout generator — runs once per plan cycle, adapt already handles mid-plan corrections.
 
 ### Ref Overhaul — Replace Refs With State-Driven Data Flow
 
