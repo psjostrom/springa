@@ -2,6 +2,7 @@ import { streamText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
 import { formatAIError } from "@/lib/aiError";
+import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -24,6 +25,13 @@ export async function POST(req: Request) {
   };
   const { messages, context } = body;
 
+  const patterns = await getBGPatterns(session.user.email);
+
+  let systemPrompt = context ?? "";
+  if (patterns?.patternsText) {
+    systemPrompt += `\n\n## Cross-Run BG Patterns\nThese are statistically validated patterns from the runner's completed runs. Cite relevant patterns when answering BG, fueling, or training questions.\n${patterns.patternsText}`;
+  }
+
   const anthropic = createAnthropic({ apiKey });
 
   // Convert UI messages (parts format) to core messages (content format)
@@ -35,7 +43,7 @@ export async function POST(req: Request) {
   try {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
-      system: context ?? undefined,
+      system: systemPrompt || undefined,
       messages: coreMessages,
     });
 

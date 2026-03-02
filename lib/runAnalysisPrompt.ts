@@ -23,8 +23,9 @@ export function buildRunAnalysisPrompt(params: {
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
+  crossRunPatterns?: string;
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, crossRunPatterns } = params;
   const lthr = params.lthr ?? DEFAULT_LTHR;
   const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
   const easyMaxBpm = params.hrZones?.length === 5
@@ -75,6 +76,8 @@ Output format (bullet points only, max 150 words):
 
 **Next Time**:
 - Concrete adjustments with specific numbers (pace, fuel rate, start BG target)
+
+If "Cross-Run BG Patterns" are provided, reference relevant patterns to contextualize this run — e.g. "this matches the pattern of faster drops when entrySlope is negative" or "your easy runs consistently show X." Cite the pattern, don't just repeat it.
 
 Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
 
@@ -244,6 +247,12 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
         { bgSummary: h.bgSummary, feedback: fb },
       ));
     }
+  }
+
+  if (crossRunPatterns) {
+    lines.push("");
+    lines.push("## Cross-Run BG Patterns");
+    lines.push(crossRunPatterns);
   }
 
   lines.push("");

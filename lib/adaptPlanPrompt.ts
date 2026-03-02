@@ -13,6 +13,7 @@ interface PromptInput {
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
   feedbackByActivity?: Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>;
+  crossRunPatterns?: string;
 }
 
 /**
@@ -22,7 +23,7 @@ export function buildAdaptNotePrompt(input: PromptInput): {
   system: string;
   user: string;
 } {
-  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, feedbackByActivity } =
+  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, feedbackByActivity, crossRunPatterns } =
     input;
 
   const system = `You are Coach — writing pre-workout notes for an experienced T1D runner (pump OFF, LTHR ${lthr}). Write in first person ("I've bumped your fuel…"). Never say "BG model", "the system", or "the data."
@@ -45,7 +46,8 @@ Rules:
 - Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
 - If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
 - If the workout was swapped to easy, explain why.
-- Only state distances and durations that appear in the data below. Never guess or infer distances from workout names.`;
+- Only state distances and durations that appear in the data below. Never guess or infer distances from workout names.
+- If "Cross-Run BG Patterns" are provided, weave relevant findings into the Fuel & BG paragraph — e.g. cite a pattern about entrySlope or drop rate that applies to this session type. Don't list patterns mechanically; use the ones that matter for *this* workout.`;
 
   const lines: string[] = [];
 
@@ -159,6 +161,12 @@ Rules:
         `Went hypo after: ${hypoCount} of ${categoryContexts.length} runs`,
       );
     }
+  }
+
+  if (crossRunPatterns) {
+    lines.push("");
+    lines.push("## Cross-Run BG Patterns");
+    lines.push(crossRunPatterns);
   }
 
   lines.push("");

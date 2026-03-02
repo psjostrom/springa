@@ -10,6 +10,7 @@ import type { BGResponseModel } from "@/lib/bgModel";
 import type { FitnessInsights } from "@/lib/fitness";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
+import { getBGPatterns } from "@/lib/bgPatternsDb";
 
 interface RequestBody {
   upcomingEvents: CalendarEvent[];
@@ -53,6 +54,8 @@ export async function POST(req: Request) {
   for (const e of recentCompleted) {
     e.date = new Date(e.date);
   }
+
+  const patterns = await getBGPatterns(session.user.email);
 
   // Build feedback map from CalendarEvent custom fields
   const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();
@@ -98,6 +101,7 @@ export async function POST(req: Request) {
           runBGContexts,
           lthr,
           feedbackByActivity,
+          crossRunPatterns: patterns?.patternsText,
         });
 
         try {

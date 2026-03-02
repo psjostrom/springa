@@ -18,6 +18,7 @@ import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
 import type { CachedRunRow } from "@/lib/runAnalysisDb";
+import { getBGPatterns } from "@/lib/bgPatternsDb";
 
 interface RequestBody {
   activityId: string;
@@ -145,11 +146,12 @@ export async function POST(req: Request) {
         })
     : Promise.resolve(null);
 
-  const [rows, profile] = await Promise.all([
+  const [rows, profile, patterns] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
     intervalsApiKey
       ? fetchAthleteProfile(intervalsApiKey)
       : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
+    getBGPatterns(session.user.email),
   ]);
 
   // Batch-fetch activity metadata from Intervals.icu for the date range
@@ -205,6 +207,7 @@ export async function POST(req: Request) {
     lthr: profile.lthr,
     maxHr: profile.maxHr,
     hrZones: profile.hrZones,
+    crossRunPatterns: patterns?.patternsText,
   });
 
   const anthropic = createAnthropic({ apiKey });
