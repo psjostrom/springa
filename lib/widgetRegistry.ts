@@ -27,11 +27,21 @@ export const DEFAULT_ORDER: readonly WidgetKey[] = DEFAULT_WIDGETS.map((w) => w.
 export interface WidgetLayout {
   widgetOrder: WidgetKey[];
   hiddenWidgets: WidgetKey[];
+  collapsedWidgets: WidgetKey[];
 }
+
+/** Widgets collapsed by default on fresh install */
+const DEFAULT_COLLAPSED: WidgetKey[] = [
+  "fitness-chart",
+  "volume-trend",
+  "pace-zones",
+  "bg-response",
+];
 
 export const DEFAULT_LAYOUT: WidgetLayout = {
   widgetOrder: [...DEFAULT_ORDER],
   hiddenWidgets: [],
+  collapsedWidgets: [...DEFAULT_COLLAPSED],
 };
 
 const VALID_KEYS = new Set<string>(DEFAULT_ORDER);
@@ -45,9 +55,10 @@ const VALID_KEYS = new Set<string>(DEFAULT_ORDER);
 export function resolveLayout(saved?: {
   widgetOrder?: string[];
   hiddenWidgets?: string[];
+  collapsedWidgets?: string[];
 }): WidgetLayout {
   if (!saved?.widgetOrder || saved.widgetOrder.length === 0) {
-    return { ...DEFAULT_LAYOUT, hiddenWidgets: [] };
+    return { ...DEFAULT_LAYOUT };
   }
 
   // Keep only valid keys, preserving saved order
@@ -62,7 +73,12 @@ export function resolveLayout(saved?: {
 
   const hidden = (saved.hiddenWidgets ?? []).filter((k) => VALID_KEYS.has(k)) as WidgetKey[];
 
-  return { widgetOrder: order, hiddenWidgets: hidden };
+  // If collapsedWidgets was never saved, use defaults; otherwise use saved state
+  const collapsed = saved.collapsedWidgets !== undefined
+    ? (saved.collapsedWidgets.filter((k) => VALID_KEYS.has(k)) as WidgetKey[])
+    : [...DEFAULT_COLLAPSED];
+
+  return { widgetOrder: order, hiddenWidgets: hidden, collapsedWidgets: collapsed };
 }
 
 /** Swap a widget one position up or down. Returns a new array (no-op at boundaries). */
@@ -90,4 +106,14 @@ export function toggleWidget(
   return hidden.includes(key)
     ? hidden.filter((k) => k !== key)
     : [...hidden, key];
+}
+
+/** Toggle a widget's collapsed state. Returns a new array. */
+export function toggleCollapse(
+  collapsed: readonly WidgetKey[],
+  key: WidgetKey,
+): WidgetKey[] {
+  return collapsed.includes(key)
+    ? collapsed.filter((k) => k !== key)
+    : [...collapsed, key];
 }

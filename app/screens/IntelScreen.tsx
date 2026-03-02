@@ -17,7 +17,7 @@ import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 import type { WidgetKey, WidgetLayout } from "@/lib/widgetRegistry";
-import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
+import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget, toggleCollapse } from "@/lib/widgetRegistry";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
@@ -99,6 +99,39 @@ function WidgetEditBar({
         {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
     </div>
+  );
+}
+
+function CollapsibleHeader({
+  label,
+  summary,
+  isCollapsed,
+  onToggle,
+}: {
+  label: string;
+  summary?: string;
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-3 bg-[#1e1535] rounded-xl border border-[#3d2b5a] px-4 py-3 text-left hover:bg-[#2a1f3d] active:bg-[#2a1f3d] transition-colors"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-[#c4b5fd] uppercase tracking-wide">
+          {label}
+        </div>
+        {summary && (
+          <div className="text-sm text-[#b8a5d4] mt-0.5 truncate">{summary}</div>
+        )}
+      </div>
+      {isCollapsed ? (
+        <ChevronDown size={18} className="text-[#6b5b8a] flex-shrink-0" />
+      ) : (
+        <ChevronUp size={18} className="text-[#c4b5fd] flex-shrink-0" />
+      )}
+    </button>
   );
 }
 
@@ -243,8 +276,50 @@ export function IntelScreen({
   };
 
   const handleReset = () => {
-    onWidgetLayoutChange({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
+    onWidgetLayoutChange({ ...DEFAULT_LAYOUT });
   };
+
+  const handleCollapse = (key: WidgetKey) => {
+    const newCollapsed = toggleCollapse(widgetLayout.collapsedWidgets, key);
+    onWidgetLayoutChange({ ...widgetLayout, collapsedWidgets: newCollapsed });
+  };
+
+  // Generate one-line summaries for collapsed widgets
+  const widgetSummaries: Partial<Record<WidgetKey, string>> = {};
+
+  if (insights) {
+    widgetSummaries["fitness-insights"] = `CTL ${insights.currentCtl} · Ramp ${insights.rampRate > 0 ? "+" : ""}${insights.rampRate}/wk`;
+    widgetSummaries["fitness-chart"] = "CTL/ATL/TSB over time";
+  }
+
+  if (paceCalibration) {
+    const steady = paceCalibration.table.steady;
+    const tempo = paceCalibration.table.tempo;
+    if (steady.calibrated && tempo.calibrated) {
+      const fmtPace = (minPerKm: number) => {
+        const m = Math.floor(minPerKm);
+        const sec = Math.round((minPerKm - m) * 60);
+        return `${m}:${sec.toString().padStart(2, "0")}`;
+      };
+      widgetSummaries["pace-zones"] = `Steady: ${fmtPace(steady.pace)} · Tempo: ${fmtPace(tempo.pace)}`;
+    }
+  }
+
+  if (bgModel) {
+    const cats = Object.entries(bgModel.categories).filter(
+      (entry): entry is [string, NonNullable<(typeof entry)[1]>] =>
+        entry[1] != null && entry[1].sampleCount >= 3
+    );
+    if (cats.length > 0) {
+      const rate = cats[0][1].avgRate.toFixed(1);
+      widgetSummaries["bg-response"] = `${cats.length} workout types · avg ${rate} mmol/10min`;
+    }
+  }
+
+  widgetSummaries["volume-trend"] = `Week ${currentWeek} of ${totalWeeks}`;
+
+  // Widgets that should NOT be collapsible (always expanded)
+  const nonCollapsible: WidgetKey[] = ["phase-tracker", "fitness-insights"];
 
   const firstVisibleKey = editMode
     ? widgetLayout.widgetOrder[0]
@@ -258,6 +333,8 @@ export function IntelScreen({
         {/* Widget loop */}
         {widgetLayout.widgetOrder.map((key, idx) => {
           const isHidden = widgetLayout.hiddenWidgets.includes(key);
+          const isCollapsed = widgetLayout.collapsedWidgets.includes(key);
+          const isCollapsible = !nonCollapsible.includes(key);
           const render = widgetRenderMap[key];
 
           // In normal mode, skip hidden widgets
@@ -298,6 +375,16 @@ export function IntelScreen({
                         {LABEL_MAP.get(key) ?? key} (hidden)
                       </div>
                     </div>
+                  </div>
+                ) : isCollapsible && !editMode ? (
+                  <div className="space-y-2">
+                    <CollapsibleHeader
+                      label={LABEL_MAP.get(key) ?? key}
+                      summary={widgetSummaries[key]}
+                      isCollapsed={isCollapsed}
+                      onToggle={() => { handleCollapse(key); }}
+                    />
+                    {!isCollapsed && <div className="pt-1">{render?.()}</div>}
                   </div>
                 ) : (
                   render?.()
