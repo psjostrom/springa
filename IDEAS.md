@@ -2,21 +2,9 @@
 
 ## Next
 
-### Cross-Run BG Pattern Surfacing
+### Cross-Run BG Pattern Surfacing — Remaining Phases
 
-Cross-run pattern discovery (phase 1) is done — 34-column enriched run table, AI analysis via Claude Sonnet, cached in SQLite with staleness tracking. Currently the insights are locked in a single collapsible section on the Intel screen (`BGResponsePanel`) and never flow back into anything actionable.
-
-**MyLife Cloud latency:** Tested 2026-03-02. CamAPS FX → MyLife Cloud sync has **~2 hour delay** (0.1U test bolus at 10:15, appeared in logbook at 12:05). Sync is batched, not streaming — events arrive in chunks. Insulin data (IOB, time since bolus) is usable for retrospective analysis but **not real-time enough for pre-run decisions**. Pre-run surfacing must rely on variables available in real-time: xDrip BG + trend, Intervals.icu wellness, training load, time of day.
-
-**Phase 2a: Feed patterns into AI consumers (easy wins).**
-
-Patterns are stored as a text blob (markdown prose). AI consumers read natural language — appending the pattern text to their system prompts is trivial and immediately useful.
-
-1. **Adapt AI notes** (highest value). The only place the runner looks right before a run — the moment when carbs, timing, and plan changes are still actionable. The adapt prompt gets 5 same-category runs and per-category BG model, but the cross-run analysis is built from a 34-column table including wellness (sleep, HRV), insulin (IOB, time since bolus), time-of-day, and cross-category interactions — variables the adapt prompt never sees. Patterns involving those variables are genuinely new information. Fetch `getBGPatterns()`, append to user prompt under `## Cross-Run BG Patterns`.
-
-2. **Run analysis AI** (nice-to-have). Retrospective but helps the runner understand why a run went well or poorly. Can connect a crash to a known cross-run signal instead of diagnosing in isolation.
-
-3. **Coach AI.** Not actively used today, but should be as good as possible for when it is. No cost to include — same `getBGPatterns()` append.
+Phase 1 (discovery) and Phase 2a (AI consumers) are complete — see Completed section.
 
 **Phase 2b: Rule-based consumers (harder, requires structured output).**
 
@@ -24,19 +12,7 @@ Pre-run readiness, report card scoring, and push notifications use fixed thresho
 
 **Phase 3: Statistical engine (80+ runs).** Proper multivariate analysis with p-values, effect sizes, and minimum sample guards. The variable enrichment from phase 1 carries over.
 
-**Current implementation:** `lib/bgPatterns.ts` (enrichment + prompt), `lib/bgPatternsDb.ts` (storage), `app/api/bg-patterns/route.ts` (endpoint), `BGResponsePanel.tsx` (display — Intel screen only).
-
-**Not worth it:** Workout generator — runs once per plan cycle, adapt already handles mid-plan corrections.
-
-### Ref Overhaul — Replace Refs With State-Driven Data Flow
-
-Multiple hooks use `useRef` to pass data between effects as a side-channel to avoid re-renders. This breaks React's dependency tracking — effects that read refs don't re-run when the ref changes, creating race conditions that are harder to diagnose than the re-renders they prevent.
-
-**Known bug:** `useBGModel.ts` stores `completedRunsRef` as a ref. The xDrip effect (line 150) depends on `[xdripReadings]` but reads `completedRunsRef.current`. If xDrip data arrives before activities finish loading, the effect short-circuits and never retries until the next xDrip poll (60s later). This causes `runBGContexts` to be empty when the user clicks "Discover Patterns" shortly after page load.
-
-**Fix:** Audit all `useRef` usage across hooks. Replace refs that carry data between effects with `useState` so React's dependency system handles re-runs automatically. Keep refs only for values that genuinely shouldn't trigger re-renders (DOM refs, "has already loaded" guards, abort flags).
-
-**Scope:** `useBGModel.ts` (`cachedRef`, `completedRunsRef`), and any other hooks using the same pattern. Full audit needed.
+**MyLife Cloud latency:** Tested 2026-03-02. CamAPS FX → MyLife Cloud sync has **~2 hour delay** (0.1U test bolus at 10:15, appeared in logbook at 12:05). Sync is batched, not streaming — events arrive in chunks. Insulin data (IOB, time since bolus) is usable for retrospective analysis but **not real-time enough for pre-run decisions**. Pre-run surfacing must rely on variables available in real-time: xDrip BG + trend, Intervals.icu wellness, training load, time of day.
 
 ### AI Data Audit
 
@@ -174,6 +150,20 @@ After deep investigation of both prompt builders, the data each receives, and si
 ---
 
 ## Completed
+
+### Cross-Run BG Pattern Surfacing
+
+Phase 1: 34-column enriched run table, AI analysis via Claude Sonnet, cached in SQLite with staleness tracking. Displayed in `BGResponsePanel` on Intel screen.
+
+Phase 2a: Pattern text fed into all three AI consumers — adapt notes, run analysis, and coach chat — via `getBGPatterns()` → `patternsText` appended to prompts. Each consumer weaves relevant patterns into its output rather than listing them mechanically.
+
+**Implementation:** `lib/bgPatterns.ts` (enrichment + prompt), `lib/bgPatternsDb.ts` (storage), `app/api/bg-patterns/route.ts` (endpoint), `BGResponsePanel.tsx` (display). AI integration: `lib/adaptPlanPrompt.ts`, `lib/runAnalysisPrompt.ts`, `app/api/chat/route.ts`.
+
+### Ref Overhaul — Replace Refs With State-Driven Data Flow
+
+Converted `completedRunsRef` and `cachedRef` from `useRef` to `useState` in `useBGModel.ts`. Fixed race condition where xDrip effect read stale ref values before activities loaded. Audited all hooks — remaining refs are legitimate (DOM refs, fire-once guards, abort flags).
+
+**Implementation:** `app/hooks/useBGModel.ts`.
 
 ### Pre-Run Protocol Card
 
