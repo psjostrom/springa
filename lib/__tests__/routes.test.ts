@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
+import type { Client } from "@libsql/client";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { holder } = vi.hoisted(() => ({ holder: { db: null as any } }));
+const { holder } = vi.hoisted(() => {
+  process.env.TURSO_DATABASE_URL = "file::memory:";
+  process.env.TURSO_AUTH_TOKEN = "dummy";
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "dummy";
+  process.env.VAPID_PRIVATE_KEY = "dummy";
+  return { holder: { db: null as unknown as Client } };
+});
 
 vi.mock("@libsql/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@libsql/client")>();

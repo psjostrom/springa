@@ -1,10 +1,15 @@
 import webpush from "web-push";
 import { getPushSubscriptions, deletePushSubscription } from "./pushDb";
 
-// Non-null assertions: VAPID keys are required in production (set in Vercel config).
-// In tests, web-push is mocked so these values are never used.
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-webpush.setVapidDetails("mailto:push@springa.vercel.app", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+let _vapidReady = false;
+function ensureVapid() {
+  if (_vapidReady) return;
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) throw new Error("NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are required");
+  webpush.setVapidDetails("mailto:push@springa.vercel.app", pub, priv);
+  _vapidReady = true;
+}
 
 interface PushPayload {
   title: string;
@@ -17,6 +22,7 @@ export async function sendPushToUser(
   email: string,
   payload: PushPayload,
 ): Promise<void> {
+  ensureVapid();
   const subs = await getPushSubscriptions(email);
   if (subs.length === 0) return;
 

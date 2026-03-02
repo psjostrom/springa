@@ -10,8 +10,7 @@ export function useEnrichedEvents(
   const cacheMap = new Map<string, CachedActivity>(
     cachedActivities.map((a) => [a.activityId, a]),
   );
-  let changed = false;
-  const result = events.map((event) => {
+  return events.map((event) => {
     if (event.type !== "completed" || event.streamData || !event.activityId) return event;
     const cached = cacheMap.get(event.activityId);
     if (!cached) return event;
@@ -22,8 +21,6 @@ export function useEnrichedEvents(
     if (cached.cadence && cached.cadence.length > 0) streamData.cadence = cached.cadence;
     if (cached.altitude && cached.altitude.length > 0) streamData.altitude = cached.altitude;
     if (Object.keys(streamData).length === 0) return event;
-    changed = true;
     return { ...event, streamData };
   });
-  return changed ? result : events; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in map callback
 }

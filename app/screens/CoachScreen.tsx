@@ -76,19 +76,12 @@ export function CoachScreen({
     runBGContexts,
   });
 
-  const contextRef = useRef(context);
-  useEffect(() => {
-    contextRef.current = context;
-  }, [context]);
-
-  /* eslint-disable react-hooks/refs -- ref accessed in callback, not during render */
   const transport = new TextStreamChatTransport({
     api: "/api/chat",
-    prepareSendMessagesRequest: ({ id, messages, trigger }) => ({
-      body: { id, messages, context: contextRef.current, trigger },
+    prepareSendMessagesRequest: ({ id, messages, trigger, requestMetadata }) => ({
+      body: { id, messages, context: requestMetadata as string, trigger },
     }),
   });
-  /* eslint-enable react-hooks/refs */
 
   const { messages, sendMessage, status, error } = useChat({ transport });
 
@@ -106,7 +99,7 @@ export function CoachScreen({
     const msg = text ?? input;
     if (!msg.trim() || chatBusy) return;
     setInput("");
-    void sendMessage({ text: msg });
+    void sendMessage({ text: msg }, { metadata: context });
   };
 
   const showWelcome = messages.length === 0 && !contextLoading;

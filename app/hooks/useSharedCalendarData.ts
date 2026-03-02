@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
 import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
@@ -34,10 +34,12 @@ export function useSharedCalendarData(apiKey: string) {
     }
   };
 
+  const onLoad = useEffectEvent(load);
+
   useEffect(() => {
     if (!apiKey) return;
-    void load();
-  }, [apiKey]); // eslint-disable-line react-hooks/exhaustive-deps -- load is stable per apiKey
+    void onLoad();
+  }, [apiKey]);
 
   return { events, isLoading, error, reload: load };
 }

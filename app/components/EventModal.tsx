@@ -23,14 +23,14 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
-  const close = (e: MouseEvent) => {
-    if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-  };
-
   useEffect(() => {
-    if (open) document.addEventListener("click", close, true);
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("click", close, true);
     return () => { document.removeEventListener("click", close, true); };
-  }, [open, close]);
+  }, [open]);
 
   return (
     <span ref={ref} className="relative inline-flex items-center gap-0.5">

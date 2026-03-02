@@ -46,7 +46,8 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
   useEffect(() => {
     if (!apiKey || !enabled || loadedRef.current || sharedEvents.length === 0) return;
     loadedRef.current = true;
-    let cancelled = false;
+    const controller = new AbortController();
+    const aborted = () => controller.signal.aborted;
 
     void (async () => {
       setBgModelLoading(true);
@@ -72,7 +73,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
         // Fetch cache
         const cached = await fetchBGCache();
-        if (cancelled) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
+        if (aborted()) return;
 
         const cachedMap = new Map(
           cached
@@ -92,9 +93,9 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
           const uncachedIds = uncachedRuns.map((e) => e.activityId);
           const streamMap = await fetchStreamBatch(apiKey, uncachedIds, 3, (done, total) => {
-            if (!cancelled) setBgModelProgress({ done, total });
+            if (!aborted()) setBgModelProgress({ done, total });
           });
-          if (cancelled) return; // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
+          if (aborted()) return;
 
           for (const e of uncachedRuns) {
             const streams = streamMap.get(e.activityId);
@@ -129,7 +130,7 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
 
         // Build model from all cached data
         const model = buildBGModelFromCached(allCached);
-        if (!cancelled) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
+        if (!aborted()) {
           setBgModel(model);
           setCachedActivities(allCached);
           setCompletedRuns(runs);
@@ -138,11 +139,11 @@ export function useBGModel(apiKey: string, enabled: boolean, sharedEvents: Calen
         console.error("useBGModel: build failed", err);
         loadedRef.current = false;
       } finally {
-        if (!cancelled) setBgModelLoading(false); // eslint-disable-line @typescript-eslint/no-unnecessary-condition -- mutated in cleanup
+        if (!aborted()) setBgModelLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, [apiKey, enabled, sharedEvents]);
 
   // Compute RunBGContexts when both completed runs and xDrip readings are available

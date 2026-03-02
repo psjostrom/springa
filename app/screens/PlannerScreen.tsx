@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useEffectEvent, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { WorkoutEvent, CalendarEvent } from "@/lib/types";
@@ -157,12 +157,18 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
 
   // Auto-adapt trigger from feedback flow — fires once on mount when autoAdapt is true
   const autoAdaptFired = useRef(false);
-  useEffect(() => {
-    if (props.autoAdapt && !autoAdaptFired.current && !isAdapting && bgModel && hasPlannedEvents) {
+  const onAutoAdapt = useEffectEvent(() => {
+    if (!autoAdaptFired.current && !isAdapting) {
       autoAdaptFired.current = true;
       void handleAdapt();
     }
-  }, [props.autoAdapt, bgModel, hasPlannedEvents]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+
+  useEffect(() => {
+    if (props.autoAdapt && bgModel && hasPlannedEvents) {
+      onAutoAdapt();
+    }
+  }, [props.autoAdapt, bgModel, hasPlannedEvents]);
 
   const handleSync = async () => {
     if (!apiKey) {

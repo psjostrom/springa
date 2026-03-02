@@ -62,41 +62,43 @@ function FeedbackContent() {
     ? "/api/run-feedback?activityId=" + activityIdParam
     : "/api/run-feedback";
 
-  const loadFeedback = async (url: string) => {
-    setWaitingForSync(false);
-    const r = await fetch(url);
-    if (!r.ok) {
-      const body = (await r.json().catch(() => ({}))) as { retry?: boolean };
-      if (body.retry) {
-        setWaitingForSync(true);
-        return;
-      }
-      throw new Error("Failed to load data");
-    }
-    const data = (await r.json()) as FeedbackResponse;
-    setFeedback(data);
-    if (data.activityId) setActivityId(data.activityId);
-    if (data.rating) {
-      setRating(data.rating);
-      setComment(data.comment ?? "");
-      if (data.carbsG != null) setCarbsG(String(data.carbsG));
-      setSubmitted(true);
-    }
-    if (data.preRunCarbsG != null) setPreRunCarbsG(String(data.preRunCarbsG));
-    if (data.preRunCarbsMin != null) setPreRunCarbsMin(String(data.preRunCarbsMin));
-    if (data.prescribedCarbsG != null) {
-      setPrescribedCarbsG(data.prescribedCarbsG);
-      if (!data.rating && data.carbsG == null) {
-        setCarbsG(String(data.prescribedCarbsG));
-      }
-    }
-  };
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    loadFeedback(fetchUrl)
+    const load = async () => {
+      setWaitingForSync(false);
+      const r = await fetch(fetchUrl);
+      if (!r.ok) {
+        const body = (await r.json().catch(() => ({}))) as { retry?: boolean };
+        if (body.retry) {
+          setWaitingForSync(true);
+          return;
+        }
+        throw new Error("Failed to load data");
+      }
+      const data = (await r.json()) as FeedbackResponse;
+      setFeedback(data);
+      if (data.activityId) setActivityId(data.activityId);
+      if (data.rating) {
+        setRating(data.rating);
+        setComment(data.comment ?? "");
+        if (data.carbsG != null) setCarbsG(String(data.carbsG));
+        setSubmitted(true);
+      }
+      if (data.preRunCarbsG != null) setPreRunCarbsG(String(data.preRunCarbsG));
+      if (data.preRunCarbsMin != null) setPreRunCarbsMin(String(data.preRunCarbsMin));
+      if (data.prescribedCarbsG != null) {
+        setPrescribedCarbsG(data.prescribedCarbsG);
+        if (!data.rating && data.carbsG == null) {
+          setCarbsG(String(data.prescribedCarbsG));
+        }
+      }
+    };
+
+    load()
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
       .finally(() => { setLoading(false); });
-  }, [fetchUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchUrl, retryCount]);
 
   const handleSubmit = async () => {
     if (!activityId || !rating) return;
@@ -138,9 +140,7 @@ function FeedbackContent() {
         <button
           onClick={() => {
             setLoading(true);
-            loadFeedback(fetchUrl)
-              .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
-              .finally(() => { setLoading(false); });
+            setRetryCount((c) => c + 1);
           }}
           disabled={loading}
           className="px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"

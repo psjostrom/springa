@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useEffectEvent } from "react";
 import { RefreshCw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { CalendarEvent } from "@/lib/types";
@@ -17,7 +17,7 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalysis = async (regenerate = false, signal?: AbortSignal) => {
+  const fetchAnalysis = async (regenerate: boolean, signal?: AbortSignal) => {
     if (!event.activityId) return;
 
     setLoading(true);
@@ -54,11 +54,13 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
     }
   };
 
+  const onFetchAnalysis = useEffectEvent((signal: AbortSignal) => fetchAnalysis(false, signal));
+
   useEffect(() => {
     const controller = new AbortController();
-    void fetchAnalysis(false, controller.signal);
+    void onFetchAnalysis(controller.signal);
     return () => { controller.abort(); };
-  }, [event.activityId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.activityId]);
 
   if (!event.activityId) return null;
   if (!loading && !analysis && !error) return null;
