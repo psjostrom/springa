@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
 import { assessReadiness, type ReadinessLevel } from "@/lib/prerun";
@@ -33,10 +32,7 @@ export function PreRunReadiness({
   bgModel,
   category,
 }: PreRunReadinessProps) {
-  const guidance = useMemo(
-    () => assessReadiness({ currentBG, trendSlope, bgModel, category }),
-    [currentBG, trendSlope, bgModel, category],
-  );
+  const guidance = assessReadiness({ currentBG, trendSlope, bgModel, category });
 
   const levelColor = LEVEL_COLORS[guidance.level];
   const color = bgColor(currentBG);

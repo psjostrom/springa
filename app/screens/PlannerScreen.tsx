@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { WorkoutEvent, CalendarEvent } from "@/lib/types";
@@ -33,7 +33,7 @@ interface PlannerScreenProps {
   onSyncDone?: () => void;
 }
 
-export const PlannerScreen = memo(function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
+export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
   const raceDist = props.raceDist ?? 16;
   const lthr = props.lthr ?? DEFAULT_LTHR;
   const prefix = props.prefix ?? "eco16";
@@ -52,7 +52,7 @@ export const PlannerScreen = memo(function PlannerScreen({ apiKey, bgModel, race
 
   const chartData = useWeeklyVolumeData(planEvents);
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = () => {
     if (!apiKey) {
       setStatusMsg("Missing API Key");
       return;
@@ -62,7 +62,7 @@ export const PlannerScreen = memo(function PlannerScreen({ apiKey, bgModel, race
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));
     setStatusMsg("");
-  }, [apiKey, bgModel, raceDate, raceDist, prefix, totalWeeks, startKm, lthr]);
+  };
 
   const handleUpload = async () => {
     if (!apiKey) {
@@ -334,4 +334,4 @@ export const PlannerScreen = memo(function PlannerScreen({ apiKey, bgModel, race
       </div>
     </div>
   );
-});
+}

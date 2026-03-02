@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   Loader2,
   Pencil,
@@ -102,7 +102,7 @@ function WidgetEditBar({
   );
 }
 
-export const IntelScreen = memo(function IntelScreen({
+export function IntelScreen({
   events,
   eventsLoading,
   eventsError,
@@ -126,17 +126,11 @@ export const IntelScreen = memo(function IntelScreen({
 }: IntelScreenProps) {
   const [editMode, setEditMode] = useState(false);
 
-  const fitnessData = useMemo(
-    () => computeFitnessData(events, 180),
-    [events],
-  );
+  const fitnessData = computeFitnessData(events, 180);
 
-  const insights = useMemo(
-    () => (fitnessData.length > 0 ? computeInsights(fitnessData, events) : null),
-    [fitnessData, events],
-  );
+  const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
-  const paceCalibration = useMemo(() => {
+  const paceCalibration = (() => {
     if (!lthr || cachedActivities.length === 0) return null;
     const allSegments = cachedActivities.flatMap((a) =>
       a.pace && a.pace.length > 0 && a.hr.length > 0
@@ -145,12 +139,9 @@ export const IntelScreen = memo(function IntelScreen({
     );
     if (allSegments.length === 0) return null;
     return buildCalibratedPaceTable(allSegments);
-  }, [cachedActivities, lthr]);
+  })();
 
-  const paceTable = useMemo(
-    () => paceCalibration ? toPaceTable(paceCalibration) : undefined,
-    [paceCalibration],
-  );
+  const paceTable = paceCalibration ? toPaceTable(paceCalibration) : undefined;
 
   // Widget render map — each key maps to a render function or null if data unavailable
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
@@ -331,4 +322,4 @@ export const IntelScreen = memo(function IntelScreen({
       </div>
     </div>
   );
-});
+}

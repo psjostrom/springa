@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -197,13 +197,13 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
   const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
 
   // Compute the latest completed activity ID with glucose data from props
-  const latestCompletedActivityId = useMemo(() => {
+  const latestCompletedActivityId = (() => {
     if (!events) return null;
     const withGlucose = events
       .filter((e) => e.type === "completed" && e.streamData?.glucose && e.activityId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return withGlucose[0]?.activityId ?? null;
-  }, [events]);
+  })();
 
   const isStale = patterns != null
     && savedLatestActivityId != null
@@ -227,7 +227,7 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     })();
   }, []);
 
-  const handleDiscover = useCallback(async () => {
+  const handleDiscover = async () => {
     if (!events || isAnalyzing) return;
     setIsAnalyzing(true);
     setPatternsError(null);
@@ -252,7 +252,7 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     } finally {
       setIsAnalyzing(false);
     }
-  }, [events, isAnalyzing]);
+  };
 
   return (
     <div className="space-y-3">

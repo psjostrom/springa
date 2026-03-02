@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { CalendarEvent } from "@/lib/types";
@@ -17,51 +17,48 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalysis = useCallback(
-    async (regenerate = false, signal?: AbortSignal) => {
-      if (!event.activityId) return;
+  const fetchAnalysis = async (regenerate = false, signal?: AbortSignal) => {
+    if (!event.activityId) return;
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const reportCard = buildReportCard(event, runBGContext);
+    try {
+      const reportCard = buildReportCard(event, runBGContext);
 
-        const res = await fetch("/api/run-analysis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            activityId: event.activityId,
-            event,
-            runBGContext,
-            reportCard,
-            regenerate,
-          }),
-          signal,
-        });
+      const res = await fetch("/api/run-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: event.activityId,
+          event,
+          runBGContext,
+          reportCard,
+          regenerate,
+        }),
+        signal,
+      });
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({})) as { error?: string };
-          throw new Error(data.error ?? `HTTP ${res.status}`);
-        }
-
-        const data = await res.json() as { analysis: string };
-        if (!signal?.aborted) setAnalysis(data.analysis);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Failed to load analysis");
-      } finally {
-        if (!signal?.aborted) setLoading(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
-    },
-    [event, runBGContext],
-  );
+
+      const data = await res.json() as { analysis: string };
+      if (!signal?.aborted) setAnalysis(data.analysis);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "Failed to load analysis");
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
     void fetchAnalysis(false, controller.signal);
     return () => { controller.abort(); };
-  }, [fetchAnalysis]);
+  }, [event.activityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!event.activityId) return null;
   if (!loading && !analysis && !error) return null;

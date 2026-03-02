@@ -1,6 +1,5 @@
 "use client";
 
-import { memo } from "react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -17,7 +16,7 @@ interface CalendarScreenProps {
   bgModel?: BGResponseModel | null;
 }
 
-export const CalendarScreen = memo(function CalendarScreen({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarScreenProps) {
+export function CalendarScreen({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarScreenProps) {
   return (
     <div className="h-full bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
       <main className="flex-1 bg-[#0d0a1a] min-h-0 min-w-0">
@@ -27,4 +26,4 @@ export const CalendarScreen = memo(function CalendarScreen({ apiKey, initialEven
       </main>
     </div>
   );
-});
+}

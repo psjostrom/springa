@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 
 /**
  * Manages a URL search parameter as modal state with proper history handling.
@@ -26,24 +26,21 @@ export function useModalURL(paramName: string): {
     return () => { window.removeEventListener("popstate", onPopState); };
   }, [paramName]);
 
-  const open = useCallback(
-    (newValue = "1") => {
-      setValue(newValue);
-      const params = new URLSearchParams(window.location.search);
-      const wasOpen = params.has(paramName);
-      params.set(paramName, newValue);
-      const url = `?${params.toString()}`;
-      if (wasOpen) {
-        window.history.replaceState(null, "", url);
-      } else {
-        window.history.pushState(null, "", url);
-        pushedRef.current = true;
-      }
-    },
-    [paramName],
-  );
+  const open = (newValue = "1") => {
+    setValue(newValue);
+    const params = new URLSearchParams(window.location.search);
+    const wasOpen = params.has(paramName);
+    params.set(paramName, newValue);
+    const url = `?${params.toString()}`;
+    if (wasOpen) {
+      window.history.replaceState(null, "", url);
+    } else {
+      window.history.pushState(null, "", url);
+      pushedRef.current = true;
+    }
+  };
 
-  const close = useCallback(() => {
+  const close = () => {
     setValue(null);
     if (pushedRef.current) {
       pushedRef.current = false;
@@ -58,7 +55,7 @@ export function useModalURL(paramName: string): {
         query ? `?${query}` : window.location.pathname,
       );
     }
-  }, [paramName]);
+  };
 
   return { value, open, close };
 }

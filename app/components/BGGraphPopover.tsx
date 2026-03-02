@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { XdripReading } from "@/lib/xdrip";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
@@ -37,10 +37,10 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
   }, [onClose]);
 
   // Filter to last 3 hours
-  const data = useMemo(() => {
+  const data = (() => {
     const cutoff = now - 3 * 60 * 60 * 1000;
     return readings.filter((r) => r.ts >= cutoff).sort((a, b) => a.ts - b.ts);
-  }, [readings, now]);
+  })();
 
   if (data.length === 0) return null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, type KeyboardEvent, type ChangeEvent } from "react";
+import { useRef, type KeyboardEvent, type ChangeEvent } from "react";
 import { Send } from "lucide-react";
 
 interface ChatInputProps {
@@ -13,12 +13,12 @@ interface ChatInputProps {
 export function ChatInput({ value, onChange, onSubmit, isLoading }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const adjustHeight = useCallback(() => {
+  const adjustHeight = () => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-  }, []);
+  };
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);

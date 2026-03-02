@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -52,7 +51,7 @@ export function VolumeTrendChart({
   paceTable,
 }: VolumeTrendChartProps) {
 
-  const data = useMemo(() => {
+  const data = (() => {
     const rDate = parseISO(raceDate);
     const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
     const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
@@ -106,7 +105,7 @@ export function VolumeTrendChart({
     }
 
     return { weeks, currentWeekIdx };
-  }, [events, raceDate, totalWeeks, raceDist, prefix, startKm, lthr, paceTable]);
+  })();
 
   if (events.length === 0) return null;
 

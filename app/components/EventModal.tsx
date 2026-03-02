@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, useReducer } from "react";
+import { useState, useEffect, useRef, useReducer } from "react";
 import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
@@ -23,12 +23,9 @@ function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
-  const close = useCallback(
-    (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    },
-    [],
-  );
+  const close = (e: MouseEvent) => {
+    if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+  };
 
   useEffect(() => {
     if (open) document.addEventListener("click", close, true);
@@ -236,24 +233,24 @@ export function EventModal({
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
   const showReadiness = !selectedEvent.activityId && isToday(selectedEvent.date) && currentBG != null;
-  const workoutCategory = useMemo(() => {
+  const workoutCategory = (() => {
     const raw = getWorkoutCategory(selectedEvent.name);
     return raw === "other" ? "easy" : raw;
-  }, [selectedEvent.name]);
+  })();
 
   // When the BG model has a data-driven fuel rate for today's category, prefer it
   // over the static prescribed rate from the event.
-  const modelFuelRate = useMemo(() => {
+  const modelFuelRate = (() => {
     if (!showReadiness || !bgModel) return null;
     const target = bgModel.targetFuelRates.find((t) => t.category === workoutCategory);
     return target?.targetFuelRate ?? null;
-  }, [showReadiness, bgModel, workoutCategory]);
+  })();
 
   useEffect(() => {
     dispatch({ type: "RESET" });
   }, [selectedEvent.id]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     dispatch({ type: "START_CLOSING" });
     const isMobile = window.innerWidth < 640;
     if (isMobile) {
@@ -261,7 +258,7 @@ export function EventModal({
     } else {
       onClose();
     }
-  }, [onClose]);
+  };
 
   const saveCarbs = async () => {
     const val = parseInt(carbsValue, 10);

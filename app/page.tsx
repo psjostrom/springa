@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useModalURL } from "./hooks/useModalURL";
 import { usePaceTable } from "./hooks/usePaceTable";
@@ -112,18 +112,18 @@ function HomeContent() {
   // BG graph popover
   const bgGraph = useModalURL("bg");
 
-  const handleTabChange = useCallback((tab: Tab) => {
+  const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
     params.set("tab", tab);
     router.push(`?${params.toString()}`, { scroll: false });
-  }, [router]);
+  };
 
   const apiKey = settings?.intervalsApiKey ?? "";
 
   // Shared calendar events — single fetch for all screens
   const { events: calendarEvents, isLoading: calendarLoading, error: calendarError, reload: calendarReload } = useSharedCalendarData(apiKey);
-  const handleReload = useCallback(() => { void calendarReload(); }, [calendarReload]);
+  const handleReload = () => { void calendarReload(); };
 
   // Live BG from xDrip
   const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
@@ -143,36 +143,30 @@ function HomeContent() {
   const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
 
   // Widget layout — derived from settings, debounced save
-  const widgetLayout = useMemo(
-    () => resolveLayout({ widgetOrder: settings?.widgetOrder, hiddenWidgets: settings?.hiddenWidgets }),
-    [settings?.widgetOrder, settings?.hiddenWidgets],
-  );
+  const widgetLayout = resolveLayout({ widgetOrder: settings?.widgetOrder, hiddenWidgets: settings?.hiddenWidgets });
 
   const widgetSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const handleWidgetLayoutChange = useCallback(
-    (layout: WidgetLayout) => {
-      // Optimistic local update
-      setSettings((prev) => ({
-        ...prev,
-        widgetOrder: layout.widgetOrder,
-        hiddenWidgets: layout.hiddenWidgets,
-      }));
-      // Debounced persist
-      if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
-      widgetSaveTimer.current = setTimeout(() => {
-        void fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            widgetOrder: layout.widgetOrder,
-            hiddenWidgets: layout.hiddenWidgets,
-          }),
-        });
-      }, 800);
-    },
-    [],
-  );
+  const handleWidgetLayoutChange = (layout: WidgetLayout) => {
+    // Optimistic local update
+    setSettings((prev) => ({
+      ...prev,
+      widgetOrder: layout.widgetOrder,
+      hiddenWidgets: layout.hiddenWidgets,
+    }));
+    // Debounced persist
+    if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
+    widgetSaveTimer.current = setTimeout(() => {
+      void fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          widgetOrder: layout.widgetOrder,
+          hiddenWidgets: layout.hiddenWidgets,
+        }),
+      });
+    }, 800);
+  };
 
   const openBGGraph = bgGraph.open;
   const closeBGGraph = bgGraph.close;
@@ -180,17 +174,14 @@ function HomeContent() {
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
-  const updateSettings = useCallback(
-    async (partial: Partial<UserSettings>): Promise<void> => {
-      await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(partial),
-      });
-      setSettings((prev) => ({ ...prev, ...partial }));
-    },
-    [],
-  );
+  const updateSettings = async (partial: Partial<UserSettings>): Promise<void> => {
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(partial),
+    });
+    setSettings((prev) => ({ ...prev, ...partial }));
+  };
 
   if (settingsLoading) return splashFallback;
 

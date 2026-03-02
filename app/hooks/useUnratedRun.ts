@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import type { CalendarEvent } from "@/lib/types";
 
 interface UnratedRun {
@@ -17,20 +16,18 @@ const CUTOFF = Date.now() - SEVEN_DAYS_MS;
  * Pure client-side — filters directly from CalendarEvent.rating field.
  */
 export function useUnratedRun(events: CalendarEvent[]): UnratedRun | null {
-  return useMemo(() => {
-    const mostRecent = events
-      .filter(
-        (e): e is CalendarEvent & { activityId: string } =>
-          e.type === "completed" &&
-          typeof e.activityId === "string" &&
-          !e.rating &&
-          e.date.getTime() >= CUTOFF,
-      )
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .at(0);
+  const mostRecent = events
+    .filter(
+      (e): e is CalendarEvent & { activityId: string } =>
+        e.type === "completed" &&
+        typeof e.activityId === "string" &&
+        !e.rating &&
+        e.date.getTime() >= CUTOFF,
+    )
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .at(0);
 
-    return mostRecent
-      ? { activityId: mostRecent.activityId, name: mostRecent.name }
-      : null;
-  }, [events]);
+  return mostRecent
+    ? { activityId: mostRecent.activityId, name: mostRecent.name }
+    : null;
 }

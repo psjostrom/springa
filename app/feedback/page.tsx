@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 interface FeedbackResponse {
@@ -62,7 +62,7 @@ function FeedbackContent() {
     ? "/api/run-feedback?activityId=" + activityIdParam
     : "/api/run-feedback";
 
-  const loadFeedback = useCallback(async (url: string) => {
+  const loadFeedback = async (url: string) => {
     setWaitingForSync(false);
     const r = await fetch(url);
     if (!r.ok) {
@@ -90,13 +90,13 @@ function FeedbackContent() {
         setCarbsG(String(data.prescribedCarbsG));
       }
     }
-  }, []);
+  };
 
   useEffect(() => {
     loadFeedback(fetchUrl)
       .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
       .finally(() => { setLoading(false); });
-  }, [fetchUrl, loadFeedback]);
+  }, [fetchUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     if (!activityId || !rating) return;

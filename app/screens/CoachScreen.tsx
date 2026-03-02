@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
@@ -43,7 +43,7 @@ interface CoachScreenProps {
   runBGContexts?: Map<string, RunBGContext>;
 }
 
-export const CoachScreen = memo(function CoachScreen({
+export function CoachScreen({
   events,
   phaseInfo,
   bgModel,
@@ -82,16 +82,12 @@ export const CoachScreen = memo(function CoachScreen({
   }, [context]);
 
   /* eslint-disable react-hooks/refs -- ref accessed in callback, not during render */
-  const transport = useMemo(
-    () =>
-      new TextStreamChatTransport({
-        api: "/api/chat",
-        prepareSendMessagesRequest: ({ id, messages, trigger }) => ({
-          body: { id, messages, context: contextRef.current, trigger },
-        }),
-      }),
-    [],
-  );
+  const transport = new TextStreamChatTransport({
+    api: "/api/chat",
+    prepareSendMessagesRequest: ({ id, messages, trigger }) => ({
+      body: { id, messages, context: contextRef.current, trigger },
+    }),
+  });
   /* eslint-enable react-hooks/refs */
 
   const { messages, sendMessage, status, error } = useChat({ transport });
@@ -185,4 +181,4 @@ export const CoachScreen = memo(function CoachScreen({
       />
     </div>
   );
-});
+}

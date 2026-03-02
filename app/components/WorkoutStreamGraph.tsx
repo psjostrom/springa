@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import type { StreamData } from "@/lib/types";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 
@@ -121,8 +121,8 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
     }
   }
 
-  // Memoize expensive path + scale computation
-  const streamPathData = useMemo(() => {
+  // Path + scale computation
+  const streamPathData = (() => {
     return selectedStreams
       .map((streamType) => {
         const data = streamData[streamType];
@@ -159,24 +159,20 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
         return { streamType, pathData, config, minValue, maxValue, data, scaleY };
       })
       .filter(Boolean) as { streamType: StreamType; pathData: string; config: typeof streamConfigs[StreamType]; minValue: number; maxValue: number; data: { time: number; value: number }[]; scaleY: (v: number) => number }[];
-  }, [streamData, selectedStreams, maxTime, useSingleStreamMode, globalMin, globalMax]);
+  })();
 
-  const streamPaths = useMemo(
-    () =>
-      streamPathData.map((path) => {
-        let hoverValue: number | null = null;
-        let hoverY: number | null = null;
-        if (hoverTime !== null) {
-          const closest = path.data.reduce((prev, curr) =>
-            Math.abs(curr.time - hoverTime) < Math.abs(prev.time - hoverTime) ? curr : prev,
-          );
-          hoverValue = closest.value;
-          hoverY = path.scaleY(closest.value);
-        }
-        return { ...path, hoverValue, hoverY };
-      }),
-    [streamPathData, hoverTime],
-  );
+  const streamPaths = streamPathData.map((path) => {
+    let hoverValue: number | null = null;
+    let hoverY: number | null = null;
+    if (hoverTime !== null) {
+      const closest = path.data.reduce((prev, curr) =>
+        Math.abs(curr.time - hoverTime) < Math.abs(prev.time - hoverTime) ? curr : prev,
+      );
+      hoverValue = closest.value;
+      hoverY = path.scaleY(closest.value);
+    }
+    return { ...path, hoverValue, hoverY };
+  });
 
   if (availableStreams.length === 0) return null;
 

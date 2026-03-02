@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import { buildSystemPrompt } from "@/lib/coachContext";
 import type { BGResponseModel } from "@/lib/bgModel";
@@ -27,32 +26,29 @@ interface UseCoachDataOptions {
 }
 
 export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
-  const insights = useMemo(() => {
-    if (events.length === 0) return null;
-    const fitnessData = computeFitnessData(events, 365);
-    return computeInsights(fitnessData, events);
-  }, [events]);
+  const insights = events.length === 0
+    ? null
+    : computeInsights(computeFitnessData(events, 365), events);
 
-  const context = useMemo(() => {
-    if (events.length === 0) return "";
-    return buildSystemPrompt({
-      phaseInfo,
-      insights,
-      bgModel,
-      events,
-      raceDate,
-      lthr,
-      maxHr,
-      hrZones,
-      paceTable,
-      currentBG,
-      trendSlope,
-      trendArrow,
-      lastUpdate,
-      readings,
-      runBGContexts,
-    });
-  }, [events, insights, bgModel, phaseInfo, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts]);
+  const context = events.length === 0
+    ? ""
+    : buildSystemPrompt({
+        phaseInfo,
+        insights,
+        bgModel,
+        events,
+        raceDate,
+        lthr,
+        maxHr,
+        hrZones,
+        paceTable,
+        currentBG,
+        trendSlope,
+        trendArrow,
+        lastUpdate,
+        readings,
+        runBGContexts,
+      });
 
   return { context, isLoading: events.length === 0 };
 }

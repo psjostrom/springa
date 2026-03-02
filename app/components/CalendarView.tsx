@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useModalURL } from "../hooks/useModalURL";
 import {
   format,
@@ -55,10 +55,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   const selectedEventId = modal.value;
 
   // Derive selectedEvent from events + selectedEventId (replaces enrichment effect)
-  const selectedEvent = useMemo(() => {
-    if (!selectedEventId) return null;
-    return events.find((e) => e.id === selectedEventId) ?? null;
-  }, [events, selectedEventId]);
+  const selectedEvent = selectedEventId
+    ? events.find((e) => e.id === selectedEventId) ?? null
+    : null;
 
   // Sync local state when shared events change (setState during render — React-approved pattern)
   const [prevInitial, setPrevInitial] = useState(initialEvents);
@@ -130,7 +129,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   }, [selectedEventId, events, apiKey]);
 
   // Generate calendar grid
-  const calendarDays = useMemo(() => {
+  const calendarDays = (() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -143,12 +142,12 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       day = addDays(day, 1);
     }
     return days;
-  }, [currentMonth]);
+  })();
 
   // Get events for a specific date
-  const getEventsForDate = useCallback((date: Date): CalendarEvent[] => {
+  const getEventsForDate = (date: Date): CalendarEvent[] => {
     return events.filter((event) => isSameDay(event.date, date));
-  }, [events]);
+  };
 
   const openWorkoutModal = (event: CalendarEvent) => { modal.open(event.id); };
   const closeWorkoutModal = modal.close;
@@ -173,7 +172,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   };
 
   // Handle delete from modal (planned events or completed activities)
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
     if (eventId.startsWith("activity-")) {
       const activityId = eventId.replace("activity-", "");
       await deleteActivity(apiKey, activityId);
@@ -184,7 +183,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
     closeWorkoutModal();
-  }, [apiKey, closeWorkoutModal]);
+  };
 
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentMonth(
@@ -203,25 +202,20 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   };
 
   // Generate week days
-  const weekDays = useMemo(() => {
+  const weekDays = (() => {
     const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 });
     const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
       days.push(addDays(weekStart, i));
     }
     return days;
-  }, [selectedWeek]);
+  })();
 
   // Get all loaded events, sorted by date for agenda view
-  const agendaEvents = useMemo(() => {
-    return [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [events]);
+  const agendaEvents = [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   // Stable drop handler that prevents default then delegates
-  const handleDropEvent = useCallback(
-    (_e: React.DragEvent, day: Date) => { void handleDrop(day); },
-    [handleDrop],
-  );
+  const handleDropEvent = (_e: React.DragEvent, day: Date) => { void handleDrop(day); };
 
   const renderDayCell = (day: Date, idx: number, minHeight: string, showMonthOpacity: boolean) => (
     <DayCell

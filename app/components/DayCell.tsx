@@ -22,7 +22,7 @@ interface DayCellProps {
   onEventClick: (event: CalendarEvent) => void;
 }
 
-export const DayCell = React.memo(function DayCell({
+export function DayCell({
   day,
   dayEvents,
   minHeight,
@@ -100,4 +100,4 @@ export const DayCell = React.memo(function DayCell({
       </div>
     </div>
   );
-});
+}

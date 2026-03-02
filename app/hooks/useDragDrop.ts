@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
 import { updateEvent } from "@/lib/intervalsApi";
@@ -12,37 +12,37 @@ export function useDragDrop(
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [dragError, setDragError] = useState<string | null>(null);
 
-  const handleDragStart = useCallback((e: React.DragEvent, event: CalendarEvent) => {
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
     if (event.type !== "planned") return;
     setDraggedEvent(event);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", event.id);
-  }, []);
+  };
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = () => {
     setDraggedEvent(null);
     setDragOverDate(null);
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     if (!draggedEvent) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-  }, [draggedEvent]);
+  };
 
-  const handleDragEnter = useCallback((dateKey: string) => {
+  const handleDragEnter = (dateKey: string) => {
     if (!draggedEvent) return;
     setDragOverDate(dateKey);
-  }, [draggedEvent]);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     if (!draggedEvent) return;
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     if (relatedTarget && (e.currentTarget as HTMLElement).contains(relatedTarget)) return;
     setDragOverDate(null);
-  }, [draggedEvent]);
+  };
 
-  const handleDrop = useCallback(async (targetDate: Date) => {
+  const handleDrop = async (targetDate: Date) => {
     if (!draggedEvent) return;
 
     const numericId = parseEventId(draggedEvent.id);
@@ -73,9 +73,9 @@ export function useDragDrop(
       setDraggedEvent(null);
       setDragOverDate(null);
     }
-  }, [draggedEvent, apiKey, setEvents]);
+  };
 
-  const clearDragError = useCallback(() => { setDragError(null); }, []);
+  const clearDragError = () => { setDragError(null); };
 
   return {
     draggedEvent,
