@@ -3,6 +3,7 @@ import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
 import type { RunHistoryEntry } from "./runAnalysisDb";
 import type { InsulinContext } from "./insulinContext";
+import type { FitnessInsights } from "./fitness";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR, HR_ZONE_BANDS } from "./constants";
@@ -23,9 +24,11 @@ export function buildRunAnalysisPrompt(params: {
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
+  fitnessInsights?: FitnessInsights | null;
+  bgModelSummary?: string;
   crossRunPatterns?: string;
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, crossRunPatterns } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns } = params;
   const lthr = params.lthr ?? DEFAULT_LTHR;
   const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
   const easyMaxBpm = params.hrZones?.length === 5
@@ -77,6 +80,8 @@ Output format (bullet points only, max 150 words):
 **Next Time**:
 - Concrete adjustments with specific numbers (pace, fuel rate, start BG target)
 
+If "Fitness Context" is provided, factor training load into the analysis — e.g. high fatigue (low TSB) may explain elevated HR or slower pace. Don't echo the numbers mechanically; use them to explain performance.
+If "BG Model" data is provided, compare this run's BG behavior to the category averages — e.g. "your drop rate was -1.2 vs the easy average of -0.8."
 If "Cross-Run BG Patterns" are provided, reference relevant patterns to contextualize this run — e.g. "this matches the pattern of faster drops when entrySlope is negative" or "your easy runs consistently show X." Cite the pattern, don't just repeat it.
 
 Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
@@ -247,6 +252,19 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
         { bgSummary: h.bgSummary, feedback: fb },
       ));
     }
+  }
+
+  if (fitnessInsights) {
+    lines.push("");
+    lines.push("## Fitness Context");
+    lines.push(`CTL (fitness): ${fitnessInsights.currentCtl} | ATL (fatigue): ${fitnessInsights.currentAtl} | TSB (form): ${fitnessInsights.currentTsb}`);
+    lines.push(`Form zone: ${fitnessInsights.formZoneLabel} | Ramp rate: ${fitnessInsights.rampRate}/week`);
+  }
+
+  if (bgModelSummary) {
+    lines.push("");
+    lines.push("## BG Model (cross-run averages)");
+    lines.push(bgModelSummary);
   }
 
   if (crossRunPatterns) {

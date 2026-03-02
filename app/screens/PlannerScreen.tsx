@@ -3,7 +3,7 @@
 import { useState, useEffect, useEffectEvent, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { WorkoutEvent, CalendarEvent } from "@/lib/types";
+import type { WorkoutEvent, CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
@@ -27,6 +27,9 @@ interface PlannerScreenProps {
   totalWeeks?: number;
   startKm?: number;
   lthr?: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
   events?: CalendarEvent[];
   runBGContexts?: Map<string, RunBGContext>;
   autoAdapt?: boolean;
@@ -138,6 +141,9 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
           runBGContexts: bgContextRecord,
           prefix,
           lthr,
+          maxHr: props.maxHr,
+          hrZones: props.hrZones,
+          paceTable: props.paceTable,
         }),
       });
 

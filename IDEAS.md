@@ -16,9 +16,73 @@ Pre-run readiness, report card scoring, and push notifications use fixed thresho
 
 ### AI Data Audit
 
-Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. Nobody has a clear map of what each consumer receives, what it's missing, and where the gaps create bad advice. The "BG crashed → trim fuel" incident happened because the adapt prompt had feedback but lacked cross-category visibility. The coach gave a BG-only response because it had no HR zones, no workout structure, no planned-vs-actual comparison.
+Three AI consumers (adapt-plan, coach, run-analysis) each build their own context from overlapping but inconsistent data sources. The matrix below maps what each consumer actually receives today.
 
-**Deliverable:** A matrix — rows are data dimensions (HR zones, workout structure, feedback, BG streams, recovery patterns, fitness load, pace splits, planned fuel, etc.), columns are AI consumers (adapt-plan, coach, run-analysis). Each cell: present / absent / partial. Then prioritize filling the gaps that cause the worst advice.
+**Source files:** `lib/adaptPlanPrompt.ts`, `lib/runAnalysisPrompt.ts`, `lib/coachContext.ts` + `app/api/chat/route.ts`.
+
+#### Data Matrix
+
+| Data Dimension | Adapt | Run Analysis | Coach |
+|---|---|---|---|
+| **Runner profile** (age, weight, T1D) | Absent | Present (system) | Present (system) |
+| **LTHR** | Present (system) | Present (system) | Present (system) |
+| **Max HR** | Present (system) | Present (system) | Present (system) |
+| **HR zone boundaries** | Present (zone block) | Present (zone block) | Present (zone block) |
+| **Pace zones** (calibrated table) | Present (zone block) | Present (zone block) | Present (zone block) |
+| **Race date** | Absent | Absent | Present |
+| **Phase / plan progress** | Absent | Absent | Present |
+| **Fitness load** (CTL/ATL/TSB) | Partial (CTL, ATL, TSB, form, ramp) | Present (CTL, ATL, TSB, form, ramp) | Present (full: CTL, ATL, TSB, trend, peak, 7d/28d) |
+| **This workout** (name, date, cat, dur, dist) | Present | Present | N/A |
+| **Workout structure** (description/segments) | Present (`adapted.structure`) | Absent | Absent |
+| **Fuel rate** (planned) | Present | Present (via reportCard) | Present (per run) |
+| **Actual carbs** (carbsIngested) | Absent | Present (reportCard fuel) | Present (per run) |
+| **Pre-run carbs** (grams + timing) | Absent | Present | Present (per run) |
+| **Recent same-category runs** | Present (5 runs) | Absent (has all-category history) | Absent (has all-category runs) |
+| **All-category run history** | Partial (cross-cat feedback only) | Present (SQLite cache, all cats) | Present (14 days, up to 10) |
+| **Per-run: date, pace, dist, avgHR** | Present | Present | Present |
+| **Per-run: maxHR** | Absent | Present (history) | Present |
+| **Per-run: load** | Absent | Present (history) | Present |
+| **Per-run: duration** | Absent | Present (history) | Present |
+| **Per-run: HR zone split** (Z1–Z5) | Absent | Present (history) | Present |
+| **Per-run: BG start + rate** (from model) | Absent | Absent | Present |
+| **Per-run: BG summary** (start, end, drop) | Absent | Present (history) | Absent |
+| **Per-run: entry slope + label** | Present (via runBGContext) | Present (via runBGContext in history) | Present (via runBGContext) |
+| **Per-run: recovery** (drop30m, nadir, hypo) | Present (via runBGContext) | Present (current run only, reportCard) | Present (via runBGContext) |
+| **Runner feedback** (rating + comment) | Present (all runs) | Present (current + history) | Present (per run) |
+| **BG model categories** (avgRate, avgFuel, samples) | Present (this category) | Present (all categories, summary) | Present (all categories) |
+| **Target fuel rates** (from model) | Present (this category) | Present (all categories, summary) | Present (all categories) |
+| **BG by start level** | Absent | Present (summary) | Present |
+| **BG by entry slope** | Absent | Present (summary) | Present |
+| **BG by time decay** | Absent | Present (summary) | Present |
+| **Recovery patterns** (per-category aggregates) | Present (this category) | Absent | Present (all categories) |
+| **Cross-run BG patterns** (AI-generated) | Present | Present | Present |
+| **Report card scores** (BG, HR, fuel, entry, recovery) | Absent | Present (current run) | Absent |
+| **Glucose curve** (stream data) | Absent | Present (current run) | Absent |
+| **Insulin context** (IOB, time since bolus/meal) | Absent | Present (from MyLife) | Absent |
+| **Live BG** (current + trend + 30min history) | Absent | Absent | Present |
+| **xDrip readings** | Absent | Absent | Present (in live BG) |
+
+#### Gap Analysis — Worst-Advice Risks
+
+~~**1. Adapt has no pace zones or HR zone boundaries.**~~ Fixed — zone block added to adapt system prompt.
+
+~~**2. Run analysis has no fitness context.**~~ Fixed — CTL/ATL/TSB computed server-side from 90-day Intervals.icu fetch.
+
+~~**3. Run analysis has no BG model.**~~ Fixed — `summarizeBGModel` passed from client as compact string.
+
+**4. Coach has no insulin context.** (Impact: low)
+MyLife Cloud has ~2 hour lag, so insulin data is only useful for retrospective questions. The coach already handles pre-run advice via live BG + trend. If the user asks "why did my BG crash on Tuesday's run?", insulin context would help — but run analysis already has it and answers that question better. Low priority.
+
+**5. Coach has no report card scores.** (Impact: low)
+Can't answer "am I getting better at BG management?" with structured trend data. The completed run lines have HR zones and BG data but not the scored ratings. Could be useful but the cross-run patterns already surface trends. Low priority.
+
+#### Recommended Fixes (by effort/impact)
+
+1. ~~**Add pace zones + HR zones to adapt**~~ — Done. `buildZoneBlock` + `buildProfileLine` added to adapt system prompt. `maxHr`, `hrZones`, `paceTable` threaded from page → PlannerScreen → route → prompt builder.
+2. ~~**Add fitness summary to run analysis**~~ — Done. Route fetches 90 days of activities from Intervals.icu, computes CTL/ATL/TSB via `computeFitnessData`/`computeInsights`, passes to prompt builder.
+3. ~~**Add BG model category summary to run analysis**~~ — Done. `summarizeBGModel` (exported from `coachContext.ts`) called in RunAnalysis component, passed as `bgModelSummary` string to route → prompt builder.
+4. **Insulin context in coach** — fetch from MyLife in chat route. Heavier — needs MyLife auth + deciding which run's insulin to show. Defer.
+5. **Report card trends in coach** — aggregate scores across runs. Needs new DB query. Defer.
 
 ### Readiness-Adaptive Training
 

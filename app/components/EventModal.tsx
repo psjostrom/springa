@@ -541,7 +541,7 @@ export function EventModal({
 
             {/* Run Analysis */}
             {selectedEvent.activityId && (
-              <RunAnalysis event={selectedEvent} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} />
+              <RunAnalysis event={selectedEvent} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} bgModel={bgModel} />
             )}
 
             {/* Feedback */}

@@ -434,3 +434,59 @@ export function suggestFuelAdjustments(model: BGResponseModel): FuelSuggestion[]
 
   return suggestions;
 }
+
+/**
+ * Summarize a BGResponseModel into a compact text block for AI prompts.
+ */
+export function summarizeBGModel(bgModel: BGResponseModel | null): string {
+  if (!bgModel) return "No BG model data available yet.";
+
+  const lines: string[] = [`Activities analyzed: ${bgModel.activitiesAnalyzed}`];
+
+  for (const cat of ["easy", "long", "interval"] as const) {
+    const c = bgModel.categories[cat];
+    if (!c) continue;
+    lines.push(
+      `- ${cat}: avg BG change ${c.avgRate > 0 ? "+" : ""}${c.avgRate.toFixed(2)} mmol/L per 10min` +
+        ` (${c.confidence} confidence, ${c.activityCount} activities)` +
+        (c.avgFuelRate != null ? `, avg fuel ${c.avgFuelRate.toFixed(0)}g/h` : ""),
+    );
+  }
+
+  for (const t of bgModel.targetFuelRates) {
+    lines.push(
+      `- Suggested fuel for ${t.category}: ${t.targetFuelRate.toFixed(0)}g/h` +
+        (t.currentAvgFuel != null ? ` (current avg: ${t.currentAvgFuel.toFixed(0)}g/h)` : "") +
+        ` [${t.confidence} confidence, ${t.method}]`,
+    );
+  }
+
+  if (bgModel.bgByStartLevel.length > 0) {
+    lines.push("BG response by starting level:");
+    for (const b of bgModel.bgByStartLevel) {
+      lines.push(
+        `- Start ${b.band} mmol/L: avg ${b.avgRate > 0 ? "+" : ""}${b.avgRate.toFixed(2)} mmol/L per 10min (${b.activityCount} activities)`,
+      );
+    }
+  }
+
+  if (bgModel.bgByEntrySlope.length > 0) {
+    lines.push("BG response by entry slope (pre-run trend):");
+    for (const s of bgModel.bgByEntrySlope) {
+      lines.push(
+        `- Entry ${s.slope}: avg ${s.avgRate > 0 ? "+" : ""}${s.avgRate.toFixed(2)} mmol/L per 10min (${s.activityCount} activities)`,
+      );
+    }
+  }
+
+  if (bgModel.bgByTime.length > 0) {
+    lines.push("BG response by time into run:");
+    for (const t of bgModel.bgByTime) {
+      lines.push(
+        `- ${t.bucket}min: avg ${t.avgRate > 0 ? "+" : ""}${t.avgRate.toFixed(2)} mmol/L per 10min (${t.sampleCount} samples)`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}

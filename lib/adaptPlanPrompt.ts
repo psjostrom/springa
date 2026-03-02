@@ -1,9 +1,10 @@
-import type { CalendarEvent } from "./types";
+import type { CalendarEvent, PaceTable } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import type { AdaptedEvent } from "./adaptPlan";
 import { formatRunLine } from "./runLine";
+import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
 interface PromptInput {
   adapted: AdaptedEvent;
@@ -12,6 +13,9 @@ interface PromptInput {
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
   feedbackByActivity?: Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>;
   crossRunPatterns?: string;
 }
@@ -23,10 +27,15 @@ export function buildAdaptNotePrompt(input: PromptInput): {
   system: string;
   user: string;
 } {
-  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, feedbackByActivity, crossRunPatterns } =
+  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, maxHr, hrZones, paceTable, feedbackByActivity, crossRunPatterns } =
     input;
 
-  const system = `You are Coach — writing pre-workout notes for an experienced T1D runner (pump OFF, LTHR ${lthr}). Write in first person ("I've bumped your fuel…"). Never say "BG model", "the system", or "the data."
+  const system = `You are Coach — writing pre-workout notes for an experienced T1D runner (pump OFF, ${buildProfileLine(lthr, maxHr)}).
+
+Pace zones:
+${buildZoneBlock(lthr, maxHr, paceTable, hrZones)}
+
+Write in first person ("I've bumped your fuel…"). Never say "BG model", "the system", or "the data."
 
 Format: two short paragraphs separated by a blank line.
 1. **Running** — what the session is, pacing/effort cues from recent data. 2–3 short sentences.

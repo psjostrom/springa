@@ -5,7 +5,7 @@ import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { FitnessInsights } from "@/lib/fitness";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -20,6 +20,9 @@ interface RequestBody {
   runBGContexts: Record<string, RunBGContext>;
   prefix: string;
   lthr: number;
+  maxHr?: number;
+  hrZones?: number[];
+  paceTable?: PaceTable;
 }
 
 export async function POST(req: Request) {
@@ -45,6 +48,9 @@ export async function POST(req: Request) {
     runBGContexts,
     prefix,
     lthr,
+    maxHr,
+    hrZones,
+    paceTable,
   } = body;
 
   // Restore Date objects from JSON serialization
@@ -101,6 +107,9 @@ export async function POST(req: Request) {
           runBGContexts,
           lthr,
           feedbackByActivity,
+          maxHr,
+          hrZones,
+          paceTable,
           crossRunPatterns: patterns?.patternsText,
         });
 

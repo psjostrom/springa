@@ -5,14 +5,17 @@ import { RefreshCw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
+import { summarizeBGModel } from "@/lib/bgModel";
+import type { BGResponseModel } from "@/lib/bgModel";
 import { buildReportCard } from "@/lib/reportCard";
 
 interface RunAnalysisProps {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
+  bgModel?: BGResponseModel | null;
 }
 
-export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
+export function RunAnalysis({ event, runBGContext, bgModel }: RunAnalysisProps) {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +37,7 @@ export function RunAnalysis({ event, runBGContext }: RunAnalysisProps) {
           event,
           runBGContext,
           reportCard,
+          bgModelSummary: bgModel ? summarizeBGModel(bgModel) : undefined,
           regenerate,
         }),
         signal,

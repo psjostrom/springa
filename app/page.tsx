@@ -223,6 +223,9 @@ function HomeContent() {
             totalWeeks={totalWeeks}
             startKm={settings?.startKm}
             lthr={settings?.lthr}
+            maxHr={settings?.maxHr}
+            hrZones={settings?.hrZones}
+            paceTable={paceTable}
             events={enrichedEvents}
             runBGContexts={runBGContexts}
             autoAdapt={autoAdapt}
