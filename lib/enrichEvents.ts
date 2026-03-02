@@ -2,7 +2,7 @@ import type { CalendarEvent, StreamData } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
 
 /** Merge cached stream data (glucose, HR, pace, cadence, altitude) into calendar events. */
-export function useEnrichedEvents(
+export function enrichEvents(
   events: CalendarEvent[],
   cachedActivities: CachedActivity[],
 ): CalendarEvent[] {

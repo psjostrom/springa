@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useModalURL } from "./hooks/useModalURL";
 import { usePaceTable } from "./hooks/usePaceTable";
-import { useEnrichedEvents } from "./hooks/useEnrichedEvents";
+import { enrichEvents } from "@/lib/enrichEvents";
 import { useSession } from "next-auth/react";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -113,10 +113,12 @@ function HomeContent() {
   const bgGraph = useModalURL("bg");
 
   const handleTabChange = (tab: Tab) => {
-    setActiveTab(tab);
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", tab);
-    router.push(`?${params.toString()}`, { scroll: false });
+    startTransition(() => {
+      setActiveTab(tab);
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", tab);
+      router.push(`?${params.toString()}`, { scroll: false });
+    });
   };
 
   const apiKey = settings?.intervalsApiKey ?? "";
@@ -135,7 +137,7 @@ function HomeContent() {
   const paceTable = usePaceTable(cachedActivities, settings?.lthr);
 
   // Enrich calendar events with cached stream data so graphs render on mount
-  const enrichedEvents = useEnrichedEvents(calendarEvents, cachedActivities);
+  const enrichedEvents = enrichEvents(calendarEvents, cachedActivities);
 
   // Phase info for progress screen
   const raceDate = settings?.raceDate ?? "2026-06-13";
