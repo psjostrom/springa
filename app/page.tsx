@@ -12,7 +12,7 @@ import { CalendarScreen } from "./screens/CalendarScreen";
 import { IntelScreen } from "./screens/IntelScreen";
 import { CoachScreen } from "./screens/CoachScreen";
 import { usePhaseInfo } from "./hooks/usePhaseInfo";
-import { useBGModel } from "./hooks/useBGModel";
+import { useRunData } from "./hooks/useRunData";
 import { useCurrentBG } from "./hooks/useCurrentBG";
 import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
@@ -131,7 +131,7 @@ function HomeContent() {
   const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
 
   // BG model — uses shared events, fetches streams independently
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useBGModel(apiKey, true, calendarEvents, readings);
+  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useRunData(apiKey, true, calendarEvents, readings);
 
   // Calibrated pace table from cached stream data
   const paceTable = usePaceTable(cachedActivities, settings?.lthr);
