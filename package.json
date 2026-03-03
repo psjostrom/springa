@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "setup": "test -f .env.local && echo '✓ Worktree ready' || (echo '❌ Missing .env.local - run ./scripts/setup-worktree.sh' && exit 1)",
+    "setup": "./scripts/setup-worktree.sh",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
