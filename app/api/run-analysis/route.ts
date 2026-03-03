@@ -104,7 +104,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as RequestBody;
+  let body: RequestBody;
+  try {
+    body = (await req.json()) as RequestBody;
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid or empty request body" },
+      { status: 400 },
+    );
+  }
+
   const { activityId, event, runBGContext, reportCard, bgModelSummary, regenerate } = body;
 
   if (!activityId) {

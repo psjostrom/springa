@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useEffectEvent } from "react";
+import useSWR from "swr";
 import { startOfMonth, subMonths, endOfMonth, addMonths } from "date-fns";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
@@ -13,33 +13,24 @@ import type { CalendarEvent } from "@/lib/types";
  * automatically deduplicated by fetchCalendarData.
  */
 export function useSharedCalendarData(apiKey: string) {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = async () => {
-    if (!apiKey) return;
-    setIsLoading(true);
-    setError(null);
-    try {
+  const { data: events, error, isLoading, mutate } = useSWR<CalendarEvent[], Error>(
+    apiKey ? ["calendar-data", apiKey] : null,
+    async ([, key]: readonly [string, string]) => {
       const start = startOfMonth(subMonths(new Date(), CALENDAR_LOOKBACK_MONTHS));
       const end = endOfMonth(addMonths(new Date(), 6));
-      const data = await fetchCalendarData(apiKey, start, end);
-      setEvents(data);
-    } catch (err) {
-      console.error("useSharedCalendarData: failed", err);
-      setError("Failed to load calendar data. Check your API key and try again.");
-    } finally {
-      setIsLoading(false);
-    }
+      return fetchCalendarData(key, start, end);
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000,
+    },
+  );
+
+  return {
+    events: events ?? [],
+    isLoading,
+    error: error?.message ?? null,
+    reload: () => { void mutate(); },
   };
-
-  const onLoad = useEffectEvent(load);
-
-  useEffect(() => {
-    if (!apiKey) return;
-    void onLoad();
-  }, [apiKey]);
-
-  return { events, isLoading, error, reload: load };
 }

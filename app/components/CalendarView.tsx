@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useModalURL } from "../hooks/useModalURL";
+import { useActivityStream } from "../hooks/useActivityStream";
 import {
   format,
   startOfMonth,
@@ -18,7 +19,7 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
-import { fetchActivityDetails, deleteEvent, deleteActivity } from "@/lib/intervalsApi";
+import { deleteEvent, deleteActivity } from "@/lib/intervalsApi";
 import { parseEventId } from "@/lib/format";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
@@ -79,54 +80,19 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     handleDrop,
   } = useDragDrop(apiKey, setEvents);
 
-  // Derive loading state: completed event without stream data (set to {} on error)
-  const fetchedStreamIdsRef = useRef(new Set<string>());
-  const isLoadingStreamData =
-    selectedEvent?.type === "completed" &&
-    !selectedEvent.streamData;
+  // Lazy-load stream data via SWR when modal opens for a completed workout
+  const selectedActivityId = selectedEvent?.type === "completed" ? selectedEvent.activityId : null;
+  const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null, apiKey);
 
-  // Lazy-load stream data when modal opens for a completed workout
-  useEffect(() => {
-    if (!selectedEventId || !apiKey) return;
-    if (fetchedStreamIdsRef.current.has(selectedEventId)) return;
-
-    const event = events.find((e) => e.id === selectedEventId);
-    if (event?.type !== "completed" || event.streamData) return;
-
-    const activityId = selectedEventId.replace("activity-", "");
-    if (!activityId) return;
-
-    fetchedStreamIdsRef.current.add(selectedEventId);
-    let cancelled = false;
-
-    fetchActivityDetails(activityId, apiKey)
-      .then((details) => {
-        if (cancelled) return;
-        setEvents((prevEvents) =>
-          prevEvents.map((e) =>
-            e.id === selectedEventId
-              ? {
-                  ...e,
-                  streamData: details.streamData ?? {},
-                  avgHr: details.avgHr ?? e.avgHr,
-                  maxHr: details.maxHr ?? e.maxHr,
-                }
-              : e,
-          ),
-        );
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error("Error loading stream data:", err);
-        setEvents((prevEvents) =>
-          prevEvents.map((e) =>
-            e.id === selectedEventId ? { ...e, streamData: {} } : e,
-          ),
-        );
-      });
-
-    return () => { cancelled = true; };
-  }, [selectedEventId, events, apiKey]);
+  // Combine event + stream data for modal (join at render time, not merged into state)
+  const enrichedSelectedEvent = selectedEvent && streamData
+    ? {
+        ...selectedEvent,
+        streamData: streamData.streamData,
+        avgHr: streamData.avgHr ?? selectedEvent.avgHr,
+        maxHr: streamData.maxHr ?? selectedEvent.maxHr,
+      }
+    : selectedEvent;
 
   // Generate calendar grid
   const calendarDays = (() => {
@@ -363,9 +329,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       </div>
 
       {/* Event Detail Modal */}
-      {selectedEvent && (
+      {enrichedSelectedEvent && (
         <EventModal
-          event={selectedEvent}
+          event={enrichedSelectedEvent}
           onClose={closeWorkoutModal}
           onDateSaved={handleDateSaved}
           onDelete={handleDeleteEvent}

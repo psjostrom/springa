@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useEffectEvent } from "react";
+import useSWR from "swr";
 import { RefreshCw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { CalendarEvent } from "@/lib/types";
@@ -13,61 +13,90 @@ interface RunAnalysisProps {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   bgModel?: BGResponseModel | null;
+  isLoadingStreamData?: boolean;
 }
 
-export function RunAnalysis({ event, runBGContext, bgModel }: RunAnalysisProps) {
-  const [analysis, setAnalysis] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+async function fetchAnalysis(
+  activityId: string,
+  event: CalendarEvent,
+  runBGContext: RunBGContext | null | undefined,
+  bgModel: BGResponseModel | null | undefined,
+): Promise<string> {
+  const reportCard = buildReportCard(event, runBGContext);
 
-  const fetchAnalysis = async (regenerate: boolean, signal?: AbortSignal) => {
-    if (!event.activityId) return;
+  const res = await fetch("/api/run-analysis", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      activityId,
+      event,
+      runBGContext,
+      reportCard,
+      bgModelSummary: bgModel ? summarizeBGModel(bgModel) : undefined,
+      regenerate: false,
+    }),
+  });
 
-    setLoading(true);
-    setError(null);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? `HTTP ${res.status}`);
+  }
 
-    try {
-      const reportCard = buildReportCard(event, runBGContext);
+  const data = await res.json() as { analysis: string };
+  return data.analysis;
+}
 
-      const res = await fetch("/api/run-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityId: event.activityId,
-          event,
-          runBGContext,
-          reportCard,
-          bgModelSummary: bgModel ? summarizeBGModel(bgModel) : undefined,
-          regenerate,
-        }),
-        signal,
-      });
+export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData }: RunAnalysisProps) {
+  const activityId = event.activityId;
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
+  // Wait for stream data before fetching analysis — ensures report card has full BG context
+  const { data: analysis, error, isLoading, mutate } = useSWR<string, Error>(
+    activityId && !isLoadingStreamData ? ["run-analysis", activityId] : null,
+    ([, id]: [string, string]) => fetchAnalysis(id, event, runBGContext, bgModel),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // Dedupe requests within 60s
+    },
+  );
 
-      const data = await res.json() as { analysis: string };
-      if (!signal?.aborted) setAnalysis(data.analysis);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Failed to load analysis");
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
+  const handleRegenerate = async () => {
+    if (!activityId) return;
+
+    const reportCard = buildReportCard(event, runBGContext);
+
+    await mutate(
+      async () => {
+        const res = await fetch("/api/run-analysis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            activityId,
+            event,
+            runBGContext,
+            reportCard,
+            bgModelSummary: bgModel ? summarizeBGModel(bgModel) : undefined,
+            regenerate: true,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(data.error ?? `HTTP ${res.status}`);
+        }
+
+        const data = await res.json() as { analysis: string };
+        return data.analysis;
+      },
+      { revalidate: false },
+    );
   };
 
-  const onFetchAnalysis = useEffectEvent((signal: AbortSignal) => fetchAnalysis(false, signal));
+  if (!activityId) return null;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void onFetchAnalysis(controller.signal);
-    return () => { controller.abort(); };
-  }, [event.activityId]);
-
-  if (!event.activityId) return null;
-  if (!loading && !analysis && !error) return null;
+  // Show loading if stream data is loading OR analysis is loading
+  const showLoading = (isLoadingStreamData ?? false) || isLoading;
+  if (!showLoading && !analysis && !error) return null;
 
   return (
     <div className="border-t border-[#3d2b5a] pt-3 mt-4">
@@ -76,9 +105,9 @@ export function RunAnalysis({ event, runBGContext, bgModel }: RunAnalysisProps) 
           <Sparkles className="w-4 h-4" />
           Run Analysis
         </div>
-        {analysis && !loading && (
+        {analysis && !showLoading && (
           <button
-            onClick={() => { void fetchAnalysis(true); }}
+            onClick={() => { void handleRegenerate(); }}
             className="p-1 text-[#b8a5d4] hover:text-white transition-colors"
             aria-label="Regenerate analysis"
           >
@@ -87,7 +116,7 @@ export function RunAnalysis({ event, runBGContext, bgModel }: RunAnalysisProps) 
         )}
       </div>
 
-      {loading ? (
+      {showLoading ? (
         <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 space-y-2">
           <div className="skeleton h-4 w-full rounded" />
           <div className="skeleton h-4 w-5/6 rounded" />
@@ -96,7 +125,9 @@ export function RunAnalysis({ event, runBGContext, bgModel }: RunAnalysisProps) 
           <div className="skeleton h-4 w-3/4 rounded" />
         </div>
       ) : error ? (
-        <div className="text-sm text-[#b8a5d4] italic">{error}</div>
+        <div className="text-sm text-[#b8a5d4] italic">
+          {error instanceof Error ? error.message : "Failed to load analysis"}
+        </div>
       ) : analysis ? (
         <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 text-sm text-[#e2d9f3] leading-relaxed prose-analysis">
           <ReactMarkdown>{analysis}</ReactMarkdown>

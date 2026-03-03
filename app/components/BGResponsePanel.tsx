@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -188,11 +189,27 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
   const activeCategories = categoryOrder.filter((c) => model.categories[c] != null);
   const names = activityNames ?? new Map<string, string>();
 
+  interface PatternsData {
+    patterns: string | null;
+    latestActivityId?: string;
+  }
+
+  const { data: patternsData, mutate: mutatePatterns } = useSWR<PatternsData>(
+    "bg-patterns",
+    async () => {
+      const res = await fetch("/api/bg-patterns");
+      if (!res.ok) return { patterns: null };
+      return res.json() as Promise<PatternsData>;
+    },
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+
+  const patterns = patternsData?.patterns ?? null;
+  const savedLatestActivityId = patternsData?.latestActivityId ?? null;
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [patterns, setPatterns] = useState<string | null>(null);
   const [patternsExpanded, setPatternsExpanded] = useState(true);
   const [patternsError, setPatternsError] = useState<string | null>(null);
-  const [savedLatestActivityId, setSavedLatestActivityId] = useState<string | null>(null);
 
   const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
 
@@ -210,23 +227,6 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     && latestCompletedActivityId != null
     && savedLatestActivityId !== latestCompletedActivityId;
 
-  // Load saved patterns on mount
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch("/api/bg-patterns");
-        if (!res.ok) return;
-        const data = (await res.json()) as { patterns: string | null; latestActivityId?: string; analyzedAt?: number };
-        if (data.patterns) {
-          setPatterns(data.patterns);
-          setSavedLatestActivityId(data.latestActivityId ?? null);
-        }
-      } catch {
-        // Silent — not critical
-      }
-    })();
-  }, []);
-
   const handleDiscover = async () => {
     if (!events || isAnalyzing) return;
     setIsAnalyzing(true);
@@ -243,8 +243,8 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
       if (!res.ok) {
         setPatternsError(data.error ?? "Analysis failed");
       } else {
-        setPatterns(data.patterns ?? null);
-        setSavedLatestActivityId(data.latestActivityId ?? null);
+        // Update SWR cache with new data
+        await mutatePatterns({ patterns: data.patterns ?? null, latestActivityId: data.latestActivityId }, { revalidate: false });
         setPatternsExpanded(true);
       }
     } catch {

@@ -1,8 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import useSWR from "swr";
+
 interface FeedbackResponse {
   createdAt: number;
   rating: string | null;
@@ -15,6 +17,24 @@ interface FeedbackResponse {
   prescribedCarbsG?: number;
   preRunCarbsG?: number | null;
   preRunCarbsMin?: number | null;
+}
+
+interface FetchResult {
+  data: FeedbackResponse | null;
+  waitingForSync: boolean;
+}
+
+async function fetchFeedback(url: string): Promise<FetchResult> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { retry?: boolean };
+    if (body.retry) {
+      return { data: null, waitingForSync: true };
+    }
+    throw new Error("Failed to load data");
+  }
+  const data = (await res.json()) as FeedbackResponse;
+  return { data, waitingForSync: false };
 }
 
 function formatDuration(ms: number): string {
@@ -44,88 +64,86 @@ function FeedbackContent() {
   const searchParams = useSearchParams();
   const activityIdParam = searchParams.get("activityId");
 
-  const [feedback, setFeedback] = useState<FeedbackResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [waitingForSync, setWaitingForSync] = useState(false);
-  const [rating, setRating] = useState<string | null>(null);
-  const [comment, setComment] = useState("");
-  const [carbsG, setCarbsG] = useState<string>("");
-  const [preRunCarbsG, setPreRunCarbsG] = useState<string>("");
-  const [preRunCarbsMin, setPreRunCarbsMin] = useState<string>("");
-  const [prescribedCarbsG, setPrescribedCarbsG] = useState<number | null>(null);
-  const [activityId, setActivityId] = useState<string | null>(activityIdParam);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
   const fetchUrl = activityIdParam
     ? "/api/run-feedback?activityId=" + activityIdParam
     : "/api/run-feedback";
 
-  const [retryCount, setRetryCount] = useState(0);
+  // Form state — initialized from SWR data via onSuccess callback
+  const [formState, setFormState] = useState<{
+    rating: string | null;
+    comment: string;
+    carbsG: string;
+    preRunCarbsG: string;
+    preRunCarbsMin: string;
+    prescribedCarbsG: number | null;
+    activityId: string | null;
+    submitted: boolean;
+  }>({
+    rating: null,
+    comment: "",
+    carbsG: "",
+    preRunCarbsG: "",
+    preRunCarbsMin: "",
+    prescribedCarbsG: null,
+    activityId: activityIdParam,
+    submitted: false,
+  });
 
-  useEffect(() => {
-    const load = async () => {
-      setWaitingForSync(false);
-      const r = await fetch(fetchUrl);
-      if (!r.ok) {
-        const body = (await r.json().catch(() => ({}))) as { retry?: boolean };
-        if (body.retry) {
-          setWaitingForSync(true);
-          return;
-        }
-        throw new Error("Failed to load data");
-      }
-      const data = (await r.json()) as FeedbackResponse;
-      setFeedback(data);
-      if (data.activityId) setActivityId(data.activityId);
-      if (data.rating) {
-        setRating(data.rating);
-        setComment(data.comment ?? "");
-        if (data.carbsG != null) setCarbsG(String(data.carbsG));
-        setSubmitted(true);
-      }
-      if (data.preRunCarbsG != null) setPreRunCarbsG(String(data.preRunCarbsG));
-      if (data.preRunCarbsMin != null) setPreRunCarbsMin(String(data.preRunCarbsMin));
-      if (data.prescribedCarbsG != null) {
-        setPrescribedCarbsG(data.prescribedCarbsG);
-        if (!data.rating && data.carbsG == null) {
-          setCarbsG(String(data.prescribedCarbsG));
-        }
-      }
-    };
+  const { data: result, error: swrError, isLoading, mutate } = useSWR<FetchResult, Error>(
+    fetchUrl,
+    fetchFeedback,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      onSuccess: (fetchResult) => {
+        const data = fetchResult.data;
+        if (!data) return;
+        setFormState({
+          rating: data.rating,
+          comment: data.comment ?? "",
+          carbsG: data.carbsG != null ? String(data.carbsG) : (data.prescribedCarbsG != null && !data.rating ? String(data.prescribedCarbsG) : ""),
+          preRunCarbsG: data.preRunCarbsG != null ? String(data.preRunCarbsG) : "",
+          preRunCarbsMin: data.preRunCarbsMin != null ? String(data.preRunCarbsMin) : "",
+          prescribedCarbsG: data.prescribedCarbsG ?? null,
+          activityId: data.activityId,
+          submitted: !!data.rating,
+        });
+      },
+    },
+  );
 
-    load()
-      .catch((e: unknown) => { setError(e instanceof Error ? e.message : "Unknown error"); })
-      .finally(() => { setLoading(false); });
-  }, [fetchUrl, retryCount]);
+  const feedback = result?.data ?? null;
+  const waitingForSync = result?.waitingForSync ?? false;
+
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!activityId || !rating) return;
+    if (!formState.activityId || !formState.rating) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          activityId,
-          rating,
-          comment: comment || undefined,
-          carbsG: carbsG ? Number(carbsG) : undefined,
-          preRunCarbsG: preRunCarbsG ? Number(preRunCarbsG) : undefined,
-          preRunCarbsMin: preRunCarbsMin ? Number(preRunCarbsMin) : undefined,
+          activityId: formState.activityId,
+          rating: formState.rating,
+          comment: formState.comment || undefined,
+          carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
+          preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
+          preRunCarbsMin: formState.preRunCarbsMin ? Number(formState.preRunCarbsMin) : undefined,
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      setSubmitted(true);
+      setFormState((s) => ({ ...s, submitted: true }));
     } catch {
-      setError("Failed to save");
+      setSubmitError("Failed to save");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
         <p className="text-[#b8a5d4]">Loading...</p>
@@ -138,11 +156,8 @@ function FeedbackContent() {
       <div className="min-h-screen bg-[#0d0a1a] flex flex-col items-center justify-center p-4 gap-4">
         <p className="text-[#b8a5d4]">Waiting for your run to sync from Garmin...</p>
         <button
-          onClick={() => {
-            setLoading(true);
-            setRetryCount((c) => c + 1);
-          }}
-          disabled={loading}
+          onClick={() => { void mutate(); }}
+          disabled={isLoading}
           className="px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
         >
           Try again
@@ -151,10 +166,10 @@ function FeedbackContent() {
     );
   }
 
-  if (error && !feedback) {
+  if (swrError && !feedback) {
     return (
       <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center p-4">
-        <p className="text-[#ff3366]">{error}</p>
+        <p className="text-[#ff3366]">{swrError.message}</p>
       </div>
     );
   }
@@ -187,22 +202,22 @@ function FeedbackContent() {
         </div>
       )}
 
-      {submitted ? (
+      {formState.submitted ? (
         <div className="text-center">
-          {rating === "skipped" ? (
+          {formState.rating === "skipped" ? (
             <p className="text-[#b8a5d4] text-lg">Skipped</p>
           ) : (
             <>
-              <p className="text-4xl mb-2">{rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
+              <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
               <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
-              {(carbsG || prescribedCarbsG) && (
-                <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {carbsG || prescribedCarbsG}g</p>
+              {(formState.carbsG || formState.prescribedCarbsG) && (
+                <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
               )}
-              {preRunCarbsG && (
-                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {preRunCarbsG}g{preRunCarbsMin ? `, ${preRunCarbsMin} min before` : ""}</p>
+              {formState.preRunCarbsG && (
+                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {formState.preRunCarbsG}g{formState.preRunCarbsMin ? `, ${formState.preRunCarbsMin} min before` : ""}</p>
               )}
-              {comment && (
-                <p className="text-[#b8a5d4] text-sm mt-2">{comment}</p>
+              {formState.comment && (
+                <p className="text-[#b8a5d4] text-sm mt-2">{formState.comment}</p>
               )}
               <Link
                 href="/?tab=planner&adapt=true"
@@ -218,9 +233,9 @@ function FeedbackContent() {
           {/* Rating buttons */}
           <div className="flex gap-6 mb-6">
             <button
-              onClick={() => { setRating("good"); }}
+              onClick={() => { setFormState((s) => ({ ...s, rating: "good" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
-                rating === "good"
+                formState.rating === "good"
                   ? "border-[#39ff14] bg-[#39ff14]/10"
                   : "border-[#3d2b5a] bg-[#1e1535]"
               }`}
@@ -228,9 +243,9 @@ function FeedbackContent() {
               {"\uD83D\uDC4D"}
             </button>
             <button
-              onClick={() => { setRating("bad"); }}
+              onClick={() => { setFormState((s) => ({ ...s, rating: "bad" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
-                rating === "bad"
+                formState.rating === "bad"
                   ? "border-[#ff3366] bg-[#ff3366]/10"
                   : "border-[#3d2b5a] bg-[#1e1535]"
               }`}
@@ -245,9 +260,9 @@ function FeedbackContent() {
             <input
               type="number"
               inputMode="numeric"
-              value={carbsG}
-              onChange={(e) => { setCarbsG(e.target.value); }}
-              placeholder={prescribedCarbsG != null ? `${prescribedCarbsG} (prescribed)` : "e.g. 40"}
+              value={formState.carbsG}
+              onChange={(e) => { setFormState((s) => ({ ...s, carbsG: e.target.value })); }}
+              placeholder={formState.prescribedCarbsG != null ? `${formState.prescribedCarbsG} (prescribed)` : "e.g. 40"}
               className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
             />
           </div>
@@ -259,8 +274,8 @@ function FeedbackContent() {
               <input
                 type="number"
                 inputMode="numeric"
-                value={preRunCarbsG}
-                onChange={(e) => { setPreRunCarbsG(e.target.value); }}
+                value={formState.preRunCarbsG}
+                onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
                 placeholder="e.g. 25"
                 className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
               />
@@ -270,8 +285,8 @@ function FeedbackContent() {
               <input
                 type="number"
                 inputMode="numeric"
-                value={preRunCarbsMin}
-                onChange={(e) => { setPreRunCarbsMin(e.target.value); }}
+                value={formState.preRunCarbsMin}
+                onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsMin: e.target.value })); }}
                 placeholder="e.g. 20"
                 className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
               />
@@ -280,8 +295,8 @@ function FeedbackContent() {
 
           {/* Comment */}
           <textarea
-            value={comment}
-            onChange={(e) => { setComment(e.target.value); }}
+            value={formState.comment}
+            onChange={(e) => { setFormState((s) => ({ ...s, comment: e.target.value })); }}
             placeholder="Comment (optional)"
             rows={3}
             className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm mb-4 resize-none"
@@ -290,7 +305,7 @@ function FeedbackContent() {
           {/* Submit */}
           <button
             onClick={() => { void handleSubmit(); }}
-            disabled={!rating || !activityId || submitting}
+            disabled={!formState.rating || !formState.activityId || submitting}
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
@@ -298,9 +313,8 @@ function FeedbackContent() {
 
           <button
             onClick={() => {
-              if (!activityId) {
-                setRating("skipped");
-                setSubmitted(true);
+              if (!formState.activityId) {
+                setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
                 return;
               }
               setSubmitting(true);
@@ -310,15 +324,14 @@ function FeedbackContent() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      activityId,
+                      activityId: formState.activityId,
                       rating: "skipped",
                     }),
                   });
                   if (!res.ok) throw new Error("Failed to save");
-                  setRating("skipped");
-                  setSubmitted(true);
+                  setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
                 } catch {
-                  setError("Failed to save");
+                  setSubmitError("Failed to save");
                 } finally {
                   setSubmitting(false);
                 }
@@ -330,7 +343,7 @@ function FeedbackContent() {
             Skip
           </button>
 
-          {error && <p className="text-[#ff3366] text-sm mt-3">{error}</p>}
+          {submitError && <p className="text-[#ff3366] text-sm mt-3">{submitError}</p>}
         </>
       )}
     </div>
