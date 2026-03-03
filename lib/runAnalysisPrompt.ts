@@ -144,6 +144,12 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     if (insulinContext.expectedBGImpact > 0) {
       lines.push(`Expected BG impact from IOB: ~${insulinContext.expectedBGImpact} mmol/L drop (total IOB × ISF, rough estimate)`);
     }
+    if (insulinContext.easeOffStartMin != null) {
+      lines.push(`Ease-off activated: ${insulinContext.easeOffStartMin} min before run (${insulinContext.easeOffDurationH}h duration)`);
+    }
+    if (insulinContext.boostStartMin != null) {
+      lines.push(`Boost activated: ${insulinContext.boostStartMin} min before run (${insulinContext.boostDurationH}h duration)`);
+    }
   }
 
   // Post-run context

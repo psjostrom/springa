@@ -230,6 +230,95 @@ describe("buildInsulinContext", () => {
     });
   });
 
+  describe("Ease-off events", () => {
+    function easeOffEvent(hoursBeforeRun: number, durationH: number): MyLifeEvent {
+      return {
+        timestamp: new Date(T0 - hoursBeforeRun * HOUR).toISOString(),
+        type: "Ease-off",
+        value: durationH,
+        unit: "h",
+        id: crypto.randomUUID(),
+      };
+    }
+
+    it("captures ease-off active at run start", () => {
+      const data = makeMyLifeData([
+        bolusEvent(3, 5.0),
+        easeOffEvent(2, 3), // activated 2h ago, lasts 3h → still active
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.easeOffStartMin).toBe(120);
+      expect(result.easeOffDurationH).toBe(3);
+    });
+
+    it("excludes ease-off that ended before run start", () => {
+      const data = makeMyLifeData([
+        bolusEvent(3, 5.0),
+        easeOffEvent(4, 1), // activated 4h ago, lasted 1h → ended 3h ago
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.easeOffStartMin).toBeNull();
+      expect(result.easeOffDurationH).toBeNull();
+    });
+
+    it("picks the most recent active ease-off", () => {
+      const data = makeMyLifeData([
+        bolusEvent(3, 5.0),
+        easeOffEvent(3, 4), // activated 3h ago, lasts 4h → active
+        easeOffEvent(1, 2), // activated 1h ago, lasts 2h → active (and more recent)
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.easeOffStartMin).toBe(60); // picks the 1h-ago one
+      expect(result.easeOffDurationH).toBe(2);
+    });
+
+    it("returns null fields when no ease-off events exist", () => {
+      const data = makeMyLifeData([bolusEvent(1, 4.0)]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.easeOffStartMin).toBeNull();
+      expect(result.easeOffDurationH).toBeNull();
+    });
+  });
+
+  describe("Boost events", () => {
+    function boostEvent(hoursBeforeRun: number, durationH: number): MyLifeEvent {
+      return {
+        timestamp: new Date(T0 - hoursBeforeRun * HOUR).toISOString(),
+        type: "Boost",
+        value: durationH,
+        unit: "h",
+        id: crypto.randomUUID(),
+      };
+    }
+
+    it("captures boost active at run start", () => {
+      const data = makeMyLifeData([
+        bolusEvent(3, 5.0),
+        boostEvent(1, 2), // activated 1h ago, lasts 2h → still active
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.boostStartMin).toBe(60);
+      expect(result.boostDurationH).toBe(2);
+    });
+
+    it("excludes boost that ended before run start", () => {
+      const data = makeMyLifeData([
+        bolusEvent(3, 5.0),
+        boostEvent(5, 2), // activated 5h ago, lasted 2h → ended 3h ago
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.boostStartMin).toBeNull();
+      expect(result.boostDurationH).toBeNull();
+    });
+
+    it("returns null fields when no boost events exist", () => {
+      const data = makeMyLifeData([bolusEvent(1, 4.0)]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.boostStartMin).toBeNull();
+      expect(result.boostDurationH).toBeNull();
+    });
+  });
+
   describe("edge cases", () => {
     it("handles empty events array", () => {
       const result = buildInsulinContext({ events: [] }, T0);

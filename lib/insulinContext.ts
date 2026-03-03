@@ -14,6 +14,10 @@ export interface InsulinContext {
   timeSinceLastBolus: number; // minutes before run start
   expectedBGImpact: number; // mmol/L, totalIOB × ISF (rough estimate)
   lastBasalRate: number; // U/h, most recent basal rate before run start
+  easeOffStartMin: number | null; // minutes before run start that Ease-off was activated, null if none
+  easeOffDurationH: number | null; // Ease-off duration in hours, null if none
+  boostStartMin: number | null; // minutes before run start that Boost was activated, null if none
+  boostDurationH: number | null; // Boost duration in hours, null if none
 }
 
 // --- Constants ---
@@ -148,8 +152,41 @@ export function buildInsulinContext(
     })
     .map((e) => ({ timestamp: e.timestamp, rate: e.value }));
 
+  // --- Boost / Ease-off events ---
+  // These use a wider window (up to 8h back) since ease-off is typically
+  // activated 2h before a run and can last 2-4h.
+  const pumpModeWindow = 8 * 60 * 60 * 1000;
+  const pumpModeLookback = runStartMs - pumpModeWindow;
+
+  const easeOffEvents = data.events
+    .filter((e) => {
+      if (e.type !== "Ease-off") return false;
+      const ts = new Date(e.timestamp).getTime();
+      if (ts < pumpModeLookback || ts > runStartMs) return false;
+      // Only include if still active at run start (start + duration >= runStart)
+      const endMs = ts + e.value * 60 * 60 * 1000;
+      return endMs >= runStartMs;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    ); // newest first
+
+  const boostEvents = data.events
+    .filter((e) => {
+      if (e.type !== "Boost") return false;
+      const ts = new Date(e.timestamp).getTime();
+      if (ts < pumpModeLookback || ts > runStartMs) return false;
+      const endMs = ts + e.value * 60 * 60 * 1000;
+      return endMs >= runStartMs;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    ); // newest first
+
   console.log(`[InsulinCtx] Window: ${new Date(lookbackStart).toISOString()} → ${new Date(runStartMs).toISOString()}`);
-  console.log(`[InsulinCtx] In window: ${boluses.length} boluses, ${carbEvents.length} carb events, ${basalEntries.length} basal entries`);
+  console.log(`[InsulinCtx] In window: ${boluses.length} boluses, ${carbEvents.length} carb events, ${basalEntries.length} basal entries, ${easeOffEvents.length} ease-off, ${boostEvents.length} boost`);
 
   // Need at least one bolus in the window
   if (boluses.length === 0) {
@@ -190,6 +227,10 @@ export function buildInsulinContext(
   );
   const lastBasalRate = basalSorted.length > 0 ? basalSorted[0].rate : 0;
 
+  // --- Ease-off / Boost ---
+  const lastEaseOff = easeOffEvents.length > 0 ? easeOffEvents[0] : null;
+  const lastBoost = boostEvents.length > 0 ? boostEvents[0] : null;
+
   const ctx: InsulinContext = {
     lastBolusTime,
     lastBolusUnits,
@@ -202,6 +243,14 @@ export function buildInsulinContext(
     timeSinceLastBolus: Math.round((runStartMs - lastBolusTs) / 60000),
     expectedBGImpact: Math.round(totalIob * ISF * 10) / 10,
     lastBasalRate,
+    easeOffStartMin: lastEaseOff
+      ? Math.round((runStartMs - new Date(lastEaseOff.timestamp).getTime()) / 60000)
+      : null,
+    easeOffDurationH: lastEaseOff ? lastEaseOff.value : null,
+    boostStartMin: lastBoost
+      ? Math.round((runStartMs - new Date(lastBoost.timestamp).getTime()) / 60000)
+      : null,
+    boostDurationH: lastBoost ? lastBoost.value : null,
   };
 
   console.log("[InsulinCtx] Result:", JSON.stringify(ctx, null, 2));
