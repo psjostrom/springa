@@ -263,29 +263,9 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
             BG Response by Workout
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {canDiscover && !isAnalyzing && !patterns && (
-            <button
-              onClick={() => { void handleDiscover(); }}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
-            >
-              <Sparkles className="w-3 h-3" />
-              Discover Patterns
-            </button>
-          )}
-          {canDiscover && !isAnalyzing && isStale && (
-            <button
-              onClick={() => { void handleDiscover(); }}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#fbbf24] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
-            >
-              <Sparkles className="w-3 h-3" />
-              New run data — re-analyze
-            </button>
-          )}
-          <span className="text-xs text-[#8b7ba8]">
-            {model.activitiesAnalyzed} runs analyzed
-          </span>
-        </div>
+        <span className="text-xs text-[#8b7ba8]">
+          {model.activitiesAnalyzed} runs analyzed
+        </span>
       </div>
 
       {activeCategories.length === 0 ? (
@@ -337,43 +317,65 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
         </>
       )}
 
-      {/* Pattern Discovery */}
-      {isAnalyzing && (
-        <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-          <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            <span className="text-sm">
-              Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
-            </span>
-          </div>
-        </div>
-      )}
-
-      {patternsError && (
-        <div className="bg-[#3d1525] rounded-lg border border-[#ff3366]/20 p-3 text-sm text-[#ff3366]">
-          {patternsError}
-        </div>
-      )}
-
-      {patterns && (
+      {/* Cross-Run Patterns Section */}
+      {(patterns != null || isAnalyzing || canDiscover) && (
         <div className="space-y-2">
-          <button
-            onClick={() => { setPatternsExpanded(!patternsExpanded); }}
-            className="flex items-center gap-1.5 w-full text-left"
-          >
+          <div className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-[#00ffff]" />
             <span className="text-xs font-semibold uppercase text-[#b8a5d4] flex-1">
               Cross-Run Patterns
             </span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
-            />
-          </button>
-          {patternsExpanded && (
-            <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4 text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
-            </div>
-          )}
+            {canDiscover && !isAnalyzing && !patterns && (
+              <button
+                onClick={() => { void handleDiscover(); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
+              >
+                Discover Patterns
+              </button>
+            )}
+            {!isAnalyzing && patterns && (
+              <button
+                onClick={() => { void handleDiscover(); }}
+                disabled={!canDiscover}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed ${isStale ? "text-[#fbbf24]" : "text-[#8b7ba8]"}`}
+              >
+                {isStale ? "New data — re-analyze" : "Re-analyze"}
+              </button>
+            )}
+            {patterns && !isAnalyzing && (
+              <button
+                onClick={() => { setPatternsExpanded(!patternsExpanded); }}
+                className="p-1"
+              >
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
+          </div>
+
+          <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4">
+            {isAnalyzing ? (
+              <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                <span className="text-sm">
+                  Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
+                </span>
+              </div>
+            ) : patternsError ? (
+              <div className="text-sm text-[#ff3366]">{patternsError}</div>
+            ) : patterns && patternsExpanded ? (
+              <div className="text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
+              </div>
+            ) : patterns && !patternsExpanded ? (
+              <div className="text-sm text-[#8b7ba8]">Collapsed — click to expand</div>
+            ) : (
+              <div className="text-sm text-[#8b7ba8] text-center py-2">
+                Click &quot;Discover Patterns&quot; to analyze cross-run trends
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

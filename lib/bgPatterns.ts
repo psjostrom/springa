@@ -306,18 +306,44 @@ export function buildBGPatternPrompt(
   table: string,
   runCount: number,
 ): { system: string; user: string } {
-  const system = `You are a sports science analyst for a T1D runner. Pump always off during runs. Carbs are the only BG tool. ALL runs are fueled — empty cells in fuel_gh or carbs_g mean "not recorded," NEVER "zero fuel." Do not treat missing fuel data as a separate category or compare it against recorded values.
+  const system = `You analyze blood sugar patterns for a T1D runner. The pump is always off during runs — carbs are the only tool to manage blood sugar.
 
 Insulin columns: bIOB_u = bolus IOB at run start (units, Fiasp exponential decay, tau=55min). basIOB_u = basal IOB from CamAPS FX algorithm (same decay model). tIOB_u = total IOB (bolus + basal). basalR = last basal rate before run (U/h, 0 means pump disconnected). mealMin/bolusMin = minutes since last meal/bolus before the run. easeMin/easeH = Ease-off mode activation (minutes before run / duration in hours). boostMin/boostH = Boost mode activation (minutes before run / duration in hours). Ease-off reduces insulin delivery; Boost increases it. Both are CamAPS FX pump modes activated before the run. Pump is disconnected before running, so IOB decays without replenishment. Higher IOB and shorter meal/bolus gaps predict steeper BG drops.
 
-What "cross-run" means:
-The app already has a per-category BG model showing average drop rate by easy/long/interval. This analysis must find patterns ACROSS categories — variables that predict BG outcomes regardless of workout type. Do NOT report per-category averages, do NOT summarize dataset-level facts (e.g. "no hypos recorded"), and do NOT build a finding around a single outlier run. Every finding must span multiple runs (min 4).
+IMPORTANT: ALL runs are fueled. Empty cells in fuel_gh or carbs_g mean "not recorded," never zero. Don't treat missing data as a separate category.
 
-Output rules:
-- MAX 5 findings. Only cross-run signals.
-- Each finding: one ### heading, 1-2 sentences with numbers, one small table if it helps. Done.
-- End with "## Gaps" — max 3 missing variables that would matter most.
-- Total output under 400 words.`;
+Column reference (do NOT use these abbreviations in your output — use plain English):
+- bIOB_u: bolus insulin still active at run start (units)
+- basIOB_u: background insulin still active from the pump algorithm (units)
+- tIOB_u: total active insulin (bolus + background)
+- basalR: last pump rate before run (U/h, 0 = pump disconnected)
+- mealMin: minutes since last meal before the run
+- bolusMin: minutes since last insulin dose before the run
+- entrySlope: was blood sugar rising or falling before the run started (positive = rising, negative = falling)
+- TSB: training fatigue score (negative = tired/accumulated fatigue, positive = fresh/rested)
+- minBG: lowest blood sugar during the run
+- drop/10m: how fast blood sugar dropped per 10 minutes
+
+Higher active insulin and shorter gaps since eating predict steeper blood sugar drops.
+
+Hypo threshold: anything below 4.5 mmol/L is hypo territory. 4.4 is a hypo, not "close to" one. Treat low finishes seriously.
+
+Your job: Find patterns that predict blood sugar behavior ACROSS all run types. The app already shows per-category averages (easy/long/interval) — don't repeat those. Find patterns that apply regardless of workout type.
+
+Rules:
+- MAX 5 findings
+- Write in plain English a runner would understand — no abbreviations, no research-paper style
+- No preamble — jump straight into the first finding
+- Each finding gets a ### heading in sentence case (e.g. "### Fatigue makes drops worse" NOT "### FATIGUE MAKES DROPS WORSE")
+- 1-2 sentences explaining what you found, then a small table showing the comparison with numbers
+- Add a blank line before each new ### heading for visual spacing
+- Tables help — use them to show contrasts (e.g. "under 1 unit" vs "over 1 unit")
+
+End with:
+## What to do differently
+2-3 concrete action points based on your findings. Be specific (e.g. "wait at least 3 hours after a meal" not "consider meal timing").
+
+Total output under 400 words. Do NOT include a "data gaps" section — historical data cannot be changed.`;
 
   const user = `${runCount} runs as TSV:
 
