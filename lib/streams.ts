@@ -91,3 +91,25 @@ export function extractExtraStreams(streams: IntervalsStream[]): {
 
   return { pace, cadence, altitude };
 }
+
+/** Extract latlng coordinates from streams. Returns [lat, lng][] or empty array.
+ * Intervals.icu stores lat in data[] and lng in data2[] for the latlng stream. */
+export function extractLatlng(streams: IntervalsStream[]): [number, number][] {
+  const latlngStream = streams.find((s) => s.type === "latlng");
+  if (!latlngStream?.data2) return [];
+
+  const latitudes = latlngStream.data;
+  const longitudes = latlngStream.data2;
+  const len = Math.min(latitudes.length, longitudes.length);
+
+  const result: [number, number][] = [];
+  for (let i = 0; i < len; i++) {
+    const lat = latitudes[i];
+    const lng = longitudes[i];
+    // Filter invalid coordinates (0,0 or missing values)
+    if (lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng)) {
+      result.push([lat, lng]);
+    }
+  }
+  return result;
+}

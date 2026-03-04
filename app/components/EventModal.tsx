@@ -18,6 +18,7 @@ import { RunAnalysis } from "./RunAnalysis";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { HRMiniChart } from "./HRMiniChart";
 import { PreRunReadiness } from "./PreRunReadiness";
+import { RouteMap } from "./RouteMap";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -737,6 +738,19 @@ export function EventModal({
                 </div>
               </div>
             )}
+
+            {/* Route Map */}
+            {selectedEvent.streamData?.latlng && selectedEvent.streamData.latlng.length > 0 ? (
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
+                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
+                <RouteMap latlng={selectedEvent.streamData.latlng} className="h-48" />
+              </div>
+            ) : isLoadingStreamData ? (
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
+                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
+                <div className="skeleton h-48 w-full rounded-lg" />
+              </div>
+            ) : null}
           </div>
         )}
       </div>

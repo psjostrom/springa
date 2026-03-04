@@ -73,7 +73,7 @@ const CHART_HEIGHT = HEIGHT - PAD_STREAM.top - PAD_STREAM.bottom;
 
 export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   const availableStreams = Object.keys(streamData).filter(
-    (key) => streamData[key as StreamType],
+    (key) => key in streamConfigs && streamData[key as StreamType],
   ) as StreamType[];
 
   // Default selections: glucose + heartrate, or first two available

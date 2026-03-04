@@ -4,6 +4,7 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
+    "types": ["node", "react", "react-dom", "web-push"],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,

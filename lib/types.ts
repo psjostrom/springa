@@ -89,6 +89,7 @@ export interface IntervalsEvent {
 export interface IntervalsStream {
   type: string;
   data: number[];
+  data2?: number[]; // For latlng stream: data=lat, data2=lng
 }
 
 // --- PACE TABLE TYPES ---
@@ -123,6 +124,7 @@ export interface StreamData {
   pace?: DataPoint[];
   cadence?: DataPoint[];
   altitude?: DataPoint[];
+  latlng?: [number, number][]; // [lat, lng] pairs for GPS route
 }
 
 export interface CalendarEvent {

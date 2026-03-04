@@ -9,7 +9,7 @@ import type {
 } from "./types";
 import { API_BASE } from "./constants";
 import { convertGlucoseToMmol } from "./bgModel";
-import { extractRawStreams } from "./streams";
+import { extractRawStreams, extractLatlng } from "./streams";
 import {
   processActivities,
   processPlannedEvents,
@@ -94,6 +94,7 @@ export async function fetchStreams(
     "velocity_smooth",
     "cadence",
     "altitude",
+    "latlng",
   ].join(",");
   const url = `${API_BASE}/activity/${activityId}/streams?keys=${keys}`;
 
@@ -235,6 +236,11 @@ export async function fetchActivityDetails(
           time: Math.round(t / 60),
           value: altitudeData[idx],
         }));
+      }
+
+      const latlng = extractLatlng(streams);
+      if (latlng.length > 0) {
+        streamData.latlng = latlng;
       }
 
       if (Object.keys(streamData).length > 0) {
