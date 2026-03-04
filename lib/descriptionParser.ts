@@ -178,6 +178,50 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
   return sections;
 }
 
+// --- STEP TOTALS (for watch repeat tracking) ---
+
+/**
+ * Extract step name totals from repeat sections in a workout description.
+ * Returns uppercase step names mapped to their total occurrence count,
+ * only for steps inside sections with repeats > 1.
+ * E.g. "Main set 6x" with "Uphill"/"Downhill" → { "UPHILL": 6, "DOWNHILL": 6 }
+ */
+export function extractStepTotals(description: string): Record<string, number> {
+  if (!description) return {};
+
+  const totals: Record<string, number> = {};
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+\d+-\d+%/;
+
+  const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
+  const headers: { name: string; index: number }[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = sectionPattern.exec(description)) !== null) {
+    headers.push({ name: match[1], index: match.index });
+  }
+
+  for (let i = 0; i < headers.length; i++) {
+    const repeatsMatch = /(\d+)x$/.exec(headers[i].name);
+    if (!repeatsMatch) continue;
+    const repeats = parseInt(repeatsMatch[1], 10);
+    if (repeats <= 1) continue;
+
+    const start = headers[i].index;
+    const end = i + 1 < headers.length ? headers[i + 1].index : description.length;
+    const block = description.slice(start, end);
+
+    for (const line of block.split("\n")) {
+      const stepMatch = stepPattern.exec(line);
+      if (stepMatch?.[1]) {
+        const name = stepMatch[1].toUpperCase();
+        totals[name] = (totals[name] ?? 0) + repeats;
+      }
+    }
+  }
+
+  return totals;
+}
+
 // --- SEGMENT PARSING ---
 
 export interface WorkoutSegment {

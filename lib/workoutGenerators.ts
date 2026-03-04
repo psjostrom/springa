@@ -186,7 +186,7 @@ const generateEasyRun = (
       notes, "",
       "Warmup", `- ${wu}`, "",
       "Main set", `- ${s(`${duration}m`, "easy", "Easy")}`, "",
-      "Strides 4x", `- ${s("20s", "hard", "Stride")}`, `- ${s("1m", "easy", "Easy")}`, "",
+      "Strides 4x", `- ${s("20s", "hard", "Stride")}`, `- ${s("1m", "walk")}`, "",
       "Cooldown", `- ${cd}`, "",
     ];
     return {

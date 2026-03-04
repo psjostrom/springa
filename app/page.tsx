@@ -125,7 +125,7 @@ function HomeContent() {
 
   // Shared calendar events — single fetch for all screens
   const { events: calendarEvents, isLoading: calendarLoading, error: calendarError, reload: calendarReload } = useSharedCalendarData(apiKey);
-  const handleReload = () => { void calendarReload(); };
+  const handleReload = () => { calendarReload(); };
 
   // Live BG from xDrip
   const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
