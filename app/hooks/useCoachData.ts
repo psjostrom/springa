@@ -15,7 +15,7 @@ interface UseCoachDataOptions {
   raceDate?: string;
   lthr?: number;
   maxHr?: number;
-  hrZones?: number[];
+  hrZones: number[];
   paceTable?: PaceTable;
   currentBG?: number | null;
   trendSlope?: number | null;

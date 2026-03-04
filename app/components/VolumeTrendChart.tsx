@@ -28,6 +28,7 @@ interface VolumeTrendChartProps {
   prefix?: string;
   startKm?: number;
   lthr?: number;
+  hrZones?: number[];
   paceTable?: PaceTable;
 }
 
@@ -48,6 +49,7 @@ export function VolumeTrendChart({
   prefix,
   startKm,
   lthr,
+  hrZones,
   paceTable,
 }: VolumeTrendChartProps) {
 
@@ -71,7 +73,8 @@ export function VolumeTrendChart({
     }));
 
     // Planned distances from the deterministic plan generator (covers all weeks)
-    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR);
+    if (hrZones?.length !== 5) return { weeks, currentWeekIdx };
+    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones);
     for (const pe of planEvents) {
       const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, {
         weekStartsOn: 1,

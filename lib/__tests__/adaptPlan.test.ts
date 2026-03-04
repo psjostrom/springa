@@ -166,12 +166,12 @@ describe("adaptFuelRate", () => {
 
   it("falls back to category average when no target exists", () => {
     const bgModel = makeBGModel(); // has avgFuelRate 28 for interval
-    const { rate, change } = adaptFuelRate(30, "interval", bgModel);
+    const { rate, change } = adaptFuelRate(35, "interval", bgModel);
 
-    // getCurrentFuelRate resolves to Math.round(28) = 28
+    // getCurrentFuelRate resolves to Math.round(28) = 28; diff is 7 (≥3 dead band)
     expect(rate).toBe(28);
     expect(change).not.toBeNull();
-    expect(change!.detail).toContain("30 → 28");
+    expect(change!.detail).toContain("35 → 28");
   });
 
   it("sets fuel when current is null", () => {
@@ -289,6 +289,8 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result).toHaveLength(1);
@@ -308,10 +310,12 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result[0].swapped).toBe(true);
-    expect(result[0].structure).toContain("66-78% LTHR");
+    expect(result[0].structure).toContain("67-79% LTHR");
     expect(result[0].changes.some((c) => c.type === "swap")).toBe(true);
   });
 
@@ -326,6 +330,8 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result[0].fuelRate).toBe(36);
@@ -344,6 +350,8 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result[0].externalId).toBe("eco16-speed-14");
@@ -367,6 +375,8 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result[0].fuelRate).toBe(45);
@@ -389,6 +399,8 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
       prefix: "eco16",
+      lthr: 168,
+      hrZones: [112, 132, 150, 167, 189],
     });
 
     expect(result).toHaveLength(3);

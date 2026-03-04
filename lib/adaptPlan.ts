@@ -4,7 +4,7 @@ import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
-import { HR_ZONE_BANDS, DEFAULT_LTHR } from "./constants";
+import { resolveZoneBand } from "./constants";
 import { getCurrentFuelRate } from "./fuelRate";
 
 // --- Types ---
@@ -34,6 +34,8 @@ export interface AdaptationInput {
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   prefix: string;
+  lthr: number;
+  hrZones: number[];
 }
 
 /**
@@ -142,14 +144,13 @@ export function shouldSwapToEasy(
  * Build an easy-run structure as replacement for a swapped interval.
  * Uses the same formatStep + createWorkoutText pipeline as workoutGenerators.
  */
-function buildEasyStructure(duration?: number, lthr?: number): string {
-  const l = lthr ?? DEFAULT_LTHR;
-  const ez = HR_ZONE_BANDS.easy;
+function buildEasyStructure(duration: number | undefined, lthr: number, hrZones: number[]): string {
+  const ez = resolveZoneBand("easy", lthr, hrZones);
   const durationMin = duration ? Math.round(duration / 60) : 40;
   const mainMin = Math.max(durationMin - 15, 20);
-  const wu = formatStep("10m", ez.min, ez.max, l, "Warmup");
-  const main = formatStep(`${mainMin}m`, ez.min, ez.max, l, "Easy");
-  const cd = formatStep("5m", ez.min, ez.max, l, "Cooldown");
+  const wu = formatStep("10m", ez.min, ez.max, lthr, "Warmup");
+  const main = formatStep(`${mainMin}m`, ez.min, ez.max, lthr, "Easy");
+  const cd = formatStep("5m", ez.min, ez.max, lthr, "Cooldown");
   return createWorkoutText(wu, [main], cd, 1).trim();
 }
 
@@ -199,7 +200,7 @@ export function reconstructExternalId(
  * Returns adapted events ready for AI note generation.
  */
 export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
-  const { upcomingEvents, bgModel, insights, prefix } = input;
+  const { upcomingEvents, bgModel, insights, prefix, lthr, hrZones } = input;
 
   return upcomingEvents.map((event) => {
     const changes: AdaptationChange[] = [];
@@ -220,7 +221,7 @@ export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
     let swapped = false;
     if (swap && reason) {
       changes.push({ type: "swap", detail: reason });
-      finalStructure = buildEasyStructure(event.duration);
+      finalStructure = buildEasyStructure(event.duration, lthr, hrZones);
       swapped = true;
     }
 

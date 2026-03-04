@@ -82,10 +82,13 @@ function makeRunBGContext(overrides: Partial<RunBGContext> = {}): RunBGContext {
   };
 }
 
+const defaultHrZones = [112, 132, 150, 167, 189];
+
 describe("buildRunAnalysisPrompt", () => {
   it("returns system and user prompts", () => {
     const result = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       runBGContext: makeRunBGContext(),
       reportCard: makeReportCard(),
     });
@@ -98,6 +101,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("includes run basics in user prompt", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
     });
 
     expect(user).toContain("5.20 km");
@@ -109,6 +113,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("includes BG data when report card provided", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       reportCard: makeReportCard(),
     });
 
@@ -121,6 +126,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("includes fuel data", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       reportCard: makeReportCard(),
     });
 
@@ -132,6 +138,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("includes HR zone compliance", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       reportCard: makeReportCard(),
     });
 
@@ -142,6 +149,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("includes pre-run and recovery context", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       runBGContext: makeRunBGContext(),
       reportCard: makeReportCard(),
     });
@@ -157,6 +165,7 @@ describe("buildRunAnalysisPrompt", () => {
   it("works with minimal data (no report card, no BG context)", () => {
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
     });
 
     expect(user).toContain("## Run Data");
@@ -178,7 +187,7 @@ describe("buildRunAnalysisPrompt", () => {
       },
     });
 
-    const { user } = buildRunAnalysisPrompt({ event });
+    const { user } = buildRunAnalysisPrompt({ event, hrZones: defaultHrZones });
 
     expect(user).toContain("## Glucose Curve");
     expect(user).toContain("Start: 10.0");
@@ -200,6 +209,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       reportCard,
     });
 
@@ -210,16 +220,19 @@ describe("buildRunAnalysisPrompt", () => {
   it("formats duration correctly", () => {
     const { user: short } = buildRunAnalysisPrompt({
       event: makeEvent({ duration: 1800 }),
+      hrZones: defaultHrZones,
     });
     expect(short).toContain("Duration: 30m");
 
     const { user: long } = buildRunAnalysisPrompt({
       event: makeEvent({ duration: 5400 }),
+      hrZones: defaultHrZones,
     });
     expect(long).toContain("Duration: 1h 30m");
 
     const { user: exactHour } = buildRunAnalysisPrompt({
       event: makeEvent({ duration: 3600 }),
+      hrZones: defaultHrZones,
     });
     expect(exactHour).toContain("Duration: 1h");
   });
@@ -235,6 +248,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     const { user } = buildRunAnalysisPrompt({
       event: makeEvent(),
+      hrZones: defaultHrZones,
       reportCard,
     });
 
@@ -244,18 +258,17 @@ describe("buildRunAnalysisPrompt", () => {
   });
 
   it("system prompt contains pace zones, LTHR, and T1D safety rules", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("LTHR 168 bpm, Max HR 189 bpm");
-    expect(system).toContain("Easy: ~7:15/km");
-    expect(system).toContain("111-131 bpm");
+    expect(system).toContain("112-132 bpm");
     expect(system).toContain("pump OFF");
     expect(system).toContain("NEVER suggest reducing carbs");
     expect(system).toContain("More carbs = slower drop");
   });
 
   it("system prompt explains category-to-zone mapping", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("\"easy\"/\"long\" → Z2 entire time");
     expect(system).toContain("Avg HR >132 = too hard");
@@ -263,20 +276,20 @@ describe("buildRunAnalysisPrompt", () => {
   });
 
   it("system prompt connects intensity to BG drop", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("Higher intensity = more glucose uptake = faster BG drop");
   });
 
   it("system prompt has fuel adjustment guidance", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("Carbs are the ONLY tool to slow/reverse BG drops");
     expect(system).toContain("fuel rate");
   });
 
   it("system prompt flags low start BG as risk", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent() });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("Starting below 9 is a risk factor");
     expect(system).toContain("Below 8 is a serious concern");

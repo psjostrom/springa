@@ -8,7 +8,7 @@ export function formatStep(
 ): string {
   const minBpm = Math.floor(lthr * minPct);
   const maxBpm = Math.ceil(lthr * maxPct);
-  const core = `${duration} ${Math.floor(minPct * 100)}-${Math.ceil(maxPct * 100)}% LTHR (${minBpm}-${maxBpm} bpm)`;
+  const core = `${duration} ${Math.round(minPct * 100)}-${Math.round(maxPct * 100)}% LTHR (${minBpm}-${maxBpm} bpm)`;
   return note ? `${note} ${core}` : core;
 }
 

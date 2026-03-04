@@ -11,6 +11,7 @@ describe("generatePlan", () => {
     totalWeeks: 12,
     startKm: 8,
     lthr: 169,
+    hrZones: [112, 132, 150, 167, 189],
   };
 
   function generate(overrides: Partial<typeof defaultArgs> = {}) {
@@ -18,7 +19,7 @@ describe("generatePlan", () => {
     return generatePlan(
       args.bgModel,
       args.raceDateStr, args.raceDist, args.prefix,
-      args.totalWeeks, args.startKm, args.lthr,
+      args.totalWeeks, args.startKm, args.lthr, args.hrZones,
     );
   }
 

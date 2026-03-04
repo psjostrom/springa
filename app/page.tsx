@@ -251,6 +251,7 @@ function HomeContent() {
             prefix={settings?.prefix}
             startKm={settings?.startKm}
             lthr={settings?.lthr}
+            hrZones={settings?.hrZones}
             bgModel={bgModel}
             bgModelLoading={bgModelLoading}
             bgModelProgress={bgModelProgress}
@@ -261,7 +262,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={enrichedEvents} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
+          <CoachScreen events={enrichedEvents} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones ?? []} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
       </div>
 

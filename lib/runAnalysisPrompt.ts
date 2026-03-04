@@ -6,7 +6,7 @@ import type { InsulinContext } from "./insulinContext";
 import type { FitnessInsights } from "./fitness";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
-import { DEFAULT_LTHR, DEFAULT_MAX_HR, HR_ZONE_BANDS } from "./constants";
+import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
 function ratingLabel(rating: "good" | "ok" | "bad"): string {
@@ -23,7 +23,7 @@ export function buildRunAnalysisPrompt(params: {
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
   lthr?: number;
   maxHr?: number;
-  hrZones?: number[];
+  hrZones: number[];
   fitnessInsights?: FitnessInsights | null;
   bgModelSummary?: string;
   crossRunPatterns?: string;
@@ -31,9 +31,7 @@ export function buildRunAnalysisPrompt(params: {
   const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns } = params;
   const lthr = params.lthr ?? DEFAULT_LTHR;
   const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
-  const easyMaxBpm = params.hrZones?.length === 5
-    ? params.hrZones[1]
-    : Math.ceil(lthr * HR_ZONE_BANDS.easy.max);
+  const easyMaxBpm = params.hrZones[1];
 
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 

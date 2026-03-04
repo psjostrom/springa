@@ -60,7 +60,11 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       setStatusMsg("Missing API Key");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, prefix, totalWeeks, startKm, lthr);
+    if (props.hrZones?.length !== 5) {
+      setStatusMsg("HR zones not synced from Intervals.icu");
+      return;
+    }
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, prefix, totalWeeks, startKm, lthr, props.hrZones);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));

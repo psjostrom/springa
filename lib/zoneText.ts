@@ -1,42 +1,25 @@
 import type { HRZoneName, PaceTable } from "./types";
-import { HR_ZONE_BANDS, DEFAULT_MAX_HR, FALLBACK_PACE_TABLE } from "./constants";
+import { resolveZoneBand, DEFAULT_MAX_HR, FALLBACK_PACE_TABLE } from "./constants";
 import { formatPace, getZoneLabel } from "./format";
 
 const ZONE_ORDER: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
 
-function bpm(lthr: number, frac: number, maxHr?: number): number {
-  const raw = Math.round(lthr * frac);
-  return maxHr ? Math.min(raw, maxHr) : raw;
-}
-
-/**
- * Map Intervals.icu hr_zones [Z1top, Z2top, Z3top, Z4top, Z5top] to zone BPM ranges.
- * hr_zones[0]=112 means Z2 starts at 112, hr_zones[1]=132 means Z2 ends / Z3 starts at 132, etc.
- */
-function zonesFromHrArray(hrZones: number[]): Record<HRZoneName, { lo: number; hi: number }> {
-  return {
-    easy:   { lo: hrZones[0], hi: hrZones[1] },
-    steady: { lo: hrZones[1], hi: hrZones[2] },
-    tempo:  { lo: hrZones[2], hi: hrZones[3] },
-    hard:   { lo: hrZones[3], hi: hrZones[4] },
-  };
-}
-
 /**
  * Generates the pace zone block for AI prompts.
- * When hrZones is provided (from Intervals.icu), uses those exact BPM boundaries.
- * Otherwise computes from LTHR × HR_ZONE_BANDS fractions.
+ * Requires hrZones from Intervals.icu.
  */
-export function buildZoneBlock(lthr: number, maxHr?: number, paceTable?: PaceTable, hrZones?: number[]): string {
+export function buildZoneBlock(lthr: number, maxHr?: number, paceTable?: PaceTable, hrZones: number[] = []): string {
   const table = paceTable ?? FALLBACK_PACE_TABLE;
   const garminZoneNum: Record<HRZoneName, string> = { easy: "Z2", steady: "Z3", tempo: "Z4", hard: "Z5" };
-  const zoneBpm = hrZones?.length === 5
-    ? zonesFromHrArray(hrZones)
-    : null;
+
+  if (hrZones.length !== 5) {
+    return "(HR zones not available — sync from Intervals.icu)";
+  }
 
   return ZONE_ORDER.map((zone) => {
-    const lo = zoneBpm ? zoneBpm[zone].lo : bpm(lthr, HR_ZONE_BANDS[zone].min);
-    const hi = zoneBpm ? zoneBpm[zone].hi : bpm(lthr, HR_ZONE_BANDS[zone].max, maxHr);
+    const band = resolveZoneBand(zone, lthr, hrZones);
+    const lo = Math.floor(lthr * band.min);
+    const hi = Math.min(Math.ceil(lthr * band.max), maxHr ?? Infinity);
     const label = getZoneLabel(zone);
     const zNum = garminZoneNum[zone];
     const entry = table[zone] ?? FALLBACK_PACE_TABLE[zone] ?? { zone, avgPace: 7.25, sampleCount: 0 };

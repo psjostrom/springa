@@ -1,4 +1,4 @@
-import type { PaceTable, SpeedSessionType } from "./types";
+import type { HRZoneName, PaceTable, SpeedSessionType } from "./types";
 
 // --- CONSTANTS ---
 
@@ -67,15 +67,25 @@ export const ZONE_THRESHOLDS = {
   z2: 66,  // >= 66% LTHR
 } as const;
 
-/** HR zone bands as LTHR fractions. Single source of truth for workout generation. */
-export const HR_ZONE_BANDS = {
-  easy: { min: 0.66, max: 0.78 },
-  steady: { min: 0.78, max: 0.89 },
-  tempo: { min: 0.89, max: 0.99 },
-  hard: { min: 0.99, max: 1.11 },
-} as const;
+const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
+  easy: [0, 1],
+  steady: [1, 2],
+  tempo: [2, 3],
+  hard: [3, 4],
+};
 
-import type { HRZoneName } from "./types";
+/**
+ * Resolve zone boundaries as LTHR fractions from the Intervals.icu hrZones array.
+ * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values synced from Garmin).
+ */
+export function resolveZoneBand(
+  zone: HRZoneName,
+  lthr: number,
+  hrZones: number[],
+): { min: number; max: number } {
+  const [loIdx, hiIdx] = HR_ZONE_INDEX[zone];
+  return { min: hrZones[loIdx] / lthr, max: hrZones[hiIdx] / lthr };
+}
 
 /** Classify an LTHR percentage into a zone color. */
 export function getZoneColor(lthrPercent: number): string {

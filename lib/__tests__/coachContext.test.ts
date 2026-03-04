@@ -79,6 +79,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const defaultHrZones = [112, 132, 150, 167, 189];
+
 // --- Tests ---
 
 describe("buildSystemPrompt", () => {
@@ -88,12 +90,12 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Type 1 Diabetic");
     expect(prompt).toContain("LTHR 168 bpm, Max HR 189 bpm");
-    expect(prompt).toContain("~7:15/km");
-    expect(prompt).toContain("111-131 bpm");
+    expect(prompt).toContain("112-132 bpm");
     expect(prompt).toContain("Build (week 5, 28% through plan)");
   });
 
@@ -103,6 +105,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("No BG model data available yet.");
@@ -131,6 +134,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Activities analyzed: 5");
@@ -152,6 +156,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("BG response by starting level:");
@@ -172,6 +177,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("BG response by time into run:");
@@ -192,6 +198,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("BG response by entry slope (pre-run trend):");
@@ -221,6 +228,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("startBG 10.5 (entry -0.8/10m)");
@@ -244,6 +252,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Suggested fuel for easy: 55g/h");
@@ -279,6 +288,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("startBG 10.5");
@@ -307,6 +317,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).not.toContain("startBG");
@@ -334,6 +345,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("startBG 11.0");
@@ -355,6 +367,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("BG rate +0.30/10min");
@@ -366,6 +379,7 @@ describe("buildSystemPrompt", () => {
       insights: makeInsights({ currentCtl: 20, currentAtl: 25, currentTsb: -5 }),
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("CTL (fitness): 20");
@@ -379,6 +393,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Fitness data not loaded.");
@@ -404,6 +419,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Easy + Strides eco16");
@@ -431,6 +447,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("Short Intervals eco16");
@@ -449,6 +466,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [oldEvent],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).not.toContain("Old Run eco16");
@@ -467,6 +485,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     // Should include 10, exclude 5
@@ -500,6 +519,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
       runBGContexts,
     });
 
@@ -528,6 +548,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
       runBGContexts,
     });
 
@@ -545,6 +566,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).not.toContain("entry:");
@@ -574,6 +596,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
       runBGContexts,
     });
 
@@ -588,6 +611,7 @@ describe("buildSystemPrompt", () => {
       insights: null,
       bgModel: null,
       events: [],
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).not.toContain("Post-Run Recovery Patterns");
@@ -663,6 +687,7 @@ describe("buildSystemPrompt with feedback", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("feedback: bad");
@@ -680,6 +705,7 @@ describe("buildSystemPrompt with feedback", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).toContain("feedback: good, 45g reported");
@@ -696,6 +722,7 @@ describe("buildSystemPrompt with feedback", () => {
       insights: null,
       bgModel: null,
       events,
+      hrZones: defaultHrZones,
     });
 
     expect(prompt).not.toContain("feedback:");

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";

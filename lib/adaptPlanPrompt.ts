@@ -14,7 +14,7 @@ interface PromptInput {
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
   maxHr?: number;
-  hrZones?: number[];
+  hrZones: number[];
   paceTable?: PaceTable;
   feedbackByActivity?: Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>;
   crossRunPatterns?: string;

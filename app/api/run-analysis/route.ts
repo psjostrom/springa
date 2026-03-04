@@ -238,7 +238,7 @@ export async function POST(req: Request) {
     athleteFeedback,
     lthr: profile.lthr,
     maxHr: profile.maxHr,
-    hrZones: profile.hrZones,
+    hrZones: profile.hrZones ?? [],
     fitnessInsights,
     bgModelSummary,
     crossRunPatterns: patterns?.patternsText,

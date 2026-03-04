@@ -38,6 +38,7 @@ export interface PlanContext {
   totalWeeks: number;
   startKm: number;
   lthr: number;
+  hrZones: number[];
   planStartMonday: Date;
 }
 

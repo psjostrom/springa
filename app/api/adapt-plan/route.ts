@@ -21,7 +21,7 @@ interface RequestBody {
   prefix: string;
   lthr: number;
   maxHr?: number;
-  hrZones?: number[];
+  hrZones: number[];
   paceTable?: PaceTable;
 }
 
@@ -83,6 +83,8 @@ export async function POST(req: Request) {
     insights,
     runBGContexts,
     prefix,
+    lthr,
+    hrZones,
   });
 
   // 2. Generate AI notes in parallel (max 4)

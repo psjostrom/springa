@@ -47,6 +47,7 @@ interface IntelScreenProps {
   prefix?: string;
   startKm?: number;
   lthr?: number;
+  hrZones?: number[];
   bgActivityNames: Map<string, string>;
   cachedActivities: CachedActivity[];
   widgetLayout: WidgetLayout;
@@ -116,6 +117,7 @@ export function IntelScreen({
   prefix,
   startKm,
   lthr,
+  hrZones,
   bgModel,
   bgModelLoading,
   bgModelProgress,
@@ -204,6 +206,7 @@ export function IntelScreen({
         prefix={prefix}
         startKm={startKm}
         lthr={lthr}
+        hrZones={hrZones}
         paceTable={paceTable}
       />
     ),

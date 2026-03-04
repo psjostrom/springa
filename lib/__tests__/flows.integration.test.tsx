@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "./test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "./msw/server";
@@ -42,7 +42,7 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
 describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
   it("generates a plan, shows preview, syncs to Intervals.icu", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
 
     // 1. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -193,7 +193,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 describe("Flow 4: Planner — Generate uses fuel settings directly", () => {
   it("generates plan instantly using sidebar fuel values", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
 
     // 1. Click Generate Plan
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -224,7 +224,7 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
 
   it("uploads successfully even when DELETE returns 500", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
 
     // 1. Generate plan (two buttons: desktop + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });

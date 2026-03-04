@@ -9,12 +9,11 @@ import {
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import type { BGResponseModel } from "./bgModel";
-import { SPEED_ROTATION, SPEED_SESSION_LABELS, HR_ZONE_BANDS } from "./constants";
+import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { getCurrentFuelRate } from "./fuelRate";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
-const WALK_ZONE = { min: 0.50, max: 0.66 };
 
 /** Derive Garmin step intensity from the step's note and zone.
  *  Controls what the watch voices: "Warm Up", "Run", "Recovery", "Cooldown". */
@@ -27,10 +26,14 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
 
 /** Create zone-aware step helper that captures ctx. */
 function makeStep(ctx: PlanContext) {
+  const walkMin = 0.50;
+  const walkMax = ctx.hrZones[0] / ctx.lthr;
+
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const step = zone === "walk"
-      ? formatStep(duration, WALK_ZONE.min, WALK_ZONE.max, ctx.lthr, note ?? "Walk")
-      : formatStep(duration, HR_ZONE_BANDS[zone].min, HR_ZONE_BANDS[zone].max, ctx.lthr, note);
+    const band = zone === "walk"
+      ? { min: walkMin, max: walkMax }
+      : resolveZoneBand(zone, ctx.lthr, ctx.hrZones);
+    const step = formatStep(duration, band.min, band.max, ctx.lthr, note ?? (zone === "walk" ? "Walk" : undefined));
     return `${step} intensity=${garminIntensity(zone, note)}`;
   };
 }
@@ -344,6 +347,7 @@ export function generatePlan(
   totalWeeks: number,
   startKm: number,
   lthr: number,
+  hrZones: number[],
 ): WorkoutEvent[] {
   const raceDate = parseISO(raceDateStr);
   const today = new Date();
@@ -357,6 +361,7 @@ export function generatePlan(
     totalWeeks,
     startKm,
     lthr,
+    hrZones,
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
@@ -384,6 +389,7 @@ export function generateFullPlan(
   totalWeeks: number,
   startKm: number,
   lthr: number,
+  hrZones: number[],
 ): WorkoutEvent[] {
   const raceDate = parseISO(raceDateStr);
   const ctx: PlanContext = {
@@ -396,6 +402,7 @@ export function generateFullPlan(
     totalWeeks,
     startKm,
     lthr,
+    hrZones,
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
