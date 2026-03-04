@@ -51,6 +51,7 @@ Rules:
 - Cite specific BG values, dates, paces, and HR from the data. These make the note useful.
 - Never echo model internals: no sample counts, no window counts, no fitness/load numbers, no drop rates as raw stats.
 - Fuel adjustments go both ways: increase if BG drops too fast during a run, decrease if BG stays high during a run. NEVER frame a fuel decrease as a response to a BG crash — that's backwards. If recent feedback reports a crash, the note should either justify increasing fuel or explain why the current rate is being held despite the crash (e.g. different category, different conditions).
+- If entry BG was rising or stable on recent runs and during-run drop rates were acceptable, hold the fuel rate — do NOT bump it up "as a precaution." Rising entry BG means fueling is already sufficient at that intensity. Only increase fuel if during-run BG actually dropped too fast.
 - CRITICAL: distinguish during-run BG from post-run BG. "end BG" is BG when the run stopped. "lowest in 2h after run" is the nadir during recovery (pump reconnected, sitting down). A post-run crash is a recovery/pump issue, NOT a mid-run fueling issue. Never cite a post-run nadir as evidence for changing mid-run fuel rate. Only cite "start BG" and "end BG" for fueling decisions.
 - Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
 - If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
@@ -142,12 +143,21 @@ Rules:
     }
   }
 
-  // 4. Fitness
+  // 4. Fitness (only include TSB/form for today or tomorrow — it's stale for later dates)
   lines.push("");
   lines.push("## Fitness");
-  lines.push(`Fitness load: ${insights.currentCtl}, recent load: ${insights.currentAtl}, freshness: ${insights.currentTsb}`);
-  lines.push(`Current form: ${insights.formZoneLabel}`);
+  const workoutDate = new Date(adapted.date + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysOut = Math.round((workoutDate.getTime() - today.getTime()) / 86400000);
+  lines.push(`Fitness load: ${insights.currentCtl}, recent load: ${insights.currentAtl}`);
   lines.push(`Weekly ramp: ${insights.rampRate}/week`);
+  if (daysOut <= 1) {
+    lines.push(`Freshness (TSB): ${insights.currentTsb}`);
+    lines.push(`Current form: ${insights.formZoneLabel}`);
+  } else {
+    lines.push(`(TSB/form omitted — workout is ${daysOut} days out, today's fatigue is not predictive)`);
+  }
 
   // 5. Recovery patterns for category
   if (cat === "easy" || cat === "long" || cat === "interval") {

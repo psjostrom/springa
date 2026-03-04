@@ -86,7 +86,7 @@ export function adaptFuelRate(
   }
 
   const resolved = getCurrentFuelRate(category, bgModel);
-  if (current != null && resolved !== current) {
+  if (current != null && resolved !== current && Math.abs(resolved - current) >= 3) {
     return {
       rate: resolved,
       change: {
