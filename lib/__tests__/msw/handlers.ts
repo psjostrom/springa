@@ -64,4 +64,9 @@ export const handlers = [
   http.get("/api/xdrip", () => {
     return HttpResponse.json({ readings: [], trend: null });
   }),
+
+  // GET pre-run carbs (PreRunCarbsInput fetches on mount)
+  http.get("/api/prerun-carbs", () => {
+    return HttpResponse.json({ carbsG: null, minutesBefore: null });
+  }),
 ];
