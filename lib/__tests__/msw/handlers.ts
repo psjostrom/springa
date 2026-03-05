@@ -60,6 +60,16 @@ export const handlers = [
     return HttpResponse.json({ analysis: "Test analysis." });
   }),
 
+  // GET bg-patterns (cached cross-run patterns)
+  http.get("/api/bg-patterns", () => {
+    return HttpResponse.json({ patterns: null, latestActivityId: null });
+  }),
+
+  // POST bg-patterns (discover/re-analyze patterns)
+  http.post("/api/bg-patterns", () => {
+    return HttpResponse.json({ patterns: "Test patterns.", latestActivityId: "a123" });
+  }),
+
   // GET xdrip BG readings (useCurrentBG polls this on mount)
   http.get("/api/xdrip", () => {
     return HttpResponse.json({ readings: [], trend: null });

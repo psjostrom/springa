@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
 import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -194,7 +195,8 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     latestActivityId?: string;
   }
 
-  const { data: patternsData, mutate: mutatePatterns } = useSWR<PatternsData>(
+  // Initial fetch — GET cached patterns
+  const { data: patternsData } = useSWR<PatternsData>(
     "bg-patterns",
     async () => {
       const res = await fetch("/api/bg-patterns");
@@ -204,12 +206,34 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
 
+  // Discover/re-analyze mutation — POST to generate new patterns
+  const { trigger: discoverPatterns, isMutating: isAnalyzing, error: mutationError } = useSWRMutation<
+    PatternsData,
+    Error,
+    string,
+    CalendarEvent[]
+  >(
+    "bg-patterns",
+    async (_key, { arg: eventsArg }) => {
+      const res = await fetch("/api/bg-patterns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events: eventsArg }),
+      });
+
+      const data = (await res.json()) as { patterns?: string; latestActivityId?: string; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Analysis failed");
+      }
+      return { patterns: data.patterns ?? null, latestActivityId: data.latestActivityId };
+    },
+    { populateCache: true, revalidate: false },
+  );
+
   const patterns = patternsData?.patterns ?? null;
   const savedLatestActivityId = patternsData?.latestActivityId ?? null;
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [patternsExpanded, setPatternsExpanded] = useState(true);
-  const [patternsError, setPatternsError] = useState<string | null>(null);
 
   const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
 
@@ -227,32 +251,16 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
     && latestCompletedActivityId != null
     && savedLatestActivityId !== latestCompletedActivityId;
 
-  const handleDiscover = async () => {
+  const handleDiscover = () => {
     if (!events || isAnalyzing) return;
-    setIsAnalyzing(true);
-    setPatternsError(null);
-
-    try {
-      const res = await fetch("/api/bg-patterns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events }),
-      });
-
-      const data = (await res.json()) as { patterns?: string; latestActivityId?: string; error?: string };
-      if (!res.ok) {
-        setPatternsError(data.error ?? "Analysis failed");
-      } else {
-        // Update SWR cache with new data
-        await mutatePatterns({ patterns: data.patterns ?? null, latestActivityId: data.latestActivityId }, { revalidate: false });
-        setPatternsExpanded(true);
-      }
-    } catch {
-      setPatternsError("Network error — try again");
-    } finally {
-      setIsAnalyzing(false);
-    }
+    void discoverPatterns(events).then(() => {
+      setPatternsExpanded(true);
+    }).catch(() => {
+      // Error state is handled by useSWRMutation via mutationError
+    });
   };
+
+  const patternsError = mutationError?.message ?? null;
 
   return (
     <div className="space-y-3">
@@ -327,7 +335,7 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
             </span>
             {canDiscover && !isAnalyzing && !patterns && (
               <button
-                onClick={() => { void handleDiscover(); }}
+                onClick={handleDiscover}
                 className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
               >
                 Discover Patterns
@@ -335,7 +343,7 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
             )}
             {!isAnalyzing && patterns && (
               <button
-                onClick={() => { void handleDiscover(); }}
+                onClick={handleDiscover}
                 disabled={!canDiscover}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed ${isStale ? "text-[#fbbf24]" : "text-[#8b7ba8]"}`}
               >

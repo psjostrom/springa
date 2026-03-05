@@ -90,6 +90,8 @@ vi.mock("lucide-react", () => {
     Pencil: icon("Pencil"),
     Sparkles: icon("Sparkles"),
     RefreshCw: icon("RefreshCw"),
+    Droplets: icon("Droplets"),
+    TrendingDown: icon("TrendingDown"),
   };
 });
 
