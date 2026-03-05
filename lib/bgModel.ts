@@ -1,14 +1,7 @@
-import type { WorkoutCategory, DataPoint, IntervalsStream } from "./types";
+import type { WorkoutCategory, DataPoint } from "./types";
 import type { CachedActivity } from "./bgCacheDb";
 import { linearRegression } from "./math";
-import {
-  alignStreams,
-  extractObservations,
-  MIN_ALIGNED_POINTS,
-} from "./bgObservations";
-
-// Re-export for consumers that historically imported from bgModel
-export { convertGlucoseToMmol, alignStreams, extractObservations } from "./bgObservations";
+import { extractObservations, MIN_ALIGNED_POINTS } from "./bgObservations";
 
 // --- Types ---
 
@@ -309,53 +302,16 @@ function getConfidence(count: number): "low" | "medium" | "high" {
   return "low";
 }
 
-/** Build BG response model from activity streams, grouped by workout category. */
-export function buildBGModel(
-  activitiesData: {
-    streams: IntervalsStream[];
-    activityId: string;
-    fuelRate: number | null; // g/h, null if unknown
-    category: WorkoutCategory;
-  }[],
-): BGResponseModel {
-  const allObservations: BGObservation[] = [];
-  let analyzed = 0;
-
-  for (const { streams, activityId, fuelRate, category } of activitiesData) {
-    const aligned = alignStreams(streams);
-    if (!aligned) continue;
-
-    const startBG = aligned.glucose[0].value;
-    const entrySlope = computeEntrySlope(aligned.glucose);
-
-    const obs = extractObservations(
-      aligned.hr,
-      aligned.glucose,
-      activityId,
-      fuelRate,
-      startBG,
-      category,
-      entrySlope,
-    );
-
-    if (obs.length > 0) {
-      allObservations.push(...obs);
-      analyzed++;
-    }
-  }
-
-  return aggregateModel(allObservations, analyzed);
-}
-
-/** Build BG response model from cached aligned data (skips stream fetch + alignment). */
+/** Build BG response model from cached aligned data. */
 export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseModel {
   const allObservations: BGObservation[] = [];
   let analyzed = 0;
 
   for (const act of cached) {
-    const { hr, glucose, activityId, fuelRate, startBG, category } = act;
-    if (hr.length < MIN_ALIGNED_POINTS) continue;
+    const { hr, glucose, activityId, fuelRate, category } = act;
+    if (hr.length < MIN_ALIGNED_POINTS || glucose.length === 0) continue;
 
+    const startBG = glucose[0].value;
     const entrySlope = act.runBGContext?.pre?.entrySlope30m
       ?? computeEntrySlope(glucose);
     const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category, entrySlope);

@@ -87,3 +87,28 @@ export async function getRecentXdripReadings(
     direction: row.direction as string,
   }));
 }
+
+/** Padding before/after run window to enable interpolation at boundaries. */
+const RUN_WINDOW_PADDING_MS = 10 * 60 * 1000; // 10 minutes
+
+/** Fetch xDrip readings for a run window, with padding for interpolation. */
+export async function getXdripReadingsForRun(
+  email: string,
+  runStartMs: number,
+  runEndMs: number,
+): Promise<XdripReading[]> {
+  const paddedStart = runStartMs - RUN_WINDOW_PADDING_MS;
+  const paddedEnd = runEndMs + RUN_WINDOW_PADDING_MS;
+
+  const result = await db().execute({
+    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+    args: [email, paddedStart, paddedEnd],
+  });
+
+  return result.rows.map((row) => ({
+    ts: row.ts as number,
+    mmol: row.mmol as number,
+    sgv: row.sgv as number,
+    direction: row.direction as string,
+  }));
+}

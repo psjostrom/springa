@@ -1,42 +1,48 @@
 #!/bin/bash
 # Setup script for new Conductor worktrees
-# Copies gitignored files from the main repo
+# Copies gitignored files from the main repo if they don't exist
 
-MAIN_REPO="$HOME/code/springa"
+MAIN_REPO="/Users/persjo/code/private/springa"
 WORKTREE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "Setting up worktree: $WORKTREE_DIR"
-echo "Copying from: $MAIN_REPO"
+echo "Source: $MAIN_REPO"
 
-# Copy node_modules (faster than npm install)
-if [ -d "$MAIN_REPO/node_modules" ]; then
-  echo "Copying node_modules..."
-  cp -R "$MAIN_REPO/node_modules" "$WORKTREE_DIR/"
+# Symlink node_modules (faster than copying)
+if [ ! -d "$WORKTREE_DIR/node_modules" ]; then
+  if [ -d "$MAIN_REPO/node_modules" ]; then
+    echo "Symlinking node_modules..."
+    ln -s "$MAIN_REPO/node_modules" "$WORKTREE_DIR/node_modules"
+  else
+    echo "Warning: node_modules not found in main repo, running npm install..."
+    cd "$WORKTREE_DIR" && npm install --registry https://registry.npmjs.org
+  fi
 else
-  echo "Warning: node_modules not found in main repo, running npm install..."
-  cd "$WORKTREE_DIR" && npm install
-fi
-
-# Copy package-lock.json
-if [ -f "$MAIN_REPO/package-lock.json" ]; then
-  echo "Copying package-lock.json..."
-  cp "$MAIN_REPO/package-lock.json" "$WORKTREE_DIR/"
+  echo "node_modules already exists, skipping"
 fi
 
 # Copy .env.local
-if [ -f "$MAIN_REPO/.env.local" ]; then
-  echo "Copying .env.local..."
-  cp "$MAIN_REPO/.env.local" "$WORKTREE_DIR/"
+if [ ! -f "$WORKTREE_DIR/.env.local" ]; then
+  if [ -f "$MAIN_REPO/.env.local" ]; then
+    echo "Copying .env.local..."
+    cp "$MAIN_REPO/.env.local" "$WORKTREE_DIR/"
+  else
+    echo "Warning: .env.local not found in main repo"
+  fi
 else
-  echo "Warning: .env.local not found in main repo"
+  echo ".env.local already exists, skipping"
 fi
 
 # Copy CLAUDE.md
-if [ -f "$MAIN_REPO/CLAUDE.md" ]; then
-  echo "Copying CLAUDE.md..."
-  cp "$MAIN_REPO/CLAUDE.md" "$WORKTREE_DIR/"
+if [ ! -f "$WORKTREE_DIR/CLAUDE.md" ]; then
+  if [ -f "$MAIN_REPO/CLAUDE.md" ]; then
+    echo "Copying CLAUDE.md..."
+    cp "$MAIN_REPO/CLAUDE.md" "$WORKTREE_DIR/"
+  else
+    echo "Warning: CLAUDE.md not found in main repo"
+  fi
 else
-  echo "Warning: CLAUDE.md not found in main repo"
+  echo "CLAUDE.md already exists, skipping"
 fi
 
 echo "Done!"

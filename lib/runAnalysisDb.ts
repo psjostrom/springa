@@ -38,7 +38,6 @@ export interface CachedRunRow {
   activityId: string;
   category: string;
   fuelRate: number | null;
-  startBG: number;
   glucose: { time: number; value: number }[];
   hr: { time: number; value: number }[];
   activityDate: string | null;
@@ -49,7 +48,7 @@ export async function getRecentAnalyzedRuns(
   limit = 10,
 ): Promise<CachedRunRow[]> {
   const result = await db().execute({
-    sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.start_bg, b.glucose, b.hr,
+    sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.glucose, b.hr,
                  b.activity_date
           FROM bg_cache b
           INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
@@ -63,7 +62,6 @@ export async function getRecentAnalyzedRuns(
     activityId: row.activity_id as string,
     category: row.category as string,
     fuelRate: row.fuel_rate as number | null,
-    startBG: row.start_bg as number,
     glucose: JSON.parse(row.glucose as string) as { time: number; value: number }[],
     hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
     activityDate: (row.activity_date as string | null) ?? null,
