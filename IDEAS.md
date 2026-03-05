@@ -22,23 +22,13 @@ Fetch daily wellness data from Intervals.icu (HRV rMSSD, resting HR, sleep score
 
 **API:** `GET /api/v1/athlete/0/wellness?oldest=YYYY-MM-DD&newest=YYYY-MM-DD` — returns daily wellness records with `hrvRMSSD`, `restingHR`, `sleepScore`, `readiness`, `spO2`.
 
-### BG Simulation Engine
+### BG Twin (Shadow Runs)
 
-Two-phase project: forward simulation for race rehearsal, then retrospective "what-if" analysis on completed runs.
+Phase 2 of the BG simulation engine. After a run, re-simulate the glucose curve with different fuel timing/amounts. "What would have happened if you'd started fueling 10 minutes earlier?" or "What if you'd taken 15g instead of 10g at minute 20?"
 
-**Phase 1 — Race Day Simulation.** Time-stepping glucose forecast for full race duration. Inputs: starting BG, entry slope (rising/stable/dropping), pace plan (segments with target zones), and fueling schedule (grams at each interval). Output: predicted glucose curve with confidence bands at each 5-min step.
+Same simulation engine as the completed Phase 1, pointed backward. Every completed run has glucose stream ground truth to validate against. The diff between simulated and actual shows where the strategy could improve. Turns every run into a learning opportunity.
 
-The BG model has the building blocks — `bgByStartLevel` gives response by starting glucose, `bgByTime` gives decay over run duration, `targetFuelRates` gives the fuel->BG-rate relationship. Stitching these into a forward simulation is the missing piece.
-
-**Use case:** Rehearse race-day strategies before the event. "If I start at 12 mmol, fuel 65g/h, and pace at Z3 for 90 min — where does my glucose end up?" Run multiple scenarios, compare curves, pick the safest strategy.
-
-**Phase 2 — BG Twin (Shadow Runs).** After a run, re-simulate the glucose curve with different fuel timing/amounts. "What would have happened if you'd started fueling 10 minutes earlier?" or "What if you'd taken 15g instead of 10g at minute 20?"
-
-Same simulation engine as Phase 1, pointed backward. Every completed run has glucose stream ground truth to validate against. The diff between simulated and actual shows where the strategy could improve. Turns every run into a learning opportunity.
-
-Phase 2 is nearly free after Phase 1 — same engine, different inputs. Validate the simulator against completed runs (which is basically BG Twin) before trusting it for race-day planning.
-
-**UI:** Interactive simulator in Intel or dedicated Race tab. Sliders for start BG, fuel rate, intensity. Live-updating predicted glucose curve. Save/compare scenarios. For BG Twin: overlay simulated vs actual on completed run detail.
+**UI:** Overlay simulated vs actual on completed run detail. Sliders to tweak fuel rate/timing and see the predicted curve update live against what actually happened.
 
 ### Post-Run Insulin Reconnect Advisor
 
@@ -171,6 +161,14 @@ After deep investigation of both prompt builders, the data each receives, and si
 ---
 
 ## Completed
+
+### BG Simulation Engine — Phase 1
+
+Forward BG simulation for race rehearsal. 5-min time-stepping glucose forecast using additive residual model with 4 correction dimensions: time-bucketed base rate, fuel correction, start-BG correction, entry slope correction. Multi-segment workouts (warmup + race + cooldown). Confidence bands from model residual variance. Reliability gating: predictions suppressed until ≥8 activities per category, with per-category "need X more runs" warnings. Null fuel rate handled explicitly (base rate only, marked unreliable). Leave-one-out cross-validation endpoint for model accuracy assessment.
+
+**UI:** Dedicated Simulate tab with category selector, duration/startBG/fuel sliders, fuel known/unknown toggle. Live-updating predicted glucose chart with confidence bands and hypo threshold line. Summary stats (end BG, min BG, hypo risk). Reliability gate warning with specific reasons when data is insufficient.
+
+**Implementation:** `lib/bgSimulation.ts` (engine, 39 tests), `app/screens/SimulateScreen.tsx`, `app/components/BGSimChart.tsx`, `app/api/simulate/validate/route.ts` (validation endpoint), `scripts/validate-sim.ts` (dev validation script).
 
 ### Cross-Run BG Pattern Surfacing
 
