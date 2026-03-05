@@ -3,129 +3,87 @@ import {
   simulateBG,
   rateForStep,
   validateSimulation,
-  type SimulationInput,
   type SimSegment,
   type SimPoint,
 } from "../bgSimulation";
 import {
-  buildBGModel,
+  buildBGModelFromCached,
   type BGResponseModel,
-  type BGObservation,
 } from "../bgModel";
-import type { IntervalsStream } from "../types";
+import type { CachedActivity } from "../bgCacheDb";
 
 // --- Test helpers ---
 
-function minuteTimeArray(minutes: number): number[] {
-  return Array.from({ length: minutes }, (_, i) => i * 60);
-}
-
-function makeStreams(
-  time: number[],
-  hr: number[],
-  glucose: number[],
-): IntervalsStream[] {
-  return [
-    { type: "time", data: time },
-    { type: "heartrate", data: hr },
-    { type: "bloodglucose", data: glucose },
-  ];
-}
-
-function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
+/** Build a CachedActivity from simple arrays (minutes of data). */
+function makeActivity(
+  activityId: string,
+  category: CachedActivity["category"],
+  minutes: number,
+  hrValue: number,
+  glucoseValues: number[],
+  fuelRate: number | null = 48,
+): CachedActivity {
   return {
-    category: "easy",
-    bgRate: -1.0,
-    fuelRate: 48,
-    activityId: "a1",
-    timeMinute: 10,
-    startBG: 10,
-    relativeMinute: 10,
-    entrySlope: null,
-    ...overrides,
+    activityId,
+    category,
+    fuelRate,
+    glucose: glucoseValues.map((v, i) => ({ time: i, value: v })),
+    hr: Array.from({ length: minutes }, (_, i) => ({ time: i, value: hrValue })),
   };
 }
 
 /** Build a model with enough data to produce meaningful rates. */
 function buildTestModel(
   category: "easy" | "long" | "interval" = "easy",
-  bgDropPerMin: number = 0.1,
-  fuelRate: number = 48,
-  numActivities: number = 3,
-  activityMinutes: number = 50,
+  bgDropPerMin = 0.1,
+  fuelRate = 48,
+  numActivities = 3,
+  activityMinutes = 50,
 ): BGResponseModel {
-  const activities = Array.from({ length: numActivities }, (_, i) => ({
-    streams: makeStreams(
-      minuteTimeArray(activityMinutes),
-      Array(activityMinutes).fill(125),
+  const activities = Array.from({ length: numActivities }, (_, i) =>
+    makeActivity(
+      `a${i}`,
+      category,
+      activityMinutes,
+      125,
       Array.from({ length: activityMinutes }, (_, j) => 10 - j * bgDropPerMin),
+      fuelRate,
     ),
-    activityId: `a${i}`,
-    fuelRate,
-    category,
-  }));
+  );
 
-  return buildBGModel(activities);
+  return buildBGModelFromCached(activities);
 }
 
 /** Build a model with multiple fuel rates for regression testing. */
 function buildRegressionModel(): BGResponseModel {
   const activities = [
     // Low fuel (30 g/h) → BG drops fast (-0.2/min = -2.0/10min)
-    ...Array.from({ length: 4 }, (_, i) => ({
-      streams: makeStreams(
-        minuteTimeArray(40),
-        Array(40).fill(125),
-        Array.from({ length: 40 }, (_, j) => 10 - j * 0.2),
-      ),
-      activityId: `low-fuel-${i}`,
-      fuelRate: 30,
-      category: "easy" as const,
-    })),
+    ...Array.from({ length: 4 }, (_, i) =>
+      makeActivity(`low-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.2), 30),
+    ),
     // High fuel (60 g/h) → BG drops slowly (-0.05/min = -0.5/10min)
-    ...Array.from({ length: 4 }, (_, i) => ({
-      streams: makeStreams(
-        minuteTimeArray(40),
-        Array(40).fill(125),
-        Array.from({ length: 40 }, (_, j) => 10 - j * 0.05),
-      ),
-      activityId: `high-fuel-${i}`,
-      fuelRate: 60,
-      category: "easy" as const,
-    })),
+    ...Array.from({ length: 4 }, (_, i) =>
+      makeActivity(`high-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.05), 60),
+    ),
   ];
 
-  return buildBGModel(activities);
+  return buildBGModelFromCached(activities);
 }
 
 /** Build a model with varied start BG levels. */
 function buildStartBGModel(): BGResponseModel {
   const activities = [
     // Start at 7 mmol → drops fast
-    ...Array.from({ length: 3 }, (_, i) => ({
-      streams: makeStreams(
-        minuteTimeArray(30),
-        Array(30).fill(125),
-        Array.from({ length: 30 }, (_, j) => 7 - j * 0.15),
-      ),
-      activityId: `low-start-${i}`,
-      fuelRate: 48,
-      category: "easy" as const,
-    })),
+    ...Array.from({ length: 3 }, (_, i) =>
+      makeActivity(`low-start-${i}`, "easy", 30, 125, Array.from({ length: 30 }, (_, j) => 7 - j * 0.15)),
+    ),
     // Start at 11 mmol → drops moderate
-    ...Array.from({ length: 3 }, (_, i) => ({
-      streams: makeStreams(
-        minuteTimeArray(30),
-        Array(30).fill(125),
-        Array.from({ length: 30 }, (_, j) => 11 - j * 0.08),
-      ),
-      activityId: `high-start-${i}`,
-      fuelRate: 48,
-      category: "easy" as const,
-    })),
+    ...Array.from({ length: 3 }, (_, i) =>
+      makeActivity(`high-start-${i}`, "easy", 30, 125, Array.from({ length: 30 }, (_, j) => 11 - j * 0.08)),
+    ),
   ];
 
-  return buildBGModel(activities);
+  return buildBGModelFromCached(activities);
 }
 
 // --- Tests ---
@@ -244,27 +202,13 @@ describe("simulateBG", () => {
 
   it("confidence bands widen over time", () => {
     // Activities with VARIED drop rates to produce non-zero stdDev
-    const model = buildBGModel([
-      ...Array.from({ length: 3 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(50),
-          Array(50).fill(125),
-          Array.from({ length: 50 }, (_, j) => 10 - j * 0.08), // slow drop
-        ),
-        activityId: `slow-${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
-      ...Array.from({ length: 3 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(50),
-          Array(50).fill(125),
-          Array.from({ length: 50 }, (_, j) => 10 - j * 0.15), // fast drop
-        ),
-        activityId: `fast-${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
+    const model = buildBGModelFromCached([
+      ...Array.from({ length: 3 }, (_, i) =>
+        makeActivity(`slow-${i}`, "easy", 50, 125, Array.from({ length: 50 }, (_, j) => 10 - j * 0.08)),
+      ),
+      ...Array.from({ length: 3 }, (_, i) =>
+        makeActivity(`fast-${i}`, "easy", 50, 125, Array.from({ length: 50 }, (_, j) => 10 - j * 0.15)),
+      ),
     ]);
     const result = simulateBG({
       startBG: 10,
@@ -289,29 +233,15 @@ describe("simulateBG", () => {
   });
 
   it("handles multi-segment workouts", () => {
-    const model = buildBGModel([
+    const model = buildBGModelFromCached([
       // Easy runs
-      ...Array.from({ length: 3 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(30),
-          Array(30).fill(120),
-          Array.from({ length: 30 }, (_, j) => 10 - j * 0.05),
-        ),
-        activityId: `easy-${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
+      ...Array.from({ length: 3 }, (_, i) =>
+        makeActivity(`easy-${i}`, "easy", 30, 120, Array.from({ length: 30 }, (_, j) => 10 - j * 0.05)),
+      ),
       // Interval runs
-      ...Array.from({ length: 3 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(30),
-          Array(30).fill(160),
-          Array.from({ length: 30 }, (_, j) => 10 - j * 0.15),
-        ),
-        activityId: `interval-${i}`,
-        fuelRate: 30,
-        category: "interval" as const,
-      })),
+      ...Array.from({ length: 3 }, (_, i) =>
+        makeActivity(`interval-${i}`, "interval", 30, 160, Array.from({ length: 30 }, (_, j) => 10 - j * 0.15), 30),
+      ),
     ]);
 
     const segments: SimSegment[] = [
@@ -411,7 +341,7 @@ describe("simulateBG", () => {
 
 describe("rateForStep", () => {
   it("returns zero rate with empty model", () => {
-    const model = buildBGModel([]);
+    const model = buildBGModelFromCached([]);
     const result = rateForStep(10, 10, "easy", 48, null, model);
     expect(result.rate).toBe(0);
     expect(result.stdDev).toBe(0);
@@ -433,33 +363,20 @@ describe("rateForStep", () => {
   });
 
   it("applies entry slope correction in early minutes", () => {
-    // Build model with varied entry slopes
-    const obs: BGObservation[] = [
-      ...Array.from({ length: 5 }, () =>
-        makeObs({ entrySlope: -1.5, bgRate: -2.0, relativeMinute: 10 }),
+    const model = buildBGModelFromCached([
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeActivity(`a${i}`, "easy", 25, 125, Array.from({ length: 25 }, (_, j) => 10 - j * 0.1)),
       ),
-      ...Array.from({ length: 5 }, () =>
-        makeObs({ entrySlope: 0.0, bgRate: -0.5, relativeMinute: 10 }),
-      ),
-    ];
-
-    const model = buildBGModel([
-      ...Array.from({ length: 5 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(25),
-          Array(25).fill(125),
-          Array.from({ length: 25 }, (_, j) => 10 - j * 0.1),
-        ),
-        activityId: `a${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
     ]);
 
     // With crashing entry slope at minute 5 (within decay window)
-    const crashing = rateForStep(5, 10, "easy", 48, -1.5, model);
+    const crashingEarly = rateForStep(5, 10, "easy", 48, -1.5, model);
     // With stable entry slope at minute 5
-    const stable = rateForStep(5, 10, "easy", 48, 0.0, model);
+    const stableEarly = rateForStep(5, 10, "easy", 48, 0.0, model);
+
+    // Early rates may differ due to entry slope correction
+    expect(typeof crashingEarly.rate).toBe("number");
+    expect(typeof stableEarly.rate).toBe("number");
 
     // At minute 20 (outside decay window), entry slope shouldn't matter
     const crashingLate = rateForStep(20, 10, "easy", 48, -1.5, model);
@@ -546,12 +463,11 @@ describe("start BG effect on simulation", () => {
       bgModel: model,
     });
 
-    // Both should drop, but the relative magnitude depends on the model data
-    const lowDrop = lowStart.curve[0].bg - lowStart.curve[lowStart.curve.length - 1].bg;
-    const highDrop = highStart.curve[0].bg - highStart.curve[highStart.curve.length - 1].bg;
+    // Both should drop
+    expect(lowStart.curve[lowStart.curve.length - 1].bg).toBeLessThan(lowStart.curve[0].bg);
+    expect(highStart.curve[highStart.curve.length - 1].bg).toBeLessThan(highStart.curve[0].bg);
 
-    // The model shows faster drops at low start BG (7 mmol drops at -1.5/10min vs 11 mmol at -0.8/10min)
-    // But the absolute BG should still be different
+    // The absolute BG should still be different
     expect(highStart.curve[0].bg).toBeGreaterThan(lowStart.curve[0].bg);
   });
 });
@@ -559,27 +475,13 @@ describe("start BG effect on simulation", () => {
 describe("race simulation scenario", () => {
   it("simulates a full race with warmup + race pace + cooldown", () => {
     // Build model with varied drop rates for non-zero stdDev
-    const model = buildBGModel([
-      ...Array.from({ length: 5 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(50),
-          Array(50).fill(125),
-          Array.from({ length: 50 }, (_, j) => 10 - j * (0.04 + i * 0.01)),
-        ),
-        activityId: `easy-${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
-      ...Array.from({ length: 5 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(60),
-          Array(60).fill(140),
-          Array.from({ length: 60 }, (_, j) => 10 - j * (0.06 + i * 0.01)),
-        ),
-        activityId: `long-${i}`,
-        fuelRate: 60,
-        category: "long" as const,
-      })),
+    const model = buildBGModelFromCached([
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeActivity(`easy-${i}`, "easy", 50, 125, Array.from({ length: 50 }, (_, j) => 10 - j * (0.04 + i * 0.01))),
+      ),
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeActivity(`long-${i}`, "long", 60, 140, Array.from({ length: 60 }, (_, j) => 10 - j * (0.06 + i * 0.01)), 60),
+      ),
     ]);
 
     // EcoTrail 16km: ~10 min warmup, ~80 min race effort, ~10 min cooldown
@@ -720,7 +622,7 @@ describe("validateSimulation", () => {
 
 describe("edge cases", () => {
   it("handles model with no observations gracefully", () => {
-    const emptyModel = buildBGModel([]);
+    const emptyModel = buildBGModelFromCached([]);
     const result = simulateBG({
       startBG: 10,
       entrySlope: null,
@@ -860,32 +762,14 @@ describe("reliable gate", () => {
   });
 
   it("unreliable if any segment category lacks enough activities", () => {
-    // Easy has 8 activities, interval has 3
-    const easyModel = buildTestModel("easy", 0.1, 48, 8);
-    const intervalModel = buildTestModel("interval", 0.1, 48, 3);
-
-    // Merge observations manually
-    const merged = buildBGModel([
-      ...Array.from({ length: 8 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(50),
-          Array(50).fill(125),
-          Array.from({ length: 50 }, (_, j) => 10 - j * 0.1),
-        ),
-        activityId: `easy-${i}`,
-        fuelRate: 48,
-        category: "easy" as const,
-      })),
-      ...Array.from({ length: 3 }, (_, i) => ({
-        streams: makeStreams(
-          minuteTimeArray(50),
-          Array(50).fill(160),
-          Array.from({ length: 50 }, (_, j) => 10 - j * 0.1),
-        ),
-        activityId: `interval-${i}`,
-        fuelRate: 48,
-        category: "interval" as const,
-      })),
+    // Easy has 8 activities, interval has 3 — merged into one model
+    const merged = buildBGModelFromCached([
+      ...Array.from({ length: 8 }, (_, i) =>
+        makeActivity(`easy-${i}`, "easy", 50, 125, Array.from({ length: 50 }, (_, j) => 10 - j * 0.1)),
+      ),
+      ...Array.from({ length: 3 }, (_, i) =>
+        makeActivity(`interval-${i}`, "interval", 50, 160, Array.from({ length: 50 }, (_, j) => 10 - j * 0.1)),
+      ),
     ]);
 
     const result = simulateBG({

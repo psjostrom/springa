@@ -64,19 +64,19 @@ export async function GET() {
     const model = buildBGModelFromCached(trainingSet);
     if (model.activitiesAnalyzed === 0) continue;
 
-    // Determine duration from glucose stream
-    const glucoseMinutes = target.glucose.map((p) => p.time);
-    const startMin = Math.min(...glucoseMinutes);
-    const endMin = Math.max(...glucoseMinutes);
-    const durationMin = endMin - startMin;
+    // Determine duration and startBG from glucose stream
+    const sorted = [...target.glucose].sort((a, b) => a.time - b.time);
+    if (sorted.length < 2) continue;
+    const durationMin = sorted[sorted.length - 1].time - sorted[0].time;
     if (durationMin < 10) continue;
+    const startBG = sorted[0].value;
 
     // Get entry slope from runBGContext if available
     const entrySlope = target.runBGContext?.pre?.entrySlope30m ?? null;
 
     // Simulate
     const simResult = simulateBG({
-      startBG: target.startBG,
+      startBG,
       entrySlope,
       segments: [{ durationMin, category: target.category }],
       fuelRateGH: target.fuelRate ?? null,
@@ -96,7 +96,7 @@ export async function GET() {
       activityId: target.activityId,
       category: target.category,
       date: target.activityDate ?? null,
-      startBG: Math.round(target.startBG * 10) / 10,
+      startBG: Math.round(startBG * 10) / 10,
       fuelRateGH: target.fuelRate,
       durationMin: Math.round(durationMin),
       actualEndBG: Math.round(actualEndBG * 10) / 10,

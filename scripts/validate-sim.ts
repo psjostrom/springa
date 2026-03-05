@@ -42,10 +42,12 @@ async function main() {
     const durationMin = Math.max(...glucoseMinutes) - Math.min(...glucoseMinutes);
     if (durationMin < 10) continue;
 
+    const sorted = [...target.glucose].sort((a, b) => a.time - b.time);
+    const startBG = sorted[0].value;
     const entrySlope = target.runBGContext?.pre?.entrySlope30m ?? null;
 
     const simResult = simulateBG({
-      startBG: target.startBG,
+      startBG,
       entrySlope,
       segments: [{ durationMin, category: target.category }],
       fuelRateGH: target.fuelRate ?? null,
@@ -55,9 +57,8 @@ async function main() {
     const validation = validateSimulation(simResult.curve, target.glucose);
     if (!validation) continue;
 
-    const sortedGlucose = [...target.glucose].sort((a, b) => a.time - b.time);
-    const actualEndBG = sortedGlucose[sortedGlucose.length - 1].value;
-    const actualHypo = sortedGlucose.some((p) => p.value < 3.9);
+    const actualEndBG = sorted[sorted.length - 1].value;
+    const actualHypo = sorted.some((p) => p.value < 3.9);
     const lastSim = simResult.curve[simResult.curve.length - 1];
 
     results.push({
