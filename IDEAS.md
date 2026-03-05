@@ -76,9 +76,22 @@ Not a feature — a design principle that makes the existing system safer. A low
 
 Phase 1 (discovery) and Phase 2a (AI consumers) are complete — see Completed section.
 
-**Phase 2b: Rule-based consumers (harder, requires structured output).**
+**Phase 2b: Personalized thresholds from data (direct computation, no AI in the loop).**
 
-Pre-run readiness, report card scoring, and push notifications use fixed thresholds. Personalizing these from patterns requires parsing prose into structured findings (variable, direction, threshold, confidence, n). Bigger design change — revisit after phase 2a proves value.
+Phase 2a proved its value — the AI pattern analysis is consistently useful. The next step is hardcoding proven patterns into rule-based consumers (pre-run readiness, report card scoring, push notifications) that currently use fixed thresholds.
+
+**Key design decision:** Don't parse AI prose into structured data. The enriched run table (37 columns) *is* the structured data. Compute thresholds directly from it — no AI middleman in the decision path. The AI stays in discovery (2a), code stays in decisions (2b). This avoids the authority problem from the rejected "Analysis → Adapt" idea.
+
+**Pipeline:** AI discovers pattern (2a, already running) → Per verifies ("yeah, that matches") → code hardcodes the verified pattern as a direct computation over the enriched run table → AI keeps discovering, new persistent patterns become candidates for hardcoding.
+
+**Data foundation:** `bg_patterns` table is now append-only (keyed on `(email, latest_activity_id)`), preserving every analysis with run count. This builds the dataset needed to identify which patterns persist across analyses vs which are noise. When the dataset is large enough, the AI can analyze the *history of its own analyses* to surface the most stable patterns.
+
+**Examples of personalizable thresholds:**
+- Pre-run caution BG level (currently fixed at 7.0 mmol/L — maybe your data shows 8.0 is the real boundary)
+- Report card drop rate thresholds (currently fixed at -1.0 and -2.0 — replace with personal percentiles)
+- Entry slope danger threshold (currently fixed at -0.5 — derive from your actual crash data)
+
+**Implementation:** New `lib/personalThresholds.ts` — pure functions over `EnrichedRun[]`. Each function returns a personalized threshold or null (fall back to fixed default). Consumers in `prerun.ts` and `reportCard.ts` call these alongside their existing fixed logic.
 
 **Phase 3: Statistical engine (80+ runs).** Proper multivariate analysis with p-values, effect sizes, and minimum sample guards. The variable enrichment from phase 1 carries over.
 
