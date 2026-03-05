@@ -10,4 +10,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  callbacks: {
+    signIn({ user }) {
+      return user.email === "persinternetpost@gmail.com";
+    },
+  },
 });
