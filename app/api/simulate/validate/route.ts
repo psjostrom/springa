@@ -38,6 +38,8 @@ export async function GET() {
     durationMin: number;
     actualEndBG: number;
     simEndBG: number;
+    endBandWidth: number;
+    actualWithinBand: number | null; // % of actual points within confidence band
     meanError: number;
     rmse: number;
     maxError: number;
@@ -45,6 +47,7 @@ export async function GET() {
     hypoMinute: number | null;
     actualHypo: boolean;
     confidence: string;
+    reliable: boolean;
     warnings: string[];
   }[] = [];
 
@@ -76,7 +79,7 @@ export async function GET() {
       startBG: target.startBG,
       entrySlope,
       segments: [{ durationMin, category: target.category }],
-      fuelRateGH: target.fuelRate ?? 48, // default if unknown
+      fuelRateGH: target.fuelRate ?? null,
       bgModel: model,
     });
 
@@ -98,6 +101,23 @@ export async function GET() {
       durationMin: Math.round(durationMin),
       actualEndBG: Math.round(actualEndBG * 10) / 10,
       simEndBG: simResult.curve[simResult.curve.length - 1].bg,
+      endBandWidth: Math.round((simResult.curve[simResult.curve.length - 1].bgHigh - simResult.curve[simResult.curve.length - 1].bgLow) * 100) / 100,
+      actualWithinBand: (() => {
+        // Check what % of actual glucose points fall within the sim confidence bands
+        const sortedActual = [...target.glucose].sort((a, b) => a.time - b.time);
+        let within = 0;
+        let compared = 0;
+        for (const ap of sortedActual) {
+          const nearestSim = simResult.curve.reduce((best, sp) =>
+            Math.abs(sp.minute - ap.time) < Math.abs(best.minute - ap.time) ? sp : best
+          );
+          if (Math.abs(nearestSim.minute - ap.time) <= 2) {
+            compared++;
+            if (ap.value >= nearestSim.bgLow && ap.value <= nearestSim.bgHigh) within++;
+          }
+        }
+        return compared > 0 ? Math.round((within / compared) * 100) : null;
+      })(),
       meanError: validation.meanError,
       rmse: validation.rmse,
       maxError: validation.maxError,
@@ -105,6 +125,7 @@ export async function GET() {
       hypoMinute: simResult.hypoMinute,
       actualHypo,
       confidence: simResult.confidence,
+      reliable: simResult.reliable,
       warnings: simResult.warnings,
     });
   }

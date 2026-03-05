@@ -197,7 +197,7 @@ describe("simulateBG", () => {
 
   it("detects hypo crossing", () => {
     // Fast-dropping model: -3.0 mmol/10min, start at 6 → should hit 3.9 quickly
-    const model = buildTestModel("easy", 0.3); // -3.0/10min
+    const model = buildTestModel("easy", 0.3, 48, 8); // -3.0/10min, 8 activities for reliable
     const result = simulateBG({
       startBG: 6,
       entrySlope: null,
@@ -213,7 +213,7 @@ describe("simulateBG", () => {
   });
 
   it("does not report hypo when BG stays safe", () => {
-    const model = buildTestModel("easy", 0.02); // mild drop
+    const model = buildTestModel("easy", 0.02, 48, 8); // mild drop, 8 activities for reliable
     const result = simulateBG({
       startBG: 10,
       entrySlope: null,
@@ -222,6 +222,7 @@ describe("simulateBG", () => {
       bgModel: model,
     });
 
+    expect(result.reliable).toBe(true);
     expect(result.hypoMinute).toBeNull();
     expect(result.minBG).toBeGreaterThanOrEqual(3.9);
   });
@@ -779,5 +780,150 @@ describe("edge cases", () => {
 
     const actualMin = Math.min(...result.curve.map((p) => p.bg));
     expect(result.minBG).toBe(actualMin);
+  });
+});
+
+describe("reliable gate", () => {
+  it("reliable is false when fuelRateGH is null", () => {
+    const model = buildTestModel("easy", 0.1, 48, 8);
+    const result = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: null,
+      bgModel: model,
+    });
+
+    expect(result.reliable).toBe(false);
+    expect(result.warnings).toContain(
+      "Unknown fuel rate — using base rate only, hypo prediction unreliable",
+    );
+  });
+
+  it("reliable is false when activity count is below threshold", () => {
+    const model = buildTestModel("easy", 0.1, 48, 3); // only 3 activities
+    const result = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: 48,
+      bgModel: model,
+    });
+
+    expect(result.reliable).toBe(false);
+    const warning = result.warnings.find((w) => w.includes("more easy runs"));
+    expect(warning).toBeDefined();
+  });
+
+  it("reliable is true when fuel is known and enough activities exist", () => {
+    const model = buildTestModel("easy", 0.1, 48, 8);
+    const result = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: 48,
+      bgModel: model,
+    });
+
+    expect(result.reliable).toBe(true);
+  });
+
+  it("suppresses hypoMinute when unreliable even if BG drops below threshold", () => {
+    // Fast drop with only 3 activities → unreliable
+    const model = buildTestModel("easy", 0.3, 48, 3);
+    const result = simulateBG({
+      startBG: 6,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: 48,
+      bgModel: model,
+    });
+
+    expect(result.reliable).toBe(false);
+    expect(result.hypoMinute).toBeNull();
+    // But minBG should still track the actual simulated minimum
+    expect(result.minBG).toBeLessThan(3.9);
+  });
+
+  it("suppresses hypoMinute when fuel is null even if BG drops below threshold", () => {
+    const model = buildTestModel("easy", 0.3, 48, 8);
+    const result = simulateBG({
+      startBG: 6,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: null,
+      bgModel: model,
+    });
+
+    expect(result.reliable).toBe(false);
+    expect(result.hypoMinute).toBeNull();
+  });
+
+  it("unreliable if any segment category lacks enough activities", () => {
+    // Easy has 8 activities, interval has 3
+    const easyModel = buildTestModel("easy", 0.1, 48, 8);
+    const intervalModel = buildTestModel("interval", 0.1, 48, 3);
+
+    // Merge observations manually
+    const merged = buildBGModel([
+      ...Array.from({ length: 8 }, (_, i) => ({
+        streams: makeStreams(
+          minuteTimeArray(50),
+          Array(50).fill(125),
+          Array.from({ length: 50 }, (_, j) => 10 - j * 0.1),
+        ),
+        activityId: `easy-${i}`,
+        fuelRate: 48,
+        category: "easy" as const,
+      })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        streams: makeStreams(
+          minuteTimeArray(50),
+          Array(50).fill(160),
+          Array.from({ length: 50 }, (_, j) => 10 - j * 0.1),
+        ),
+        activityId: `interval-${i}`,
+        fuelRate: 48,
+        category: "interval" as const,
+      })),
+    ]);
+
+    const result = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [
+        { durationMin: 10, category: "easy" },
+        { durationMin: 20, category: "interval" },
+      ],
+      fuelRateGH: 48,
+      bgModel: merged,
+    });
+
+    expect(result.reliable).toBe(false);
+  });
+
+  it("null fuelRateGH skips fuel correction and still simulates", () => {
+    const model = buildTestModel("easy", 0.1, 48, 3);
+
+    const withFuel = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: 48,
+      bgModel: model,
+    });
+
+    const withoutFuel = simulateBG({
+      startBG: 10,
+      entrySlope: null,
+      segments: [{ durationMin: 30, category: "easy" }],
+      fuelRateGH: null,
+      bgModel: model,
+    });
+
+    // Both produce curves
+    expect(withoutFuel.curve.length).toBe(withFuel.curve.length);
+    // BG should still move (base rate applies even without fuel correction)
+    expect(withoutFuel.curve[withoutFuel.curve.length - 1].bg).not.toBe(10);
   });
 });

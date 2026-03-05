@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Monitor, Activity, Bot, Layers, type LucideIcon } from "lucide-react";
+import { Monitor, Activity, Bot, Layers, Beaker, type LucideIcon } from "lucide-react";
 
-type Tab = "planner" | "calendar" | "intel" | "coach";
+type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
 interface TabNavigationProps {
 	activeTab: Tab;
@@ -13,6 +13,7 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
 	{ key: "intel", label: "Intel", icon: Activity },
 	{ key: "coach", label: "Coach", icon: Bot },
 	{ key: "planner", label: "Planner", icon: Layers },
+	{ key: "simulate", label: "Simulate", icon: Beaker },
 ];
 
 export function TabNavigation({

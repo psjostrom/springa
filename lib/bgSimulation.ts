@@ -24,7 +24,7 @@ export interface SimulationInput {
   startBG: number; // mmol/L
   entrySlope: number | null; // mmol/L per 10min (pre-run CGM trend)
   segments: SimSegment[]; // workout segments in order
-  fuelRateGH: number; // constant fuel rate in g/h
+  fuelRateGH: number | null; // constant fuel rate in g/h (null = unknown)
   bgModel: BGResponseModel;
 }
 
@@ -42,6 +42,7 @@ export interface SimulationResult {
   minBG: number;
   totalDurationMin: number;
   confidence: "low" | "medium" | "high";
+  reliable: boolean; // false = don't show prediction to user
   warnings: string[];
 }
 
@@ -52,6 +53,7 @@ const BG_FLOOR = 2.0; // physiological floor
 const ENTRY_SLOPE_DECAY_MIN = 15; // entry slope effect fades over first 15 min
 const MIN_BUCKET_SAMPLES = 3; // minimum observations to trust a time bucket
 const EXTRAPOLATION_FACTOR = 6; // g/h per 1.0 mmol/L/10min (from bgModel.ts)
+const MIN_ACTIVITIES_FOR_RELIABLE = 8; // minimum activities per category before showing predictions
 
 // --- Helpers ---
 
@@ -188,9 +190,11 @@ function getFuelSensitivity(
  */
 function fuelCorrection(
   category: WorkoutCategory,
-  plannedFuelGH: number,
+  plannedFuelGH: number | null,
   bgModel: BGResponseModel,
 ): number {
+  if (plannedFuelGH === null) return 0;
+
   const sensitivity = getFuelSensitivity(category, bgModel);
   if (sensitivity === null) return 0;
 
@@ -261,7 +265,7 @@ export function rateForStep(
   minute: number,
   currentBG: number,
   category: WorkoutCategory,
-  fuelRateGH: number,
+  fuelRateGH: number | null,
   entrySlope: number | null,
   bgModel: BGResponseModel,
 ): RateResult {
@@ -279,15 +283,14 @@ export function rateForStep(
 
 // --- Simulation ---
 
-/** Determine overall confidence from observation count. */
+/** Determine confidence label from observation count. Cosmetic only — does not gate behavior. */
 function overallConfidence(
   bgModel: BGResponseModel,
   categories: WorkoutCategory[],
 ): "low" | "medium" | "high" {
-  const counts = categories.map(
-    (c) => bgModel.categories[c]?.sampleCount ?? 0,
+  const minCount = Math.min(
+    ...categories.map((c) => bgModel.categories[c]?.sampleCount ?? 0),
   );
-  const minCount = Math.min(...counts);
   if (minCount >= 30) return "high";
   if (minCount >= 10) return "medium";
   return "low";
@@ -307,8 +310,8 @@ function generateWarnings(
     const catData = bgModel.categories[cat];
     if (!catData) {
       warnings.push(`No BG data for ${cat} runs — using overall averages`);
-    } else if (catData.confidence === "low") {
-      warnings.push(`Low confidence for ${cat} (${catData.activityCount} activities)`);
+    } else if (catData.activityCount < MIN_ACTIVITIES_FOR_RELIABLE) {
+      warnings.push(`Need ${MIN_ACTIVITIES_FOR_RELIABLE - catData.activityCount} more ${cat} runs for reliable predictions (have ${catData.activityCount})`);
     }
   }
 
@@ -322,23 +325,60 @@ function generateWarnings(
     );
   }
 
-  // Check fuel rate vs model range
-  for (const cat of categories) {
-    const catObs = bgModel.observations.filter(
-      (o) => o.category === cat && o.fuelRate != null,
-    );
-    if (catObs.length === 0) continue;
-    const fuels = catObs.map((o) => o.fuelRate!);
-    const minFuel = Math.min(...fuels);
-    const maxFuel = Math.max(...fuels);
-    if (fuelRateGH < minFuel - 12 || fuelRateGH > maxFuel + 12) {
-      warnings.push(
-        `Fuel ${fuelRateGH}g/h is outside observed range (${minFuel}–${maxFuel}g/h) for ${cat}`,
-      );
+  // Check fuel rate
+  if (fuelRateGH === null) {
+    warnings.push("Unknown fuel rate — using base rate only, hypo prediction unreliable");
+  } else {
+    // Check fuel rate vs model range
+    for (const cat of categories) {
+      const fuels = bgModel.observations
+        .filter((o) => o.category === cat && o.fuelRate != null)
+        .map((o) => o.fuelRate)
+        .filter((f): f is number => f != null);
+      if (fuels.length === 0) continue;
+      const minFuel = Math.min(...fuels);
+      const maxFuel = Math.max(...fuels);
+      if (fuelRateGH < minFuel - 12 || fuelRateGH > maxFuel + 12) {
+        warnings.push(
+          `Fuel ${fuelRateGH}g/h is outside observed range (${minFuel}–${maxFuel}g/h) for ${cat}`,
+        );
+      }
     }
   }
 
   return warnings;
+}
+
+/**
+ * Compute per-category model residual variance.
+ *
+ * For each observation, compute what rateForStep would predict vs the actual
+ * bgRate. The variance of these residuals captures systematic model error
+ * (wrong fuel correction, missing IOB, etc.) that observation-level stdDev misses.
+ */
+function modelResidualVariance(
+  bgModel: BGResponseModel,
+  category: WorkoutCategory,
+  fuelRateGH: number | null,
+): number {
+  const catObs = bgModel.observations.filter((o) => o.category === category);
+  if (catObs.length < 3) return 0;
+
+  const residuals: number[] = [];
+  for (const obs of catObs) {
+    const predicted = rateForStep(
+      obs.relativeMinute,
+      obs.startBG,
+      obs.category,
+      fuelRateGH ?? obs.fuelRate ?? 0, // use obs fuel for residual calc when planned is null
+      obs.entrySlope,
+      bgModel,
+    );
+    residuals.push(predicted.rate - obs.bgRate);
+  }
+
+  const mean = residuals.reduce((a, b) => a + b, 0) / residuals.length;
+  return residuals.reduce((sum, r) => sum + (r - mean) ** 2, 0) / residuals.length;
 }
 
 /**
@@ -348,7 +388,7 @@ function generateWarnings(
  * 1. Determine the current segment and its category
  * 2. Compute the effective BG rate using the additive residual model
  * 3. Apply the rate to update BG
- * 4. Track confidence bands using observation std dev
+ * 4. Track confidence bands using observation std dev + model residual variance
  */
 export function simulateBG(input: SimulationInput): SimulationResult {
   const { startBG, entrySlope, segments, fuelRateGH, bgModel } = input;
@@ -361,13 +401,23 @@ export function simulateBG(input: SimulationInput): SimulationResult {
       minBG: startBG,
       totalDurationMin: 0,
       confidence: "low",
+      reliable: false,
       warnings: ["No segments to simulate"],
     };
   }
 
   const warnings = generateWarnings(input);
   const usedCategories = [...new Set(segments.map((s) => s.category))];
-  const confidence = overallConfidence(bgModel, usedCategories);
+  const fuelKnown = fuelRateGH !== null;
+  const confidence: "low" | "medium" | "high" = fuelKnown
+    ? overallConfidence(bgModel, usedCategories)
+    : "low";
+
+  // Pre-compute model residual variance per category
+  const residualVar: Record<string, number> = {};
+  for (const cat of usedCategories) {
+    residualVar[cat] = modelResidualVariance(bgModel, cat, fuelRateGH);
+  }
 
   const curve: SimPoint[] = [];
   let currentBG = startBG;
@@ -402,9 +452,10 @@ export function simulateBG(input: SimulationInput): SimulationResult {
     currentBG = Math.max(BG_FLOOR, currentBG + bgChange);
 
     // Accumulate variance for confidence bands
-    // Variance scales linearly with number of steps (random walk assumption)
-    const stepVariance = (sd * (STEP_MIN / 10)) ** 2;
-    cumulativeVariance += stepVariance;
+    // Two sources: observation noise (sd) + model systematic error (residualVar)
+    const observationVar = (sd * (STEP_MIN / 10)) ** 2;
+    const modelVar = (residualVar[seg.category] ?? 0) * (STEP_MIN / 10) ** 2;
+    cumulativeVariance += observationVar + modelVar;
     const bandWidth = Math.sqrt(cumulativeVariance);
 
     const segAtT = segmentAt(t, segments);
@@ -417,17 +468,25 @@ export function simulateBG(input: SimulationInput): SimulationResult {
     });
 
     if (currentBG < minBG) minBG = currentBG;
-    if (hypoMinute === null && currentBG < BG_HYPO) {
+    if (fuelKnown && hypoMinute === null && currentBG < BG_HYPO) {
       hypoMinute = t;
     }
   }
 
+  // Gate reliability on minimum data per category
+  const hasEnoughData = usedCategories.every((cat) => {
+    const catData = bgModel.categories[cat];
+    return catData != null && catData.activityCount >= MIN_ACTIVITIES_FOR_RELIABLE;
+  });
+  const reliable = fuelKnown && hasEnoughData;
+
   return {
     curve,
-    hypoMinute,
+    hypoMinute: reliable ? hypoMinute : null,
     minBG: Math.round(minBG * 100) / 100,
     totalDurationMin,
     confidence,
+    reliable,
     warnings,
   };
 }
