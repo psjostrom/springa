@@ -8,7 +8,6 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { API_BASE } from "./constants";
-import { convertGlucoseToMmol } from "./bgModel";
 import { extractRawStreams, extractLatlng } from "./streams";
 import {
   processActivities,
@@ -85,12 +84,10 @@ export async function fetchStreams(
   apiKey: string,
 ): Promise<IntervalsStream[]> {
   const auth = authHeader(apiKey);
+  // No longer fetching glucose streams - glucose comes from xDrip
   const keys = [
     "time",
     "heartrate",
-    "bloodglucose",
-    "glucose",
-    "ga_smooth",
     "velocity_smooth",
     "cadence",
     "altitude",
@@ -173,7 +170,7 @@ export async function fetchActivityDetails(
 }> {
   try {
     const streams = await fetchStreams(activityId, apiKey);
-    const { time: timeData, heartrate: hrData, glucose: glucoseData, velocity: velocityData, cadence: cadenceData, altitude: altitudeData } = extractRawStreams(streams);
+    const { time: timeData, heartrate: hrData, velocity: velocityData, cadence: cadenceData, altitude: altitudeData } = extractRawStreams(streams);
 
     const paceData = velocityData.map((v) => {
       if (v === 0 || v < 0.001) return null;
@@ -198,13 +195,7 @@ export async function fetchActivityDetails(
     if (timeData.length > 0) {
       const streamData: StreamData = {};
 
-      if (glucoseData.length > 0) {
-        const glucoseInMmol = convertGlucoseToMmol(glucoseData);
-        streamData.glucose = timeData.map((t, idx) => ({
-          time: Math.round(t / 60),
-          value: glucoseInMmol[idx],
-        }));
-      }
+      // Glucose comes from xDrip via bg_cache, not from streams
 
       if (hrData.length > 0) {
         streamData.heartrate = timeData.map((t, idx) => ({

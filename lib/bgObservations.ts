@@ -1,25 +1,7 @@
-import type { DataPoint, IntervalsStream } from "./types";
+import type { DataPoint } from "./types";
 import type { WorkoutCategory } from "./types";
-import { MGDL_TO_MMOL } from "./constants";
 
 import type { BGObservation } from "./bgModel";
-
-// --- Glucose conversion ---
-
-/** Smart glucose conversion: converts mg/dL to mmol/L only when needed. */
-export function convertGlucoseToMmol(values: number[]): number[] {
-  if (values.length === 0) return values;
-
-  const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
-  const maxValue = Math.max(...values);
-
-  const needsConversion = avgValue > 15 || maxValue > 20;
-
-  if (needsConversion) {
-    return values.map((v) => v / MGDL_TO_MMOL);
-  }
-  return values;
-}
 
 // --- Window constants ---
 
@@ -27,69 +9,8 @@ const WINDOW_SIZE = 5; // minutes
 const SKIP_START = 5; // skip first 5 minutes
 const SKIP_END = 2; // skip last 2 minutes
 
-/** Minimum aligned data points needed for a valid alignment. */
+/** Minimum aligned data points needed for observation extraction. */
 export const MIN_ALIGNED_POINTS = SKIP_START + WINDOW_SIZE + SKIP_END;
-
-// --- Stream alignment ---
-
-/** Align HR and glucose streams by time (1-min resolution, <=1 min tolerance). */
-export function alignStreams(
-  streams: IntervalsStream[],
-): { hr: DataPoint[]; glucose: DataPoint[] } | null {
-  let timeData: number[] = [];
-  let hrRaw: number[] = [];
-  let glucoseRaw: number[] = [];
-
-  for (const s of streams) {
-    if (s.type === "time") timeData = s.data;
-    if (s.type === "heartrate") hrRaw = s.data;
-    if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) {
-      glucoseRaw = s.data;
-    }
-  }
-
-  if (timeData.length === 0 || hrRaw.length === 0 || glucoseRaw.length === 0) {
-    return null;
-  }
-
-  const glucoseInMmol = convertGlucoseToMmol(glucoseRaw);
-
-  // Build minute-indexed maps
-  const hrByMinute = new Map<number, number>();
-  const glucoseByMinute = new Map<number, number>();
-
-  for (let i = 0; i < timeData.length; i++) {
-    const minute = Math.round(timeData[i] / 60);
-    if (i < hrRaw.length && hrRaw[i] > 0) {
-      hrByMinute.set(minute, hrRaw[i]);
-    }
-    if (i < glucoseInMmol.length && glucoseInMmol[i] > 0) {
-      glucoseByMinute.set(minute, glucoseInMmol[i]);
-    }
-  }
-
-  // Find overlapping minutes (tolerance: exact match at minute resolution)
-  const hr: DataPoint[] = [];
-  const glucose: DataPoint[] = [];
-
-  for (const [minute, hrVal] of hrByMinute) {
-    const gVal = glucoseByMinute.get(minute)
-      ?? glucoseByMinute.get(minute - 1)
-      ?? glucoseByMinute.get(minute + 1);
-    if (gVal != null) {
-      hr.push({ time: minute, value: hrVal });
-      glucose.push({ time: minute, value: gVal });
-    }
-  }
-
-  // Sort by time
-  hr.sort((a, b) => a.time - b.time);
-  glucose.sort((a, b) => a.time - b.time);
-
-  if (hr.length < MIN_ALIGNED_POINTS) return null;
-
-  return { hr, glucose };
-}
 
 // --- Observation extraction ---
 

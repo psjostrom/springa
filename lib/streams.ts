@@ -92,6 +92,30 @@ export function extractExtraStreams(streams: IntervalsStream[]): {
   return { pace, cadence, altitude };
 }
 
+/** Extract minute-indexed HR DataPoints from streams. */
+export function extractHRStream(streams: IntervalsStream[]): DataPoint[] {
+  const { time: timeData, heartrate: hrRaw } = extractRawStreams(streams);
+  if (timeData.length === 0 || hrRaw.length === 0) return [];
+
+  const hrByMin = new Map<number, number[]>();
+
+  for (let i = 0; i < timeData.length && i < hrRaw.length; i++) {
+    if (hrRaw[i] <= 0) continue;
+    const minute = Math.round(timeData[i] / 60);
+    const arr = hrByMin.get(minute) ?? [];
+    arr.push(hrRaw[i]);
+    hrByMin.set(minute, arr);
+  }
+
+  const result: DataPoint[] = [];
+  for (const [min, vals] of hrByMin) {
+    result.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
+  }
+
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
 /** Extract latlng coordinates from streams. Returns [lat, lng][] or empty array.
  * Intervals.icu stores lat in data[] and lng in data2[] for the latlng stream. */
 export function extractLatlng(streams: IntervalsStream[]): [number, number][] {

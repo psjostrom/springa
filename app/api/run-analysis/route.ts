@@ -83,9 +83,11 @@ function buildRunHistory(
       feedbackComment: nonEmpty(activity?.FeedbackComment),
     };
 
+    const startBG = glucose.length > 0 ? glucose[0].value : 0;
+
     return {
       event,
-      bgSummary: { startBG: row.startBG, endBG, dropRate },
+      bgSummary: { startBG, endBG, dropRate },
     };
   });
 }

@@ -85,10 +85,14 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null, apiKey);
 
   // Combine event + stream data for modal (join at render time, not merged into state)
+  // Merge streamData to preserve cached glucose (from xDrip) while adding fresh HR/pace/etc
   const enrichedSelectedEvent = selectedEvent && streamData
     ? {
         ...selectedEvent,
-        streamData: streamData.streamData,
+        streamData: {
+          ...selectedEvent.streamData,  // preserve cached glucose from xDrip
+          ...streamData.streamData,      // overlay fresh HR, pace, cadence, altitude
+        },
         avgHr: streamData.avgHr ?? selectedEvent.avgHr,
         maxHr: streamData.maxHr ?? selectedEvent.maxHr,
       }

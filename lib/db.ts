@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS bg_cache (
   activity_id    TEXT NOT NULL,
   category       TEXT NOT NULL,
   fuel_rate      REAL,
-  start_bg       REAL NOT NULL,
   glucose        TEXT NOT NULL,
   hr             TEXT NOT NULL,
   run_bg_context TEXT,

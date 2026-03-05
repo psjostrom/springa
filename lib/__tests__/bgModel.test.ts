@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  alignStreams,
-  extractObservations,
-  buildBGModel,
   buildBGModelFromCached,
   suggestFuelAdjustments,
   classifyBGBand,
@@ -15,27 +12,10 @@ import {
   analyzeBGByEntrySlope,
   type BGObservation,
 } from "../bgModel";
+import { extractObservations } from "../bgObservations";
 import { linearRegression } from "../math";
 import type { CachedActivity } from "../bgCacheDb";
-import type { IntervalsStream, DataPoint } from "../types";
-
-// Helper: create streams from arrays
-function makeStreams(
-  time: number[],
-  hr: number[],
-  glucose: number[],
-): IntervalsStream[] {
-  return [
-    { type: "time", data: time },
-    { type: "heartrate", data: hr },
-    { type: "bloodglucose", data: glucose },
-  ];
-}
-
-// Helper: generate time array in seconds (1 sample per second, 1 per minute sim)
-function minuteTimeArray(minutes: number): number[] {
-  return Array.from({ length: minutes }, (_, i) => i * 60);
-}
+import type { DataPoint } from "../types";
 
 // Helper: create a BGObservation for unit tests
 function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
@@ -51,76 +31,6 @@ function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
     ...overrides,
   };
 }
-
-describe("alignStreams", () => {
-  it("returns null when streams are empty", () => {
-    expect(alignStreams([])).toBeNull();
-  });
-
-  it("returns null when HR stream is missing", () => {
-    const streams: IntervalsStream[] = [
-      { type: "time", data: [0, 60, 120] },
-      { type: "bloodglucose", data: [180, 175, 170] },
-    ];
-    expect(alignStreams(streams)).toBeNull();
-  });
-
-  it("returns null when glucose stream is missing", () => {
-    const streams: IntervalsStream[] = [
-      { type: "time", data: [0, 60, 120] },
-      { type: "heartrate", data: [120, 130, 140] },
-    ];
-    expect(alignStreams(streams)).toBeNull();
-  });
-
-  it("returns null when too few aligned points", () => {
-    const streams = makeStreams(
-      [0, 60, 120],
-      [120, 130, 140],
-      [8.0, 7.5, 7.0],
-    );
-    expect(alignStreams(streams)).toBeNull();
-  });
-
-  it("aligns HR and glucose by minute", () => {
-    const n = 15;
-    const time = minuteTimeArray(n);
-    const hr = Array(n).fill(125);
-    const glucose = Array.from({ length: n }, (_, i) => 10 - i * 0.2);
-
-    const result = alignStreams(makeStreams(time, hr, glucose));
-    expect(result).not.toBeNull();
-    expect(result!.hr.length).toBe(n);
-    expect(result!.glucose.length).toBe(n);
-    expect(result!.hr[0].time).toBe(0);
-    expect(result!.glucose[0].value).toBeCloseTo(10);
-  });
-
-  it("handles mg/dL glucose values (auto-converts)", () => {
-    const n = 15;
-    const time = minuteTimeArray(n);
-    const hr = Array(n).fill(125);
-    // Values in mg/dL (~180 mg/dL = ~10 mmol/L)
-    const glucose = Array(n).fill(180);
-
-    const result = alignStreams(makeStreams(time, hr, glucose));
-    expect(result).not.toBeNull();
-    // Should be converted to mmol/L
-    expect(result!.glucose[0].value).toBeCloseTo(180 / 18.018, 1);
-  });
-
-  it("tolerates 1-minute offset between HR and glucose", () => {
-    // HR at minutes 0-14, glucose at minutes 1-15 (offset by 1)
-    const time = minuteTimeArray(16);
-    const hr = [...Array(15).fill(125), 0]; // HR for 0-14, zero at 15
-    const glucose = [0, ...Array(15).fill(8.0)]; // zero at 0, glucose for 1-15
-
-    const result = alignStreams(makeStreams(time, hr, glucose));
-    expect(result).not.toBeNull();
-    // Should find matches via +-1 tolerance
-    expect(result!.hr.length).toBeGreaterThan(0);
-  });
-});
 
 describe("extractObservations", () => {
   it("returns empty for insufficient data", () => {
@@ -221,221 +131,25 @@ describe("extractObservations", () => {
   });
 });
 
-describe("buildBGModel", () => {
-  it("returns empty categories with no input", () => {
-    const model = buildBGModel([]);
-    expect(model.activitiesAnalyzed).toBe(0);
-    expect(model.observations).toHaveLength(0);
-    expect(model.categories.easy).toBeNull();
-    expect(model.categories.long).toBeNull();
-    expect(model.categories.interval).toBeNull();
-    expect(model.bgByStartLevel).toHaveLength(0);
-    expect(model.bgByEntrySlope).toHaveLength(0);
-    expect(model.bgByTime).toHaveLength(0);
-    expect(model.targetFuelRates).toHaveLength(0);
-  });
-
-  it("builds model from single activity with linear BG drop", () => {
-    const time = minuteTimeArray(25);
-    const hr = Array(25).fill(125);
-    const glucose = Array.from({ length: 25 }, (_, i) => 10 - i * 0.1);
-
-    const model = buildBGModel([
-      {
-        streams: makeStreams(time, hr, glucose),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
-    ]);
-
-    expect(model.activitiesAnalyzed).toBe(1);
-    expect(model.observations.length).toBeGreaterThan(0);
-    expect(model.categories.easy).not.toBeNull();
-    expect(model.categories.easy!.avgRate).toBeCloseTo(-1.0, 0);
-    expect(model.categories.easy!.category).toBe("easy");
-  });
-
-  it("assigns confidence correctly based on sample count", () => {
-    // Build a model with few observations (low confidence)
-    const time = minuteTimeArray(15);
-    const hr = Array(15).fill(125);
-    const glucose = Array.from({ length: 15 }, (_, i) => 10 - i * 0.1);
-
-    const model = buildBGModel([
-      {
-        streams: makeStreams(time, hr, glucose),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
-    ]);
-
-    expect(model.categories.easy).not.toBeNull();
-    // With a 15-min activity, after skipping first 5 and last 2, we get ~3 windows
-    expect(model.categories.easy!.confidence).toBe("low");
-  });
-
-  it("reaches medium confidence with 10+ samples", () => {
-    // Multiple activities to accumulate samples
-    const activities = Array.from({ length: 5 }, (_, i) => ({
-      streams: makeStreams(
-        minuteTimeArray(20),
-        Array(20).fill(125),
-        Array.from({ length: 20 }, (_, j) => 10 - j * 0.1),
-      ),
-      activityId: `a${i}`,
-      fuelRate: 48,
-      category: "easy" as const,
-    }));
-
-    const model = buildBGModel(activities);
-    expect(model.categories.easy).not.toBeNull();
-    expect(["medium", "high"]).toContain(model.categories.easy!.confidence);
-  });
-
-  it("separates observations into correct categories", () => {
-    const time = minuteTimeArray(20);
-
-    // Activity 1: easy
-    const a1 = {
-      streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
-      activityId: "easy-run",
-      fuelRate: 48,
-      category: "easy" as const,
-    };
-
-    // Activity 2: interval
-    const a2 = {
-      streams: makeStreams(time, Array(20).fill(155), Array(20).fill(8)),
-      activityId: "interval-run",
-      fuelRate: 30,
-      category: "interval" as const,
-    };
-
-    const model = buildBGModel([a1, a2]);
-    expect(model.categories.easy).not.toBeNull();
-    expect(model.categories.interval).not.toBeNull();
-    expect(model.categories.easy!.avgFuelRate).toBe(48);
-    expect(model.categories.interval!.avgFuelRate).toBe(30);
-  });
-
-  it("excludes null fuel rates from avgFuelRate", () => {
-    const time = minuteTimeArray(20);
-
-    const a1 = {
-      streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
-      activityId: "with-fuel",
-      fuelRate: 48,
-      category: "easy" as const,
-    };
-
-    const a2 = {
-      streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
-      activityId: "no-fuel",
-      fuelRate: null,
-      category: "easy" as const,
-    };
-
-    const model = buildBGModel([a1, a2]);
-    expect(model.categories.easy).not.toBeNull();
-    // Should only average the activity that has fuel data
-    expect(model.categories.easy!.avgFuelRate).toBe(48);
-  });
-
-  it("returns null avgFuelRate when no activities have fuel data", () => {
-    const time = minuteTimeArray(20);
-
-    const model = buildBGModel([
-      {
-        streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)),
-        activityId: "no-fuel",
-        fuelRate: null,
-        category: "easy" as const,
-      },
-    ]);
-
-    expect(model.categories.easy).not.toBeNull();
-    expect(model.categories.easy!.avgFuelRate).toBeNull();
-  });
-
-  it("computes median correctly", () => {
-    const time = minuteTimeArray(20);
-    const hr = Array(20).fill(125);
-    // Flat BG → rate ≈ 0
-    const glucose = Array(20).fill(8.0);
-
-    const model = buildBGModel([
-      { streams: makeStreams(time, hr, glucose), activityId: "a1", fuelRate: 48, category: "easy" },
-    ]);
-
-    expect(model.categories.easy).not.toBeNull();
-    expect(model.categories.easy!.medianRate).toBeCloseTo(0, 0);
-  });
-
-  it("skips activities without aligned data", () => {
-    // Activity with HR but no glucose
-    const streams: IntervalsStream[] = [
-      { type: "time", data: minuteTimeArray(20) },
-      { type: "heartrate", data: Array(20).fill(125) },
-    ];
-
-    const model = buildBGModel([
-      { streams, activityId: "no-glucose", fuelRate: 48, category: "easy" },
-    ]);
-
-    expect(model.activitiesAnalyzed).toBe(0);
-    expect(model.observations).toHaveLength(0);
-  });
-
-  it("populates bgByStartLevel, bgByTime, and targetFuelRates", () => {
-    const time = minuteTimeArray(25);
-    const hr = Array(25).fill(125);
-    const glucose = Array.from({ length: 25 }, (_, i) => 10 - i * 0.1);
-
-    const model = buildBGModel([
-      {
-        streams: makeStreams(time, hr, glucose),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
-    ]);
-
-    // Starting BG is 10, so should land in "8-10" or "10-12" band
-    expect(model.bgByStartLevel.length).toBeGreaterThan(0);
-    // Time buckets should be populated (observations start at relative minute 5)
-    expect(model.bgByTime.length).toBeGreaterThan(0);
-    // BG is dropping with fuel → target fuel rates should be populated
-    expect(model.targetFuelRates.length).toBeGreaterThan(0);
-  });
-
-  it("counts distinct activities per category", () => {
-    const time = minuteTimeArray(20);
-
-    const model = buildBGModel([
-      { streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)), activityId: "a1", fuelRate: 48, category: "long" },
-      { streams: makeStreams(time, Array(20).fill(125), Array(20).fill(8)), activityId: "a2", fuelRate: 60, category: "long" },
-    ]);
-
-    expect(model.categories.long).not.toBeNull();
-    expect(model.categories.long!.activityCount).toBe(2);
-  });
-});
-
 describe("suggestFuelAdjustments", () => {
+  // Helper for this describe block
+  function makeCachedForFuel(
+    activityId: string,
+    fuelRate: number,
+    glucoseFn: (i: number) => number,
+  ): CachedActivity {
+    return {
+      activityId,
+      category: "easy",
+      fuelRate,
+      glucose: Array.from({ length: 20 }, (_, i) => ({ time: i, value: glucoseFn(i) })),
+      hr: Array.from({ length: 20 }, (_, i) => ({ time: i, value: 125 })),
+    };
+  }
+
   it("returns empty for stable BG", () => {
-    const model = buildBGModel([
-      {
-        streams: makeStreams(
-          minuteTimeArray(20),
-          Array(20).fill(125),
-          Array(20).fill(8.0), // flat BG
-        ),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
+    const model = buildBGModelFromCached([
+      makeCachedForFuel("a1", 48, () => 8.0), // flat BG
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
@@ -444,17 +158,8 @@ describe("suggestFuelAdjustments", () => {
 
   it("suggests fuel increase for fast-dropping BG", () => {
     // BG drops from 10 to 4 over 20 minutes (-0.3/min → -3.0/10min)
-    const model = buildBGModel([
-      {
-        streams: makeStreams(
-          minuteTimeArray(20),
-          Array(20).fill(125),
-          Array.from({ length: 20 }, (_, i) => 10 - i * 0.3),
-        ),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
+    const model = buildBGModelFromCached([
+      makeCachedForFuel("a1", 48, (i) => 10 - i * 0.3),
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
@@ -466,17 +171,8 @@ describe("suggestFuelAdjustments", () => {
 
   it("does not suggest for moderate drops (> -1.0)", () => {
     // BG drops mildly: -0.04/min → -0.4/10min
-    const model = buildBGModel([
-      {
-        streams: makeStreams(
-          minuteTimeArray(20),
-          Array(20).fill(125),
-          Array.from({ length: 20 }, (_, i) => 10 - i * 0.04),
-        ),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
+    const model = buildBGModelFromCached([
+      makeCachedForFuel("a1", 48, (i) => 10 - i * 0.04),
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
@@ -485,17 +181,8 @@ describe("suggestFuelAdjustments", () => {
 
   it("scales fuel increase proportionally to excess drop", () => {
     // Very fast drop: -0.5/min → -5.0/10min (excess = 4.0, expect 8 * 6 = 48 g/h increase)
-    const model = buildBGModel([
-      {
-        streams: makeStreams(
-          minuteTimeArray(20),
-          Array(20).fill(125),
-          Array.from({ length: 20 }, (_, i) => 10 - i * 0.5),
-        ),
-        activityId: "a1",
-        fuelRate: 48,
-        category: "easy",
-      },
+    const model = buildBGModelFromCached([
+      makeCachedForFuel("a1", 48, (i) => 10 - i * 0.5),
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
@@ -917,7 +604,7 @@ describe("calculateTargetFuelRates", () => {
 });
 
 describe("buildBGModelFromCached", () => {
-  // Helper: build CachedActivity from the same data buildBGModel uses
+  // Helper: build CachedActivity with minute-indexed data
   function makeCached(
     activityId: string,
     category: "easy" | "long" | "interval",
@@ -925,18 +612,12 @@ describe("buildBGModelFromCached", () => {
     minutes: number,
     glucoseFn: (i: number) => number,
   ): CachedActivity {
-    const time = minuteTimeArray(minutes);
-    const hrRaw = Array(minutes).fill(125);
-    const glucoseRaw = Array.from({ length: minutes }, (_, i) => glucoseFn(i));
-    const streams = makeStreams(time, hrRaw, glucoseRaw);
-    const aligned = alignStreams(streams)!;
     return {
       activityId,
       category,
       fuelRate,
-      startBG: aligned.glucose[0].value,
-      glucose: aligned.glucose,
-      hr: aligned.hr,
+      glucose: Array.from({ length: minutes }, (_, i) => ({ time: i, value: glucoseFn(i) })),
+      hr: Array.from({ length: minutes }, (_, i) => ({ time: i, value: 125 })),
     };
   }
 
@@ -947,51 +628,27 @@ describe("buildBGModelFromCached", () => {
     expect(model.categories.easy).toBeNull();
   });
 
-  it("produces identical model to buildBGModel for single activity", () => {
-    const time = minuteTimeArray(25);
-    const hr = Array(25).fill(125);
-    const glucoseFn = (i: number) => 10 - i * 0.1;
-    const glucose = Array.from({ length: 25 }, (_, i) => glucoseFn(i));
+  it("produces correct model for single activity", () => {
+    const cached = makeCached("a1", "easy", 48, 25, (i) => 10 - i * 0.1);
+    const model = buildBGModelFromCached([cached]);
 
-    const fromStreams = buildBGModel([{
-      streams: makeStreams(time, hr, glucose),
-      activityId: "a1",
-      fuelRate: 48,
-      category: "easy",
-    }]);
-
-    const cached = makeCached("a1", "easy", 48, 25, glucoseFn);
-    const fromCached = buildBGModelFromCached([cached]);
-
-    expect(fromCached.activitiesAnalyzed).toBe(fromStreams.activitiesAnalyzed);
-    expect(fromCached.observations.length).toBe(fromStreams.observations.length);
-    expect(fromCached.categories.easy!.avgRate).toBeCloseTo(fromStreams.categories.easy!.avgRate);
-    expect(fromCached.categories.easy!.medianRate).toBeCloseTo(fromStreams.categories.easy!.medianRate);
-    expect(fromCached.categories.easy!.sampleCount).toBe(fromStreams.categories.easy!.sampleCount);
-    expect(fromCached.categories.easy!.avgFuelRate).toBe(fromStreams.categories.easy!.avgFuelRate);
+    expect(model.activitiesAnalyzed).toBe(1);
+    expect(model.observations.length).toBeGreaterThan(0);
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.easy!.avgFuelRate).toBe(48);
   });
 
-  it("produces identical model for multiple categories", () => {
-    const time = minuteTimeArray(20);
-    const easyGlucose = Array.from({ length: 20 }, (_, i) => 10 - i * 0.1);
-    const intervalGlucose = Array.from({ length: 20 }, (_, i) => 10 - i * 0.05);
-
-    const fromStreams = buildBGModel([
-      { streams: makeStreams(time, Array(20).fill(125), easyGlucose), activityId: "a1", fuelRate: 48, category: "easy" },
-      { streams: makeStreams(time, Array(20).fill(155), intervalGlucose), activityId: "a2", fuelRate: 30, category: "interval" },
-    ]);
-
-    const fromCached = buildBGModelFromCached([
+  it("produces correct model for multiple categories", () => {
+    const model = buildBGModelFromCached([
       makeCached("a1", "easy", 48, 20, (i) => 10 - i * 0.1),
       makeCached("a2", "interval", 30, 20, (i) => 10 - i * 0.05),
     ]);
 
-    expect(fromCached.activitiesAnalyzed).toBe(fromStreams.activitiesAnalyzed);
-    expect(fromCached.categories.easy!.avgRate).toBeCloseTo(fromStreams.categories.easy!.avgRate);
-    expect(fromCached.categories.interval!.avgRate).toBeCloseTo(fromStreams.categories.interval!.avgRate);
-    expect(fromCached.bgByStartLevel.length).toBe(fromStreams.bgByStartLevel.length);
-    expect(fromCached.bgByEntrySlope.length).toBe(fromStreams.bgByEntrySlope.length);
-    expect(fromCached.bgByTime.length).toBe(fromStreams.bgByTime.length);
+    expect(model.activitiesAnalyzed).toBe(2);
+    expect(model.categories.easy).not.toBeNull();
+    expect(model.categories.interval).not.toBeNull();
+    expect(model.categories.easy!.avgFuelRate).toBe(48);
+    expect(model.categories.interval!.avgFuelRate).toBe(30);
   });
 
   it("skips activities with too few HR points", () => {
@@ -999,7 +656,6 @@ describe("buildBGModelFromCached", () => {
       activityId: "short",
       category: "easy",
       fuelRate: 48,
-      startBG: 10,
       glucose: Array.from({ length: 5 }, (_, i) => ({ time: i, value: 10 })),
       hr: Array.from({ length: 5 }, (_, i) => ({ time: i, value: 125 })),
     };

@@ -6,7 +6,6 @@ export interface CachedActivity {
   activityId: string;
   category: WorkoutCategory;
   fuelRate: number | null;
-  startBG: number;
   glucose: { time: number; value: number }[];
   hr: { time: number; value: number }[];
   runBGContext?: RunBGContext | null;
@@ -18,7 +17,7 @@ export interface CachedActivity {
 
 export async function getBGCache(email: string): Promise<CachedActivity[]> {
   const result = await db().execute({
-    sql: `SELECT activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context,
+    sql: `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
                  pace, cadence, altitude, activity_date
           FROM bg_cache WHERE email = ?`,
     args: [email],
@@ -27,7 +26,6 @@ export async function getBGCache(email: string): Promise<CachedActivity[]> {
     activityId: row.activity_id as string,
     category: row.category as CachedActivity["category"],
     fuelRate: row.fuel_rate as number | null,
-    startBG: row.start_bg as number,
     glucose: JSON.parse(row.glucose as string) as CachedActivity["glucose"],
     hr: JSON.parse(row.hr as string) as CachedActivity["hr"],
     runBGContext: row.run_bg_context ? (JSON.parse(row.run_bg_context as string) as RunBGContext) : null,
@@ -46,14 +44,13 @@ export async function saveBGCache(
     [
       { sql: "DELETE FROM bg_cache WHERE email = ?", args: [email] },
       ...data.map((a) => ({
-        sql: `INSERT INTO bg_cache (email, activity_id, category, fuel_rate, start_bg, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO bg_cache (email, activity_id, category, fuel_rate, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           email,
           a.activityId,
           a.category,
           a.fuelRate,
-          a.startBG,
           JSON.stringify(a.glucose),
           JSON.stringify(a.hr),
           a.runBGContext ? JSON.stringify(a.runBGContext) : null,
