@@ -1,5 +1,5 @@
 import type { HRZoneName, PaceTable } from "./types";
-import { FALLBACK_PACE_TABLE, classifyZone } from "./constants";
+import { FALLBACK_PACE_TABLE, classifyHR, ZONE_TO_NAME, DEFAULT_LTHR } from "./constants";
 
 // --- PACE LOOKUP ---
 
@@ -24,11 +24,18 @@ export function paceForIntensity(avgPercent: number, table?: PaceTable): number 
 
 // --- ZONE PARSING ---
 
+/** Convert LTHR percentage to zone name using dynamic zone boundaries. */
+function classifyIntensity(lthrPct: number, lthr: number, hrZones: number[]): HRZoneName {
+  const hr = (lthrPct / 100) * lthr;
+  return ZONE_TO_NAME[classifyHR(hr, hrZones)];
+}
+
 /**
  * Parse a workout description and return all distinct HR zones used,
  * ordered from lowest to highest intensity.
  */
-export function parseWorkoutZones(description: string): HRZoneName[] {
+export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = []): HRZoneName[] {
+  if (hrZones.length !== 5) return [];
   const stepMatches = Array.from(
     description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(\d+)-(\d+)%/g),
   );
@@ -38,7 +45,7 @@ export function parseWorkoutZones(description: string): HRZoneName[] {
   for (const m of stepMatches) {
     const minPct = parseInt(m[1], 10);
     const maxPct = parseInt(m[2], 10);
-    zones.add(classifyZone((minPct + maxPct) / 2));
+    zones.add(classifyIntensity((minPct + maxPct) / 2, lthr, hrZones));
   }
 
   const order: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
@@ -123,8 +130,8 @@ export interface WorkoutSection {
  * Parse a workout description into structured sections for display.
  * Returns the raw display strings (unlike parseWorkoutSegments which returns computed values).
  */
-export function parseWorkoutStructure(description: string): WorkoutSection[] {
-  if (!description) return [];
+export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = []): WorkoutSection[] {
+  if (!description || hrZones.length !== 5) return [];
 
   const sections: WorkoutSection[] = [];
   const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
@@ -164,7 +171,7 @@ export function parseWorkoutStructure(description: string): WorkoutSection[] {
         steps.push({
           label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval", "Warmup", "Cooldown"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
           duration: stepMatch[2],
-          zone: classifyZone((minPct + maxPct) / 2),
+          zone: classifyIntensity((minPct + maxPct) / 2, lthr, hrZones),
           bpmRange: stepMatch[5],
         });
       }

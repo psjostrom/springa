@@ -20,6 +20,8 @@ interface DayCellProps {
   onDragStart: (e: React.DragEvent, event: CalendarEvent) => void;
   onDragEnd: () => void;
   onEventClick: (event: CalendarEvent) => void;
+  hrZones?: number[];
+  lthr?: number;
 }
 
 export function DayCell({
@@ -37,6 +39,8 @@ export function DayCell({
   onDragStart,
   onDragEnd,
   onEventClick,
+  hrZones,
+  lthr,
 }: DayCellProps) {
   const isTodayDate = isToday(day);
   const dateKey = format(day, "yyyy-MM-dd");
@@ -80,19 +84,20 @@ export function DayCell({
                 <span className="flex-shrink-0">{getEventIcon(event)}</span>
                 <span className="hidden sm:inline break-words">{event.name}</span>
               </div>
-              {event.type === "completed" && event.hrZones && (
+              {event.type === "completed" && event.zoneTimes && (
                 <HRMiniChart
-                  z1={event.hrZones.z1}
-                  z2={event.hrZones.z2}
-                  z3={event.hrZones.z3}
-                  z4={event.hrZones.z4}
-                  z5={event.hrZones.z5}
+                  z1={event.zoneTimes.z1}
+                  z2={event.zoneTimes.z2}
+                  z3={event.zoneTimes.z3}
+                  z4={event.zoneTimes.z4}
+                  z5={event.zoneTimes.z5}
                   maxHeight={20}
                   hrData={event.streamData?.heartrate}
+                  hrZones={hrZones}
                 />
               )}
               {event.type === "planned" && event.description && (
-                <WorkoutStructureBar description={event.description} maxHeight={20} />
+                <WorkoutStructureBar description={event.description} maxHeight={20} hrZones={hrZones} lthr={lthr} />
               )}
             </button>
           ))}

@@ -212,6 +212,8 @@ interface EventModalProps {
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
   bgModel?: BGResponseModel | null;
+  hrZones?: number[];
+  lthr?: number;
 }
 
 export function EventModal({
@@ -224,6 +226,8 @@ export function EventModal({
   runBGContexts,
   paceTable,
   bgModel,
+  hrZones,
+  lthr,
 }: EventModalProps) {
   const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
 
@@ -464,23 +468,24 @@ export function EventModal({
         )}
 
         {selectedEvent.description && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable}>
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr}>
             {selectedEvent.type === "completed" ? (
-              selectedEvent.hrZones ? (
+              selectedEvent.zoneTimes ? (
                 <HRMiniChart
-                  z1={selectedEvent.hrZones.z1}
-                  z2={selectedEvent.hrZones.z2}
-                  z3={selectedEvent.hrZones.z3}
-                  z4={selectedEvent.hrZones.z4}
-                  z5={selectedEvent.hrZones.z5}
+                  z1={selectedEvent.zoneTimes.z1}
+                  z2={selectedEvent.zoneTimes.z2}
+                  z3={selectedEvent.zoneTimes.z3}
+                  z4={selectedEvent.zoneTimes.z4}
+                  z5={selectedEvent.zoneTimes.z5}
                   maxHeight={48}
                   hrData={selectedEvent.streamData?.heartrate}
+                  hrZones={hrZones}
                 />
               ) : isLoadingStreamData ? (
                 <div className="skeleton h-12 w-full rounded" />
               ) : null
             ) : (
-              <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} />
+              <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
             )}
           </WorkoutCard>
         )}
@@ -699,17 +704,17 @@ export function EventModal({
             )}
 
             {/* HR Zones */}
-            {selectedEvent.hrZones ? (
+            {selectedEvent.zoneTimes ? (
               <div className="border-t border-[#3d2b5a] pt-4 mt-4">
                 <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
                   Heart Rate Zones
                 </div>
                 <HRZoneBreakdown
-                  z1={selectedEvent.hrZones.z1}
-                  z2={selectedEvent.hrZones.z2}
-                  z3={selectedEvent.hrZones.z3}
-                  z4={selectedEvent.hrZones.z4}
-                  z5={selectedEvent.hrZones.z5}
+                  z1={selectedEvent.zoneTimes.z1}
+                  z2={selectedEvent.zoneTimes.z2}
+                  z3={selectedEvent.zoneTimes.z3}
+                  z4={selectedEvent.zoneTimes.z4}
+                  z5={selectedEvent.zoneTimes.z5}
                 />
               </div>
             ) : isLoadingStreamData ? (

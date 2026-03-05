@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generatePlan } from "../workoutGenerators";
 import { getDay } from "date-fns";
+import { TEST_HR_ZONES } from "./testConstants";
 
 describe("generatePlan", () => {
   const defaultArgs = {
@@ -11,7 +12,7 @@ describe("generatePlan", () => {
     totalWeeks: 12,
     startKm: 8,
     lthr: 169,
-    hrZones: [112, 132, 150, 167, 189],
+    hrZones: [...TEST_HR_ZONES],
   };
 
   function generate(overrides: Partial<typeof defaultArgs> = {}) {

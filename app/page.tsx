@@ -135,7 +135,7 @@ function HomeContent() {
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useRunData(apiKey, true, calendarEvents, readings);
 
   // Calibrated pace table from cached stream data
-  const paceTable = usePaceTable(cachedActivities, settings?.lthr);
+  const paceTable = usePaceTable(cachedActivities, settings?.hrZones);
 
   // Enrich calendar events with cached stream data so graphs render on mount
   const enrichedEvents = enrichEvents(calendarEvents, cachedActivities);
@@ -234,7 +234,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={calendarLoading} initialError={calendarError} onRetryLoad={handleReload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
+          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={calendarLoading} initialError={calendarError} onRetryLoad={handleReload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
           <IntelScreen

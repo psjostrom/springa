@@ -1,5 +1,5 @@
 import type { HRZoneName, DataPoint, PaceTable } from "./types";
-import { classifyZone, FALLBACK_PACE_TABLE } from "./constants";
+import { classifyHR, ZONE_TO_NAME, FALLBACK_PACE_TABLE } from "./constants";
 import { linearRegression } from "./math";
 
 // --- Types ---
@@ -51,11 +51,11 @@ const PACE_MAX = 12.0;
 export function extractZoneSegments(
   hr: DataPoint[],
   pace: DataPoint[],
-  lthr: number,
+  hrZones: number[],
   activityId: string,
   activityDate: string,
 ): ZoneSegment[] {
-  if (hr.length === 0 || pace.length === 0 || lthr <= 0) return [];
+  if (hr.length === 0 || pace.length === 0 || hrZones.length !== 5) return [];
 
   // Build pace lookup by minute
   const paceByMinute = new Map<number, number>();
@@ -70,8 +70,8 @@ export function extractZoneSegments(
   const classified: { minute: number; zone: HRZoneName; hr: number }[] = [];
   for (const h of hr) {
     const minute = Math.round(h.time);
-    const lthrPct = (h.value / lthr) * 100;
-    classified.push({ minute, zone: classifyZone(lthrPct), hr: h.value });
+    const zoneKey = classifyHR(h.value, hrZones);
+    classified.push({ minute, zone: ZONE_TO_NAME[zoneKey], hr: h.value });
   }
 
   // Sort by minute

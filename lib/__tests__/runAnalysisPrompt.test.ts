@@ -3,6 +3,7 @@ import { buildRunAnalysisPrompt } from "../runAnalysisPrompt";
 import type { CalendarEvent } from "../types";
 import type { RunBGContext } from "../runBGContext";
 import type { ReportCard } from "../reportCard";
+import { TEST_HR_ZONES } from "./testConstants";
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
@@ -82,7 +83,7 @@ function makeRunBGContext(overrides: Partial<RunBGContext> = {}): RunBGContext {
   };
 }
 
-const defaultHrZones = [112, 132, 150, 167, 189];
+const defaultHrZones = [...TEST_HR_ZONES];
 
 describe("buildRunAnalysisPrompt", () => {
   it("returns system and user prompts", () => {
@@ -261,7 +262,7 @@ describe("buildRunAnalysisPrompt", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("LTHR 168 bpm, Max HR 189 bpm");
-    expect(system).toContain("112-132 bpm");
+    expect(system).toContain("114-140 bpm");
     expect(system).toContain("pump OFF");
     expect(system).toContain("NEVER suggest reducing carbs");
     expect(system).toContain("More carbs = slower drop");
@@ -271,7 +272,7 @@ describe("buildRunAnalysisPrompt", () => {
     const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
 
     expect(system).toContain("\"easy\"/\"long\" → Z2 entire time");
-    expect(system).toContain("Avg HR >132 = too hard");
+    expect(system).toContain("Avg HR >140 = too hard");
     expect(system).toContain("\"interval\" → reps target Z4");
   });
 

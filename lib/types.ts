@@ -144,7 +144,7 @@ export interface CalendarEvent {
   pace?: number;
   calories?: number;
   cadence?: number;
-  hrZones?: HRZoneData;
+  zoneTimes?: HRZoneData;
   streamData?: StreamData;
   fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
   totalCarbs?: number | null; // planned total carbs

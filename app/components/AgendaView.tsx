@@ -14,9 +14,11 @@ interface AgendaViewProps {
   events: CalendarEvent[];
   onSelectEvent: (event: CalendarEvent) => void;
   paceTable?: PaceTable;
+  hrZones?: number[];
+  lthr?: number;
 }
 
-function EventCard({ event, isMissed, onSelect, paceTable }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable }) {
+function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number }) {
   return (
     <div
       data-event-id={event.id}
@@ -115,15 +117,16 @@ function EventCard({ event, isMissed, onSelect, paceTable }: { event: CalendarEv
               )}
             </div>
 
-            {event.hrZones && (
+            {event.zoneTimes && (
               <HRMiniChart
-                z1={event.hrZones.z1}
-                z2={event.hrZones.z2}
-                z3={event.hrZones.z3}
-                z4={event.hrZones.z4}
-                z5={event.hrZones.z5}
+                z1={event.zoneTimes.z1}
+                z2={event.zoneTimes.z2}
+                z3={event.zoneTimes.z3}
+                z4={event.zoneTimes.z4}
+                z5={event.zoneTimes.z5}
                 maxHeight={40}
                 hrData={event.streamData?.heartrate}
+                hrZones={hrZones}
               />
             )}
           </>
@@ -135,6 +138,8 @@ function EventCard({ event, isMissed, onSelect, paceTable }: { event: CalendarEv
               <WorkoutStructureBar
                 description={event.description}
                 maxHeight={40}
+                hrZones={hrZones}
+                lthr={lthr}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -181,6 +186,8 @@ export function AgendaView({
   events,
   onSelectEvent,
   paceTable,
+  hrZones,
+  lthr,
 }: AgendaViewProps) {
   const [view, setView] = useState<"upcoming" | "history">("upcoming");
 
@@ -217,6 +224,8 @@ export function AgendaView({
             isMissed={isMissedEvent(event)}
             onSelect={() => { onSelectEvent(event); }}
             paceTable={paceTable}
+            hrZones={hrZones}
+            lthr={lthr}
           />
         ))}
       </div>
@@ -241,6 +250,8 @@ export function AgendaView({
           isMissed={isMissedEvent(event)}
           onSelect={() => { onSelectEvent(event); }}
           paceTable={paceTable}
+          hrZones={hrZones}
+          lthr={lthr}
         />
       ))}
     </div>

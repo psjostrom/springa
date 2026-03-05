@@ -114,9 +114,9 @@ export function scoreBG(event: CalendarEvent): BGScore | null {
 }
 
 export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
-  if (!event.hrZones) return null;
+  if (!event.zoneTimes) return null;
 
-  const { z1, z2, z3, z4, z5 } = event.hrZones;
+  const { z1, z2, z3, z4, z5 } = event.zoneTimes;
   const total = z1 + z2 + z3 + z4 + z5;
   if (total === 0) return null;
 

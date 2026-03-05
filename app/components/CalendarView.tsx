@@ -37,11 +37,13 @@ interface CalendarViewProps {
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
   bgModel?: BGResponseModel | null;
+  hrZones?: number[];
+  lthr?: number;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
-export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarViewProps) {
+export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -203,6 +205,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       onDrop={handleDropEvent}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      hrZones={hrZones}
+      lthr={lthr}
       onEventClick={openWorkoutModal}
     />
   );
@@ -327,6 +331,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               events={agendaEvents}
               onSelectEvent={openWorkoutModal}
               paceTable={paceTable}
+              hrZones={hrZones}
+              lthr={lthr}
             />
           </div>
         )}
@@ -344,6 +350,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           runBGContexts={runBGContexts}
           paceTable={paceTable}
           bgModel={bgModel}
+          hrZones={hrZones}
+          lthr={lthr}
         />
       )}
     </div>

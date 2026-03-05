@@ -14,14 +14,16 @@ interface CalendarScreenProps {
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
   bgModel?: BGResponseModel | null;
+  hrZones?: number[];
+  lthr?: number;
 }
 
-export function CalendarScreen({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel }: CalendarScreenProps) {
+export function CalendarScreen({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr }: CalendarScreenProps) {
   return (
     <div className="h-full bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
       <main className="flex-1 bg-[#0d0a1a] min-h-0 min-w-0">
         <div className="px-1 py-1 md:p-6 h-full flex flex-col overflow-hidden">
-          <CalendarView apiKey={apiKey} initialEvents={initialEvents} isLoadingInitial={isLoadingInitial} initialError={initialError} onRetryLoad={onRetryLoad} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} />
+          <CalendarView apiKey={apiKey} initialEvents={initialEvents} isLoadingInitial={isLoadingInitial} initialError={initialError} onRetryLoad={onRetryLoad} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={hrZones} lthr={lthr} />
         </div>
       </main>
     </div>

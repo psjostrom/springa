@@ -9,6 +9,7 @@ import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
 import { useSharedCalendarData } from "@/app/hooks/useSharedCalendarData";
+import { TEST_HR_ZONES } from "./testConstants";
 import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
@@ -42,7 +43,7 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
 describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
   it("generates a plan, shows preview, syncs to Intervals.icu", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
 
     // 1. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -193,7 +194,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 describe("Flow 4: Planner — Generate uses fuel settings directly", () => {
   it("generates plan instantly using sidebar fuel values", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
 
     // 1. Click Generate Plan
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -224,7 +225,7 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
 
   it("uploads successfully even when DELETE returns 500", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[112, 132, 150, 167, 189]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
 
     // 1. Generate plan (two buttons: desktop + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });

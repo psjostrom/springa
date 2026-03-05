@@ -7,30 +7,31 @@ import {
   type ZoneSegment,
 } from "../paceCalibration";
 import type { DataPoint } from "../types";
+import { TEST_HR_ZONES } from "./testConstants";
 
 // Helper: generate DataPoint array at minute resolution
 function minutePoints(values: number[], startMinute = 0): DataPoint[] {
   return values.map((v, i) => ({ time: startMinute + i, value: v }));
 }
 
-// LTHR for tests
-const LTHR = 169;
+const hrZones = [...TEST_HR_ZONES];
 
-// HR values that map to specific zones:
-// easy: < 78% = < 131.8
-// steady: 78-89% = 131.8-150.4
-// tempo: 89-99% = 150.4-167.3
-// hard: >= 99% = >= 167.3
-const HR_EASY = 120;
-const HR_STEADY = 140;
-const HR_TEMPO = 155;
-const HR_HARD = 175;
+// HR values that map to specific zones with TEST_HR_ZONES [114, 140, 155, 167, 189]:
+// z1 (easy): <= 114
+// z2 (easy): 115-140
+// z3 (steady): 141-155
+// z4 (tempo): 156-167
+// z5 (hard): > 167
+const HR_EASY = 130;     // z2 → easy
+const HR_STEADY = 148;   // z3 → steady
+const HR_TEMPO = 162;    // z4 → tempo
+const HR_HARD = 175;     // z5 → hard
 
 describe("extractZoneSegments", () => {
   it("extracts easy segment when >= 3 consecutive minutes", () => {
     const hr = minutePoints([HR_EASY, HR_EASY, HR_EASY, HR_EASY]);
     const pace = minutePoints([7.0, 7.2, 7.1, 7.3]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(1);
     expect(result[0].zone).toBe("easy");
@@ -42,7 +43,7 @@ describe("extractZoneSegments", () => {
   it("rejects easy segment shorter than 3 minutes", () => {
     const hr = minutePoints([HR_EASY, HR_EASY]);
     const pace = minutePoints([7.0, 7.2]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(0);
   });
@@ -50,7 +51,7 @@ describe("extractZoneSegments", () => {
   it("extracts steady segment when >= 2 consecutive minutes", () => {
     const hr = minutePoints([HR_STEADY, HR_STEADY, HR_STEADY]);
     const pace = minutePoints([5.8, 5.6, 5.7]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(1);
     expect(result[0].zone).toBe("steady");
@@ -60,7 +61,7 @@ describe("extractZoneSegments", () => {
   it("extracts tempo segment when >= 1 minute", () => {
     const hr = minutePoints([HR_TEMPO]);
     const pace = minutePoints([5.1]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(1);
     expect(result[0].zone).toBe("tempo");
@@ -70,7 +71,7 @@ describe("extractZoneSegments", () => {
   it("never extracts hard segments (always extrapolated)", () => {
     const hr = minutePoints([HR_HARD, HR_HARD, HR_HARD, HR_HARD, HR_HARD]);
     const pace = minutePoints([4.5, 4.4, 4.6, 4.5, 4.3]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(0);
   });
@@ -82,7 +83,7 @@ describe("extractZoneSegments", () => {
       HR_STEADY, HR_STEADY, HR_STEADY,
     ]);
     const pace = minutePoints([7.0, 7.1, 7.2, 7.0, 5.8, 5.6, 5.7]);
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(2);
     expect(result[0].zone).toBe("easy");
@@ -92,21 +93,22 @@ describe("extractZoneSegments", () => {
   it("filters out pace values outside 2.0-12.0 range", () => {
     const hr = minutePoints([HR_EASY, HR_EASY, HR_EASY]);
     const pace = minutePoints([1.5, 7.0, 15.0]); // 1st and 3rd out of range
-    const result = extractZoneSegments(hr, pace, LTHR, "a1", "2026-01-01");
+    const result = extractZoneSegments(hr, pace, hrZones, "a1", "2026-01-01");
 
     expect(result).toHaveLength(1);
     // Only the middle value should be valid
     expect(result[0].avgPace).toBeCloseTo(7.0, 1);
   });
 
-  it("returns empty for zero LTHR", () => {
+  it("returns empty for invalid hrZones", () => {
     const hr = minutePoints([HR_EASY, HR_EASY, HR_EASY]);
     const pace = minutePoints([7.0, 7.0, 7.0]);
-    expect(extractZoneSegments(hr, pace, 0, "a1", "2026-01-01")).toHaveLength(0);
+    expect(extractZoneSegments(hr, pace, [], "a1", "2026-01-01")).toHaveLength(0);
+    expect(extractZoneSegments(hr, pace, [100, 120], "a1", "2026-01-01")).toHaveLength(0);
   });
 
   it("returns empty for empty inputs", () => {
-    expect(extractZoneSegments([], [], LTHR, "a1", "2026-01-01")).toHaveLength(0);
+    expect(extractZoneSegments([], [], hrZones, "a1", "2026-01-01")).toHaveLength(0);
   });
 });
 

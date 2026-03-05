@@ -122,7 +122,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
 
   const report = buildReportCard(event, runBGContext);
   const streamLoading = isLoadingStreamData && !event.streamData;
-  const hrLoading = isLoadingStreamData && !event.hrZones;
+  const hrLoading = isLoadingStreamData && !event.zoneTimes;
 
   // Nothing to show and not loading
   if (!report.bg && !report.hrZone && !report.fuel && !report.entryTrend && !report.recovery && !streamLoading && !hrLoading) {

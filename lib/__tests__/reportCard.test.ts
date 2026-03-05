@@ -141,14 +141,14 @@ describe("scoreHRZone", () => {
   });
 
   it("returns null when all zones are zero", () => {
-    const event = makeEvent({ hrZones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 } });
+    const event = makeEvent({ zoneTimes: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 } });
     expect(scoreHRZone(event)).toBeNull();
   });
 
   it("targets Z2 for easy runs", () => {
     const event = makeEvent({
       category: "easy",
-      hrZones: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
+      zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z2");
@@ -159,7 +159,7 @@ describe("scoreHRZone", () => {
   it("targets Z2 for long runs", () => {
     const event = makeEvent({
       category: "long",
-      hrZones: { z1: 100, z2: 2000, z3: 500, z4: 0, z5: 0 },
+      zoneTimes: { z1: 100, z2: 2000, z3: 500, z4: 0, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z2");
@@ -168,7 +168,7 @@ describe("scoreHRZone", () => {
   it("returns null for interval without parseable description", () => {
     const event = makeEvent({
       category: "interval",
-      hrZones: { z1: 100, z2: 300, z3: 200, z4: 800, z5: 100 },
+      zoneTimes: { z1: 100, z2: 300, z3: 200, z4: 800, z5: 100 },
     });
     expect(scoreHRZone(event)).toBeNull();
   });
@@ -178,7 +178,7 @@ describe("scoreHRZone", () => {
     const event = makeEvent({
       category: "interval",
       description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 4x\n- 4m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)",
-      hrZones: { z1: 360, z2: 900, z3: 480, z4: 600, z5: 0 },
+      zoneTimes: { z1: 360, z2: 900, z3: 480, z4: 600, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z4");
@@ -192,7 +192,7 @@ describe("scoreHRZone", () => {
     const event = makeEvent({
       category: "interval",
       description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set 6x\n- Uphill 2m 99-111% LTHR (167-188 bpm)\n- Downhill 3m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)",
-      hrZones: { z1: 200, z2: 1200, z3: 300, z4: 200, z5: 400 },
+      zoneTimes: { z1: 200, z2: 1200, z3: 300, z4: 200, z5: 400 },
     });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z5");
@@ -206,7 +206,7 @@ describe("scoreHRZone", () => {
     const event = makeEvent({
       category: "interval",
       description: "Main set 4x\n- 4m 89-99% LTHR (150-167 bpm)\n- Walk 2m 50-66% LTHR (85-112 bpm)",
-      hrZones: { z1: 500, z2: 900, z3: 800, z4: 120, z5: 0 },
+      zoneTimes: { z1: 500, z2: 900, z3: 800, z4: 120, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.pctInTarget).toBeCloseTo(12.5);
@@ -216,7 +216,7 @@ describe("scoreHRZone", () => {
   it("rates good when >= 60% in target", () => {
     const event = makeEvent({
       category: "easy",
-      hrZones: { z1: 0, z2: 600, z3: 300, z4: 100, z5: 0 },
+      zoneTimes: { z1: 0, z2: 600, z3: 300, z4: 100, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.rating).toBe("good");
@@ -225,7 +225,7 @@ describe("scoreHRZone", () => {
   it("rates ok when 40-60% in target", () => {
     const event = makeEvent({
       category: "easy",
-      hrZones: { z1: 100, z2: 500, z3: 300, z4: 100, z5: 0 },
+      zoneTimes: { z1: 100, z2: 500, z3: 300, z4: 100, z5: 0 },
     });
     const result = scoreHRZone(event)!;
     expect(result.rating).toBe("ok");
@@ -234,7 +234,7 @@ describe("scoreHRZone", () => {
   it("rates bad when < 40% in target", () => {
     const event = makeEvent({
       category: "easy",
-      hrZones: { z1: 100, z2: 200, z3: 400, z4: 200, z5: 100 },
+      zoneTimes: { z1: 100, z2: 200, z3: 400, z4: 200, z5: 100 },
     });
     const result = scoreHRZone(event)!;
     expect(result.rating).toBe("bad");
@@ -243,7 +243,7 @@ describe("scoreHRZone", () => {
   it("uses Z2+Z3 for race category", () => {
     const event = makeEvent({
       category: "race",
-      hrZones: { z1: 50, z2: 400, z3: 300, z4: 200, z5: 50 },
+      zoneTimes: { z1: 50, z2: 400, z3: 300, z4: 200, z5: 50 },
     });
     const result = scoreHRZone(event)!;
     expect(result.targetZone).toBe("Z2–3");
@@ -328,7 +328,7 @@ describe("buildReportCard", () => {
   it("populates all three scores when data is available", () => {
     const event = makeEvent({
       streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
-      hrZones: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
+      zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
       totalCarbs: 60,
       carbsIngested: 55,
     });
@@ -340,7 +340,7 @@ describe("buildReportCard", () => {
 
   it("handles partial data gracefully", () => {
     const event = makeEvent({
-      hrZones: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
+      zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
     });
     const report = buildReportCard(event);
     expect(report.bg).toBeNull();
@@ -351,7 +351,7 @@ describe("buildReportCard", () => {
   it("populates entryTrend and recovery when RunBGContext provided", () => {
     const event = makeEvent({
       streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
-      hrZones: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
+      zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
       totalCarbs: 60,
       carbsIngested: 55,
     });
