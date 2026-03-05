@@ -11,6 +11,7 @@ import { API_BASE } from "@/lib/constants";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity } from "@/lib/types";
+import { db } from "@/lib/db";
 
 const MS_PER_HOUR = 3_600_000;
 
@@ -58,7 +59,16 @@ async function findLatestUnratedRun(apiKey: string): Promise<IntervalsActivity |
     .at(0) ?? null;
 }
 
-function buildResponse(activity: IntervalsActivity, prescribedCarbsG: number | null) {
+interface PreRunCarbsFallback {
+  carbsG: number | null;
+  minutesBefore: number | null;
+}
+
+function buildResponse(
+  activity: IntervalsActivity,
+  prescribedCarbsG: number | null,
+  preRunFallback?: PreRunCarbsFallback,
+) {
   const movingTimeMs = activity.moving_time != null ? activity.moving_time * 1000 : null;
   const avgHr = activity.average_hr ?? activity.average_heartrate ?? null;
   return {
@@ -71,8 +81,8 @@ function buildResponse(activity: IntervalsActivity, prescribedCarbsG: number | n
     avgHr: avgHr ?? undefined,
     activityId: activity.id,
     prescribedCarbsG,
-    preRunCarbsG: activity.PreRunCarbsG ?? null,
-    preRunCarbsMin: activity.PreRunCarbsMin ?? null,
+    preRunCarbsG: activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
+    preRunCarbsMin: activity.PreRunCarbsMin ?? preRunFallback?.minutesBefore ?? null,
   };
 }
 
@@ -104,7 +114,24 @@ export async function GET(req: Request) {
   }
 
   const prescribedCarbsG = await computePrescribedCarbs(apiKey, activity);
-  return NextResponse.json(buildResponse(activity, prescribedCarbsG));
+
+  // Fetch pre-run carbs from Turso if activity has paired_event_id and no PreRunCarbsG
+  let preRunFallback: PreRunCarbsFallback | undefined;
+  if (activity.paired_event_id != null && activity.PreRunCarbsG == null) {
+    const result = await db().execute({
+      sql: "SELECT carbs_g, minutes_before FROM prerun_carbs WHERE email = ? AND event_id = ?",
+      args: [session.user.email, String(activity.paired_event_id)],
+    });
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      preRunFallback = {
+        carbsG: row.carbs_g as number | null,
+        minutesBefore: row.minutes_before as number | null,
+      };
+    }
+  }
+
+  return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
 }
 
 export async function POST(req: Request) {

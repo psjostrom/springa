@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@/lib/__tests__/test-utils";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
@@ -21,7 +21,7 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
 const basePlanned: CalendarEvent = {
-  id: "e100",
+  id: "event-100",
   date: new Date("2026-03-10T14:00:00"),
   name: "W02 Hills eco16",
   description: HILLS_DESCRIPTION,
@@ -338,5 +338,126 @@ describe("EventModal feedback", () => {
       rating: "bad",
       comment: "Legs were heavy",
     });
+  });
+});
+
+describe("EventModal pre-run carbs for planned events", () => {
+  afterEach(() => {
+    server.resetHandlers();
+  });
+
+  it("shows pre-run carbs input for planned events", async () => {
+    server.use(
+      http.get("/api/prerun-carbs", () => {
+        return HttpResponse.json({ carbsG: null, minutesBefore: null });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Pre-run carbs")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Add")).toBeInTheDocument();
+  });
+
+  it("displays existing pre-run carbs from API", async () => {
+    server.use(
+      http.get("/api/prerun-carbs", () => {
+        return HttpResponse.json({ carbsG: 30, minutesBefore: 20 });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("30g, 20 min before")).toBeInTheDocument();
+    });
+  });
+
+  it("allows editing and saving pre-run carbs", async () => {
+    const user = userEvent.setup();
+    let capturedBody: Record<string, unknown> | null = null;
+
+    server.use(
+      http.get("/api/prerun-carbs", () => {
+        return HttpResponse.json({ carbsG: null, minutesBefore: null });
+      }),
+      http.post("/api/prerun-carbs", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByText("Add")).toBeInTheDocument();
+    });
+
+    // Click Add to start editing
+    await user.click(screen.getByText("Add"));
+
+    // Fill in the values
+    const gInput = screen.getByPlaceholderText("g");
+    const minInput = screen.getByPlaceholderText("min");
+    await user.type(gInput, "35");
+    await user.type(minInput, "25");
+
+    // Save
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Should display saved values
+    await waitFor(() => {
+      expect(screen.getByText("35g, 25 min before")).toBeInTheDocument();
+    });
+
+    // Verify API call - eventId should be normalized (prefix "event-" stripped)
+    expect(capturedBody).toEqual({
+      eventId: "100",
+      carbsG: 35,
+      minutesBefore: 25,
+    });
+  });
+
+  it("does not show pre-run carbs input for completed events", () => {
+    render(
+      <EventModal
+        event={baseCompleted}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Should not show the "Add" button or pre-run carbs label in the planned section
+    // (completed events have a different pre-run carbs section)
+    expect(screen.queryByText("Add")).toBeNull();
   });
 });

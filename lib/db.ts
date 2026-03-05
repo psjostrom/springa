@@ -82,5 +82,14 @@ CREATE TABLE IF NOT EXISTS bg_patterns (
   patterns_text      TEXT NOT NULL,
   analyzed_at        INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prerun_carbs (
+  email          TEXT NOT NULL,
+  event_id       TEXT NOT NULL,
+  carbs_g        INTEGER,
+  minutes_before INTEGER,
+  created_at     INTEGER NOT NULL,
+  PRIMARY KEY (email, event_id)
+);
 `;
 

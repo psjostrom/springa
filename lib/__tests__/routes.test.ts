@@ -70,6 +70,10 @@ import {
   GET as feedbackGET,
   POST as feedbackPOST,
 } from "@/app/api/run-feedback/route";
+import {
+  GET as prerunCarbsGET,
+  POST as prerunCarbsPOST,
+} from "@/app/api/prerun-carbs/route";
 import { POST as pushSubscribePOST } from "@/app/api/push/subscribe/route";
 
 const EMAIL = "runner@example.com";
@@ -155,6 +159,7 @@ beforeEach(async () => {
   await testDb().execute("DELETE FROM bg_cache");
   await testDb().execute("DELETE FROM run_analysis");
   await testDb().execute("DELETE FROM push_subscriptions");
+  await testDb().execute("DELETE FROM prerun_carbs");
   mockAuth.mockReset();
   mockFetchAthleteProfile.mockReset().mockResolvedValue({});
   mockFetchActivityById.mockReset().mockResolvedValue(null);
@@ -770,5 +775,130 @@ describe("run-feedback route", () => {
     mockAuth.mockResolvedValue(null);
     expect((await getFeedbackByActivity("i123")).status).toBe(401);
     expect((await postFeedback({ activityId: "i123", rating: "good" })).status).toBe(401);
+  });
+
+  it("GET returns pre-run carbs from Turso when activity has paired_event_id", async () => {
+    authedSession();
+
+    // Seed pre-run carbs for event 456
+    await testDb().execute({
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, "456", 30, 20, Date.now()],
+    });
+
+    mockFetchActivityById.mockResolvedValue({
+      id: "i123",
+      start_date: "2026-02-20T10:00:00Z",
+      name: "Easy Run",
+      paired_event_id: 456,
+      // No PreRunCarbsG set on activity
+    });
+
+    const res = await getFeedbackByActivity("i123");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.preRunCarbsG).toBe(30);
+    expect(data.preRunCarbsMin).toBe(20);
+  });
+
+  it("GET prefers activity PreRunCarbsG over Turso fallback", async () => {
+    authedSession();
+
+    // Seed pre-run carbs for event 456
+    await testDb().execute({
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, "456", 30, 20, Date.now()],
+    });
+
+    mockFetchActivityById.mockResolvedValue({
+      id: "i123",
+      start_date: "2026-02-20T10:00:00Z",
+      name: "Easy Run",
+      paired_event_id: 456,
+      PreRunCarbsG: 50, // Activity already has pre-run carbs
+      PreRunCarbsMin: 15,
+    });
+
+    const res = await getFeedbackByActivity("i123");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // Should use activity values, not Turso fallback
+    expect(data.preRunCarbsG).toBe(50);
+    expect(data.preRunCarbsMin).toBe(15);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pre-run carbs route
+// ---------------------------------------------------------------------------
+
+function getPrerunCarbs(eventId: string) {
+  return prerunCarbsGET(
+    new Request(`http://localhost/api/prerun-carbs?eventId=${eventId}`),
+  );
+}
+
+function postPrerunCarbs(body: unknown) {
+  return prerunCarbsPOST(
+    new Request("http://localhost/api/prerun-carbs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+describe("prerun-carbs route", () => {
+  it("POST saves pre-run carbs and GET retrieves them", async () => {
+    authedSession();
+
+    const postRes = await postPrerunCarbs({ eventId: "evt-123", carbsG: 35, minutesBefore: 25 });
+    expect(postRes.status).toBe(200);
+
+    const getRes = await getPrerunCarbs("evt-123");
+    expect(getRes.status).toBe(200);
+    const data = await getRes.json();
+    expect(data.carbsG).toBe(35);
+    expect(data.minutesBefore).toBe(25);
+  });
+
+  it("POST upserts existing pre-run carbs", async () => {
+    authedSession();
+
+    await postPrerunCarbs({ eventId: "evt-123", carbsG: 30, minutesBefore: 20 });
+    await postPrerunCarbs({ eventId: "evt-123", carbsG: 40, minutesBefore: 15 });
+
+    const res = await getPrerunCarbs("evt-123");
+    const data = await res.json();
+    expect(data.carbsG).toBe(40);
+    expect(data.minutesBefore).toBe(15);
+  });
+
+  it("GET returns nulls when no pre-run carbs exist", async () => {
+    authedSession();
+
+    const res = await getPrerunCarbs("evt-nonexistent");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.carbsG).toBeNull();
+    expect(data.minutesBefore).toBeNull();
+  });
+
+  it("GET rejects missing eventId", async () => {
+    authedSession();
+    const res = await prerunCarbsGET(new Request("http://localhost/api/prerun-carbs"));
+    expect(res.status).toBe(400);
+  });
+
+  it("POST rejects missing eventId", async () => {
+    authedSession();
+    const res = await postPrerunCarbs({ carbsG: 30 });
+    expect(res.status).toBe(400);
+  });
+
+  it("GET/POST reject unauthenticated requests", async () => {
+    mockAuth.mockResolvedValue(null);
+    expect((await getPrerunCarbs("evt-123")).status).toBe(401);
+    expect((await postPrerunCarbs({ eventId: "evt-123", carbsG: 30 })).status).toBe(401);
   });
 });

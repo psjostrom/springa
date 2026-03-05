@@ -19,6 +19,7 @@ import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { HRMiniChart } from "./HRMiniChart";
 import { PreRunReadiness } from "./PreRunReadiness";
 import { RouteMap } from "./RouteMap";
+import { PreRunCarbsInput } from "./PreRunCarbsInput";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -456,6 +457,10 @@ export function EventModal({
             bgModel={bgModel ?? null}
             category={workoutCategory}
           />
+        )}
+
+        {!selectedEvent.activityId && selectedEvent.type === "planned" && (
+          <PreRunCarbsInput eventId={selectedEvent.id} />
         )}
 
         {selectedEvent.description && (
