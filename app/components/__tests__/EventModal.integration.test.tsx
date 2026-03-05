@@ -461,3 +461,136 @@ describe("EventModal pre-run carbs for planned events", () => {
     expect(screen.queryByText("Add")).toBeNull();
   });
 });
+
+describe("EventModal run analysis", () => {
+  afterEach(() => {
+    server.resetHandlers();
+  });
+
+  const completedWithActivity: CalendarEvent = {
+    ...baseCompleted,
+    activityId: "i999",
+  };
+
+  it("shows run analysis for completed event with activityId", async () => {
+    render(
+      <EventModal
+        event={completedWithActivity}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Wait for analysis to load (MSW returns "Test analysis.")
+    expect(await screen.findByText("Run Analysis")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Test analysis.")).toBeInTheDocument();
+    });
+  });
+
+  it("shows regenerate button after analysis loads", async () => {
+    render(
+      <EventModal
+        event={completedWithActivity}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Wait for analysis to load
+    await waitFor(() => {
+      expect(screen.getByText("Test analysis.")).toBeInTheDocument();
+    });
+
+    // Regenerate button should be visible (aria-label)
+    expect(screen.getByRole("button", { name: "Regenerate analysis" })).toBeInTheDocument();
+  });
+
+  it("regenerates analysis when regenerate button is clicked", async () => {
+    const user = userEvent.setup();
+    let callCount = 0;
+
+    server.use(
+      http.post("/api/run-analysis", () => {
+        callCount++;
+        return HttpResponse.json({ analysis: `Analysis v${callCount}` });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={completedWithActivity}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Wait for initial analysis
+    await waitFor(() => {
+      expect(screen.getByText("Analysis v1")).toBeInTheDocument();
+    });
+
+    // Click regenerate
+    await user.click(screen.getByRole("button", { name: "Regenerate analysis" }));
+
+    // Wait for new analysis
+    await waitFor(() => {
+      expect(screen.getByText("Analysis v2")).toBeInTheDocument();
+    });
+
+    expect(callCount).toBe(2);
+  });
+
+  it("shows loading state during regeneration", async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+
+    server.use(
+      http.post("/api/run-analysis", async () => {
+        requestCount++;
+        if (requestCount === 1) {
+          // First request (initial load) - return immediately
+          return HttpResponse.json({ analysis: "Initial analysis" });
+        }
+        // Second request (regeneration) - delay to show loading state
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return HttpResponse.json({ analysis: "New analysis" });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={completedWithActivity}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        apiKey="test"
+      />,
+    );
+
+    // Wait for initial analysis
+    await waitFor(() => {
+      expect(screen.getByText("Initial analysis")).toBeInTheDocument();
+    });
+
+    // Click regenerate - button should show loading state
+    await user.click(screen.getByRole("button", { name: "Regenerate analysis" }));
+
+    // Button should be disabled during loading
+    expect(screen.getByRole("button", { name: "Regenerate analysis" })).toBeDisabled();
+
+    // Wait for button to be enabled again after loading completes
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Regenerate analysis" })).not.toBeDisabled();
+    });
+
+    // New analysis should be displayed
+    expect(screen.getByText("New analysis")).toBeInTheDocument();
+  });
+});

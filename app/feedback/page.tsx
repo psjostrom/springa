@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
 
 interface FeedbackResponse {
   createdAt: number;
@@ -115,32 +116,48 @@ function FeedbackContent() {
   const feedback = result?.data ?? null;
   const waitingForSync = result?.waitingForSync ?? false;
 
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  interface FeedbackSubmission {
+    activityId: string;
+    rating: string;
+    comment?: string;
+    carbsG?: number;
+    preRunCarbsG?: number;
+    preRunCarbsMin?: number;
+  }
 
-  const handleSubmit = async () => {
-    if (!formState.activityId || !formState.rating) return;
-    setSubmitting(true);
-    try {
+  const { trigger: submitFeedback, isMutating: submitting, error: submitMutationError } = useSWRMutation<
+    unknown,
+    Error,
+    string,
+    FeedbackSubmission
+  >(
+    "run-feedback-submit",
+    async (_key, { arg }) => {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityId: formState.activityId,
-          rating: formState.rating,
-          comment: formState.comment || undefined,
-          carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
-          preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
-          preRunCarbsMin: formState.preRunCarbsMin ? Number(formState.preRunCarbsMin) : undefined,
-        }),
+        body: JSON.stringify(arg),
       });
       if (!res.ok) throw new Error("Failed to save");
+    },
+  );
+
+  const submitError = submitMutationError?.message ?? null;
+
+  const handleSubmit = () => {
+    if (!formState.activityId || !formState.rating) return;
+    void submitFeedback({
+      activityId: formState.activityId,
+      rating: formState.rating,
+      comment: formState.comment || undefined,
+      carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
+      preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
+      preRunCarbsMin: formState.preRunCarbsMin ? Number(formState.preRunCarbsMin) : undefined,
+    }).then(() => {
       setFormState((s) => ({ ...s, submitted: true }));
-    } catch {
-      setSubmitError("Failed to save");
-    } finally {
-      setSubmitting(false);
-    }
+    }).catch(() => {
+      // Error state is handled by useSWRMutation via submitMutationError
+    });
   };
 
   if (isLoading) {
@@ -304,7 +321,7 @@ function FeedbackContent() {
 
           {/* Submit */}
           <button
-            onClick={() => { void handleSubmit(); }}
+            onClick={handleSubmit}
             disabled={!formState.rating || !formState.activityId || submitting}
             className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
           >
@@ -317,25 +334,14 @@ function FeedbackContent() {
                 setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
                 return;
               }
-              setSubmitting(true);
-              void (async () => {
-                try {
-                  const res = await fetch("/api/run-feedback", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      activityId: formState.activityId,
-                      rating: "skipped",
-                    }),
-                  });
-                  if (!res.ok) throw new Error("Failed to save");
-                  setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
-                } catch {
-                  setSubmitError("Failed to save");
-                } finally {
-                  setSubmitting(false);
-                }
-              })();
+              void submitFeedback({
+                activityId: formState.activityId,
+                rating: "skipped",
+              }).then(() => {
+                setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
+              }).catch(() => {
+                // Error state is handled by useSWRMutation via submitMutationError
+              });
             }}
             disabled={submitting}
             className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition disabled:opacity-40"
