@@ -10,6 +10,7 @@ import { extractNotes, extractStructure } from "../descriptionParser";
 import type { FitnessInsights } from "../fitness";
 import type { CalendarEvent } from "../types";
 import type { BGResponseModel, TargetFuelResult } from "../bgModel";
+import { TEST_HR_ZONES } from "./testConstants";
 
 // --- Helpers ---
 
@@ -290,7 +291,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result).toHaveLength(1);
@@ -311,7 +312,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].swapped).toBe(true);
@@ -331,7 +332,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].fuelRate).toBe(36);
@@ -351,7 +352,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].externalId).toBe("eco16-speed-14");
@@ -376,7 +377,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].fuelRate).toBe(45);
@@ -400,7 +401,7 @@ describe("applyAdaptations", () => {
       runBGContexts: {},
       prefix: "eco16",
       lthr: 168,
-      hrZones: [112, 132, 150, 167, 189],
+      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result).toHaveLength(3);

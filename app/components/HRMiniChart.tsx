@@ -1,5 +1,5 @@
 import type { DataPoint } from "@/lib/types";
-import { ZONE_COLORS, getZoneColor } from "@/lib/constants";
+import { ZONE_COLORS, classifyHR } from "@/lib/constants";
 
 interface HRMiniChartProps {
   z1: number;
@@ -9,12 +9,9 @@ interface HRMiniChartProps {
   z5: number;
   maxHeight?: number;
   hrData?: DataPoint[];
-  lthr?: number;
+  /** Athlete zone boundaries [Z1top, Z2top, Z3top, Z4top, Z5top] from Intervals.icu */
+  hrZones?: number[];
 }
-
-const getHRColor = (hr: number, lthr = 169): string => {
-  return getZoneColor((hr / lthr) * 100);
-};
 
 // Create a mini time-series graph from HR stream data
 export function HRMiniChart({
@@ -25,10 +22,10 @@ export function HRMiniChart({
   z5,
   maxHeight = 40,
   hrData,
-  lthr = 169,
+  hrZones,
 }: HRMiniChartProps) {
-  // If we have HR stream data, render a time-series mini graph
-  if (hrData && hrData.length > 0) {
+  // If we have HR stream data AND zone boundaries, render a time-series mini graph
+  if (hrData && hrData.length > 0 && hrZones && hrZones.length === 5) {
     const hrValues = hrData.map((d) => d.value);
     const minHR = Math.min(...hrValues);
     const maxHR = Math.max(...hrValues);
@@ -46,7 +43,7 @@ export function HRMiniChart({
         {sampledData.map((point, idx) => {
           const normalizedHeight =
             hrRange > 0 ? ((point.value - minHR) / hrRange) * 100 : 50;
-          const color = getHRColor(point.value, lthr);
+          const zoneKey = classifyHR(point.value, hrZones);
 
           return (
             <div
@@ -54,7 +51,7 @@ export function HRMiniChart({
               style={{
                 width: `${100 / sampledData.length}%`,
                 height: `${Math.max(normalizedHeight, 10)}%`,
-                backgroundColor: color,
+                backgroundColor: ZONE_COLORS[zoneKey],
               }}
             />
           );

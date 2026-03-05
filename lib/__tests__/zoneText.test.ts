@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildZoneBlock, buildProfileLine } from "../zoneText";
+import { TEST_HR_ZONES } from "./testConstants";
 
 describe("buildProfileLine", () => {
   it("formats LTHR and max HR", () => {
@@ -17,7 +18,7 @@ describe("buildProfileLine", () => {
 });
 
 describe("buildZoneBlock", () => {
-  const hrZones = [112, 132, 150, 167, 189];
+  const hrZones = [...TEST_HR_ZONES];
 
   it("generates four zone lines", () => {
     const block = buildZoneBlock(168, 189, undefined, hrZones);
@@ -31,9 +32,9 @@ describe("buildZoneBlock", () => {
 
   it("uses exact hrZones BPM boundaries", () => {
     const block = buildZoneBlock(168, 189, undefined, hrZones);
-    expect(block).toContain("112-132 bpm");
-    expect(block).toContain("132-150 bpm");
-    expect(block).toContain("150-167 bpm");
+    expect(block).toContain("114-140 bpm");
+    expect(block).toContain("140-155 bpm");
+    expect(block).toContain("155-167 bpm");
     expect(block).toContain("167-189 bpm");
   });
 

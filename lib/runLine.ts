@@ -64,8 +64,8 @@ export function formatRunLine(
     parts.push(preRunParts.join(" "));
   }
 
-  if (opts.hrZones && event.hrZones) {
-    const z = event.hrZones;
+  if (opts.hrZones && event.zoneTimes) {
+    const z = event.zoneTimes;
     const total = z.z1 + z.z2 + z.z3 + z.z4 + z.z5;
     if (total > 0) {
       parts.push(

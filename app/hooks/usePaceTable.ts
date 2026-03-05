@@ -3,11 +3,11 @@ import type { CachedActivity } from "@/lib/bgCacheDb";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 
 /** Derive a calibrated pace table from cached activity stream data. */
-export function usePaceTable(cachedActivities: CachedActivity[], lthr?: number): PaceTable | undefined {
-  if (!lthr || cachedActivities.length === 0) return undefined;
+export function usePaceTable(cachedActivities: CachedActivity[], hrZones?: number[]): PaceTable | undefined {
+  if (!hrZones || hrZones.length !== 5 || cachedActivities.length === 0) return undefined;
   const allSegments = cachedActivities.flatMap((a) =>
     a.pace && a.pace.length > 0 && a.hr.length > 0
-      ? extractZoneSegments(a.hr, a.pace, lthr, a.activityId, a.activityDate ?? "")
+      ? extractZoneSegments(a.hr, a.pace, hrZones, a.activityId, a.activityDate ?? "")
       : [],
   );
   if (allSegments.length === 0) return undefined;

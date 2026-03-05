@@ -41,7 +41,7 @@ const baseCompleted: CalendarEvent = {
   distance: 10000,
   duration: 3600,
   avgHr: 135,
-  hrZones: { z1: 60, z2: 1800, z3: 900, z4: 300, z5: 60 },
+  zoneTimes: { z1: 60, z2: 1800, z3: 900, z4: 300, z5: 60 },
   streamData: {
     heartrate: [
       { time: 0, value: 110 },

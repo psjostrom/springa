@@ -1,84 +1,73 @@
 import { describe, it, expect } from "vitest";
-import {
-  classifyZone,
-  getZoneColor,
-  ZONE_COLORS,
-} from "../constants";
+import { classifyHR, ZONE_COLORS, ZONE_TO_NAME } from "../constants";
+import { TEST_HR_ZONES } from "./testConstants";
 
-describe("classifyZone + getZoneColor consistency", () => {
-  // Both functions must agree on zone boundaries (>= threshold).
-  // classifyZone has 4 zones (easy/steady/tempo/hard).
-  // getZoneColor has 5 (z1–z5). Below z2 (66%), classifyZone still returns "easy".
+const hrZones = [...TEST_HR_ZONES];
 
-  it("at z5 boundary (99%): hard / z5", () => {
-    expect(classifyZone(99)).toBe("hard");
-    expect(getZoneColor(99)).toBe(ZONE_COLORS.z5);
+describe("classifyHR with dynamic zone boundaries", () => {
+  // TEST_HR_ZONES = [114, 140, 155, 167, 189]
+  it("below Z1 ceiling: z1", () => {
+    expect(classifyHR(100, hrZones)).toBe("z1");
+    expect(classifyHR(114, hrZones)).toBe("z1");
   });
 
-  it("above z5 (111%): hard / z5", () => {
-    expect(classifyZone(111)).toBe("hard");
-    expect(getZoneColor(111)).toBe(ZONE_COLORS.z5);
+  it("above Z1, at/below Z2: z2", () => {
+    expect(classifyHR(115, hrZones)).toBe("z2");
+    expect(classifyHR(140, hrZones)).toBe("z2");
   });
 
-  it("just below z5 (98.9%): tempo / z4", () => {
-    expect(classifyZone(98.9)).toBe("tempo");
-    expect(getZoneColor(98.9)).toBe(ZONE_COLORS.z4);
+  it("above Z2, at/below Z3: z3", () => {
+    expect(classifyHR(141, hrZones)).toBe("z3");
+    expect(classifyHR(155, hrZones)).toBe("z3");
   });
 
-  it("at z4 boundary (89%): tempo / z4", () => {
-    expect(classifyZone(89)).toBe("tempo");
-    expect(getZoneColor(89)).toBe(ZONE_COLORS.z4);
+  it("above Z3, at/below Z4: z4", () => {
+    expect(classifyHR(156, hrZones)).toBe("z4");
+    expect(classifyHR(167, hrZones)).toBe("z4");
   });
 
-  it("just below z4 (88.9%): steady / z3", () => {
-    expect(classifyZone(88.9)).toBe("steady");
-    expect(getZoneColor(88.9)).toBe(ZONE_COLORS.z3);
-  });
-
-  it("at z3 boundary (78%): steady / z3", () => {
-    expect(classifyZone(78)).toBe("steady");
-    expect(getZoneColor(78)).toBe(ZONE_COLORS.z3);
-  });
-
-  it("just below z3 (77.9%): easy / z2", () => {
-    expect(classifyZone(77.9)).toBe("easy");
-    expect(getZoneColor(77.9)).toBe(ZONE_COLORS.z2);
-  });
-
-  it("at z2 boundary (66%): easy / z2", () => {
-    expect(classifyZone(66)).toBe("easy");
-    expect(getZoneColor(66)).toBe(ZONE_COLORS.z2);
-  });
-
-  it("below z2 (65%): easy / z1 (classifyZone lumps z1+z2 as easy)", () => {
-    expect(classifyZone(65)).toBe("easy");
-    expect(getZoneColor(65)).toBe(ZONE_COLORS.z1);
-  });
-
-  it("very low (30%): easy / z1", () => {
-    expect(classifyZone(30)).toBe("easy");
-    expect(getZoneColor(30)).toBe(ZONE_COLORS.z1);
+  it("above Z4: z5", () => {
+    expect(classifyHR(168, hrZones)).toBe("z5");
+    expect(classifyHR(189, hrZones)).toBe("z5");
+    expect(classifyHR(200, hrZones)).toBe("z5");
   });
 });
 
-describe("zone mid-range values", () => {
-  it("z2 mid (72%): easy / z2", () => {
-    expect(classifyZone(72)).toBe("easy");
-    expect(getZoneColor(72)).toBe(ZONE_COLORS.z2);
+describe("ZONE_TO_NAME mapping", () => {
+  it("z1 and z2 map to easy", () => {
+    expect(ZONE_TO_NAME.z1).toBe("easy");
+    expect(ZONE_TO_NAME.z2).toBe("easy");
   });
 
-  it("z3 mid (83%): steady / z3", () => {
-    expect(classifyZone(83)).toBe("steady");
-    expect(getZoneColor(83)).toBe(ZONE_COLORS.z3);
+  it("z3 maps to steady", () => {
+    expect(ZONE_TO_NAME.z3).toBe("steady");
   });
 
-  it("z4 mid (94%): tempo / z4", () => {
-    expect(classifyZone(94)).toBe("tempo");
-    expect(getZoneColor(94)).toBe(ZONE_COLORS.z4);
+  it("z4 maps to tempo", () => {
+    expect(ZONE_TO_NAME.z4).toBe("tempo");
   });
 
-  it("z5 mid (105%): hard / z5", () => {
-    expect(classifyZone(105)).toBe("hard");
-    expect(getZoneColor(105)).toBe(ZONE_COLORS.z5);
+  it("z5 maps to hard", () => {
+    expect(ZONE_TO_NAME.z5).toBe("hard");
+  });
+});
+
+describe("ZONE_COLORS has all zones", () => {
+  it("has distinct colors for each zone", () => {
+    expect(ZONE_COLORS.z1).toBeDefined();
+    expect(ZONE_COLORS.z2).toBeDefined();
+    expect(ZONE_COLORS.z3).toBeDefined();
+    expect(ZONE_COLORS.z4).toBeDefined();
+    expect(ZONE_COLORS.z5).toBeDefined();
+  });
+});
+
+describe("classifyHR + ZONE_TO_NAME integration", () => {
+  it("classifies HR to zone name correctly", () => {
+    expect(ZONE_TO_NAME[classifyHR(100, hrZones)]).toBe("easy");
+    expect(ZONE_TO_NAME[classifyHR(130, hrZones)]).toBe("easy");
+    expect(ZONE_TO_NAME[classifyHR(148, hrZones)]).toBe("steady");
+    expect(ZONE_TO_NAME[classifyHR(162, hrZones)]).toBe("tempo");
+    expect(ZONE_TO_NAME[classifyHR(175, hrZones)]).toBe("hard");
   });
 });

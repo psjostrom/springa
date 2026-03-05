@@ -219,9 +219,9 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
       lines.push(`Zone split: Z1 ${formatDuration(Math.round(zt.z1))}, Z2 ${formatDuration(Math.round(zt.z2))}, Z3 ${formatDuration(Math.round(zt.z3))}, Z4 ${formatDuration(Math.round(zt.z4))}, Z5 ${formatDuration(Math.round(zt.z5))}`);
     }
     lines.push(`Rating: ${ratingLabel(hr.rating)}`);
-  } else if (event.hrZones) {
+  } else if (event.zoneTimes) {
     // No score (e.g. unparseable interval description), emit raw zone breakdown
-    const z = event.hrZones;
+    const z = event.zoneTimes;
     const total = z.z1 + z.z2 + z.z3 + z.z4 + z.z5;
     if (total > 0) {
       lines.push("");

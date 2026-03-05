@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { HRZoneName, PaceTable } from "@/lib/types";
-import { FALLBACK_PACE_TABLE, ZONE_COLORS } from "@/lib/constants";
+import { FALLBACK_PACE_TABLE, ZONE_COLORS, DEFAULT_LTHR } from "@/lib/constants";
 import {
   extractFuelStatus,
   extractNotes,
@@ -20,6 +20,8 @@ interface WorkoutCardProps {
   totalCarbs?: number | null;
   paceTable?: PaceTable;
   children?: React.ReactNode;
+  hrZones?: number[];
+  lthr?: number;
 }
 
 const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
@@ -73,10 +75,10 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote, totalCarbs: propTotalCarbs, paceTable, children }: WorkoutCardProps) {
+export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote, totalCarbs: propTotalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR }: WorkoutCardProps) {
   const descFuel = extractFuelStatus(description);
   const fuelRate = propFuelRate ?? descFuel.fuelRate;
-  const sections = parseWorkoutStructure(description);
+  const sections = hrZones?.length === 5 ? parseWorkoutStructure(description, lthr, hrZones) : [];
 
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
@@ -94,7 +96,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   const totalCarbs = (fuelRate != null && estDuration != null)
     ? calculateWorkoutCarbs(estDuration.minutes, fuelRate)
     : propTotalCarbs ?? descFuel.totalCarbs;
-  const zones = parseWorkoutZones(description);
+  const zones = hrZones?.length === 5 ? parseWorkoutZones(description, lthr, hrZones) : [];
   const notes = extractNotes(description);
 
   return (

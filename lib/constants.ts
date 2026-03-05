@@ -58,14 +58,16 @@ export const ZONE_COLORS = {
   z5: "#ef4444",
 } as const;
 
+export type ZoneKey = keyof typeof ZONE_COLORS;
 
-/** LTHR zone boundaries as percentages. Used for HR-to-zone classification and color mapping. */
-export const ZONE_THRESHOLDS = {
-  z5: 99,  // >= 99% LTHR
-  z4: 89,  // >= 89% LTHR
-  z3: 78,  // >= 78% LTHR
-  z2: 66,  // >= 66% LTHR
-} as const;
+/** Map zone key to workout intensity name (for pace tables, workout descriptions). */
+export const ZONE_TO_NAME: Record<ZoneKey, HRZoneName> = {
+  z1: "easy",
+  z2: "easy",
+  z3: "steady",
+  z4: "tempo",
+  z5: "hard",
+};
 
 const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
   easy: [0, 1],
@@ -87,26 +89,17 @@ export function resolveZoneBand(
   return { min: hrZones[loIdx] / lthr, max: hrZones[hiIdx] / lthr };
 }
 
-/** Classify an LTHR percentage into a zone color. */
-export function getZoneColor(lthrPercent: number): string {
-  if (lthrPercent >= ZONE_THRESHOLDS.z5) return ZONE_COLORS.z5;
-  if (lthrPercent >= ZONE_THRESHOLDS.z4) return ZONE_COLORS.z4;
-  if (lthrPercent >= ZONE_THRESHOLDS.z3) return ZONE_COLORS.z3;
-  if (lthrPercent >= ZONE_THRESHOLDS.z2) return ZONE_COLORS.z2;
-  return ZONE_COLORS.z1;
-}
-
-/** Classify an LTHR percentage into a zone name. */
-export function classifyZone(lthrPercent: number): HRZoneName {
-  if (lthrPercent >= ZONE_THRESHOLDS.z5) return "hard";
-  if (lthrPercent >= ZONE_THRESHOLDS.z4) return "tempo";
-  if (lthrPercent >= ZONE_THRESHOLDS.z3) return "steady";
-  return "easy";
-}
-
-/** Classify avgHr into a zone name based on LTHR ratio (Garmin LTHR zones) */
-export function classifyHRZone(avgHr: number, lthr: number): HRZoneName {
-  return classifyZone((avgHr / lthr) * 100);
+/**
+ * Classify HR into a zone key using actual zone boundaries.
+ * This is the ONE function for HR → zone classification.
+ * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values from Intervals.icu/Garmin).
+ */
+export function classifyHR(hr: number, hrZones: number[]): ZoneKey {
+  if (hr > hrZones[3]) return "z5";
+  if (hr > hrZones[2]) return "z4";
+  if (hr > hrZones[1]) return "z3";
+  if (hr > hrZones[0]) return "z2";
+  return "z1";
 }
 
 export function getWorkoutCategory(

@@ -15,8 +15,11 @@ import {
   estimatePlanEventDistance,
   calculateWorkoutCarbs,
 } from "../workoutMath";
-import { FALLBACK_PACE_TABLE } from "../constants";
+import { FALLBACK_PACE_TABLE, DEFAULT_LTHR } from "../constants";
+import { TEST_HR_ZONES } from "./testConstants";
 import type { PaceTable, CalendarEvent, WorkoutEvent } from "../types";
+
+const testHrZones = [...TEST_HR_ZONES];
 
 describe("formatPace", () => {
   it("converts decimal to MM:SS format", () => {
@@ -97,7 +100,7 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
     expect(zones).toEqual(["easy", "tempo"]);
   });
@@ -115,7 +118,7 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(99,111)=105 → hard
     expect(zones).toEqual(["easy", "hard"]);
   });
@@ -134,7 +137,7 @@ Main set
 Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady
     expect(zones).toEqual(["easy", "steady"]);
   });
@@ -147,15 +150,15 @@ Cooldown
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
     expect(zones[0]).toBe("easy");
     expect(zones[1]).toBe("tempo");
   });
 
   it("returns empty array for descriptions without HR zones", () => {
-    expect(parseWorkoutZones("Just a note")).toEqual([]);
-    expect(parseWorkoutZones("")).toEqual([]);
+    expect(parseWorkoutZones("Just a note", DEFAULT_LTHR, testHrZones)).toEqual([]);
+    expect(parseWorkoutZones("", DEFAULT_LTHR, testHrZones)).toEqual([]);
   });
 });
 
@@ -177,13 +180,13 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");       // warmup
     expect(structure[1].steps[0].zone).toBe("tempo");       // interval work
     expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
     expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "tempo"]);
   });
 
@@ -200,13 +203,13 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");
     expect(structure[1].steps[0].zone).toBe("hard");        // uphill
     expect(structure[1].steps[1].zone).toBe("easy");        // downhill
     expect(structure[2].steps[0].zone).toBe("easy");
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "hard"]);
   });
 
@@ -222,14 +225,14 @@ Main set
 Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     for (const section of structure) {
       for (const step of section.steps) {
         expect(step.zone).toBe("easy");
       }
     }
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy"]);
   });
 
@@ -247,14 +250,14 @@ Main set
 Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");        // warmup
     expect(structure[1].steps[0].zone).toBe("easy");        // easy before RP
     expect(structure[1].steps[1].zone).toBe("steady");      // race pace
     expect(structure[1].steps[2].zone).toBe("easy");        // easy after RP
     expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "steady"]);
   });
 
@@ -274,14 +277,14 @@ Strides 4x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");        // warmup
     expect(structure[1].steps[0].zone).toBe("easy");        // main easy
     expect(structure[2].steps[0].zone).toBe("hard");        // stride burst
     expect(structure[2].steps[1].zone).toBe("easy");        // stride recovery
     expect(structure[3].steps[0].zone).toBe("easy");        // cooldown
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "hard"]);
   });
 
@@ -298,13 +301,13 @@ Main set 8x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");
     expect(structure[1].steps[0].zone).toBe("tempo");       // fast reps
     expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
     expect(structure[2].steps[0].zone).toBe("easy");
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "tempo"]);
   });
 
@@ -321,13 +324,13 @@ Main set 5x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");
     expect(structure[1].steps[0].zone).toBe("steady");      // race pace reps
     expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
     expect(structure[2].steps[0].zone).toBe("easy");
 
-    const zones = parseWorkoutZones(desc);
+    const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     expect(zones).toEqual(["easy", "steady"]);
   });
 
@@ -338,7 +341,7 @@ Cooldown
 - 5m 50-66% LTHR (85-112 bpm)
 - 5m 78-89% LTHR (132-150 bpm)`;
 
-    const structure = parseWorkoutStructure(desc);
+    const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(structure[0].steps[0].zone).toBe("easy");
     expect(structure[0].steps[1].zone).toBe("steady");
   });
@@ -794,7 +797,7 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(sections).toHaveLength(3);
     expect(sections[0].name).toBe("Warmup");
     expect(sections[0].steps).toHaveLength(1);
@@ -824,7 +827,7 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     const mainSet = sections[1];
     expect(mainSet.repeats).toBe(6);
     expect(mainSet.steps[0].label).toBe("Uphill");
@@ -845,7 +848,7 @@ Main set
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(sections[1].name).toBe("Main set");
     expect(sections[1].repeats).toBeUndefined();
     expect(sections[1].steps[0].duration).toBe("8km");
@@ -865,7 +868,7 @@ Main set
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     const mainSet = sections[1];
     expect(mainSet.steps).toHaveLength(3);
     // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady, midpoint(66,78)=72 → easy
@@ -890,7 +893,7 @@ Strides 4x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(sections).toHaveLength(4);
     expect(sections[2].name).toBe("Strides");
     expect(sections[2].repeats).toBe(4);
@@ -899,8 +902,8 @@ Cooldown
   });
 
   it("returns empty array for non-standard descriptions", () => {
-    expect(parseWorkoutStructure("Just a note")).toEqual([]);
-    expect(parseWorkoutStructure("")).toEqual([]);
+    expect(parseWorkoutStructure("Just a note", DEFAULT_LTHR, testHrZones)).toEqual([]);
+    expect(parseWorkoutStructure("", DEFAULT_LTHR, testHrZones)).toEqual([]);
   });
 
   it("parses distance intervals with decimal km values", () => {
@@ -916,7 +919,7 @@ Main set 8x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     expect(sections).toHaveLength(3);
     const mainSet = sections[1];
     expect(mainSet.name).toBe("Main set");
@@ -941,7 +944,7 @@ Main set 6x
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
-    const sections = parseWorkoutStructure(desc);
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     const mainSet = sections[1];
     expect(mainSet.steps[0].label).toBe("Uphill");
     expect(mainSet.steps[1].label).toBeUndefined(); // "Easy" filtered out

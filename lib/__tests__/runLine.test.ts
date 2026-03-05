@@ -42,7 +42,7 @@ describe("formatRunLine", () => {
       load: 42,
       fuelRate: 48,
       carbsIngested: 32,
-      hrZones: { z1: 60, z2: 1680, z3: 300, z4: 0, z5: 0 },
+      zoneTimes: { z1: 60, z2: 1680, z3: 300, z4: 0, z5: 0 },
     });
 
     const line = formatRunLine(event, {
@@ -90,7 +90,7 @@ describe("formatRunLine", () => {
   });
 
   it("skips hrZones when total is 0", () => {
-    const event = makeEvent({ hrZones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 } });
+    const event = makeEvent({ zoneTimes: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 } });
     const line = formatRunLine(event, { hrZones: true });
     expect(line).not.toContain("Z1");
   });

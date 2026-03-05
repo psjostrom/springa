@@ -69,12 +69,12 @@ export function processActivities(
       pace = durationMin / distanceKm;
     }
 
-    let hrZones: HRZoneData | undefined;
+    let zoneTimes: HRZoneData | undefined;
     if (
       activity.icu_hr_zone_times &&
       activity.icu_hr_zone_times.length >= 5
     ) {
-      hrZones = {
+      zoneTimes = {
         z1: activity.icu_hr_zone_times[0],
         z2: activity.icu_hr_zone_times[1],
         z3: activity.icu_hr_zone_times[2],
@@ -172,7 +172,7 @@ export function processActivities(
       cadence: activity.average_cadence
         ? activity.average_cadence * 2
         : undefined,
-      hrZones,
+      zoneTimes,
       fuelRate,
       totalCarbs,
       carbsIngested,

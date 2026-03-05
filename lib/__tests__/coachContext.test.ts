@@ -4,6 +4,7 @@ import type { CalendarEvent } from "../types";
 import type { BGResponseModel, BGObservation } from "../bgModel";
 import type { FitnessInsights } from "../fitness";
 import type { RunBGContext } from "../runBGContext";
+import { TEST_HR_ZONES } from "./testConstants";
 // --- Helpers ---
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -79,7 +80,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const defaultHrZones = [112, 132, 150, 167, 189];
+const defaultHrZones = [...TEST_HR_ZONES];
 
 // --- Tests ---
 
@@ -95,7 +96,7 @@ describe("buildSystemPrompt", () => {
 
     expect(prompt).toContain("Type 1 Diabetic");
     expect(prompt).toContain("LTHR 168 bpm, Max HR 189 bpm");
-    expect(prompt).toContain("112-132 bpm");
+    expect(prompt).toContain("114-140 bpm");
     expect(prompt).toContain("Build (week 5, 28% through plan)");
   });
 
