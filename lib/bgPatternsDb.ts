@@ -10,7 +10,7 @@ export async function getBGPatterns(
   email: string,
 ): Promise<BGPatternsRow | null> {
   const result = await db().execute({
-    sql: "SELECT latest_activity_id, patterns_text, analyzed_at FROM bg_patterns WHERE email = ?",
+    sql: "SELECT latest_activity_id, patterns_text, analyzed_at FROM bg_patterns WHERE email = ? ORDER BY analyzed_at DESC LIMIT 1",
     args: [email],
   });
   if (result.rows.length === 0) return null;
@@ -26,9 +26,10 @@ export async function saveBGPatterns(
   email: string,
   latestActivityId: string,
   patternsText: string,
+  runCount: number,
 ): Promise<void> {
   await db().execute({
-    sql: "INSERT OR REPLACE INTO bg_patterns (email, latest_activity_id, patterns_text, analyzed_at) VALUES (?, ?, ?, ?)",
-    args: [email, latestActivityId, patternsText, Date.now()],
+    sql: "INSERT INTO bg_patterns (email, latest_activity_id, run_count, patterns_text, analyzed_at) VALUES (?, ?, ?, ?, ?)",
+    args: [email, latestActivityId, runCount, patternsText, Date.now()],
   });
 }

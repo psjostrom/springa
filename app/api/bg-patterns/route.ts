@@ -182,7 +182,7 @@ export async function POST(req: Request) {
     const latestActivityId = withGlucose[0]?.activityId ?? "";
 
     if (latestActivityId) {
-      await saveBGPatterns(session.user.email, latestActivityId, result.text);
+      await saveBGPatterns(session.user.email, latestActivityId, result.text, enrichedRuns.length);
     }
 
     return NextResponse.json({ patterns: result.text, latestActivityId });

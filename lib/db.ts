@@ -76,10 +76,12 @@ CREATE TABLE IF NOT EXISTS prerun_push_log (
 );
 
 CREATE TABLE IF NOT EXISTS bg_patterns (
-  email              TEXT PRIMARY KEY,
+  email              TEXT NOT NULL,
   latest_activity_id TEXT NOT NULL,
+  run_count          INTEGER NOT NULL,
   patterns_text      TEXT NOT NULL,
-  analyzed_at        INTEGER NOT NULL
+  analyzed_at        INTEGER NOT NULL,
+  PRIMARY KEY (email, latest_activity_id)
 );
 
 CREATE TABLE IF NOT EXISTS prerun_carbs (
