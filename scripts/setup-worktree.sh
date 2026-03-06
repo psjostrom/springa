@@ -8,15 +8,10 @@ WORKTREE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "Setting up worktree: $WORKTREE_DIR"
 echo "Source: $MAIN_REPO"
 
-# Symlink node_modules (faster than copying)
+# Install node_modules (symlinks break Turbopack)
 if [ ! -d "$WORKTREE_DIR/node_modules" ]; then
-  if [ -d "$MAIN_REPO/node_modules" ]; then
-    echo "Symlinking node_modules..."
-    ln -s "$MAIN_REPO/node_modules" "$WORKTREE_DIR/node_modules"
-  else
-    echo "Warning: node_modules not found in main repo, running npm install..."
-    cd "$WORKTREE_DIR" && npm install --registry https://registry.npmjs.org
-  fi
+  echo "Installing node_modules..."
+  cd "$WORKTREE_DIR" && npm install --registry https://registry.npmjs.org
 else
   echo "node_modules already exists, skipping"
 fi
