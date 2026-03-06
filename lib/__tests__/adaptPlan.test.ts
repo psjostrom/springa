@@ -316,7 +316,8 @@ describe("applyAdaptations", () => {
     });
 
     expect(result[0].swapped).toBe(true);
-    expect(result[0].structure).toContain("67-79% LTHR");
+    // Z2 bounds from TEST_HR_ZONES (114-140) / LTHR (168) = 68-83%
+    expect(result[0].structure).toContain("68-83% LTHR");
     expect(result[0].changes.some((c) => c.type === "swap")).toBe(true);
   });
 

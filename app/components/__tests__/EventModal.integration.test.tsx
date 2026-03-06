@@ -98,11 +98,10 @@ describe("EventModal workout card", () => {
       />,
     );
 
-    // WorkoutCard renders the parsed structure as visible text
-    expect(screen.getByText("Warmup")).toBeInTheDocument();
-    expect(screen.getByText("Main set")).toBeInTheDocument();
-    expect(screen.getByText("6x")).toBeInTheDocument();
-    expect(screen.getByText("Cooldown")).toBeInTheDocument();
+    // WorkoutCard renders the description with structure as preformatted text
+    expect(screen.getByText(/Warmup/)).toBeInTheDocument();
+    expect(screen.getByText(/Main set 6x/)).toBeInTheDocument();
+    expect(screen.getByText(/Cooldown/)).toBeInTheDocument();
     expect(screen.getByText("Planned")).toBeInTheDocument();
   });
 
@@ -149,6 +148,7 @@ describe("EventModal workout card", () => {
     const noZones: CalendarEvent = {
       ...baseCompleted,
       streamData: undefined,
+      zoneTimes: undefined,
     };
 
     render(

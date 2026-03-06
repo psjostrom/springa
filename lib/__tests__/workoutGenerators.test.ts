@@ -231,12 +231,14 @@ describe("generatePlan", () => {
       (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     // At least some should have race pace sections (sandwich or progressive)
-    expect(longRuns.some((lr) => lr.description.includes("78-89%"))).toBe(true);
+    // Z3 (steady) with TEST_HR_ZONES = 140-155/169 = 83-92%
+    expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
     // At least some should have tempo sections (progressive)
-    expect(longRuns.some((lr) => lr.description.includes("89-99%"))).toBe(true);
+    // Z4 (tempo) with TEST_HR_ZONES = 155-167/169 = 92-99%
+    expect(longRuns.some((lr) => lr.description.includes("92-99%"))).toBe(true);
     // At least some should be all-easy
     expect(longRuns.some((lr) =>
-      !lr.description.includes("78-89%") && !lr.description.includes("89-99%"),
+      !lr.description.includes("83-92%") && !lr.description.includes("92-99%"),
     )).toBe(true);
   });
 
@@ -248,13 +250,15 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       // Main set should contain all three zones in ascending order
+      // With TEST_HR_ZONES [114, 140, 155, 167, 189] / LTHR 169:
+      // Z2 (easy) = 67-83%, Z3 (steady) = 83-92%, Z4 (tempo) = 92-99%
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("66-78%");
-      expect(mainSet).toContain("78-89%");
-      expect(mainSet).toContain("89-99%");
+      expect(mainSet).toContain("67-83%");
+      expect(mainSet).toContain("83-92%");
+      expect(mainSet).toContain("92-99%");
       // Steady comes after easy, tempo comes after steady
-      const steadyIdx = mainSet.indexOf("78-89%");
-      const tempoIdx = mainSet.indexOf("89-99%");
+      const steadyIdx = mainSet.indexOf("83-92%");
+      const tempoIdx = mainSet.indexOf("92-99%");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
     }
   });

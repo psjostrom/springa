@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@/lib/__tests__/test-utils";
+import userEvent from "@testing-library/user-event";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 import { ReadinessPanel } from "../ReadinessPanel";
 import "@/lib/__tests__/setup-dom";
@@ -213,5 +214,97 @@ describe("ReadinessPanel", () => {
     // Should show latest entry's values
     expect(screen.getByText("55")).toBeInTheDocument(); // HRV
     expect(screen.getByText("52")).toBeInTheDocument(); // RHR
+  });
+
+  it("shows HRV popover with definition when clicked", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { hrv: 52 })];
+    render(<ReadinessPanel entries={entries} />);
+
+    const hrvCard = screen.getByText("HRV").closest("div[class*='cursor-pointer']");
+    expect(hrvCard).toBeInTheDocument();
+    await user.click(hrvCard!);
+
+    expect(screen.getByText(/Heart Rate Variability measures nervous system recovery/)).toBeInTheDocument();
+  });
+
+  it("shows Resting HR popover when clicked", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { restingHR: 54 })];
+    render(<ReadinessPanel entries={entries} />);
+
+    const hrCard = screen.getByText("Resting HR").closest("div[class*='cursor-pointer']");
+    await user.click(hrCard!);
+
+    expect(screen.getByText(/Resting heart rate reflects cardiovascular recovery/)).toBeInTheDocument();
+  });
+
+  it("shows TSB popover when gauge clicked", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { ctl: 50, atl: 65 })]; // TSB = -15
+    render(<ReadinessPanel entries={entries} />);
+
+    const tsbGauge = screen.getByText("Form (TSB)").closest("div[class*='cursor-pointer']");
+    await user.click(tsbGauge!);
+
+    expect(screen.getByText(/Training Stress Balance = Fitness/)).toBeInTheDocument();
+    expect(screen.getByText(/Loading phase/)).toBeInTheDocument();
+  });
+
+  it("shows readiness popover when banner clicked", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { readiness: 75 })];
+    render(<ReadinessPanel entries={entries} />);
+
+    const banner = screen.getByText("Ready to train").closest("div[class*='cursor-pointer']");
+    await user.click(banner!);
+
+    expect(screen.getByText(/Composite score.*combining HRV, resting HR, sleep, and form/)).toBeInTheDocument();
+  });
+
+  it("closes popover when clicking outside", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { hrv: 52 })];
+    render(<ReadinessPanel entries={entries} />);
+
+    const hrvCard = screen.getByText("HRV").closest("div[class*='cursor-pointer']");
+    await user.click(hrvCard!);
+    expect(screen.getByText(/Heart Rate Variability/)).toBeInTheDocument();
+
+    // Click backdrop
+    const backdrop = document.querySelector(".fixed.inset-0.z-40");
+    expect(backdrop).toBeInTheDocument();
+    await user.click(backdrop!);
+
+    expect(screen.queryByText(/Heart Rate Variability measures/)).not.toBeInTheDocument();
+  });
+
+  it("toggles popover off when same metric clicked twice", async () => {
+    const user = userEvent.setup();
+    const entries = [makeWellnessEntry(0, { hrv: 52 })];
+    render(<ReadinessPanel entries={entries} />);
+
+    const hrvCard = screen.getByText("HRV").closest("div[class*='cursor-pointer']");
+    await user.click(hrvCard!);
+    expect(screen.getByText(/Heart Rate Variability/)).toBeInTheDocument();
+
+    await user.click(hrvCard!);
+    expect(screen.queryByText(/Heart Rate Variability measures/)).not.toBeInTheDocument();
+  });
+
+  it("shows enlarged sparkline in popover when historical data exists", async () => {
+    const user = userEvent.setup();
+    const entries = Array.from({ length: 14 }, (_, i) =>
+      makeWellnessEntry(i, { hrv: 45 + i })
+    );
+    render(<ReadinessPanel entries={entries} />);
+
+    const hrvCard = screen.getByText("HRV").closest("div[class*='cursor-pointer']");
+    await user.click(hrvCard!);
+
+    expect(screen.getByText("Last 14 days")).toBeInTheDocument();
+    expect(screen.getByText(/Min:/)).toBeInTheDocument();
+    expect(screen.getByText(/Avg:/)).toBeInTheDocument();
+    expect(screen.getByText(/Max:/)).toBeInTheDocument();
   });
 });
