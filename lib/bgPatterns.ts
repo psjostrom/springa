@@ -185,7 +185,7 @@ export function buildEnrichedRunTable(
       atl: fitness?.atl ?? 0,
       tsb: fitness?.tsb ?? 0,
       restingHR: well?.restingHR ?? null,
-      hrvRMSSD: well?.hrvRMSSD ?? null,
+      hrvRMSSD: well?.hrv ?? null,
       sleepScore: well?.sleepScore ?? null,
       iobAtStart: insCtx?.iobAtStart ?? null,
       basalIOBAtStart: insCtx?.basalIOBAtStart ?? null,

@@ -16,7 +16,7 @@ export function WorkoutStructureBar({
 }: WorkoutStructureBarProps) {
   const segments = parseWorkoutSegments(description);
 
-  if (segments.length === 0 || !hrZones || hrZones.length !== 5) return null;
+  if (!segments.length || hrZones?.length !== 5) return null;
 
   const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
 

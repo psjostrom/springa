@@ -25,7 +25,7 @@ export function HRMiniChart({
   hrZones,
 }: HRMiniChartProps) {
   // If we have HR stream data AND zone boundaries, render a time-series mini graph
-  if (hrData && hrData.length > 0 && hrZones && hrZones.length === 5) {
+  if (hrData?.length && hrZones?.length === 5) {
     const hrValues = hrData.map((d) => d.value);
     const minHR = Math.min(...hrValues);
     const maxHR = Math.max(...hrValues);

@@ -4,7 +4,7 @@ import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/li
 
 /** Derive a calibrated pace table from cached activity stream data. */
 export function usePaceTable(cachedActivities: CachedActivity[], hrZones?: number[]): PaceTable | undefined {
-  if (!hrZones || hrZones.length !== 5 || cachedActivities.length === 0) return undefined;
+  if (!hrZones?.length || hrZones.length !== 5 || !cachedActivities.length) return undefined;
   const allSegments = cachedActivities.flatMap((a) =>
     a.pace && a.pace.length > 0 && a.hr.length > 0
       ? extractZoneSegments(a.hr, a.pace, hrZones, a.activityId, a.activityDate ?? "")

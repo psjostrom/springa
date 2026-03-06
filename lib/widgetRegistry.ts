@@ -1,6 +1,7 @@
 // Widget registry — pure types and helpers, no React or API calls.
 
 export type WidgetKey =
+  | "readiness"
   | "phase-tracker"
   | "fitness-insights"
   | "fitness-chart"
@@ -14,6 +15,7 @@ export interface WidgetDef {
 }
 
 export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
+  { key: "readiness", label: "Readiness" },
   { key: "phase-tracker", label: "Training Progress" },
   { key: "fitness-insights", label: "Fitness Insights" },
   { key: "fitness-chart", label: "Fitness Chart" },

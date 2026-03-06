@@ -127,7 +127,6 @@ describe("EventModal workout card", () => {
   it("shows Heart Rate Zones heading while loading stream data", () => {
     const loading: CalendarEvent = {
       ...baseCompleted,
-      hrZones: undefined,
       streamData: undefined,
     };
 
@@ -149,7 +148,6 @@ describe("EventModal workout card", () => {
   it("does not show Heart Rate Zones when no data and not loading", () => {
     const noZones: CalendarEvent = {
       ...baseCompleted,
-      hrZones: undefined,
       streamData: undefined,
     };
 

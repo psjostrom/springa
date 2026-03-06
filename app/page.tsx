@@ -16,6 +16,7 @@ import { usePhaseInfo } from "./hooks/usePhaseInfo";
 import { useRunData } from "./hooks/useRunData";
 import { useCurrentBG } from "./hooks/useCurrentBG";
 import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
+import { useWellnessData } from "./hooks/useWellnessData";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
@@ -133,6 +134,9 @@ function HomeContent() {
 
   // BG model — uses shared events, fetches streams independently
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useRunData(apiKey, true, calendarEvents, readings);
+
+  // Wellness data for readiness widget
+  const { entries: wellnessEntries, isLoading: wellnessLoading } = useWellnessData(apiKey);
 
   // Calibrated pace table from cached stream data
   const paceTable = usePaceTable(cachedActivities, settings?.hrZones);
@@ -258,6 +262,8 @@ function HomeContent() {
             bgModelProgress={bgModelProgress}
             bgActivityNames={bgActivityNames}
             cachedActivities={cachedActivities}
+            wellnessEntries={wellnessEntries}
+            wellnessLoading={wellnessLoading}
             widgetLayout={widgetLayout}
             onWidgetLayoutChange={handleWidgetLayoutChange}
           />

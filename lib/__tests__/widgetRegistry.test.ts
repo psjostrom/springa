@@ -20,7 +20,7 @@ describe("resolveLayout", () => {
   });
 
   it("preserves saved order", () => {
-    const saved = ["bg-response", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones"];
+    const saved = ["bg-response", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones", "readiness"];
     const layout = resolveLayout({ widgetOrder: saved });
     expect(layout.widgetOrder).toEqual(saved);
   });
