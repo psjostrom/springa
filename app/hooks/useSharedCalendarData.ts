@@ -6,8 +6,6 @@ import { fetchCalendarData } from "@/lib/intervalsApi";
 import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
 import type { CalendarEvent } from "@/lib/types";
 
-const EMPTY_EVENTS: CalendarEvent[] = [];
-
 /**
  * Single source of truth for calendar events across all screens.
  * Fetches once with the widest range (24 months back, 6 months forward).
@@ -30,7 +28,7 @@ export function useSharedCalendarData(apiKey: string) {
   );
 
   return {
-    events: events ?? EMPTY_EVENTS,
+    events: events ?? [],
     isLoading,
     error: error?.message ?? null,
     reload: () => { void mutate(); },
