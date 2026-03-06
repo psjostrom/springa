@@ -9,7 +9,7 @@ import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
 import { useSharedCalendarData } from "@/app/hooks/useSharedCalendarData";
-import { TEST_HR_ZONES } from "./testConstants";
+import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
@@ -33,6 +33,8 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
       isLoadingInitial={isLoading}
       initialError={error}
       onRetryLoad={() => { reload(); }}
+      hrZones={[...TEST_HR_ZONES]}
+      lthr={TEST_LTHR}
     />
   );
 }
