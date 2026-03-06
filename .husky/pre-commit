@@ -1,3 +1,14 @@
+# Ensure branch is up to date with main before committing
+git fetch origin main --quiet || exit 1
+
+if ! git merge-base --is-ancestor origin/main HEAD; then
+  echo "Branch is behind origin/main. Merging..."
+  git merge origin/main --no-edit || {
+    echo "Merge conflict. Resolve manually, then commit again."
+    exit 1
+  }
+fi
+
 npx tsc --noEmit || exit 1
 npm run lint || exit 1
 npm test || exit 1
