@@ -449,11 +449,10 @@ export async function uploadToIntervals(
 export interface WellnessEntry {
   id: string; // date YYYY-MM-DD
   restingHR?: number;
-  hrvRMSSD?: number;
+  hrv?: number; // rMSSD
   sleepSecs?: number;
   sleepScore?: number;
-  spO2?: number;
-  weight?: number;
+  readiness?: number; // 0-100 built-in score from Intervals.icu
   atl?: number;
   ctl?: number;
 }
@@ -464,8 +463,7 @@ interface WellnessApiRow {
   hrv?: number; // Intervals.icu calls rMSSD "hrv"
   sleepSecs?: number;
   sleepScore?: number;
-  spO2?: number;
-  weight?: number;
+  readiness?: number;
   atl?: number;
   ctl?: number;
 }
@@ -485,11 +483,10 @@ export async function fetchWellnessData(
     return rows.map((r) => ({
       id: r.id,
       restingHR: r.restingHR,
-      hrvRMSSD: r.hrv,
+      hrv: r.hrv,
       sleepSecs: r.sleepSecs,
       sleepScore: r.sleepScore,
-      spO2: r.spO2,
-      weight: r.weight,
+      readiness: r.readiness,
       atl: r.atl,
       ctl: r.ctl,
     }));

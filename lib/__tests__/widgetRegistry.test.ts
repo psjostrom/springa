@@ -20,10 +20,10 @@ describe("resolveLayout", () => {
   });
 
   it("preserves saved order", () => {
-    const saved = ["bg-categories", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones"];
+    const saved = ["bg-categories", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones", "readiness"];
     const layout = resolveLayout({ widgetOrder: saved });
     // Saved order preserved, plus new widgets appended
-    expect(layout.widgetOrder.slice(0, 6)).toEqual(saved);
+    expect(layout.widgetOrder.slice(0, 7)).toEqual(saved);
   });
 
   it("appends new widgets not in saved order", () => {

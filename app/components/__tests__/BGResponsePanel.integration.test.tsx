@@ -5,31 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
-import type { BGResponseModel } from "@/lib/bgModel";
-import { BGResponsePanel, BGPatternsPanel } from "../BGResponsePanel";
+import { BGPatternsPanel } from "../BGResponsePanel";
 import "@/lib/__tests__/setup-dom";
-
-const mockBGModel: BGResponseModel = {
-  activitiesAnalyzed: 5,
-  categories: {
-    easy: {
-      category: "easy",
-      avgRate: -0.8,
-      medianRate: -0.7,
-      sampleCount: 20,
-      activityCount: 3,
-      avgFuelRate: 25,
-      confidence: "medium",
-    },
-    long: null,
-    interval: null,
-  },
-  observations: [],
-  bgByStartLevel: [],
-  bgByTime: [],
-  bgByEntrySlope: [],
-  targetFuelRates: [],
-};
 
 const mockEvents: CalendarEvent[] = [
   {

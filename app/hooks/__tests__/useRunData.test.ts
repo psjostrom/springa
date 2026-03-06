@@ -5,35 +5,33 @@ import { useRunData } from "../useRunData";
 import type { CalendarEvent } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
 
-// Mock buildBGModelFromCached to track calls
-const buildBGModelFromCachedMock = vi.fn(() => ({
-  categories: new Map(),
-  byStartLevel: [],
-  byEntrySlope: [],
-  byTime: [],
-  fuelSuggestions: [],
+// Use vi.hoisted() to ensure mocks are available when vi.mock is hoisted
+const { buildBGModelFromCachedMock, buildRunBGContextsMock, useStreamCacheMock } = vi.hoisted(() => ({
+  buildBGModelFromCachedMock: vi.fn(() => ({
+    categories: new Map(),
+    byStartLevel: [],
+    byEntrySlope: [],
+    byTime: [],
+    fuelSuggestions: [],
+  })),
+  buildRunBGContextsMock: vi.fn(() => new Map()),
+  useStreamCacheMock: vi.fn(() => ({
+    cached: [] as CachedActivity[],
+    loading: false,
+    progress: { done: 0, total: 0 },
+  })),
 }));
 
 vi.mock("@/lib/bgModel", () => ({
-  buildBGModelFromCached: (...args: unknown[]) => buildBGModelFromCachedMock(...args),
+  buildBGModelFromCached: buildBGModelFromCachedMock,
 }));
-
-// Mock buildRunBGContexts
-const buildRunBGContextsMock = vi.fn(() => new Map());
 
 vi.mock("@/lib/runBGContext", () => ({
-  buildRunBGContexts: (...args: unknown[]) => buildRunBGContextsMock(...args),
-}));
-
-// Mock useStreamCache to return controlled data
-const useStreamCacheMock = vi.fn(() => ({
-  cached: [] as CachedActivity[],
-  loading: false,
-  progress: { done: 0, total: 0 },
+  buildRunBGContexts: buildRunBGContextsMock,
 }));
 
 vi.mock("../useStreamCache", () => ({
-  useStreamCache: (...args: unknown[]) => useStreamCacheMock(...args),
+  useStreamCache: useStreamCacheMock,
 }));
 
 const makeEvent = (id: string, type: "completed" | "planned" = "completed"): CalendarEvent => ({

@@ -307,7 +307,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
     if (!events || isAnalyzing) return;
     void discoverPatterns(events).then(() => {
       setPatternsExpanded(true);
-    }).catch(() => {});
+    }).catch(() => { /* handled by mutationError state */ });
   };
 
   const patternsError = mutationError?.message ?? null;

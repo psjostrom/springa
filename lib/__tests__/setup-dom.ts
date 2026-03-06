@@ -95,6 +95,15 @@ vi.mock("lucide-react", () => {
     RefreshCw: icon("RefreshCw"),
     Droplets: icon("Droplets"),
     TrendingDown: icon("TrendingDown"),
+    Heart: icon("Heart"),
+    Activity: icon("Activity"),
+    Moon: icon("Moon"),
+    Zap: icon("Zap"),
+    Gauge: icon("Gauge"),
+    ChevronUp: icon("ChevronUp"),
+    Eye: icon("Eye"),
+    EyeOff: icon("EyeOff"),
+    Check: icon("Check"),
   };
 });
 

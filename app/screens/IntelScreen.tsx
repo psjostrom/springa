@@ -25,7 +25,9 @@ import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
 import { BGResponsePanel, StartingBGSection, EntrySlopeSection, TimeDecaySection, BGPatternsPanel } from "../components/BGResponsePanel";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
+import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
+import type { WellnessEntry } from "@/lib/intervalsApi";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
@@ -50,6 +52,8 @@ interface IntelScreenProps {
   hrZones?: number[];
   bgActivityNames: Map<string, string>;
   cachedActivities: CachedActivity[];
+  wellnessEntries: WellnessEntry[];
+  wellnessLoading: boolean;
   widgetLayout: WidgetLayout;
   onWidgetLayoutChange: (layout: WidgetLayout) => void;
 }
@@ -123,6 +127,8 @@ export function IntelScreen({
   bgModelProgress,
   bgActivityNames,
   cachedActivities,
+  wellnessEntries,
+  wellnessLoading,
   widgetLayout,
   onWidgetLayoutChange,
 }: IntelScreenProps) {
@@ -133,7 +139,7 @@ export function IntelScreen({
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
   const paceCalibration = (() => {
-    if (!hrZones || hrZones.length !== 5 || cachedActivities.length === 0) return null;
+    if (hrZones?.length !== 5 || cachedActivities.length === 0) return null;
     const allSegments = cachedActivities.flatMap((a) =>
       a.pace && a.pace.length > 0 && a.hr.length > 0
         ? extractZoneSegments(a.hr, a.pace, hrZones, a.activityId, a.activityDate ?? "")
@@ -147,6 +153,25 @@ export function IntelScreen({
 
   // Widget render map — each key maps to a render function or null if data unavailable
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
+    readiness: wellnessLoading
+      ? () => (
+          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <span className="text-sm">Loading wellness data...</span>
+            </div>
+          </div>
+        )
+      : wellnessEntries.length > 0
+        ? () => (
+            <div>
+              <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
+                Readiness
+              </label>
+              <ReadinessPanel entries={wellnessEntries} />
+            </div>
+          )
+        : null,
     "phase-tracker": () => (
       <div>
         <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
