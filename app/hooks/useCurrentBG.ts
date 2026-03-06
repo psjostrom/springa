@@ -13,6 +13,7 @@ interface CurrentBGData {
 }
 
 const POLL_INTERVAL = 60_000;
+const EMPTY_READINGS: XdripReading[] = [];
 
 const EMPTY: CurrentBGData = {
   currentBG: null,
@@ -47,7 +48,7 @@ function createBGStore() {
         readings?: XdripReading[];
       };
 
-      const readings: XdripReading[] = json.readings ?? [];
+      const readings: XdripReading[] = json.readings ?? EMPTY_READINGS;
 
       if (!json.current) {
         set({ currentBG: null, trend: null, trendSlope: null, lastUpdate: null, loading: false, readings });
