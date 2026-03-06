@@ -316,7 +316,7 @@ describe("applyAdaptations", () => {
     });
 
     expect(result[0].swapped).toBe(true);
-    expect(result[0].structure).toContain("67-79% LTHR");
+    expect(result[0].structure).toContain("68-83% LTHR");
     expect(result[0].changes.some((c) => c.type === "swap")).toBe(true);
   });
 

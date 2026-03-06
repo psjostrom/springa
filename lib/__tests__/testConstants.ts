@@ -18,3 +18,20 @@ export const TEST_LTHR = 168;
 
 /** Max HR. */
 export const TEST_MAX_HR = 189;
+
+/**
+ * Pre-computed zone strings for tests.
+ * These match what the code generates with TEST_HR_ZONES and TEST_LTHR.
+ */
+export const TEST_ZONE_STRINGS = {
+  // Easy: Z1top-Z2top → 114-140 bpm, 68-83% LTHR
+  easy: "68-83% LTHR (114-140 bpm)",
+  // Steady: Z2top-Z3top → 140-155 bpm, 83-92% LTHR
+  steady: "83-92% LTHR (140-155 bpm)",
+  // Tempo: Z3top-Z4top → 155-167 bpm, 92-99% LTHR
+  tempo: "92-99% LTHR (155-167 bpm)",
+  // Hard: Z4top-Z5top → 167-189 bpm, 99-113% LTHR
+  hard: "99-113% LTHR (167-189 bpm)",
+  // Walk: 50%-Z1top → 84-114 bpm, 50-68% LTHR
+  walk: "50-68% LTHR (84-114 bpm)",
+} as const;

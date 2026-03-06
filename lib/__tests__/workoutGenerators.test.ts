@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generatePlan } from "../workoutGenerators";
 import { getDay } from "date-fns";
-import { TEST_HR_ZONES } from "./testConstants";
+import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 
 describe("generatePlan", () => {
   const defaultArgs = {
@@ -11,7 +11,7 @@ describe("generatePlan", () => {
     prefix: "eco16",
     totalWeeks: 12,
     startKm: 8,
-    lthr: 169,
+    lthr: TEST_LTHR,
     hrZones: [...TEST_HR_ZONES],
   };
 
@@ -231,12 +231,12 @@ describe("generatePlan", () => {
       (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     // At least some should have race pace sections (sandwich or progressive)
-    expect(longRuns.some((lr) => lr.description.includes("78-89%"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
     // At least some should have tempo sections (progressive)
-    expect(longRuns.some((lr) => lr.description.includes("89-99%"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("92-99%"))).toBe(true);
     // At least some should be all-easy
     expect(longRuns.some((lr) =>
-      !lr.description.includes("78-89%") && !lr.description.includes("89-99%"),
+      !lr.description.includes("83-92%") && !lr.description.includes("92-99%"),
     )).toBe(true);
   });
 
@@ -249,12 +249,12 @@ describe("generatePlan", () => {
     for (const run of progressiveRuns) {
       // Main set should contain all three zones in ascending order
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("66-78%");
-      expect(mainSet).toContain("78-89%");
-      expect(mainSet).toContain("89-99%");
+      expect(mainSet).toContain("68-83%");
+      expect(mainSet).toContain("83-92%");
+      expect(mainSet).toContain("92-99%");
       // Steady comes after easy, tempo comes after steady
-      const steadyIdx = mainSet.indexOf("78-89%");
-      const tempoIdx = mainSet.indexOf("89-99%");
+      const steadyIdx = mainSet.indexOf("83-92%");
+      const tempoIdx = mainSet.indexOf("92-99%");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
     }
   });
@@ -262,13 +262,13 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && e.description.includes("78-89%"),
+      (e) => e.external_id.includes("-long-") && e.description.includes("83-92%"),
     );
     if (sandwichRuns.length < 2) return;
 
     // Extract race pace km from each sandwich run
     const rpKms = sandwichRuns.map((lr) => {
-      const match = /(\d+)km\s+78-89%/.exec(lr.description);
+      const match = /(\d+)km\s+83-92%/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
 
