@@ -20,9 +20,10 @@ describe("resolveLayout", () => {
   });
 
   it("preserves saved order", () => {
-    const saved = ["bg-response", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones"];
+    const saved = ["bg-categories", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones"];
     const layout = resolveLayout({ widgetOrder: saved });
-    expect(layout.widgetOrder).toEqual(saved);
+    // Saved order preserved, plus new widgets appended
+    expect(layout.widgetOrder.slice(0, 6)).toEqual(saved);
   });
 
   it("appends new widgets not in saved order", () => {
@@ -33,7 +34,7 @@ describe("resolveLayout", () => {
     expect(layout.widgetOrder).toContain("fitness-chart");
     expect(layout.widgetOrder).toContain("volume-trend");
     expect(layout.widgetOrder).toContain("pace-zones");
-    expect(layout.widgetOrder).toContain("bg-response");
+    expect(layout.widgetOrder).toContain("bg-categories");
     expect(layout.widgetOrder.length).toBe(DEFAULT_ORDER.length);
   });
 
@@ -48,9 +49,9 @@ describe("resolveLayout", () => {
   it("preserves hidden widgets", () => {
     const layout = resolveLayout({
       widgetOrder: [...DEFAULT_ORDER],
-      hiddenWidgets: ["pace-zones", "bg-response"],
+      hiddenWidgets: ["pace-zones", "bg-categories"],
     });
-    expect(layout.hiddenWidgets).toEqual(["pace-zones", "bg-response"]);
+    expect(layout.hiddenWidgets).toEqual(["pace-zones", "bg-categories"]);
   });
 
   it("strips stale keys from hiddenWidgets", () => {
@@ -99,8 +100,8 @@ describe("toggleWidget", () => {
   });
 
   it("unhides a hidden widget", () => {
-    const result = toggleWidget(["pace-zones", "bg-response"], "pace-zones");
-    expect(result).toEqual(["bg-response"]);
+    const result = toggleWidget(["pace-zones", "bg-categories"], "pace-zones");
+    expect(result).toEqual(["bg-categories"]);
   });
 
   it("does not mutate original array", () => {
