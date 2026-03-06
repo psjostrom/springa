@@ -17,6 +17,8 @@ import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
 
+const EMPTY_EVENTS: CalendarEvent[] = [];
+
 interface PlannerScreenProps {
   apiKey: string;
   bgModel?: BGResponseModel | null;
@@ -88,7 +90,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
 
   // --- Adapt ---
 
-  const calendarEvents = props.events ?? [];
+  const calendarEvents = props.events ?? EMPTY_EVENTS;
   const hasPlannedEvents = calendarEvents.some((e) => e.type === "planned");
 
   const handleAdapt = async () => {

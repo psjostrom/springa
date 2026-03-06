@@ -184,83 +184,11 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   );
 }
 
-export function BGResponsePanel({ model, activityNames, events }: BGResponsePanelProps) {
+export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelProps, "events">) {
   const suggestions = suggestFuelAdjustments(model);
   const categoryOrder: WorkoutCategory[] = ["easy", "long", "interval"];
   const activeCategories = categoryOrder.filter((c) => model.categories[c] != null);
   const names = activityNames ?? new Map<string, string>();
-
-  interface PatternsData {
-    patterns: string | null;
-    latestActivityId?: string;
-  }
-
-  // Initial fetch — GET cached patterns
-  const { data: patternsData } = useSWR<PatternsData>(
-    "bg-patterns",
-    async () => {
-      const res = await fetch("/api/bg-patterns");
-      if (!res.ok) return { patterns: null };
-      return res.json() as Promise<PatternsData>;
-    },
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
-  );
-
-  // Discover/re-analyze mutation — POST to generate new patterns
-  const { trigger: discoverPatterns, isMutating: isAnalyzing, error: mutationError } = useSWRMutation<
-    PatternsData,
-    Error,
-    string,
-    CalendarEvent[]
-  >(
-    "bg-patterns",
-    async (_key, { arg: eventsArg }) => {
-      const res = await fetch("/api/bg-patterns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events: eventsArg }),
-      });
-
-      const data = (await res.json()) as { patterns?: string; latestActivityId?: string; error?: string };
-      if (!res.ok) {
-        throw new Error(data.error ?? "Analysis failed");
-      }
-      return { patterns: data.patterns ?? null, latestActivityId: data.latestActivityId };
-    },
-    { populateCache: true, revalidate: false },
-  );
-
-  const patterns = patternsData?.patterns ?? null;
-  const savedLatestActivityId = patternsData?.latestActivityId ?? null;
-
-  const [patternsExpanded, setPatternsExpanded] = useState(true);
-
-  const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
-
-  // Compute the latest completed activity ID with glucose data from props
-  const latestCompletedActivityId = (() => {
-    if (!events) return null;
-    const withGlucose = events
-      .filter((e) => e.type === "completed" && e.streamData?.glucose && e.activityId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return withGlucose[0]?.activityId ?? null;
-  })();
-
-  const isStale = patterns != null
-    && savedLatestActivityId != null
-    && latestCompletedActivityId != null
-    && savedLatestActivityId !== latestCompletedActivityId;
-
-  const handleDiscover = () => {
-    if (!events || isAnalyzing) return;
-    void discoverPatterns(events).then(() => {
-      setPatternsExpanded(true);
-    }).catch(() => {
-      // Error state is handled by useSWRMutation via mutationError
-    });
-  };
-
-  const patternsError = mutationError?.message ?? null;
 
   return (
     <div className="space-y-3">
@@ -310,87 +238,145 @@ export function BGResponsePanel({ model, activityNames, events }: BGResponsePane
               ))}
             </div>
           )}
-
-          {model.bgByStartLevel.length > 0 && (
-            <StartingBGSection bands={model.bgByStartLevel} />
-          )}
-
-          {model.bgByEntrySlope.length > 0 && (
-            <EntrySlopeSection slopes={model.bgByEntrySlope} />
-          )}
-
-          {model.bgByTime.length > 0 && (
-            <TimeDecaySection buckets={model.bgByTime} />
-          )}
         </>
-      )}
-
-      {/* Cross-Run Patterns Section */}
-      {(patterns != null || isAnalyzing || canDiscover) && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#00ffff]" />
-            <span className="text-xs font-semibold uppercase text-[#b8a5d4] flex-1">
-              Cross-Run Patterns
-            </span>
-            {canDiscover && !isAnalyzing && !patterns && (
-              <button
-                onClick={handleDiscover}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
-              >
-                Discover Patterns
-              </button>
-            )}
-            {!isAnalyzing && patterns && (
-              <button
-                onClick={handleDiscover}
-                disabled={!canDiscover}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed ${isStale ? "text-[#fbbf24]" : "text-[#8b7ba8]"}`}
-              >
-                {isStale ? "New data — re-analyze" : "Re-analyze"}
-              </button>
-            )}
-            {patterns && !isAnalyzing && (
-              <button
-                onClick={() => { setPatternsExpanded(!patternsExpanded); }}
-                className="p-1"
-              >
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
-                />
-              </button>
-            )}
-          </div>
-
-          <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4">
-            {isAnalyzing ? (
-              <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                <span className="text-sm">
-                  Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
-                </span>
-              </div>
-            ) : patternsError ? (
-              <div className="text-sm text-[#ff3366]">{patternsError}</div>
-            ) : patterns && patternsExpanded ? (
-              <div className="text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
-              </div>
-            ) : patterns && !patternsExpanded ? (
-              <div className="text-sm text-[#8b7ba8]">Collapsed — click to expand</div>
-            ) : (
-              <div className="text-sm text-[#8b7ba8] text-center py-2">
-                Click &quot;Discover Patterns&quot; to analyze cross-run trends
-              </div>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
 }
 
-function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
+export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
+  interface PatternsData {
+    patterns: string | null;
+    latestActivityId?: string;
+  }
+
+  const { data: patternsData } = useSWR<PatternsData>(
+    "bg-patterns",
+    async () => {
+      const res = await fetch("/api/bg-patterns");
+      if (!res.ok) return { patterns: null };
+      return res.json() as Promise<PatternsData>;
+    },
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+
+  const { trigger: discoverPatterns, isMutating: isAnalyzing, error: mutationError } = useSWRMutation<
+    PatternsData,
+    Error,
+    string,
+    CalendarEvent[]
+  >(
+    "bg-patterns",
+    async (_key, { arg: eventsArg }) => {
+      const res = await fetch("/api/bg-patterns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events: eventsArg }),
+      });
+
+      const data = (await res.json()) as { patterns?: string; latestActivityId?: string; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Analysis failed");
+      }
+      return { patterns: data.patterns ?? null, latestActivityId: data.latestActivityId };
+    },
+    { populateCache: true, revalidate: false },
+  );
+
+  const patterns = patternsData?.patterns ?? null;
+  const savedLatestActivityId = patternsData?.latestActivityId ?? null;
+
+  const [patternsExpanded, setPatternsExpanded] = useState(true);
+
+  const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
+
+  const latestCompletedActivityId = (() => {
+    if (!events) return null;
+    const withGlucose = events
+      .filter((e) => e.type === "completed" && e.streamData?.glucose && e.activityId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return withGlucose[0]?.activityId ?? null;
+  })();
+
+  const isStale = patterns != null
+    && savedLatestActivityId != null
+    && latestCompletedActivityId != null
+    && savedLatestActivityId !== latestCompletedActivityId;
+
+  const handleDiscover = () => {
+    if (!events || isAnalyzing) return;
+    void discoverPatterns(events).then(() => {
+      setPatternsExpanded(true);
+    }).catch(() => { /* handled by mutationError state */ });
+  };
+
+  const patternsError = mutationError?.message ?? null;
+
+  if (!patterns && !isAnalyzing && !canDiscover) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Sparkles className="w-3.5 h-3.5 text-[#00ffff]" />
+        <span className="text-xs font-semibold uppercase text-[#b8a5d4] flex-1">
+          Cross-Run Patterns
+        </span>
+        {canDiscover && !isAnalyzing && !patterns && (
+          <button
+            onClick={handleDiscover}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
+          >
+            Discover Patterns
+          </button>
+        )}
+        {!isAnalyzing && patterns && (
+          <button
+            onClick={handleDiscover}
+            disabled={!canDiscover}
+            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed ${isStale ? "text-[#fbbf24]" : "text-[#8b7ba8]"}`}
+          >
+            {isStale ? "New data — re-analyze" : "Re-analyze"}
+          </button>
+        )}
+        {patterns && !isAnalyzing && (
+          <button
+            onClick={() => { setPatternsExpanded(!patternsExpanded); }}
+            className="p-1"
+          >
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+
+      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4">
+        {isAnalyzing ? (
+          <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            <span className="text-sm">
+              Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
+            </span>
+          </div>
+        ) : patternsError ? (
+          <div className="text-sm text-[#ff3366]">{patternsError}</div>
+        ) : patterns && patternsExpanded ? (
+          <div className="text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
+          </div>
+        ) : patterns && !patternsExpanded ? (
+          <div className="text-sm text-[#8b7ba8]">Collapsed — click to expand</div>
+        ) : (
+          <div className="text-sm text-[#8b7ba8] text-center py-2">
+            Click &quot;Discover Patterns&quot; to analyze cross-run trends
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
@@ -426,7 +412,7 @@ const SLOPE_LABELS: Record<string, string> = {
   rising: "Rising",
 };
 
-function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
+export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   return (
     <div className="space-y-2">
       <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
@@ -455,7 +441,7 @@ function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   );
 }
 
-function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] }) {
+export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] }) {
   const maxRate = Math.max(...buckets.map((b) => Math.abs(b.avgRate)), 0.1);
 
   return (

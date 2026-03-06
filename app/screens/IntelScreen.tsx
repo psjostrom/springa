@@ -22,7 +22,7 @@ import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
 import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
-import { BGResponsePanel } from "../components/BGResponsePanel";
+import { BGResponsePanel, StartingBGSection, EntrySlopeSection, TimeDecaySection, BGPatternsPanel } from "../components/BGResponsePanel";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
 import { ReadinessPanel } from "../components/ReadinessPanel";
@@ -239,7 +239,7 @@ export function IntelScreen({
       paceCalibration && lthr
         ? () => <PaceCalibrationCard calibration={paceCalibration} lthr={lthr} />
         : null,
-    "bg-response": bgModelLoading
+    "bg-categories": bgModelLoading
       ? () => (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
             <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
@@ -251,12 +251,24 @@ export function IntelScreen({
           </div>
         )
       : bgModel
-        ? () => (
-            <div className="space-y-4">
-              <BGResponsePanel model={bgModel} activityNames={bgActivityNames} events={events} />
-              <BGScatterChart model={bgModel} />
-            </div>
-          )
+        ? () => <BGResponsePanel model={bgModel} activityNames={bgActivityNames} />
+        : null,
+    "bg-start-level":
+      bgModel && bgModel.bgByStartLevel.length > 0
+        ? () => <StartingBGSection bands={bgModel.bgByStartLevel} />
+        : null,
+    "bg-entry-slope":
+      bgModel && bgModel.bgByEntrySlope.length > 0
+        ? () => <EntrySlopeSection slopes={bgModel.bgByEntrySlope} />
+        : null,
+    "bg-time-decay":
+      bgModel && bgModel.bgByTime.length > 0
+        ? () => <TimeDecaySection buckets={bgModel.bgByTime} />
+        : null,
+    "bg-patterns": () => <BGPatternsPanel events={events} />,
+    "bg-scatter":
+      bgModel
+        ? () => <BGScatterChart model={bgModel} />
         : null,
   };
 

@@ -1,12 +1,13 @@
 import React from "react";
 import { describe, it, expect, afterEach } from "vitest";
+import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
 import { EventModal } from "../EventModal";
-import "../..//../lib/__tests__/setup-dom";
+import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
 
 const HILLS_DESCRIPTION = `Hill reps build strength and power.
 
@@ -95,12 +96,15 @@ describe("EventModal workout card", () => {
         onDateSaved={noop}
         onDelete={noopAsync}
         apiKey="test"
+        hrZones={[...TEST_HR_ZONES]}
+        lthr={TEST_LTHR}
       />,
     );
 
-    // WorkoutCard renders the description with structure as preformatted text
+    // WorkoutCard renders parsed workout structure
     expect(screen.getByText(/Warmup/)).toBeInTheDocument();
-    expect(screen.getByText(/Main set 6x/)).toBeInTheDocument();
+    expect(screen.getByText(/Main set/)).toBeInTheDocument();
+    expect(screen.getByText("6x")).toBeInTheDocument();
     expect(screen.getByText(/Cooldown/)).toBeInTheDocument();
     expect(screen.getByText("Planned")).toBeInTheDocument();
   });

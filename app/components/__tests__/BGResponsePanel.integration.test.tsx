@@ -5,31 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
-import type { BGResponseModel } from "@/lib/bgModel";
-import { BGResponsePanel } from "../BGResponsePanel";
+import { BGPatternsPanel } from "../BGResponsePanel";
 import "@/lib/__tests__/setup-dom";
-
-const mockBGModel: BGResponseModel = {
-  activitiesAnalyzed: 5,
-  categories: {
-    easy: {
-      category: "easy",
-      avgRate: -0.8,
-      medianRate: -0.7,
-      sampleCount: 20,
-      activityCount: 3,
-      avgFuelRate: 25,
-      confidence: "medium",
-    },
-    long: null,
-    interval: null,
-  },
-  observations: [],
-  bgByStartLevel: [],
-  bgByTime: [],
-  bgByEntrySlope: [],
-  targetFuelRates: [],
-};
 
 const mockEvents: CalendarEvent[] = [
   {
@@ -88,7 +65,7 @@ afterEach(() => {
   server.resetHandlers();
 });
 
-describe("BGResponsePanel cross-run patterns", () => {
+describe("BGPatternsPanel cross-run patterns", () => {
   it("shows Discover Patterns button when no patterns exist and enough events", async () => {
     server.use(
       http.get("/api/bg-patterns", () => {
@@ -96,7 +73,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Discover Patterns")).toBeInTheDocument();
@@ -120,7 +97,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     // Wait for button to appear
     await waitFor(() => {
@@ -150,7 +127,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Re-analyze")).toBeInTheDocument();
@@ -178,7 +155,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     // Wait for initial patterns
     await waitFor(() => {
@@ -213,7 +190,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     // Wait for button
     await waitFor(() => {
@@ -249,7 +226,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={mockEvents} />);
+    render(<BGPatternsPanel events={mockEvents} />);
 
     // Wait for button
     await waitFor(() => {
@@ -290,7 +267,7 @@ describe("BGResponsePanel cross-run patterns", () => {
       }),
     );
 
-    render(<BGResponsePanel model={mockBGModel} events={eventsWithNew} />);
+    render(<BGPatternsPanel events={eventsWithNew} />);
 
     // Should show "New data — re-analyze" instead of just "Re-analyze"
     await waitFor(() => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generatePlan } from "../workoutGenerators";
 import { getDay } from "date-fns";
-import { TEST_HR_ZONES } from "./testConstants";
+import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 
 describe("generatePlan", () => {
   const defaultArgs = {
@@ -11,7 +11,7 @@ describe("generatePlan", () => {
     prefix: "eco16",
     totalWeeks: 12,
     startKm: 8,
-    lthr: 169,
+    lthr: TEST_LTHR,
     hrZones: [...TEST_HR_ZONES],
   };
 
@@ -251,9 +251,9 @@ describe("generatePlan", () => {
     for (const run of progressiveRuns) {
       // Main set should contain all three zones in ascending order
       // With TEST_HR_ZONES [114, 140, 155, 167, 189] / LTHR 169:
-      // Z2 (easy) = 67-83%, Z3 (steady) = 83-92%, Z4 (tempo) = 92-99%
+      // Z2 (easy) = 68-83%, Z3 (steady) = 83-92%, Z4 (tempo) = 92-99%
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("67-83%");
+      expect(mainSet).toContain("68-83%");
       expect(mainSet).toContain("83-92%");
       expect(mainSet).toContain("92-99%");
       // Steady comes after easy, tempo comes after steady
@@ -266,13 +266,13 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && e.description.includes("78-89%"),
+      (e) => e.external_id.includes("-long-") && e.description.includes("83-92%"),
     );
     if (sandwichRuns.length < 2) return;
 
     // Extract race pace km from each sandwich run
     const rpKms = sandwichRuns.map((lr) => {
-      const match = /(\d+)km\s+78-89%/.exec(lr.description);
+      const match = /(\d+)km\s+83-92%/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
 

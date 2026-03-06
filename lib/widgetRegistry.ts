@@ -7,7 +7,12 @@ export type WidgetKey =
   | "fitness-chart"
   | "volume-trend"
   | "pace-zones"
-  | "bg-response";
+  | "bg-categories"
+  | "bg-start-level"
+  | "bg-entry-slope"
+  | "bg-time-decay"
+  | "bg-patterns"
+  | "bg-scatter";
 
 export interface WidgetDef {
   key: WidgetKey;
@@ -21,7 +26,12 @@ export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "fitness-chart", label: "Fitness Chart" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
-  { key: "bg-response", label: "BG Response" },
+  { key: "bg-categories", label: "BG Response" },
+  { key: "bg-start-level", label: "BG by Start Level" },
+  { key: "bg-entry-slope", label: "BG by Entry Slope" },
+  { key: "bg-time-decay", label: "BG Over Time" },
+  { key: "bg-patterns", label: "BG Patterns" },
+  { key: "bg-scatter", label: "BG Scatter Chart" },
 ] as const;
 
 export const DEFAULT_ORDER: readonly WidgetKey[] = DEFAULT_WIDGETS.map((w) => w.key);

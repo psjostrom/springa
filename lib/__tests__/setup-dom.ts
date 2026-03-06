@@ -1,6 +1,9 @@
 import React from "react";
-import "@testing-library/jest-dom/vitest";
-import { vi, beforeEach } from "vitest";
+import { vi, beforeEach, expect } from "vitest";
+import * as matchers from "@testing-library/jest-dom/matchers";
+
+// Manually extend expect with jest-dom matchers
+expect.extend(matchers);
 
 // --- next/navigation mock ---
 export const mockPush = vi.fn();
