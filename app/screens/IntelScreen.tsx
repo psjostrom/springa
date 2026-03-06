@@ -25,9 +25,11 @@ import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
 import { BGResponsePanel, StartingBGSection, EntrySlopeSection, TimeDecaySection, BGPatternsPanel } from "../components/BGResponsePanel";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
+import { PaceCurvesWidget } from "../components/PaceCurvesWidget";
 import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
 import type { WellnessEntry } from "@/lib/intervalsApi";
+import type { PaceCurveData } from "@/lib/types";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
@@ -54,6 +56,8 @@ interface IntelScreenProps {
   cachedActivities: CachedActivity[];
   wellnessEntries: WellnessEntry[];
   wellnessLoading: boolean;
+  paceCurveData: PaceCurveData | null;
+  paceCurveLoading: boolean;
   widgetLayout: WidgetLayout;
   onWidgetLayoutChange: (layout: WidgetLayout) => void;
 }
@@ -129,6 +133,8 @@ export function IntelScreen({
   cachedActivities,
   wellnessEntries,
   wellnessLoading,
+  paceCurveData,
+  paceCurveLoading,
   widgetLayout,
   onWidgetLayoutChange,
 }: IntelScreenProps) {
@@ -238,6 +244,18 @@ export function IntelScreen({
     "pace-zones":
       paceCalibration && lthr
         ? () => <PaceCalibrationCard calibration={paceCalibration} lthr={lthr} />
+        : null,
+    "pace-curves": paceCurveLoading
+      ? () => (
+          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <span className="text-sm">Loading pace curves...</span>
+            </div>
+          </div>
+        )
+      : paceCurveData
+        ? () => <PaceCurvesWidget data={paceCurveData} />
         : null,
     "bg-categories": bgModelLoading
       ? () => (

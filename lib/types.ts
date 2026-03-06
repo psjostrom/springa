@@ -164,3 +164,19 @@ export type SpeedSessionType =
   | "long-intervals"
   | "distance-intervals"
   | "race-pace-intervals";
+
+// --- PACE CURVES TYPES ---
+export interface BestEffort {
+  distance: number;      // meters
+  label: string;         // "1km", "5km", etc.
+  timeSeconds: number;   // time to cover distance
+  pace: number;          // min/km
+  activityId?: string;
+  activityName?: string;
+}
+
+export interface PaceCurveData {
+  bestEfforts: BestEffort[];
+  longestRun: { distance: number; activityId: string; activityName: string } | null;
+  curve: { distance: number; pace: number }[];  // for chart
+}

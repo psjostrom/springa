@@ -684,3 +684,97 @@ describe("updateActivityCarbs", () => {
     await expect(updateActivityCarbs("test-key", "bad-id", 50)).rejects.toThrow("Failed to update activity carbs");
   });
 });
+
+describe("fetchPaceCurves", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches and processes pace curve data", async () => {
+    const mockResponse = {
+      list: [
+        {
+          id: "all",
+          label: "All Time",
+          distance: [1000, 5000, 10000],
+          values: [300, 1650, 3600], // 5:00/km, 5:30/km, 6:00/km
+          activity_id: ["act-1", "act-2", "act-3"],
+        },
+      ],
+      activities: {
+        "act-1": { id: "act-1", name: "Fast 1k", distance: 1200, moving_time: 360, start_date_local: "2026-03-01" },
+        "act-2": { id: "act-2", name: "Tempo 5k", distance: 5500, moving_time: 1800, start_date_local: "2026-03-02" },
+        "act-3": { id: "act-3", name: "Long Run 10k", distance: 10500, moving_time: 3900, start_date_local: "2026-03-03" },
+      },
+    };
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, json: () => Promise.resolve(mockResponse),
+    }));
+
+    const { fetchPaceCurves } = await import("../intervalsApi");
+    const result = await fetchPaceCurves("test-key");
+
+    expect(result).not.toBeNull();
+    expect(result!.bestEfforts.length).toBe(3); // 1km, 5km, 10km
+    expect(result!.bestEfforts[0].label).toBe("1km");
+    expect(result!.bestEfforts[0].timeSeconds).toBe(300);
+    expect(result!.bestEfforts[0].pace).toBeCloseTo(5.0, 1); // 5:00/km
+    expect(result!.longestRun).not.toBeNull();
+    expect(result!.longestRun!.distance).toBe(10500);
+    expect(result!.curve.length).toBe(3);
+  });
+
+  it("interpolates time for standard distances not in data", async () => {
+    const mockResponse = {
+      list: [
+        {
+          id: "all",
+          label: "All Time",
+          distance: [900, 1100], // bracket 1000m
+          values: [270, 330], // should interpolate to 300s at 1000m
+          activity_id: ["act-1", "act-1"],
+        },
+      ],
+      activities: {
+        "act-1": { id: "act-1", name: "Run", distance: 1100, moving_time: 330, start_date_local: "2026-03-01" },
+      },
+    };
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, json: () => Promise.resolve(mockResponse),
+    }));
+
+    const { fetchPaceCurves } = await import("../intervalsApi");
+    const result = await fetchPaceCurves("test-key");
+
+    expect(result).not.toBeNull();
+    expect(result!.bestEfforts.length).toBe(1); // only 1km can be interpolated
+    expect(result!.bestEfforts[0].timeSeconds).toBeCloseTo(300, 0); // linear interpolation
+  });
+
+  it("returns null on non-ok response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+
+    const { fetchPaceCurves } = await import("../intervalsApi");
+    const result = await fetchPaceCurves("test-key");
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null when no 'all' curve exists", async () => {
+    const mockResponse = {
+      list: [{ id: "42d", label: "42 days", distance: [], values: [], activity_id: [] }],
+      activities: {},
+    };
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, json: () => Promise.resolve(mockResponse),
+    }));
+
+    const { fetchPaceCurves } = await import("../intervalsApi");
+    const result = await fetchPaceCurves("test-key");
+
+    expect(result).toBeNull();
+  });
+});

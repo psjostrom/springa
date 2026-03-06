@@ -6,6 +6,8 @@ import type {
   StreamData,
   CalendarEvent,
   IntervalsActivity,
+  PaceCurveData,
+  BestEffort,
 } from "./types";
 import { API_BASE } from "./constants";
 import { extractRawStreams, extractLatlng } from "./streams";
@@ -545,5 +547,150 @@ export async function updateActivityCarbs(
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to update activity carbs: ${res.status} ${errorText}`);
+  }
+}
+
+// --- PACE CURVES ---
+
+interface PaceCurveActivity {
+  id: string;
+  name: string;
+  distance: number;
+  moving_time: number;
+  start_date_local: string;
+}
+
+interface PaceCurveApiResponse {
+  list: {
+    id: string;
+    label: string;
+    distance: number[];
+    values: number[];
+    activity_id: string[];
+  }[];
+  activities: Partial<Record<string, PaceCurveActivity>>;
+}
+
+const STANDARD_DISTANCES: { label: string; meters: number }[] = [
+  { label: "1km", meters: 1000 },
+  { label: "5km", meters: 5000 },
+  { label: "10km", meters: 10000 },
+  { label: "16km", meters: 16000 },
+  { label: "HM", meters: 21097.5 },
+  { label: "Marathon", meters: 42195 },
+];
+
+function interpolateTime(
+  distances: number[],
+  times: number[],
+  targetDist: number,
+): number | null {
+  // Find bracketing points
+  let lo = -1;
+  let hi = -1;
+  for (let i = 0; i < distances.length; i++) {
+    if (distances[i] <= targetDist) lo = i;
+    if (distances[i] >= targetDist && hi === -1) hi = i;
+  }
+  if (lo === -1 || hi === -1) return null;
+  if (lo === hi) return times[lo];
+
+  // Linear interpolation
+  const dLo = distances[lo];
+  const dHi = distances[hi];
+  const tLo = times[lo];
+  const tHi = times[hi];
+  const frac = (targetDist - dLo) / (dHi - dLo);
+  return tLo + frac * (tHi - tLo);
+}
+
+function findActivityIdAtDistance(
+  distances: number[],
+  activityIds: string[],
+  targetDist: number,
+): string | undefined {
+  // Find the closest distance that's <= target
+  let bestIdx = -1;
+  let bestDiff = Infinity;
+  for (let i = 0; i < distances.length; i++) {
+    const diff = Math.abs(distances[i] - targetDist);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+  return bestIdx >= 0 ? activityIds[bestIdx] : undefined;
+}
+
+export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | null> {
+  try {
+    const auth = authHeader(apiKey);
+    const now = new Date().toISOString();
+    // Use 'all' for all-time PRs
+    const url = `${API_BASE}/athlete/0/pace-curves?curves=all&type=Run&newest=${encodeURIComponent(now)}`;
+
+    const res = await fetch(url, { headers: { Authorization: auth } });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as PaceCurveApiResponse;
+    if (data.list.length === 0) return null;
+
+    const curveAll = data.list.find((c) => c.id === "all");
+    if (!curveAll || curveAll.distance.length === 0) return null;
+
+    const { distance: distances, values: times, activity_id: activityIds } = curveAll;
+
+    // Build best efforts at standard distances
+    const bestEfforts: BestEffort[] = [];
+    for (const { label, meters } of STANDARD_DISTANCES) {
+      const maxDist = distances[distances.length - 1];
+      if (meters > maxDist) continue; // Can't interpolate beyond data
+
+      const timeSeconds = interpolateTime(distances, times, meters);
+      if (timeSeconds === null) continue;
+
+      const pace = (timeSeconds / meters) * 1000 / 60; // min/km
+      const activityId = findActivityIdAtDistance(distances, activityIds, meters);
+      const activityName = activityId != null ? data.activities[activityId]?.name : undefined;
+
+      bestEfforts.push({
+        distance: meters,
+        label,
+        timeSeconds,
+        pace,
+        activityId,
+        activityName,
+      });
+    }
+
+    // Find longest run from activities
+    let longestRun: PaceCurveData["longestRun"] = null;
+    let maxDist = 0;
+    for (const [id, activity] of Object.entries(data.activities)) {
+      if (activity && activity.distance > maxDist) {
+        maxDist = activity.distance;
+        longestRun = {
+          distance: activity.distance,
+          activityId: id,
+          activityName: activity.name,
+        };
+      }
+    }
+
+    // Build curve data for chart (sample at reasonable intervals)
+    const curve: { distance: number; pace: number }[] = [];
+    for (let i = 0; i < distances.length; i++) {
+      const d = distances[i];
+      const t = times[i];
+      if (d > 0 && t > 0) {
+        const pace = (t / d) * 1000 / 60; // min/km
+        curve.push({ distance: d, pace });
+      }
+    }
+
+    return { bestEfforts, longestRun, curve };
+  } catch (e) {
+    console.error("Failed to fetch pace curves:", e);
+    return null;
   }
 }

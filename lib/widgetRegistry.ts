@@ -7,6 +7,7 @@ export type WidgetKey =
   | "fitness-chart"
   | "volume-trend"
   | "pace-zones"
+  | "pace-curves"
   | "bg-categories"
   | "bg-start-level"
   | "bg-entry-slope"
@@ -26,6 +27,7 @@ export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "fitness-chart", label: "Fitness Chart" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
+  { key: "pace-curves", label: "Pace Curves" },
   { key: "bg-categories", label: "BG Response" },
   { key: "bg-start-level", label: "BG by Start Level" },
   { key: "bg-entry-slope", label: "BG by Entry Slope" },
