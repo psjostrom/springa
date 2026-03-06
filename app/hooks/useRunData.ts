@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { buildBGModelFromCached } from "@/lib/bgModel";
 import { BG_MODEL_MAX_ACTIVITIES } from "@/lib/bgCache";
 import type { CalendarEvent } from "@/lib/types";
@@ -14,60 +13,46 @@ export function useRunData(
   sharedEvents: CalendarEvent[],
   xdripReadings?: XdripReading[],
 ) {
-  // 1. Filter, sort, slice completed runs (memoized)
-  const completedRuns = useMemo(
-    () =>
-      sharedEvents
-        .filter(
-          (e): e is CalendarEvent & { activityId: string } =>
-            e.type === "completed" &&
-            !!e.activityId &&
-            e.category !== "other" &&
-            e.category !== "race",
-        )
-        .sort((a, b) => b.date.getTime() - a.date.getTime())
-        .slice(0, BG_MODEL_MAX_ACTIVITIES),
-    [sharedEvents],
-  );
+  // 1. Filter, sort, slice completed runs
+  const completedRuns = sharedEvents
+    .filter(
+      (e): e is CalendarEvent & { activityId: string } =>
+        e.type === "completed" &&
+        !!e.activityId &&
+        e.category !== "other" &&
+        e.category !== "race",
+    )
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .slice(0, BG_MODEL_MAX_ACTIVITIES);
 
   // 2. Stream cache (async infrastructure)
   const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
 
-  // 3. Activity name map (memoized)
-  const bgActivityNames = useMemo(
-    () => new Map(completedRuns.map((e) => [e.activityId, e.name])),
-    [completedRuns],
+  // 3. Activity name map
+  const bgActivityNames = new Map(
+    completedRuns.map((e) => [e.activityId, e.name]),
   );
 
-  // 4. RunBGContexts from xDrip readings (memoized)
-  const runBGContexts = useMemo(
-    () =>
-      xdripReadings && xdripReadings.length > 0 && completedRuns.length > 0
-        ? buildRunBGContexts(completedRuns, xdripReadings)
-        : new Map<string, never>(),
-    [completedRuns, xdripReadings],
-  );
+  // 4. RunBGContexts from xDrip readings
+  const runBGContexts =
+    xdripReadings && xdripReadings.length > 0 && completedRuns.length > 0
+      ? buildRunBGContexts(completedRuns, xdripReadings)
+      : new Map<string, never>();
 
-  // 5. Enrich cached activities with RunBGContext (memoized)
-  const cachedActivities = useMemo(
-    () =>
-      runBGContexts.size > 0
-        ? cached.map((c) => {
-            const ctx = runBGContexts.get(c.activityId);
-            return ctx ? { ...c, runBGContext: ctx } : c;
-          })
-        : cached,
-    [cached, runBGContexts],
-  );
+  // 5. Enrich cached activities with RunBGContext (immutable)
+  const cachedActivities =
+    runBGContexts.size > 0
+      ? cached.map((c) => {
+          const ctx = runBGContexts.get(c.activityId);
+          return ctx ? { ...c, runBGContext: ctx } : c;
+        })
+      : cached;
 
-  // 6. Build BG model (memoized)
-  const bgModel = useMemo(
-    () =>
-      cachedActivities.length > 0
-        ? buildBGModelFromCached(cachedActivities)
-        : null,
-    [cachedActivities],
-  );
+  // 6. Build BG model
+  const bgModel =
+    cachedActivities.length > 0
+      ? buildBGModelFromCached(cachedActivities)
+      : null;
 
   return {
     bgModel,
