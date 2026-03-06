@@ -231,10 +231,8 @@ describe("generatePlan", () => {
       (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     // At least some should have race pace sections (sandwich or progressive)
-    // Z3 (steady) with TEST_HR_ZONES = 140-155/169 = 83-92%
     expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
     // At least some should have tempo sections (progressive)
-    // Z4 (tempo) with TEST_HR_ZONES = 155-167/169 = 92-99%
     expect(longRuns.some((lr) => lr.description.includes("92-99%"))).toBe(true);
     // At least some should be all-easy
     expect(longRuns.some((lr) =>
@@ -250,8 +248,6 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       // Main set should contain all three zones in ascending order
-      // With TEST_HR_ZONES [114, 140, 155, 167, 189] / LTHR 169:
-      // Z2 (easy) = 68-83%, Z3 (steady) = 83-92%, Z4 (tempo) = 92-99%
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
       expect(mainSet).toContain("68-83%");
       expect(mainSet).toContain("83-92%");

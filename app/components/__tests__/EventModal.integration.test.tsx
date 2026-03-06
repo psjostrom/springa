@@ -101,11 +101,11 @@ describe("EventModal workout card", () => {
       />,
     );
 
-    // WorkoutCard renders parsed workout structure
-    expect(screen.getByText(/Warmup/)).toBeInTheDocument();
-    expect(screen.getByText(/Main set/)).toBeInTheDocument();
+    // WorkoutCard renders the parsed structure as visible text
+    expect(screen.getByText("Warmup")).toBeInTheDocument();
+    expect(screen.getByText("Main set")).toBeInTheDocument();
     expect(screen.getByText("6x")).toBeInTheDocument();
-    expect(screen.getByText(/Cooldown/)).toBeInTheDocument();
+    expect(screen.getByText("Cooldown")).toBeInTheDocument();
     expect(screen.getByText("Planned")).toBeInTheDocument();
   });
 
