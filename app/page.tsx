@@ -17,6 +17,7 @@ import { useRunData } from "./hooks/useRunData";
 import { useCurrentBG } from "./hooks/useCurrentBG";
 import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
 import { useWellnessData } from "./hooks/useWellnessData";
+import { usePaceCurves } from "./hooks/usePaceCurves";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
@@ -137,6 +138,9 @@ function HomeContent() {
 
   // Wellness data for readiness widget
   const { entries: wellnessEntries, isLoading: wellnessLoading } = useWellnessData(apiKey);
+
+  // Pace curves for best efforts widget
+  const { data: paceCurveData, isLoading: paceCurveLoading } = usePaceCurves(apiKey);
 
   // Calibrated pace table from cached stream data
   const paceTable = usePaceTable(cachedActivities, settings?.hrZones);
@@ -264,6 +268,8 @@ function HomeContent() {
             cachedActivities={cachedActivities}
             wellnessEntries={wellnessEntries}
             wellnessLoading={wellnessLoading}
+            paceCurveData={paceCurveData}
+            paceCurveLoading={paceCurveLoading}
             widgetLayout={widgetLayout}
             onWidgetLayoutChange={handleWidgetLayoutChange}
           />
