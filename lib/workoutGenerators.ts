@@ -10,7 +10,7 @@ import {
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
-import { formatStep, createWorkoutText } from "./descriptionBuilder";
+import { formatStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getCurrentFuelRate } from "./fuelRate";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
@@ -80,11 +80,12 @@ const generateQualityRun = (
   const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
   if (sessionType === null) {
+    // Recovery week — single-zone easy run, no warmup/cooldown structure needed
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
-      description: createWorkoutText(wu, [s("30m", "easy", "Easy")], cd, 1, notes),
+      description: createSimpleWorkoutText(s("45m", "easy"), notes), // 10m WU + 30m main + 5m CD
       external_id: `${ctx.prefix}-speed-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
@@ -169,9 +170,6 @@ const generateEasyRun = (
       ? 20
       : 20 + Math.round(progress * 25);
 
-  const wu = s("10m", "easy", "Warmup");
-  const cd = s("5m", "easy", "Cooldown");
-
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
   const name = `W${weekNum.toString().padStart(2, "0")} ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
@@ -185,6 +183,8 @@ const generateEasyRun = (
   }
 
   if (withStrides) {
+    const wu = s("10m", "easy", "Warmup");
+    const cd = s("5m", "easy", "Cooldown");
     const lines = [
       notes, "",
       "Warmup", `- ${wu}`, "",
@@ -202,10 +202,12 @@ const generateEasyRun = (
     };
   }
 
+  // Single-zone easy run — no warmup/cooldown structure needed
+  const totalDuration = duration + 15; // 10m warmup + main + 5m cooldown
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createWorkoutText(wu, [s(`${duration}m`, "easy", "Easy")], cd, 1, notes),
+    description: createSimpleWorkoutText(s(`${totalDuration}m`, "easy"), notes),
     external_id: `${ctx.prefix}-easy-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -226,10 +228,11 @@ const generateBonusRun = (
   const weekNum = weekIdx + 1;
   const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 30 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
 
+  // Single-zone easy run — no warmup/cooldown structure needed
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${weekNum.toString().padStart(2, "0")} Bonus Easy ${ctx.prefix}`,
-    description: createWorkoutText(s("10m", "easy", "Warmup"), [s("30m", "easy", "Easy")], s("5m", "easy", "Cooldown"), 1, notes),
+    description: createSimpleWorkoutText(s("45m", "easy"), notes),
     external_id: `${ctx.prefix}-bonus-${weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,

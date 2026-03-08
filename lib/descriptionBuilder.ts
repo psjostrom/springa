@@ -40,3 +40,19 @@ export function createWorkoutText(
 
   return lines.join("\n");
 }
+
+/** Build a single-step workout description (no warmup/cooldown structure). */
+export function createSimpleWorkoutText(
+  step: string,
+  notes?: string,
+): string {
+  const lines: string[] = [];
+
+  if (notes) {
+    lines.push(notes, "");
+  }
+
+  lines.push(`- ${step}`, "");
+
+  return lines.join("\n");
+}

@@ -327,4 +327,38 @@ describe("generatePlan", () => {
       expect(parseInt(match![1], 10)).toBe(16);
     }
   });
+
+  // --- EASY RUN FORMAT ---
+
+  it("easy runs use single-step format (no warmup/cooldown structure)", () => {
+    const plan = generateFull();
+    const easyRuns = plan.filter(
+      (e) => e.external_id.includes("-easy-") && !e.name.includes("Strides"),
+    );
+    expect(easyRuns.length).toBeGreaterThan(0);
+    for (const run of easyRuns) {
+      expect(run.description).not.toContain("Warmup");
+      expect(run.description).not.toContain("Cooldown");
+    }
+  });
+
+  it("easy + strides runs use structured format with warmup/cooldown", () => {
+    const plan = generateFull();
+    const strideRuns = plan.filter((e) => e.name.includes("Strides"));
+    expect(strideRuns.length).toBeGreaterThan(0);
+    for (const run of strideRuns) {
+      expect(run.description).toContain("Warmup");
+      expect(run.description).toContain("Cooldown");
+    }
+  });
+
+  it("bonus runs use single-step format", () => {
+    const plan = generateFull();
+    const bonusRuns = plan.filter((e) => e.external_id.includes("-bonus-"));
+    expect(bonusRuns.length).toBeGreaterThan(0);
+    for (const run of bonusRuns) {
+      expect(run.description).not.toContain("Warmup");
+      expect(run.description).not.toContain("Cooldown");
+    }
+  });
 });
