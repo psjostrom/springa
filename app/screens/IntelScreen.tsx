@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useEffect } from "react";
 import {
   Loader2,
   Pencil,
@@ -15,9 +15,12 @@ import type { CalendarEvent } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
 import { computeFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
+import type { RunBGContext } from "@/lib/runBGContext";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
 import type { WidgetKey, WidgetLayout } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
+import { fetchActivityById } from "@/lib/intervalsApi";
+import { activityToCalendarEvent } from "@/lib/calendarPipeline";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
@@ -28,6 +31,8 @@ import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
 import { PaceCurvesWidget } from "../components/PaceCurvesWidget";
 import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
+import { EventModal } from "../components/EventModal";
+import { useActivityStream } from "../hooks/useActivityStream";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 import type { PaceCurveData } from "@/lib/types";
 
@@ -60,6 +65,7 @@ interface IntelScreenProps {
   paceCurveLoading: boolean;
   widgetLayout: WidgetLayout;
   onWidgetLayoutChange: (layout: WidgetLayout) => void;
+  runBGContexts?: Map<string, RunBGContext>;
 }
 
 function WidgetEditBar({
@@ -112,6 +118,7 @@ function WidgetEditBar({
 }
 
 export function IntelScreen({
+  apiKey,
   events,
   eventsLoading,
   eventsError,
@@ -137,8 +144,84 @@ export function IntelScreen({
   paceCurveLoading,
   widgetLayout,
   onWidgetLayoutChange,
+  runBGContexts,
 }: IntelScreenProps) {
   const [editMode, setEditMode] = useState(false);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [fetchedEvent, setFetchedEvent] = useState<CalendarEvent | null>(null);
+  const [isFetchingEvent, setIsFetchingEvent] = useState(false);
+
+  // Find event in local array (fetched event is handled below after effect)
+  const eventFromArray = selectedActivityId
+    ? events.find((e) => e.activityId === selectedActivityId)
+    : null;
+
+  // Fetch old activity if not in events array
+  useEffect(() => {
+    const existsInEvents = selectedActivityId
+      ? events.some((e) => e.activityId === selectedActivityId)
+      : true;
+
+    if (!selectedActivityId || existsInEvents) {
+      return;
+    }
+
+    // Need to fetch old activity
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state before async fetch is valid
+    setIsFetchingEvent(true);
+    void fetchActivityById(apiKey, selectedActivityId).then((activity) => {
+      if (cancelled) return;
+      if (activity) {
+        setFetchedEvent(activityToCalendarEvent(activity));
+      }
+      setIsFetchingEvent(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedActivityId, events, apiKey]);
+
+  // Only use fetched event if it matches the currently selected activity
+  const effectiveFetchedEvent = selectedActivityId
+    && !events.some((e) => e.activityId === selectedActivityId)
+    && fetchedEvent?.activityId === selectedActivityId
+    ? fetchedEvent
+    : null;
+
+  // Combine: prefer event from array, fall back to fetched event for old activities
+  const selectedEvent = eventFromArray ?? effectiveFetchedEvent;
+
+  // Lazy-load stream data when modal opens
+  const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(
+    selectedEvent?.activityId ?? null,
+    apiKey
+  );
+
+  // Enrich selected event with stream data
+  const enrichedSelectedEvent = selectedEvent && streamData
+    ? {
+        ...selectedEvent,
+        streamData: {
+          ...selectedEvent.streamData,
+          ...streamData.streamData,
+        },
+        avgHr: streamData.avgHr ?? selectedEvent.avgHr,
+        maxHr: streamData.maxHr ?? selectedEvent.maxHr,
+      }
+    : selectedEvent;
+
+  const handleActivitySelect = (activityId: string) => {
+    setSelectedActivityId(activityId);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedActivityId(null);
+  };
+
+  // For PB activities, date/delete operations don't make sense - use no-ops
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleDateSaved = (eventId: string, newDate: Date) => { /* no-op for PB modal */ };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleDelete = async (eventId: string) => { /* no-op for PB modal */ };
 
   const fitnessData = computeFitnessData(events, 180);
 
@@ -255,7 +338,7 @@ export function IntelScreen({
           </div>
         )
       : paceCurveData
-        ? () => <PaceCurvesWidget data={paceCurveData} />
+        ? () => <PaceCurvesWidget data={paceCurveData} onActivitySelect={handleActivitySelect} />
         : null,
     "bg-categories": bgModelLoading
       ? () => (
@@ -378,6 +461,34 @@ export function IntelScreen({
           </div>
         )}
       </div>
+
+      {/* Activity Detail Modal */}
+      {(Boolean(enrichedSelectedEvent) || isFetchingEvent) && (
+        isFetchingEvent ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+              <div className="flex items-center gap-3 text-[#b8a5d4]">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading activity...</span>
+              </div>
+            </div>
+          </div>
+        ) : enrichedSelectedEvent && (
+          <EventModal
+            event={enrichedSelectedEvent}
+            onClose={handleCloseModal}
+            onDateSaved={handleDateSaved}
+            onDelete={handleDelete}
+            isLoadingStreamData={isLoadingStreamData}
+            apiKey={apiKey}
+            runBGContexts={runBGContexts}
+            paceTable={paceTable}
+            bgModel={bgModel}
+            hrZones={hrZones}
+            lthr={lthr}
+          />
+        )
+      )}
     </div>
   );
 }

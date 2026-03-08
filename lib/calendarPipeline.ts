@@ -26,6 +26,68 @@ export function resolveFuelRate(carbsPerHour: number | null | undefined, descrip
   return carbsPerHour ?? extractFuelRate(description);
 }
 
+/** Convert a single IntervalsActivity to a CalendarEvent (no event pairing). */
+export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEvent {
+  const category = getWorkoutCategory(activity.name);
+
+  let pace: number | undefined;
+  if (activity.distance && activity.moving_time) {
+    const distanceKm = activity.distance / 1000;
+    const durationMin = activity.moving_time / 60;
+    pace = durationMin / distanceKm;
+  }
+
+  let zoneTimes: HRZoneData | undefined;
+  if (activity.icu_hr_zone_times && activity.icu_hr_zone_times.length >= 5) {
+    zoneTimes = {
+      z1: activity.icu_hr_zone_times[0],
+      z2: activity.icu_hr_zone_times[1],
+      z3: activity.icu_hr_zone_times[2],
+      z4: activity.icu_hr_zone_times[3],
+      z5: activity.icu_hr_zone_times[4],
+    };
+  }
+
+  const activityDate = parseISO(activity.start_date);
+  const description = activity.description ?? "";
+  const fuelRate = resolveFuelRate(null, description);
+
+  let totalCarbs: number | null = null;
+  if (fuelRate != null && activity.moving_time) {
+    totalCarbs = calculateWorkoutCarbs(activity.moving_time / 60, fuelRate);
+  }
+  totalCarbs ??= extractTotalCarbs(description);
+
+  const carbsIngested = activity.carbs_ingested ?? totalCarbs;
+
+  return {
+    id: `activity-${activity.id}`,
+    date: activityDate,
+    name: activity.name,
+    description,
+    type: "completed",
+    category,
+    distance: activity.distance,
+    duration: activity.moving_time,
+    avgHr: activity.average_heartrate ?? activity.average_hr,
+    maxHr: activity.max_heartrate ?? activity.max_hr,
+    load: activity.icu_training_load,
+    intensity: activity.icu_intensity,
+    pace: activity.pace ? 1000 / (activity.pace * 60) : pace,
+    calories: activity.calories,
+    cadence: activity.average_cadence ? activity.average_cadence * 2 : undefined,
+    zoneTimes,
+    fuelRate,
+    totalCarbs,
+    carbsIngested,
+    preRunCarbsG: nonZero(activity.PreRunCarbsG),
+    preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
+    rating: nonEmpty(activity.Rating),
+    feedbackComment: nonEmpty(activity.FeedbackComment),
+    activityId: activity.id,
+  };
+}
+
 /** Convert completed run activities into CalendarEvents and track auto-pair candidates. */
 export function processActivities(
   activities: IntervalsActivity[],

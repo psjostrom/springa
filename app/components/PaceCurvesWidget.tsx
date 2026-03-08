@@ -5,6 +5,7 @@ import type { PaceCurveData } from "@/lib/types";
 
 interface PaceCurvesWidgetProps {
   data: PaceCurveData;
+  onActivitySelect?: (activityId: string) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -32,7 +33,7 @@ function formatDistance(meters: number): string {
   return `${meters}m`;
 }
 
-export function PaceCurvesWidget({ data }: PaceCurvesWidgetProps) {
+export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left?: number; right?: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -140,6 +141,12 @@ export function PaceCurvesWidget({ data }: PaceCurvesWidgetProps) {
 
   const hoverPoint = hoverIdx !== null ? curve[hoverIdx] : null;
 
+  const handleCardClick = (activityId?: string) => {
+    if (activityId && onActivitySelect) {
+      onActivitySelect(activityId);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Best Efforts Grid */}
@@ -149,7 +156,11 @@ export function PaceCurvesWidget({ data }: PaceCurvesWidgetProps) {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {bestEfforts.map((effort) => (
-            <div key={effort.label} className="bg-[#2a1f3d] rounded-lg p-3">
+            <div
+              key={effort.label}
+              className={`bg-[#2a1f3d] rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-[#3d2b5a] transition-colors" : ""}`}
+              onClick={() => { handleCardClick(effort.activityId); }}
+            >
               <div className="text-xs text-[#b8a5d4] uppercase">{effort.label}</div>
               <div className="text-lg font-bold text-white">
                 {formatTime(effort.timeSeconds)}
@@ -160,7 +171,10 @@ export function PaceCurvesWidget({ data }: PaceCurvesWidgetProps) {
             </div>
           ))}
           {longestRun && (
-            <div className="bg-[#2a1f3d] rounded-lg p-3">
+            <div
+              className={`bg-[#2a1f3d] rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-[#3d2b5a] transition-colors" : ""}`}
+              onClick={() => { handleCardClick(longestRun.activityId); }}
+            >
               <div className="text-xs text-[#b8a5d4] uppercase">Longest Run</div>
               <div className="text-lg font-bold text-white">
                 {formatDistance(longestRun.distance)}
