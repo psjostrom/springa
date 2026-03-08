@@ -84,10 +84,15 @@ export function extractTotalCarbs(description: string): number | null {
 
 // --- NOTES EXTRACTION ---
 
-/** Extract notes/flavor text from between any header lines and the first section header. */
+/** Extract notes/flavor text from between any header lines and the first section header or step line. */
 export function extractNotes(description: string): string | null {
   if (!description) return null;
-  const firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
+  // Look for first section header OR first step line (for single-step workouts)
+  let firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
+  if (firstSectionIdx === -1) {
+    // No section headers — look for first step line (starts with "- ")
+    firstSectionIdx = description.search(/(?:^|\n)-\s+\d/m);
+  }
   if (firstSectionIdx === -1) return null;
   const preamble = description.slice(0, firstSectionIdx);
   const lines = preamble.split("\n");
@@ -145,7 +150,27 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
     headers.push({ name: match[1], index: match.index });
   }
 
-  if (headers.length === 0) return [];
+  // Handle single-step workouts (no section headers, just step lines)
+  if (headers.length === 0) {
+    const steps: WorkoutStep[] = [];
+    for (const line of description.split("\n")) {
+      const stepMatch = stepPattern.exec(line);
+      if (stepMatch) {
+        const minPct = parseInt(stepMatch[3], 10);
+        const maxPct = parseInt(stepMatch[4], 10);
+        steps.push({
+          label: stepMatch[1] && !["Walk", "Easy", "Fast", "Race Pace", "Interval", "Warmup", "Cooldown"].includes(stepMatch[1]) ? stepMatch[1] : undefined,
+          duration: stepMatch[2],
+          zone: classifyIntensity((minPct + maxPct) / 2, lthr, hrZones),
+          bpmRange: stepMatch[5],
+        });
+      }
+    }
+    if (steps.length > 0) {
+      return [{ name: "Main set", steps }];
+    }
+    return [];
+  }
 
   for (let i = 0; i < headers.length; i++) {
     const start = headers[i].index;
@@ -265,11 +290,18 @@ function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegmen
 
 /**
  * Parse a workout description into an ordered list of segments with duration and intensity.
- * Handles Warmup, Main set (with repeats), Strides (with repeats), and Cooldown.
+ * Handles Warmup, Main set (with repeats), Strides (with repeats), Cooldown, and single-step workouts.
  */
 export function parseWorkoutSegments(description: string, paceTable?: PaceTable): WorkoutSegment[] {
   if (!description) return [];
   const segments: WorkoutSegment[] = [];
+
+  // Check if this is a single-step workout (no section headers)
+  const hasSectionHeaders = /(?:^|\n)(Warmup|Main set|Strides|Cooldown)/m.test(description);
+  if (!hasSectionHeaders) {
+    // Single-step workout — parse all step lines directly
+    return parseSectionSegments(description, paceTable);
+  }
 
   // Warmup
   const warmupMatch = /(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/.exec(description);
