@@ -44,7 +44,13 @@ const FORM_ZONE_STYLES: Record<
   },
 };
 
-function getExplanation(key: string, insights: FitnessInsights): { definition: string; context: string } | null {
+interface Explanation {
+  definition: string;
+  context: string;
+  scale?: { range: string; label: string }[];
+}
+
+function getExplanation(key: string, insights: FitnessInsights): Explanation | null {
   switch (key) {
     case "ctl": {
       const pct = insights.peakCtl > 0 ? Math.round((insights.currentCtl / insights.peakCtl) * 100) : 0;
@@ -114,7 +120,13 @@ function getExplanation(key: string, insights: FitnessInsights): { definition: s
       } else {
         ctx = "Very rested \u2014 extended rest may lead to detraining.";
       }
-      return { definition: "Fitness minus Fatigue. Negative = carrying fatigue, positive = fresh. Racing sweet spot: +5 to +15.", context: ctx };
+      return { definition: "Fitness minus Fatigue. Negative = carrying fatigue, positive = fresh.", context: ctx, scale: [
+        { range: "below \u221220", label: "High risk \u2014 back off or rest" },
+        { range: "\u221220 to \u221210", label: "Optimal training \u2014 building fitness" },
+        { range: "\u221210 to +5", label: "Grey zone \u2014 maintaining, not building" },
+        { range: "+5 to +15", label: "Fresh \u2014 good for racing or a key session" },
+        { range: "above +15", label: "Transition \u2014 detraining risk if sustained" },
+      ] };
     }
     case "load7": {
       const avgDaily7 = insights.totalActivities7d > 0 ? Math.round(insights.totalLoad7d / 7) : 0;
@@ -187,6 +199,16 @@ function MetricPopover({
         style={positionStyle}
       >
         <div className="text-xs text-[#b8a5d4] leading-relaxed">{info.definition}</div>
+        {info.scale && (
+          <div className="mt-1.5 pt-1.5 border-t border-[#3d2b5a] space-y-0.5">
+            {info.scale.map((s) => (
+              <div key={s.range} className="flex gap-1.5 text-xs">
+                <span className="text-white font-bold shrink-0 whitespace-nowrap">{s.range}</span>
+                <span className="text-[#b8a5d4]">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {info.context && (
           <div className="text-xs text-[#00ffff] leading-relaxed mt-1.5 pt-1.5 border-t border-[#3d2b5a]">{info.context}</div>
         )}
@@ -276,10 +298,10 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         <FormIcon className={`w-6 h-6 ${formStyle.text} flex-shrink-0`} />
         <div className="flex-1">
           <div className={`font-bold text-base ${formStyle.text}`}>
-            {insights.formZoneLabel}
+            Form: {insights.formZoneLabel}
           </div>
           <div className="text-sm text-[#c4b5fd]">
-            Form: {insights.currentTsb > 0 ? "+" : ""}
+            {insights.currentTsb > 0 ? "+" : ""}
             {insights.currentTsb}
             {insights.formZone === "optimal" &&
               " — ready for quality sessions"}

@@ -1,15 +1,17 @@
 "use client";
 
-import { computeFitnessData, computeInsights } from "@/lib/fitness";
+import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { buildSystemPrompt } from "@/lib/coachContext";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { PaceTable } from "@/lib/types";
+import type { WellnessEntry } from "@/lib/intervalsApi";
 
 interface UseCoachDataOptions {
   events: CalendarEvent[];
+  wellnessEntries: WellnessEntry[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
   raceDate?: string;
@@ -25,12 +27,13 @@ interface UseCoachDataOptions {
   runBGContexts?: Map<string, RunBGContext>;
 }
 
-export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
-  const insights = events.length === 0
+export function useCoachData({ events, wellnessEntries, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
+  const fitnessData = wellnessToFitnessData(wellnessEntries);
+  const insights = fitnessData.length === 0
     ? null
-    : computeInsights(computeFitnessData(events, 365), events);
+    : computeInsights(fitnessData, events);
 
-  const context = events.length === 0
+  const context = (events.length === 0 || fitnessData.length === 0)
     ? ""
     : buildSystemPrompt({
         phaseInfo,
@@ -50,5 +53,5 @@ export function useCoachData({ events, phaseInfo, bgModel, raceDate, lthr, maxHr
         runBGContexts,
       });
 
-  return { context, isLoading: events.length === 0 };
+  return { context, isLoading: events.length === 0 || fitnessData.length === 0 };
 }

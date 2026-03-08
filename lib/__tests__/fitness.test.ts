@@ -1,6 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { computeFitnessData, computeInsights } from "../fitness";
+import { wellnessToFitnessData, computeInsights } from "../fitness";
 import type { CalendarEvent } from "../types";
+import type { WellnessEntry } from "../intervalsApi";
+
+function makeWellnessEntry(
+  daysAgo: number,
+  ctl: number,
+  atl: number,
+): WellnessEntry {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  const id = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return { id, ctl, atl };
+}
 
 function makeEvent(
   daysAgo: number,
@@ -22,89 +34,70 @@ function makeEvent(
   };
 }
 
-describe("computeFitnessData", () => {
-  it("returns empty array for no events", () => {
-    const result = computeFitnessData([], 30);
-    // Should still return daily data points even with no load
-    expect(result.length).toBe(31); // 30 days + today
+describe("wellnessToFitnessData", () => {
+  it("returns empty array for no entries", () => {
+    expect(wellnessToFitnessData([])).toEqual([]);
   });
 
-  it("all loads are zero when no completed events", () => {
-    const result = computeFitnessData([], 7);
-    for (const dp of result) {
-      expect(dp.load).toBe(0);
-    }
-  });
-
-  it("CTL grows with consistent training", () => {
-    // Train every day for 60 days with load 50
-    const events = Array.from({ length: 60 }, (_, i) => makeEvent(i, 50));
-    const result = computeFitnessData(events, 60);
-
-    // CTL should be building toward ~50
-    const latest = result[result.length - 1];
-    expect(latest.ctl).toBeGreaterThan(20);
-  });
-
-  it("ATL responds faster than CTL to load changes", () => {
-    // 30 days of rest, then 5 days of hard training
-    const events = Array.from({ length: 5 }, (_, i) => makeEvent(i, 100));
-    const result = computeFitnessData(events, 30);
-
-    const latest = result[result.length - 1];
-    // ATL should be higher than CTL because it responds faster
-    expect(latest.atl).toBeGreaterThan(latest.ctl);
-  });
-
-  it("TSB equals CTL minus ATL", () => {
-    const events = [makeEvent(1, 80), makeEvent(3, 60)];
-    const result = computeFitnessData(events, 7);
-
-    for (const dp of result) {
-      const expectedTsb = dp.ctl - dp.atl;
-      expect(dp.tsb).toBeCloseTo(expectedTsb, 0);
-    }
-  });
-
-  it("ignores planned events", () => {
-    const events = [
-      makeEvent(1, 80, { type: "planned" }),
-      makeEvent(2, 60, { type: "completed" }),
+  it("filters entries without ctl/atl", () => {
+    const entries: WellnessEntry[] = [
+      { id: "2026-01-01" },
+      { id: "2026-01-02", ctl: 10, atl: 15 },
+      { id: "2026-01-03", ctl: null as unknown as number },
     ];
-    const result = computeFitnessData(events, 7);
-
-    // Only the completed event should contribute load
-    const day2 = result.find((dp) => {
-      const d = new Date();
-      d.setDate(d.getDate() - 2);
-      return dp.date === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    });
-    if (day2) {
-      expect(day2.load).toBe(60);
-    }
+    const result = wellnessToFitnessData(entries);
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe("2026-01-02");
   });
 
-  it("ignores events without load", () => {
-    const events = [makeEvent(1, 0, { load: undefined })];
-    const result = computeFitnessData(events, 7);
-    const latest = result[result.length - 1];
-    expect(latest.ctl).toBe(0);
+  it("computes TSB as CTL - ATL", () => {
+    const entries = [makeWellnessEntry(1, 30, 40)];
+    const result = wellnessToFitnessData(entries);
+    expect(result[0].tsb).toBe(-10);
+  });
+
+  it("rounds to one decimal place", () => {
+    const entries: WellnessEntry[] = [
+      { id: "2026-01-01", ctl: 12.345, atl: 7.891 },
+    ];
+    const result = wellnessToFitnessData(entries);
+    expect(result[0].ctl).toBe(12.3);
+    expect(result[0].atl).toBe(7.9);
+    expect(result[0].tsb).toBe(4.5);
+  });
+
+  it("preserves date ordering from input", () => {
+    const entries = [
+      makeWellnessEntry(3, 10, 15),
+      makeWellnessEntry(2, 12, 14),
+      makeWellnessEntry(1, 14, 13),
+    ];
+    const result = wellnessToFitnessData(entries);
+    expect(result).toHaveLength(3);
+    expect(result[0].date).toBe(entries[0].id);
+    expect(result[2].date).toBe(entries[2].id);
   });
 });
 
 describe("computeInsights", () => {
   it("returns form zone based on TSB", () => {
-    // Lots of recent training -> negative TSB -> high-risk or optimal
+    // Heavy recent training: ATL >> CTL -> negative TSB
+    const entries = Array.from({ length: 30 }, (_, i) =>
+      makeWellnessEntry(30 - i, 20, 50),
+    );
+    const fitnessData = wellnessToFitnessData(entries);
     const events = Array.from({ length: 10 }, (_, i) => makeEvent(i, 120));
-    const fitnessData = computeFitnessData(events, 30);
     const insights = computeInsights(fitnessData, events);
 
-    // With heavy recent training, TSB should be negative
     expect(insights.currentTsb).toBeLessThan(0);
     expect(["high-risk", "optimal"]).toContain(insights.formZone);
   });
 
   it("counts activities in last 7 and 28 days", () => {
+    const entries = Array.from({ length: 30 }, (_, i) =>
+      makeWellnessEntry(30 - i, 20 + i, 15 + i),
+    );
+    const fitnessData = wellnessToFitnessData(entries);
     const events = [
       makeEvent(1, 50),
       makeEvent(3, 50),
@@ -112,28 +105,33 @@ describe("computeInsights", () => {
       makeEvent(10, 50),
       makeEvent(20, 50),
     ];
-    const fitnessData = computeFitnessData(events, 30);
     const insights = computeInsights(fitnessData, events);
 
-    expect(insights.totalActivities7d).toBe(3); // days 1, 3, 5
-    expect(insights.totalActivities28d).toBe(5); // all 5
+    expect(insights.totalActivities7d).toBe(3);
+    expect(insights.totalActivities28d).toBe(5);
   });
 
   it("tracks peak CTL", () => {
-    const events = Array.from({ length: 90 }, (_, i) => makeEvent(i, 50));
-    const fitnessData = computeFitnessData(events, 90);
-    const insights = computeInsights(fitnessData, events);
+    const entries = [
+      makeWellnessEntry(3, 30, 20),
+      makeWellnessEntry(2, 50, 40), // peak
+      makeWellnessEntry(1, 45, 35),
+    ];
+    const fitnessData = wellnessToFitnessData(entries);
+    const insights = computeInsights(fitnessData, []);
 
-    expect(insights.peakCtl).toBeGreaterThan(0);
-    expect(insights.peakCtlDate).toBeTruthy();
+    expect(insights.peakCtl).toBe(50);
+    expect(insights.peakCtlDate).toBe(entries[1].id);
   });
 
   it("computes ramp rate from last 7 days of CTL change", () => {
-    const events = Array.from({ length: 30 }, (_, i) => makeEvent(i, 50));
-    const fitnessData = computeFitnessData(events, 30);
-    const insights = computeInsights(fitnessData, events);
+    // CTL increasing over the period
+    const entries = Array.from({ length: 14 }, (_, i) =>
+      makeWellnessEntry(14 - i, 10 + i * 2, 10 + i),
+    );
+    const fitnessData = wellnessToFitnessData(entries);
+    const insights = computeInsights(fitnessData, []);
 
-    // Ramp rate should be positive with consistent training
     expect(insights.rampRate).toBeGreaterThan(0);
   });
 });

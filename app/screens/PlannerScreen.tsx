@@ -9,7 +9,8 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
 import { generatePlan } from "@/lib/workoutGenerators";
-import { computeFitnessData, computeInsights } from "@/lib/fitness";
+import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
+import type { WellnessEntry } from "@/lib/intervalsApi";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
@@ -31,6 +32,7 @@ interface PlannerScreenProps {
   hrZones?: number[];
   paceTable?: PaceTable;
   events?: CalendarEvent[];
+  wellnessEntries: WellnessEntry[];
   runBGContexts?: Map<string, RunBGContext>;
   autoAdapt?: boolean;
   onSyncDone?: () => void;
@@ -103,8 +105,8 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
     setSyncDone(false);
 
     try {
-      // Compute fitness locally
-      const fitnessData = computeFitnessData(calendarEvents);
+      // Fitness from Intervals.icu wellness data (authoritative)
+      const fitnessData = wellnessToFitnessData(props.wellnessEntries);
       const insights = computeInsights(fitnessData, calendarEvents);
 
       // Filter upcoming planned (next 4) + recent completed (last 7)

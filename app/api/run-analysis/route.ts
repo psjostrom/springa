@@ -8,8 +8,8 @@ import {
   type RunHistoryEntry,
 } from "@/lib/runAnalysisDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
-import { fetchAthleteProfile, fetchActivitiesByDateRange } from "@/lib/intervalsApi";
-import { computeFitnessData, computeInsights } from "@/lib/fitness";
+import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
+import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { formatAIError } from "@/lib/aiError";
 import { nonEmpty } from "@/lib/format";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
@@ -160,28 +160,27 @@ export async function POST(req: Request) {
         })
     : Promise.resolve(null);
 
-  const [rows, profile, patterns] = await Promise.all([
+  const [rows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
     intervalsApiKey
       ? fetchAthleteProfile(intervalsApiKey)
       : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
     getBGPatterns(session.user.email),
+    intervalsApiKey
+      ? fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd"))
+      : Promise.resolve([]),
   ]);
 
-  // Batch-fetch activity metadata from Intervals.icu
-  // Fetch 90 days to support both run history and fitness computation (CTL needs 42-day warm-up)
+  // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();
-  let allActivities: IntervalsActivity[] = [];
   if (intervalsApiKey) {
-    const oldest90d = format(subDays(new Date(), 90), "yyyy-MM-dd");
-    const today = format(new Date(), "yyyy-MM-dd");
-    // Widen to include cached run dates if they go further back
     const rowDates = rows.map((r) => r.activityDate).filter((d): d is string => !!d);
-    const fetchOldest = rowDates.length > 0
-      ? rowDates.reduce((a, b) => (a < b ? a : b), oldest90d)
-      : oldest90d;
+    const oldest = rowDates.length > 0
+      ? rowDates.reduce((a, b) => (a < b ? a : b))
+      : format(subDays(new Date(), 90), "yyyy-MM-dd");
+    const today = format(new Date(), "yyyy-MM-dd");
     try {
-      allActivities = await fetchActivitiesByDateRange(intervalsApiKey, fetchOldest, today);
+      const allActivities = await fetchActivitiesByDateRange(intervalsApiKey, oldest, today);
       for (const a of allActivities) {
         activityMap.set(a.id, a);
       }
@@ -190,22 +189,12 @@ export async function POST(req: Request) {
     }
   }
 
-  // Compute fitness from fetched activities
-  const fitnessEvents: CalendarEvent[] = allActivities
-    .filter((a): a is IntervalsActivity & { icu_training_load: number; start_date_local: string } =>
-      !!a.icu_training_load && !!a.start_date_local)
-    .map((a) => ({
-      id: a.id,
-      date: new Date(a.start_date_local),
-      name: a.name,
-      description: "",
-      type: "completed" as const,
-      category: "easy" as const, // category doesn't matter for fitness computation
-      load: a.icu_training_load,
-    }));
-  const fitnessData = computeFitnessData(fitnessEvents, 90);
-  const fitnessInsights = fitnessEvents.length > 0
-    ? computeInsights(fitnessData, fitnessEvents)
+  // Fitness data from Intervals.icu wellness (authoritative CTL/ATL/TSB)
+  const fitnessData = wellnessToFitnessData(wellnessEntries);
+  // Empty events array — this route doesn't have calendar events, so activity
+  // counts (totalActivities7d etc.) will be 0. The prompt only uses CTL/ATL/TSB/rampRate.
+  const fitnessInsights = fitnessData.length > 0
+    ? computeInsights(fitnessData, [])
     : null;
 
   const history = buildRunHistory(rows, activityMap);

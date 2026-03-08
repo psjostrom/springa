@@ -16,7 +16,8 @@ import { usePhaseInfo } from "./hooks/usePhaseInfo";
 import { useRunData } from "./hooks/useRunData";
 import { useCurrentBG } from "./hooks/useCurrentBG";
 import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
-import { useWellnessData } from "./hooks/useWellnessData";
+import useSWR from "swr";
+import type { WellnessEntry } from "@/lib/intervalsApi";
 import { usePaceCurves } from "./hooks/usePaceCurves";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
@@ -136,8 +137,12 @@ function HomeContent() {
   // BG model — uses shared events, fetches streams independently
   const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useRunData(apiKey, true, calendarEvents, readings);
 
-  // Wellness data for readiness widget
-  const { entries: wellnessEntries, isLoading: wellnessLoading } = useWellnessData(apiKey);
+  // Wellness data — single fetch for readiness + F/F/F chart
+  const { data: wellnessEntries = [], isLoading: wellnessLoading } = useSWR<WellnessEntry[]>(
+    "/api/wellness?days=365",
+    (url: string) => fetch(url).then((r) => r.ok ? r.json() : []),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
 
   // Pace curves for best efforts widget
   const { data: paceCurveData, isLoading: paceCurveLoading } = usePaceCurves(apiKey);
@@ -236,6 +241,7 @@ function HomeContent() {
             hrZones={settings?.hrZones}
             paceTable={paceTable}
             events={enrichedEvents}
+            wellnessEntries={wellnessEntries}
             runBGContexts={runBGContexts}
             autoAdapt={autoAdapt}
             onSyncDone={handleReload}
@@ -276,7 +282,7 @@ function HomeContent() {
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={enrichedEvents} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones ?? []} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
+          <CoachScreen events={enrichedEvents} wellnessEntries={wellnessEntries} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones ?? []} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
         </div>
         <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
           <SimulateScreen bgModel={bgModel} bgModelLoading={bgModelLoading} />

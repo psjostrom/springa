@@ -12,6 +12,7 @@ import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import type { PaceTable } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
+import type { WellnessEntry } from "@/lib/intervalsApi";
 const SUGGESTIONS = [
   "How's my training load looking?",
   "Analyze my BG trends",
@@ -28,6 +29,7 @@ function getMessageText(parts: { type: string; text?: string }[]): string {
 
 interface CoachScreenProps {
   events: CalendarEvent[];
+  wellnessEntries: WellnessEntry[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
   raceDate?: string;
@@ -45,6 +47,7 @@ interface CoachScreenProps {
 
 export function CoachScreen({
   events,
+  wellnessEntries,
   phaseInfo,
   bgModel,
   raceDate,
@@ -61,6 +64,7 @@ export function CoachScreen({
 }: CoachScreenProps) {
   const { context, isLoading: contextLoading } = useCoachData({
     events,
+    wellnessEntries,
     phaseInfo,
     bgModel,
     raceDate,

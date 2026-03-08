@@ -3,7 +3,6 @@
 export type WidgetKey =
   | "readiness"
   | "phase-tracker"
-  | "fitness-insights"
   | "fitness-chart"
   | "volume-trend"
   | "pace-zones"
@@ -23,8 +22,7 @@ export interface WidgetDef {
 export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "readiness", label: "Readiness" },
   { key: "phase-tracker", label: "Training Progress" },
-  { key: "fitness-insights", label: "Fitness Insights" },
-  { key: "fitness-chart", label: "Fitness Chart" },
+  { key: "fitness-chart", label: "Fitness / Fatigue / Form" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
   { key: "pace-curves", label: "Pace Curves" },

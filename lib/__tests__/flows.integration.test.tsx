@@ -45,7 +45,7 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
 describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
   it("generates a plan, shows preview, syncs to Intervals.icu", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
 
     // 1. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -196,7 +196,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 describe("Flow 4: Planner — Generate uses fuel settings directly", () => {
   it("generates plan instantly using sidebar fuel values", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
 
     // 1. Click Generate Plan
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -227,7 +227,7 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
 
   it("uploads successfully even when DELETE returns 500", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} />);
+    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
 
     // 1. Generate plan (two buttons: desktop + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });

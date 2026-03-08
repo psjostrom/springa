@@ -1,17 +1,15 @@
 import {
   startOfDay,
-  addDays,
   differenceInCalendarDays,
-  format,
 } from "date-fns";
 import type { CalendarEvent } from "./types";
+import type { WellnessEntry } from "./intervalsApi";
 
 export interface FitnessDataPoint {
   date: string; // yyyy-MM-dd
   ctl: number; // Chronic Training Load (Fitness) — 42-day EMA
   atl: number; // Acute Training Load (Fatigue) — 7-day EMA
   tsb: number; // Training Stress Balance (Form) = CTL - ATL
-  load: number; // raw daily load
 }
 
 export interface FitnessInsights {
@@ -30,72 +28,20 @@ export interface FitnessInsights {
   rampRate: number; // weekly CTL change rate
 }
 
-const CTL_DAYS = 42;
-const ATL_DAYS = 7;
-
 /**
- * Compute daily fitness (CTL), fatigue (ATL), and form (TSB) from activity loads.
- * Uses exponentially weighted moving averages matching the Banister impulse-response model.
+ * Convert Intervals.icu wellness entries to FitnessDataPoints.
+ * This is the single source of truth for CTL/ATL/TSB — Intervals.icu computes
+ * these values authoritatively from all activities, not just runs.
  */
-export function computeFitnessData(
-  events: CalendarEvent[],
-  historyDays = 365,
-): FitnessDataPoint[] {
-  const today = startOfDay(new Date());
-  const startDate = addDays(today, -historyDays);
-
-  // Build a map of daily total training loads
-  const dailyLoads = new Map<string, number>();
-  for (const event of events) {
-    if (event.type !== "completed" || !event.load) continue;
-    const key = format(startOfDay(event.date), "yyyy-MM-dd");
-    dailyLoads.set(key, (dailyLoads.get(key) ?? 0) + event.load);
-  }
-
-  const totalDays = differenceInCalendarDays(today, startDate) + 1;
-  const result: FitnessDataPoint[] = [];
-
-  let ctl = 0;
-  let atl = 0;
-
-  // Use ramp-up period before the visible window for accurate initial values
-  const rampUpDays = CTL_DAYS * 2; // 84 days before visible start
-  const rampUpStart = addDays(startDate, -rampUpDays);
-
-  for (let i = 0; i < rampUpDays; i++) {
-    const d = addDays(rampUpStart, i);
-    const key = format(d, "yyyy-MM-dd");
-    const load = dailyLoads.get(key) ?? 0;
-    ctl += (load - ctl) / CTL_DAYS;
-    atl += (load - atl) / ATL_DAYS;
-  }
-
-  // Now compute the visible data
-  for (let i = 0; i < totalDays; i++) {
-    const d = addDays(startDate, i);
-    const key = format(d, "yyyy-MM-dd");
-    const load = dailyLoads.get(key) ?? 0;
-
-    ctl += (load - ctl) / CTL_DAYS;
-    atl += (load - atl) / ATL_DAYS;
-    const tsb = ctl - atl;
-
-    result.push({
-      date: key,
-      ctl: Math.round(ctl * 10) / 10,
-      atl: Math.round(atl * 10) / 10,
-      tsb: Math.round(tsb * 10) / 10,
-      load: Math.round(load * 10) / 10,
-    });
-  }
-
-  // Trim leading days before any training data exists
-  const firstLoadIdx = result.findIndex((dp) => dp.load > 0);
-  if (firstLoadIdx > 0) {
-    return result.slice(firstLoadIdx);
-  }
-
-  return result;
+export function wellnessToFitnessData(entries: WellnessEntry[]): FitnessDataPoint[] {
+  return entries
+    .filter((e) => e.ctl != null && e.atl != null)
+    .map((e) => ({
+      date: e.id,
+      ctl: Math.round((e.ctl ?? 0) * 10) / 10,
+      atl: Math.round((e.atl ?? 0) * 10) / 10,
+      tsb: Math.round(((e.ctl ?? 0) - (e.atl ?? 0)) * 10) / 10,
+    }));
 }
 
 function getFormZone(tsb: number): {

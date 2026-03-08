@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
-import { computeFitnessData, computeInsights } from "@/lib/fitness";
+import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
@@ -223,7 +223,7 @@ export function IntelScreen({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDelete = async (eventId: string) => { /* no-op for PB modal */ };
 
-  const fitnessData = computeFitnessData(events, 180);
+  const fitnessData = wellnessToFitnessData(wellnessEntries);
 
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
@@ -274,14 +274,14 @@ export function IntelScreen({
         />
       </div>
     ),
-    "fitness-insights":
+    "fitness-chart":
       eventsError
         ? () => (
             <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
               <ErrorCard message={eventsError} onRetry={onRetryLoad} />
             </div>
           )
-        : eventsLoading
+        : (wellnessLoading || eventsLoading)
           ? () => (
               <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
                 <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
@@ -290,27 +290,17 @@ export function IntelScreen({
                 </div>
               </div>
             )
-          : fitnessData.length > 0 && insights
+          : fitnessData.length > 0
             ? () => (
-                <div>
-                  <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
-                    Fitness Insights
-                  </label>
-                  <FitnessInsightsPanel insights={insights} />
+                <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 space-y-4">
+                  <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
+                    Fitness / Fatigue / Form
+                  </div>
+                  <FitnessChart data={fitnessData} />
+                  {insights && <FitnessInsightsPanel insights={insights} />}
                 </div>
               )
             : null,
-    "fitness-chart":
-      !eventsError && !eventsLoading && fitnessData.length > 0 && insights
-        ? () => (
-            <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
-              <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
-                Fitness / Fatigue / Form
-              </div>
-              <FitnessChart data={fitnessData} />
-            </div>
-          )
-        : null,
     "volume-trend": () => (
       <VolumeTrendChart
         events={events}

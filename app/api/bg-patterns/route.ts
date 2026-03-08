@@ -2,7 +2,7 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
 import { fetchWellnessData } from "@/lib/intervalsApi";
-import { computeFitnessData } from "@/lib/fitness";
+import { wellnessToFitnessData } from "@/lib/fitness";
 import {
   buildEnrichedRunTable,
   formatRunTable,
@@ -74,9 +74,6 @@ export async function POST(req: Request) {
   const mylifePassword = process.env.MYLIFE_PASSWORD;
   const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
 
-  // Compute fitness data from events
-  const fitnessData = computeFitnessData(events, 180);
-
   // Identify completed runs (needed by wellness, xDrip, and MyLife)
   const completedEvents = events.filter((e) => e.type === "completed");
   if (completedEvents.length === 0) {
@@ -124,6 +121,9 @@ export async function POST(req: Request) {
     const newest = completedDates.reduce((a, b) => (a > b ? a : b));
     wellness = await fetchWellnessData(intervalsApiKey, oldest, newest);
   }
+
+  // Convert wellness data to fitness points (CTL/ATL/TSB from Intervals.icu)
+  const fitnessData = wellnessToFitnessData(wellness);
 
   const xdripReadings = await getXdripReadings(session.user.email, [...neededMonths]);
 

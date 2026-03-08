@@ -20,22 +20,29 @@ describe("resolveLayout", () => {
   });
 
   it("preserves saved order", () => {
-    const saved = ["bg-categories", "phase-tracker", "volume-trend", "fitness-insights", "fitness-chart", "pace-zones", "readiness"];
+    const saved = ["bg-categories", "phase-tracker", "volume-trend", "fitness-chart", "pace-zones", "readiness"];
     const layout = resolveLayout({ widgetOrder: saved });
     // Saved order preserved, plus new widgets appended
-    expect(layout.widgetOrder.slice(0, 7)).toEqual(saved);
+    expect(layout.widgetOrder.slice(0, 6)).toEqual(saved);
   });
 
   it("appends new widgets not in saved order", () => {
-    const saved = ["phase-tracker", "fitness-insights"];
+    const saved = ["phase-tracker", "fitness-chart"];
     const layout = resolveLayout({ widgetOrder: saved });
     expect(layout.widgetOrder.slice(0, 2)).toEqual(saved);
     // Remaining widgets appended in default order
-    expect(layout.widgetOrder).toContain("fitness-chart");
     expect(layout.widgetOrder).toContain("volume-trend");
     expect(layout.widgetOrder).toContain("pace-zones");
     expect(layout.widgetOrder).toContain("bg-categories");
     expect(layout.widgetOrder.length).toBe(DEFAULT_ORDER.length);
+  });
+
+  it("strips old fitness-insights key from saved layouts", () => {
+    const saved = ["phase-tracker", "fitness-insights" as WidgetKey, "fitness-chart"];
+    const layout = resolveLayout({ widgetOrder: saved });
+    expect(layout.widgetOrder).not.toContain("fitness-insights");
+    expect(layout.widgetOrder[0]).toBe("phase-tracker");
+    expect(layout.widgetOrder[1]).toBe("fitness-chart");
   });
 
   it("removes stale keys no longer in registry", () => {
@@ -64,16 +71,16 @@ describe("resolveLayout", () => {
 });
 
 describe("moveWidget", () => {
-  const order: WidgetKey[] = ["phase-tracker", "fitness-insights", "fitness-chart"];
+  const order: WidgetKey[] = ["phase-tracker", "volume-trend", "fitness-chart"];
 
   it("moves a widget up", () => {
-    const result = moveWidget(order, "fitness-insights", "up");
-    expect(result).toEqual(["fitness-insights", "phase-tracker", "fitness-chart"]);
+    const result = moveWidget(order, "volume-trend", "up");
+    expect(result).toEqual(["volume-trend", "phase-tracker", "fitness-chart"]);
   });
 
   it("moves a widget down", () => {
-    const result = moveWidget(order, "fitness-insights", "down");
-    expect(result).toEqual(["phase-tracker", "fitness-chart", "fitness-insights"]);
+    const result = moveWidget(order, "volume-trend", "down");
+    expect(result).toEqual(["phase-tracker", "fitness-chart", "volume-trend"]);
   });
 
   it("no-op when first widget moves up", () => {
@@ -88,7 +95,7 @@ describe("moveWidget", () => {
 
   it("does not mutate original array", () => {
     const original = [...order];
-    moveWidget(order, "fitness-insights", "up");
+    moveWidget(order, "volume-trend", "up");
     expect(order).toEqual(original);
   });
 });
