@@ -140,12 +140,16 @@ export function processActivities(
 
     const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
 
-    // Calculate total carbs from fuel rate and duration
+    // Calculate total carbs from fuel rate and ESTIMATED duration (from plan, not actual).
+    // This ensures the "planned" amount matches what was prescribed pre-run.
     let totalCarbs: number | null = null;
     if (fuelRate != null) {
-      const durationMinutes = activity.moving_time ? activity.moving_time / 60 : null;
-      if (durationMinutes != null) {
-        totalCarbs = calculateWorkoutCarbs(durationMinutes, fuelRate);
+      // Prefer estimated duration from description; fall back to event API durations; last resort: actual
+      const estDur = estimateWorkoutDuration(description);
+      const eventDur = matchingEvent?.moving_time ?? matchingEvent?.duration ?? matchingEvent?.elapsed_time;
+      const estMinutes = estDur?.minutes ?? (eventDur ? eventDur / 60 : null) ?? (activity.moving_time ? activity.moving_time / 60 : null);
+      if (estMinutes != null) {
+        totalCarbs = calculateWorkoutCarbs(estMinutes, fuelRate);
       }
     }
     totalCarbs ??= extractTotalCarbs(description);
@@ -181,6 +185,7 @@ export function processActivities(
       rating: nonEmpty(activity.Rating),
       feedbackComment: nonEmpty(activity.FeedbackComment),
       activityId: activity.id,
+      pairedEventId: matchingEvent?.id,
     };
 
     activityMap.set(activity.id, calendarEvent);

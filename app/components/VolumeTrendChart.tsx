@@ -169,10 +169,10 @@ export function VolumeTrendChart({
                   if (!week) return "";
                   return `Week ${parseInt(week.replace("W", ""), 10)}`;
                 }}
-                formatter={(value?: number, name?: string) => {
+                formatter={(value, name) => {
                   if (name === "plannedTotal" || !value) return [null, null];
                   const label = name === "planned" ? "Planned" : "Actual";
-                  return [`${value} km`, label];
+                  return [`${String(value)} km`, label];
                 }}
                 itemSorter={() => 0}
               />

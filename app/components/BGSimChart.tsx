@@ -99,9 +99,9 @@ export function BGSimChart({ curve, reliable }: BGSimChartProps) {
               fontSize: 13,
             }}
             labelFormatter={(label) => `${label} min`}
-            formatter={(value?: number, name?: string) => {
-              const n = name ?? "";
-              if (value == null) return ["-", n];
+            formatter={(value, name) => {
+              const n = String(name ?? "");
+              if (value == null || typeof value !== "number") return ["-", n];
               const labels: Record<string, string> = {
                 bg: "Predicted BG",
                 bgHigh: "Upper band",

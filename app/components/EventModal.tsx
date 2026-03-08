@@ -256,6 +256,27 @@ export function EventModal({
     dispatch({ type: "RESET" });
   }, [selectedEvent.id]);
 
+  // For completed events, fetch pre-run carbs from Turso (prerun_carbs table) if not on activity.
+  // PreRunCarbsInput stores to Turso by event_id; we look it up via pairedEventId.
+  // Key the state by selectedEvent.id to auto-reset when the event changes.
+  const [dbPreRunCarbs, setDbPreRunCarbs] = useState<{ eventId: string; g: number | null; min: number | null } | null>(null);
+  const dbPreRunForThisEvent = dbPreRunCarbs?.eventId === selectedEvent.id ? dbPreRunCarbs : null;
+  useEffect(() => {
+    // Only fetch if completed activity has a paired event but no pre-run data from Intervals.icu
+    if (selectedEvent.type !== "completed" || !selectedEvent.pairedEventId) return;
+    if (selectedEvent.preRunCarbsG != null || selectedEvent.preRunCarbsMin != null) return;
+
+    let cancelled = false;
+    fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(selectedEvent.pairedEventId))}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { carbsG: number | null; minutesBefore: number | null } | null) => {
+        if (cancelled || !data) return;
+        setDbPreRunCarbs({ eventId: selectedEvent.id, g: data.carbsG, min: data.minutesBefore });
+      })
+      .catch(() => {/* ignore */});
+    return () => { cancelled = true; };
+  }, [selectedEvent.id, selectedEvent.type, selectedEvent.pairedEventId, selectedEvent.preRunCarbsG, selectedEvent.preRunCarbsMin]);
+
   const handleClose = () => {
     dispatch({ type: "START_CLOSING" });
     const isMobile = window.innerWidth < 640;
@@ -683,15 +704,15 @@ export function EventModal({
                   ) : (
                     <button
                       onClick={() => {
-                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
-                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
+                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG ?? dbPreRunForThisEvent?.g;
+                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin ?? dbPreRunForThisEvent?.min;
                         dispatch({ type: "START_EDIT_PRERUN", g: g ? String(g) : "", min: min ? String(min) : "" });
                       }}
                       className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
                     >
                       {(() => {
-                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG;
-                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin;
+                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG ?? dbPreRunForThisEvent?.g;
+                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin ?? dbPreRunForThisEvent?.min;
                         if (g && min) return `${g}g, ${min} min before`;
                         if (g) return `${g}g`;
                         return "—";

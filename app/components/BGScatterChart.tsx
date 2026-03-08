@@ -128,12 +128,10 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 }}
               />
               <Tooltip
-                content={({ payload }: { payload?: readonly { payload: unknown }[] }) => {
-                  if (!payload?.[0]) return null;
-                  const d = payload[0].payload as {
-                    category: WorkoutCategory;
-                    y: number;
-                  };
+                content={(props) => {
+                  if (props.payload.length === 0) return null;
+                  const entry = props.payload[0];
+                  const d = entry.payload as { category: WorkoutCategory; y: number };
                   return (
                     <div className="bg-[#0d0a1a] border border-[#3d2b5a] rounded px-2 py-1 text-xs text-[#e0d0f0]">
                       {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/10m
