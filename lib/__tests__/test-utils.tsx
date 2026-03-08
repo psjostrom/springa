@@ -1,13 +1,16 @@
 import React from "react";
-import { render, type RenderOptions } from "@testing-library/react";
+import { render, renderHook, type RenderOptions, type RenderHookOptions } from "@testing-library/react";
+import { Provider as JotaiProvider } from "jotai";
 import { SWRConfig } from "swr";
 
-/** Wraps every render in a fresh SWR cache to isolate tests. */
+/** Wraps every render in fresh Jotai + SWR state to isolate tests. */
 function AllProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      {children}
-    </SWRConfig>
+    <JotaiProvider>
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        {children}
+      </SWRConfig>
+    </JotaiProvider>
   );
 }
 
@@ -15,6 +18,13 @@ function customRender(ui: React.ReactElement, options?: Omit<RenderOptions, "wra
   return render(ui, { wrapper: AllProviders, ...options });
 }
 
-// Re-export everything from testing-library, override render
+function customRenderHook<Result, Props>(
+  hook: (props: Props) => Result,
+  options?: Omit<RenderHookOptions<Props>, "wrapper">,
+) {
+  return renderHook(hook, { wrapper: AllProviders, ...options });
+}
+
+// Re-export everything from testing-library, override render + renderHook
 export * from "@testing-library/react";
-export { customRender as render };
+export { customRender as render, customRenderHook as renderHook };

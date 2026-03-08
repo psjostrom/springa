@@ -41,6 +41,19 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/require-await": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@testing-library/react",
+              importNames: ["render", "renderHook"],
+              message:
+                "Import render/renderHook from @/lib/__tests__/test-utils instead — it wraps with Jotai + SWR providers.",
+            },
+          ],
+        },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

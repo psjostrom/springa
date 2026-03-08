@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
 import type { CalendarEvent } from "@/lib/types";
 

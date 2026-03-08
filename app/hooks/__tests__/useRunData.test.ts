@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook } from "@/lib/__tests__/test-utils";
 import { useRunData } from "../useRunData";
 import type { CalendarEvent } from "@/lib/types";
 import type { CachedActivity } from "@/lib/bgCacheDb";
