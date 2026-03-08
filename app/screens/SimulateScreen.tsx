@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useAtomValue } from "jotai";
 import { AlertTriangle, TrendingDown, Zap, Timer } from "lucide-react";
 import { simulateBG, type SimulationResult } from "@/lib/bgSimulation";
-import type { BGResponseModel } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
 import { BGSimChart } from "../components/BGSimChart";
-
-interface SimulateScreenProps {
-  bgModel: BGResponseModel | null;
-  bgModelLoading: boolean;
-}
+import { bgModelAtom, bgModelLoadingAtom } from "../atoms";
 
 const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
   { key: "easy", label: "Easy", color: "#06b6d4" },
@@ -18,7 +14,9 @@ const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
   { key: "interval", label: "Interval", color: "#fb923c" },
 ];
 
-export function SimulateScreen({ bgModel, bgModelLoading }: SimulateScreenProps) {
+export function SimulateScreen() {
+  const bgModel = useAtomValue(bgModelAtom);
+  const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const [category, setCategory] = useState<WorkoutCategory>("easy");
   const [durationMin, setDurationMin] = useState(45);
   const [startBG, setStartBG] = useState(9.0);

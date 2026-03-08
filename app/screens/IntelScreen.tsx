@@ -11,13 +11,32 @@ import {
   EyeOff,
   RotateCcw,
 } from "lucide-react";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  apiKeyAtom,
+  enrichedEventsAtom,
+  calendarLoadingAtom,
+  calendarErrorAtom,
+  calendarReloadAtom,
+  settingsAtom,
+  bgModelAtom,
+  bgModelLoadingAtom,
+  bgModelProgressAtom,
+  bgActivityNamesAtom,
+  wellnessEntriesAtom,
+  wellnessLoadingAtom,
+  paceCurveDataAtom,
+  paceCurveLoadingAtom,
+  widgetLayoutAtom,
+  updateWidgetLayoutAtom,
+  runBGContextsAtom,
+  phaseInfoAtom,
+  paceCalibrationAtom,
+  paceTableAtom,
+} from "../atoms";
 import type { CalendarEvent } from "@/lib/types";
-import type { CachedActivity } from "@/lib/bgCacheDb";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
-import type { BGResponseModel } from "@/lib/bgModel";
-import type { RunBGContext } from "@/lib/runBGContext";
-import { extractZoneSegments, buildCalibratedPaceTable, toPaceTable } from "@/lib/paceCalibration";
-import type { WidgetKey, WidgetLayout } from "@/lib/widgetRegistry";
+import type { WidgetKey } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
 import { fetchActivityById } from "@/lib/intervalsApi";
 import { activityToCalendarEvent } from "@/lib/calendarPipeline";
@@ -33,40 +52,8 @@ import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
 import { EventModal } from "../components/EventModal";
 import { useActivityStream } from "../hooks/useActivityStream";
-import type { WellnessEntry } from "@/lib/intervalsApi";
-import type { PaceCurveData } from "@/lib/types";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
-
-interface IntelScreenProps {
-  apiKey: string;
-  events: CalendarEvent[];
-  eventsLoading: boolean;
-  eventsError: string | null;
-  onRetryLoad: () => void;
-  phaseName: string;
-  currentWeek: number;
-  totalWeeks: number;
-  progress: number;
-  bgModel: BGResponseModel | null;
-  bgModelLoading: boolean;
-  bgModelProgress: { done: number; total: number };
-  raceDate: string;
-  raceDist?: number;
-  prefix?: string;
-  startKm?: number;
-  lthr?: number;
-  hrZones?: number[];
-  bgActivityNames: Map<string, string>;
-  cachedActivities: CachedActivity[];
-  wellnessEntries: WellnessEntry[];
-  wellnessLoading: boolean;
-  paceCurveData: PaceCurveData | null;
-  paceCurveLoading: boolean;
-  widgetLayout: WidgetLayout;
-  onWidgetLayoutChange: (layout: WidgetLayout) => void;
-  runBGContexts?: Map<string, RunBGContext>;
-}
 
 function WidgetEditBar({
   widgetKey,
@@ -117,35 +104,36 @@ function WidgetEditBar({
   );
 }
 
-export function IntelScreen({
-  apiKey,
-  events,
-  eventsLoading,
-  eventsError,
-  onRetryLoad,
-  phaseName,
-  currentWeek,
-  totalWeeks,
-  progress,
-  raceDate,
-  raceDist,
-  prefix,
-  startKm,
-  lthr,
-  hrZones,
-  bgModel,
-  bgModelLoading,
-  bgModelProgress,
-  bgActivityNames,
-  cachedActivities,
-  wellnessEntries,
-  wellnessLoading,
-  paceCurveData,
-  paceCurveLoading,
-  widgetLayout,
-  onWidgetLayoutChange,
-  runBGContexts,
-}: IntelScreenProps) {
+export function IntelScreen() {
+  const apiKey = useAtomValue(apiKeyAtom);
+  const events = useAtomValue(enrichedEventsAtom);
+  const eventsLoading = useAtomValue(calendarLoadingAtom);
+  const eventsError = useAtomValue(calendarErrorAtom);
+  const onRetryLoad = useAtomValue(calendarReloadAtom);
+  const settings = useAtomValue(settingsAtom);
+  const bgModel = useAtomValue(bgModelAtom);
+  const bgModelLoading = useAtomValue(bgModelLoadingAtom);
+  const bgModelProgress = useAtomValue(bgModelProgressAtom);
+  const bgActivityNames = useAtomValue(bgActivityNamesAtom);
+
+  const wellnessEntries = useAtomValue(wellnessEntriesAtom);
+  const wellnessLoading = useAtomValue(wellnessLoadingAtom);
+  const paceCurveData = useAtomValue(paceCurveDataAtom);
+  const paceCurveLoading = useAtomValue(paceCurveLoadingAtom);
+  const widgetLayout = useAtomValue(widgetLayoutAtom);
+  const updateLayout = useSetAtom(updateWidgetLayoutAtom);
+  const runBGContexts = useAtomValue(runBGContextsAtom);
+  const { name: phaseName, week: currentWeek, progress } = useAtomValue(phaseInfoAtom);
+  const paceCalibration = useAtomValue(paceCalibrationAtom);
+  const paceTable = useAtomValue(paceTableAtom);
+  const totalWeeks = settings?.totalWeeks ?? 18;
+  const raceDate = settings?.raceDate ?? "2026-06-13";
+  const raceDist = settings?.raceDist;
+  const prefix = settings?.prefix;
+  const startKm = settings?.startKm;
+  const lthr = settings?.lthr;
+  const hrZones = settings?.hrZones;
+
   const [editMode, setEditMode] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [fetchedEvent, setFetchedEvent] = useState<CalendarEvent | null>(null);
@@ -226,19 +214,6 @@ export function IntelScreen({
   const fitnessData = wellnessToFitnessData(wellnessEntries);
 
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
-
-  const paceCalibration = (() => {
-    if (hrZones?.length !== 5 || cachedActivities.length === 0) return null;
-    const allSegments = cachedActivities.flatMap((a) =>
-      a.pace && a.pace.length > 0 && a.hr.length > 0
-        ? extractZoneSegments(a.hr, a.pace, hrZones, a.activityId, a.activityDate ?? "")
-        : [],
-    );
-    if (allSegments.length === 0) return null;
-    return buildCalibratedPaceTable(allSegments);
-  })();
-
-  const paceTable = paceCalibration ? toPaceTable(paceCalibration) : undefined;
 
   // Widget render map — each key maps to a render function or null if data unavailable
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
@@ -365,16 +340,16 @@ export function IntelScreen({
 
   const handleMove = (key: WidgetKey, dir: "up" | "down") => {
     const newOrder = moveWidget(widgetLayout.widgetOrder, key, dir);
-    onWidgetLayoutChange({ ...widgetLayout, widgetOrder: newOrder });
+    updateLayout({ ...widgetLayout, widgetOrder: newOrder });
   };
 
   const handleToggle = (key: WidgetKey) => {
     const newHidden = toggleWidget(widgetLayout.hiddenWidgets, key);
-    onWidgetLayoutChange({ ...widgetLayout, hiddenWidgets: newHidden });
+    updateLayout({ ...widgetLayout, hiddenWidgets: newHidden });
   };
 
   const handleReset = () => {
-    onWidgetLayoutChange({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
+    updateLayout({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
   };
 
   const firstVisibleKey = editMode

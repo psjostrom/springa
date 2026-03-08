@@ -12,7 +12,8 @@ interface PhaseInfo {
 	progress: number;
 }
 
-export function usePhaseInfo(
+/** Pure computation — safe to call outside React components. */
+export function computePhaseInfo(
 	raceDate: string,
 	totalWeeks: number,
 ): PhaseInfo {

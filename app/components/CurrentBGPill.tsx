@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAtomValue } from "jotai";
+import { currentBGAtom, trendAtom, lastBGUpdateAtom } from "../atoms";
 
 export function bgColor(mmol: number): string {
   if (mmol < 3.5 || mmol > 14.0) return "#ff3366";
@@ -16,18 +18,13 @@ function relativeTime(date: Date, now: number): string {
 }
 
 interface CurrentBGPillProps {
-  currentBG: number | null;
-  trend: string | null;
-  lastUpdate: Date | null;
   onClick?: () => void;
 }
 
-export function CurrentBGPill({
-  currentBG,
-  trend,
-  lastUpdate,
-  onClick,
-}: CurrentBGPillProps) {
+export function CurrentBGPill({ onClick }: CurrentBGPillProps) {
+  const currentBG = useAtomValue(currentBGAtom);
+  const trend = useAtomValue(trendAtom);
+  const lastUpdate = useAtomValue(lastBGUpdateAtom);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {

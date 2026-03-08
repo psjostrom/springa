@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useAtomValue } from "jotai";
 import { useUnratedRun } from "../hooks/useUnratedRun";
-import type { CalendarEvent } from "@/lib/types";
+import { enrichedEventsAtom } from "../atoms";
 
-interface Props {
-  events: CalendarEvent[];
-}
-
-export function UnratedRunBanner({ events }: Props) {
+export function UnratedRunBanner() {
+  const events = useAtomValue(enrichedEventsAtom);
   const unrated = useUnratedRun(events);
   const [dismissed, setDismissed] = useState(false);
 

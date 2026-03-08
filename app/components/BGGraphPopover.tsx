@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { XdripReading } from "@/lib/xdrip";
+import { useAtomValue } from "jotai";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
+import { readingsAtom, trendAtom } from "../atoms";
 
 interface BGGraphPopoverProps {
-  readings: XdripReading[];
-  trend: string | null;
   onClose: () => void;
 }
 
@@ -23,7 +22,9 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps) {
+export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
+  const readings = useAtomValue(readingsAtom);
+  const trend = useAtomValue(trendAtom);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
   const svgRef = useRef<SVGSVGElement>(null);

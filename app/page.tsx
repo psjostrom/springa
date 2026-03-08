@@ -1,31 +1,27 @@
 "use client";
 
-import { Suspense, startTransition, useEffect, useRef, useState } from "react";
+import { Suspense, startTransition, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useModalURL } from "./hooks/useModalURL";
-import { usePaceTable } from "./hooks/usePaceTable";
-import { enrichEvents } from "@/lib/enrichEvents";
 import { useSession } from "next-auth/react";
+import { useHydrateStore } from "./hooks/useHydrateStore";
+import {
+  settingsAtom,
+  settingsLoadingAtom,
+  updateSettingsAtom,
+} from "./atoms";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { IntelScreen } from "./screens/IntelScreen";
 import { CoachScreen } from "./screens/CoachScreen";
 import { SimulateScreen } from "./screens/SimulateScreen";
-import { usePhaseInfo } from "./hooks/usePhaseInfo";
-import { useRunData } from "./hooks/useRunData";
-import { useCurrentBG } from "./hooks/useCurrentBG";
-import { useSharedCalendarData } from "./hooks/useSharedCalendarData";
-import useSWR from "swr";
-import type { WellnessEntry } from "@/lib/intervalsApi";
-import { usePaceCurves } from "./hooks/usePaceCurves";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
 import { Settings } from "lucide-react";
-import type { UserSettings } from "@/lib/settings";
-import { resolveLayout, type WidgetLayout } from "@/lib/widgetRegistry";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -76,16 +72,12 @@ const splashFallback = (
 function HomeContent() {
   const { data: session } = useSession();
 
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [settingsLoading, setSettingsLoading] = useState(true);
+  // Hydrate all Jotai atoms from data-fetching hooks
+  useHydrateStore();
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data: UserSettings) => { setSettings(data); })
-      .catch(() => { setSettings({}); })
-      .finally(() => { setSettingsLoading(false); });
-  }, []);
+  const settings = useAtomValue(settingsAtom);
+  const settingsLoading = useAtomValue(settingsLoadingAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,7 +96,7 @@ function HomeContent() {
     setActiveTab(urlTab);
   }
 
-  // Strip ?adapt from URL after render — PlannerScreen latches it before the async update
+  // Strip ?adapt from URL after render
   useEffect(() => {
     if (!autoAdapt) return;
     const params = new URLSearchParams(searchParams.toString());
@@ -125,79 +117,8 @@ function HomeContent() {
     });
   };
 
-  const apiKey = settings?.intervalsApiKey ?? "";
-
-  // Shared calendar events — single fetch for all screens
-  const { events: calendarEvents, isLoading: calendarLoading, error: calendarError, reload: calendarReload } = useSharedCalendarData(apiKey);
-  const handleReload = () => { calendarReload(); };
-
-  // Live BG from xDrip
-  const { currentBG, trend, trendSlope, lastUpdate, readings } = useCurrentBG();
-
-  // BG model — uses shared events, fetches streams independently
-  const { bgModel, bgModelLoading, bgModelProgress, bgActivityNames, runBGContexts, cachedActivities } = useRunData(apiKey, true, calendarEvents, readings);
-
-  // Wellness data — single fetch for readiness + F/F/F chart
-  const { data: wellnessEntries = [], isLoading: wellnessLoading } = useSWR<WellnessEntry[]>(
-    "/api/wellness?days=365",
-    (url: string) => fetch(url).then((r) => r.ok ? r.json() : []),
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  );
-
-  // Pace curves for best efforts widget
-  const { data: paceCurveData, isLoading: paceCurveLoading } = usePaceCurves(apiKey);
-
-  // Calibrated pace table from cached stream data
-  const paceTable = usePaceTable(cachedActivities, settings?.hrZones);
-
-  // Enrich calendar events with cached stream data so graphs render on mount
-  const enrichedEvents = enrichEvents(calendarEvents, cachedActivities);
-
-  // Phase info for progress screen
-  const raceDate = settings?.raceDate ?? "2026-06-13";
-  const totalWeeks = settings?.totalWeeks ?? 18;
-  const phaseInfo = usePhaseInfo(raceDate, totalWeeks);
-
-  // Widget layout — derived from settings, debounced save
-  const widgetLayout = resolveLayout({ widgetOrder: settings?.widgetOrder, hiddenWidgets: settings?.hiddenWidgets });
-
-  const widgetSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  const handleWidgetLayoutChange = (layout: WidgetLayout) => {
-    // Optimistic local update
-    setSettings((prev) => ({
-      ...prev,
-      widgetOrder: layout.widgetOrder,
-      hiddenWidgets: layout.hiddenWidgets,
-    }));
-    // Debounced persist
-    if (widgetSaveTimer.current) clearTimeout(widgetSaveTimer.current);
-    widgetSaveTimer.current = setTimeout(() => {
-      void fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          widgetOrder: layout.widgetOrder,
-          hiddenWidgets: layout.hiddenWidgets,
-        }),
-      });
-    }, 800);
-  };
-
-  const openBGGraph = bgGraph.open;
-  const closeBGGraph = bgGraph.close;
-
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
-
-  const updateSettings = async (partial: Partial<UserSettings>): Promise<void> => {
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(partial),
-    });
-    setSettings((prev) => ({ ...prev, ...partial }));
-  };
 
   if (settingsLoading) return splashFallback;
 
@@ -213,7 +134,7 @@ function HomeContent() {
           </button>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
-            <CurrentBGPill currentBG={currentBG} trend={trend} lastUpdate={lastUpdate} onClick={openBGGraph} />
+            <CurrentBGPill onClick={bgGraph.open} />
             <button
               onClick={() => { setShowSettings(true); }}
               className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
@@ -227,79 +148,29 @@ function HomeContent() {
 
       <div className="flex-1 overflow-hidden">
         <div className={activeTab === "planner" ? "h-full" : "hidden"}>
-          <PlannerScreen
-            apiKey={apiKey}
-            bgModel={bgModel}
-            raceDate={raceDate}
-            raceName={settings?.raceName}
-            raceDist={settings?.raceDist}
-            prefix={settings?.prefix}
-            totalWeeks={totalWeeks}
-            startKm={settings?.startKm}
-            lthr={settings?.lthr}
-            maxHr={settings?.maxHr}
-            hrZones={settings?.hrZones}
-            paceTable={paceTable}
-            events={enrichedEvents}
-            wellnessEntries={wellnessEntries}
-            runBGContexts={runBGContexts}
-            autoAdapt={autoAdapt}
-            onSyncDone={handleReload}
-          />
+          <PlannerScreen autoAdapt={autoAdapt} />
         </div>
         <div className={activeTab === "calendar" ? "h-full" : "hidden"}>
-          <CalendarScreen apiKey={apiKey} initialEvents={enrichedEvents} isLoadingInitial={calendarLoading} initialError={calendarError} onRetryLoad={handleReload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} />
+          <CalendarScreen />
         </div>
         <div className={activeTab === "intel" ? "h-full" : "hidden"}>
-          <IntelScreen
-            apiKey={apiKey}
-            events={enrichedEvents}
-            eventsLoading={calendarLoading}
-            eventsError={calendarError}
-            onRetryLoad={handleReload}
-            phaseName={phaseInfo.name}
-            currentWeek={phaseInfo.week}
-            totalWeeks={totalWeeks}
-            progress={phaseInfo.progress}
-            raceDate={raceDate}
-            raceDist={settings?.raceDist}
-            prefix={settings?.prefix}
-            startKm={settings?.startKm}
-            lthr={settings?.lthr}
-            hrZones={settings?.hrZones}
-            bgModel={bgModel}
-            bgModelLoading={bgModelLoading}
-            bgModelProgress={bgModelProgress}
-            bgActivityNames={bgActivityNames}
-            cachedActivities={cachedActivities}
-            wellnessEntries={wellnessEntries}
-            wellnessLoading={wellnessLoading}
-            paceCurveData={paceCurveData}
-            paceCurveLoading={paceCurveLoading}
-            widgetLayout={widgetLayout}
-            onWidgetLayoutChange={handleWidgetLayoutChange}
-            runBGContexts={runBGContexts}
-          />
+          <IntelScreen />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
-          <CoachScreen events={enrichedEvents} wellnessEntries={wellnessEntries} phaseInfo={phaseInfo} bgModel={bgModel} raceDate={raceDate} lthr={settings?.lthr} maxHr={settings?.maxHr} hrZones={settings?.hrZones ?? []} paceTable={paceTable} currentBG={currentBG} trendSlope={trendSlope} trendArrow={trend} lastUpdate={lastUpdate} readings={readings} runBGContexts={runBGContexts} />
+          <CoachScreen />
         </div>
         <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
-          <SimulateScreen bgModel={bgModel} bgModelLoading={bgModelLoading} />
+          <SimulateScreen />
         </div>
       </div>
 
-      <UnratedRunBanner events={enrichedEvents} />
+      <UnratedRunBanner />
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
 
-      {bgGraph.value != null && readings.length > 0 && (
-        <BGGraphPopover
-          readings={readings}
-          trend={trend}
-          onClose={closeBGGraph}
-        />
+      {bgGraph.value != null && (
+        <BGGraphPopover onClose={bgGraph.close} />
       )}
 
       {showSettings && settings && (
