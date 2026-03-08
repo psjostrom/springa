@@ -108,10 +108,15 @@ export function extractNotes(description: string): string | null {
   return noteLines.length > 0 ? noteLines.join(" ") : null;
 }
 
-/** Extract the workout structure (everything from the first section header onward). */
+/** Extract the workout structure (everything from the first section header or step line onward). */
 export function extractStructure(description: string): string {
   if (!description) return "";
-  const firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
+  // Look for first section header OR first step line (for single-step workouts)
+  let firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
+  if (firstSectionIdx === -1) {
+    // No section headers — look for first step line (starts with "- ")
+    firstSectionIdx = description.search(/(?:^|\n)-\s+\d/m);
+  }
   if (firstSectionIdx === -1) return "";
   return description.slice(firstSectionIdx).trim();
 }

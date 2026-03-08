@@ -4,6 +4,7 @@ import {
   parseWorkoutSegments,
   extractFuelStatus,
   extractNotes,
+  extractStructure,
   parseWorkoutStructure,
 } from "../descriptionParser";
 import { formatPace, getPaceForZone, getZoneLabel } from "../format";
@@ -1068,6 +1069,42 @@ Warmup
     expect(extractNotes(desc)).toBe(
       "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
     );
+  });
+});
+
+describe("extractStructure", () => {
+  it("extracts structure from structured workout", () => {
+    const desc = `Notes here.
+
+Warmup
+- 10m 68-83% LTHR (115-140 bpm)
+
+Main set
+- 30m 68-83% LTHR (115-140 bpm)
+
+Cooldown
+- 5m 68-83% LTHR (115-140 bpm)`;
+
+    const structure = extractStructure(desc);
+    expect(structure).toContain("Warmup");
+    expect(structure).toContain("Main set");
+    expect(structure).toContain("Cooldown");
+    expect(structure).not.toContain("Notes here");
+  });
+
+  it("extracts structure from single-step workout", () => {
+    const desc = `Steady easy running to build your aerobic base.
+
+- 35m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    const structure = extractStructure(desc);
+    expect(structure).toBe("- 35m 68-83% LTHR (115-140 bpm) intensity=active");
+  });
+
+  it("returns empty string for description without structure", () => {
+    expect(extractStructure("Just a note")).toBe("");
+    expect(extractStructure("")).toBe("");
   });
 });
 
