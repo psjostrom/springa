@@ -80,11 +80,12 @@ const generateQualityRun = (
   const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
 
   if (sessionType === null) {
+    // Recovery week — single-zone easy run, no warmup/cooldown structure needed
     const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} Easy ${ctx.prefix}`,
-      description: createWorkoutText(wu, [s("30m", "easy", "Easy")], cd, 1, notes),
+      description: createSimpleWorkoutText(s("45m", "easy"), notes), // 10m WU + 30m main + 5m CD
       external_id: `${ctx.prefix}-speed-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,

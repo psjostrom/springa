@@ -478,6 +478,32 @@ Cooldown
     expect(parseWorkoutSegments("")).toEqual([]);
   });
 
+  // --- SINGLE-STEP FORMAT ---
+
+  it("parses single-step workout (no section headers)", () => {
+    const desc = `Steady easy running to build your aerobic base.
+
+- 35m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    const segments = parseWorkoutSegments(desc);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].duration).toBe(35);
+    expect(segments[0].intensity).toBe(75.5); // (68+83)/2
+    expect(segments[0].estimated).toBe(false);
+  });
+
+  it("parses bonus run single-step workout", () => {
+    const desc = `The Saturday bonus. Just a gift to future you.
+
+- 45m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    const segments = parseWorkoutSegments(desc);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].duration).toBe(45);
+  });
+
   it("parses distance intervals with decimal km and step labels", () => {
     const desc = `Track-style reps.
 
@@ -906,6 +932,35 @@ Cooldown
     expect(parseWorkoutStructure("", DEFAULT_LTHR, testHrZones)).toEqual([]);
   });
 
+  // --- SINGLE-STEP FORMAT ---
+
+  it("parses single-step workout (no section headers)", () => {
+    const desc = `Steady easy running to build your aerobic base.
+
+- 35m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].name).toBe("Main set");
+    expect(sections[0].steps).toHaveLength(1);
+    expect(sections[0].steps[0].duration).toBe("35m");
+    expect(sections[0].steps[0].zone).toBe("easy");
+    expect(sections[0].steps[0].bpmRange).toBe("115-140 bpm");
+  });
+
+  it("parses single-step workout with bonus run notes", () => {
+    const desc = `The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens.
+
+- 45m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].name).toBe("Main set");
+    expect(sections[0].steps[0].duration).toBe("45m");
+  });
+
   it("parses distance intervals with decimal km values", () => {
     const desc = `Track-style reps.
 
@@ -991,6 +1046,28 @@ Warmup
 
   it("returns null for description without sections", () => {
     expect(extractNotes("Just a note")).toBeNull();
+  });
+
+  // --- SINGLE-STEP FORMAT ---
+
+  it("extracts notes from single-step workout", () => {
+    const desc = `Steady easy running to build your aerobic base.
+
+- 35m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe("Steady easy running to build your aerobic base.");
+  });
+
+  it("extracts multi-line notes from single-step workout", () => {
+    const desc = `The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.
+
+- 45m 68-83% LTHR (115-140 bpm) intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe(
+      "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
+    );
   });
 });
 
