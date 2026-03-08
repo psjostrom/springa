@@ -154,6 +154,7 @@ export interface CalendarEvent {
   rating?: string | null; // athlete feedback rating (from Intervals.icu custom field)
   feedbackComment?: string | null; // athlete feedback comment (from Intervals.icu custom field)
   activityId?: string; // raw Intervals.icu activity ID for API calls
+  pairedEventId?: number; // Intervals.icu event ID this activity was paired with
 }
 
 export type WorkoutCategory = "easy" | "long" | "interval";
