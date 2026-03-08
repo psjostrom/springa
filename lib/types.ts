@@ -174,10 +174,11 @@ export interface BestEffort {
   pace: number;          // min/km
   activityId?: string;
   activityName?: string;
+  activityDate?: string; // ISO date string
 }
 
 export interface PaceCurveData {
   bestEfforts: BestEffort[];
-  longestRun: { distance: number; activityId: string; activityName: string } | null;
+  longestRun: { distance: number; activityId: string; activityName: string; activityDate?: string } | null;
   curve: { distance: number; pace: number }[];  // for chart
 }

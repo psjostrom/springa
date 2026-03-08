@@ -272,6 +272,7 @@ function HomeContent() {
             paceCurveLoading={paceCurveLoading}
             widgetLayout={widgetLayout}
             onWidgetLayoutChange={handleWidgetLayoutChange}
+            runBGContexts={runBGContexts}
           />
         </div>
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>

@@ -651,7 +651,7 @@ export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | n
 
       const pace = (timeSeconds / meters) * 1000 / 60; // min/km
       const activityId = findActivityIdAtDistance(distances, activityIds, meters);
-      const activityName = activityId != null ? data.activities[activityId]?.name : undefined;
+      const activity = activityId != null ? data.activities[activityId] : undefined;
 
       bestEfforts.push({
         distance: meters,
@@ -659,7 +659,8 @@ export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | n
         timeSeconds,
         pace,
         activityId,
-        activityName,
+        activityName: activity?.name,
+        activityDate: activity?.start_date_local,
       });
     }
 
@@ -673,6 +674,7 @@ export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | n
           distance: activity.distance,
           activityId: id,
           activityName: activity.name,
+          activityDate: activity.start_date_local,
         };
       }
     }
