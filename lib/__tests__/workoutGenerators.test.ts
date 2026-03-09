@@ -79,6 +79,8 @@ describe("generatePlan", () => {
     const plan = generate();
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
+      // Club runs have no HR targets — workout varies week to week
+      if (event.name.includes("Club Run")) continue;
       expect(event.description).toContain("LTHR");
       expect(event.description).toContain("bpm");
     }
@@ -87,8 +89,13 @@ describe("generatePlan", () => {
   it("sets fuelRate on all events instead of embedding in descriptions", () => {
     const plan = generate();
     for (const event of plan) {
-      expect(event.fuelRate).toBeDefined();
-      expect(event.fuelRate).toBeGreaterThan(0);
+      // Club runs have no fuelRate — intensity varies, user estimates
+      if (event.name.includes("Club Run")) {
+        expect(event.fuelRate).toBeUndefined();
+      } else {
+        expect(event.fuelRate).toBeDefined();
+        expect(event.fuelRate).toBeGreaterThan(0);
+      }
       // Descriptions should NOT contain fuel text
       expect(event.description).not.toContain("FUEL PER 10:");
       expect(event.description).not.toContain("TOTAL:");
@@ -99,6 +106,8 @@ describe("generatePlan", () => {
     const plan = generateFull();
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
+      // Club runs have no structured steps — just a duration marker
+      if (event.name.includes("Club Run")) continue;
       const stepLines = event.description.split("\n").filter((l: string) => l.startsWith("- "));
       expect(stepLines.length).toBeGreaterThan(0);
       for (const line of stepLines) {
@@ -161,12 +170,18 @@ describe("generatePlan", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("all events have start_date_local with clean time (12:00)", () => {
+  it("all events have start_date_local with clean time (12:00 or 18:30 for club)", () => {
     const plan = generate();
     for (const event of plan) {
       const date = event.start_date_local;
-      expect(date.getHours()).toBe(12);
-      expect(date.getMinutes()).toBe(0);
+      const isClubRun = event.name.toLowerCase().includes("club");
+      if (isClubRun) {
+        expect(date.getHours()).toBe(18);
+        expect(date.getMinutes()).toBe(30);
+      } else {
+        expect(date.getHours()).toBe(12);
+        expect(date.getMinutes()).toBe(0);
+      }
       expect(date.getSeconds()).toBe(0);
     }
   });

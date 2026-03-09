@@ -5,6 +5,7 @@ export const DEFAULT_FUEL: Record<WorkoutCategory, number> = {
   easy: 60,
   long: 60,
   interval: 60,
+  club: 60,
 };
 
 /**
