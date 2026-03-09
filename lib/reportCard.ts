@@ -120,6 +120,9 @@ export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
   const total = z1 + z2 + z3 + z4 + z5;
   if (total === 0) return null;
 
+  // Club runs have no target zone — workout varies week to week
+  if (event.category === "club") return null;
+
   // Determine target zone based on category
   const cat = event.category;
   let targetSeconds: number;

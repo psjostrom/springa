@@ -267,6 +267,45 @@ const generateBonusRun = (
   };
 };
 
+const generateClubRun = (
+  ctx: PlanContext,
+  weekIdx: number,
+  weekStart: Date,
+): WorkoutEvent | null => {
+  const date = addDays(weekStart, 3); // Thursday
+  if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
+    return null;
+  if (isSameDay(date, ctx.raceDate)) return null;
+
+  const weekNum = weekIdx + 1;
+  const isRaceWeek = weekNum === ctx.totalWeeks;
+  const isTaper = weekNum >= ctx.totalWeeks - 1;
+  const isRecoveryWeek = weekNum % 4 === 0;
+
+  // Skip club run on recovery weeks, taper, and race week (same as speed sessions)
+  if (isRaceWeek || isTaper || isRecoveryWeek) return null;
+
+  // No HR targets or fuel rate — club sessions vary week to week (easy, intervals, hills, etc.)
+  // User should estimate fuel based on expected intensity.
+  const description = [
+    "Trail running club session — workout varies week to week.",
+    "Estimate fuel based on expected intensity: ~60g/h if easy, ~30g/h if hard intervals.",
+    "",
+    "- 60m",
+    "",
+  ].join("\n");
+
+  return {
+    start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
+    name: `W${weekNum.toString().padStart(2, "0")} Club Run ${ctx.prefix}`,
+    description,
+    external_id: `${ctx.prefix}-club-${weekNum}`,
+    type: "Run",
+    // No fuelRate — intensity varies, user should estimate based on expected workout
+    excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
+  };
+};
+
 const generateLongRun = (
   ctx: PlanContext,
   weekIdx: number,
@@ -411,6 +450,7 @@ export function generatePlan(
     return [
       generateEasyRun(ctx, i, weekStart),
       generateQualityRun(ctx, i, weekStart),
+      generateClubRun(ctx, i, weekStart),
       generateBonusRun(ctx, i, weekStart),
       generateLongRun(ctx, i, weekStart),
     ].filter((e): e is WorkoutEvent => e !== null);
@@ -453,6 +493,7 @@ export function generateFullPlan(
     return [
       generateEasyRun(ctx, i, weekStart),
       generateQualityRun(ctx, i, weekStart),
+      generateClubRun(ctx, i, weekStart),
       generateBonusRun(ctx, i, weekStart),
       generateLongRun(ctx, i, weekStart),
     ].filter((e): e is WorkoutEvent => e !== null);

@@ -7,6 +7,14 @@ export interface WorkoutEvent {
   type: "Run";
   fuelRate?: number; // g/h (carbs per hour)
   distance?: number; // km (first-class; generators populate this for long runs)
+  /**
+   * Exclude from planned volume calculations.
+   * Event is still synced to Intervals.icu and appears in the calendar,
+   * but VolumeTrendChart won't count it toward weekly planned km.
+   * Used for mutually exclusive alternatives (e.g., club run vs speed session
+   * on the same day — only one will be completed, so only count the primary).
+   */
+  excludeFromPlan?: boolean;
 }
 
 export interface AnalysisResult {
@@ -135,7 +143,7 @@ export interface CalendarEvent {
   name: string;
   description: string;
   type: "completed" | "planned" | "race";
-  category: "long" | "interval" | "easy" | "race" | "other";
+  category: "long" | "interval" | "easy" | "club" | "race" | "other";
   distance?: number;
   duration?: number;
   avgHr?: number;
@@ -158,7 +166,7 @@ export interface CalendarEvent {
   pairedEventId?: number; // Intervals.icu event ID this activity was paired with
 }
 
-export type WorkoutCategory = "easy" | "long" | "interval";
+export type WorkoutCategory = "easy" | "long" | "interval" | "club";
 
 export type SpeedSessionType =
   | "short-intervals"

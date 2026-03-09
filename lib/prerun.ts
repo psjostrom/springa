@@ -33,29 +33,17 @@ function worst(a: ReadinessLevel, b: ReadinessLevel): ReadinessLevel {
   return rank[a] >= rank[b] ? a : b;
 }
 
-function assessBGLevel(bg: number): { level: ReadinessLevel; reasons: string[]; suggestions: string[] } {
+function assessBGLevel(bg: number): { level: ReadinessLevel; reasons: string[] } {
   if (bg < 4.5) {
-    return {
-      level: "wait",
-      reasons: ["BG too low to start"],
-      suggestions: ["Eat 15-20g fast carbs and wait until BG climbs above 7"],
-    };
+    return { level: "wait", reasons: ["BG too low to start"] };
   }
   if (bg < 7.0) {
-    return {
-      level: "caution",
-      reasons: ["BG on the low side"],
-      suggestions: ["Have 15-20g carbs and give it 10 minutes"],
-    };
+    return { level: "caution", reasons: ["BG on the low side"] };
   }
   if (bg <= BG_HIGH) {
-    return { level: "ready", reasons: [], suggestions: [] };
+    return { level: "ready", reasons: [] };
   }
-  return {
-    level: "caution",
-    reasons: ["BG high — expect a steeper drop"],
-    suggestions: [],
-  };
+  return { level: "caution", reasons: ["BG high — expect a steeper drop"] };
 }
 
 function assessTrendSlope(slope: number | null): { level: ReadinessLevel; reasons: string[]; suggestions: string[] } {
@@ -144,8 +132,15 @@ export function formatGuidancePush(
     wait: "Hold on",
   };
   const title = `${labels[guidance.level]} — ${currentBG.toFixed(1)} mmol/L`;
-  const parts = [...guidance.reasons, ...guidance.suggestions].slice(0, 3);
-  const body = parts.length > 0 ? parts.join(". ") : "Check your pre-run status";
+
+  // Prioritize actionable suggestions over reasons in push notification
+  // Format: [first suggestion] + [first reason] + [second suggestion if room]
+  const parts: string[] = [];
+  if (guidance.suggestions.length > 0) parts.push(guidance.suggestions[0]);
+  if (guidance.reasons.length > 0) parts.push(guidance.reasons[0]);
+  if (guidance.suggestions.length > 1) parts.push(guidance.suggestions[1]);
+
+  const body = parts.length > 0 ? parts.slice(0, 3).join(". ") : "Check your pre-run status";
   return { title, body };
 }
 
@@ -157,41 +152,93 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
   let level = worst(worst(bg.level, trend.level), model.level);
   let targetFuel = model.targetFuel;
 
-  // Aggregate reasons and suggestions
-  const reasons = [...bg.reasons, ...trend.reasons, ...model.reasons];
-  const suggestions = [...bg.suggestions, ...trend.suggestions, ...model.suggestions];
+  // --- Pre-run carb calculation (consolidated) ---
+  // These factors contribute to pre-run carb needs:
+  // 1. Low BG (< 7.0): need carbs to raise BG
+  // 2. Compound rule (< 8 AND falling): urgent carb + wait (supersedes low BG)
+  // 3. IOB: additional carbs to counteract active insulin (~12g per 1u)
 
-  // Compound rule: BG < 8 AND falling → hard "wait"
-  // Cross-run patterns showed this combo produced every near-hypo and actual hypo.
-  if (input.currentBG < 8.0 && input.trendSlope !== null && input.trendSlope < -0.3) {
+  let preRunCarbs = 0;
+  const preRunFactors: string[] = [];
+  let waitForTrend = false;
+
+  // Compound rule: BG < 8 AND falling → highest priority, requires wait
+  // This supersedes individual "low BG" and "trending down" reasons
+  const compoundTriggered = input.currentBG < 8.0 && input.trendSlope !== null && input.trendSlope < -0.3;
+
+  // Build reasons array
+  // When compound triggers, skip "BG on the low side" (redundant with compound's "low + falling")
+  // but keep trend reasons since "BG dropping fast" is more severe info
+  const reasons: string[] = [];
+  if (compoundTriggered) {
     level = "wait";
-    reasons.unshift("BG below 8 and falling — high hypo risk");
-    suggestions.unshift("Eat 15-20g fast carbs and wait for an upward trend");
+    reasons.push("BG below 8 and falling — high hypo risk");
+    preRunCarbs = 20; // upper bound of 15-20g
+    preRunFactors.push("low + falling");
+    waitForTrend = true;
+    // Skip bg.reasons (redundant), but keep trend.reasons (may contain "dropping fast")
+    // Filter out "BG trending down" since compound covers it, but keep "BG dropping fast"
+    const relevantTrendReasons = trend.reasons.filter((r) => r !== "BG trending down");
+    reasons.push(...relevantTrendReasons);
+  } else {
+    reasons.push(...bg.reasons, ...trend.reasons);
+    if (input.currentBG < 4.5) {
+      // Actual hypo - use upper bound (20g) and urgent wording
+      preRunCarbs = 20;
+      preRunFactors.push("hypo");
+      waitForTrend = true; // Can't start in hypo, must wait for recovery
+    } else if (input.currentBG < 7.0) {
+      preRunCarbs = 15;
+      preRunFactors.push("low BG");
+    }
+  }
+  // Model reasons always relevant (prediction info)
+  reasons.push(...model.reasons);
+
+  // IOB: additional carbs that stack on top
+  // ~12g per 1u IOB during exercise, rounded to 5g increments
+  if (input.iob != null && input.iob >= 0.5) {
+    level = worst(level, "caution");
+    reasons.push(`${input.iob.toFixed(1)}u IOB — BG will keep dropping`);
+    const iobCarbs = Math.round((input.iob * 12) / 5) * 5;
+    preRunCarbs += iobCarbs;
+    preRunFactors.push(`${input.iob.toFixed(1)}u IOB`);
   }
 
   // Fatigue adjustment: TSB < -4 → bump fuel suggestion
-  // Drops are nearly twice as steep on heavily fatigued days.
   let fatigueBump = 0;
   if (input.currentTsb != null && input.currentTsb < -4) {
     reasons.push("High fatigue — expect steeper BG drops");
     if (targetFuel !== null) {
-      fatigueBump = Math.round(targetFuel * 0.2); // ~20% more, roughly 10-15g/h
+      fatigueBump = Math.round(targetFuel * 0.2);
       targetFuel += fatigueBump;
     }
   }
 
-  // IOB rule: active insulin means BG will keep dropping
-  if (input.iob != null && input.iob >= 0.5) {
-    level = worst(level, "caution");
-    reasons.push(`${input.iob.toFixed(1)}u IOB — BG will keep dropping`);
-    suggestions.push("Pre-load 15-20g carbs before starting");
+  // --- Build suggestions ---
+  const suggestions: string[] = [];
+
+  // 1. Pre-run carb suggestion (consolidated)
+  if (preRunCarbs > 0) {
+    const factorStr = preRunFactors.join(" + ");
+    if (waitForTrend) {
+      suggestions.push(`Eat ${preRunCarbs}g carbs (${factorStr}) and wait for upward trend`);
+    } else {
+      suggestions.push(`Have ${preRunCarbs}g carbs (${factorStr}) before starting`);
+    }
   }
 
-  // Fuel suggestion — generated once, after all adjustments
+  // 2. Non-carb trend suggestions (wait for reading, hold off)
+  suggestions.push(...trend.suggestions);
+
+  // 3. Model forecast (informational)
+  suggestions.push(...model.suggestions);
+
+  // 4. Fuel suggestion (during-run rate) — always include if available
   if (targetFuel !== null) {
     const fuelText = fatigueBump > 0
-      ? `Take ${targetFuel}g carbs/h (↑${fatigueBump}g for fatigue)`
-      : `Take ${targetFuel}g carbs/h`;
+      ? `During run: ${targetFuel}g/h (↑${fatigueBump}g for fatigue)`
+      : `During run: ${targetFuel}g/h`;
     suggestions.push(fuelText);
   }
 
@@ -202,8 +249,8 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
 
   return {
     level,
-    reasons: reasons.slice(0, 3),
-    suggestions: suggestions.slice(0, 3),
+    reasons: reasons.slice(0, 4),
+    suggestions, // No slice — all suggestions are actionable/important
     predictedDrop: model.predictedDrop,
     targetFuel,
     estimatedBGAt30m: model.estimatedBGAt30m,
