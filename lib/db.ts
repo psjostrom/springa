@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS user_settings (
   prefix         TEXT,
   total_weeks    INTEGER,
   start_km       REAL,
-  widget_order   TEXT,
-  hidden_widgets TEXT
+  widget_order     TEXT,
+  hidden_widgets   TEXT,
+  bg_chart_window  INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_readings (

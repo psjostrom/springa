@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
-import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom } from "../atoms";
+import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom } from "../atoms";
 import { PreRunReadiness } from "./PreRunReadiness";
 import type { WorkoutCategory } from "@/lib/types";
 
@@ -31,6 +31,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const trendSlope = useAtomValue(trendSlopeAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const events = useAtomValue(enrichedEventsAtom);
+  const settings = useAtomValue(settingsAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
 
   // Find today's planned workout (if any)
   const todaysWorkout = useMemo(() => {
@@ -44,7 +46,9 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   }, [events]);
 
   const WINDOWS = [1, 3, 6, 12, 24] as const;
-  const [windowIdx, setWindowIdx] = useState(1); // default 3h
+  const savedWindow = settings?.bgChartWindow;
+  const initialIdx = savedWindow ? WINDOWS.indexOf(savedWindow as typeof WINDOWS[number]) : -1;
+  const [windowIdx, setWindowIdx] = useState(initialIdx >= 0 ? initialIdx : 1);
   const [showWindowPicker, setShowWindowPicker] = useState(false);
   const windowHours = WINDOWS[windowIdx];
 
@@ -210,7 +214,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 {WINDOWS.map((w, i) => (
                   <button
                     key={w}
-                    onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); }}
+                    onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); void updateSettings({ bgChartWindow: w }); }}
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
                         ? "bg-[#2a1f3d] text-[#00ffff]"
