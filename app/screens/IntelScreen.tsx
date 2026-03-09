@@ -38,8 +38,6 @@ import {
   bgActivityNamesAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
-  paceCurveDataAtom,
-  paceCurveLoadingAtom,
   widgetLayoutAtom,
   updateWidgetLayoutAtom,
   runBGContextsAtom,
@@ -165,8 +163,6 @@ export function IntelScreen() {
 
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const wellnessLoading = useAtomValue(wellnessLoadingAtom);
-  const paceCurveData = useAtomValue(paceCurveDataAtom);
-  const paceCurveLoading = useAtomValue(paceCurveLoadingAtom);
   const widgetLayout = useAtomValue(widgetLayoutAtom);
   const updateLayout = useSetAtom(updateWidgetLayoutAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
@@ -332,18 +328,7 @@ export function IntelScreen() {
       paceCalibration && lthr
         ? () => <PaceCalibrationCard calibration={paceCalibration} />
         : null,
-    "pace-curves": paceCurveLoading
-      ? () => (
-          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              <span className="text-sm">Loading pace curves...</span>
-            </div>
-          </div>
-        )
-      : paceCurveData
-        ? () => <PaceCurvesWidget data={paceCurveData} onActivitySelect={handleActivitySelect} />
-        : null,
+    "pace-curves": () => <PaceCurvesWidget onActivitySelect={handleActivitySelect} />,
     "bg-categories": bgModelLoading
       ? () => (
           <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">

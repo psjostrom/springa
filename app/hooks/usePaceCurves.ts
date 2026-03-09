@@ -10,13 +10,14 @@ export interface PaceCurvesHookResult {
   error: Error | null;
 }
 
-export function usePaceCurves(apiKey: string): PaceCurvesHookResult {
+export function usePaceCurves(apiKey: string, curveId = "all"): PaceCurvesHookResult {
   const { data, error, isLoading } = useSWR<PaceCurveData | null, Error>(
-    apiKey ? ["pace-curves", apiKey] : null,
-    () => fetchPaceCurves(apiKey),
+    apiKey ? ["pace-curves", apiKey, curveId] : null,
+    () => fetchPaceCurves(apiKey, curveId),
     {
       revalidateOnFocus: false,
       dedupingInterval: 60_000,
+      keepPreviousData: true,
     }
   );
 

@@ -1,10 +1,23 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useAtomValue } from "jotai";
+import { apiKeyAtom } from "../atoms";
+import { usePaceCurves } from "../hooks/usePaceCurves";
 import type { PaceCurveData } from "@/lib/types";
 
+const TIME_WINDOWS = [
+  { label: "1m", curveId: "30d" },
+  { label: "3m", curveId: "90d" },
+  { label: "6m", curveId: "180d" },
+  { label: "1y", curveId: "1y" },
+  { label: "All", curveId: "all" },
+] as const;
+
+type TimeWindowOption = (typeof TIME_WINDOWS)[number];
+
 interface PaceCurvesWidgetProps {
-  data: PaceCurveData;
+  data?: PaceCurveData;
   onActivitySelect?: (activityId: string) => void;
 }
 
@@ -33,13 +46,27 @@ function formatDistance(meters: number): string {
   return `${meters}m`;
 }
 
-export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetProps) {
+export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurvesWidgetProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left?: number; right?: number } | null>(null);
+  const [timeWindow, setTimeWindow] = useState<TimeWindowOption>(TIME_WINDOWS[4]); // Default to "All"
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const { bestEfforts, longestRun, curve } = data;
+  const apiKey = useAtomValue(apiKeyAtom);
+  const { data: fetchedData, isLoading } = usePaceCurves(apiKey, timeWindow.curveId);
+
+  const data = fetchedData ?? propData;
+  if (!data) {
+    return isLoading ? (
+      <div className="text-[#b8a5d4] text-sm">Loading pace curves...</div>
+    ) : null;
+  }
+
+  const { bestEfforts, longestRun, curve: rawCurve } = data;
+
+  // Filter curve to start at 1km (ignore sub-1km data points)
+  const curve = rawCurve.filter((p) => p.distance >= 1000);
 
   // Chart dimensions
   const width = 600;
@@ -48,23 +75,16 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Use log scale for distance (X), linear for pace (Y)
-  const minDist = curve.length > 0 ? Math.max(curve[0].distance, 100) : 100;
+  // X-axis: linear scale starting at 1km
+  const minDist = 1000;
   const maxDist = curve.length > 0 ? curve[curve.length - 1].distance : 10000;
 
-  const paces = curve.map((p) => p.pace);
-  const minPace = Math.min(...paces);
-  const maxPace = Math.max(...paces);
-  const paceRange = maxPace - minPace || 1;
-  const yMin = minPace - paceRange * 0.1;
-  const yMax = maxPace + paceRange * 0.1;
+  // Y-axis: fixed scale (4:00 to 8:00 min/km) for consistent comparison
+  const yMin = 4.0;
+  const yMax = 8.0;
 
-  const scaleX = (d: number) => {
-    const logMin = Math.log10(minDist);
-    const logMax = Math.log10(maxDist);
-    const logD = Math.log10(Math.max(d, minDist));
-    return padding.left + ((logD - logMin) / (logMax - logMin)) * chartWidth;
-  };
+  const scaleX = (d: number) =>
+    padding.left + ((d - minDist) / (maxDist - minDist)) * chartWidth;
 
   const scaleY = (p: number) =>
     padding.top + ((p - yMin) / (yMax - yMin)) * chartHeight;
@@ -74,10 +94,11 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
     .map((pt, i) => `${i === 0 ? "M" : "L"} ${scaleX(pt.distance)} ${scaleY(pt.pace)}`)
     .join(" ");
 
-  // X-axis ticks (log scale: 1km, 5km, 10km, etc.)
-  const xTickValues = [1000, 2000, 5000, 10000, 20000, 42195].filter(
-    (d) => d >= minDist && d <= maxDist
-  );
+  // X-axis ticks: every 1km
+  const xTickValues: number[] = [];
+  for (let km = 1; km * 1000 <= maxDist; km++) {
+    xTickValues.push(km * 1000);
+  }
 
   // Y-axis ticks
   const yTickCount = 4;
@@ -94,12 +115,9 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
     const svgX = (x / rect.width) * width;
     if (svgX < padding.left || svgX > width - padding.right) return null;
 
-    // Reverse the log scale to find distance
-    const logMin = Math.log10(minDist);
-    const logMax = Math.log10(maxDist);
+    // Reverse the linear scale to find distance
     const frac = (svgX - padding.left) / chartWidth;
-    const logD = logMin + frac * (logMax - logMin);
-    const targetDist = Math.pow(10, logD);
+    const targetDist = minDist + frac * (maxDist - minDist);
 
     // Find closest curve point
     let bestIdx = 0;
@@ -184,6 +202,25 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
       {/* Pace Curve Chart */}
       {curve.length > 0 && (
         <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
+          {/* Time Window Selector */}
+          <div className="flex gap-1 mb-3">
+            {TIME_WINDOWS.map((tw) => (
+              <button
+                key={tw.label}
+                onClick={() => { setTimeWindow(tw); }}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  timeWindow.label === tw.label
+                    ? "bg-[#3d2b5a] text-white"
+                    : "text-[#8b7ba8] hover:text-white"
+                }`}
+              >
+                {tw.label}
+              </button>
+            ))}
+            {isLoading && (
+              <span className="text-xs text-[#8b7ba8] ml-2 self-center">Loading...</span>
+            )}
+          </div>
           <div ref={wrapperRef} className="relative">
             {hoverPoint && tooltipPos && (
               <div
