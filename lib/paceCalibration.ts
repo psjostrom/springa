@@ -196,6 +196,29 @@ export function buildCalibratedPaceTable(
 }
 
 /**
+ * Filter outliers using IQR method.
+ * Returns indices of non-outlier values.
+ */
+function filterOutliersIQR(values: number[]): Set<number> {
+  if (values.length < 4) return new Set(values.map((_, i) => i));
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+
+  const validIndices = new Set<number>();
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] >= lower && values[i] <= upper) {
+      validIndices.add(i);
+    }
+  }
+  return validIndices;
+}
+
+/**
  * Compute pace trend for a specific zone over time.
  * Returns pace change per day (negative = getting faster).
  * Returns null if insufficient data.
@@ -219,9 +242,16 @@ export function computeZonePaceTrend(
 
   if (dated.length < 3) return null;
 
+  // Filter pace outliers using IQR
+  const paces = dated.map((s) => s.avgPace);
+  const validIndices = filterOutliersIQR(paces);
+  const filtered = dated.filter((_, i) => validIndices.has(i));
+
+  if (filtered.length < 3) return null;
+
   // Linear regression: x = days since first, y = pace
-  const firstDay = dated[0].dateMs;
-  const points = dated.map((s) => ({
+  const firstDay = filtered[0].dateMs;
+  const points = filtered.map((s) => ({
     x: (s.dateMs - firstDay) / (24 * 60 * 60 * 1000),
     y: s.avgPace,
   }));
@@ -229,7 +259,7 @@ export function computeZonePaceTrend(
   const reg = linearRegression(points);
 
   // Only report trend if there's enough time span (at least 14 days)
-  const spanDays = (dated[dated.length - 1].dateMs - firstDay) / (24 * 60 * 60 * 1000);
+  const spanDays = (filtered[filtered.length - 1].dateMs - firstDay) / (24 * 60 * 60 * 1000);
   if (spanDays < 14) return null;
 
   return reg.slope; // min/km per day — negative means getting faster

@@ -8,7 +8,6 @@ import { formatPace } from "@/lib/format";
 
 interface PaceCalibrationCardProps {
   calibration: CalibratedPaceTable;
-  lthr: number;
 }
 
 const ZONE_META: { zone: HRZoneName; label: string; color: string }[] = [
@@ -30,7 +29,7 @@ function TrendArrow({ slope }: { slope: number | null }) {
   return <span className="text-[#ff3366]">↑</span>;
 }
 
-export function PaceCalibrationCard({ calibration, lthr }: PaceCalibrationCardProps) {
+export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
   const { table, segments, zoneSummaries, hardExtrapolated } = calibration;
 
   return (

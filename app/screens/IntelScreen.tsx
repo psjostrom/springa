@@ -329,7 +329,7 @@ export function IntelScreen() {
     ),
     "pace-zones":
       paceCalibration && lthr
-        ? () => <PaceCalibrationCard calibration={paceCalibration} lthr={lthr} />
+        ? () => <PaceCalibrationCard calibration={paceCalibration} />
         : null,
     "pace-curves": paceCurveLoading
       ? () => (
