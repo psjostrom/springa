@@ -15,13 +15,26 @@ export interface CachedActivity {
   activityDate?: string;
 }
 
-export async function getBGCache(email: string): Promise<CachedActivity[]> {
-  const result = await db().execute({
-    sql: `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
-                 pace, cadence, altitude, activity_date
-          FROM bg_cache WHERE email = ?`,
-    args: [email],
-  });
+export async function getBGCache(
+  email: string,
+  options?: { since?: Date },
+): Promise<CachedActivity[]> {
+  const { since } = options ?? {};
+  // When `since` is specified, rows with NULL activity_date are excluded (legacy data).
+  // Pass no `since` to get all rows including legacy.
+  const sql = since
+    ? `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
+              pace, cadence, altitude, activity_date
+       FROM bg_cache WHERE email = ? AND activity_date >= ?
+       ORDER BY activity_date DESC`
+    : `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
+              pace, cadence, altitude, activity_date
+       FROM bg_cache WHERE email = ?
+       ORDER BY activity_date DESC`;
+  const args = since
+    ? [email, since.toISOString().slice(0, 10)]
+    : [email];
+  const result = await db().execute({ sql, args });
   return result.rows.map((row) => ({
     activityId: row.activity_id as string,
     category: row.category as CachedActivity["category"],
