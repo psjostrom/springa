@@ -25,7 +25,10 @@ vi.mock("next/navigation", () => ({
 
 // --- next-auth/react mock ---
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { user: { email: "test@example.com" } }, status: "authenticated" }),
+  useSession: () => ({
+    data: { user: { email: "test@example.com" } },
+    status: "authenticated",
+  }),
   signOut: vi.fn(),
   SessionProvider: ({ children }: React.PropsWithChildren) => children,
 }));
@@ -43,7 +46,11 @@ vi.mock("recharts", () => {
       for (const [k, v] of Object.entries(props)) {
         if (k.startsWith("data-") || k.startsWith("aria-")) htmlProps[k] = v;
       }
-      return React.createElement("div", { "data-testid": `mock-${name}`, ref, ...htmlProps }, children);
+      return React.createElement(
+        "div",
+        { "data-testid": `mock-${name}`, ref, ...htmlProps },
+        children,
+      );
     });
     Mock.displayName = `Mock${name}`;
     return Mock;
@@ -67,7 +74,10 @@ vi.mock("recharts", () => {
 vi.mock("lucide-react", () => {
   function icon(name: string) {
     function MockIcon(props: Record<string, unknown>) {
-      return React.createElement("span", { "data-testid": `icon-${name}`, ...props });
+      return React.createElement("span", {
+        "data-testid": `icon-${name}`,
+        ...props,
+      });
     }
     MockIcon.displayName = name;
     return MockIcon;
@@ -104,6 +114,9 @@ vi.mock("lucide-react", () => {
     Eye: icon("Eye"),
     EyeOff: icon("EyeOff"),
     Check: icon("Check"),
+    X: icon("X"),
+    LogOut: icon("LogOut"),
+    Bell: icon("Bell"),
   };
 });
 
@@ -114,10 +127,18 @@ Object.defineProperty(window, "innerWidth", { value: 1024, writable: true });
 const localStorageMap = new Map<string, string>();
 const localStorageMock: Storage = {
   getItem: (key: string) => localStorageMap.get(key) ?? null,
-  setItem: (key: string, value: string) => { localStorageMap.set(key, value); },
-  removeItem: (key: string) => { localStorageMap.delete(key); },
-  clear: () => { localStorageMap.clear(); },
-  get length() { return localStorageMap.size; },
+  setItem: (key: string, value: string) => {
+    localStorageMap.set(key, value);
+  },
+  removeItem: (key: string) => {
+    localStorageMap.delete(key);
+  },
+  clear: () => {
+    localStorageMap.clear();
+  },
+  get length() {
+    return localStorageMap.size;
+  },
   key: (index: number) => Array.from(localStorageMap.keys())[index] ?? null,
 };
 Object.defineProperty(window, "localStorage", { value: localStorageMock });

@@ -6,19 +6,6 @@ import type { UserSettings } from "@/lib/settings";
 import { SettingsModal } from "../SettingsModal";
 import "@/lib/__tests__/setup-dom";
 
-// SettingsModal uses X, LogOut, Bell — add to lucide mock
-vi.mock("lucide-react", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("lucide-react");
-  function icon(name: string) {
-    function MockIcon(props: Record<string, unknown>) {
-      return React.createElement("span", { "data-testid": `icon-${name}`, ...props });
-    }
-    MockIcon.displayName = name;
-    return MockIcon;
-  }
-  return { ...actual, X: icon("X"), LogOut: icon("LogOut"), Bell: icon("Bell") };
-});
-
 // Notification API mock
 Object.defineProperty(globalThis, "Notification", {
   value: { permission: "default", requestPermission: vi.fn() },
@@ -36,11 +23,18 @@ const validSettings: UserSettings = {
 };
 
 function renderModal(overrides: Partial<UserSettings> = {}) {
-  const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
+  const onSave = vi
+    .fn<(partial: Partial<UserSettings>) => Promise<void>>()
+    .mockResolvedValue(undefined);
   const onClose = vi.fn();
   const settings = { ...validSettings, ...overrides };
   render(
-    <SettingsModal email="test@example.com" settings={settings} onSave={onSave} onClose={onClose} />,
+    <SettingsModal
+      email="test@example.com"
+      settings={settings}
+      onSave={onSave}
+      onClose={onClose}
+    />,
   );
   return { onSave, onClose };
 }
@@ -81,7 +75,9 @@ describe("SettingsModal totalWeeks validation", () => {
     await user.type(weeksInput, "14");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ totalWeeks: 14 }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ totalWeeks: 14 }),
+    );
     expect(onClose).toHaveBeenCalled();
   });
 
