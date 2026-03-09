@@ -21,6 +21,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
+  const [warmthPreference, setWarmthPreference] = useState(settings.warmthPreference ?? 0);
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -67,6 +68,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
     if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
       updates.includeBasePhase = effectiveBasePhase;
+    }
+    if (warmthPreference !== (settings.warmthPreference ?? 0)) {
+      updates.warmthPreference = warmthPreference;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
@@ -231,6 +235,52 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               </div>
             );
           })()}
+
+          {/* Warmth Preference */}
+          <div className="border-t border-[#3d2b5a] pt-4">
+            <span className="block text-sm font-semibold text-[#c4b5fd] mb-1">
+              Running temperature
+            </span>
+            <p className="text-xs text-[#7a6899] mb-3">
+              Shifts clothing recommendations. If you tend to overheat, move toward warmer. If you get cold easily, move toward colder.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#ffb800] w-14 text-right flex-shrink-0">Warmer</span>
+              <div className="flex gap-1 flex-1 justify-center">
+                {([-2, -1, 0, 1, 2] as const).map((val) => {
+                  const colors = [
+                    "bg-[#b45309] border-[#d97706]",
+                    "bg-[#d97706] border-[#f59e0b]",
+                    "bg-[#4a4458] border-[#6b5f7d]",
+                    "bg-[#2563eb] border-[#3b82f6]",
+                    "bg-[#1d4ed8] border-[#2563eb]",
+                  ];
+                  const isSelected = warmthPreference === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => { setWarmthPreference(val); }}
+                      className={`w-9 h-9 rounded-lg border-2 transition ${colors[val + 2]} ${
+                        isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-[#1e1535] scale-110" : "opacity-60 hover:opacity-80"
+                      }`}
+                      aria-label={`Warmth ${val}`}
+                    />
+                  );
+                })}
+              </div>
+              <span className="text-xs text-[#3b82f6] w-14 flex-shrink-0">Colder</span>
+            </div>
+            {warmthPreference !== 0 && (
+              <button
+                type="button"
+                onClick={() => { setWarmthPreference(0); }}
+                className="mt-2 text-xs text-[#b8a5d4] hover:text-white transition"
+              >
+                Reset to neutral
+              </button>
+            )}
+          </div>
 
           {/* Notifications */}
           <div className="border-t border-[#3d2b5a] pt-4">

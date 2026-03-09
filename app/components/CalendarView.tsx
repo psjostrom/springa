@@ -25,6 +25,7 @@ import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
 import { useDragDrop } from "../hooks/useDragDrop";
+import { useWeather } from "../hooks/useWeather";
 import { ErrorCard } from "./ErrorCard";
 import "../calendar.css";
 
@@ -39,11 +40,12 @@ interface CalendarViewProps {
   bgModel?: BGResponseModel | null;
   hrZones?: number[];
   lthr?: number;
+  warmthPreference?: number;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
-export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr }: CalendarViewProps) {
+export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -185,6 +187,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
   // Get all loaded events, sorted by date for agenda view
   const agendaEvents = [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  // Weather-based clothing recommendations for upcoming planned events
+  const clothingMap = useWeather(agendaEvents, warmthPreference);
 
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = (_e: React.DragEvent, day: Date) => { void handleDrop(day); };
@@ -333,6 +338,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               paceTable={paceTable}
               hrZones={hrZones}
               lthr={lthr}
+              clothingMap={clothingMap}
             />
           </div>
         )}
@@ -352,6 +358,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           bgModel={bgModel}
           hrZones={hrZones}
           lthr={lthr}
+          clothing={clothingMap.get(enrichedSelectedEvent.id)}
         />
       )}
     </div>
