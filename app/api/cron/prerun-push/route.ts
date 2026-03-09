@@ -52,7 +52,9 @@ export async function GET(req: Request) {
     const wellness = await fetchWellnessData(apiKey, fmt(oldest), fmt(today));
     const fitness = wellnessToFitnessData(wellness);
     currentTsb = fitness.length > 0 ? fitness[fitness.length - 1].tsb : null;
-  } catch {}
+  } catch (err) {
+    console.error("[prerun-push] Failed to fetch wellness/TSB:", err);
+  }
 
   const mylifeEmail = process.env.MYLIFE_EMAIL;
   const mylifePassword = process.env.MYLIFE_PASSWORD;

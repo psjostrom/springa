@@ -346,6 +346,18 @@ describe("assessReadiness — IOB rule", () => {
   });
 });
 
+// --- Compound + IOB worst-case ---
+
+describe("assessReadiness — compound low+falling with IOB", () => {
+  it("wait when BG < 8, falling, and IOB >= 0.5", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.2, trendSlope: -0.4, iob: 1.0 }));
+    expect(g.level).toBe("wait");
+    expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
+    expect(g.suggestions).toContain("Pre-load 15-20g carbs before starting");
+  });
+});
+
 // --- formatGuidancePush ---
 
 describe("formatGuidancePush", () => {

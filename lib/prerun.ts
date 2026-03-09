@@ -128,10 +128,8 @@ function assessModel(
     }
   }
 
-  // Pull target fuel rate for category
-  const resolvedFuel = getCurrentFuelRate(category, bgModel);
-  result.targetFuel = resolvedFuel;
-  result.suggestions.push(`Take ${resolvedFuel}g carbs/h`);
+  // Pull target fuel rate for category (suggestion string generated in assessReadiness)
+  result.targetFuel = getCurrentFuelRate(category, bgModel);
 
   return result;
 }
@@ -157,6 +155,7 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
   const model = assessModel(input.currentBG, input.trendSlope, input.bgModel, input.category);
 
   let level = worst(worst(bg.level, trend.level), model.level);
+  let targetFuel = model.targetFuel;
 
   // Aggregate reasons and suggestions
   const reasons = [...bg.reasons, ...trend.reasons, ...model.reasons];
@@ -172,16 +171,12 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
 
   // Fatigue adjustment: TSB < -4 → bump fuel suggestion
   // Drops are nearly twice as steep on heavily fatigued days.
+  let fatigueBump = 0;
   if (input.currentTsb != null && input.currentTsb < -4) {
     reasons.push("High fatigue — expect steeper BG drops");
-    if (model.targetFuel !== null) {
-      const bump = Math.round(model.targetFuel * 0.2); // ~20% more, roughly 10-15g/h
-      model.targetFuel += bump;
-      // Replace the existing fuel suggestion with the bumped one
-      const fuelIdx = suggestions.findIndex((s) => s.startsWith("Take "));
-      if (fuelIdx >= 0) {
-        suggestions[fuelIdx] = `Take ${model.targetFuel}g carbs/h (↑${bump}g for fatigue)`;
-      }
+    if (targetFuel !== null) {
+      fatigueBump = Math.round(targetFuel * 0.2); // ~20% more, roughly 10-15g/h
+      targetFuel += fatigueBump;
     }
   }
 
@@ -190,6 +185,14 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
     level = worst(level, "caution");
     reasons.push(`${input.iob.toFixed(1)}u IOB — BG will keep dropping`);
     suggestions.push("Pre-load 15-20g carbs before starting");
+  }
+
+  // Fuel suggestion — generated once, after all adjustments
+  if (targetFuel !== null) {
+    const fuelText = fatigueBump > 0
+      ? `Take ${targetFuel}g carbs/h (↑${fatigueBump}g for fatigue)`
+      : `Take ${targetFuel}g carbs/h`;
+    suggestions.push(fuelText);
   }
 
   // Add stability reason for ready state
@@ -202,7 +205,7 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
     reasons: reasons.slice(0, 3),
     suggestions: suggestions.slice(0, 3),
     predictedDrop: model.predictedDrop,
-    targetFuel: model.targetFuel,
+    targetFuel,
     estimatedBGAt30m: model.estimatedBGAt30m,
   };
 }
