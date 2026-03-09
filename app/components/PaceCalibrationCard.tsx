@@ -63,7 +63,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
               </div>
 
               {/* Pace */}
-              <div className="flex-1 text-right">
+              <div className="flex-1 flex items-center justify-end gap-1">
                 <span
                   className={`text-sm tabular-nums ${
                     entry.calibrated ? "font-bold text-white" : "text-[#8b7ba8]"
@@ -71,12 +71,10 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
                 >
                   {formatPace(entry.pace)}
                 </span>
-                {!entry.calibrated && (
-                  <span className="text-[10px] text-[#6b5b8a] ml-1">fallback</span>
-                )}
-                {isHardExtrapolated && (
-                  <span className="text-[10px] text-[#d946ef] ml-1">extrap.</span>
-                )}
+                <span className="w-10 text-[10px] text-left">
+                  {!entry.calibrated && <span className="text-[#6b5b8a]">fallback</span>}
+                  {isHardExtrapolated && <span className="text-[#d946ef]">extrap.</span>}
+                </span>
               </div>
 
               {/* Avg HR */}
