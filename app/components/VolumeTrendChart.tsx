@@ -158,7 +158,7 @@ export function VolumeTrendChart({
                 cursor={{ fill: "#2a1f3d" }}
                 content={({ active, payload }) => {
                   if (!active || payload.length === 0) return null;
-                  const d = payload[0].payload as WeekData;
+                  const d = (payload[0] as { payload: WeekData }).payload;
                   const weekNum = parseInt(d.week.replace("W", ""), 10);
                   return (
                     <div className="rounded-lg border border-[#3d2b5a] bg-[#1e1535] text-white shadow-lg text-xs px-3 py-2">

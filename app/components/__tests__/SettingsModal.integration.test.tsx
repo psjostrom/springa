@@ -90,4 +90,20 @@ describe("SettingsModal totalWeeks validation", () => {
     renderModal({ totalWeeks: 12 });
     expect(screen.getByRole("switch")).toBeEnabled();
   });
+
+  it("forces includeBasePhase off when totalWeeks drops below 11", async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderModal({ totalWeeks: 12, includeBasePhase: true });
+
+    // Reduce weeks to 10 — base toggle becomes disabled
+    const weeksInput = screen.getByPlaceholderText("18");
+    await user.clear(weeksInput);
+    await user.type(weeksInput, "10");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Must save includeBasePhase: false to prevent getPhaseBoundaries(10, true) crash
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ totalWeeks: 10, includeBasePhase: false }),
+    );
+  });
 });
