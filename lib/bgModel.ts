@@ -217,6 +217,7 @@ function capFuel(target: number, current: number): number {
 }
 
 export function calculateTargetFuelRates(observations: BGObservation[]): TargetFuelResult[] {
+  // Skip club — intensity varies too much for meaningful target
   const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
   const results: TargetFuelResult[] = [];
 
@@ -330,8 +331,10 @@ function aggregateModel(observations: BGObservation[], activitiesAnalyzed: numbe
     easy: null,
     long: null,
     interval: null,
+    club: null,
   };
 
+  // Skip club — intensity varies too much for meaningful category average
   const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
 
   for (const cat of categoryNames) {
@@ -399,6 +402,7 @@ export function summarizeBGModel(bgModel: BGResponseModel | null): string {
 
   const lines: string[] = [`Activities analyzed: ${bgModel.activitiesAnalyzed}`];
 
+  // Skip club — intensity varies too much for useful category averages
   for (const cat of ["easy", "long", "interval"] as const) {
     const c = bgModel.categories[cat];
     if (!c) continue;

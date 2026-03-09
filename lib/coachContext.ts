@@ -109,6 +109,7 @@ export function summarizeRecoveryPatterns(
     return "No post-run recovery data available yet.";
   }
 
+  // Skip club — intensity varies too much for useful category averages
   const lines: string[] = [];
   for (const cat of ["easy", "long", "interval"] as WorkoutCategory[]) {
     const entry = byCategory.get(cat);

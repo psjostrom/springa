@@ -21,7 +21,7 @@ function makeInput(overrides: Partial<PreRunInput> = {}): PreRunInput {
 
 function makeModel(overrides: Partial<BGResponseModel> = {}): BGResponseModel {
   return {
-    categories: { easy: null, long: null, interval: null },
+    categories: { easy: null, long: null, interval: null, club: null },
     observations: [],
     activitiesAnalyzed: 0,
     bgByStartLevel: [],
@@ -176,7 +176,7 @@ describe("assessReadiness — historical model", () => {
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, category: "long" }));
     expect(g.targetFuel).toBe(45);
-    expect(g.suggestions).toContain("Take 45g carbs/h");
+    expect(g.suggestions).toContain("During run: 45g/h");
   });
 
   it("caution when forecast drops below 5.5", () => {
@@ -251,17 +251,23 @@ describe("assessReadiness — combined", () => {
     expect(g.level).toBe("ready");
   });
 
-  it("reasons capped at 3", () => {
-    // Force many reasons: low BG + dropping + model hypo
+  it("reasons capped at 4", () => {
+    // Force many reasons: low BG + dropping fast + model hypo + fatigue + IOB
     const model = makeModel({
       activitiesAnalyzed: 3,
       bgByStartLevel: [
         { band: "<8", avgRate: -2.0, medianRate: -2.0, sampleCount: 10, activityCount: 3 },
       ],
     });
-    const g = assessReadiness(makeInput({ currentBG: 4.0, trendSlope: -0.8, bgModel: model }));
+    const g = assessReadiness(makeInput({
+      currentBG: 4.0,
+      trendSlope: -0.8,
+      bgModel: model,
+      currentTsb: -6,
+      iob: 1.5,
+    }));
     expect(g.level).toBe("wait");
-    expect(g.reasons.length).toBeLessThanOrEqual(3);
+    expect(g.reasons.length).toBeLessThanOrEqual(4);
   });
 });
 
@@ -318,16 +324,27 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
 // --- IOB rule ---
 
 describe("assessReadiness — IOB rule", () => {
-  it("caution when IOB >= 0.5u", () => {
+  it("caution when IOB >= 0.5u with consolidated carb suggestion", () => {
     const g = assessReadiness(makeInput({ currentBG: 9.0, iob: 1.2 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).toContain("1.2u IOB — BG will keep dropping");
-    expect(g.suggestions).toContain("Pre-load 15-20g carbs before starting");
+    // IOB carbs: 1.2u * 12g/u = 14.4, rounded to 15g
+    expect(g.suggestions.some((s) => s.includes("15g") && s.includes("1.2u IOB"))).toBe(true);
   });
 
   it("exactly 0.5u triggers the rule", () => {
     const g = assessReadiness(makeInput({ currentBG: 9.0, iob: 0.5 }));
     expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
+  });
+
+  it("IOB carbs scale with magnitude", () => {
+    // 0.5u → 0.5 * 12 = 6, round to 5g
+    const g1 = assessReadiness(makeInput({ currentBG: 9.0, iob: 0.5 }));
+    expect(g1.suggestions.some((s) => s.includes("5g"))).toBe(true);
+
+    // 2.0u → 2.0 * 12 = 24, round to 25g
+    const g2 = assessReadiness(makeInput({ currentBG: 9.0, iob: 2.0 }));
+    expect(g2.suggestions.some((s) => s.includes("25g"))).toBe(true);
   });
 
   it("no IOB warning when IOB < 0.5u", () => {
@@ -349,19 +366,145 @@ describe("assessReadiness — IOB rule", () => {
 // --- Compound + IOB worst-case ---
 
 describe("assessReadiness — compound low+falling with IOB", () => {
-  it("wait when BG < 8, falling, and IOB >= 0.5", () => {
+  it("wait when BG < 8, falling, and IOB >= 0.5 with consolidated carbs", () => {
     const g = assessReadiness(makeInput({ currentBG: 7.2, trendSlope: -0.4, iob: 1.0 }));
     expect(g.level).toBe("wait");
     expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
     expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
-    expect(g.suggestions).toContain("Pre-load 15-20g carbs before starting");
+    // Compound: 20g + IOB 1.0u * 12 = 12, round to 10g → total 30g
+    expect(g.suggestions.some((s) => s.includes("30g") && s.includes("low + falling") && s.includes("1.0u IOB"))).toBe(true);
+    expect(g.suggestions.some((s) => s.includes("wait for upward trend"))).toBe(true);
+  });
+
+  it("stacks IOB carbs on top of compound carbs correctly", () => {
+    // Compound: 20g base
+    // IOB 0.5u: 0.5 * 12 = 6, round to 5g
+    // Total: 25g
+    const g1 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.35, iob: 0.5 }));
+    expect(g1.suggestions.some((s) => s.includes("25g"))).toBe(true);
+
+    // Compound: 20g base
+    // IOB 2.5u: 2.5 * 12 = 30g
+    // Total: 50g
+    const g2 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.35, iob: 2.5 }));
+    expect(g2.suggestions.some((s) => s.includes("50g"))).toBe(true);
+  });
+});
+
+// --- Worst-case scenario: verify consolidated output ---
+
+describe("assessReadiness — worst-case consolidated output", () => {
+  it("produces clear, non-redundant suggestions in extreme scenario", () => {
+    // Worst case: low BG (6.5), falling (-0.4), high IOB (0.8u), fatigued (TSB -5), model predicts hypo
+    const model = makeModel({
+      activitiesAnalyzed: 5,
+      bgByStartLevel: [
+        { band: "<8", avgRate: -0.6, medianRate: -0.6, sampleCount: 15, activityCount: 4 },
+      ],
+      targetFuelRates: [
+        { category: "easy", currentAvgFuel: 48, targetFuelRate: 55, method: "regression", confidence: "high" },
+      ],
+    });
+
+    const g = assessReadiness(makeInput({
+      currentBG: 6.5,
+      trendSlope: -0.4,
+      bgModel: model,
+      currentTsb: -5,
+      iob: 0.8,
+      category: "easy",
+    }));
+
+    // Should be "wait" due to compound rule
+    expect(g.level).toBe("wait");
+
+    // Reasons should include all relevant factors
+    expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
+    expect(g.reasons.some((r) => r.includes("fatigue"))).toBe(true);
+
+    // Suggestions should be consolidated and clear:
+    // 1. ONE pre-run carb suggestion (compound 20g + IOB 0.8*12=10g = 30g)
+    // 2. Fuel suggestion with fatigue bump
+    expect(g.suggestions.length).toBeLessThanOrEqual(4); // not 5-6 redundant ones
+
+    // Pre-run carbs consolidated
+    const preRunSuggestion = g.suggestions.find((s) => s.includes("Eat") && s.includes("carbs"));
+    expect(preRunSuggestion).toBeDefined();
+    expect(preRunSuggestion).toContain("30g"); // 20 + 10
+    expect(preRunSuggestion).toContain("low + falling");
+    expect(preRunSuggestion).toContain("0.8u IOB");
+    expect(preRunSuggestion).toContain("wait for upward trend");
+
+    // No redundant separate 15-20g suggestions
+    const carbSuggestions = g.suggestions.filter((s) =>
+      s.includes("15-20g") || (s.includes("carbs") && s.includes("before"))
+    );
+    expect(carbSuggestions.length).toBeLessThanOrEqual(1);
+
+    // Fuel suggestion present with fatigue bump
+    const fuelSuggestion = g.suggestions.find((s) => s.includes("During run:"));
+    expect(fuelSuggestion).toBeDefined();
+    expect(fuelSuggestion).toContain("fatigue");
+    // Base 55 + 20% = 66
+    expect(g.targetFuel).toBe(66);
+  });
+
+  it("only shows IOB carbs when BG is fine", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: 0.0, iob: 1.5 }));
+    expect(g.level).toBe("caution");
+
+    // Should have ONE suggestion for IOB carbs (1.5 * 12 = 18, round to 20g)
+    const preRunSuggestion = g.suggestions.find((s) => s.includes("carbs"));
+    expect(preRunSuggestion).toBeDefined();
+    expect(preRunSuggestion).toContain("20g");
+    expect(preRunSuggestion).toContain("1.5u IOB");
+    // Should NOT mention low BG since BG is fine
+    expect(preRunSuggestion).not.toContain("low");
+  });
+
+  it("shows no pre-run carbs when everything is fine", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: 0.1, iob: 0.2 }));
+    expect(g.level).toBe("ready");
+
+    // No carb suggestions (except maybe fuel)
+    const preRunCarbSuggestion = g.suggestions.find((s) =>
+      s.includes("carbs") && !s.includes("During run")
+    );
+    expect(preRunCarbSuggestion).toBeUndefined();
+  });
+
+  it("uses urgent wording and higher carbs for actual hypo (BG < 4.5)", () => {
+    const g = assessReadiness(makeInput({ currentBG: 4.0, trendSlope: 0.0 }));
+    expect(g.level).toBe("wait");
+    expect(g.reasons).toContain("BG too low to start");
+
+    // Should get 20g (not 15g) and "wait for upward trend" wording
+    const preRunSuggestion = g.suggestions.find((s) => s.includes("carbs"));
+    expect(preRunSuggestion).toBeDefined();
+    expect(preRunSuggestion).toContain("20g");
+    expect(preRunSuggestion).toContain("hypo");
+    expect(preRunSuggestion).toContain("wait for upward trend");
+  });
+
+  it("stacks hypo carbs with IOB correctly", () => {
+    // BG 4.0 (hypo): 20g base
+    // IOB 1.0u: 10g additional
+    // Total: 30g
+    const g = assessReadiness(makeInput({ currentBG: 4.0, trendSlope: 0.0, iob: 1.0 }));
+    expect(g.level).toBe("wait");
+
+    const preRunSuggestion = g.suggestions.find((s) => s.includes("carbs"));
+    expect(preRunSuggestion).toContain("30g");
+    expect(preRunSuggestion).toContain("hypo");
+    expect(preRunSuggestion).toContain("1.0u IOB");
   });
 });
 
 // --- formatGuidancePush ---
 
 describe("formatGuidancePush", () => {
-  it("formats ready level with reasons", () => {
+  it("formats ready level with suggestion first, then reason", () => {
     const guidance: PreRunGuidance = {
       level: "ready",
       reasons: ["BG stable"],
@@ -372,7 +515,8 @@ describe("formatGuidancePush", () => {
     };
     const { title, body } = formatGuidancePush(guidance, 7.5);
     expect(title).toBe("Ready to run — 7.5 mmol/L");
-    expect(body).toBe("BG stable. Take 30g carbs/h");
+    // Push notifications prioritize actionable suggestions over reasons
+    expect(body).toBe("Take 30g carbs/h. BG stable");
   });
 
   it("formats caution level", () => {

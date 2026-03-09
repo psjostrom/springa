@@ -64,6 +64,7 @@ function makeBGModel(targets: TargetFuelResult[] = []): BGResponseModel {
       easy: { category: "easy", avgRate: -0.3, medianRate: -0.3, sampleCount: 20, confidence: "medium", avgFuelRate: 45, activityCount: 5 },
       long: { category: "long", avgRate: -0.6, medianRate: -0.55, sampleCount: 15, confidence: "medium", avgFuelRate: 58, activityCount: 4 },
       interval: { category: "interval", avgRate: -0.8, medianRate: -0.75, sampleCount: 10, confidence: "low", avgFuelRate: 28, activityCount: 3 },
+      club: null,
     },
     observations: [],
     activitiesAnalyzed: 12,

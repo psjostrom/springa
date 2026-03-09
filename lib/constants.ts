@@ -104,7 +104,7 @@ export function classifyHR(hr: number, hrZones: number[]): ZoneKey {
 
 export function getWorkoutCategory(
   name: string,
-): "long" | "interval" | "easy" | "other" {
+): "long" | "interval" | "easy" | "club" | "other" {
   const lowerName = name.toLowerCase();
   // Check "interval" before "long" so "Long Intervals" → interval, not long
   if (
@@ -115,6 +115,7 @@ export function getWorkoutCategory(
   )
     return "interval";
   if (lowerName.includes("long")) return "long";
+  if (lowerName.includes("club")) return "club";
   if (
     lowerName.includes("easy") ||
     lowerName.includes("bonus") ||

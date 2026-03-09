@@ -121,7 +121,7 @@ Rules:
     }
   }
 
-  // 3. BG patterns for category
+  // 3. BG patterns for category (skip club — intensity varies too much for useful averages)
   const cat = adapted.category;
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const catData = bgModel.categories[cat];
@@ -159,7 +159,7 @@ Rules:
     lines.push(`(TSB/form omitted — workout is ${daysOut} days out, today's fatigue is not predictive)`);
   }
 
-  // 5. Recovery patterns for category
+  // 5. Recovery patterns for category (skip club — intensity varies too much)
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const categoryContexts = Object.values(runBGContexts).filter(
       (ctx): ctx is RunBGContext & { post: NonNullable<RunBGContext["post"]> } =>
