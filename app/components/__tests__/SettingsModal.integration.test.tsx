@@ -57,7 +57,6 @@ describe("SettingsModal totalWeeks validation", () => {
   });
 
   it("does not call onSave when totalWeeks is invalid", async () => {
-    const user = userEvent.setup();
     const { onSave } = renderModal({ totalWeeks: 4 });
 
     // Force-click the disabled button via the underlying handler

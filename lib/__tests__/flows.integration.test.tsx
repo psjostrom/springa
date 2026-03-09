@@ -288,8 +288,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     vi.useRealTimers();
   });
 
-  // TODO: fuelRate not being populated from carbs_per_hour in test fixtures - investigate pipeline
-  it.skip("shows fuel info in agenda pill and modal for an easy run", async () => {
+  it("shows fuel info in agenda pill and modal for an easy run", async () => {
     const user = userEvent.setup();
     render(<TestCalendarScreen />);
 
@@ -321,8 +320,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     });
   });
 
-  // TODO: fuelRate not being populated from carbs_per_hour in test fixtures - investigate pipeline
-  it.skip("shows fuel info in agenda pill and modal for a speed session", async () => {
+  it("shows fuel info in agenda pill and modal for a speed session", async () => {
     const user = userEvent.setup();
     render(<TestCalendarScreen />);
 
@@ -368,8 +366,7 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
     vi.useRealTimers();
   });
 
-  // TODO: Flaky when run with other tests - fake timer pollution between test suites
-  it.skip("opens a planned event, clicks Delete, confirms, and event is removed", async () => {
+  it("opens a planned event, clicks Delete, confirms, and event is removed", async () => {
     const user = userEvent.setup();
     render(<TestCalendarScreen />);
 
@@ -425,8 +422,7 @@ describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimat
     vi.useRealTimers();
   });
 
-  // TODO: fuelRate not being populated from carbs_per_hour in test fixtures - investigate pipeline
-  it.skip("shows 58g total (not 49g) for an 8km long run at 60g/h", async () => {
+  it("shows 58g total (not 49g) for an 8km long run at 60g/h", async () => {
     // Fixture event-1004 has duration: 2940 (49 min from Intervals.icu)
     // but our description-based estimate is ~58 min (8km × 7.25 min/km).
     // The modal must show 58g, not 49g.
