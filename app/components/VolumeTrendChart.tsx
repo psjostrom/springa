@@ -153,7 +153,7 @@ export function VolumeTrendChart({
               <Tooltip
                 cursor={{ fill: "#2a1f3d" }}
                 content={({ active, payload }) => {
-                  if (!active || payload.length !== 1) return null;
+                  if (!active || payload.length === 0) return null;
                   const d = payload[0].payload as WeekData;
                   const weekNum = parseInt(d.week.replace("W", ""), 10);
                   return (
