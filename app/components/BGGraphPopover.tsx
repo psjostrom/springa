@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useAtomValue } from "jotai";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
-import { readingsAtom, trendAtom } from "../atoms";
+import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom } from "../atoms";
+import { PreRunReadiness } from "./PreRunReadiness";
+import type { WorkoutCategory } from "@/lib/types";
 
 interface BGGraphPopoverProps {
   onClose: () => void;
@@ -25,6 +27,31 @@ function formatTime(ts: number): string {
 export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const readings = useAtomValue(readingsAtom);
   const trend = useAtomValue(trendAtom);
+  const currentBG = useAtomValue(currentBGAtom);
+  const trendSlope = useAtomValue(trendSlopeAtom);
+  const bgModel = useAtomValue(bgModelAtom);
+  const events = useAtomValue(enrichedEventsAtom);
+  const settings = useAtomValue(settingsAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
+
+  // Find today's planned workout (if any)
+  const todaysWorkout = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return events.find(
+      (e) => e.type === "planned" && e.date >= today && e.date < tomorrow,
+    ) ?? null;
+  }, [events]);
+
+  const WINDOWS = [1, 3, 6, 12, 24] as const;
+  const savedWindow = settings?.bgChartWindow;
+  const initialIdx = savedWindow ? WINDOWS.indexOf(savedWindow as typeof WINDOWS[number]) : -1;
+  const [windowIdx, setWindowIdx] = useState(initialIdx >= 0 ? initialIdx : 1);
+  const [showWindowPicker, setShowWindowPicker] = useState(false);
+  const windowHours = WINDOWS[windowIdx];
+
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
   const svgRef = useRef<SVGSVGElement>(null);
@@ -37,11 +64,11 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
     return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
-  // Filter to last 3 hours
-  const data = (() => {
-    const cutoff = now - 3 * 60 * 60 * 1000;
+  // Filter to selected window
+  const data = useMemo(() => {
+    const cutoff = now - windowHours * 60 * 60 * 1000;
     return readings.filter((r) => r.ts >= cutoff).sort((a, b) => a.ts - b.ts);
-  })();
+  }, [readings, now, windowHours]);
 
   if (data.length === 0) return (
     <div
@@ -175,11 +202,35 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
             )}
             <span className="text-sm text-[#b8a5d4]">{ageStr}</span>
           </div>
-          <span className="text-xs text-[#b8a5d4] font-medium px-2 py-0.5 rounded bg-[#1e1535]">3h</span>
+          <div className="relative">
+            <button
+              onClick={() => { setShowWindowPicker((v) => !v); }}
+              className="text-xs text-[#b8a5d4] font-medium px-2 py-0.5 rounded bg-[#1e1535] hover:bg-[#2a1f3d] hover:text-[#00ffff] transition active:scale-95"
+            >
+              {windowHours}h
+            </button>
+            {showWindowPicker && (
+              <div className="absolute right-0 top-full mt-1 flex gap-0.5 bg-[#1e1535] border border-[#3d2b5a] rounded-lg p-0.5 shadow-lg shadow-black/40 z-10">
+                {WINDOWS.map((w, i) => (
+                  <button
+                    key={w}
+                    onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); void updateSettings({ bgChartWindow: w }); }}
+                    className={`text-xs font-medium px-2.5 py-1 rounded transition ${
+                      i === windowIdx
+                        ? "bg-[#2a1f3d] text-[#00ffff]"
+                        : "text-[#7a6899] hover:text-[#b8a5d4]"
+                    }`}
+                  >
+                    {w}h
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Graph */}
-        <div className="px-2 pb-4">
+        <div className="px-2 pb-2">
           <svg
             ref={svgRef}
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -304,6 +355,22 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
             )}
           </svg>
         </div>
+
+        {/* Pre-run readiness — shown when there's a planned workout today */}
+        {todaysWorkout && currentBG != null && (
+          <div className="px-3 pb-4">
+            <div className="text-xs text-[#7a6899] uppercase tracking-wider font-semibold mb-1.5 px-1">
+              {todaysWorkout.name}
+            </div>
+            <PreRunReadiness
+              currentBG={currentBG}
+              trendSlope={trendSlope}
+              trend={trend}
+              bgModel={bgModel}
+              category={todaysWorkout.category as WorkoutCategory}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

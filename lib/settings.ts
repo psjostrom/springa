@@ -11,6 +11,7 @@ export interface UserSettings {
   startKm?: number;
   widgetOrder?: string[];
   hiddenWidgets?: string[];
+  bgChartWindow?: number;
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsApiKey?: string;
   xdripConnected?: boolean;
@@ -24,7 +25,7 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets FROM user_settings WHERE email = ?",
+    sql: "SELECT race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -38,6 +39,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
   if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string) as string[];
+  if (row.bg_chart_window != null) settings.bgChartWindow = row.bg_chart_window as number;
   return settings;
 }
 
@@ -46,8 +48,8 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             race_date = COALESCE(excluded.race_date, race_date),
             race_name = COALESCE(excluded.race_name, race_name),
@@ -56,7 +58,8 @@ export async function saveUserSettings(
             total_weeks = COALESCE(excluded.total_weeks, total_weeks),
             start_km = COALESCE(excluded.start_km, start_km),
             widget_order = COALESCE(excluded.widget_order, widget_order),
-            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets)`,
+            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets),
+            bg_chart_window = COALESCE(excluded.bg_chart_window, bg_chart_window)`,
     args: [
       email,
       partial.raceDate ?? null,
@@ -67,6 +70,7 @@ export async function saveUserSettings(
       partial.startKm ?? null,
       partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
       partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
+      partial.bgChartWindow ?? null,
     ],
   });
 }
