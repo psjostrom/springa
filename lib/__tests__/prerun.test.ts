@@ -94,8 +94,8 @@ describe("assessReadiness — trend slope", () => {
     expect(g.reasons).toContain("BG dropping fast");
   });
 
-  it("caution when slope -0.5 to -0.3", () => {
-    const g = assessReadiness(makeInput({ trendSlope: -0.4 }));
+  it("caution when slope -0.5 to -0.3 (BG above 8)", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.4 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).toContain("BG trending down");
   });
@@ -116,9 +116,8 @@ describe("assessReadiness — trend slope", () => {
     expect(g.reasons).toContain("No recent BG data");
   });
 
-  it("exactly -0.5 is wait", () => {
-    // slope < -0.5 means strictly less
-    const g = assessReadiness(makeInput({ trendSlope: -0.5 }));
+  it("exactly -0.5 is caution when BG above 8", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.5 }));
     expect(g.level).toBe("caution"); // -0.5 is >= -0.5, so it's in the -0.5 to -0.3 range
   });
 
@@ -263,6 +262,56 @@ describe("assessReadiness — combined", () => {
     const g = assessReadiness(makeInput({ currentBG: 4.0, trendSlope: -0.8, bgModel: model }));
     expect(g.level).toBe("wait");
     expect(g.reasons.length).toBeLessThanOrEqual(3);
+  });
+});
+
+// --- Compound rule: BG < 8 AND falling ---
+
+describe("assessReadiness — compound low+falling rule", () => {
+  it("wait when BG < 8 and slope < -0.3", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.4 }));
+    expect(g.level).toBe("wait");
+    expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
+  });
+
+  it("caution (not wait) when BG >= 8 and slope < -0.3", () => {
+    const g = assessReadiness(makeInput({ currentBG: 8.0, trendSlope: -0.4 }));
+    expect(g.level).toBe("caution");
+    expect(g.reasons).not.toContain("BG below 8 and falling — high hypo risk");
+  });
+
+  it("does not trigger when slope is only mildly negative", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.2 }));
+    expect(g.reasons).not.toContain("BG below 8 and falling — high hypo risk");
+  });
+});
+
+// --- Fatigue adjustment ---
+
+describe("assessReadiness — fatigue fuel adjustment", () => {
+  it("bumps fuel when TSB < -4", () => {
+    const model = makeModel({
+      activitiesAnalyzed: 5,
+      targetFuelRates: [{ category: "easy", currentFuelRate: 48, targetFuelRate: 48 }],
+    });
+    const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -6 }));
+    expect(g.reasons).toContain("High fatigue — expect steeper BG drops");
+    expect(g.targetFuel).toBeGreaterThan(48);
+    expect(g.suggestions.some((s) => s.includes("fatigue"))).toBe(true);
+  });
+
+  it("no fatigue bump when TSB >= -4", () => {
+    const model = makeModel({
+      activitiesAnalyzed: 5,
+      targetFuelRates: [{ category: "easy", currentFuelRate: 48, targetFuelRate: 48 }],
+    });
+    const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -2 }));
+    expect(g.reasons).not.toContain("High fatigue — expect steeper BG drops");
+  });
+
+  it("no fatigue bump when TSB is null", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, currentTsb: null }));
+    expect(g.reasons).not.toContain("High fatigue — expect steeper BG drops");
   });
 });
 

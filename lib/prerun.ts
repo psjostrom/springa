@@ -11,6 +11,7 @@ export interface PreRunInput {
   trendSlope: number | null; // mmol/L per 10min (from computeTrend)
   bgModel: BGResponseModel | null;
   category: WorkoutCategory;
+  currentTsb?: number | null; // Training Stress Balance (fatigue indicator)
 }
 
 export type ReadinessLevel = "ready" | "caution" | "wait";
@@ -154,11 +155,34 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
   const trend = assessTrendSlope(input.trendSlope);
   const model = assessModel(input.currentBG, input.trendSlope, input.bgModel, input.category);
 
-  const level = worst(worst(bg.level, trend.level), model.level);
+  let level = worst(worst(bg.level, trend.level), model.level);
 
-  // Aggregate reasons and suggestions, max 3 each
-  const reasons = [...bg.reasons, ...trend.reasons, ...model.reasons].slice(0, 3);
-  const suggestions = [...bg.suggestions, ...trend.suggestions, ...model.suggestions].slice(0, 3);
+  // Aggregate reasons and suggestions
+  const reasons = [...bg.reasons, ...trend.reasons, ...model.reasons];
+  const suggestions = [...bg.suggestions, ...trend.suggestions, ...model.suggestions];
+
+  // Compound rule: BG < 8 AND falling → hard "wait"
+  // Cross-run patterns showed this combo produced every near-hypo and actual hypo.
+  if (input.currentBG < 8.0 && input.trendSlope !== null && input.trendSlope < -0.3) {
+    level = "wait";
+    reasons.unshift("BG below 8 and falling — high hypo risk");
+    suggestions.unshift("Eat 15-20g fast carbs and wait for an upward trend");
+  }
+
+  // Fatigue adjustment: TSB < -4 → bump fuel suggestion
+  // Drops are nearly twice as steep on heavily fatigued days.
+  if (input.currentTsb != null && input.currentTsb < -4) {
+    reasons.push("High fatigue — expect steeper BG drops");
+    if (model.targetFuel !== null) {
+      const bump = Math.round(model.targetFuel * 0.2); // ~20% more, roughly 10-15g/h
+      model.targetFuel += bump;
+      // Replace the existing fuel suggestion with the bumped one
+      const fuelIdx = suggestions.findIndex((s) => s.startsWith("Take "));
+      if (fuelIdx >= 0) {
+        suggestions[fuelIdx] = `Take ${model.targetFuel}g carbs/h (↑${bump}g for fatigue)`;
+      }
+    }
+  }
 
   // Add stability reason for ready state
   if (bg.level === "ready" && trend.level === "ready" && reasons.length === 0) {
@@ -167,8 +191,8 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
 
   return {
     level,
-    reasons,
-    suggestions,
+    reasons: reasons.slice(0, 3),
+    suggestions: suggestions.slice(0, 3),
     predictedDrop: model.predictedDrop,
     targetFuel: model.targetFuel,
     estimatedBGAt30m: model.estimatedBGAt30m,
