@@ -78,9 +78,6 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
 
   return (
     <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 no-tap-highlight">
-      <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
-        BG Rate by Workout Type
-      </div>
       <div className="overflow-x-auto -mx-2">
         <div className="min-w-[320px]">
           <ResponsiveContainer width="100%" height={220}>

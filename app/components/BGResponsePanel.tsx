@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { Droplets, TrendingDown, AlertTriangle, ChevronDown, Sparkles, Loader2 } from "lucide-react";
+import { TrendingDown, AlertTriangle, ChevronDown, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult, EntrySlopeResponse } from "@/lib/bgModel";
@@ -192,18 +192,6 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Droplets className="w-4 h-4 text-[#06b6d4]" />
-          <span className="text-sm font-semibold uppercase text-[#b8a5d4]">
-            BG Response by Workout
-          </span>
-        </div>
-        <span className="text-xs text-[#8b7ba8]">
-          {model.activitiesAnalyzed} runs analyzed
-        </span>
-      </div>
-
       {activeCategories.length === 0 ? (
         <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center text-sm text-[#8b7ba8]">
           No runs with both HR and glucose data found.
@@ -317,10 +305,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <Sparkles className="w-3.5 h-3.5 text-[#00ffff]" />
-        <span className="text-xs font-semibold uppercase text-[#b8a5d4] flex-1">
-          Cross-Run Patterns
-        </span>
+        <span className="flex-1" />
         {canDiscover && !isAnalyzing && !patterns && (
           <button
             onClick={handleDiscover}
@@ -378,11 +363,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 
 export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
-        BG Drop by Start Level
-      </div>
-      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
         {bands.map((b) => (
           <div
             key={b.band}
@@ -400,7 +381,6 @@ export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
             </span>
           </div>
         ))}
-      </div>
     </div>
   );
 }
@@ -414,11 +394,7 @@ const SLOPE_LABELS: Record<string, string> = {
 
 export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
-        BG Drop by Entry Slope
-      </div>
-      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
         {slopes.map((s) => (
           <div
             key={s.slope}
@@ -436,7 +412,6 @@ export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) 
             </span>
           </div>
         ))}
-      </div>
     </div>
   );
 }
@@ -445,11 +420,7 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
   const maxRate = Math.max(...buckets.map((b) => Math.abs(b.avgRate)), 0.1);
 
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase text-[#b8a5d4]">
-        BG Drop Over Time
-      </div>
-      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-3 space-y-2">
+    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-3 space-y-2">
         {buckets.map((b) => {
           const barWidth = (Math.abs(b.avgRate) / maxRate) * 100;
           return (
@@ -473,7 +444,6 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
             </div>
           );
         })}
-      </div>
     </div>
   );
 }

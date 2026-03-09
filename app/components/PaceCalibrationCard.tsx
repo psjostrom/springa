@@ -1,6 +1,5 @@
 "use client";
 
-import { Gauge } from "lucide-react";
 import type { HRZoneName } from "@/lib/types";
 import type { CalibratedPaceTable } from "@/lib/paceCalibration";
 import { computeZonePaceTrend } from "@/lib/paceCalibration";
@@ -35,18 +34,7 @@ export function PaceCalibrationCard({ calibration, lthr }: PaceCalibrationCardPr
   const { table, segments, zoneSummaries, hardExtrapolated } = calibration;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Gauge className="w-4 h-4 text-[#06b6d4]" />
-        <span className="text-sm font-semibold uppercase text-[#b8a5d4]">
-          Pace Zones
-        </span>
-        <span className="text-xs text-[#8b7ba8]">
-          LTHR {lthr}
-        </span>
-      </div>
-
-      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
         {/* Header */}
         <div className="flex items-center px-3 py-2 border-b border-[#3d2b5a] text-xs text-[#8b7ba8]">
           <span className="w-16">Zone</span>
@@ -104,7 +92,6 @@ export function PaceCalibrationCard({ calibration, lthr }: PaceCalibrationCardPr
             </div>
           );
         })}
-      </div>
     </div>
   );
 }
