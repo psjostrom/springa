@@ -12,6 +12,7 @@ export interface PreRunInput {
   bgModel: BGResponseModel | null;
   category: WorkoutCategory;
   currentTsb?: number | null; // Training Stress Balance (fatigue indicator)
+  iob?: number | null; // Insulin on board (units), from MyLife Cloud
 }
 
 export type ReadinessLevel = "ready" | "caution" | "wait";
@@ -182,6 +183,13 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
         suggestions[fuelIdx] = `Take ${model.targetFuel}g carbs/h (↑${bump}g for fatigue)`;
       }
     }
+  }
+
+  // IOB rule: active insulin means BG will keep dropping
+  if (input.iob != null && input.iob >= 0.5) {
+    level = worst(level, "caution");
+    reasons.push(`${input.iob.toFixed(1)}u IOB — BG will keep dropping`);
+    suggestions.push("Pre-load 15-20g carbs before starting");
   }
 
   // Add stability reason for ready state

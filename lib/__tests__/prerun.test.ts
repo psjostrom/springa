@@ -315,6 +315,37 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
   });
 });
 
+// --- IOB rule ---
+
+describe("assessReadiness — IOB rule", () => {
+  it("caution when IOB >= 0.5u", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, iob: 1.2 }));
+    expect(g.level).toBe("caution");
+    expect(g.reasons).toContain("1.2u IOB — BG will keep dropping");
+    expect(g.suggestions).toContain("Pre-load 15-20g carbs before starting");
+  });
+
+  it("exactly 0.5u triggers the rule", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, iob: 0.5 }));
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
+  });
+
+  it("no IOB warning when IOB < 0.5u", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, iob: 0.3 }));
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(false);
+  });
+
+  it("no IOB warning when IOB is null", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, iob: null }));
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(false);
+  });
+
+  it("no IOB warning when IOB is undefined", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0 }));
+    expect(g.reasons.some((r) => r.includes("IOB"))).toBe(false);
+  });
+});
+
 // --- formatGuidancePush ---
 
 describe("formatGuidancePush", () => {

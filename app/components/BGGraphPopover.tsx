@@ -5,8 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
-import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom, wellnessEntriesAtom } from "../atoms";
-import { wellnessToFitnessData } from "@/lib/fitness";
+import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom, currentTsbAtom, currentIobAtom } from "../atoms";
 import { PreRunReadiness } from "./PreRunReadiness";
 import type { WorkoutCategory } from "@/lib/types";
 
@@ -34,12 +33,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const events = useAtomValue(enrichedEventsAtom);
   const settings = useAtomValue(settingsAtom);
   const updateSettings = useSetAtom(updateSettingsAtom);
-  const wellnessEntries = useAtomValue(wellnessEntriesAtom);
-
-  const currentTsb = useMemo(() => {
-    const data = wellnessToFitnessData(wellnessEntries);
-    return data.length > 0 ? data[data.length - 1].tsb : null;
-  }, [wellnessEntries]);
+  const currentTsb = useAtomValue(currentTsbAtom);
+  const currentIob = useAtomValue(currentIobAtom);
 
   // Find today's planned workout (if any)
   const todaysWorkout = useMemo(() => {
@@ -376,6 +371,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               bgModel={bgModel}
               category={todaysWorkout.category as WorkoutCategory}
               currentTsb={currentTsb}
+              iob={currentIob}
             />
           </div>
         )}

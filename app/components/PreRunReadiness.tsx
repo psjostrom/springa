@@ -12,6 +12,7 @@ interface PreRunReadinessProps {
   bgModel: BGResponseModel | null;
   category: WorkoutCategory;
   currentTsb?: number | null;
+  iob?: number | null;
 }
 
 const LEVEL_COLORS: Record<ReadinessLevel, string> = {
@@ -33,8 +34,9 @@ export function PreRunReadiness({
   bgModel,
   category,
   currentTsb,
+  iob,
 }: PreRunReadinessProps) {
-  const guidance = assessReadiness({ currentBG, trendSlope, bgModel, category, currentTsb });
+  const guidance = assessReadiness({ currentBG, trendSlope, bgModel, category, currentTsb, iob });
 
   const levelColor = LEVEL_COLORS[guidance.level];
   const color = bgColor(currentBG);

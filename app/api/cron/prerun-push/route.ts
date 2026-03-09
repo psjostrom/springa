@@ -7,9 +7,12 @@ import { buildBGModelFromCached } from "@/lib/bgModel";
 import { getWorkoutCategory } from "@/lib/constants";
 import { assessReadiness, formatGuidancePush } from "@/lib/prerun";
 import { sendPushToUser } from "@/lib/push";
-import { authHeader } from "@/lib/intervalsApi";
+import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
 import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
+import { wellnessToFitnessData } from "@/lib/fitness";
+import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
+import { buildInsulinContext } from "@/lib/insulinContext";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -37,6 +40,35 @@ export async function GET(req: Request) {
   }
 
   const timezone = resolveTimezone();
+
+  // Fetch TSB and IOB once — shared across all users/events
+  const today = new Date();
+  const oldest = new Date(today);
+  oldest.setDate(oldest.getDate() - 42);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  let currentTsb: number | null = null;
+  try {
+    const wellness = await fetchWellnessData(apiKey, fmt(oldest), fmt(today));
+    const fitness = wellnessToFitnessData(wellness);
+    currentTsb = fitness.length > 0 ? fitness[fitness.length - 1].tsb : null;
+  } catch {}
+
+  const mylifeEmail = process.env.MYLIFE_EMAIL;
+  const mylifePassword = process.env.MYLIFE_PASSWORD;
+  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
+
+  let currentIob: number | null = null;
+  if (mylifeEmail && mylifePassword) {
+    try {
+      const session = await mylifeSignIn(mylifeEmail, mylifePassword);
+      const data = await fetchMyLifeData(session, mylifeTz);
+      const ctx = buildInsulinContext(data, now);
+      currentIob = ctx?.totalIOBAtStart ?? null;
+    } catch {
+      clearMyLifeSession(mylifeEmail);
+    }
+  }
 
   for (const email of emails) {
     try {
@@ -96,6 +128,8 @@ export async function GET(req: Request) {
           trendSlope,
           bgModel,
           category,
+          currentTsb,
+          iob: currentIob,
         });
 
         const { title, body } = formatGuidancePush(guidance, currentBG);
