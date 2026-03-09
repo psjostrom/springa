@@ -3,47 +3,50 @@
 import { useState, useEffect, useEffectEvent, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { WorkoutEvent, CalendarEvent, PaceTable } from "@/lib/types";
-import type { BGResponseModel } from "@/lib/bgModel";
+import { useAtomValue, useSetAtom } from "jotai";
+import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
-import type { WellnessEntry } from "@/lib/intervalsApi";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import {
+  apiKeyAtom,
+  settingsAtom,
+  bgModelAtom,
+  paceTableAtom,
+  enrichedEventsAtom,
+  wellnessEntriesAtom,
+  runBGContextsAtom,
+  calendarReloadAtom,
+} from "../atoms";
 
 interface PlannerScreenProps {
-  apiKey: string;
-  bgModel?: BGResponseModel | null;
-  raceDate: string;
-  raceName?: string;
-  raceDist?: number;
-  prefix?: string;
-  totalWeeks?: number;
-  startKm?: number;
-  lthr?: number;
-  maxHr?: number;
-  hrZones?: number[];
-  paceTable?: PaceTable;
-  events?: CalendarEvent[];
-  wellnessEntries: WellnessEntry[];
-  runBGContexts?: Map<string, RunBGContext>;
   autoAdapt?: boolean;
-  onSyncDone?: () => void;
 }
 
-export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerScreenProps) {
-  const raceDist = props.raceDist ?? 16;
-  const lthr = props.lthr ?? DEFAULT_LTHR;
-  const prefix = props.prefix ?? "eco16";
-  const totalWeeks = props.totalWeeks ?? 18;
-  const startKm = props.startKm ?? 8;
+export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
+  const apiKey = useAtomValue(apiKeyAtom);
+  const bgModel = useAtomValue(bgModelAtom);
+  const settings = useAtomValue(settingsAtom);
+  const paceTable = useAtomValue(paceTableAtom);
+  const calendarEvents = useAtomValue(enrichedEventsAtom);
+  const wellnessEntries = useAtomValue(wellnessEntriesAtom);
+  const runBGContexts = useAtomValue(runBGContextsAtom);
+  const calendarReload = useSetAtom(calendarReloadAtom);
+  const raceDate = settings?.raceDate ?? "2026-06-13";
+
+  const raceDist = settings?.raceDist ?? 16;
+  const lthr = settings?.lthr ?? DEFAULT_LTHR;
+  const prefix = settings?.prefix ?? "eco16";
+  const totalWeeks = settings?.totalWeeks ?? 18;
+  const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
@@ -62,11 +65,11 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       setStatusMsg("Missing API Key");
       return;
     }
-    if (props.hrZones?.length !== 5) {
+    if (settings?.hrZones?.length !== 5) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, prefix, totalWeeks, startKm, lthr, props.hrZones);
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, prefix, totalWeeks, startKm, lthr, settings.hrZones);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));
@@ -90,7 +93,6 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
 
   // --- Adapt ---
 
-  const calendarEvents = props.events ?? [];
   const hasPlannedEvents = calendarEvents.some((e) => e.type === "planned");
 
   const handleAdapt = async () => {
@@ -106,7 +108,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
 
     try {
       // Fitness from Intervals.icu wellness data (authoritative)
-      const fitnessData = wellnessToFitnessData(props.wellnessEntries);
+      const fitnessData = wellnessToFitnessData(wellnessEntries);
       const insights = computeInsights(fitnessData, calendarEvents);
 
       // Filter upcoming planned (next 4) + recent completed (last 7)
@@ -130,10 +132,8 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
 
       // Serialize runBGContexts (Map → Record)
       const bgContextRecord: Record<string, RunBGContext> = {};
-      if (props.runBGContexts) {
-        for (const [k, v] of props.runBGContexts) {
-          bgContextRecord[k] = v;
-        }
+      for (const [k, v] of runBGContexts) {
+        bgContextRecord[k] = v;
       }
 
       const res = await fetch("/api/adapt-plan", {
@@ -147,9 +147,9 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
           runBGContexts: bgContextRecord,
           prefix,
           lthr,
-          maxHr: props.maxHr,
-          hrZones: props.hrZones,
-          paceTable: props.paceTable,
+          maxHr: settings?.maxHr,
+          hrZones: settings?.hrZones,
+          paceTable,
         }),
       });
 
@@ -177,10 +177,10 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
   });
 
   useEffect(() => {
-    if (props.autoAdapt && bgModel && hasPlannedEvents) {
+    if (autoAdapt && bgModel && hasPlannedEvents) {
       onAutoAdapt();
     }
-  }, [props.autoAdapt, bgModel, hasPlannedEvents]);
+  }, [autoAdapt, bgModel, hasPlannedEvents]);
 
   const handleSync = async () => {
     if (!apiKey) {
@@ -208,7 +208,7 @@ export function PlannerScreen({ apiKey, bgModel, raceDate, ...props }: PlannerSc
       );
       setAdaptStatus(`Synced ${syncable.length} workouts to Intervals.icu`);
       setSyncDone(true);
-      props.onSyncDone?.();
+      calendarReload();
     } catch (e) {
       setAdaptStatus(`Sync error: ${e instanceof Error ? e.message : String(e)}`);
     }

@@ -4,15 +4,24 @@ import { useState, useEffect, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
+import { useAtomValue } from "jotai";
 import { ChatMessage } from "../components/ChatMessage";
 import { ChatInput } from "../components/ChatInput";
 import { useCoachData } from "../hooks/useCoachData";
-import type { BGResponseModel } from "@/lib/bgModel";
-import type { CalendarEvent } from "@/lib/types";
-import type { XdripReading } from "@/lib/xdrip";
-import type { PaceTable } from "@/lib/types";
-import type { RunBGContext } from "@/lib/runBGContext";
-import type { WellnessEntry } from "@/lib/intervalsApi";
+import {
+  enrichedEventsAtom,
+  wellnessEntriesAtom,
+  phaseInfoAtom,
+  bgModelAtom,
+  settingsAtom,
+  paceTableAtom,
+  currentBGAtom,
+  trendSlopeAtom,
+  trendAtom,
+  lastBGUpdateAtom,
+  readingsAtom,
+  runBGContextsAtom,
+} from "../atoms";
 const SUGGESTIONS = [
   "How's my training load looking?",
   "Analyze my BG trends",
@@ -27,41 +36,23 @@ function getMessageText(parts: { type: string; text?: string }[]): string {
     .join("");
 }
 
-interface CoachScreenProps {
-  events: CalendarEvent[];
-  wellnessEntries: WellnessEntry[];
-  phaseInfo: { name: string; week: number; progress: number };
-  bgModel: BGResponseModel | null;
-  raceDate?: string;
-  lthr?: number;
-  maxHr?: number;
-  hrZones: number[];
-  paceTable?: PaceTable;
-  currentBG?: number | null;
-  trendSlope?: number | null;
-  trendArrow?: string | null;
-  lastUpdate?: Date | null;
-  readings?: XdripReading[];
-  runBGContexts?: Map<string, RunBGContext>;
-}
-
-export function CoachScreen({
-  events,
-  wellnessEntries,
-  phaseInfo,
-  bgModel,
-  raceDate,
-  lthr,
-  maxHr,
-  hrZones,
-  paceTable,
-  currentBG,
-  trendSlope,
-  trendArrow,
-  lastUpdate,
-  readings,
-  runBGContexts,
-}: CoachScreenProps) {
+export function CoachScreen() {
+  const events = useAtomValue(enrichedEventsAtom);
+  const wellnessEntries = useAtomValue(wellnessEntriesAtom);
+  const phaseInfo = useAtomValue(phaseInfoAtom);
+  const bgModel = useAtomValue(bgModelAtom);
+  const settings = useAtomValue(settingsAtom);
+  const paceTable = useAtomValue(paceTableAtom);
+  const currentBG = useAtomValue(currentBGAtom);
+  const trendSlope = useAtomValue(trendSlopeAtom);
+  const trendArrow = useAtomValue(trendAtom);
+  const lastUpdate = useAtomValue(lastBGUpdateAtom);
+  const readings = useAtomValue(readingsAtom);
+  const runBGContexts = useAtomValue(runBGContextsAtom);
+  const raceDate = settings?.raceDate;
+  const lthr = settings?.lthr;
+  const maxHr = settings?.maxHr;
+  const hrZones = settings?.hrZones ?? [];
   const { context, isLoading: contextLoading } = useCoachData({
     events,
     wellnessEntries,

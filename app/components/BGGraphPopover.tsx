@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { XdripReading } from "@/lib/xdrip";
+import { useAtomValue } from "jotai";
 import { trendArrow } from "@/lib/xdrip";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
+import { readingsAtom, trendAtom } from "../atoms";
 
 interface BGGraphPopoverProps {
-  readings: XdripReading[];
-  trend: string | null;
   onClose: () => void;
 }
 
@@ -23,7 +22,9 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps) {
+export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
+  const readings = useAtomValue(readingsAtom);
+  const trend = useAtomValue(trendAtom);
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
   const svgRef = useRef<SVGSVGElement>(null);
@@ -42,7 +43,19 @@ export function BGGraphPopover({ readings, trend, onClose }: BGGraphPopoverProps
     return readings.filter((r) => r.ts >= cutoff).sort((a, b) => a.ts - b.ts);
   })();
 
-  if (data.length === 0) return null;
+  if (data.length === 0) return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up px-4 py-8 text-center"
+        onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
+      >
+        <p className="text-[#b8a5d4] text-sm">No BG data available</p>
+      </div>
+    </div>
+  );
 
   // Y-axis bounds
   const mmolValues = data.map((r) => r.mmol);

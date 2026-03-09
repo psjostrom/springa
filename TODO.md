@@ -18,7 +18,8 @@
 
 ## Tech Debt
 
-- [ ] **page.tsx is doing too many things.** Data fetching, routing, settings, and layout in one ~320-line file. Every new data source adds another hook + more props threaded to screens. IntelScreen has 27 props. Not painful yet (single user, 5 screens) but when adding a prop means touching 4+ files, extract a `DataProvider` context so screens consume shared data from context instead of props. No external state library needed — React Context is sufficient at this scale.
+- [x] ~~**page.tsx is doing too many things.**~~ Migrated to Jotai atoms. Screens read data from atoms via `useAtomValue`, page.tsx is layout + routing only. `useHydrateStore` bridges existing hooks to atoms. IntelScreen went from 28 props to zero.
+- [ ] **`updateWidgetLayoutAtom` swallows fetch errors.** The debounced PUT in `atoms.ts` is fire-and-forget — if the save fails, the user sees their new layout locally but it's lost on refresh. `updateSettingsAtom` already checks `res.ok` and throws. Make widget layout saves consistent: check response status, surface errors.
 
 ## Cleanup
 

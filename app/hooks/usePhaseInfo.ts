@@ -6,13 +6,14 @@ import {
 	isBefore,
 } from "date-fns";
 
-interface PhaseInfo {
+export interface PhaseInfo {
 	name: string;
 	week: number;
 	progress: number;
 }
 
-export function usePhaseInfo(
+/** Pure computation — safe to call outside React components. */
+export function computePhaseInfo(
 	raceDate: string,
 	totalWeeks: number,
 ): PhaseInfo {

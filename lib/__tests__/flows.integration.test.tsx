@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "./test-utils";
 import userEvent from "@testing-library/user-event";
+import { useHydrateAtoms } from "jotai/utils";
+import { useSetAtom } from "jotai";
 import { http, HttpResponse } from "msw";
 import { server } from "./msw/server";
 import { capturedUploadPayload, capturedPutPayload, capturedDeleteEventIds } from "./msw/handlers";
@@ -9,10 +11,24 @@ import { API_BASE } from "../constants";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import { CalendarScreen } from "@/app/screens/CalendarScreen";
 import { useSharedCalendarData } from "@/app/hooks/useSharedCalendarData";
+import {
+  settingsAtom,
+  calendarEventsAtom,
+  calendarLoadingAtom,
+  calendarErrorAtom,
+} from "@/app/atoms";
+import type { UserSettings } from "@/lib/settings";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 import "./setup-dom";
 
 const TEST_API_KEY = "test-integration-key";
+
+const TEST_SETTINGS: UserSettings = {
+  intervalsApiKey: TEST_API_KEY,
+  raceDate: "2026-06-13",
+  hrZones: [...TEST_HR_ZONES],
+  lthr: TEST_LTHR,
+};
 
 // Fix calendar to February 2026 so fixture dates are visible in the current-month view
 beforeEach(() => {
@@ -23,20 +39,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Test wrapper that combines shared data hook + CalendarScreen, matching the prod wiring in page.tsx. */
-function TestCalendarScreen({ apiKey }: { apiKey: string }) {
-  const { events, isLoading, error, reload } = useSharedCalendarData(apiKey);
-  return (
-    <CalendarScreen
-      apiKey={apiKey}
-      initialEvents={events}
-      isLoadingInitial={isLoading}
-      initialError={error}
-      onRetryLoad={() => { reload(); }}
-      hrZones={[...TEST_HR_ZONES]}
-      lthr={TEST_LTHR}
-    />
-  );
+/** Hydrate settings atom for screens that need apiKey / hrZones / lthr. */
+function HydrateSettings({ children }: { children: React.ReactNode }) {
+  useHydrateAtoms([[settingsAtom, TEST_SETTINGS]]);
+  return <>{children}</>;
+}
+
+/** Test wrapper that hydrates settings + calendar atoms from SWR, matching prod wiring. */
+function TestCalendarScreen() {
+  useHydrateAtoms([[settingsAtom, TEST_SETTINGS]]);
+
+  const { events, isLoading, error } = useSharedCalendarData(TEST_API_KEY);
+  const setCalEvents = useSetAtom(calendarEventsAtom);
+  const setCalLoading = useSetAtom(calendarLoadingAtom);
+  const setCalError = useSetAtom(calendarErrorAtom);
+
+  useEffect(() => {
+    setCalEvents(events);
+    setCalLoading(isLoading);
+    setCalError(error);
+  }, [events, isLoading, error, setCalEvents, setCalLoading, setCalError]);
+
+  return <CalendarScreen />;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +69,7 @@ function TestCalendarScreen({ apiKey }: { apiKey: string }) {
 describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
   it("generates a plan, shows preview, syncs to Intervals.icu", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
+    render(<HydrateSettings><PlannerScreen /></HydrateSettings>);
 
     // 1. Click Generate Plan (two buttons exist: desktop sidebar + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -91,9 +115,7 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
 describe("Flow 2: Calendar — Events load -> Modal details", () => {
   it("loads events, clicks a completed event, shows modal with details and streams", async () => {
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events to load (MSW returns sampleActivities + sampleEvents)
     await waitFor(() => {
@@ -144,9 +166,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 
   it("clicks a planned event, edits the date, and saves", async () => {
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events
     await waitFor(() => {
@@ -196,7 +216,7 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
 describe("Flow 4: Planner — Generate uses fuel settings directly", () => {
   it("generates plan instantly using sidebar fuel values", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
+    render(<HydrateSettings><PlannerScreen /></HydrateSettings>);
 
     // 1. Click Generate Plan
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -227,7 +247,7 @@ describe("Flow 5: Planner — Sync resilience on delete failure", () => {
 
   it("uploads successfully even when DELETE returns 500", async () => {
     const user = userEvent.setup();
-    render(<PlannerScreen apiKey={TEST_API_KEY} raceDate="2026-06-13" hrZones={[...TEST_HR_ZONES]} wellnessEntries={[]} />);
+    render(<HydrateSettings><PlannerScreen /></HydrateSettings>);
 
     // 1. Generate plan (two buttons: desktop + mobile; click first)
     const generateBtns = screen.getAllByRole("button", { name: /Generate Plan/i });
@@ -267,9 +287,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
   // TODO: fuelRate not being populated from carbs_per_hour in test fixtures - investigate pipeline
   it.skip("shows fuel info in agenda pill and modal for an easy run", async () => {
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events to load, then switch to agenda view
     await waitFor(() => {
@@ -302,9 +320,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
   // TODO: fuelRate not being populated from carbs_per_hour in test fixtures - investigate pipeline
   it.skip("shows fuel info in agenda pill and modal for a speed session", async () => {
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events to load, then switch to agenda view
     await waitFor(() => {
@@ -351,9 +367,7 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
   // TODO: Flaky when run with other tests - fake timer pollution between test suites
   it.skip("opens a planned event, clicks Delete, confirms, and event is removed", async () => {
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events to load
     await waitFor(() => {
@@ -413,9 +427,7 @@ describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimat
     // but our description-based estimate is ~58 min (8km × 7.25 min/km).
     // The modal must show 58g, not 49g.
     const user = userEvent.setup();
-    render(
-      <TestCalendarScreen apiKey={TEST_API_KEY} />,
-    );
+    render(<TestCalendarScreen />);
 
     // 1. Wait for events to load
     await waitFor(() => {
