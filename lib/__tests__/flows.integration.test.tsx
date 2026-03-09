@@ -16,7 +16,6 @@ import {
   calendarEventsAtom,
   calendarLoadingAtom,
   calendarErrorAtom,
-  calendarReloadAtom,
 } from "@/app/atoms";
 import type { UserSettings } from "@/lib/settings";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
@@ -50,16 +49,16 @@ function HydrateSettings({ children }: { children: React.ReactNode }) {
 function TestCalendarScreen() {
   useHydrateAtoms([[settingsAtom, TEST_SETTINGS]]);
 
-  const { events, isLoading, error, reload } = useSharedCalendarData(TEST_API_KEY);
+  const { events, isLoading, error } = useSharedCalendarData(TEST_API_KEY);
   const setCalEvents = useSetAtom(calendarEventsAtom);
   const setCalLoading = useSetAtom(calendarLoadingAtom);
   const setCalError = useSetAtom(calendarErrorAtom);
-  const setCalReload = useSetAtom(calendarReloadAtom);
 
-  useEffect(() => { setCalEvents(events); }, [events, setCalEvents]);
-  useEffect(() => { setCalLoading(isLoading); }, [isLoading, setCalLoading]);
-  useEffect(() => { setCalError(error); }, [error, setCalError]);
-  useEffect(() => { setCalReload(reload); }, [reload, setCalReload]);
+  useEffect(() => {
+    setCalEvents(events);
+    setCalLoading(isLoading);
+    setCalError(error);
+  }, [events, isLoading, error, setCalEvents, setCalLoading, setCalError]);
 
   return <CalendarScreen />;
 }

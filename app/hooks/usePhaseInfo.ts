@@ -6,7 +6,7 @@ import {
 	isBefore,
 } from "date-fns";
 
-interface PhaseInfo {
+export interface PhaseInfo {
 	name: string;
 	week: number;
 	progress: number;

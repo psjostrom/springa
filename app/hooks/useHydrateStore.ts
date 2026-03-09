@@ -10,7 +10,6 @@ import {
   calendarEventsAtom,
   calendarLoadingAtom,
   calendarErrorAtom,
-  calendarReloadAtom,
   currentBGAtom,
   trendAtom,
   trendSlopeAtom,
@@ -26,11 +25,13 @@ import {
   wellnessLoadingAtom,
   paceCurveDataAtom,
   paceCurveLoadingAtom,
+  phaseInfoAtom,
 } from "../atoms";
 import { useSharedCalendarData } from "./useSharedCalendarData";
 import { useCurrentBG } from "./useCurrentBG";
 import { useRunData } from "./useRunData";
 import { usePaceCurves } from "./usePaceCurves";
+import { computePhaseInfo } from "./usePhaseInfo";
 import type { UserSettings } from "@/lib/settings";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 
@@ -44,12 +45,17 @@ export function useHydrateStore() {
   // ─── Settings ──────────────────────────────────────────
   const setSettings = useSetAtom(settingsAtom);
   const setSettingsLoading = useSetAtom(settingsLoadingAtom);
+  const setPhaseInfo = useSetAtom(phaseInfoAtom);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data: UserSettings) => {
         setSettings(data);
+        setPhaseInfo(computePhaseInfo(
+          data.raceDate ?? "2026-06-13",
+          data.totalWeeks ?? 18,
+        ));
       })
       .catch(() => {
         setSettings({});
@@ -57,7 +63,7 @@ export function useHydrateStore() {
       .finally(() => {
         setSettingsLoading(false);
       });
-  }, [setSettings, setSettingsLoading]);
+  }, [setSettings, setSettingsLoading, setPhaseInfo]);
 
   const apiKey = useAtomValue(apiKeyAtom);
 
@@ -66,20 +72,12 @@ export function useHydrateStore() {
   const setCalEvents = useSetAtom(calendarEventsAtom);
   const setCalLoading = useSetAtom(calendarLoadingAtom);
   const setCalError = useSetAtom(calendarErrorAtom);
-  const setCalReload = useSetAtom(calendarReloadAtom);
 
   useEffect(() => {
     setCalEvents(cal.events);
-  }, [cal.events, setCalEvents]);
-  useEffect(() => {
     setCalLoading(cal.isLoading);
-  }, [cal.isLoading, setCalLoading]);
-  useEffect(() => {
     setCalError(cal.error);
-  }, [cal.error, setCalError]);
-  useEffect(() => {
-    setCalReload(cal.reload);
-  }, [cal.reload, setCalReload]);
+  }, [cal.events, cal.isLoading, cal.error, setCalEvents, setCalLoading, setCalError]);
 
   // ─── Current BG ────────────────────────────────────────
   const bg = useCurrentBG();
@@ -91,19 +89,12 @@ export function useHydrateStore() {
 
   useEffect(() => {
     setCurrentBG(bg.currentBG);
-  }, [bg.currentBG, setCurrentBG]);
-  useEffect(() => {
     setTrend(bg.trend);
-  }, [bg.trend, setTrend]);
-  useEffect(() => {
     setTrendSlope(bg.trendSlope);
-  }, [bg.trendSlope, setTrendSlope]);
-  useEffect(() => {
     setLastUpdate(bg.lastUpdate);
-  }, [bg.lastUpdate, setLastUpdate]);
-  useEffect(() => {
     setReadings(bg.readings);
-  }, [bg.readings, setReadings]);
+  }, [bg.currentBG, bg.trend, bg.trendSlope, bg.lastUpdate, bg.readings,
+      setCurrentBG, setTrend, setTrendSlope, setLastUpdate, setReadings]);
 
   // ─── Run Data / BG Model ──────────────────────────────
   const runData = useRunData(apiKey, true, cal.events, bg.readings);
@@ -116,22 +107,15 @@ export function useHydrateStore() {
 
   useEffect(() => {
     setBgModel(runData.bgModel);
-  }, [runData.bgModel, setBgModel]);
-  useEffect(() => {
     setBgModelLoading(runData.bgModelLoading);
-  }, [runData.bgModelLoading, setBgModelLoading]);
-  useEffect(() => {
     setBgModelProgress(runData.bgModelProgress);
-  }, [runData.bgModelProgress, setBgModelProgress]);
-  useEffect(() => {
     setBgActivityNames(runData.bgActivityNames);
-  }, [runData.bgActivityNames, setBgActivityNames]);
-  useEffect(() => {
     setRunBGContexts(runData.runBGContexts);
-  }, [runData.runBGContexts, setRunBGContexts]);
-  useEffect(() => {
     setCachedActivities(runData.cachedActivities);
-  }, [runData.cachedActivities, setCachedActivities]);
+  }, [runData.bgModel, runData.bgModelLoading, runData.bgModelProgress,
+      runData.bgActivityNames, runData.runBGContexts, runData.cachedActivities,
+      setBgModel, setBgModelLoading, setBgModelProgress,
+      setBgActivityNames, setRunBGContexts, setCachedActivities]);
 
   // ─── Wellness ──────────────────────────────────────────
   const {
@@ -147,10 +131,8 @@ export function useHydrateStore() {
 
   useEffect(() => {
     setWellnessEntries(wellnessData);
-  }, [wellnessData, setWellnessEntries]);
-  useEffect(() => {
     setWellnessLoading(wellnessIsLoading);
-  }, [wellnessIsLoading, setWellnessLoading]);
+  }, [wellnessData, wellnessIsLoading, setWellnessEntries, setWellnessLoading]);
 
   // ─── Pace Curves ───────────────────────────────────────
   const pc = usePaceCurves(apiKey);
@@ -159,8 +141,6 @@ export function useHydrateStore() {
 
   useEffect(() => {
     setPaceCurveData(pc.data);
-  }, [pc.data, setPaceCurveData]);
-  useEffect(() => {
     setPaceCurveLoading(pc.isLoading);
-  }, [pc.isLoading, setPaceCurveLoading]);
+  }, [pc.data, pc.isLoading, setPaceCurveData, setPaceCurveLoading]);
 }

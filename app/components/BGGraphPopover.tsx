@@ -43,7 +43,19 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
     return readings.filter((r) => r.ts >= cutoff).sort((a, b) => a.ts - b.ts);
   })();
 
-  if (data.length === 0) return null;
+  if (data.length === 0) return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up px-4 py-8 text-center"
+        onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
+      >
+        <p className="text-[#b8a5d4] text-sm">No BG data available</p>
+      </div>
+    </div>
+  );
 
   // Y-axis bounds
   const mmolValues = data.map((r) => r.mmol);

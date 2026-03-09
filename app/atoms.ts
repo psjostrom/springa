@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
@@ -9,7 +10,7 @@ import type { XdripReading } from "@/lib/xdrip";
 import type { WidgetLayout } from "@/lib/widgetRegistry";
 import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
-import { computePhaseInfo } from "./hooks/usePhaseInfo";
+import type { PhaseInfo } from "./hooks/usePhaseInfo";
 import {
   extractZoneSegments,
   buildCalibratedPaceTable,
@@ -41,17 +42,12 @@ export const updateSettingsAtom = atom(
 export const calendarEventsAtom = atom<CalendarEvent[]>([]);
 export const calendarLoadingAtom = atom(false);
 export const calendarErrorAtom = atom<string | null>(null);
-// Writable atom holding a function — Jotai treats bare function args as read getters,
-// so we wrap in an object and expose via a derived read/write atom.
-const _calendarReloadFnAtom = atom<{ fn: () => void }>({
-  fn: () => undefined,
+// Write-only atom that triggers SWR revalidation for calendar data.
+// Uses SWR's global mutate with the same key as useSharedCalendarData.
+export const calendarReloadAtom = atom(null, (get) => {
+  const apiKey = get(apiKeyAtom);
+  if (apiKey) void mutate(["calendar-data", apiKey]);
 });
-export const calendarReloadAtom = atom(
-  (get) => get(_calendarReloadFnAtom).fn,
-  (_get, set, fn: () => void) => {
-    set(_calendarReloadFnAtom, { fn });
-  },
-);
 
 // ─── Current BG (xDrip) ─────────────────────────────────────
 
@@ -89,11 +85,7 @@ export const enrichedEventsAtom = atom((get) =>
   enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom)),
 );
 
-export const phaseInfoAtom = atom((get) => {
-  const raceDate = get(settingsAtom)?.raceDate ?? "2026-06-13";
-  const totalWeeks = get(settingsAtom)?.totalWeeks ?? 18;
-  return computePhaseInfo(raceDate, totalWeeks);
-});
+export const phaseInfoAtom = atom<PhaseInfo>({ name: "Build Phase", week: 0, progress: 0 });
 
 export const paceCalibrationAtom = atom((get) => {
   const cached = get(cachedActivitiesAtom);

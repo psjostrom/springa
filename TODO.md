@@ -19,6 +19,7 @@
 ## Tech Debt
 
 - [x] ~~**page.tsx is doing too many things.**~~ Migrated to Jotai atoms. Screens read data from atoms via `useAtomValue`, page.tsx is layout + routing only. `useHydrateStore` bridges existing hooks to atoms. IntelScreen went from 28 props to zero.
+- [ ] **`updateWidgetLayoutAtom` swallows fetch errors.** The debounced PUT in `atoms.ts` is fire-and-forget — if the save fails, the user sees their new layout locally but it's lost on refresh. `updateSettingsAtom` already checks `res.ok` and throws. Make widget layout saves consistent: check response status, surface errors.
 
 ## Cleanup
 

@@ -109,7 +109,7 @@ export function IntelScreen() {
   const events = useAtomValue(enrichedEventsAtom);
   const eventsLoading = useAtomValue(calendarLoadingAtom);
   const eventsError = useAtomValue(calendarErrorAtom);
-  const onRetryLoad = useAtomValue(calendarReloadAtom);
+  const onRetryLoad = useSetAtom(calendarReloadAtom);
   const settings = useAtomValue(settingsAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);

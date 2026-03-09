@@ -3,7 +3,7 @@
 import { useState, useEffect, useEffectEvent, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
@@ -39,7 +39,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const calendarEvents = useAtomValue(enrichedEventsAtom);
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
-  const calendarReload = useAtomValue(calendarReloadAtom);
+  const calendarReload = useSetAtom(calendarReloadAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;

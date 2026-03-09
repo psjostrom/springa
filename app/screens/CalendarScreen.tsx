@@ -1,6 +1,6 @@
 "use client";
 
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   apiKeyAtom,
   enrichedEventsAtom,
@@ -19,7 +19,7 @@ export function CalendarScreen() {
   const events = useAtomValue(enrichedEventsAtom);
   const isLoading = useAtomValue(calendarLoadingAtom);
   const error = useAtomValue(calendarErrorAtom);
-  const reload = useAtomValue(calendarReloadAtom);
+  const reload = useSetAtom(calendarReloadAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const paceTable = useAtomValue(paceTableAtom);
   const bgModel = useAtomValue(bgModelAtom);
