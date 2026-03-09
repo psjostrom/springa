@@ -288,6 +288,7 @@ export function IntelScreen() {
         currentWeek={currentWeek}
         totalWeeks={totalWeeks}
         progress={progress}
+        raceDate={raceDate}
       />
     ),
     "fitness-chart":

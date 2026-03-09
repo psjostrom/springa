@@ -1,8 +1,203 @@
+"use client";
+
+import { useState } from "react";
+
 interface PhaseTrackerProps {
 	phaseName: string;
 	currentWeek: number;
 	totalWeeks: number;
 	progress: number;
+	raceDate?: string;
+}
+
+interface PhaseDefinition {
+	name: string;
+	startWeek: number;
+	endWeek: number;
+	description: string;
+	focus: string[];
+}
+
+function getPhaseDefinitions(totalWeeks: number): PhaseDefinition[] {
+	const raceWeek = totalWeeks;
+	const taperWeek = totalWeeks - 1;
+	const raceTestStart = totalWeeks - 3;
+
+	return [
+		{
+			name: "Build Phase",
+			startWeek: 1,
+			endWeek: raceTestStart - 1,
+			description: "Building aerobic base and increasing weekly volume progressively.",
+			focus: [
+				"Progressive long runs",
+				"Weekly speed sessions",
+				"BG management practice",
+				"Consistent easy running",
+			],
+		},
+		{
+			name: "🏔️ Race Test Phase",
+			startWeek: raceTestStart,
+			endWeek: taperWeek - 1,
+			description: "Peak training with race-pace work. Testing fueling and pacing strategies.",
+			focus: [
+				"Race-pace long runs",
+				"Full race-day dress rehearsal",
+				"Fine-tune fueling",
+				"Peak fitness week",
+			],
+		},
+		{
+			name: "📉 Taper Phase",
+			startWeek: taperWeek,
+			endWeek: taperWeek,
+			description: "Reduced volume to absorb training and arrive fresh on race day.",
+			focus: [
+				"Volume drops ~40%",
+				"Maintain intensity",
+				"Extra rest and sleep",
+				"Nutrition focus",
+			],
+		},
+		{
+			name: "🏁 Race Week",
+			startWeek: raceWeek,
+			endWeek: raceWeek,
+			description: "Final preparation and race execution.",
+			focus: [
+				"Light shakeout runs only",
+				"Pre-race carb loading",
+				"BG stability priority",
+				"Race day!",
+			],
+		},
+	];
+}
+
+function getCurrentPhaseIndex(currentWeek: number, phases: PhaseDefinition[]): number {
+	for (let i = 0; i < phases.length; i++) {
+		if (currentWeek >= phases[i].startWeek && currentWeek <= phases[i].endWeek) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+function formatRaceDate(raceDate: string): string {
+	const date = new Date(raceDate);
+	return date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
+function weeksUntil(raceDate: string): number {
+	const now = new Date();
+	const race = new Date(raceDate);
+	const diffMs = race.getTime() - now.getTime();
+	return Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
+}
+
+function PhasePopover({
+	anchorRect,
+	phases,
+	currentPhaseIndex,
+	currentWeek,
+	raceDate,
+	onClose,
+}: {
+	anchorRect: DOMRect;
+	phases: PhaseDefinition[];
+	currentPhaseIndex: number;
+	currentWeek: number;
+	raceDate?: string;
+	onClose: () => void;
+}) {
+	const popoverWidth = 280;
+	const popoverHeight = 280; // approximate max height
+	const gap = 10;
+	// Show below if not enough space above
+	const showBelow = anchorRect.top < popoverHeight + gap;
+
+	const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+	const left = Math.min(
+		Math.max(12, anchorCenterX - popoverWidth / 2),
+		window.innerWidth - popoverWidth - 12,
+	);
+	const arrowLeft = Math.min(Math.max(16, anchorCenterX - left), popoverWidth - 16);
+
+	const positionStyle: React.CSSProperties = {
+		width: popoverWidth,
+		left,
+		...(showBelow
+			? { top: anchorRect.bottom + gap }
+			: { bottom: window.innerHeight - anchorRect.top + gap }),
+	};
+
+	const currentPhase = phases[currentPhaseIndex];
+	const upcomingPhases = phases.slice(currentPhaseIndex + 1);
+	const weeksLeft = raceDate ? weeksUntil(raceDate) : null;
+
+	return (
+		<>
+			<div className="fixed inset-0 z-40" onClick={onClose} />
+			<div
+				className="fixed z-50 bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
+				style={positionStyle}
+			>
+				{/* Race countdown */}
+				{raceDate && weeksLeft !== null && weeksLeft > 0 && (
+					<div className="text-xs text-[#ff2d95] font-semibold mb-2">
+						{weeksLeft} week{weeksLeft !== 1 ? "s" : ""} to race day • {formatRaceDate(raceDate)}
+					</div>
+				)}
+
+				{/* Current phase */}
+				<div className="mb-3">
+					<div className="text-sm font-bold text-white mb-1">{currentPhase.name}</div>
+					<div className="text-xs text-[#b8a5d4] leading-relaxed mb-2">
+						{currentPhase.description}
+					</div>
+					<div className="space-y-1">
+						{currentPhase.focus.map((item, i) => (
+							<div key={i} className="flex items-center gap-2 text-xs">
+								<span className="w-1 h-1 rounded-full bg-[#00ffff]" />
+								<span className="text-[#c4b5fd]">{item}</span>
+							</div>
+						))}
+					</div>
+				</div>
+
+				{/* Upcoming phases */}
+				{upcomingPhases.length > 0 && (
+					<div className="pt-2 border-t border-[#3d2b5a]">
+						<div className="text-xs text-[#7a6899] uppercase tracking-wider font-semibold mb-2">
+							Coming up
+						</div>
+						<div className="space-y-2">
+							{upcomingPhases.map((phase, i) => {
+								const weeksToPhase = phase.startWeek - currentWeek;
+								return (
+									<div key={i} className="flex items-center justify-between">
+										<span className="text-xs text-[#c4b5fd]">{phase.name}</span>
+										<span className="text-xs text-[#7a6899]">
+											{weeksToPhase === 1 ? "Next week" : `In ${weeksToPhase} weeks`}
+										</span>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				)}
+
+				{/* Arrow */}
+				<div
+					className={`absolute w-2.5 h-2.5 bg-[#1e1535] border-[#3d2b5a] rotate-45 ${
+						showBelow ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-r border-b"
+					}`}
+					style={{ left: arrowLeft }}
+				/>
+			</div>
+		</>
+	);
 }
 
 export function PhaseTracker({
@@ -10,21 +205,50 @@ export function PhaseTracker({
 	currentWeek,
 	totalWeeks,
 	progress,
+	raceDate,
 }: PhaseTrackerProps) {
+	const [popover, setPopover] = useState<{ anchorRect: DOMRect } | null>(null);
+
+	const phases = getPhaseDefinitions(totalWeeks);
+	const currentPhaseIndex = getCurrentPhaseIndex(currentWeek, phases);
+
+	const handleClick = (e: React.MouseEvent) => {
+		if (popover) {
+			setPopover(null);
+		} else {
+			setPopover({ anchorRect: e.currentTarget.getBoundingClientRect() });
+		}
+	};
+
 	return (
-		<div className="bg-[#1e1535] text-white p-4 rounded-lg border border-[#3d2b5a]">
-			<div className="flex justify-between text-sm mb-1">
-				<span className="font-bold">{phaseName}</span>
-				<span className="text-[#b8a5d4]">
-					Week {currentWeek} of {totalWeeks}
-				</span>
+		<>
+			{popover && (
+				<PhasePopover
+					anchorRect={popover.anchorRect}
+					phases={phases}
+					currentPhaseIndex={currentPhaseIndex}
+					currentWeek={currentWeek}
+					raceDate={raceDate}
+					onClose={() => { setPopover(null); }}
+				/>
+			)}
+			<div
+				onClick={handleClick}
+				className="bg-[#1e1535] text-white p-4 rounded-lg border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
+			>
+				<div className="flex justify-between text-sm mb-1">
+					<span className="font-bold">{phaseName}</span>
+					<span className="text-[#b8a5d4]">
+						Week {currentWeek} of {totalWeeks}
+					</span>
+				</div>
+				<div className="w-full bg-[#2a1f3d] rounded-full h-2">
+					<div
+						className="bg-[#ff2d95] h-2 rounded-full transition-all duration-500 shadow-[0_0_8px_#ff2d95]"
+						style={{ width: `${progress}%` }}
+					></div>
+				</div>
 			</div>
-			<div className="w-full bg-[#2a1f3d] rounded-full h-2">
-				<div
-					className="bg-[#ff2d95] h-2 rounded-full transition-all duration-500 shadow-[0_0_8px_#ff2d95]"
-					style={{ width: `${progress}%` }}
-				></div>
-			</div>
-		</div>
+		</>
 	);
 }
