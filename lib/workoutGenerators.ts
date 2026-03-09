@@ -326,13 +326,14 @@ const generateLongRun = (
 
   const s = makeStep(ctx);
 
-  // Distance ramp uses actual build weeks as denominator
+  // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
+  const buildWeekIdx = Math.max(0, weekIdx - (wp.b.buildStart - 1));
   let km = Math.min(
     Math.floor(
       ctx.startKm +
         ((ctx.raceDist - ctx.startKm) / buildWeeks) *
-          weekIdx,
+          buildWeekIdx,
     ),
     ctx.raceDist,
   );

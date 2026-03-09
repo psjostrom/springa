@@ -63,8 +63,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (skVal !== settings.startKm) {
       updates.startKm = skVal;
     }
-    if (includeBasePhase !== (settings.includeBasePhase ?? false)) {
-      updates.includeBasePhase = includeBasePhase;
+    // Force base phase off when weeks are too short to support it
+    const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
+    if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
+      updates.includeBasePhase = effectiveBasePhase;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
