@@ -67,8 +67,32 @@ describe("generatePlan", () => {
     expect(raceDay!.name).toContain("eco16");
   });
 
-  it("skips speed sessions on recovery weeks (every 4th week)", () => {
-    const plan = generate();
+  it("skips speed sessions during base phase when enabled", () => {
+    // 12-week plan with base: base 1-2, build starts week 3
+    function generateWithBase() {
+      return generatePlan(null, "2027-06-12", 16, "eco16", 12, 8, TEST_LTHR, [...TEST_HR_ZONES], true);
+    }
+    const plan = generateWithBase();
+    const w1Speed = plan.find((e) => e.external_id === "eco16-speed-1");
+    const w2Speed = plan.find((e) => e.external_id === "eco16-speed-2");
+    if (w1Speed) expect(w1Speed.name).toContain("Easy");
+    if (w2Speed) expect(w2Speed.name).toContain("Easy");
+    // Week 3 should have a real speed session (first build week)
+    const w3Speed = plan.find((e) => e.external_id === "eco16-speed-3");
+    expect(w3Speed).toBeDefined();
+    expect(w3Speed!.name).not.toContain("Easy");
+  });
+
+  it("has speed sessions from week 1 when base phase is disabled", () => {
+    const plan = generateFull();
+    const w1Speed = plan.find((e) => e.external_id === "eco16-speed-1");
+    expect(w1Speed).toBeDefined();
+    expect(w1Speed!.name).not.toContain("Easy");
+  });
+
+  it("skips speed sessions on recovery weeks", () => {
+    // 12-week plan without base: build 1-7, recovery at build index 3 = week 4
+    const plan = generateFull();
     const w4Speed = plan.find((e) => e.external_id === "eco16-speed-4");
     if (w4Speed) {
       expect(w4Speed.name).toContain("Easy");
@@ -310,7 +334,7 @@ describe("generatePlan", () => {
     expect(distances[distances.length - 1]).toBeGreaterThan(distances[0]);
   });
 
-  it("reduces distance on recovery weeks (every 4th week)", () => {
+  it("reduces distance on recovery weeks (3:1 pattern within build)", () => {
     const plan = generateFull();
     const recoveryRuns = plan.filter((e) => e.name.includes("[RECOVERY]"));
     expect(recoveryRuns.length).toBeGreaterThan(0);
@@ -322,20 +346,22 @@ describe("generatePlan", () => {
     }
   });
 
-  it("reduces distance on taper week", () => {
+  it("reduces distance on taper weeks", () => {
     const plan = generateFull();
     const taperRuns = plan.filter((e) => e.name.includes("[TAPER]"));
-    expect(taperRuns.length).toBe(1);
-    const match = /\((\d+)km\)/.exec(taperRuns[0].name);
-    expect(match).not.toBeNull();
-    // Taper is 50% of race distance (16 * 0.5 = 8)
-    expect(parseInt(match![1], 10)).toBe(8);
+    expect(taperRuns.length).toBe(2); // 2-week taper
+    for (const run of taperRuns) {
+      const match = /\((\d+)km\)/.exec(run.name);
+      expect(match).not.toBeNull();
+      // Taper is 50% of race distance (16 * 0.5 = 8)
+      expect(parseInt(match![1], 10)).toBe(8);
+    }
   });
 
-  it("sets race test weeks to full race distance", () => {
+  it("sets race test weeks to full race distance (2 weeks)", () => {
     const plan = generateFull();
     const raceTests = plan.filter((e) => e.name.includes("[RACE TEST]"));
-    expect(raceTests.length).toBeGreaterThan(0);
+    expect(raceTests.length).toBe(2);
     for (const rt of raceTests) {
       const match = /\((\d+)km\)/.exec(rt.name);
       expect(match).not.toBeNull();

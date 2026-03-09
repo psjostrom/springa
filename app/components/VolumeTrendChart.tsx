@@ -30,6 +30,7 @@ interface VolumeTrendChartProps {
   lthr?: number;
   hrZones?: number[];
   paceTable?: PaceTable;
+  includeBasePhase?: boolean;
 }
 
 interface WeekData {
@@ -51,6 +52,7 @@ export function VolumeTrendChart({
   lthr,
   hrZones,
   paceTable,
+  includeBasePhase,
 }: VolumeTrendChartProps) {
 
   const data = (() => {
@@ -74,7 +76,7 @@ export function VolumeTrendChart({
 
     // Planned distances from the deterministic plan generator (covers all weeks)
     if (hrZones?.length !== 5) return { weeks, currentWeekIdx };
-    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones);
+    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, prefix ?? "eco16", totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, includeBasePhase ?? false);
     for (const pe of planEvents) {
       // Skip events excluded from plan (e.g., club run as alternative to speed session)
       if (pe.excludeFromPlan) continue;
