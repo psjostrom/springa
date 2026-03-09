@@ -39,6 +39,8 @@ function PhasePopover({
 	phases,
 	currentPhaseIndex,
 	currentWeek,
+	totalWeeks,
+	includeBasePhase,
 	raceDate,
 	onClose,
 }: {
@@ -46,6 +48,8 @@ function PhasePopover({
 	phases: PhaseDefinition[];
 	currentPhaseIndex: number;
 	currentWeek: number;
+	totalWeeks: number;
+	includeBasePhase: boolean;
 	raceDate?: string;
 	onClose: () => void;
 }) {
@@ -73,7 +77,7 @@ function PhasePopover({
 	const currentPhase = phases[currentPhaseIndex];
 	const upcomingPhases = phases.slice(currentPhaseIndex + 1);
 	const weeksLeft = raceDate ? weeksUntil(raceDate) : null;
-	const recovery = isRecoveryWeek(currentWeek, phases[phases.length - 1].endWeek);
+	const recovery = isRecoveryWeek(currentWeek, totalWeeks, includeBasePhase);
 
 	return (
 		<>
@@ -171,6 +175,8 @@ export function PhaseTracker({
 					phases={phases}
 					currentPhaseIndex={currentPhaseIndex}
 					currentWeek={currentWeek}
+					totalWeeks={totalWeeks}
+					includeBasePhase={includeBasePhase ?? false}
 					raceDate={raceDate}
 					onClose={() => { setPopover(null); }}
 				/>

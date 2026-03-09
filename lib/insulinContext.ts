@@ -185,12 +185,8 @@ export function buildInsulinContext(
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     ); // newest first
 
-  console.log(`[InsulinCtx] Window: ${new Date(lookbackStart).toISOString()} → ${new Date(runStartMs).toISOString()}`);
-  console.log(`[InsulinCtx] In window: ${boluses.length} boluses, ${carbEvents.length} carb events, ${basalEntries.length} basal entries, ${easeOffEvents.length} ease-off, ${boostEvents.length} boost`);
-
   // Need at least one bolus in the window
   if (boluses.length === 0) {
-    console.log("[InsulinCtx] No boluses in window → returning null");
     return null;
   }
 
@@ -253,6 +249,5 @@ export function buildInsulinContext(
     boostDurationH: lastBoost ? lastBoost.value : null,
   };
 
-  console.log("[InsulinCtx] Result:", JSON.stringify(ctx, null, 2));
   return ctx;
 }

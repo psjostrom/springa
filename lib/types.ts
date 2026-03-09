@@ -49,6 +49,7 @@ export interface PlanContext {
   hrZones: number[];
   planStartMonday: Date;
   includeBasePhase: boolean;
+  boundaries: import("./periodization").PhaseBoundaries;
 }
 
 export interface IntervalsActivity {

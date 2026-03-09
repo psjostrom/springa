@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { X, LogOut, Bell } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
+import { MIN_PLAN_WEEKS } from "@/lib/periodization";
 
 interface SettingsModalProps {
   email: string;
@@ -157,13 +158,16 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">Total Weeks</label>
                   <input
                     type="number"
-                    min={4}
+                    min={MIN_PLAN_WEEKS}
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="18"
                   />
+                  <p className="text-[10px] text-[#7a6899] mt-1">
+                    Min {MIN_PLAN_WEEKS}. Includes build, 2-week race test, 2-week taper, and race week.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs text-[#b8a5d4] mb-1">Start km</label>
@@ -182,34 +186,45 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           </div>
 
           {/* Training Experience */}
-          <div className="border-t border-[#3d2b5a] pt-4">
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={includeBasePhase}
-                onClick={() => { setIncludeBasePhase(!includeBasePhase); }}
-                className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    includeBasePhase ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
-              <div>
-                <label className="block text-sm font-semibold text-[#c4b5fd]">
-                  Include base phase
-                </label>
-                <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
-                  Adds 2-3 weeks of easy-only running at the start of the plan.
-                  Recommended if you&apos;re new to structured training or returning from a break.
-                </p>
+          {(() => {
+            // Base phase needs enough weeks for 2-3 base + 4 build + 5 fixed = 11 minimum
+            const minWeeksForBase = MIN_PLAN_WEEKS + 1;
+            const weeksNum = typeof totalWeeks === "number" ? totalWeeks : 0;
+            const baseTooShort = weeksNum > 0 && weeksNum < minWeeksForBase;
+            const baseDisabled = baseTooShort;
+            return (
+              <div className="border-t border-[#3d2b5a] pt-4">
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeBasePhase && !baseDisabled}
+                    disabled={baseDisabled}
+                    onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
+                    className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                      baseDisabled ? "bg-[#2a1f3d] opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        includeBasePhase && !baseDisabled ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#7a6899]" : "text-[#c4b5fd]"}`}>
+                      Include base phase
+                    </label>
+                    <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
+                      {baseDisabled
+                        ? `Requires at least ${minWeeksForBase} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
+                        : "Adds 2-3 weeks of easy-only running at the start of the plan. Recommended if you're new to structured training or returning from a break."}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Notifications */}
           <div className="border-t border-[#3d2b5a] pt-4">
