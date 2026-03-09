@@ -292,7 +292,7 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
   it("bumps fuel when TSB < -4", () => {
     const model = makeModel({
       activitiesAnalyzed: 5,
-      targetFuelRates: [{ category: "easy", currentFuelRate: 48, targetFuelRate: 48 }],
+      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high" }],
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -6 }));
     expect(g.reasons).toContain("High fatigue — expect steeper BG drops");
@@ -303,7 +303,7 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
   it("no fatigue bump when TSB >= -4", () => {
     const model = makeModel({
       activitiesAnalyzed: 5,
-      targetFuelRates: [{ category: "easy", currentFuelRate: 48, targetFuelRate: 48 }],
+      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high" }],
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -2 }));
     expect(g.reasons).not.toContain("High fatigue — expect steeper BG drops");
