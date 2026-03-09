@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { HRZoneName } from "@/lib/types";
 import type { CalibratedPaceTable } from "@/lib/paceCalibration";
 import { computeZonePaceTrend } from "@/lib/paceCalibration";
@@ -17,6 +18,83 @@ const ZONE_META: { zone: HRZoneName; label: string; color: string }[] = [
   { zone: "hard", label: "Hard", color: ZONE_COLORS.z5 },
 ];
 
+const ZONE_PURPOSE: Record<HRZoneName, string> = {
+  easy: "Aerobic base, recovery",
+  steady: "Race pace effort",
+  tempo: "Threshold, 5K effort",
+  hard: "Strides, sprints",
+};
+
+function PaceZonesPopover({
+  anchorRect,
+  calibration,
+  onClose,
+}: {
+  anchorRect: DOMRect;
+  calibration: CalibratedPaceTable;
+  onClose: () => void;
+}) {
+  const { segments } = calibration;
+
+  const popoverWidth = 260;
+  const popoverHeight = 180;
+  const gap = 10;
+  const showBelow = anchorRect.top < popoverHeight + gap;
+
+  const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+  const left = Math.min(
+    Math.max(12, anchorCenterX - popoverWidth / 2),
+    window.innerWidth - popoverWidth - 12,
+  );
+  const arrowLeft = Math.min(Math.max(16, anchorCenterX - left), popoverWidth - 16);
+
+  const positionStyle: React.CSSProperties = {
+    width: popoverWidth,
+    left,
+    ...(showBelow
+      ? { top: anchorRect.bottom + gap }
+      : { bottom: window.innerHeight - anchorRect.top + gap }),
+  };
+
+  const totalMinutes = segments.reduce((sum, s) => sum + s.durationMin, 0);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        className="fixed z-50 bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
+        style={positionStyle}
+      >
+        <div className="text-xs text-[#b8a5d4] leading-relaxed mb-3">
+          Pace at each HR zone, calibrated from {totalMinutes} min of training.
+        </div>
+
+        {/* Zone purposes */}
+        <div className="space-y-1 text-xs">
+          {ZONE_META.map(({ zone, label, color }) => (
+            <div key={zone} className="flex items-center gap-2">
+              <div
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-[#c4b5fd] font-medium w-12">{label}</span>
+              <span className="text-[#8b7ba8]">{ZONE_PURPOSE[zone]}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Arrow */}
+        <div
+          className={`absolute w-2.5 h-2.5 bg-[#1e1535] border-[#3d2b5a] rotate-45 ${
+            showBelow ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-r border-b"
+          }`}
+          style={{ left: arrowLeft }}
+        />
+      </div>
+    </>
+  );
+}
+
 function TrendArrow({ slope }: { slope: number | null }) {
   if (slope === null) return <span className="text-[#8b7ba8]">—</span>;
   // slope is min/km per day — negative = faster
@@ -31,9 +109,29 @@ function TrendArrow({ slope }: { slope: number | null }) {
 
 export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
   const { table, segments, zoneSummaries, hardExtrapolated } = calibration;
+  const [popover, setPopover] = useState<{ anchorRect: DOMRect } | null>(null);
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (popover) {
+      setPopover(null);
+    } else {
+      setPopover({ anchorRect: e.currentTarget.getBoundingClientRect() });
+    }
+  };
 
   return (
-    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <>
+      {popover && (
+        <PaceZonesPopover
+          anchorRect={popover.anchorRect}
+          calibration={calibration}
+          onClose={() => { setPopover(null); }}
+        />
+      )}
+      <div
+        onClick={handleClick}
+        className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden cursor-pointer active:bg-[#2a1f3d] transition-colors"
+      >
         {/* Header */}
         <div className="flex items-center px-3 py-2 border-b border-[#3d2b5a] text-xs text-[#8b7ba8]">
           <span className="w-16">Zone</span>
@@ -91,6 +189,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
             </div>
           );
         })}
-    </div>
+      </div>
+    </>
   );
 }
