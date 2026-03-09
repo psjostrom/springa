@@ -52,6 +52,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       updates.prefix = prefix.trim();
     }
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
+    if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
+      setSaving(false);
+      return;
+    }
     if (twVal !== settings.totalWeeks) {
       updates.totalWeeks = twVal;
     }
@@ -259,7 +263,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
         <div className="px-6 py-4 border-t border-[#3d2b5a]">
           <button
             onClick={() => { void handleSave(); }}
-            disabled={saving}
+            disabled={saving || (totalWeeks !== "" && Number(totalWeeks) < MIN_PLAN_WEEKS)}
             className="w-full py-2.5 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
