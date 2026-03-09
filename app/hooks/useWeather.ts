@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import type { SMHIWeather } from "@/lib/smhi";
+import { useState, useEffect } from "react";
 import { fetchForecast, getWeatherForTime } from "@/lib/smhi";
 import { recommendClothing, type ClothingRecommendation } from "@/lib/clothingCalculator";
 
@@ -35,7 +34,6 @@ export function useWeather(
   const [recs, setRecs] = useState<Map<string, ClothingRecommendation>>(
     () => new Map(),
   );
-  const forecastRef = useRef<SMHIWeather[] | null>(null);
 
   const eligible = getEligibleEvents(events);
   const eligibleKey = eligible.map((e) => `${e.id}:${e.date.getTime()}:${e.category}`).join(",");
@@ -50,8 +48,7 @@ export function useWeather(
 
     async function run() {
       try {
-        forecastRef.current ??= await fetchForecast();
-        const forecast = forecastRef.current;
+        const forecast = await fetchForecast();
         const map = new Map<string, ClothingRecommendation>();
 
         for (const event of eligible) {

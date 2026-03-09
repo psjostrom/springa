@@ -103,12 +103,13 @@ describe("recommendClothing", () => {
       expect(interval.upper).toEqual(["T-shirt"]);
     });
 
-    it("only interval category gets high intensity offset", () => {
+    it("only interval and hills categories get high intensity offset", () => {
       const w = weather({ feelsLike: 7 });
       expect(recommendClothing(w, "easy").upper).toEqual(["Long sleeve"]);
       expect(recommendClothing(w, "long").upper).toEqual(["Long sleeve"]);
       expect(recommendClothing(w, "club").upper).toEqual(["Long sleeve"]);
       expect(recommendClothing(w, "interval").upper).toEqual(["T-shirt"]);
+      expect(recommendClothing(w, "hills").upper).toEqual(["T-shirt"]);
     });
   });
 

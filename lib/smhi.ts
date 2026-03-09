@@ -78,6 +78,8 @@ function parseTimeSeries(entry: SMHITimeSeries): SMHIWeather {
   };
 }
 
+// Client-side only — this module is imported from useWeather (a "use client" hook).
+// If ever imported server-side, this singleton would be shared across all requests.
 let cachedForecast: { data: SMHIWeather[]; fetchedAt: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 

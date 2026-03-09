@@ -499,8 +499,8 @@ export function EventModal({
         )}
 
         {clothing && selectedEvent.type === "planned" && (
-          <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#1a2a3d]/50 border border-[#7dd3fc]/20">
-            <div className="text-xs text-[#7dd3fc] font-medium mb-1.5">What to wear</div>
+          <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#2a1f3d]/50 border border-[#3d2b5a]">
+            <div className="text-xs text-[#c4b5fd] font-medium mb-1.5">What to wear</div>
             <ClothingRecommendation recommendation={clothing} />
           </div>
         )}

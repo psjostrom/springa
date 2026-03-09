@@ -17,7 +17,7 @@ export interface ClothingRecommendation {
 type Intensity = "low" | "high";
 
 function getIntensity(category: string): Intensity {
-  return category === "interval" ? "high" : "low";
+  return category === "interval" || category === "hills" ? "high" : "low";
 }
 
 function isRain(precipCategory: number): boolean {
