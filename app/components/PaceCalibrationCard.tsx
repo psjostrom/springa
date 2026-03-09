@@ -54,16 +54,19 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
               className="flex items-center px-3 py-2 border-b border-[#3d2b5a] last:border-b-0"
             >
               {/* Zone dot + label */}
-              <div className="w-16 flex items-center gap-1.5">
+              <div className="flex-shrink-0 flex items-center gap-1.5">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: color }}
                 />
                 <span className="text-sm text-[#c4b5fd]">{label}</span>
+                {isHardExtrapolated && (
+                  <span className="text-[10px] text-[#d946ef]">(extrapolated)</span>
+                )}
               </div>
 
               {/* Pace */}
-              <div className="flex-1 flex items-center justify-end gap-1">
+              <div className="flex-1 text-right">
                 <span
                   className={`text-sm tabular-nums ${
                     entry.calibrated ? "font-bold text-white" : "text-[#8b7ba8]"
@@ -71,10 +74,9 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
                 >
                   {formatPace(entry.pace)}
                 </span>
-                <span className="w-10 text-[10px] text-left">
-                  {!entry.calibrated && <span className="text-[#6b5b8a]">fallback</span>}
-                  {isHardExtrapolated && <span className="text-[#d946ef]">extrap.</span>}
-                </span>
+                {!entry.calibrated && (
+                  <span className="text-[10px] text-[#6b5b8a] ml-1">fallback</span>
+                )}
               </div>
 
               {/* Avg HR */}
