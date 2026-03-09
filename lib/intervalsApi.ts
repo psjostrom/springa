@@ -267,7 +267,9 @@ export async function fetchCalendarData(
 
   const promise = fetchCalendarDataInner(apiKey, oldest, newest).then(
     ({ events, autoPairs }) => {
-      // Fire-and-forget: pair fallback-matched activities on Intervals.icu
+      // Fire-and-forget: don't block calendar load on pairing.
+      // Pairing is best-effort - failures are logged but don't affect the user.
+      // Next calendar fetch will retry any failed pairs via fallback matching.
       if (autoPairs.length > 0) console.log(`[auto-pair] ${autoPairs.length} fallback pairs to sync`);
       for (const { eventId, activityId } of autoPairs) {
         pairEventWithActivity(apiKey, eventId, activityId)
