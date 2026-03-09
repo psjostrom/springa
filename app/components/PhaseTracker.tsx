@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getPhaseDefinitions, isRecoveryWeek } from "@/lib/periodization";
+import type { PhaseDefinition } from "@/lib/periodization";
 
 interface PhaseTrackerProps {
 	phaseName: string;
@@ -8,71 +10,7 @@ interface PhaseTrackerProps {
 	totalWeeks: number;
 	progress: number;
 	raceDate?: string;
-}
-
-interface PhaseDefinition {
-	name: string;
-	startWeek: number;
-	endWeek: number;
-	description: string;
-	focus: string[];
-}
-
-function getPhaseDefinitions(totalWeeks: number): PhaseDefinition[] {
-	const raceWeek = totalWeeks;
-	const taperWeek = totalWeeks - 1;
-	const raceTestStart = totalWeeks - 3;
-
-	return [
-		{
-			name: "Build Phase",
-			startWeek: 1,
-			endWeek: raceTestStart - 1,
-			description: "Building aerobic base and increasing weekly volume progressively.",
-			focus: [
-				"Progressive long runs",
-				"Weekly speed sessions",
-				"BG management practice",
-				"Consistent easy running",
-			],
-		},
-		{
-			name: "🏔️ Race Test Phase",
-			startWeek: raceTestStart,
-			endWeek: taperWeek - 1,
-			description: "Peak training with race-pace work. Testing fueling and pacing strategies.",
-			focus: [
-				"Race-pace long runs",
-				"Full race-day dress rehearsal",
-				"Fine-tune fueling",
-				"Peak fitness week",
-			],
-		},
-		{
-			name: "📉 Taper Phase",
-			startWeek: taperWeek,
-			endWeek: taperWeek,
-			description: "Reduced volume to absorb training and arrive fresh on race day.",
-			focus: [
-				"Volume drops ~40%",
-				"Maintain intensity",
-				"Extra rest and sleep",
-				"Nutrition focus",
-			],
-		},
-		{
-			name: "🏁 Race Week",
-			startWeek: raceWeek,
-			endWeek: raceWeek,
-			description: "Final preparation and race execution.",
-			focus: [
-				"Light shakeout runs only",
-				"Pre-race carb loading",
-				"BG stability priority",
-				"Race day!",
-			],
-		},
-	];
+	includeBasePhase?: boolean;
 }
 
 function getCurrentPhaseIndex(currentWeek: number, phases: PhaseDefinition[]): number {
@@ -135,6 +73,7 @@ function PhasePopover({
 	const currentPhase = phases[currentPhaseIndex];
 	const upcomingPhases = phases.slice(currentPhaseIndex + 1);
 	const weeksLeft = raceDate ? weeksUntil(raceDate) : null;
+	const recovery = isRecoveryWeek(currentWeek, phases[phases.length - 1].endWeek);
 
 	return (
 		<>
@@ -152,7 +91,10 @@ function PhasePopover({
 
 				{/* Current phase */}
 				<div className="mb-3">
-					<div className="text-sm font-bold text-white mb-1">{currentPhase.name}</div>
+					<div className="text-sm font-bold text-white mb-1">
+						{currentPhase.displayName}
+						{recovery && <span className="text-xs font-normal text-[#fbbf24] ml-2">Recovery Week</span>}
+					</div>
 					<div className="text-xs text-[#b8a5d4] leading-relaxed mb-2">
 						{currentPhase.description}
 					</div>
@@ -177,7 +119,7 @@ function PhasePopover({
 								const weeksToPhase = phase.startWeek - currentWeek;
 								return (
 									<div key={i} className="flex items-center justify-between">
-										<span className="text-xs text-[#c4b5fd]">{phase.name}</span>
+										<span className="text-xs text-[#c4b5fd]">{phase.displayName}</span>
 										<span className="text-xs text-[#7a6899]">
 											{weeksToPhase === 1 ? "Next week" : `In ${weeksToPhase} weeks`}
 										</span>
@@ -206,10 +148,11 @@ export function PhaseTracker({
 	totalWeeks,
 	progress,
 	raceDate,
+	includeBasePhase,
 }: PhaseTrackerProps) {
 	const [popover, setPopover] = useState<{ anchorRect: DOMRect } | null>(null);
 
-	const phases = getPhaseDefinitions(totalWeeks);
+	const phases = getPhaseDefinitions(totalWeeks, includeBasePhase ?? false);
 	const currentPhaseIndex = getCurrentPhaseIndex(currentWeek, phases);
 
 	const handleClick = (e: React.MouseEvent) => {

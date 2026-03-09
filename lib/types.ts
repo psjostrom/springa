@@ -40,6 +40,7 @@ export interface PlanContext {
   lthr: number;
   hrZones: number[];
   planStartMonday: Date;
+  includeBasePhase: boolean;
 }
 
 export interface IntervalsActivity {

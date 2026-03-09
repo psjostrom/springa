@@ -12,6 +12,7 @@ import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
 import { formatStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getCurrentFuelRate } from "./fuelRate";
+import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn } from "./periodization";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 
@@ -41,20 +42,27 @@ function makeStep(ctx: PlanContext) {
 function getSpeedSessionType(
   weekIdx: number,
   totalWeeks: number,
+  includeBasePhase: boolean,
 ): SpeedSessionType | null {
   const weekNum = weekIdx + 1;
-  const isRaceWeek = weekNum === totalWeeks;
-  const isTaper = weekNum >= totalWeeks - 1;
-  const isRecoveryWeek = weekNum % 4 === 0;
+  const b = getPhaseBoundaries(totalWeeks, includeBasePhase);
 
-  if (isRaceWeek) return null;
-  if (isRecoveryWeek) return null;
-  if (isTaper) return "race-pace-intervals";
+  // No speed during base, recovery, race test, or race week
+  if (includeBasePhase && weekNum <= b.baseEnd) return null;
+  if (weekNum === b.raceWeek) return null;
+  if (isRecoveryWeekFn(weekNum, totalWeeks, includeBasePhase)) return null;
 
+  // Taper weeks get race-pace intervals to stay sharp
+  if (weekNum >= b.taperStart && weekNum <= b.taperEnd) return "race-pace-intervals";
+
+  // Race test weeks — no speed session
+  if (weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd) return null;
+
+  // Count how many speed sessions came before this week (for rotation)
   let speedCount = 0;
-  for (let i = 0; i < weekIdx; i++) {
-    const wn = i + 1;
-    if (wn % 4 !== 0 && wn < totalWeeks - 1) speedCount++;
+  for (let i = b.buildStart; i < weekNum; i++) {
+    if (!isRecoveryWeekFn(i, totalWeeks, includeBasePhase) &&
+        !(i >= b.raceTestStart && i <= b.raceTestEnd)) speedCount++;
   }
 
   return SPEED_ROTATION[speedCount % SPEED_ROTATION.length];
@@ -77,15 +85,34 @@ const generateQualityRun = (
   const wu = s("10m", "easy", "Warmup");
   const cd = s("5m", "easy", "Cooldown");
 
-  const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks);
+  const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks, ctx.includeBasePhase);
 
   if (sessionType === null) {
-    // Recovery week — single-zone easy run, no warmup/cooldown structure needed
-    const notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
+    const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
+    const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
+    const isRaceWeekQ = weekNum === b.raceWeek;
+    const isRaceTestQ = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
+
+    // Race week: no Thursday session — the Tuesday shakeout is enough
+    if (isRaceWeekQ) return null;
+
+    let notes: string;
+    let duration: string;
+    if (isBase) {
+      notes = "Base phase — easy running only. Building consistency and letting your body adapt to regular training. Save the speed for the build phase.";
+      duration = "45m";
+    } else if (isRaceTestQ) {
+      notes = "Race test week — keep Thursday light. Save your legs for the dress rehearsal long run. Easy pace, short duration, zero stress.";
+      duration = "30m";
+    } else {
+      notes = "Recovery week. Keep it genuinely easy — this is where your body absorbs the training from the past weeks. Resist the urge to push. Relaxed breathing, comfortable pace.";
+      duration = "45m";
+    }
+
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-      name: `${prefixName} Easy ${ctx.prefix}`,
-      description: createSimpleWorkoutText(s("45m", "easy"), notes), // 10m WU + 30m main + 5m CD
+      name: `${prefixName} ${isRaceTestQ ? "Easy [PRE-TEST]" : "Easy"} ${ctx.prefix}`,
+      description: createSimpleWorkoutText(s(duration, "easy"), notes),
       external_id: `${ctx.prefix}-speed-${weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
@@ -155,18 +182,19 @@ const generateEasyRun = (
 
   const s = makeStep(ctx);
   const weekNum = weekIdx + 1;
-  const isRaceWeek = weekNum === ctx.totalWeeks;
-  const isTaper = weekNum === ctx.totalWeeks - 1;
-  const isRaceTest =
-    weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
-  const isRecoveryWeek = weekNum % 4 === 0;
-  const withStrides = weekIdx % 2 === 1 && !isRaceWeek;
+  const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
+  const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
+  const isRaceWeek = weekNum === b.raceWeek;
+  const isTaper = weekNum >= b.taperStart && weekNum <= b.taperEnd;
+  const isRaceTest = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
+  const isRecovery = isRecoveryWeekFn(weekNum, ctx.totalWeeks, ctx.includeBasePhase);
+  const withStrides = weekIdx % 2 === 1 && !isRaceWeek && !isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
   const progress = weekIdx / ctx.totalWeeks;
   const duration = isRaceWeek
     ? 15
-    : isRaceTest || isTaper || isRecoveryWeek
+    : isRaceTest || isTaper || isRecovery
       ? 20
       : 20 + Math.round(progress * 25);
 
@@ -260,10 +288,11 @@ const generateLongRun = (
   if (!isBefore(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const isTaper = weekNum === ctx.totalWeeks - 1;
-  const isRaceTest =
-    weekNum === ctx.totalWeeks - 2 || weekNum === ctx.totalWeeks - 3;
-  const isRecoveryWeek = weekNum % 4 === 0;
+  const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
+  const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
+  const isTaper = weekNum >= b.taperStart && weekNum <= b.taperEnd;
+  const isRaceTest = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
+  const isRecovery = isRecoveryWeekFn(weekNum, ctx.totalWeeks, ctx.includeBasePhase);
 
   let km = Math.min(
     Math.floor(
@@ -274,9 +303,9 @@ const generateLongRun = (
     ctx.raceDist,
   );
   let type = "";
-  if (isRecoveryWeek) {
-    km = ctx.startKm;
-    type = " [RECOVERY]";
+  if (isBase || isRecovery) {
+    km = isBase ? Math.min(ctx.startKm + weekIdx, ctx.startKm + 2) : ctx.startKm;
+    type = isRecovery ? " [RECOVERY]" : "";
   }
   if (isTaper) {
     km = Math.floor(ctx.raceDist * 0.5);
@@ -287,12 +316,13 @@ const generateLongRun = (
     type = " [RACE TEST]";
   }
 
+  // Base and recovery weeks are always all-easy long runs
+  // Build weeks alternate between sandwich and progressive variants
   let longRunVariant: "easy" | "sandwich" | "progressive" = "easy";
-  if (!isRecoveryWeek && !isTaper && !isRaceTest && weekNum > 1) {
+  if (!isBase && !isRecovery && !isTaper && !isRaceTest && weekNum > b.buildStart) {
     let nonSpecialCount = 0;
-    for (let i = 0; i < weekIdx; i++) {
-      const wn = i + 1;
-      if (wn % 4 !== 0 && wn < ctx.totalWeeks - 1 && wn > 1) nonSpecialCount++;
+    for (let i = b.buildStart; i < weekNum; i++) {
+      if (!isRecoveryWeekFn(i, ctx.totalWeeks, ctx.includeBasePhase)) nonSpecialCount++;
     }
     longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "progressive";
   }
@@ -318,8 +348,10 @@ const generateLongRun = (
     notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
     mainSteps = [s(`${mainKm}km`, "easy", "Easy")];
-    if (isRecoveryWeek) {
+    if (isRecovery) {
       notes = "Recovery week long run — shorter distance to let your body absorb the training. Run the whole thing easy and enjoy being out there. No pace pressure today.";
+    } else if (isBase) {
+      notes = "Base phase — building your foundation. Keep it easy and focus on time on feet. No need to push pace. This is where BG management habits get built.";
     } else if (isTaper) {
       notes = "Taper run. The hay is in the barn — you've done the work. Keep this short and easy. Your legs might feel heavy or oddly flat; that's normal during taper. Trust the process.";
     } else if (isRaceTest) {
@@ -351,6 +383,7 @@ export function generatePlan(
   startKm: number,
   lthr: number,
   hrZones: number[],
+  includeBasePhase = false,
 ): WorkoutEvent[] {
   const raceDate = parseISO(raceDateStr);
   const today = new Date();
@@ -365,6 +398,7 @@ export function generatePlan(
     startKm,
     lthr,
     hrZones,
+    includeBasePhase,
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
@@ -393,6 +427,7 @@ export function generateFullPlan(
   startKm: number,
   lthr: number,
   hrZones: number[],
+  includeBasePhase = false,
 ): WorkoutEvent[] {
   const raceDate = parseISO(raceDateStr);
   const ctx: PlanContext = {
@@ -406,6 +441,7 @@ export function generateFullPlan(
     startKm,
     lthr,
     hrZones,
+    includeBasePhase,
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),

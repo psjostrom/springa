@@ -53,6 +53,7 @@ export async function PUT(req: Request) {
   if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;
   if (body.hiddenWidgets !== undefined) allowed.hiddenWidgets = body.hiddenWidgets;
   if (body.bgChartWindow !== undefined) allowed.bgChartWindow = body.bgChartWindow;
+  if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(session.user.email, allowed);

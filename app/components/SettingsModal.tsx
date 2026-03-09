@@ -19,6 +19,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [prefix, setPrefix] = useState(settings.prefix ?? "");
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
+  const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -56,6 +57,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     const skVal = startKm === "" ? undefined : Number(startKm);
     if (skVal !== settings.startKm) {
       updates.startKm = skVal;
+    }
+    if (includeBasePhase !== (settings.includeBasePhase ?? false)) {
+      updates.includeBasePhase = includeBasePhase;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
@@ -173,6 +177,36 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     placeholder="8"
                   />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Training Experience */}
+          <div className="border-t border-[#3d2b5a] pt-4">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={includeBasePhase}
+                onClick={() => { setIncludeBasePhase(!includeBasePhase); }}
+                className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                  includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    includeBasePhase ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <div>
+                <label className="block text-sm font-semibold text-[#c4b5fd]">
+                  Include base phase
+                </label>
+                <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
+                  Adds 2-3 weeks of easy-only running at the start of the plan.
+                  Recommended if you&apos;re new to structured training or returning from a break.
+                </p>
               </div>
             </div>
           </div>

@@ -57,6 +57,7 @@ export function useHydrateStore() {
         setPhaseInfo(computePhaseInfo(
           data.raceDate ?? "2026-06-13",
           data.totalWeeks ?? 18,
+          data.includeBasePhase ?? false,
         ));
       })
       .catch(() => {

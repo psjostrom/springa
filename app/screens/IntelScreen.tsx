@@ -285,6 +285,7 @@ export function IntelScreen() {
         totalWeeks={totalWeeks}
         progress={progress}
         raceDate={raceDate}
+        includeBasePhase={settings?.includeBasePhase}
       />
     ),
     "fitness-chart":
@@ -322,6 +323,7 @@ export function IntelScreen() {
         lthr={lthr}
         hrZones={hrZones}
         paceTable={paceTable}
+        includeBasePhase={settings?.includeBasePhase}
       />
     ),
     "pace-zones":

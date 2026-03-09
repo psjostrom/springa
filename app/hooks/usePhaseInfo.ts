@@ -5,6 +5,7 @@ import {
 	differenceInCalendarWeeks,
 	isBefore,
 } from "date-fns";
+import { getPhaseForWeek } from "@/lib/periodization";
 
 export interface PhaseInfo {
 	name: string;
@@ -12,10 +13,19 @@ export interface PhaseInfo {
 	progress: number;
 }
 
+const PHASE_DISPLAY: Record<string, string> = {
+	"Base": "Base Phase",
+	"Build": "Build Phase",
+	"Race Test": "Race Test Phase",
+	"Taper": "Taper Phase",
+	"Race Week": "Race Week",
+};
+
 /** Pure computation — safe to call outside React components. */
 export function computePhaseInfo(
 	raceDate: string,
 	totalWeeks: number,
+	includeBasePhase = false,
 ): PhaseInfo {
 	const today = new Date();
 	const rDate = parseISO(raceDate);
@@ -32,10 +42,8 @@ export function computePhaseInfo(
 	const currentWeek =
 		differenceInCalendarWeeks(today, planStartMonday, { weekStartsOn: 1 }) +
 		1;
-	let name = "Build Phase";
-	if (currentWeek === totalWeeks) name = "🏁 Race Week";
-	else if (currentWeek === totalWeeks - 1) name = "📉 Taper Phase";
-	else if (currentWeek >= totalWeeks - 3) name = "🏔️ Race Test Phase";
+	const phase = getPhaseForWeek(currentWeek, totalWeeks, includeBasePhase);
+	const name = PHASE_DISPLAY[phase] ?? phase;
 
 	const progress = Math.min(
 		100,
