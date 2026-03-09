@@ -10,6 +10,19 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
+  Battery,
+  Route,
+  Activity,
+  BarChart3,
+  Gauge,
+  Timer,
+  Droplets,
+  ArrowUpFromLine,
+  TrendingDown,
+  Clock,
+  Sparkles,
+  ScatterChart,
+  type LucideIcon,
 } from "lucide-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -54,6 +67,40 @@ import { EventModal } from "../components/EventModal";
 import { useActivityStream } from "../hooks/useActivityStream";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
+
+const ICON_MAP: Record<WidgetKey, LucideIcon> = {
+  readiness: Battery,
+  "phase-tracker": Route,
+  "fitness-chart": Activity,
+  "volume-trend": BarChart3,
+  "pace-zones": Gauge,
+  "pace-curves": Timer,
+  "bg-categories": Droplets,
+  "bg-start-level": ArrowUpFromLine,
+  "bg-entry-slope": TrendingDown,
+  "bg-time-decay": Clock,
+  "bg-patterns": Sparkles,
+  "bg-scatter": ScatterChart,
+};
+
+// Extra context shown after the heading (e.g. "LTHR 168", "5 runs analyzed")
+type WidgetMeta = Record<WidgetKey, string | null>;
+
+function WidgetHeading({ widgetKey, meta }: { widgetKey: WidgetKey; meta?: string | null }) {
+  const Icon = ICON_MAP[widgetKey];
+  const label = LABEL_MAP.get(widgetKey) ?? widgetKey;
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className="w-4 h-4 text-[#06b6d4]" />
+      <span className="text-sm font-semibold uppercase text-[#b8a5d4]">
+        {label}
+      </span>
+      {meta && (
+        <span className="text-xs text-[#8b7ba8]">{meta}</span>
+      )}
+    </div>
+  );
+}
 
 function WidgetEditBar({
   widgetKey,
@@ -215,6 +262,12 @@ export function IntelScreen() {
 
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
+  // Per-widget contextual meta (shown after heading)
+  const widgetMeta: Partial<WidgetMeta> = {
+    "pace-zones": lthr ? `LTHR ${lthr}` : null,
+    "bg-categories": bgModel ? `${bgModel.activitiesAnalyzed} runs analyzed` : null,
+  };
+
   // Widget render map — each key maps to a render function or null if data unavailable
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
     readiness: wellnessLoading
@@ -227,27 +280,15 @@ export function IntelScreen() {
           </div>
         )
       : wellnessEntries.length > 0
-        ? () => (
-            <div>
-              <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
-                Readiness
-              </label>
-              <ReadinessPanel entries={wellnessEntries} />
-            </div>
-          )
+        ? () => <ReadinessPanel entries={wellnessEntries} />
         : null,
     "phase-tracker": () => (
-      <div>
-        <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
-          Training Progress
-        </label>
-        <PhaseTracker
-          phaseName={phaseName}
-          currentWeek={currentWeek}
-          totalWeeks={totalWeeks}
-          progress={progress}
-        />
-      </div>
+      <PhaseTracker
+        phaseName={phaseName}
+        currentWeek={currentWeek}
+        totalWeeks={totalWeeks}
+        progress={progress}
+      />
     ),
     "fitness-chart":
       eventsError
@@ -268,9 +309,6 @@ export function IntelScreen() {
           : fitnessData.length > 0
             ? () => (
                 <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 space-y-4">
-                  <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
-                    Fitness / Fatigue / Form
-                  </div>
                   <FitnessChart data={fitnessData} />
                   {insights && <FitnessInsightsPanel insights={insights} />}
                 </div>
@@ -406,7 +444,10 @@ export function IntelScreen() {
                     </div>
                   </div>
                 ) : (
-                  render?.()
+                  <>
+                    <WidgetHeading widgetKey={key} meta={widgetMeta[key]} />
+                    {render?.()}
+                  </>
                 )}
               </div>
             </div>

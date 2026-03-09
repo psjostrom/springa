@@ -151,9 +151,6 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
     <div className="space-y-4">
       {/* Best Efforts Grid */}
       <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
-        <div className="text-xs font-semibold uppercase text-[#b8a5d4] mb-3">
-          Personal Bests
-        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {bestEfforts.map((effort) => (
             <div
@@ -187,9 +184,6 @@ export function PaceCurvesWidget({ data, onActivitySelect }: PaceCurvesWidgetPro
       {/* Pace Curve Chart */}
       {curve.length > 0 && (
         <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
-          <div className="text-xs font-semibold uppercase text-[#b8a5d4] mb-3">
-            Pace Curve
-          </div>
           <div ref={wrapperRef} className="relative">
             {hoverPoint && tooltipPos && (
               <div

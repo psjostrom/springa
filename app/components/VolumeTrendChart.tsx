@@ -113,11 +113,7 @@ export function VolumeTrendChart({
   if (events.length === 0) return null;
 
   return (
-    <div>
-      <label className="block text-sm font-semibold uppercase text-[#b8a5d4] mb-2">
-        Weekly Volume (km)
-      </label>
-      <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a] no-tap-highlight">
+    <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a] no-tap-highlight">
         <div className="h-72 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
@@ -229,7 +225,6 @@ export function VolumeTrendChart({
             Optional
           </span>
         </div>
-      </div>
     </div>
   );
 }
