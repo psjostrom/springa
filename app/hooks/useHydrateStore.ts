@@ -23,6 +23,7 @@ import {
   cachedActivitiesAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
+  insulinContextAtom,
   paceCurveDataAtom,
   paceCurveLoadingAtom,
   phaseInfoAtom,
@@ -34,6 +35,7 @@ import { usePaceCurves } from "./usePaceCurves";
 import { computePhaseInfo } from "./usePhaseInfo";
 import type { UserSettings } from "@/lib/settings";
 import type { WellnessEntry } from "@/lib/intervalsApi";
+import type { InsulinContext } from "@/lib/insulinContext";
 
 /**
  * Bridge hook: calls existing data-fetching hooks and syncs their outputs
@@ -133,6 +135,19 @@ export function useHydrateStore() {
     setWellnessEntries(wellnessData);
     setWellnessLoading(wellnessIsLoading);
   }, [wellnessData, wellnessIsLoading, setWellnessEntries, setWellnessLoading]);
+
+  // ─── Insulin Context ─────────────────────────────────────
+  const settings = useAtomValue(settingsAtom);
+  const { data: insulinData = null } = useSWR<InsulinContext | null>(
+    settings?.mylifeConnected ? "/api/insulin-context" : null,
+    (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null)),
+    { revalidateOnFocus: false, dedupingInterval: 300_000 },
+  );
+  const setInsulinContext = useSetAtom(insulinContextAtom);
+
+  useEffect(() => {
+    setInsulinContext(insulinData);
+  }, [insulinData, setInsulinContext]);
 
   // ─── Pace Curves ───────────────────────────────────────
   const pc = usePaceCurves(apiKey);

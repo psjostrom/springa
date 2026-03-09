@@ -10,6 +10,8 @@ import type { XdripReading } from "@/lib/xdrip";
 import type { WidgetLayout } from "@/lib/widgetRegistry";
 import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
+import { wellnessToFitnessData } from "@/lib/fitness";
+import type { InsulinContext } from "@/lib/insulinContext";
 import type { PhaseInfo } from "./hooks/usePhaseInfo";
 import {
   extractZoneSegments,
@@ -69,6 +71,10 @@ export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
 export const runBGContextsAtom = atom<Map<string, RunBGContext>>(new Map());
 export const cachedActivitiesAtom = atom<CachedActivity[]>([]);
 
+// ─── Insulin Context ─────────────────────────────────────────
+
+export const insulinContextAtom = atom<InsulinContext | null>(null);
+
 // ─── Wellness ────────────────────────────────────────────────
 
 export const wellnessEntriesAtom = atom<WellnessEntry[]>([]);
@@ -80,6 +86,16 @@ export const paceCurveDataAtom = atom<PaceCurveData | null>(null);
 export const paceCurveLoadingAtom = atom(false);
 
 // ─── Derived ─────────────────────────────────────────────────
+
+export const currentTsbAtom = atom<number | null>((get) => {
+  const entries = get(wellnessEntriesAtom);
+  const data = wellnessToFitnessData(entries);
+  return data.length > 0 ? data[data.length - 1].tsb : null;
+});
+
+export const currentIobAtom = atom<number | null>((get) => {
+  return get(insulinContextAtom)?.totalIOBAtStart ?? null;
+});
 
 export const enrichedEventsAtom = atom((get) =>
   enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom)),

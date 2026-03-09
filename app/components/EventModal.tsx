@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useReducer } from "react";
 import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Info, Pencil } from "lucide-react";
+import { useAtomValue } from "jotai";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -10,6 +11,7 @@ import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
 import { useCurrentBG } from "../hooks/useCurrentBG";
+import { currentTsbAtom, currentIobAtom } from "../atoms";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
@@ -238,6 +240,8 @@ export function EventModal({
 
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
+  const currentTsb = useAtomValue(currentTsbAtom);
+  const currentIob = useAtomValue(currentIobAtom);
   const showReadiness = !selectedEvent.activityId && isToday(selectedEvent.date) && currentBG != null;
   const workoutCategory = (() => {
     const raw = getWorkoutCategory(selectedEvent.name);
@@ -481,6 +485,8 @@ export function EventModal({
             trend={trend}
             bgModel={bgModel ?? null}
             category={workoutCategory}
+            currentTsb={currentTsb}
+            iob={currentIob}
           />
         )}
 
