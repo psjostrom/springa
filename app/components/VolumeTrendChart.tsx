@@ -152,25 +152,27 @@ export function VolumeTrendChart({
               />
               <Tooltip
                 cursor={{ fill: "#2a1f3d" }}
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid #3d2b5a",
-                  backgroundColor: "#1e1535",
-                  color: "#fff",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.3)",
-                  fontSize: "12px",
+                content={({ active, payload }) => {
+                  if (!active || payload.length === 0) return null;
+                  const d = payload[0].payload as WeekData;
+                  const weekNum = parseInt(d.week.replace("W", ""), 10);
+                  return (
+                    <div className="rounded-lg border border-[#3d2b5a] bg-[#1e1535] text-white shadow-lg text-xs px-3 py-2">
+                      <div className="font-medium mb-1">Week {weekNum}</div>
+                      <div className="text-[#00ffff]">Planned : {d.planned} km</div>
+                      {d.plannedOptional > 0 && (
+                        <div className="text-[#c4b5fd]">Optional : {d.plannedOptional} km</div>
+                      )}
+                      <div className="text-white">Total : {d.plannedTotal} km</div>
+                      {d.completed > 0 && (
+                        <>
+                          <div className="border-t border-[#3d2b5a] my-1.5" />
+                          <div className="text-[#39ff14]">Actual : {d.completed} km</div>
+                        </>
+                      )}
+                    </div>
+                  );
                 }}
-                labelFormatter={(_label, payload: readonly { payload?: { week?: string } }[] | undefined) => {
-                  const week = payload?.[0]?.payload?.week;
-                  if (!week) return "";
-                  return `Week ${parseInt(week.replace("W", ""), 10)}`;
-                }}
-                formatter={(value, name) => {
-                  if (name === "plannedTotal" || !value) return [null, null];
-                  const label = name === "planned" ? "Planned" : "Actual";
-                  return [`${String(value)} km`, label];
-                }}
-                itemSorter={() => 0}
               />
               {data.currentWeekIdx >= 0 &&
                 data.currentWeekIdx < data.weeks.length && (
