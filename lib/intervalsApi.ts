@@ -622,12 +622,11 @@ function findActivityIdAtDistance(
   return bestIdx >= 0 ? activityIds[bestIdx] : undefined;
 }
 
-export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | null> {
+export async function fetchPaceCurves(apiKey: string, curveId = "all"): Promise<PaceCurveData | null> {
   try {
     const auth = authHeader(apiKey);
     const now = new Date().toISOString();
-    // Use 'all' for all-time PRs
-    const url = `${API_BASE}/athlete/0/pace-curves?curves=all&type=Run&newest=${encodeURIComponent(now)}`;
+    const url = `${API_BASE}/athlete/0/pace-curves?curves=${curveId}&type=Run&newest=${encodeURIComponent(now)}`;
 
     const res = await fetch(url, { headers: { Authorization: auth } });
     if (!res.ok) return null;
@@ -635,10 +634,10 @@ export async function fetchPaceCurves(apiKey: string): Promise<PaceCurveData | n
     const data = (await res.json()) as PaceCurveApiResponse;
     if (data.list.length === 0) return null;
 
-    const curveAll = data.list.find((c) => c.id === "all");
-    if (!curveAll || curveAll.distance.length === 0) return null;
+    const curveData = data.list.find((c) => c.id === curveId);
+    if (!curveData || curveData.distance.length === 0) return null;
 
-    const { distance: distances, values: times, activity_id: activityIds } = curveAll;
+    const { distance: distances, values: times, activity_id: activityIds } = curveData;
 
     // Build best efforts at standard distances
     const bestEfforts: BestEffort[] = [];
