@@ -463,7 +463,7 @@ export function IntelScreen() {
           <div className="flex items-center justify-center gap-2 pb-4">
             <p className="text-xs text-red-400">{widgetSaveError}</p>
             <button
-              onClick={() => dismissWidgetSaveError(null)}
+              onClick={() => { dismissWidgetSaveError(null); }}
               className="text-xs text-red-400/60 hover:text-red-400 underline"
             >
               dismiss

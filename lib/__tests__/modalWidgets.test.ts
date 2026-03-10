@@ -1,0 +1,163 @@
+import { describe, it, expect } from "vitest";
+import {
+  DEFAULT_TABS,
+  WIDGET_REGISTRY,
+  resolveModalLayout,
+  reorderWidget,
+  toggleWidgetVisibility,
+  type ModalTabLayout,
+  type ModalWidgetId,
+} from "../modalWidgets";
+
+describe("DEFAULT_TABS", () => {
+  it("has three tabs: overview, deep-dive, analysis", () => {
+    expect(DEFAULT_TABS.map((t) => t.id)).toEqual([
+      "overview",
+      "deep-dive",
+      "analysis",
+    ]);
+  });
+
+  it("every widget id in tabs exists in the registry", () => {
+    const registryIds = new Set(WIDGET_REGISTRY.map((w) => w.id));
+    for (const tab of DEFAULT_TABS) {
+      for (const widgetId of tab.widgets) {
+        expect(registryIds.has(widgetId)).toBe(true);
+      }
+    }
+  });
+
+  it("no widget id appears in multiple tabs", () => {
+    const seen = new Set<string>();
+    for (const tab of DEFAULT_TABS) {
+      for (const widgetId of tab.widgets) {
+        expect(seen.has(widgetId)).toBe(false);
+        seen.add(widgetId);
+      }
+    }
+  });
+});
+
+describe("resolveModalLayout", () => {
+  it("returns default layout when nothing saved", () => {
+    const layout = resolveModalLayout();
+    expect(layout.overview.order).toEqual([
+      "report-card", "stats", "pace-splits", "workout", "carbs-ingested", "prerun-carbs",
+    ]);
+    expect(layout.overview.hidden).toEqual([]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "hr-zones", "route-map"]);
+    expect(layout.analysis.order).toEqual(["run-analysis", "feedback"]);
+  });
+
+  it("preserves saved order within a tab", () => {
+    const saved: ModalTabLayout = {
+      "overview": {
+        order: ["workout", "report-card", "stats", "pace-splits", "carbs-ingested", "prerun-carbs"],
+        hidden: [],
+      },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout.overview.order[0]).toBe("workout");
+    expect(layout.overview.order[1]).toBe("report-card");
+  });
+
+  it("appends new widgets not in saved order", () => {
+    const saved: ModalTabLayout = {
+      "overview": { order: ["report-card", "stats"], hidden: [] },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout.overview.order.slice(0, 2)).toEqual(["report-card", "stats"]);
+    expect(layout.overview.order).toContain("pace-splits");
+    expect(layout.overview.order).toContain("workout");
+    expect(layout.overview.order.length).toBe(6);
+  });
+
+  it("strips stale widget ids no longer in registry", () => {
+    const saved: ModalTabLayout = {
+      "overview": {
+        order: ["report-card", "deleted-thing" as ModalWidgetId, "stats"],
+        hidden: [],
+      },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout.overview.order).not.toContain("deleted-thing");
+    expect(layout.overview.order[0]).toBe("report-card");
+    expect(layout.overview.order[1]).toBe("stats");
+  });
+
+  it("preserves hidden widgets", () => {
+    const saved: ModalTabLayout = {
+      "overview": {
+        order: [...DEFAULT_TABS[0].widgets],
+        hidden: ["prerun-carbs"],
+      },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout.overview.hidden).toEqual(["prerun-carbs"]);
+  });
+
+  it("strips stale keys from hidden", () => {
+    const saved: ModalTabLayout = {
+      "overview": {
+        order: [...DEFAULT_TABS[0].widgets],
+        hidden: ["prerun-carbs", "nope" as ModalWidgetId],
+      },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout.overview.hidden).toEqual(["prerun-carbs"]);
+  });
+
+  it("fills in missing tabs from defaults", () => {
+    const saved: ModalTabLayout = {
+      "overview": { order: [...DEFAULT_TABS[0].widgets], hidden: [] },
+    };
+    const layout = resolveModalLayout(saved);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "hr-zones", "route-map"]);
+    expect(layout.analysis.order).toEqual(["run-analysis", "feedback"]);
+  });
+});
+
+describe("reorderWidget", () => {
+  const order: ModalWidgetId[] = ["report-card", "stats", "pace-splits"];
+
+  it("moves a widget from index 2 to index 0", () => {
+    const result = reorderWidget(order, 2, 0);
+    expect(result).toEqual(["pace-splits", "report-card", "stats"]);
+  });
+
+  it("moves a widget from index 0 to index 2", () => {
+    const result = reorderWidget(order, 0, 2);
+    expect(result).toEqual(["stats", "pace-splits", "report-card"]);
+  });
+
+  it("no-op when from === to", () => {
+    const result = reorderWidget(order, 1, 1);
+    expect(result).toEqual(order);
+  });
+
+  it("does not mutate original array", () => {
+    const original = [...order];
+    reorderWidget(order, 0, 2);
+    expect(order).toEqual(original);
+  });
+});
+
+describe("toggleWidgetVisibility", () => {
+  it("hides a visible widget", () => {
+    const result = toggleWidgetVisibility([], "stats");
+    expect(result).toEqual(["stats"]);
+  });
+
+  it("shows a hidden widget", () => {
+    const result = toggleWidgetVisibility(["stats", "workout"], "stats");
+    expect(result).toEqual(["workout"]);
+  });
+
+  it("does not mutate original array", () => {
+    const original: ModalWidgetId[] = ["stats"];
+    toggleWidgetVisibility(original, "stats");
+    expect(original).toEqual(["stats"]);
+  });
+});
+
+// localStorage tests are in modalWidgets.integration.test.tsx (needs jsdom)
