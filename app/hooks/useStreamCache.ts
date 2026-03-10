@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { fetchStreamBatch } from "@/lib/intervalsApi";
-import { extractHRStream, extractExtraStreams } from "@/lib/streams";
+import { extractHRStream, extractExtraStreams, extractRawStreams } from "@/lib/streams";
 import { alignHRWithXdrip } from "@/lib/bgAlignment";
 import {
   readLocalCache,
@@ -91,6 +91,7 @@ export function useStreamCache(
             const streams = streamMap.get(e.activityId);
             const hrPoints = streams ? extractHRStream(streams) : [];
             const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
+            const raw = streams ? extractRawStreams(streams) : { distance: [], time: [] };
             const cat = getWorkoutCategory(e.name);
 
             // Fetch xDrip readings for this run's time window
@@ -112,6 +113,8 @@ export function useStreamCache(
               pace: extra.pace,
               cadence: extra.cadence,
               altitude: extra.altitude,
+              distance: raw.distance.length > 0 ? raw.distance : undefined,
+              rawTime: raw.time.length > 0 ? raw.time : undefined,
               activityDate: e.date.toISOString().slice(0, 10),
             });
           }
