@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { X, LogOut, Bell } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
+import { MIN_PLAN_WEEKS } from "@/lib/periodization";
 
 interface SettingsModalProps {
   email: string;
@@ -20,6 +21,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
+  const [warmthPreference, setWarmthPreference] = useState(settings.warmthPreference ?? 0);
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -51,6 +53,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       updates.prefix = prefix.trim();
     }
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
+    if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
+      setSaving(false);
+      return;
+    }
     if (twVal !== settings.totalWeeks) {
       updates.totalWeeks = twVal;
     }
@@ -58,8 +64,13 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (skVal !== settings.startKm) {
       updates.startKm = skVal;
     }
-    if (includeBasePhase !== (settings.includeBasePhase ?? false)) {
-      updates.includeBasePhase = includeBasePhase;
+    // Force base phase off when weeks are too short to support it
+    const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
+    if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
+      updates.includeBasePhase = effectiveBasePhase;
+    }
+    if (warmthPreference !== (settings.warmthPreference ?? 0)) {
+      updates.warmthPreference = warmthPreference;
     }
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
@@ -157,13 +168,16 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <label className="block text-xs text-[#b8a5d4] mb-1">Total Weeks</label>
                   <input
                     type="number"
-                    min={4}
+                    min={MIN_PLAN_WEEKS}
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
                     className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="18"
                   />
+                  <p className="text-[10px] text-[#7a6899] mt-1">
+                    Min {MIN_PLAN_WEEKS}. Includes build, 2-week race test, 2-week taper, and race week.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs text-[#b8a5d4] mb-1">Start km</label>
@@ -182,33 +196,90 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           </div>
 
           {/* Training Experience */}
+          {(() => {
+            // Base phase needs enough weeks for 2-3 base + 4 build + 5 fixed = 11 minimum
+            const minWeeksForBase = MIN_PLAN_WEEKS + 1;
+            const weeksNum = typeof totalWeeks === "number" ? totalWeeks : 0;
+            const baseTooShort = weeksNum > 0 && weeksNum < minWeeksForBase;
+            const baseDisabled = baseTooShort;
+            return (
+              <div className="border-t border-[#3d2b5a] pt-4">
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeBasePhase && !baseDisabled}
+                    disabled={baseDisabled}
+                    onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
+                    className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                      baseDisabled ? "bg-[#2a1f3d] opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        includeBasePhase && !baseDisabled ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#7a6899]" : "text-[#c4b5fd]"}`}>
+                      Include base phase
+                    </label>
+                    <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
+                      {baseDisabled
+                        ? `Requires at least ${minWeeksForBase} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
+                        : "Adds 2-3 weeks of easy-only running at the start of the plan. Recommended if you're new to structured training or returning from a break."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Warmth Preference */}
           <div className="border-t border-[#3d2b5a] pt-4">
-            <div className="flex items-start gap-3">
+            <span className="block text-sm font-semibold text-[#c4b5fd] mb-1">
+              Running temperature
+            </span>
+            <p className="text-xs text-[#7a6899] mb-3">
+              Shifts clothing recommendations. If you tend to overheat, move toward warmer. If you get cold easily, move toward colder.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#ffb800] w-14 text-right flex-shrink-0">Warmer</span>
+              <div className="flex gap-1 flex-1 justify-center">
+                {([-2, -1, 0, 1, 2] as const).map((val) => {
+                  const colors = [
+                    "bg-[#b45309] border-[#d97706]",
+                    "bg-[#d97706] border-[#f59e0b]",
+                    "bg-[#4a4458] border-[#6b5f7d]",
+                    "bg-[#2563eb] border-[#3b82f6]",
+                    "bg-[#1d4ed8] border-[#2563eb]",
+                  ];
+                  const isSelected = warmthPreference === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => { setWarmthPreference(val); }}
+                      className={`w-9 h-9 rounded-lg border-2 transition ${colors[val + 2]} ${
+                        isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-[#1e1535] scale-110" : "opacity-60 hover:opacity-80"
+                      }`}
+                      aria-label={`Warmth ${val}`}
+                    />
+                  );
+                })}
+              </div>
+              <span className="text-xs text-[#3b82f6] w-14 flex-shrink-0">Colder</span>
+            </div>
+            {warmthPreference !== 0 && (
               <button
                 type="button"
-                role="switch"
-                aria-checked={includeBasePhase}
-                onClick={() => { setIncludeBasePhase(!includeBasePhase); }}
-                className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
-                }`}
+                onClick={() => { setWarmthPreference(0); }}
+                className="mt-2 text-xs text-[#b8a5d4] hover:text-white transition"
               >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    includeBasePhase ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
+                Reset to neutral
               </button>
-              <div>
-                <label className="block text-sm font-semibold text-[#c4b5fd]">
-                  Include base phase
-                </label>
-                <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
-                  Adds 2-3 weeks of easy-only running at the start of the plan.
-                  Recommended if you&apos;re new to structured training or returning from a break.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Notifications */}
@@ -244,7 +315,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
         <div className="px-6 py-4 border-t border-[#3d2b5a]">
           <button
             onClick={() => { void handleSave(); }}
-            disabled={saving}
+            disabled={saving || (totalWeeks !== "" && Number(totalWeeks) < MIN_PLAN_WEEKS)}
             className="w-full py-2.5 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}

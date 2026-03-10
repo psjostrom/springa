@@ -22,6 +22,8 @@ import { HRMiniChart } from "./HRMiniChart";
 import { PreRunReadiness } from "./PreRunReadiness";
 import { RouteMap } from "./RouteMap";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
+import { ClothingRecommendation } from "./ClothingRecommendation";
+import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
   const [open, setOpen] = useState(false);
@@ -216,6 +218,7 @@ interface EventModalProps {
   bgModel?: BGResponseModel | null;
   hrZones?: number[];
   lthr?: number;
+  clothing?: ClothingRec;
 }
 
 export function EventModal({
@@ -230,6 +233,7 @@ export function EventModal({
   bgModel,
   hrZones,
   lthr,
+  clothing,
 }: EventModalProps) {
   const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
 
@@ -492,6 +496,13 @@ export function EventModal({
 
         {!selectedEvent.activityId && selectedEvent.type === "planned" && (
           <PreRunCarbsInput eventId={selectedEvent.id} />
+        )}
+
+        {clothing && selectedEvent.type === "planned" && (
+          <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#2a1f3d]/50 border border-[#3d2b5a]">
+            <div className="text-xs text-[#c4b5fd] font-medium mb-1.5">What to wear</div>
+            <ClothingRecommendation recommendation={clothing} />
+          </div>
         )}
 
         {selectedEvent.description && (

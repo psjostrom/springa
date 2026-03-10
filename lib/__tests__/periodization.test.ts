@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   getPhaseBoundaries,
   isRecoveryWeek,
-  getPhaseForWeek,
   getPhaseDefinitions,
 } from "../periodization";
 
@@ -51,8 +50,41 @@ describe("getPhaseBoundaries", () => {
   });
 
   it("base phase is at least 2 weeks when enabled", () => {
-    const b = getPhaseBoundaries(8, true);
+    const b = getPhaseBoundaries(12, true);
     expect(b.baseEnd).toBeGreaterThanOrEqual(2);
+  });
+
+  it("rejects plans shorter than MIN_PLAN_WEEKS", () => {
+    expect(() => getPhaseBoundaries(8, false)).toThrow("at least 10 weeks");
+    expect(() => getPhaseBoundaries(9, false)).toThrow("at least 10 weeks");
+  });
+
+  it("rejects plans where base phase leaves too few build weeks", () => {
+    // 10 weeks with base: 2 base + 3 build + 5 fixed = build too short
+    expect(() => getPhaseBoundaries(10, true)).toThrow("Build phase too short");
+  });
+
+  it("accepts 10-week plan without base", () => {
+    const b = getPhaseBoundaries(10, false);
+    expect(b.buildEnd - b.buildStart + 1).toBeGreaterThanOrEqual(4);
+  });
+
+  it("accepts 12-week plan with base", () => {
+    const b = getPhaseBoundaries(12, true);
+    expect(b.buildEnd - b.buildStart + 1).toBeGreaterThanOrEqual(4);
+  });
+
+  it("11-week plan with base is the minimum valid configuration", () => {
+    const b = getPhaseBoundaries(11, true);
+    expect(b.baseEnd).toBe(2);
+    expect(b.buildStart).toBe(3);
+    expect(b.buildEnd).toBe(6);
+    expect(b.raceTestStart).toBe(7);
+    expect(b.raceTestEnd).toBe(8);
+    expect(b.taperStart).toBe(9);
+    expect(b.taperEnd).toBe(10);
+    expect(b.raceWeek).toBe(11);
+    expect(b.buildEnd - b.buildStart + 1).toBe(4); // exactly one 3:1 cycle
   });
 });
 
@@ -81,30 +113,6 @@ describe("isRecoveryWeek", () => {
       expect(isRecoveryWeek(w, 18, false)).toBe(false);
       expect(isRecoveryWeek(w, 18, true)).toBe(false);
     }
-  });
-});
-
-describe("getPhaseForWeek", () => {
-  it("returns correct phases without base (18 weeks)", () => {
-    expect(getPhaseForWeek(1, 18, false)).toBe("Build");
-    expect(getPhaseForWeek(13, 18, false)).toBe("Build");
-    expect(getPhaseForWeek(14, 18, false)).toBe("Race Test");
-    expect(getPhaseForWeek(15, 18, false)).toBe("Race Test");
-    expect(getPhaseForWeek(16, 18, false)).toBe("Taper");
-    expect(getPhaseForWeek(17, 18, false)).toBe("Taper");
-    expect(getPhaseForWeek(18, 18, false)).toBe("Race Week");
-  });
-
-  it("returns correct phases with base (18 weeks)", () => {
-    expect(getPhaseForWeek(1, 18, true)).toBe("Base");
-    expect(getPhaseForWeek(3, 18, true)).toBe("Base");
-    expect(getPhaseForWeek(4, 18, true)).toBe("Build");
-    expect(getPhaseForWeek(13, 18, true)).toBe("Build");
-    expect(getPhaseForWeek(14, 18, true)).toBe("Race Test");
-    expect(getPhaseForWeek(15, 18, true)).toBe("Race Test");
-    expect(getPhaseForWeek(16, 18, true)).toBe("Taper");
-    expect(getPhaseForWeek(17, 18, true)).toBe("Taper");
-    expect(getPhaseForWeek(18, 18, true)).toBe("Race Week");
   });
 });
 

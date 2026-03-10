@@ -12,9 +12,34 @@ import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
 import { formatStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getCurrentFuelRate } from "./fuelRate";
-import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn } from "./periodization";
+import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
+
+/** Per-week phase flags, computed once per week in the orchestrator. */
+interface WeekPhase {
+  weekNum: number;
+  b: PhaseBoundaries;
+  isBase: boolean;
+  isRaceWeek: boolean;
+  isTaper: boolean;
+  isRaceTest: boolean;
+  isRecovery: boolean;
+}
+
+function getWeekPhase(ctx: PlanContext, weekIdx: number): WeekPhase {
+  const weekNum = weekIdx + 1;
+  const b = ctx.boundaries;
+  return {
+    weekNum,
+    b,
+    isBase: ctx.includeBasePhase && weekNum <= b.baseEnd,
+    isRaceWeek: weekNum === b.raceWeek,
+    isTaper: weekNum >= b.taperStart && weekNum <= b.taperEnd,
+    isRaceTest: weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd,
+    isRecovery: isRecoveryWeekFn(weekNum, ctx.totalWeeks, ctx.includeBasePhase),
+  };
+}
 
 /** Derive Garmin step intensity from the step's note and zone.
  *  Controls what the watch voices: "Warm Up", "Run", "Recovery", "Cooldown". */
@@ -40,29 +65,20 @@ function makeStep(ctx: PlanContext) {
 }
 
 function getSpeedSessionType(
-  weekIdx: number,
-  totalWeeks: number,
-  includeBasePhase: boolean,
+  ctx: PlanContext,
+  wp: WeekPhase,
 ): SpeedSessionType | null {
-  const weekNum = weekIdx + 1;
-  const b = getPhaseBoundaries(totalWeeks, includeBasePhase);
-
   // No speed during base, recovery, race test, or race week
-  if (includeBasePhase && weekNum <= b.baseEnd) return null;
-  if (weekNum === b.raceWeek) return null;
-  if (isRecoveryWeekFn(weekNum, totalWeeks, includeBasePhase)) return null;
+  if (wp.isBase || wp.isRaceWeek || wp.isRecovery || wp.isRaceTest) return null;
 
   // Taper weeks get race-pace intervals to stay sharp
-  if (weekNum >= b.taperStart && weekNum <= b.taperEnd) return "race-pace-intervals";
-
-  // Race test weeks — no speed session
-  if (weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd) return null;
+  if (wp.isTaper) return "race-pace-intervals";
 
   // Count how many speed sessions came before this week (for rotation)
   let speedCount = 0;
-  for (let i = b.buildStart; i < weekNum; i++) {
-    if (!isRecoveryWeekFn(i, totalWeeks, includeBasePhase) &&
-        !(i >= b.raceTestStart && i <= b.raceTestEnd)) speedCount++;
+  for (let i = wp.b.buildStart; i < wp.weekNum; i++) {
+    const idx = i - wp.b.buildStart;
+    if (!(idx > 0 && (idx + 1) % 4 === 0)) speedCount++;
   }
 
   return SPEED_ROTATION[speedCount % SPEED_ROTATION.length];
@@ -72,6 +88,7 @@ const generateQualityRun = (
   ctx: PlanContext,
   weekIdx: number,
   weekStart: Date,
+  wp: WeekPhase,
 ): WorkoutEvent | null => {
   const date = addDays(weekStart, 3);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
@@ -79,29 +96,23 @@ const generateQualityRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const weekNum = weekIdx + 1;
   const progress = weekIdx / ctx.totalWeeks;
-  const prefixName = `W${weekNum.toString().padStart(2, "0")}`;
+  const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "easy", "Warmup");
   const cd = s("5m", "easy", "Cooldown");
 
-  const sessionType = getSpeedSessionType(weekIdx, ctx.totalWeeks, ctx.includeBasePhase);
+  const sessionType = getSpeedSessionType(ctx, wp);
 
   if (sessionType === null) {
-    const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
-    const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
-    const isRaceWeekQ = weekNum === b.raceWeek;
-    const isRaceTestQ = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
-
     // Race week: no Thursday session — the Tuesday shakeout is enough
-    if (isRaceWeekQ) return null;
+    if (wp.isRaceWeek) return null;
 
     let notes: string;
     let duration: string;
-    if (isBase) {
+    if (wp.isBase) {
       notes = "Base phase — easy running only. Building consistency and letting your body adapt to regular training. Save the speed for the build phase.";
       duration = "45m";
-    } else if (isRaceTestQ) {
+    } else if (wp.isRaceTest) {
       notes = "Race test week — keep Thursday light. Save your legs for the dress rehearsal long run. Easy pace, short duration, zero stress.";
       duration = "30m";
     } else {
@@ -111,9 +122,9 @@ const generateQualityRun = (
 
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-      name: `${prefixName} ${isRaceTestQ ? "Easy [PRE-TEST]" : "Easy"} ${ctx.prefix}`,
+      name: `${prefixName} ${wp.isRaceTest ? "Easy [PRE-TEST]" : "Easy"} ${ctx.prefix}`,
       description: createSimpleWorkoutText(s(duration, "easy"), notes),
-      external_id: `${ctx.prefix}-speed-${weekNum}`,
+      external_id: `${ctx.prefix}-speed-${wp.weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -164,7 +175,7 @@ const generateQualityRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `${prefixName} ${label} ${ctx.prefix}`,
     description: createWorkoutText(wu, steps, cd, reps, notes),
-    external_id: `${ctx.prefix}-speed-${weekNum}`,
+    external_id: `${ctx.prefix}-speed-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelInterval,
   };
@@ -174,6 +185,7 @@ const generateEasyRun = (
   ctx: PlanContext,
   weekIdx: number,
   weekStart: Date,
+  wp: WeekPhase,
 ): WorkoutEvent | null => {
   const date = addDays(weekStart, 1);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
@@ -181,28 +193,21 @@ const generateEasyRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const weekNum = weekIdx + 1;
-  const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
-  const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
-  const isRaceWeek = weekNum === b.raceWeek;
-  const isTaper = weekNum >= b.taperStart && weekNum <= b.taperEnd;
-  const isRaceTest = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
-  const isRecovery = isRecoveryWeekFn(weekNum, ctx.totalWeeks, ctx.includeBasePhase);
-  const withStrides = weekIdx % 2 === 1 && !isRaceWeek && !isBase;
+  const withStrides = weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
   const progress = weekIdx / ctx.totalWeeks;
-  const duration = isRaceWeek
+  const duration = wp.isRaceWeek
     ? 15
-    : isRaceTest || isTaper || isRecovery
+    : wp.isRaceTest || wp.isTaper || wp.isRecovery
       ? 20
       : 20 + Math.round(progress * 25);
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
-  const name = `W${weekNum.toString().padStart(2, "0")} ${sessionLabel} ${ctx.prefix}${isRaceWeek ? " [SHAKEOUT]" : ""}`;
+  const name = `W${wp.weekNum.toString().padStart(2, "0")} ${sessionLabel} ${ctx.prefix}${wp.isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
   let notes: string;
-  if (isRaceWeek) {
+  if (wp.isRaceWeek) {
     notes = "Pre-race shakeout. Just loosen the legs and shake off any nerves. Keep it short, keep it easy. Tomorrow is the day.";
   } else if (withStrides) {
     notes = "Easy run with strides at the end. The main run should be fully conversational — save your energy. After the easy portion, do 4 short strides: accelerate smoothly to near-sprint over 20 seconds, then walk/jog back. Strides build neuromuscular speed without creating fatigue.";
@@ -224,7 +229,7 @@ const generateEasyRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
-      external_id: `${ctx.prefix}-easy-${weekNum}`,
+      external_id: `${ctx.prefix}-easy-${wp.weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -236,7 +241,7 @@ const generateEasyRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createSimpleWorkoutText(s(`${totalDuration}m`, "easy"), notes),
-    external_id: `${ctx.prefix}-easy-${weekNum}`,
+    external_id: `${ctx.prefix}-easy-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -244,8 +249,8 @@ const generateEasyRun = (
 
 const generateBonusRun = (
   ctx: PlanContext,
-  weekIdx: number,
   weekStart: Date,
+  wp: WeekPhase,
 ): WorkoutEvent | null => {
   const date = addDays(weekStart, 5);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
@@ -253,15 +258,14 @@ const generateBonusRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const weekNum = weekIdx + 1;
   const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 30 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
 
   // Single-zone easy run — no warmup/cooldown structure needed
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${weekNum.toString().padStart(2, "0")} Bonus Easy ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Bonus Easy ${ctx.prefix}`,
     description: createSimpleWorkoutText(s("45m", "easy"), notes),
-    external_id: `${ctx.prefix}-bonus-${weekNum}`,
+    external_id: `${ctx.prefix}-bonus-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -269,21 +273,16 @@ const generateBonusRun = (
 
 const generateClubRun = (
   ctx: PlanContext,
-  weekIdx: number,
   weekStart: Date,
+  wp: WeekPhase,
 ): WorkoutEvent | null => {
   const date = addDays(weekStart, 3); // Thursday
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const weekNum = weekIdx + 1;
-  const isRaceWeek = weekNum === ctx.totalWeeks;
-  const isTaper = weekNum >= ctx.totalWeeks - 1;
-  const isRecoveryWeek = weekNum % 4 === 0;
-
-  // Skip club run on recovery weeks, taper, and race week (same as speed sessions)
-  if (isRaceWeek || isTaper || isRecoveryWeek) return null;
+  // Skip club run on base, recovery, race test, taper, and race week
+  if (wp.isRaceWeek || wp.isTaper || wp.isRecovery || wp.isRaceTest || wp.isBase) return null;
 
   // No HR targets or fuel rate — club sessions vary week to week (easy, intervals, hills, etc.)
   // User should estimate fuel based on expected intensity.
@@ -297,9 +296,9 @@ const generateClubRun = (
 
   return {
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
-    name: `W${weekNum.toString().padStart(2, "0")} Club Run ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run ${ctx.prefix}`,
     description,
-    external_id: `${ctx.prefix}-club-${weekNum}`,
+    external_id: `${ctx.prefix}-club-${wp.weekNum}`,
     type: "Run",
     // No fuelRate — intensity varies, user should estimate based on expected workout
     excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
@@ -310,10 +309,9 @@ const generateLongRun = (
   ctx: PlanContext,
   weekIdx: number,
   weekStart: Date,
+  wp: WeekPhase,
 ): WorkoutEvent | null => {
-  const weekNum = weekIdx + 1;
-  const isRaceWeek = weekNum === ctx.totalWeeks;
-  if (isRaceWeek) {
+  if (wp.isRaceWeek) {
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY ${ctx.prefix}`,
@@ -327,30 +325,28 @@ const generateLongRun = (
   if (!isBefore(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const b = getPhaseBoundaries(ctx.totalWeeks, ctx.includeBasePhase);
-  const isBase = ctx.includeBasePhase && weekNum <= b.baseEnd;
-  const isTaper = weekNum >= b.taperStart && weekNum <= b.taperEnd;
-  const isRaceTest = weekNum >= b.raceTestStart && weekNum <= b.raceTestEnd;
-  const isRecovery = isRecoveryWeekFn(weekNum, ctx.totalWeeks, ctx.includeBasePhase);
 
+  // Distance ramp uses build-relative index so base weeks don't inflate early distances
+  const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
+  const buildWeekIdx = Math.max(0, weekIdx - (wp.b.buildStart - 1));
   let km = Math.min(
     Math.floor(
       ctx.startKm +
-        ((ctx.raceDist - ctx.startKm) / Math.max(ctx.totalWeeks - 4, 1)) *
-          weekIdx,
+        ((ctx.raceDist - ctx.startKm) / buildWeeks) *
+          buildWeekIdx,
     ),
     ctx.raceDist,
   );
   let type = "";
-  if (isBase || isRecovery) {
-    km = isBase ? Math.min(ctx.startKm + weekIdx, ctx.startKm + 2) : ctx.startKm;
-    type = isRecovery ? " [RECOVERY]" : "";
+  if (wp.isBase || wp.isRecovery) {
+    km = wp.isBase ? Math.min(ctx.startKm + weekIdx, ctx.startKm + 2) : ctx.startKm;
+    type = wp.isRecovery ? " [RECOVERY]" : "";
   }
-  if (isTaper) {
+  if (wp.isTaper) {
     km = Math.floor(ctx.raceDist * 0.5);
     type = " [TAPER]";
   }
-  if (isRaceTest) {
+  if (wp.isRaceTest) {
     km = ctx.raceDist;
     type = " [RACE TEST]";
   }
@@ -358,10 +354,11 @@ const generateLongRun = (
   // Base and recovery weeks are always all-easy long runs
   // Build weeks alternate between sandwich and progressive variants
   let longRunVariant: "easy" | "sandwich" | "progressive" = "easy";
-  if (!isBase && !isRecovery && !isTaper && !isRaceTest && weekNum > b.buildStart) {
+  if (!wp.isBase && !wp.isRecovery && !wp.isTaper && !wp.isRaceTest && wp.weekNum > wp.b.buildStart) {
     let nonSpecialCount = 0;
-    for (let i = b.buildStart; i < weekNum; i++) {
-      if (!isRecoveryWeekFn(i, ctx.totalWeeks, ctx.includeBasePhase)) nonSpecialCount++;
+    for (let i = wp.b.buildStart; i < wp.weekNum; i++) {
+      const idx = i - wp.b.buildStart;
+      if (!(idx > 0 && (idx + 1) % 4 === 0)) nonSpecialCount++;
     }
     longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "progressive";
   }
@@ -387,13 +384,13 @@ const generateLongRun = (
     notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
     mainSteps = [s(`${mainKm}km`, "easy", "Easy")];
-    if (isRecovery) {
+    if (wp.isRecovery) {
       notes = "Recovery week long run — shorter distance to let your body absorb the training. Run the whole thing easy and enjoy being out there. No pace pressure today.";
-    } else if (isBase) {
+    } else if (wp.isBase) {
       notes = "Base phase — building your foundation. Keep it easy and focus on time on feet. No need to push pace. This is where BG management habits get built.";
-    } else if (isTaper) {
+    } else if (wp.isTaper) {
       notes = "Taper run. The hay is in the barn — you've done the work. Keep this short and easy. Your legs might feel heavy or oddly flat; that's normal during taper. Trust the process.";
-    } else if (isRaceTest) {
+    } else if (wp.isRaceTest) {
       notes = `Race distance test at easy effort. This is about covering ${km}km and practising your fueling and BG strategy, not about pace. Treat it as a dress rehearsal: same kit, same fuel timing, same pump setup you'll use on race day. Note what works and what doesn't.`;
     } else {
       notes = "Long run at easy pace. This is the most important run of the week — it builds your endurance engine. Keep the effort genuinely easy throughout. If the last few km feel harder at the same pace, that's normal; resist the urge to speed up early to 'bank time'. Fuel early, fuel often.";
@@ -402,9 +399,9 @@ const generateLongRun = (
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${weekNum.toString().padStart(2, "0")} Long (${km}km)${type} ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Long (${km}km)${type} ${ctx.prefix}`,
     description: createWorkoutText(wu, mainSteps, cd, 1, notes),
-    external_id: `${ctx.prefix}-long-${weekNum}`,
+    external_id: `${ctx.prefix}-long-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelLong,
     distance: km,
@@ -412,6 +409,49 @@ const generateLongRun = (
 };
 
 // --- MAIN ORCHESTRATOR ---
+
+function buildContext(
+  bgModel: BGResponseModel | null,
+  raceDateStr: string,
+  raceDist: number,
+  prefix: string,
+  totalWeeks: number,
+  startKm: number,
+  lthr: number,
+  hrZones: number[],
+  includeBasePhase: boolean,
+): PlanContext {
+  const raceDate = parseISO(raceDateStr);
+  return {
+    fuelInterval: getCurrentFuelRate("interval", bgModel),
+    fuelLong: getCurrentFuelRate("long", bgModel),
+    fuelEasy: getCurrentFuelRate("easy", bgModel),
+    raceDate,
+    raceDist,
+    prefix,
+    totalWeeks,
+    startKm,
+    lthr,
+    hrZones,
+    includeBasePhase,
+    boundaries: getPhaseBoundaries(totalWeeks, includeBasePhase),
+    planStartMonday: addWeeks(
+      startOfWeek(raceDate, { weekStartsOn: 1 }),
+      -(totalWeeks - 1),
+    ),
+  };
+}
+
+function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date): WorkoutEvent[] {
+  const wp = getWeekPhase(ctx, weekIdx);
+  return [
+    generateEasyRun(ctx, weekIdx, weekStart, wp),
+    generateQualityRun(ctx, weekIdx, weekStart, wp),
+    generateClubRun(ctx, weekStart, wp),
+    generateBonusRun(ctx, weekStart, wp),
+    generateLongRun(ctx, weekIdx, weekStart, wp),
+  ].filter((e): e is WorkoutEvent => e !== null);
+}
 
 export function generatePlan(
   bgModel: BGResponseModel | null,
@@ -424,36 +464,12 @@ export function generatePlan(
   hrZones: number[],
   includeBasePhase = false,
 ): WorkoutEvent[] {
-  const raceDate = parseISO(raceDateStr);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, prefix, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
   const today = new Date();
-  const ctx: PlanContext = {
-    fuelInterval: getCurrentFuelRate("interval", bgModel),
-    fuelLong: getCurrentFuelRate("long", bgModel),
-    fuelEasy: getCurrentFuelRate("easy", bgModel),
-    raceDate,
-    raceDist,
-    prefix,
-    totalWeeks,
-    startKm,
-    lthr,
-    hrZones,
-    includeBasePhase,
-    planStartMonday: addWeeks(
-      startOfWeek(raceDate, { weekStartsOn: 1 }),
-      -(totalWeeks - 1),
-    ),
-  };
-  const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
-  return weekIndices.flatMap((i) => {
+  return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     if (isBefore(addDays(weekStart, 7), today)) return [];
-    return [
-      generateEasyRun(ctx, i, weekStart),
-      generateQualityRun(ctx, i, weekStart),
-      generateClubRun(ctx, i, weekStart),
-      generateBonusRun(ctx, i, weekStart),
-      generateLongRun(ctx, i, weekStart),
-    ].filter((e): e is WorkoutEvent => e !== null);
+    return generateWeekEvents(ctx, i, weekStart);
   });
 }
 
@@ -469,33 +485,9 @@ export function generateFullPlan(
   hrZones: number[],
   includeBasePhase = false,
 ): WorkoutEvent[] {
-  const raceDate = parseISO(raceDateStr);
-  const ctx: PlanContext = {
-    fuelInterval: getCurrentFuelRate("interval", bgModel),
-    fuelLong: getCurrentFuelRate("long", bgModel),
-    fuelEasy: getCurrentFuelRate("easy", bgModel),
-    raceDate,
-    raceDist,
-    prefix,
-    totalWeeks,
-    startKm,
-    lthr,
-    hrZones,
-    includeBasePhase,
-    planStartMonday: addWeeks(
-      startOfWeek(raceDate, { weekStartsOn: 1 }),
-      -(totalWeeks - 1),
-    ),
-  };
-  const weekIndices = Array.from({ length: totalWeeks }, (_, i) => i);
-  return weekIndices.flatMap((i) => {
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, prefix, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
+  return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
-    return [
-      generateEasyRun(ctx, i, weekStart),
-      generateQualityRun(ctx, i, weekStart),
-      generateClubRun(ctx, i, weekStart),
-      generateBonusRun(ctx, i, weekStart),
-      generateLongRun(ctx, i, weekStart),
-    ].filter((e): e is WorkoutEvent => e !== null);
+    return generateWeekEvents(ctx, i, weekStart);
   });
 }
