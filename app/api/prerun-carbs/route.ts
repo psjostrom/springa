@@ -61,3 +61,24 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(req: Request) {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get("eventId");
+
+  if (!eventId) {
+    return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+  }
+
+  await db().execute({
+    sql: "DELETE FROM prerun_carbs WHERE email = ? AND event_id = ?",
+    args: [session.user.email, eventId],
+  });
+
+  return NextResponse.json({ ok: true });
+}

@@ -43,9 +43,9 @@ CREATE TABLE IF NOT EXISTS xdrip_readings (
 CREATE TABLE IF NOT EXISTS activity_streams (
   email          TEXT NOT NULL,
   activity_id    TEXT NOT NULL,
-  category       TEXT NOT NULL,
+  name           TEXT,
+  run_start_ms   INTEGER,
   fuel_rate      REAL,
-  glucose        TEXT NOT NULL,
   hr             TEXT NOT NULL,
   run_bg_context TEXT,
   pace           TEXT,

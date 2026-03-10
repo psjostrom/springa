@@ -1,5 +1,6 @@
 import type { XdripReading } from "./xdrip";
 import type { DataPoint } from "./types";
+import type { CachedActivity } from "./activityStreamsDb";
 
 /**
  * Interpolate BG at a specific timestamp using linear interpolation.
@@ -117,4 +118,22 @@ export function xdripToGlucosePoints(
   }
 
   return points;
+}
+
+/**
+ * Enrich CachedActivity array with glucose data from xDrip readings.
+ * For each activity with HR and runStartMs, aligns glucose via interpolation.
+ */
+export function enrichWithGlucose(
+  activities: CachedActivity[],
+  readings: XdripReading[],
+): CachedActivity[] {
+  if (readings.length === 0) return activities;
+
+  return activities.map((act) => {
+    if (act.glucose.length > 0 || act.hr.length === 0 || !act.runStartMs) return act;
+    const aligned = alignHRWithXdrip(act.hr, readings, act.runStartMs);
+    if (!aligned) return act;
+    return { ...act, glucose: aligned.glucose, hr: aligned.hr };
+  });
 }

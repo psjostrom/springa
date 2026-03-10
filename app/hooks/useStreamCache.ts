@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchStreamBatch } from "@/lib/intervalsApi";
 import { extractHRStream, extractExtraStreams, extractRawStreams } from "@/lib/streams";
-import { alignHRWithXdrip } from "@/lib/bgAlignment";
 import {
   readLocalCache,
   writeLocalCache,
@@ -12,21 +11,9 @@ import {
 } from "@/lib/activityStreamsCache";
 import type { CachedActivity } from "@/lib/activityStreamsDb";
 import type { CalendarEvent } from "@/lib/types";
-import type { XdripReading } from "@/lib/xdrip";
 import { getWorkoutCategory } from "@/lib/constants";
 
 type CompletedRun = CalendarEvent & { activityId: string };
-
-/** Fetch xDrip readings for a run window from API. */
-async function fetchXdripForRun(
-  startMs: number,
-  endMs: number,
-): Promise<XdripReading[]> {
-  const res = await fetch(`/api/xdrip/run?start=${startMs}&end=${endMs}`);
-  if (!res.ok) return [];
-  const data = (await res.json()) as { readings?: XdripReading[] };
-  return data.readings ?? [];
-}
 
 export function useStreamCache(
   apiKey: string,
@@ -84,38 +71,30 @@ export function useStreamCache(
           });
           if (aborted()) return;
 
-          // Process each run: get HR from streams, BG from xDrip
+          // Process each run: extract streams (glucose reconstructed later in useRunData)
           for (const e of uncachedRuns) {
             if (aborted()) return;
 
             const streams = streamMap.get(e.activityId);
             const hrPoints = streams ? extractHRStream(streams) : [];
             const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
-            const raw = streams ? extractRawStreams(streams) : { distance: [], time: [] };
+            const rawStreams = streams ? extractRawStreams(streams) : { distance: [], time: [] };
             const cat = getWorkoutCategory(e.name);
-
-            // Fetch xDrip readings for this run's time window
-            const runStartMs = e.date.getTime();
-            const runEndMs = runStartMs + (e.duration ?? 0) * 1000;
-            const xdripReadings = await fetchXdripForRun(runStartMs, runEndMs);
-
-            // Align HR with xDrip BG using linear interpolation
-            const aligned = hrPoints.length > 0 && xdripReadings.length > 0
-              ? alignHRWithXdrip(hrPoints, xdripReadings, runStartMs)
-              : null;
 
             newCached.push({
               activityId: e.activityId,
+              name: e.name,
               category: cat === "other" ? "easy" : cat,
               fuelRate: e.fuelRate ?? null,
-              glucose: aligned?.glucose ?? [],
-              hr: aligned?.hr ?? [],
+              glucose: [], // reconstructed in useRunData from xDrip readings
+              hr: hrPoints,
               pace: extra.pace,
               cadence: extra.cadence,
               altitude: extra.altitude,
-              distance: raw.distance.length > 0 ? raw.distance : undefined,
-              rawTime: raw.time.length > 0 ? raw.time : undefined,
               activityDate: e.date.toISOString().slice(0, 10),
+              runStartMs: e.date.getTime(),
+              distance: rawStreams.distance.length > 0 ? rawStreams.distance : undefined,
+              rawTime: rawStreams.time.length > 0 ? rawStreams.time : undefined,
             });
           }
         }

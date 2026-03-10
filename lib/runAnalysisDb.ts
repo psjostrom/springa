@@ -1,4 +1,6 @@
 import { db } from "./db";
+import { getWorkoutCategory } from "./constants";
+import type { CachedActivity } from "./activityStreamsDb";
 import type { CalendarEvent } from "./types";
 
 export interface RunHistoryBG {
@@ -34,21 +36,12 @@ export async function saveRunAnalysis(
   });
 }
 
-export interface CachedRunRow {
-  activityId: string;
-  category: string;
-  fuelRate: number | null;
-  glucose: { time: number; value: number }[];
-  hr: { time: number; value: number }[];
-  activityDate: string | null;
-}
-
 export async function getRecentAnalyzedRuns(
   email: string,
   limit = 10,
-): Promise<CachedRunRow[]> {
+): Promise<CachedActivity[]> {
   const result = await db().execute({
-    sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.glucose, b.hr,
+    sql: `SELECT b.activity_id, b.name, b.run_start_ms, b.fuel_rate, b.hr,
                  b.activity_date
           FROM activity_streams b
           INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
@@ -58,12 +51,18 @@ export async function getRecentAnalyzedRuns(
     args: [email, limit],
   });
 
-  return result.rows.map((row) => ({
-    activityId: row.activity_id as string,
-    category: row.category as string,
-    fuelRate: row.fuel_rate as number | null,
-    glucose: JSON.parse(row.glucose as string) as { time: number; value: number }[],
-    hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
-    activityDate: (row.activity_date as string | null) ?? null,
-  }));
+  return result.rows.map((row) => {
+    const name = (row.name as string) || undefined;
+    const rawCat = name ? getWorkoutCategory(name) : "other";
+    return {
+      activityId: row.activity_id as string,
+      name,
+      category: (rawCat === "other" ? "easy" : rawCat) as CachedActivity["category"],
+      fuelRate: (row.fuel_rate as number | null) ?? null,
+      glucose: [],
+      hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
+      activityDate: (row.activity_date as string | null) ?? undefined,
+      runStartMs: (row.run_start_ms as number) ?? undefined,
+    };
+  });
 }

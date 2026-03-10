@@ -11,6 +11,8 @@ import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { formatAIError } from "@/lib/aiError";
+import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 import { nonEmpty } from "@/lib/format";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
@@ -19,7 +21,6 @@ import { NextResponse } from "next/server";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
-import type { CachedRunRow } from "@/lib/runAnalysisDb";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 
 interface RequestBody {
@@ -32,7 +33,7 @@ interface RequestBody {
 }
 
 function buildRunHistory(
-  rows: CachedRunRow[],
+  rows: CachedActivity[],
   activityMap: Map<string, IntervalsActivity>,
 ): RunHistoryEntry[] {
   return rows.map((row) => {
@@ -160,7 +161,7 @@ export async function POST(req: Request) {
         })
     : Promise.resolve(null);
 
-  const [rows, profile, patterns, wellnessEntries] = await Promise.all([
+  const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
     intervalsApiKey
       ? fetchAthleteProfile(intervalsApiKey)
@@ -170,6 +171,9 @@ export async function POST(req: Request) {
       ? fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd"))
       : Promise.resolve([]),
   ]);
+
+  // Enrich history rows with glucose from xdrip_readings
+  const rows = await enrichActivitiesWithGlucose(session.user.email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();

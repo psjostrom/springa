@@ -79,4 +79,9 @@ export const handlers = [
   http.get("/api/prerun-carbs", () => {
     return HttpResponse.json({ carbsG: null, minutesBefore: null });
   }),
+
+  // DELETE pre-run carbs (cleanup after Intervals.icu write)
+  http.delete("/api/prerun-carbs", () => {
+    return HttpResponse.json({ ok: true });
+  }),
 ];
