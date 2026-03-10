@@ -1,5 +1,5 @@
 import type { WorkoutCategory, DataPoint } from "./types";
-import type { CachedActivity } from "./bgCacheDb";
+import type { CachedActivity } from "./activityStreamsDb";
 import { linearRegression } from "./math";
 import { extractObservations, MIN_ALIGNED_POINTS } from "./bgObservations";
 

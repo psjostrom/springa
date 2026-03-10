@@ -9,6 +9,7 @@ export interface RawStreams {
   velocity: number[];
   cadence: number[];
   altitude: number[];
+  distance: number[];
 }
 
 /** Extract raw data arrays from IntervalsStream[]. Single place for stream type mapping. */
@@ -16,6 +17,7 @@ export function extractRawStreams(streams: IntervalsStream[]): RawStreams {
   const raw: RawStreams = {
     time: [], heartrate: [], glucose: [],
     velocity: [], cadence: [], altitude: [],
+    distance: [],
   };
   for (const s of streams) {
     if (s.type === "time") raw.time = s.data;
@@ -24,6 +26,7 @@ export function extractRawStreams(streams: IntervalsStream[]): RawStreams {
     if (s.type === "velocity_smooth") raw.velocity = s.data;
     if (s.type === "cadence") raw.cadence = s.data;
     if (s.type === "altitude") raw.altitude = s.data;
+    if (s.type === "distance") raw.distance = s.data;
   }
   return raw;
 }

@@ -3,7 +3,7 @@ import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
-import type { CachedActivity } from "@/lib/bgCacheDb";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 import type { XdripReading } from "@/lib/xdrip";

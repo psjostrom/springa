@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { buildBGModelFromCached } from "@/lib/bgModel";
-import { BG_MODEL_MAX_ACTIVITIES } from "@/lib/bgCache";
+import { BG_MODEL_MAX_ACTIVITIES } from "@/lib/activityStreamsCache";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import { buildRunBGContexts } from "@/lib/runBGContext";

@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS xdrip_readings (
   PRIMARY KEY (email, ts)
 );
 
-CREATE TABLE IF NOT EXISTS bg_cache (
+CREATE TABLE IF NOT EXISTS activity_streams (
   email          TEXT NOT NULL,
   activity_id    TEXT NOT NULL,
   category       TEXT NOT NULL,
@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS bg_cache (
   cadence        TEXT,
   altitude       TEXT,
   activity_date  TEXT,
+  distance       TEXT,
+  raw_time       TEXT,
   PRIMARY KEY (email, activity_id)
 );
 

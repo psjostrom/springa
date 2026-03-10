@@ -1,5 +1,5 @@
 import type { CalendarEvent, StreamData } from "@/lib/types";
-import type { CachedActivity } from "@/lib/bgCacheDb";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 
 /** Merge cached stream data (glucose, HR, pace, cadence, altitude) into calendar events. */
 export function enrichEvents(
@@ -20,6 +20,8 @@ export function enrichEvents(
     if (cached.pace && cached.pace.length > 0) streamData.pace = cached.pace;
     if (cached.cadence && cached.cadence.length > 0) streamData.cadence = cached.cadence;
     if (cached.altitude && cached.altitude.length > 0) streamData.altitude = cached.altitude;
+    if (cached.distance && cached.distance.length > 0) streamData.distance = cached.distance;
+    if (cached.rawTime && cached.rawTime.length > 0) streamData.rawTime = cached.rawTime;
     if (Object.keys(streamData).length === 0) return event;
     return { ...event, streamData };
   });

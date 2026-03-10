@@ -93,6 +93,7 @@ export async function fetchStreams(
     "velocity_smooth",
     "cadence",
     "altitude",
+    "distance",
     "latlng",
   ].join(",");
   const url = `${API_BASE}/activity/${activityId}/streams?keys=${keys}`;
@@ -172,7 +173,7 @@ export async function fetchActivityDetails(
 }> {
   try {
     const streams = await fetchStreams(activityId, apiKey);
-    const { time: timeData, heartrate: hrData, velocity: velocityData, cadence: cadenceData, altitude: altitudeData } = extractRawStreams(streams);
+    const { time: timeData, heartrate: hrData, velocity: velocityData, cadence: cadenceData, altitude: altitudeData, distance: distanceData } = extractRawStreams(streams);
 
     const paceData = velocityData.map((v) => {
       if (v === 0 || v < 0.001) return null;
@@ -197,7 +198,7 @@ export async function fetchActivityDetails(
     if (timeData.length > 0) {
       const streamData: StreamData = {};
 
-      // Glucose comes from xDrip via bg_cache, not from streams
+      // Glucose comes from xDrip via activity_streams, not from streams
 
       if (hrData.length > 0) {
         streamData.heartrate = timeData.map((t, idx) => ({
@@ -229,6 +230,11 @@ export async function fetchActivityDetails(
           time: Math.round(t / 60),
           value: altitudeData[idx],
         }));
+      }
+
+      if (distanceData.length > 0) {
+        streamData.distance = distanceData;
+        streamData.rawTime = timeData;
       }
 
       const latlng = extractLatlng(streams);

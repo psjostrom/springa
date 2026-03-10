@@ -23,6 +23,7 @@ import { PreRunReadiness } from "./PreRunReadiness";
 import { RouteMap } from "./RouteMap";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
 import { ClothingRecommendation } from "./ClothingRecommendation";
+import { KmSplitsSection } from "./KmSplitsSection";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 
 function StatInfo({ label, tip }: { label: string; tip: string }) {
@@ -765,6 +766,17 @@ export function EventModal({
                     <div key={i} className="skeleton h-5 w-full" />
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {/* Km Splits */}
+            {selectedEvent.streamData?.distance ? (
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
+                <KmSplitsSection streamData={selectedEvent.streamData} />
+              </div>
+            ) : isLoadingStreamData ? (
+              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
+                <KmSplitsSection streamData={{}} isLoading />
               </div>
             ) : null}
 

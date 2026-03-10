@@ -50,7 +50,7 @@ export async function getRecentAnalyzedRuns(
   const result = await db().execute({
     sql: `SELECT b.activity_id, b.category, b.fuel_rate, b.glucose, b.hr,
                  b.activity_date
-          FROM bg_cache b
+          FROM activity_streams b
           INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
           WHERE b.email = ?
           ORDER BY b.ROWID DESC
