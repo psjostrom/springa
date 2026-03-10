@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { enrichedEventsAtom } from "../atoms";
 import type {
   ModalWidgetId,
   ModalTabId,
@@ -126,6 +128,17 @@ interface WidgetTabsProps {
 }
 
 export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
+  // Subscribe to the atom so widget patches (carbs, feedback, etc.) are reflected
+  // immediately without waiting for the parent to re-derive the event from the atom.
+  const enrichedEvents = useAtomValue(enrichedEventsAtom);
+  const liveEvent = useMemo(
+    () => enrichedEvents.find((e) => e.id === widgetProps.event.id),
+    [enrichedEvents, widgetProps.event.id],
+  );
+  const effectiveProps: WidgetProps = liveEvent
+    ? { ...widgetProps, event: { ...liveEvent, streamData: widgetProps.event.streamData ?? liveEvent.streamData } }
+    : widgetProps;
+
   const [activeTab, setActiveTab] = useState<ModalTabId>("overview");
   const [layout, setLayout] = useState<ModalTabLayout>(() =>
     resolveModalLayout(loadModalLayout()),
@@ -190,7 +203,7 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
         key={activeTab}
         order={tabLayout.order}
         hidden={tabLayout.hidden}
-        widgetProps={widgetProps}
+        widgetProps={effectiveProps}
         renderMap={widgetRenderMap}
         onReorder={handleReorder}
         onToggle={handleToggle}

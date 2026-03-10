@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSetAtom } from "jotai";
+import { patchCalendarEventAtom } from "../atoms";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
 function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: string) => void; isSaving: boolean }) {
@@ -43,28 +45,25 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
 
 /** Feedback widget: shows saved rating or a form to submit one. */
 export function FeedbackWidget({ event }: WidgetProps) {
-  const [savedRating, setSavedRating] = useState<string | null>(null);
-  const [savedComment, setSavedComment] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const patchEvent = useSetAtom(patchCalendarEventAtom);
 
   if (!event.activityId) return null;
 
-  const rating = savedRating ?? event.rating;
-  const comment = savedComment ?? event.feedbackComment;
-  const hasRating = !!rating;
+  const hasRating = !!event.rating;
 
   const saveFeedback = async (r: string, c: string) => {
     setIsSaving(true);
     try {
-      await fetch("/api/run-feedback", {
+      const res = await fetch("/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ activityId: event.activityId, rating: r, comment: c || undefined }),
       });
-      setSavedRating(r);
-      setSavedComment(c);
-    } catch {
-      // silently fail
+      if (!res.ok) throw new Error(`Feedback save failed (${res.status})`);
+      patchEvent({ id: event.id, patch: { rating: r, feedbackComment: c || null } });
+    } catch (err) {
+      console.error("Failed to save feedback:", err);
     } finally {
       setIsSaving(false);
     }
@@ -75,8 +74,8 @@ export function FeedbackWidget({ event }: WidgetProps) {
       <div className="text-sm text-[#b8a5d4] mb-2">Feedback</div>
       {hasRating ? (
         <div className="flex items-center gap-2 text-sm text-white">
-          <span className="text-lg">{rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
-          {comment && <span className="text-[#b8a5d4]">{comment}</span>}
+          <span className="text-lg">{event.rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
+          {event.feedbackComment && <span className="text-[#b8a5d4]">{event.feedbackComment}</span>}
         </div>
       ) : (
         <FeedbackForm

@@ -51,6 +51,16 @@ export const calendarReloadAtom = atom(null, (get) => {
   if (apiKey) void mutate(["calendar-data", apiKey]);
 });
 
+/** Optimistically patch a single CalendarEvent by id after a widget save. */
+export const patchCalendarEventAtom = atom(
+  null,
+  (_get, set, { id, patch }: { id: string; patch: Partial<CalendarEvent> }) => {
+    set(calendarEventsAtom, (prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    );
+  },
+);
+
 // ─── Current BG (xDrip) ─────────────────────────────────────
 
 export const currentBGAtom = atom<number | null>(null);

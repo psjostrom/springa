@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
+import { calendarEventsAtom } from "../../atoms";
 import { EventModal } from "../EventModal";
 import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
 
@@ -334,6 +335,7 @@ describe("EventModal feedback", () => {
         onDelete={noopAsync}
         apiKey="test"
       />,
+      { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
 
     await user.click(screen.getByText("Analysis"));

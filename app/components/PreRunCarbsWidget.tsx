@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSetAtom } from "jotai";
 import { Pencil } from "lucide-react";
 import { updateActivityPreRunCarbs } from "@/lib/intervalsApi";
+import { patchCalendarEventAtom } from "../atoms";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
@@ -13,8 +15,8 @@ type EditState =
 /** Pre-run carbs widget with two-field inline edit (grams + minutes before). */
 export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
-  const [savedPreRun, setSavedPreRun] = useState<{ g: number | null; min: number | null } | null>(null);
   const [dbPreRun, setDbPreRun] = useState<{ eventId: string; g: number | null; min: number | null } | null>(null);
+  const patchEvent = useSetAtom(patchCalendarEventAtom);
 
   const dbPreRunForThisEvent = dbPreRun?.eventId === event.id ? dbPreRun : null;
 
@@ -30,12 +32,12 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
         if (cancelled || !data) return;
         setDbPreRun({ eventId: event.id, g: data.carbsG, min: data.minutesBefore });
       })
-      .catch(() => {/* ignore */});
+      .catch((err: unknown) => { console.error("Failed to fetch pre-run carbs:", err); });
     return () => { cancelled = true; };
   }, [event.id, event.type, event.pairedEventId, event.preRunCarbsG, event.preRunCarbsMin]);
 
-  const displayG = savedPreRun?.g ?? event.preRunCarbsG ?? dbPreRunForThisEvent?.g ?? null;
-  const displayMin = savedPreRun?.min ?? event.preRunCarbsMin ?? dbPreRunForThisEvent?.min ?? null;
+  const displayG = event.preRunCarbsG ?? dbPreRunForThisEvent?.g ?? null;
+  const displayMin = event.preRunCarbsMin ?? dbPreRunForThisEvent?.min ?? null;
 
   const savePreRunCarbs = async () => {
     if (editState.kind !== "editing") return;
@@ -52,13 +54,13 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
       if (event.pairedEventId) {
         void fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(event.pairedEventId))}`, {
           method: "DELETE",
-        });
+        }).catch((err: unknown) => { console.error("Failed to delete Turso pre-run row:", err); });
       }
-      setSavedPreRun({ g, min });
+      patchEvent({ id: event.id, patch: { preRunCarbsG: g, preRunCarbsMin: min } });
       setEditState({ kind: "idle" });
     } catch (err) {
       console.error("Failed to update pre-run carbs:", err);
-      setEditState({ kind: "idle" });
+      setEditState({ kind: "editing", g: editState.g, min: editState.min });
     }
   };
 

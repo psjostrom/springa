@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useSetAtom } from "jotai";
 import { Pencil } from "lucide-react";
 import { updateActivityCarbs } from "@/lib/intervalsApi";
+import { patchCalendarEventAtom } from "../atoms";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
@@ -13,9 +15,9 @@ type EditState =
 /** Carbs ingested widget with inline edit. */
 export function CarbsWidget({ event, apiKey }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
-  const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
+  const patchEvent = useSetAtom(patchCalendarEventAtom);
 
-  const displayCarbs = savedCarbs ?? event.carbsIngested ?? event.totalCarbs ?? null;
+  const displayCarbs = event.carbsIngested ?? event.totalCarbs ?? null;
 
   const saveCarbs = async () => {
     if (editState.kind !== "editing") return;
@@ -27,11 +29,11 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
     setEditState({ kind: "saving", value: editState.value });
     try {
       await updateActivityCarbs(apiKey, actId, val);
-      setSavedCarbs(val);
+      patchEvent({ id: event.id, patch: { carbsIngested: val } });
       setEditState({ kind: "idle" });
     } catch (err) {
       console.error("Failed to update carbs:", err);
-      setEditState({ kind: "idle" });
+      setEditState({ kind: "editing", value: editState.value });
     }
   };
 
@@ -77,7 +79,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
             className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
           >
             {displayCarbs ?? "—"}g
-            {event.carbsIngested == null && savedCarbs == null && (
+            {event.carbsIngested == null && (
               <span className="text-xs font-normal text-[#b8a5d4]">(planned)</span>
             )}
             <Pencil className="w-3 h-3 text-[#b8a5d4]" />

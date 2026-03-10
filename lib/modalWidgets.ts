@@ -164,5 +164,9 @@ export function loadModalLayout(): Partial<ModalTabLayout> | undefined {
 
 /** Save layout to localStorage. */
 export function saveModalLayout(layout: ModalTabLayout): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+  } catch (e) {
+    console.error("Failed to save modal widget layout:", e);
+  }
 }
