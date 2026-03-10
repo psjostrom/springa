@@ -138,11 +138,16 @@ export function useHydrateStore() {
   }, [wellnessData, wellnessIsLoading, setWellnessEntries, setWellnessLoading]);
 
   // ─── Insulin Context ─────────────────────────────────────
+  // Re-fetches every 5 min (refreshInterval). IOB decays rapidly (Fiasp half-life
+  // ~55 min) and new boluses can happen at any time, so stale IOB data is dangerous
+  // — a value from 2h ago could show 3u when the real IOB is 0.4u.
+  // The MyLife session is cached (12h TTL) so re-fetches only scrape the logbook,
+  // no re-login overhead.
   const settings = useAtomValue(settingsAtom);
   const { data: insulinData = null } = useSWR<InsulinContext | null>(
     settings?.mylifeConnected ? "/api/insulin-context" : null,
     (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null)),
-    { revalidateOnFocus: false, dedupingInterval: 300_000 },
+    { revalidateOnFocus: false, refreshInterval: 300_000 },
   );
   const setInsulinContext = useSetAtom(insulinContextAtom);
 

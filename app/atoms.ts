@@ -94,7 +94,7 @@ export const currentTsbAtom = atom<number | null>((get) => {
 });
 
 export const currentIobAtom = atom<number | null>((get) => {
-  return get(insulinContextAtom)?.totalIOBAtStart ?? null;
+  return get(insulinContextAtom)?.actionableIOB ?? null;
 });
 
 export const enrichedEventsAtom = atom((get) =>
