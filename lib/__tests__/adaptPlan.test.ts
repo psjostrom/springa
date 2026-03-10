@@ -270,6 +270,10 @@ describe("reconstructExternalId", () => {
     expect(reconstructExternalId("Random event name", "eco16")).toBeNull();
   });
 
+  it("parses club run by keyword", () => {
+    expect(reconstructExternalId("W05 Club Run eco16", "eco16")).toBe("eco16-club-5");
+  });
+
   it("handles legacy day-based names", () => {
     expect(reconstructExternalId("W03 Tue Easy eco16", "eco16")).toBe("eco16-easy-3");
     expect(reconstructExternalId("W12 Thu Short-Intervals eco16", "eco16")).toBe("eco16-speed-12");
