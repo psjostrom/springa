@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       const session = await mylifeSignIn(mylifeEmail, mylifePassword);
       const data = await fetchMyLifeData(session, mylifeTz);
       const ctx = buildInsulinContext(data, now);
-      currentIob = ctx?.totalIOBAtStart ?? null;
+      currentIob = ctx?.actionableIOB ?? null;
     } catch (err) {
       console.error("[prerun-push] Failed to fetch MyLife/IOB:", err);
       clearMyLifeSession(mylifeEmail);

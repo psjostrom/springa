@@ -2,17 +2,48 @@ import type { MyLifeData } from "./mylife";
 
 // --- Types ---
 
+/**
+ * Insulin context for pre-run safety assessment.
+ *
+ * WHY THIS MATTERS:
+ * This is T1D-critical code. Wrong IOB → wrong carb recommendation → hypo on a run.
+ * The key insight: CamAPS FX delivers basal insulin in micro-doses every ~10 min,
+ * creating a constant ~1u background IOB that's always present. If we report that
+ * as "IOB", the pre-run panel permanently warns about insulin that isn't actually
+ * a risk — it's the baseline the BG model already learned from.
+ *
+ * IOB FIELDS — THREE LEVELS:
+ *
+ * 1. totalIOBAtStart — ALL insulin still active (bolus + basal). Used by analytical
+ *    consumers (run analysis prompt, BG pattern model) that need the full picture.
+ *
+ * 2. iobAtStart — Bolus-only IOB. The discrete, deliberate doses from meals.
+ *
+ * 3. actionableIOB — The value shown to the runner. Bolus IOB + EXCESS basal IOB.
+ *    "Excess" = actual basal IOB minus steady-state basal IOB (what a constant
+ *    delivery at the 5h average rate would produce). This is zero on a normal day
+ *    but captures spike corrections — when CamAPS cranked basal to 2-3 U/h to
+ *    fight a high, that concentrated recent delivery has more remaining IOB than
+ *    the same total spread evenly, and THAT difference will push BG down.
+ *
+ * Validated against real MyLife data (2026-03-10):
+ *   Normal day, 5u bolus at 08:21, avg basal ~0.7-0.9 U/h:
+ *   - At 10:30: totalIOB=2.99  actionableIOB=1.62  (excess basal ≈ 0.02)
+ *   - At 12:11: totalIOB=1.49  actionableIOB=0.40  (excess basal ≈ 0.00)
+ *   Old code showed 2.99u at 12:11 (stale + inflated). New code: 0.40u (correct).
+ */
 export interface InsulinContext {
   lastBolusTime: string; // ISO 8601
   lastBolusUnits: number;
   lastMealTime: string; // ISO 8601
   lastMealCarbs: number; // grams
-  iobAtStart: number; // units, Fiasp exponential decay (bolus only)
-  basalIOBAtStart: number; // units, IOB from basal delivery
-  totalIOBAtStart: number; // units, bolus + basal IOB combined
+  iobAtStart: number; // units — bolus IOB only (Fiasp exponential decay)
+  basalIOBAtStart: number; // units — IOB from basal delivery (CamAPS micro-doses)
+  totalIOBAtStart: number; // units — bolus + basal combined (for analytics, NOT display)
+  actionableIOB: number; // units — bolus IOB + excess basal IOB (for pre-run display)
   timeSinceLastMeal: number; // minutes before run start
   timeSinceLastBolus: number; // minutes before run start
-  expectedBGImpact: number; // mmol/L, totalIOB × ISF (rough estimate)
+  expectedBGImpact: number; // mmol/L — totalIOB × ISF (for analytics, uses full IOB)
   lastBasalRate: number; // U/h, most recent basal rate before run start
   easeOffStartMin: number | null; // minutes before run start that Ease-off was activated, null if none
   easeOffDurationH: number | null; // Ease-off duration in hours, null if none
@@ -99,6 +130,44 @@ function basalIOB(
   }
 
   return iob;
+}
+
+/**
+ * Compute the weighted-average basal rate (U/h) over the lookback window.
+ * Each segment's rate is weighted by its duration.
+ *
+ * Used to establish the "steady-state" baseline for excess basal IOB.
+ * CamAPS adjusts basal every ~10 min; the average across 5h smooths this out.
+ */
+function averageBasalRate(
+  basalEntries: { timestamp: string; rate: number }[],
+  runStartMs: number,
+): number {
+  if (basalEntries.length === 0) return 0;
+
+  const sorted = [...basalEntries].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  const lookbackStart = runStartMs - LOOKBACK_MS;
+  let totalRate = 0;
+  let totalDuration = 0;
+
+  for (let i = 0; i < sorted.length; i++) {
+    const segStart = Math.max(new Date(sorted[i].timestamp).getTime(), lookbackStart);
+    const segEnd =
+      i + 1 < sorted.length
+        ? new Date(sorted[i + 1].timestamp).getTime()
+        : runStartMs;
+    const effectiveEnd = Math.min(segEnd, runStartMs);
+    if (segStart >= effectiveEnd) continue;
+
+    const durationMs = effectiveEnd - segStart;
+    totalRate += sorted[i].rate * durationMs;
+    totalDuration += durationMs;
+  }
+
+  return totalDuration > 0 ? totalRate / totalDuration : 0;
 }
 
 // --- Builder ---
@@ -212,9 +281,35 @@ export function buildInsulinContext(
   // --- Basal IOB ---
   const basalIob = basalIOB(basalEntries, runStartMs);
 
+  // --- Actionable IOB ---
+  // WHY: CamAPS delivers ~0.7-0.9 U/h basal continuously, producing ~1u of
+  // always-present basal IOB. Reporting this as "IOB" would permanently trigger
+  // the pre-run warning (≥0.5u threshold) even when no meal bolus is active.
+  //
+  // BUT: if CamAPS was correcting a BG spike by cranking basal to 2-3 U/h in
+  // the last 2-3 hours, that concentrated recent delivery IS extra risk — the
+  // IOB from recent high-rate delivery decays slower than evenly-spread delivery.
+  //
+  // HOW: compute what basal IOB would be if delivery had been constant at the
+  // 5h average rate (steady-state). The difference is excess basal IOB.
+  // Normal day: excess ≈ 0. Spike correction day: excess > 0.
+  //
+  // actionableIOB = bolus IOB + max(0, actual basal IOB - steady-state basal IOB)
+  const avgRate = averageBasalRate(basalEntries, runStartMs);
+  const steadyStateBasalIob =
+    avgRate > 0
+      ? basalIOB(
+          [{ timestamp: new Date(lookbackStart).toISOString(), rate: avgRate }],
+          runStartMs,
+        )
+      : 0;
+  const excessBasalIob = Math.max(0, basalIob - steadyStateBasalIob);
+  const actionableIob = bolusIob + excessBasalIob;
+
   const bolusIobRounded = Math.round(bolusIob * 100) / 100;
   const basalIobRounded = Math.round(basalIob * 100) / 100;
   const totalIob = Math.round((bolusIob + basalIob) * 100) / 100;
+  const actionableIobRounded = Math.round(actionableIob * 100) / 100;
 
   // --- Last basal rate ---
   const basalSorted = [...basalEntries].sort(
@@ -235,6 +330,7 @@ export function buildInsulinContext(
     iobAtStart: bolusIobRounded,
     basalIOBAtStart: basalIobRounded,
     totalIOBAtStart: totalIob,
+    actionableIOB: actionableIobRounded,
     timeSinceLastMeal: Math.round((runStartMs - lastMealTs) / 60000),
     timeSinceLastBolus: Math.round((runStartMs - lastBolusTs) / 60000),
     expectedBGImpact: Math.round(totalIob * ISF * 10) / 10,
