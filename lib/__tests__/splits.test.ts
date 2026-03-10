@@ -27,6 +27,8 @@ describe("computeKmSplits", () => {
     expect(splits).toHaveLength(3);
     expect(splits[0].km).toBe(1);
     expect(splits[0].paceMinPerKm).toBeCloseTo(500 / 60, 1);
+    expect(splits[0].startTimeSec).toBe(0);
+    expect(splits[0].endTimeSec).toBeCloseTo(500, 0);
     expect(splits[1].km).toBe(2);
     expect(splits[2].km).toBe(3);
   });

@@ -38,7 +38,7 @@ function elevForWindow(
   const startMin = Math.round(startSec / 60);
   const endMin = Math.round(endSec / 60);
   const startAlt = altData.find((p) => p.time >= startMin)?.value;
-  const endAlt = [...altData].reverse().find((p) => p.time <= endMin)?.value;
+  const endAlt = altData.findLast((p) => p.time <= endMin)?.value;
   if (startAlt == null || endAlt == null) return 0;
   return Math.round(endAlt - startAlt);
 }
