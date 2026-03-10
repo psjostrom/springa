@@ -56,6 +56,7 @@ Rules:
 - Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
 - If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
 - If the workout was swapped to easy, explain why.
+- Club runs: the club decides the workout (could be easy, intervals, hills, anything). NEVER prescribe pace, HR zone, or effort level. Focus on fuel/BG prep: recommend bringing enough carbs for the worst case (long easy effort), note that if it turns out to be intervals the runner may need less. Keep the running paragraph to one sentence acknowledging the variable intensity.
 - Only state distances and durations that appear in the data below. Never guess or infer distances from workout names.
 - If "Cross-Run BG Patterns" are provided, weave relevant findings into the Fuel & BG paragraph — e.g. cite a pattern about entrySlope or drop rate that applies to this session type. Don't list patterns mechanically; use the ones that matter for *this* workout.`;
 

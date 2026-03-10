@@ -70,7 +70,7 @@ export function adaptFuelRate(
   category: WorkoutCategory | "race" | "other",
   bgModel: BGResponseModel,
 ): { rate: number | null; change: AdaptationChange | null } {
-  if (category === "race" || category === "other") {
+  if (category === "race" || category === "other" || category === "club") {
     return { rate: current, change: null };
   }
 

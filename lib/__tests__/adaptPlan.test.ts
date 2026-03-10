@@ -184,6 +184,14 @@ describe("adaptFuelRate", () => {
     expect(rate).toBe(30);
     expect(change).toBeNull();
   });
+
+  it("ignores club category", () => {
+    const bgModel = makeBGModel([makeTarget("easy", 50)]);
+    const { rate, change } = adaptFuelRate(60, "club", bgModel);
+
+    expect(rate).toBe(60);
+    expect(change).toBeNull();
+  });
 });
 
 describe("shouldSwapToEasy", () => {

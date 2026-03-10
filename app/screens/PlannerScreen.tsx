@@ -314,7 +314,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                         ))}
                       </div>
                       {event.notes && (
-                        <div className="text-xs text-[#b8a5d4] leading-relaxed">
+                        <div className="text-sm text-[#b8a5d4] leading-relaxed">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
