@@ -138,6 +138,8 @@ const _widgetSaveTimerAtom = atom<ReturnType<typeof setTimeout> | undefined>(
   undefined,
 );
 
+export const widgetSaveErrorAtom = atom<string | null>(null);
+
 export const updateWidgetLayoutAtom = atom(
   null,
   (get, set, layout: WidgetLayout) => {
@@ -150,15 +152,24 @@ export const updateWidgetLayoutAtom = atom(
     if (prev) clearTimeout(prev);
     set(
       _widgetSaveTimerAtom,
-      setTimeout(() => {
-        void fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            widgetOrder: layout.widgetOrder,
-            hiddenWidgets: layout.hiddenWidgets,
-          }),
-        });
+      setTimeout(async () => {
+        try {
+          const res = await fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              widgetOrder: layout.widgetOrder,
+              hiddenWidgets: layout.hiddenWidgets,
+            }),
+          });
+          if (!res.ok) {
+            set(widgetSaveErrorAtom, `Layout save failed (${res.status})`);
+            return;
+          }
+          set(widgetSaveErrorAtom, null);
+        } catch {
+          set(widgetSaveErrorAtom, "Layout save failed (network error)");
+        }
       }, 800),
     );
   },
