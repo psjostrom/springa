@@ -149,6 +149,7 @@ function buildEasyStructure(duration: number | undefined, lthr: number, hrZones:
  * "W05 Long (12km) eco16" → "eco16-long-5"
  * "W01 Easy eco16" → "eco16-easy-1"
  * "W03 Bonus Easy eco16" → "eco16-bonus-3"
+ * "W05 Club Run eco16" → "eco16-club-5"
  * "RACE DAY eco16" → "eco16-race"
  *
  * Also handles legacy day-based names for existing events:
@@ -175,6 +176,7 @@ export function reconstructExternalId(
   if (/Short.?Intervals|Hills|Long.?Intervals|Distance.?Intervals|Race.?Pace.?Intervals/i.test(name)) {
     return `${prefix}-speed-${week}`;
   }
+  if (/\bClub\b/i.test(name)) return `${prefix}-club-${week}`;
 
   // Default: easy run (includes "Easy", "Easy + Strides", shakeout, etc.)
   return `${prefix}-easy-${week}`;
