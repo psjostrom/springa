@@ -10,32 +10,46 @@ import {
 import { API_BASE } from "@/lib/constants";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
-import type { IntervalsActivity } from "@/lib/types";
+import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
 import { db } from "@/lib/db";
+import { estimateWorkoutDuration, calculateWorkoutCarbs } from "@/lib/workoutMath";
 
-const MS_PER_HOUR = 3_600_000;
+interface MatchedEvent {
+  prescribedCarbsG: number | null;
+  eventId: number | null;
+}
 
-/** Compute prescribed carbs for a given activity by looking up WORKOUT events on that date. */
-async function computePrescribedCarbs(
+/** Find the matching WORKOUT event for this activity date and compute prescribed carbs
+ *  using the PLANNED duration (from the event description), not the actual moving time. */
+async function findMatchingEvent(
   apiKey: string,
   activity: IntervalsActivity,
-): Promise<number | null> {
+): Promise<MatchedEvent> {
   const dateStr = (activity.start_date_local ?? activity.start_date).slice(0, 10);
-  const movingTimeMs = activity.moving_time != null ? activity.moving_time * 1000 : null;
-  if (!movingTimeMs) return null;
 
   try {
     const res = await fetch(
       `${API_BASE}/athlete/0/events?oldest=${dateStr}T00:00:00&newest=${dateStr}T23:59:59`,
       { headers: { Authorization: authHeader(apiKey) } },
     );
-    if (!res.ok) return null;
-    const events = (await res.json()) as { category: string; carbs_per_hour?: number }[];
+    if (!res.ok) return { prescribedCarbsG: null, eventId: null };
+    const events = (await res.json()) as IntervalsEvent[];
     const planned = events.find((e) => e.category === "WORKOUT" && e.carbs_per_hour != null);
-    if (!planned?.carbs_per_hour) return null;
-    return Math.round(planned.carbs_per_hour * (movingTimeMs / MS_PER_HOUR));
+    if (!planned?.carbs_per_hour) return { prescribedCarbsG: null, eventId: planned?.id ?? null };
+
+    // Use planned duration from description (same logic as calendarPipeline),
+    // falling back to event durations, then actual moving time as last resort.
+    const estDur = planned.description ? estimateWorkoutDuration(planned.description) : null;
+    const eventDur = planned.moving_time ?? planned.duration ?? planned.elapsed_time;
+    const estMinutes = estDur?.minutes ?? (eventDur ? eventDur / 60 : null) ?? (activity.moving_time ? activity.moving_time / 60 : null);
+    if (estMinutes == null) return { prescribedCarbsG: null, eventId: planned.id };
+
+    return {
+      prescribedCarbsG: calculateWorkoutCarbs(estMinutes, planned.carbs_per_hour),
+      eventId: planned.id,
+    };
   } catch {
-    return null;
+    return { prescribedCarbsG: null, eventId: null };
   }
 }
 
@@ -113,21 +127,25 @@ export async function GET(req: Request) {
     }
   }
 
-  const prescribedCarbsG = await computePrescribedCarbs(apiKey, activity);
+  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(apiKey, activity);
 
-  // Fetch pre-run carbs from Turso if activity has paired_event_id and no PreRunCarbsG
+  // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
+  // Use paired_event_id if available, otherwise use the event we matched above.
   let preRunFallback: PreRunCarbsFallback | undefined;
-  if (activity.paired_event_id != null && activity.PreRunCarbsG == null) {
-    const result = await db().execute({
-      sql: "SELECT carbs_g, minutes_before FROM prerun_carbs WHERE email = ? AND event_id = ?",
-      args: [session.user.email, String(activity.paired_event_id)],
-    });
-    if (result.rows.length > 0) {
-      const row = result.rows[0];
-      preRunFallback = {
-        carbsG: row.carbs_g as number | null,
-        minutesBefore: row.minutes_before as number | null,
-      };
+  if (activity.PreRunCarbsG == null) {
+    const lookupEventId = activity.paired_event_id ?? matchedEventId;
+    if (lookupEventId != null) {
+      const result = await db().execute({
+        sql: "SELECT carbs_g, minutes_before FROM prerun_carbs WHERE email = ? AND event_id = ?",
+        args: [session.user.email, String(lookupEventId)],
+      });
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        preRunFallback = {
+          carbsG: row.carbs_g as number | null,
+          minutesBefore: row.minutes_before as number | null,
+        };
+      }
     }
   }
 

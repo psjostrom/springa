@@ -377,7 +377,7 @@ describe("fetchCalendarData", () => {
     expect(result[0].totalCarbs).toBeDefined();
   });
 
-  it("falls back to description parsing when carbs_per_hour is absent", async () => {
+  it("returns null fuelRate when carbs_per_hour is absent", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if (url.includes("/activities")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -391,7 +391,7 @@ describe("fetchCalendarData", () => {
               category: "WORKOUT",
               start_date_local: "2026-02-20T12:00:00",
               name: "W05 Easy eco16",
-              description: "FUEL PER 10: 8g TOTAL: 44g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 44g 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
+              description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
             },
           ]),
         });
@@ -401,9 +401,9 @@ describe("fetchCalendarData", () => {
 
     const result = await fetchCalendarData("test-key", new Date("2026-02-01"), new Date("2026-02-28"));
     expect(result.length).toBe(1);
-    expect(result[0].fuelRate).toBe(48); // 8g/10min × 6 = 48g/h
-    // totalCarbs computed from fuelRate (48g/h) × estimated duration (55min/60) = 44
-    expect(result[0].totalCarbs).toBe(44);
+    // No carbs_per_hour on event → no fuel data
+    expect(result[0].fuelRate).toBeNull();
+    expect(result[0].totalCarbs).toBeNull();
   });
 
   it("marks race events with type 'race'", async () => {

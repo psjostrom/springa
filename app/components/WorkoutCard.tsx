@@ -3,7 +3,6 @@ import remarkGfm from "remark-gfm";
 import type { HRZoneName, PaceTable } from "@/lib/types";
 import { FALLBACK_PACE_TABLE, ZONE_COLORS, DEFAULT_LTHR } from "@/lib/constants";
 import {
-  extractFuelStatus,
   extractNotes,
   parseWorkoutStructure,
   parseWorkoutZones,
@@ -76,8 +75,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
 }
 
 export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote, totalCarbs: propTotalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR }: WorkoutCardProps) {
-  const descFuel = extractFuelStatus(description);
-  const fuelRate = propFuelRate ?? descFuel.fuelRate;
+  const fuelRate = propFuelRate;
   const sections = hrZones?.length === 5 ? parseWorkoutStructure(description, lthr, hrZones) : [];
 
   // Fall back to raw text if parsing fails
@@ -95,7 +93,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   // Recompute totalCarbs from calibrated duration when possible
   const totalCarbs = (fuelRate != null && estDuration != null)
     ? calculateWorkoutCarbs(estDuration.minutes, fuelRate)
-    : propTotalCarbs ?? descFuel.totalCarbs;
+    : propTotalCarbs;
   const zones = hrZones?.length === 5 ? parseWorkoutZones(description, lthr, hrZones) : [];
   const notes = extractNotes(description);
 

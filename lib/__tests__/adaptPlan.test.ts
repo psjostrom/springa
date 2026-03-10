@@ -114,36 +114,27 @@ describe("extractNotes (description splitting)", () => {
 });
 
 describe("assembleDescription", () => {
-  it("joins notes and structure with fuel line", () => {
+  it("joins notes and structure", () => {
     const result = assembleDescription(
       "Start at 10+ mmol",
       "Warmup\n- 10m easy\n\nMain set\n- 30m Z2",
-      48,
-      3600,
     );
 
     expect(result).toContain("Start at 10+ mmol");
-    expect(result).toContain("PUMP OFF - FUEL PER 10: 8g TOTAL: 48g");
     expect(result).toContain("Warmup");
     expect(result).toContain("Main set");
-  });
-
-  it("omits fuel line when no fuel rate", () => {
-    const result = assembleDescription("Note", "Warmup\n- 10m", null, 3600);
     expect(result).not.toContain("PUMP OFF");
-    expect(result).toContain("Note");
-    expect(result).toContain("Warmup");
+    expect(result).not.toContain("FUEL PER 10");
   });
 
   it("handles empty notes", () => {
-    const result = assembleDescription("", "Warmup\n- 10m", 30, 2400);
-    expect(result).toContain("PUMP OFF");
-    expect(result).toContain("Warmup");
-    expect(result).not.toMatch(/^\n/); // should not start with newline
+    const result = assembleDescription("", "Warmup\n- 10m");
+    expect(result).toBe("Warmup\n- 10m");
+    expect(result).not.toMatch(/^\n/);
   });
 
   it("handles empty structure", () => {
-    const result = assembleDescription("Just a note", "", null);
+    const result = assembleDescription("Just a note", "");
     expect(result).toBe("Just a note");
   });
 });

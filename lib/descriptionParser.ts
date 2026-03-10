@@ -52,35 +52,6 @@ export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZo
   return order.filter((z) => zones.has(z));
 }
 
-// --- FUEL EXTRACTION ---
-
-export interface FuelStatus {
-  fuelRate: number | null;
-  totalCarbs: number | null;
-}
-
-/** Extract fuel rate and total carbs from the strategy header line. */
-export function extractFuelStatus(description: string): FuelStatus {
-  return {
-    fuelRate: extractFuelRate(description),
-    totalCarbs: extractTotalCarbs(description),
-  };
-}
-
-/** Extract fuel rate from description and convert to g/h (e.g., "FUEL PER 10: 10g" -> 60) */
-export function extractFuelRate(description: string): number | null {
-  const newMatch = /FUEL PER 10:\s*(\d+)g/i.exec(description);
-  if (newMatch) return parseInt(newMatch[1], 10) * 6;
-
-  const oldMatch = /FUEL:\s*(\d+)g\/10m/i.exec(description);
-  return oldMatch ? parseInt(oldMatch[1], 10) * 6 : null;
-}
-
-/** Extract total carbs from description (e.g., "TOTAL: 63g" -> 63) */
-export function extractTotalCarbs(description: string): number | null {
-  const match = /TOTAL:\s*(\d+)g/i.exec(description);
-  return match ? parseInt(match[1], 10) : null;
-}
 
 // --- NOTES EXTRACTION ---
 

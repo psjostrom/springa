@@ -45,24 +45,11 @@ export interface AdaptationInput {
 export function assembleDescription(
   notes: string,
   structure: string,
-  fuelRate: number | null,
-  duration?: number,
 ): string {
   const parts: string[] = [];
 
   if (notes.trim()) {
     parts.push(notes.trim());
-  }
-
-  // Add fuel strategy line if we have rate + duration
-  if (fuelRate != null && duration != null) {
-    const durationMin = Math.round(duration / 60);
-    const per10 = Math.round((fuelRate / 60) * 10);
-    const total = Math.round((fuelRate * durationMin) / 60);
-    parts.push(`PUMP OFF - FUEL PER 10: ${per10}g TOTAL: ${total}g`);
-  } else if (fuelRate != null) {
-    const per10 = Math.round((fuelRate / 60) * 10);
-    parts.push(`PUMP OFF - FUEL PER 10: ${per10}g`);
   }
 
   if (structure.trim()) {

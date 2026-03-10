@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
-import { extractFuelRate, extractTotalCarbs } from "@/lib/descriptionParser";
 import { formatPace, formatDuration } from "@/lib/format";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateWorkoutCarbs } from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
@@ -161,12 +160,12 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                 );
               })()}
               {(() => {
-                const fuelRate = event.fuelRate ?? extractFuelRate(event.description);
+                const fuelRate = event.fuelRate;
                 if (fuelRate == null) return null;
                 const est = estimateWorkoutDuration(event.description, paceTable);
                 const totalCarbs = (est != null)
                   ? calculateWorkoutCarbs(est.minutes, fuelRate)
-                  : event.totalCarbs ?? extractTotalCarbs(event.description);
+                  : event.totalCarbs;
                 const parts = [
                   `${fuelRate}g/h`,
                   totalCarbs != null ? `${totalCarbs}g total` : null,

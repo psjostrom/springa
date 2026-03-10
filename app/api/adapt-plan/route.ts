@@ -123,12 +123,7 @@ export async function POST(req: Request) {
           });
 
           const aiNotes = result.text;
-          const description = assembleDescription(
-            aiNotes,
-            event.structure,
-            event.fuelRate,
-            event.original.duration,
-          );
+          const description = assembleDescription(aiNotes, event.structure);
 
           return { ...event, notes: aiNotes, description };
         } catch {
@@ -136,12 +131,7 @@ export async function POST(req: Request) {
           const fallbackNotes = event.changes.length > 0
             ? event.changes.map((c) => c.detail).join(". ") + "."
             : "No changes.";
-          const description = assembleDescription(
-            fallbackNotes,
-            event.structure,
-            event.fuelRate,
-            event.original.duration,
-          );
+          const description = assembleDescription(fallbackNotes, event.structure);
           return { ...event, notes: fallbackNotes, description };
         }
       }),
