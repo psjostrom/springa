@@ -117,6 +117,7 @@ vi.mock("lucide-react", () => {
     X: icon("X"),
     LogOut: icon("LogOut"),
     Bell: icon("Bell"),
+    GripVertical: icon("GripVertical"),
   };
 });
 
