@@ -54,6 +54,7 @@ export async function PUT(req: Request) {
   if (body.hiddenWidgets !== undefined) allowed.hiddenWidgets = body.hiddenWidgets;
   if (body.bgChartWindow !== undefined) allowed.bgChartWindow = body.bgChartWindow;
   if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
+  if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(session.user.email, allowed);

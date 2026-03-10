@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   widget_order     TEXT,
   hidden_widgets   TEXT,
   bg_chart_window  INTEGER,
-  include_base_phase INTEGER
+  include_base_phase INTEGER,
+  warmth_preference  INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS xdrip_readings (

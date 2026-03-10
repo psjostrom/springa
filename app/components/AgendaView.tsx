@@ -7,8 +7,10 @@ import { extractFuelRate, extractTotalCarbs } from "@/lib/descriptionParser";
 import { formatPace, formatDuration } from "@/lib/format";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateWorkoutCarbs } from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
+import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 import { HRMiniChart } from "./HRMiniChart";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
+import { ClothingRecommendation } from "./ClothingRecommendation";
 
 interface AgendaViewProps {
   events: CalendarEvent[];
@@ -16,9 +18,10 @@ interface AgendaViewProps {
   paceTable?: PaceTable;
   hrZones?: number[];
   lthr?: number;
+  clothingMap?: Map<string, ClothingRec>;
 }
 
-function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number }) {
+function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; clothing?: ClothingRec }) {
   return (
     <div
       data-event-id={event.id}
@@ -175,6 +178,11 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr }: { ev
                 );
               })()}
             </div>
+            {clothing && (
+              <div className="mt-2">
+                <ClothingRecommendation recommendation={clothing} />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -188,6 +196,7 @@ export function AgendaView({
   paceTable,
   hrZones,
   lthr,
+  clothingMap,
 }: AgendaViewProps) {
   const [view, setView] = useState<"upcoming" | "history">("upcoming");
 
@@ -252,6 +261,7 @@ export function AgendaView({
           paceTable={paceTable}
           hrZones={hrZones}
           lthr={lthr}
+          clothing={clothingMap?.get(event.id)}
         />
       ))}
     </div>
