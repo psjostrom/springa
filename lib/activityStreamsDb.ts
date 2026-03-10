@@ -13,9 +13,11 @@ export interface CachedActivity {
   cadence?: { time: number; value: number }[];
   altitude?: { time: number; value: number }[];
   activityDate?: string;
+  distance?: number[];
+  rawTime?: number[];
 }
 
-export async function getBGCache(
+export async function getActivityStreams(
   email: string,
   options?: { since?: Date },
 ): Promise<CachedActivity[]> {
@@ -24,12 +26,12 @@ export async function getBGCache(
   // Pass no `since` to get all rows including legacy.
   const sql = since
     ? `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
-              pace, cadence, altitude, activity_date
-       FROM bg_cache WHERE email = ? AND activity_date >= ?
+              pace, cadence, altitude, activity_date, distance, raw_time
+       FROM activity_streams WHERE email = ? AND activity_date >= ?
        ORDER BY activity_date DESC`
     : `SELECT activity_id, category, fuel_rate, glucose, hr, run_bg_context,
-              pace, cadence, altitude, activity_date
-       FROM bg_cache WHERE email = ?
+              pace, cadence, altitude, activity_date, distance, raw_time
+       FROM activity_streams WHERE email = ?
        ORDER BY activity_date DESC`;
   const args = since
     ? [email, since.toISOString().slice(0, 10)]
@@ -46,19 +48,21 @@ export async function getBGCache(
     cadence: row.cadence ? (JSON.parse(row.cadence as string) as CachedActivity["cadence"]) : [],
     altitude: row.altitude ? (JSON.parse(row.altitude as string) as CachedActivity["altitude"]) : [],
     activityDate: (row.activity_date as string) || undefined,
+    distance: row.distance ? JSON.parse(row.distance as string) : undefined,
+    rawTime: row.raw_time ? JSON.parse(row.raw_time as string) : undefined,
   }));
 }
 
-export async function saveBGCache(
+export async function saveActivityStreams(
   email: string,
   data: CachedActivity[],
 ): Promise<void> {
   await db().batch(
     [
-      { sql: "DELETE FROM bg_cache WHERE email = ?", args: [email] },
+      { sql: "DELETE FROM activity_streams WHERE email = ?", args: [email] },
       ...data.map((a) => ({
-        sql: `INSERT INTO bg_cache (email, activity_id, category, fuel_rate, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO activity_streams (email, activity_id, category, fuel_rate, glucose, hr, run_bg_context, pace, cadence, altitude, activity_date, distance, raw_time)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           email,
           a.activityId,
@@ -71,6 +75,8 @@ export async function saveBGCache(
           a.cadence && a.cadence.length > 0 ? JSON.stringify(a.cadence) : null,
           a.altitude && a.altitude.length > 0 ? JSON.stringify(a.altitude) : null,
           a.activityDate ?? null,
+          a.distance && a.distance.length > 0 ? JSON.stringify(a.distance) : null,
+          a.rawTime && a.rawTime.length > 0 ? JSON.stringify(a.rawTime) : null,
         ],
       })),
     ],

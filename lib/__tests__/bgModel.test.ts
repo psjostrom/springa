@@ -14,7 +14,7 @@ import {
 } from "../bgModel";
 import { extractObservations } from "../bgObservations";
 import { linearRegression } from "../math";
-import type { CachedActivity } from "../bgCacheDb";
+import type { CachedActivity } from "../activityStreamsDb";
 import type { DataPoint } from "../types";
 
 // Helper: create a BGObservation for unit tests

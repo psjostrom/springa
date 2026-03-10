@@ -1,4 +1,4 @@
-import type { CachedActivity } from "./bgCacheDb";
+import type { CachedActivity } from "./activityStreamsDb";
 
 export const BG_MODEL_MAX_ACTIVITIES = 15;
 // v2: glucose now comes from xDrip, not streams - invalidate old cache

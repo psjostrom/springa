@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getBGCache, saveBGCache, type CachedActivity } from "@/lib/bgCacheDb";
+import { getActivityStreams, saveActivityStreams, type CachedActivity } from "@/lib/activityStreamsDb";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cache = await getBGCache(session.user.email);
+  const cache = await getActivityStreams(session.user.email);
   return NextResponse.json(cache);
 }
 
@@ -19,6 +19,6 @@ export async function PUT(req: Request) {
   }
 
   const body = (await req.json()) as CachedActivity[];
-  await saveBGCache(session.user.email, body);
+  await saveActivityStreams(session.user.email, body);
   return NextResponse.json({ ok: true });
 }

@@ -197,7 +197,7 @@ export async function fetchActivityDetails(
     if (timeData.length > 0) {
       const streamData: StreamData = {};
 
-      // Glucose comes from xDrip via bg_cache, not from streams
+      // Glucose comes from xDrip via activity_streams, not from streams
 
       if (hrData.length > 0) {
         streamData.heartrate = timeData.map((t, idx) => ({

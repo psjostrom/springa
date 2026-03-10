@@ -10,7 +10,7 @@ import {
   buildBGModelFromCached,
   type BGResponseModel,
 } from "../bgModel";
-import type { CachedActivity } from "../bgCacheDb";
+import type { CachedActivity } from "../activityStreamsDb";
 
 // --- Test helpers ---
 

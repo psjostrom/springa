@@ -9,8 +9,8 @@ import {
   writeLocalCache,
   fetchBGCache,
   saveBGCacheRemote,
-} from "@/lib/bgCache";
-import type { CachedActivity } from "@/lib/bgCacheDb";
+} from "@/lib/activityStreamsCache";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import { getWorkoutCategory } from "@/lib/constants";

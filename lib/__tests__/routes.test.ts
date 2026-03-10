@@ -160,7 +160,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await testDb().execute("DELETE FROM user_settings");
   await testDb().execute("DELETE FROM xdrip_readings");
-  await testDb().execute("DELETE FROM bg_cache");
+  await testDb().execute("DELETE FROM activity_streams");
   await testDb().execute("DELETE FROM run_analysis");
   await testDb().execute("DELETE FROM push_subscriptions");
   await testDb().execute("DELETE FROM prerun_carbs");

@@ -19,7 +19,7 @@ export async function GET() {
   // Get all cached activities with glucose data
   const cacheResult = await db().execute({
     sql: `SELECT activity_id, activity_date, glucose
-          FROM bg_cache
+          FROM activity_streams
           WHERE email = ? AND glucose != '[]'
           ORDER BY activity_date DESC`,
     args: [email],

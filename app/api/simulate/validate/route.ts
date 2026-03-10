@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getBGCache } from "@/lib/bgCacheDb";
+import { getActivityStreams } from "@/lib/activityStreamsDb";
 import { buildBGModelFromCached } from "@/lib/bgModel";
 import { simulateBG, validateSimulation } from "@/lib/bgSimulation";
 import type { WorkoutCategory } from "@/lib/types";
@@ -21,7 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allCached = await getBGCache(session.user.email);
+  const allCached = await getActivityStreams(session.user.email);
   if (allCached.length < 3) {
     return NextResponse.json({
       error: "Need at least 3 cached activities for validation",

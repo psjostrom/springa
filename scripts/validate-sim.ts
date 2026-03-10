@@ -13,14 +13,14 @@ for (const line of readFileSync(envPath, "utf-8").split("\n")) {
   if (match) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
 }
 
-import { getBGCache } from "../lib/bgCacheDb";
+import { getActivityStreams } from "../lib/activityStreamsDb";
 import { buildBGModelFromCached } from "../lib/bgModel";
 import { simulateBG, validateSimulation } from "../lib/bgSimulation";
 
 const EMAIL = process.env.VALIDATE_EMAIL ?? "persinternetpost@gmail.com";
 
 async function main() {
-  const allCached = await getBGCache(EMAIL);
+  const allCached = await getActivityStreams(EMAIL);
   if (allCached.length < 3) {
     console.log(`Only ${allCached.length} cached activities, need at least 3`);
     process.exit(1);
