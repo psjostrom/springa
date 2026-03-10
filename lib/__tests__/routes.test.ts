@@ -516,7 +516,7 @@ describe("bg-cache route", () => {
     const data = await getRes.json();
     expect(data).toHaveLength(1);
     expect(data[0].activityId).toBe("act-1");
-    expect(data[0].fuelRate).toBeNull(); // fuelRate no longer stored in DB
+    expect(data[0].fuelRate).toBe(8);
   });
 
   it("GET returns empty array when no cache exists", async () => {

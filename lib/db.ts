@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS activity_streams (
   activity_id    TEXT NOT NULL,
   name           TEXT,
   run_start_ms   INTEGER,
+  fuel_rate      REAL,
   hr             TEXT NOT NULL,
   run_bg_context TEXT,
   pace           TEXT,

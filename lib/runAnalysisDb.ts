@@ -51,7 +51,7 @@ export async function getRecentAnalyzedRuns(
   limit = 10,
 ): Promise<CachedRunRow[]> {
   const result = await db().execute({
-    sql: `SELECT b.activity_id, b.name, b.run_start_ms, b.hr,
+    sql: `SELECT b.activity_id, b.name, b.run_start_ms, b.fuel_rate, b.hr,
                  b.activity_date
           FROM activity_streams b
           INNER JOIN run_analysis r ON b.email = r.email AND b.activity_id = r.activity_id
@@ -68,7 +68,7 @@ export async function getRecentAnalyzedRuns(
       activityId: row.activity_id as string,
       name,
       category: rawCat === "other" ? "easy" : rawCat,
-      fuelRate: null,
+      fuelRate: (row.fuel_rate as number | null) ?? null,
       glucose: [],
       hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
       activityDate: (row.activity_date as string | null) ?? null,
