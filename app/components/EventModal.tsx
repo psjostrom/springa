@@ -324,6 +324,12 @@ export function EventModal({
     dispatch({ type: "SAVE_PRERUN" });
     try {
       await updateActivityPreRunCarbs(apiKey, actId, g, min);
+      // Clean up Turso fallback row if this activity has a paired event
+      if (selectedEvent.pairedEventId) {
+        void fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(selectedEvent.pairedEventId))}`, {
+          method: "DELETE",
+        });
+      }
       dispatch({ type: "PRERUN_SAVED", g, min });
     } catch (err) {
       console.error("Failed to update pre-run carbs:", err);

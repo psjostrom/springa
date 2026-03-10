@@ -77,6 +77,7 @@ import {
 import {
   GET as prerunCarbsGET,
   POST as prerunCarbsPOST,
+  DELETE as prerunCarbsDELETE,
 } from "@/app/api/prerun-carbs/route";
 import { POST as pushSubscribePOST } from "@/app/api/push/subscribe/route";
 
@@ -915,6 +916,14 @@ function postPrerunCarbs(body: unknown) {
   );
 }
 
+function deletePrerunCarbs(eventId: string) {
+  return prerunCarbsDELETE(
+    new Request(`http://localhost/api/prerun-carbs?eventId=${eventId}`, {
+      method: "DELETE",
+    }),
+  );
+}
+
 describe("prerun-carbs route", () => {
   it("POST saves pre-run carbs and GET retrieves them", async () => {
     authedSession();
@@ -963,9 +972,31 @@ describe("prerun-carbs route", () => {
     expect(res.status).toBe(400);
   });
 
-  it("GET/POST reject unauthenticated requests", async () => {
+  it("DELETE removes pre-run carbs row", async () => {
+    authedSession();
+
+    await postPrerunCarbs({ eventId: "evt-del", carbsG: 25, minutesBefore: 30 });
+
+    const delRes = await deletePrerunCarbs("evt-del");
+    expect(delRes.status).toBe(200);
+    expect(await delRes.json()).toEqual({ ok: true });
+
+    const getRes = await getPrerunCarbs("evt-del");
+    const data = await getRes.json();
+    expect(data.carbsG).toBeNull();
+    expect(data.minutesBefore).toBeNull();
+  });
+
+  it("DELETE rejects missing eventId", async () => {
+    authedSession();
+    const res = await prerunCarbsDELETE(new Request("http://localhost/api/prerun-carbs"));
+    expect(res.status).toBe(400);
+  });
+
+  it("GET/POST/DELETE reject unauthenticated requests", async () => {
     mockAuth.mockResolvedValue(null);
     expect((await getPrerunCarbs("evt-123")).status).toBe(401);
     expect((await postPrerunCarbs({ eventId: "evt-123", carbsG: 30 })).status).toBe(401);
+    expect((await deletePrerunCarbs("evt-123")).status).toBe(401);
   });
 });
