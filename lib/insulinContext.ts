@@ -86,36 +86,33 @@ function bolusIOB(bolusUnits: number, minutesAgo: number): number {
  * Compute IOB from basal rate segments.
  * Each basal rate entry defines the rate from that timestamp until the next entry.
  * We discretize into 1-minute intervals and compute IOB for each micro-dose.
+ *
+ * @param sortedEntries - Basal entries sorted oldest-first by timestamp
  */
 function basalIOB(
-  basalEntries: { timestamp: string; rate: number }[],
+  sortedEntries: { timestamp: string; rate: number }[],
   runStartMs: number,
 ): number {
-  if (basalEntries.length === 0) return 0;
-
-  // Sort oldest first
-  const sorted = [...basalEntries].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-  );
+  if (sortedEntries.length === 0) return 0;
 
   let iob = 0;
   const lookbackStart = runStartMs - LOOKBACK_MS;
 
-  for (let i = 0; i < sorted.length; i++) {
+  for (let i = 0; i < sortedEntries.length; i++) {
     const segStart = Math.max(
-      new Date(sorted[i].timestamp).getTime(),
+      new Date(sortedEntries[i].timestamp).getTime(),
       lookbackStart,
     );
     const segEnd =
-      i + 1 < sorted.length
-        ? new Date(sorted[i + 1].timestamp).getTime()
+      i + 1 < sortedEntries.length
+        ? new Date(sortedEntries[i + 1].timestamp).getTime()
         : runStartMs;
 
     // Only process segments before run start
     const effectiveEnd = Math.min(segEnd, runStartMs);
     if (segStart >= effectiveEnd) continue;
 
-    const rateUPerMin = sorted[i].rate / 60; // U/h → U/min
+    const rateUPerMin = sortedEntries[i].rate / 60; // U/h → U/min
     const durationMin = (effectiveEnd - segStart) / 60000;
 
     // Approximate: compute IOB at the midpoint of each 5-min block
@@ -138,32 +135,30 @@ function basalIOB(
  *
  * Used to establish the "steady-state" baseline for excess basal IOB.
  * CamAPS adjusts basal every ~10 min; the average across 5h smooths this out.
+ *
+ * @param sortedEntries - Basal entries sorted oldest-first by timestamp
  */
 function averageBasalRate(
-  basalEntries: { timestamp: string; rate: number }[],
+  sortedEntries: { timestamp: string; rate: number }[],
   runStartMs: number,
 ): number {
-  if (basalEntries.length === 0) return 0;
-
-  const sorted = [...basalEntries].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-  );
+  if (sortedEntries.length === 0) return 0;
 
   const lookbackStart = runStartMs - LOOKBACK_MS;
   let totalRate = 0;
   let totalDuration = 0;
 
-  for (let i = 0; i < sorted.length; i++) {
-    const segStart = Math.max(new Date(sorted[i].timestamp).getTime(), lookbackStart);
+  for (let i = 0; i < sortedEntries.length; i++) {
+    const segStart = Math.max(new Date(sortedEntries[i].timestamp).getTime(), lookbackStart);
     const segEnd =
-      i + 1 < sorted.length
-        ? new Date(sorted[i + 1].timestamp).getTime()
+      i + 1 < sortedEntries.length
+        ? new Date(sortedEntries[i + 1].timestamp).getTime()
         : runStartMs;
     const effectiveEnd = Math.min(segEnd, runStartMs);
     if (segStart >= effectiveEnd) continue;
 
     const durationMs = effectiveEnd - segStart;
-    totalRate += sorted[i].rate * durationMs;
+    totalRate += sortedEntries[i].rate * durationMs;
     totalDuration += durationMs;
   }
 
@@ -219,7 +214,10 @@ export function buildInsulinContext(
       const ts = new Date(e.timestamp).getTime();
       return ts >= lookbackStart && ts <= runStartMs;
     })
-    .map((e) => ({ timestamp: e.timestamp, rate: e.value }));
+    .map((e) => ({ timestamp: e.timestamp, rate: e.value }))
+    .sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    ); // oldest first — basalIOB and averageBasalRate expect sorted input
 
   // --- Boost / Ease-off events ---
   // These use a wider window (up to 8h back) since ease-off is typically
@@ -311,12 +309,9 @@ export function buildInsulinContext(
   const totalIob = Math.round((bolusIob + basalIob) * 100) / 100;
   const actionableIobRounded = Math.round(actionableIob * 100) / 100;
 
-  // --- Last basal rate ---
-  const basalSorted = [...basalEntries].sort(
-    (a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
-  const lastBasalRate = basalSorted.length > 0 ? basalSorted[0].rate : 0;
+  // --- Last basal rate (basalEntries already sorted oldest-first) ---
+  const lastBasalRate =
+    basalEntries.length > 0 ? basalEntries[basalEntries.length - 1].rate : 0;
 
   // --- Ease-off / Boost ---
   const lastEaseOff = easeOffEvents.length > 0 ? easeOffEvents[0] : null;

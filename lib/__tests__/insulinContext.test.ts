@@ -168,6 +168,62 @@ describe("buildInsulinContext", () => {
     });
   });
 
+  describe("actionableIOB", () => {
+    it("equals bolus IOB when no basal entries exist", () => {
+      const data = makeMyLifeData([bolusEvent(1, 4.0)]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.actionableIOB).toBe(result.iobAtStart);
+    });
+
+    it("equals bolus IOB when basal rate is constant (no excess)", () => {
+      // Constant 0.8 U/h for the full window — steady-state IOB equals actual
+      // basal IOB, so excess is 0 and actionableIOB = bolus IOB only.
+      const data = makeMyLifeData([
+        bolusEvent(1, 4.0),
+        basalEvent(5, 0.8), // constant rate for entire lookback
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.actionableIOB).toBeCloseTo(result.iobAtStart, 1);
+      expect(result.actionableIOB).toBeLessThan(result.totalIOBAtStart);
+    });
+
+    it("captures excess basal IOB from a spike correction", () => {
+      // Low basal for 4h, then CamAPS cranks to 3 U/h for the last hour.
+      // The recent high-rate delivery produces more IOB than steady-state,
+      // so actionableIOB should be greater than bolus IOB alone.
+      const data = makeMyLifeData([
+        bolusEvent(3, 2.0),
+        basalEvent(5, 0.5),  // low rate for first 4h
+        basalEvent(1, 3.0),  // spike correction: 3 U/h for last hour
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.actionableIOB).toBeGreaterThan(result.iobAtStart);
+      // But still less than totalIOB (which includes all basal IOB)
+      expect(result.actionableIOB).toBeLessThan(result.totalIOBAtStart);
+    });
+
+    it("is always <= totalIOBAtStart", () => {
+      const data = makeMyLifeData([
+        bolusEvent(1, 5.0),
+        basalEvent(3, 1.0),
+        basalEvent(1, 2.0),
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      expect(result.actionableIOB).toBeLessThanOrEqual(result.totalIOBAtStart);
+    });
+
+    it("rounds to 2 decimal places", () => {
+      const data = makeMyLifeData([
+        bolusEvent(37 / 60, 3.0),
+        basalEvent(2, 1.0),
+      ]);
+      const result = buildInsulinContext(data, T0)!;
+      const str = result.actionableIOB.toString();
+      const decimals = str.includes(".") ? str.split(".")[1].length : 0;
+      expect(decimals).toBeLessThanOrEqual(2);
+    });
+  });
+
   describe("expectedBGImpact", () => {
     it("uses totalIOB × ISF (3.1 mmol/L per unit)", () => {
       const data = makeMyLifeData([bolusEvent(0, 1.0)]);
