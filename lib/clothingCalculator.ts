@@ -17,7 +17,8 @@ export interface ClothingRecommendation {
 type Intensity = "low" | "high";
 
 function getIntensity(category: string): Intensity {
-  return category === "interval" || category === "hills" ? "high" : "low";
+  // Hills, tempo, race pace intervals are all mapped to "interval" by getWorkoutCategory
+  return category === "interval" ? "high" : "low";
 }
 
 function isRain(precipCategory: number): boolean {
@@ -36,7 +37,7 @@ function isSnow(precipCategory: number): boolean {
  * The table is calibrated for a male runner in Stockholm.
  *
  * Three offsets shift the effective "feels like" temperature:
- * - Intensity: +5°C for interval sessions (you generate more heat)
+ * - Intensity: +5°C for interval category (hills, tempo, speed — you generate more heat)
  * - Warmth preference: -2 to +2 steps, each step = 2°C
  *   (-2 = "I run very warm" → +4°C, +2 = "I run very cold" → -4°C)
  *
