@@ -40,6 +40,7 @@ import {
   wellnessLoadingAtom,
   widgetLayoutAtom,
   updateWidgetLayoutAtom,
+  widgetSaveErrorAtom,
   runBGContextsAtom,
   phaseInfoAtom,
   paceCalibrationAtom,
@@ -165,6 +166,8 @@ export function IntelScreen() {
   const wellnessLoading = useAtomValue(wellnessLoadingAtom);
   const widgetLayout = useAtomValue(widgetLayoutAtom);
   const updateLayout = useSetAtom(updateWidgetLayoutAtom);
+  const widgetSaveError = useAtomValue(widgetSaveErrorAtom);
+  const dismissWidgetSaveError = useSetAtom(widgetSaveErrorAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const { name: phaseName, week: currentWeek, progress } = useAtomValue(phaseInfoAtom);
   const paceCalibration = useAtomValue(paceCalibrationAtom);
@@ -451,6 +454,19 @@ export function IntelScreen() {
             >
               <RotateCcw size={14} />
               Reset to default
+            </button>
+          </div>
+        )}
+
+        {/* Widget layout save error — outside editMode so it's visible after exiting */}
+        {widgetSaveError && (
+          <div className="flex items-center justify-center gap-2 pb-4">
+            <p className="text-xs text-red-400">{widgetSaveError}</p>
+            <button
+              onClick={() => dismissWidgetSaveError(null)}
+              className="text-xs text-red-400/60 hover:text-red-400 underline"
+            >
+              dismiss
             </button>
           </div>
         )}
