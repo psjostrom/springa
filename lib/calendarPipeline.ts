@@ -43,21 +43,12 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
   }
 
   const activityDate = parseISO(activity.start_date);
-  const description = activity.description ?? "";
-  const fuelRate: number | null = null;
-
-  let totalCarbs: number | null = null;
-  if (fuelRate != null && activity.moving_time) {
-    totalCarbs = calculateWorkoutCarbs(activity.moving_time / 60, fuelRate);
-  }
-
-  const carbsIngested = activity.carbs_ingested ?? totalCarbs;
 
   return {
     id: `activity-${activity.id}`,
     date: activityDate,
     name: activity.name,
-    description,
+    description: activity.description ?? "",
     type: "completed",
     category,
     distance: activity.distance,
@@ -70,9 +61,9 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     calories: activity.calories,
     cadence: activity.average_cadence ? activity.average_cadence * 2 : undefined,
     zoneTimes,
-    fuelRate,
-    totalCarbs,
-    carbsIngested,
+    fuelRate: null,
+    totalCarbs: null,
+    carbsIngested: activity.carbs_ingested ?? null,
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
     preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
     rating: nonEmpty(activity.Rating),
