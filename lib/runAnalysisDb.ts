@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { getWorkoutCategory } from "./constants";
+import type { CachedActivity } from "./activityStreamsDb";
 import type { CalendarEvent } from "./types";
 
 export interface RunHistoryBG {
@@ -35,21 +36,10 @@ export async function saveRunAnalysis(
   });
 }
 
-export interface CachedRunRow {
-  activityId: string;
-  name?: string;
-  category: string;
-  fuelRate: number | null;
-  glucose: { time: number; value: number }[];
-  hr: { time: number; value: number }[];
-  activityDate: string | null;
-  runStartMs?: number;
-}
-
 export async function getRecentAnalyzedRuns(
   email: string,
   limit = 10,
-): Promise<CachedRunRow[]> {
+): Promise<CachedActivity[]> {
   const result = await db().execute({
     sql: `SELECT b.activity_id, b.name, b.run_start_ms, b.fuel_rate, b.hr,
                  b.activity_date
@@ -67,11 +57,11 @@ export async function getRecentAnalyzedRuns(
     return {
       activityId: row.activity_id as string,
       name,
-      category: rawCat === "other" ? "easy" : rawCat,
+      category: (rawCat === "other" ? "easy" : rawCat) as CachedActivity["category"],
       fuelRate: (row.fuel_rate as number | null) ?? null,
       glucose: [],
       hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
-      activityDate: (row.activity_date as string | null) ?? null,
+      activityDate: (row.activity_date as string | null) ?? undefined,
       runStartMs: (row.run_start_ms as number) ?? undefined,
     };
   });

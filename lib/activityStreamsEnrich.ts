@@ -18,14 +18,15 @@ export async function enrichActivitiesWithGlucose(
   if (startMsValues.length === 0) return activities;
 
   const minMs = Math.min(...startMsValues);
-  // Estimate end time from HR stream duration
+  // Estimate end time from HR stream duration (only activities with runStartMs)
   const maxMs = Math.max(
-    ...activities.map((a) => {
-      const base = a.runStartMs ?? 0;
-      const dur =
-        a.hr.length > 0 ? a.hr[a.hr.length - 1].time * 60 * 1000 : 0;
-      return base + dur;
-    }),
+    ...activities
+      .filter((a) => a.runStartMs != null)
+      .map((a) => {
+        const dur =
+          a.hr.length > 0 ? a.hr[a.hr.length - 1].time * 60 * 1000 : 0;
+        return a.runStartMs! + dur;
+      }),
   );
 
   const readings = await getXdripReadingsForRange(email, minMs, maxMs);

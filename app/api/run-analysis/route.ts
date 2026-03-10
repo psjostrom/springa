@@ -21,7 +21,6 @@ import { NextResponse } from "next/server";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
-import type { CachedRunRow } from "@/lib/runAnalysisDb";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 
 interface RequestBody {
@@ -34,7 +33,7 @@ interface RequestBody {
 }
 
 function buildRunHistory(
-  rows: CachedRunRow[],
+  rows: CachedActivity[],
   activityMap: Map<string, IntervalsActivity>,
 ): RunHistoryEntry[] {
   return rows.map((row) => {
@@ -174,29 +173,7 @@ export async function POST(req: Request) {
   ]);
 
   // Enrich history rows with glucose from xdrip_readings
-  const enrichedCached = await enrichActivitiesWithGlucose(
-    session.user.email,
-    rawRows.map((r) => ({
-      activityId: r.activityId,
-      name: r.name,
-      category: r.category as CachedActivity["category"],
-      fuelRate: r.fuelRate,
-      glucose: r.glucose,
-      hr: r.hr,
-      activityDate: r.activityDate ?? undefined,
-      runStartMs: r.runStartMs,
-    })),
-  );
-  const rows: CachedRunRow[] = enrichedCached.map((c) => ({
-    activityId: c.activityId,
-    name: c.name,
-    category: c.category,
-    fuelRate: c.fuelRate,
-    glucose: c.glucose,
-    hr: c.hr,
-    activityDate: c.activityDate ?? null,
-    runStartMs: c.runStartMs,
-  }));
+  const rows = await enrichActivitiesWithGlucose(session.user.email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();
