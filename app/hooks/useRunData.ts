@@ -6,6 +6,7 @@ import { BG_MODEL_MAX_ACTIVITIES } from "@/lib/activityStreamsCache";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import { buildRunBGContexts } from "@/lib/runBGContext";
+import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { useStreamCache } from "./useStreamCache";
 
 export function useRunData(
@@ -35,6 +36,15 @@ export function useRunData(
   // 2. Stream cache (async infrastructure)
   const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
 
+  // 2.5. Reconstruct glucose from xDrip readings
+  const glucoseEnriched = useMemo(
+    () =>
+      xdripReadings && xdripReadings.length > 0
+        ? enrichWithGlucose(cached, xdripReadings)
+        : cached,
+    [cached, xdripReadings],
+  );
+
   // 3. Activity name map
   const bgActivityNames = useMemo(
     () => new Map(completedRuns.map((e) => [e.activityId, e.name])),
@@ -54,12 +64,12 @@ export function useRunData(
   const cachedActivities = useMemo(
     () =>
       runBGContexts.size > 0
-        ? cached.map((c) => {
+        ? glucoseEnriched.map((c) => {
             const ctx = runBGContexts.get(c.activityId);
             return ctx ? { ...c, runBGContext: ctx } : c;
           })
-        : cached,
-    [cached, runBGContexts],
+        : glucoseEnriched,
+    [glucoseEnriched, runBGContexts],
   );
 
   // 6. Build BG model

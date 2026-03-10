@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { interpolateBG, alignHRWithXdrip, xdripToGlucosePoints } from "../bgAlignment";
+import { interpolateBG, alignHRWithXdrip, xdripToGlucosePoints, enrichWithGlucose } from "../bgAlignment";
 import type { XdripReading } from "../xdrip";
 import type { DataPoint } from "../types";
+import type { CachedActivity } from "../activityStreamsDb";
 
 function makeReading(ts: number, mmol: number): XdripReading {
   return { ts, mmol, sgv: Math.round(mmol * 18), direction: "Flat" };
@@ -140,5 +141,74 @@ describe("xdripToGlucosePoints", () => {
     expect(points[5]).toEqual({ time: 5, value: 9.0 });
     // After last reading, uses last value
     expect(points[10]).toEqual({ time: 10, value: 9.0 });
+  });
+});
+
+describe("enrichWithGlucose", () => {
+  it("aligns glucose from xDrip readings for activities without glucose", () => {
+    const activities: CachedActivity[] = [{
+      activityId: "a1",
+      category: "easy",
+      fuelRate: 48,
+      glucose: [],
+      hr: [
+        { time: 0, value: 120 },
+        { time: 1, value: 125 },
+        { time: 2, value: 130 },
+      ],
+      runStartMs: 1000000,
+    }];
+
+    const readings: XdripReading[] = [
+      { ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" },
+      { ts: 1060000, mmol: 7.5, sgv: 135, direction: "Flat" },
+      { ts: 1120000, mmol: 7.0, sgv: 126, direction: "Flat" },
+    ];
+
+    const result = enrichWithGlucose(activities, readings);
+    expect(result[0].glucose).toHaveLength(3);
+    expect(result[0].glucose[0].value).toBeCloseTo(8.0);
+    expect(result[0].glucose[2].value).toBeCloseTo(7.0);
+  });
+
+  it("skips activities that already have glucose", () => {
+    const activities: CachedActivity[] = [{
+      activityId: "a1",
+      category: "easy",
+      fuelRate: 48,
+      glucose: [{ time: 0, value: 8.0 }],
+      hr: [{ time: 0, value: 120 }],
+      runStartMs: 1000000,
+    }];
+
+    const result = enrichWithGlucose(activities, []);
+    expect(result[0].glucose).toHaveLength(1);
+  });
+
+  it("skips activities without runStartMs", () => {
+    const activities: CachedActivity[] = [{
+      activityId: "a1",
+      category: "easy",
+      fuelRate: 48,
+      glucose: [],
+      hr: [{ time: 0, value: 120 }],
+    }];
+
+    const result = enrichWithGlucose(activities, [{ ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" }]);
+    expect(result[0].glucose).toHaveLength(0);
+  });
+
+  it("returns original array when no readings provided", () => {
+    const activities: CachedActivity[] = [{
+      activityId: "a1",
+      category: "easy",
+      fuelRate: 48,
+      glucose: [],
+      hr: [{ time: 0, value: 120 }],
+      runStartMs: 1000000,
+    }];
+
+    const result = enrichWithGlucose(activities, []);
+    expect(result).toBe(activities); // same reference
   });
 });
