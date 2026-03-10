@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { updateActivityCarbs } from "@/lib/intervalsApi";
+import type { WidgetProps } from "@/lib/modalWidgets";
+
+type EditState =
+  | { kind: "idle" }
+  | { kind: "editing"; value: string }
+  | { kind: "saving"; value: string };
+
+/** Carbs ingested widget with inline edit. */
+export function CarbsWidget({ event, apiKey }: WidgetProps) {
+  const [editState, setEditState] = useState<EditState>({ kind: "idle" });
+  const [savedCarbs, setSavedCarbs] = useState<number | null>(null);
+
+  const displayCarbs = savedCarbs ?? event.carbsIngested ?? event.totalCarbs ?? null;
+
+  const saveCarbs = async () => {
+    if (editState.kind !== "editing") return;
+    const val = parseInt(editState.value, 10);
+    if (isNaN(val) || val < 0) return;
+    const actId = event.activityId;
+    if (!actId) return;
+
+    setEditState({ kind: "saving", value: editState.value });
+    try {
+      await updateActivityCarbs(apiKey, actId, val);
+      setSavedCarbs(val);
+      setEditState({ kind: "idle" });
+    } catch (err) {
+      console.error("Failed to update carbs:", err);
+      setEditState({ kind: "idle" });
+    }
+  };
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
+        {editState.kind === "editing" || editState.kind === "saving" ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={editState.value}
+              onChange={(e) => { setEditState({ kind: "editing", value: e.target.value }); }}
+              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveCarbs();
+                if (e.key === "Escape") setEditState({ kind: "idle" });
+              }}
+            />
+            <span className="text-sm text-[#b8a5d4]">g</span>
+            <button
+              onClick={() => { void saveCarbs(); }}
+              disabled={editState.kind === "saving"}
+              className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
+            >
+              {editState.kind === "saving" ? "..." : "Save"}
+            </button>
+            <button
+              onClick={() => { setEditState({ kind: "idle" }); }}
+              disabled={editState.kind === "saving"}
+              className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setEditState({ kind: "editing", value: String(displayCarbs ?? 0) });
+            }}
+            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
+          >
+            {displayCarbs ?? "—"}g
+            {event.carbsIngested == null && savedCarbs == null && (
+              <span className="text-xs font-normal text-[#b8a5d4]">(planned)</span>
+            )}
+            <Pencil className="w-3 h-3 text-[#b8a5d4]" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

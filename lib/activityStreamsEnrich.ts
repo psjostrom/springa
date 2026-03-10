@@ -21,11 +21,11 @@ export async function enrichActivitiesWithGlucose(
   // Estimate end time from HR stream duration (only activities with runStartMs)
   const maxMs = Math.max(
     ...activities
-      .filter((a) => a.runStartMs != null)
-      .map((a) => {
+      .flatMap((a) => {
+        if (a.runStartMs == null) return [];
         const dur =
           a.hr.length > 0 ? a.hr[a.hr.length - 1].time * 60 * 1000 : 0;
-        return a.runStartMs! + dur;
+        return [a.runStartMs + dur];
       }),
   );
 

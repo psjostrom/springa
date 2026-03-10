@@ -62,7 +62,7 @@ export async function getRecentAnalyzedRuns(
       glucose: [],
       hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
       activityDate: (row.activity_date as string | null) ?? undefined,
-      runStartMs: (row.run_start_ms as number) ?? undefined,
+      runStartMs: (row.run_start_ms as number | undefined) ?? undefined,
     };
   });
 }

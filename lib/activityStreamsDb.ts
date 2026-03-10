@@ -55,8 +55,8 @@ export async function getActivityStreams(
       cadence: row.cadence ? (JSON.parse(row.cadence as string) as CachedActivity["cadence"]) : [],
       altitude: row.altitude ? (JSON.parse(row.altitude as string) as CachedActivity["altitude"]) : [],
       activityDate: (row.activity_date as string) || undefined,
-      distance: row.distance ? JSON.parse(row.distance as string) : undefined,
-      rawTime: row.raw_time ? JSON.parse(row.raw_time as string) : undefined,
+      distance: row.distance ? (JSON.parse(row.distance as string) as CachedActivity["distance"]) : undefined,
+      rawTime: row.raw_time ? (JSON.parse(row.raw_time as string) as CachedActivity["rawTime"]) : undefined,
       runStartMs: row.run_start_ms as number | undefined,
     };
   });

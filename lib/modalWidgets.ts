@@ -1,6 +1,22 @@
 // Modal widget registry — types, defaults, and layout logic for the EventModal widget system.
 // Separate from widgetRegistry.ts which handles the dashboard (IntelScreen) widgets.
 
+import type { CalendarEvent, PaceTable } from "./types";
+import type { RunBGContext } from "./runBGContext";
+import type { BGResponseModel } from "./bgModel";
+
+/** Common props passed to every modal widget. Widgets destructure only what they need. */
+export interface WidgetProps {
+  event: CalendarEvent;
+  isLoadingStreamData?: boolean;
+  runBGContext?: RunBGContext | null;
+  bgModel?: BGResponseModel | null;
+  paceTable?: PaceTable;
+  hrZones?: number[];
+  lthr?: number;
+  apiKey: string;
+}
+
 export type ModalWidgetId =
   | "report-card"
   | "stats"
@@ -119,19 +135,7 @@ export function resolveModalLayout(saved?: Partial<ModalTabLayout>): ModalTabLay
   return result;
 }
 
-// --- Reorder & toggle ---
-
-/** Move a widget from one index to another within a tab's order. Returns new array. */
-export function reorderWidget(
-  order: readonly ModalWidgetId[],
-  fromIndex: number,
-  toIndex: number,
-): ModalWidgetId[] {
-  const arr = [...order];
-  const [moved] = arr.splice(fromIndex, 1);
-  arr.splice(toIndex, 0, moved);
-  return arr;
-}
+// --- Toggle ---
 
 /** Toggle a widget's visibility. Returns new hidden array. */
 export function toggleWidgetVisibility(
