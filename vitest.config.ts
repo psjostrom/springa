@@ -24,6 +24,7 @@ export default defineConfig({
           name: "unit",
           include: ["**/*.test.ts"],
           exclude: ["**/node_modules/**", "**/*.flow.test.ts", "**/*.integration.test.tsx"],
+          setupFiles: ["./lib/__tests__/msw/setup.ts"],
         },
       },
       {

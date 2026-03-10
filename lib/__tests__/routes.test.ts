@@ -48,6 +48,10 @@ vi.mock("web-push", () => ({
   },
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "./msw/server";
+import { API_BASE } from "../constants";
+
 import { SCHEMA_DDL } from "../db";
 import * as xdripDb from "../xdripDb";
 const {
@@ -799,6 +803,69 @@ describe("run-feedback route", () => {
     const data = await res.json();
     expect(data.preRunCarbsG).toBe(30);
     expect(data.preRunCarbsMin).toBe(20);
+  });
+
+  it("GET finds pre-run carbs via matched event when paired_event_id is null", async () => {
+    authedSession();
+
+    // Seed pre-run carbs for event 789
+    await testDb().execute({
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
+      args: [EMAIL, "789", 25, 30, Date.now()],
+    });
+
+    // Activity has NO paired_event_id (not yet auto-paired)
+    mockFetchActivityById.mockResolvedValue({
+      id: "i456",
+      start_date: "2026-02-20T10:00:00Z",
+      start_date_local: "2026-02-20T11:00:00",
+      name: "Easy Run",
+      moving_time: 2400,
+    });
+
+    // MSW: return a WORKOUT event on that date with id 789
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([
+          { id: 789, category: "WORKOUT", start_date_local: "2026-02-20T12:00:00", carbs_per_hour: 48, description: "- 41m 68-83% LTHR (115-140 bpm)" },
+        ]);
+      }),
+    );
+
+    const res = await getFeedbackByActivity("i456");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.preRunCarbsG).toBe(25);
+    expect(data.preRunCarbsMin).toBe(30);
+  });
+
+  it("GET computes prescribedCarbsG from planned duration, not actual", async () => {
+    authedSession();
+
+    // Activity ran for 44 min (2640s), but the plan says 41m
+    mockFetchActivityById.mockResolvedValue({
+      id: "i789",
+      start_date: "2026-02-20T10:00:00Z",
+      start_date_local: "2026-02-20T11:00:00",
+      name: "Easy Run",
+      moving_time: 2640,
+    });
+
+    // MSW: WORKOUT event with 48g/h and a 41m description
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([
+          { id: 999, category: "WORKOUT", start_date_local: "2026-02-20T12:00:00", carbs_per_hour: 48, description: "- 41m 68-83% LTHR (115-140 bpm)" },
+        ]);
+      }),
+    );
+
+    const res = await getFeedbackByActivity("i789");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // 48 g/h × (41/60) = 32.8 → 33g (from planned duration)
+    // NOT 48 × (44/60) = 35.2 → 35g (from actual duration)
+    expect(data.prescribedCarbsG).toBe(33);
   });
 
   it("GET prefers activity PreRunCarbsG over Turso fallback", async () => {

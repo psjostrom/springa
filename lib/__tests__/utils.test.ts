@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   parseWorkoutZones,
   parseWorkoutSegments,
-  extractFuelStatus,
   extractNotes,
   extractStructure,
   parseWorkoutStructure,
@@ -775,38 +774,6 @@ Cooldown
       category: "easy",
     };
     expect(estimateWorkoutDistance(event)).toBe(0);
-  });
-});
-
-describe("extractFuelStatus", () => {
-  it("extracts fuel rate and total carbs", () => {
-    const desc =
-      "FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- FUEL PER 10: 5g TOTAL: 25g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(30); // 5g/10min × 6 = 30g/h
-    expect(result.totalCarbs).toBe(25);
-  });
-
-  it("extracts moderate fuel rate", () => {
-    const desc =
-      "FUEL PER 10: 8g TOTAL: 32g\n\nWarmup\n- FUEL PER 10: 8g TOTAL: 32g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(48); // 8g/10min × 6 = 48g/h
-    expect(result.totalCarbs).toBe(32);
-  });
-
-  it("extracts high fuel rate", () => {
-    const desc =
-      "FUEL PER 10: 10g TOTAL: 75g\n\nWarmup\n- FUEL PER 10: 10g TOTAL: 75g 10m 66-78% LTHR (112-132 bpm)";
-    const result = extractFuelStatus(desc);
-    expect(result.fuelRate).toBe(60); // 10g/10min × 6 = 60g/h
-    expect(result.totalCarbs).toBe(75);
-  });
-
-  it("returns null for non-standard description", () => {
-    const result = extractFuelStatus("Just a regular note");
-    expect(result.fuelRate).toBeNull();
-    expect(result.totalCarbs).toBeNull();
   });
 });
 

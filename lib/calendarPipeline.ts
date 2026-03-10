@@ -6,7 +6,6 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { getWorkoutCategory } from "./constants";
-import { extractFuelRate, extractTotalCarbs } from "./descriptionParser";
 import { calculateWorkoutCarbs, estimateWorkoutDuration } from "./workoutMath";
 import { nonEmpty } from "./format";
 
@@ -19,11 +18,6 @@ function nonZero(v: number | undefined): number | null {
 export interface CalendarDataResult {
   events: CalendarEvent[];
   autoPairs: { eventId: number; activityId: string }[];
-}
-
-/** Resolve fuel rate (g/h): prefer carbs_per_hour API field, fall back to description regex. */
-export function resolveFuelRate(carbsPerHour: number | null | undefined, description: string): number | null {
-  return carbsPerHour ?? extractFuelRate(description);
 }
 
 /** Convert a single IntervalsActivity to a CalendarEvent (no event pairing). */
@@ -50,13 +44,12 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
 
   const activityDate = parseISO(activity.start_date);
   const description = activity.description ?? "";
-  const fuelRate = resolveFuelRate(null, description);
+  const fuelRate: number | null = null;
 
   let totalCarbs: number | null = null;
   if (fuelRate != null && activity.moving_time) {
     totalCarbs = calculateWorkoutCarbs(activity.moving_time / 60, fuelRate);
   }
-  totalCarbs ??= extractTotalCarbs(description);
 
   const carbsIngested = activity.carbs_ingested ?? totalCarbs;
 
@@ -200,7 +193,7 @@ export function processActivities(
     const description =
       matchingEvent?.description ?? activity.description ?? "";
 
-    const fuelRate = resolveFuelRate(matchingEvent?.carbs_per_hour, description);
+    const fuelRate = matchingEvent?.carbs_per_hour ?? null;
 
     // Calculate total carbs from fuel rate and ESTIMATED duration (from plan, not actual).
     // This ensures the "planned" amount matches what was prescribed pre-run.
@@ -214,7 +207,6 @@ export function processActivities(
         totalCarbs = calculateWorkoutCarbs(estMinutes, fuelRate);
       }
     }
-    totalCarbs ??= extractTotalCarbs(description);
 
     // Actual carbs ingested: from activity API field, default to planned totalCarbs
     const carbsIngested = activity.carbs_ingested ?? totalCarbs;
@@ -282,7 +274,7 @@ export function processPlannedEvents(
     const isRace = name.toLowerCase().includes("race");
     const category = isRace ? "race" : getWorkoutCategory(name);
 
-    const eventFuelRate = resolveFuelRate(event.carbs_per_hour, eventDesc);
+    const eventFuelRate = event.carbs_per_hour ?? null;
 
     // Calculate total carbs from fuel rate and estimated duration.
     let eventTotalCarbs: number | null = null;
@@ -293,7 +285,6 @@ export function processPlannedEvents(
         eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
       }
     }
-    eventTotalCarbs ??= extractTotalCarbs(eventDesc);
 
     calendarEvents.push({
       id: `event-${event.id}`,
