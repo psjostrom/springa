@@ -12,9 +12,9 @@ export interface CachedActivity {
   pace?: { time: number; value: number }[];
   cadence?: { time: number; value: number }[];
   altitude?: { time: number; value: number }[];
-  activityDate?: string;
   distance?: number[];
   rawTime?: number[];
+  activityDate?: string;
 }
 
 export async function getActivityStreams(

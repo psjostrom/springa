@@ -136,6 +136,8 @@ export interface StreamData {
   cadence?: DataPoint[];
   altitude?: DataPoint[];
   latlng?: [number, number][]; // [lat, lng] pairs for GPS route
+  distance?: number[];  // cumulative meters, per-second (same index as rawTime)
+  rawTime?: number[];   // seconds, per-second (same index as distance)
 }
 
 export interface CalendarEvent {
