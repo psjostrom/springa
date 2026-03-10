@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { computeKmSplits } from "../splits";
 
 function linearDistance(totalMeters: number, points: number): number[] {
