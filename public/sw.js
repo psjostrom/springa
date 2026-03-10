@@ -30,6 +30,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Springa";
   const options = {
     body: data.body || "",
+    icon: "/icon-192.png",
     badge: "/badge-96.png",
     data: { url: data.url || "/", ts: data.ts },
     actions: data.ts ? [{ action: "skip", title: "Skip" }] : [],
