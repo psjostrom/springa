@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_TABS,
-  WIDGET_REGISTRY,
+  COMPLETED_RUN_WIDGETS,
   resolveModalLayout,
   reorderWidget,
   toggleWidgetVisibility,
@@ -19,7 +19,7 @@ describe("DEFAULT_TABS", () => {
   });
 
   it("every widget id in tabs exists in the registry", () => {
-    const registryIds = new Set(WIDGET_REGISTRY.map((w) => w.id));
+    const registryIds = new Set(COMPLETED_RUN_WIDGETS.map((w) => w.id));
     for (const tab of DEFAULT_TABS) {
       for (const widgetId of tab.widgets) {
         expect(registryIds.has(widgetId)).toBe(true);
@@ -50,7 +50,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("preserves saved order within a tab", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": {
         order: ["workout", "report-card", "stats", "pace-splits", "carbs-ingested", "prerun-carbs"],
         hidden: [],
@@ -62,7 +62,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("appends new widgets not in saved order", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": { order: ["report-card", "stats"], hidden: [] },
     };
     const layout = resolveModalLayout(saved);
@@ -73,7 +73,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("strips stale widget ids no longer in registry", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": {
         order: ["report-card", "deleted-thing" as ModalWidgetId, "stats"],
         hidden: [],
@@ -86,7 +86,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("preserves hidden widgets", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": {
         order: [...DEFAULT_TABS[0].widgets],
         hidden: ["prerun-carbs"],
@@ -97,7 +97,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("strips stale keys from hidden", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": {
         order: [...DEFAULT_TABS[0].widgets],
         hidden: ["prerun-carbs", "nope" as ModalWidgetId],
@@ -108,7 +108,7 @@ describe("resolveModalLayout", () => {
   });
 
   it("fills in missing tabs from defaults", () => {
-    const saved: ModalTabLayout = {
+    const saved: Partial<ModalTabLayout> = {
       "overview": { order: [...DEFAULT_TABS[0].widgets], hidden: [] },
     };
     const layout = resolveModalLayout(saved);

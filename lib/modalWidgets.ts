@@ -19,7 +19,7 @@ export interface ModalWidgetDef {
   label: string;
 }
 
-export const WIDGET_REGISTRY: readonly ModalWidgetDef[] = [
+export const COMPLETED_RUN_WIDGETS: readonly ModalWidgetDef[] = [
   { id: "report-card", label: "Report Card" },
   { id: "stats", label: "Stats" },
   { id: "pace-splits", label: "Pace Splits" },
@@ -33,8 +33,10 @@ export const WIDGET_REGISTRY: readonly ModalWidgetDef[] = [
   { id: "feedback", label: "Feedback" },
 ] as const;
 
+export type ModalTabId = "overview" | "deep-dive" | "analysis";
+
 export interface TabConfig {
-  id: string;
+  id: ModalTabId;
   label: string;
   widgets: ModalWidgetId[];
 }
@@ -59,14 +61,14 @@ export const DEFAULT_TABS: readonly TabConfig[] = [
 
 // --- Layout types ---
 
-export type ModalTabLayout = Record<string, {
+export type ModalTabLayout = Record<ModalTabId, {
   order: ModalWidgetId[];
   hidden: ModalWidgetId[];
 }>;
 
 // --- Layout resolution ---
 
-const ALL_WIDGET_IDS = new Set<string>(WIDGET_REGISTRY.map((w) => w.id));
+const ALL_WIDGET_IDS = new Set<string>(COMPLETED_RUN_WIDGETS.map((w) => w.id));
 
 /**
  * Merge a saved layout with the current tab/widget config.
@@ -75,8 +77,8 @@ const ALL_WIDGET_IDS = new Set<string>(WIDGET_REGISTRY.map((w) => w.id));
  * - Strips stale widget ids no longer in the registry
  * - Fills in missing tabs from defaults
  */
-export function resolveModalLayout(saved?: ModalTabLayout): ModalTabLayout {
-  const result: ModalTabLayout = {};
+export function resolveModalLayout(saved?: Partial<ModalTabLayout>): ModalTabLayout {
+  const result = {} as ModalTabLayout;
 
   for (const tab of DEFAULT_TABS) {
     const tabWidgets = new Set<string>(tab.widgets);
@@ -146,7 +148,7 @@ export function toggleWidgetVisibility(
 const STORAGE_KEY = "springa:modal-widget-layout";
 
 /** Load saved layout from localStorage. Returns undefined if not found or invalid. */
-export function loadModalLayout(): ModalTabLayout | undefined {
+export function loadModalLayout(): Partial<ModalTabLayout> | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return undefined;
