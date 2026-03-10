@@ -14,13 +14,15 @@ for (const line of readFileSync(envPath, "utf-8").split("\n")) {
 }
 
 import { getActivityStreams } from "../lib/activityStreamsDb";
+import { enrichActivitiesWithGlucose } from "../lib/activityStreamsEnrich";
 import { buildBGModelFromCached } from "../lib/bgModel";
 import { simulateBG, validateSimulation } from "../lib/bgSimulation";
 
 const EMAIL = process.env.VALIDATE_EMAIL ?? "persinternetpost@gmail.com";
 
 async function main() {
-  const allCached = await getActivityStreams(EMAIL);
+  const rawCached = await getActivityStreams(EMAIL);
+  const allCached = await enrichActivitiesWithGlucose(EMAIL, rawCached);
   if (allCached.length < 3) {
     console.log(`Only ${allCached.length} cached activities, need at least 3`);
     process.exit(1);

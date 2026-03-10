@@ -11,6 +11,8 @@ import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { formatAIError } from "@/lib/aiError";
+import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 import { nonEmpty } from "@/lib/format";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
@@ -160,7 +162,7 @@ export async function POST(req: Request) {
         })
     : Promise.resolve(null);
 
-  const [rows, profile, patterns, wellnessEntries] = await Promise.all([
+  const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(session.user.email),
     intervalsApiKey
       ? fetchAthleteProfile(intervalsApiKey)
@@ -170,6 +172,31 @@ export async function POST(req: Request) {
       ? fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd"))
       : Promise.resolve([]),
   ]);
+
+  // Enrich history rows with glucose from xdrip_readings
+  const enrichedCached = await enrichActivitiesWithGlucose(
+    session.user.email,
+    rawRows.map((r) => ({
+      activityId: r.activityId,
+      name: r.name,
+      category: r.category as CachedActivity["category"],
+      fuelRate: r.fuelRate,
+      glucose: r.glucose,
+      hr: r.hr,
+      activityDate: r.activityDate ?? undefined,
+      runStartMs: r.runStartMs,
+    })),
+  );
+  const rows: CachedRunRow[] = enrichedCached.map((c) => ({
+    activityId: c.activityId,
+    name: c.name,
+    category: c.category,
+    fuelRate: c.fuelRate,
+    glucose: c.glucose,
+    hr: c.hr,
+    activityDate: c.activityDate ?? null,
+    runStartMs: c.runStartMs,
+  }));
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();

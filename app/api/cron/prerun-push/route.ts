@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
 import { getRecentXdripReadings } from "@/lib/xdripDb";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
+import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { computeTrend } from "@/lib/xdrip";
 import { buildBGModelFromCached } from "@/lib/bgModel";
 import { getWorkoutCategory } from "@/lib/constants";
@@ -120,7 +121,8 @@ export async function GET(req: Request) {
 
         const trendResult = computeTrend(readings);
         const trendSlope = trendResult?.slope ?? null;
-        const cached = await getActivityStreams(email);
+        const rawCached = await getActivityStreams(email);
+        const cached = await enrichActivitiesWithGlucose(email, rawCached);
         const bgModel = buildBGModelFromCached(cached);
         const currentBG = lastReading.mmol;
         const rawCategory = getWorkoutCategory(event.name ?? "");
