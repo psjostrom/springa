@@ -278,12 +278,12 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 
   const [patternsExpanded, setPatternsExpanded] = useState(true);
 
-  const canDiscover = events && events.filter((e) => e.type === "completed" && e.streamData?.glucose).length >= 5;
+  const canDiscover = events && events.filter((e) => e.type === "completed" && e.glucose).length >= 5;
 
   const latestCompletedActivityId = (() => {
     if (!events) return null;
     const withGlucose = events
-      .filter((e) => e.type === "completed" && e.streamData?.glucose && e.activityId)
+      .filter((e) => e.type === "completed" && e.glucose && e.activityId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return withGlucose[0]?.activityId ?? null;
   })();
@@ -342,7 +342,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-sm">
-              Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.streamData?.glucose).length ?? 0} runs...
+              Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.glucose).length ?? 0} runs...
             </span>
           </div>
         ) : patternsError ? (

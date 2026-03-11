@@ -83,7 +83,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
   if (!showLoading && !analysis && !displayError) return null;
 
   return (
-    <div className="border-t border-[#3d2b5a] pt-3 mt-4">
+    <div className="px-3 py-2.5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-[#c4b5fd]">
           <Sparkles className="w-4 h-4" />
@@ -106,7 +106,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
       </div>
 
       {showLoading ? (
-        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 space-y-2">
+        <div className="space-y-2">
           <div className="skeleton h-4 w-full rounded" />
           <div className="skeleton h-4 w-5/6 rounded" />
           <div className="skeleton h-4 w-4/6 rounded" />
@@ -118,7 +118,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           {displayError instanceof Error ? displayError.message : "Failed to load analysis"}
         </div>
       ) : analysis ? (
-        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 text-sm text-[#e2d9f3] leading-relaxed prose-analysis">
+        <div className="text-sm text-[#e2d9f3] leading-relaxed prose-analysis">
           <ReactMarkdown>{analysis}</ReactMarkdown>
         </div>
       ) : null}

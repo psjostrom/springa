@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useEffect } from "react";
+import { type ReactNode, useState, useEffect, useMemo } from "react";
 import {
   Loader2,
   Pencil,
@@ -42,6 +42,7 @@ import {
   updateWidgetLayoutAtom,
   widgetSaveErrorAtom,
   runBGContextsAtom,
+  readingsAtom,
   phaseInfoAtom,
   paceCalibrationAtom,
   paceTableAtom,
@@ -64,6 +65,7 @@ import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
 import { EventModal } from "../components/EventModal";
 import { useActivityStream } from "../hooks/useActivityStream";
+import { mergeStreamData } from "@/lib/enrichEvents";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
@@ -229,19 +231,13 @@ export function IntelScreen() {
     selectedEvent?.activityId ?? null,
     apiKey
   );
+  const xdripReadings = useAtomValue(readingsAtom);
 
   // Enrich selected event with stream data
-  const enrichedSelectedEvent = selectedEvent && streamData
-    ? {
-        ...selectedEvent,
-        streamData: {
-          ...selectedEvent.streamData,
-          ...streamData.streamData,
-        },
-        avgHr: streamData.avgHr ?? selectedEvent.avgHr,
-        maxHr: streamData.maxHr ?? selectedEvent.maxHr,
-      }
-    : selectedEvent;
+  const enrichedSelectedEvent = useMemo(
+    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, xdripReadings) : selectedEvent,
+    [selectedEvent, streamData, xdripReadings],
+  );
 
   const handleActivitySelect = (activityId: string) => {
     setSelectedActivityId(activityId);

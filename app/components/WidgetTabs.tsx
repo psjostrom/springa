@@ -75,22 +75,24 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
   "prerun-carbs": (p) => <PreRunCarbsWidget {...p} />,
   "stream-graph": (p) =>
     p.event.streamData && Object.keys(p.event.streamData).length > 0 ? (
-      <WorkoutStreamGraph streamData={p.event.streamData} />
+      <WorkoutStreamGraph streamData={p.event.streamData} glucose={p.event.glucose} />
     ) : p.isLoadingStreamData ? (
-      <div className="skeleton h-40 w-full" />
+      <div className="px-3 py-2.5">
+        <div className="skeleton h-40 w-full" />
+      </div>
     ) : (
-      <div className="text-sm text-[#b8a5d4] italic px-4 py-3">
+      <div className="text-sm text-[#b8a5d4] italic px-3 py-2.5">
         Detailed workout data (graphs) not available for this activity
       </div>
     ),
   "hr-zones": (p) =>
     p.event.zoneTimes ? (
-      <div className="px-4 py-3">
+      <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Heart Rate Zones</div>
         <HRZoneBreakdown {...p.event.zoneTimes} />
       </div>
     ) : p.isLoadingStreamData ? (
-      <div className="px-4 py-3">
+      <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Heart Rate Zones</div>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -101,12 +103,12 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     ) : null,
   "route-map": (p) =>
     p.event.streamData?.latlng && p.event.streamData.latlng.length > 0 ? (
-      <div className="px-4 py-3">
+      <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
         <RouteMap latlng={p.event.streamData.latlng} className="h-48" />
       </div>
     ) : p.isLoadingStreamData ? (
-      <div className="px-4 py-3">
+      <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
         <div className="skeleton h-48 w-full rounded-lg" />
       </div>
@@ -180,7 +182,7 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
   }, [layout]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Tab bar */}
       <div className="flex border-b border-[#3d2b5a]">
         {DEFAULT_TABS.map((tab) => (

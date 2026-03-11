@@ -178,14 +178,12 @@ describe("buildRunAnalysisPrompt", () => {
 
   it("includes glucose curve from stream data", () => {
     const event = makeEvent({
-      streamData: {
-        glucose: [
-          { time: 0, value: 10.0 },
-          { time: 300, value: 9.5 },
-          { time: 600, value: 8.8 },
-          { time: 900, value: 8.2 },
-        ],
-      },
+      glucose: [
+        { time: 0, value: 10.0 },
+        { time: 300, value: 9.5 },
+        { time: 600, value: 8.8 },
+        { time: 900, value: 8.2 },
+      ],
     });
 
     const { user } = buildRunAnalysisPrompt({ event, hrZones: defaultHrZones });

@@ -59,7 +59,6 @@ export async function getRecentAnalyzedRuns(
       name,
       category: (rawCat === "other" ? "easy" : rawCat) as CachedActivity["category"],
       fuelRate: (row.fuel_rate as number | null) ?? null,
-      glucose: [],
       hr: JSON.parse(row.hr as string) as { time: number; value: number }[],
       activityDate: (row.activity_date as string | null) ?? undefined,
       runStartMs: (row.run_start_ms as number | undefined) ?? undefined,

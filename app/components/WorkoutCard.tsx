@@ -81,7 +81,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
     return (
-      <div className="bg-[#2a1f3d] rounded-lg p-3 sm:p-4 mb-4">
+      <div className="bg-[#2a1f3d] rounded-lg p-3 sm:p-4">
         <div className="text-sm whitespace-pre-wrap text-[#c4b5fd]">{description}</div>
       </div>
     );
@@ -98,9 +98,9 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   const notes = extractNotes(description);
 
   return (
-    <div className="mb-4">
+    <div>
       {/* Duration + Fuel Strip */}
-      <div className="px-4 py-3 bg-[#2d1a35] border-b border-[#ff2d95]/30">
+      <div className="px-3 py-2.5 bg-[#2d1a35] border-b border-[#ff2d95]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {estDuration != null && (
             <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
       </div>
 
       {/* Workout Structure */}
-      <div className="bg-[#1e1535] px-4 py-4">
+      <div className="bg-[#1e1535] px-3 py-3">
         {sections.map((section, i) => (
           <SectionBlock key={i} section={section} />
         ))}
@@ -161,7 +161,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
 
       {/* Notes */}
       {notes && (
-        <div className="bg-[#2a1f3d] px-4 py-3 border-t border-[#3d2b5a] text-sm text-[#c4b5fd] leading-relaxed">
+        <div className="bg-[#2a1f3d] px-3 py-2.5 border-t border-[#3d2b5a] text-sm text-[#c4b5fd] leading-relaxed">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{

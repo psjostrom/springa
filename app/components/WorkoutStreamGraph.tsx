@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef } from "react";
-import type { StreamData } from "@/lib/types";
+import type { StreamData, DataPoint } from "@/lib/types";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 
 interface WorkoutStreamGraphProps {
   streamData: StreamData;
+  glucose?: DataPoint[];
 }
 
 type StreamType =
@@ -71,10 +72,22 @@ const PAD_STREAM = { top: 25, right: 10, bottom: 30, left: 35 } as const;
 const CHART_WIDTH = WIDTH - PAD_STREAM.left - PAD_STREAM.right;
 const CHART_HEIGHT = HEIGHT - PAD_STREAM.top - PAD_STREAM.bottom;
 
-export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
-  const availableStreams = Object.keys(streamData).filter(
-    (key) => key in streamConfigs && streamData[key as StreamType],
-  ) as StreamType[];
+export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphProps) {
+  // Merge glucose (from CalendarEvent) with stream data for unified lookup
+  const dataByStream: Record<StreamType, DataPoint[] | undefined> = {
+    glucose,
+    heartrate: streamData.heartrate,
+    pace: streamData.pace,
+    cadence: streamData.cadence,
+    altitude: streamData.altitude,
+  };
+
+  const availableStreams = (Object.keys(dataByStream) as StreamType[]).filter(
+    (key) => {
+      const d = dataByStream[key];
+      return d && d.length > 0;
+    },
+  );
 
   // Default selections: glucose + heartrate, or first two available
   const getDefaultSelections = () => {
@@ -98,7 +111,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   // Get max time from any selected stream
   const maxTime = Math.max(
     ...selectedStreams.map((stream) => {
-      const data = streamData[stream];
+      const data = dataByStream[stream];
       return data ? Math.max(...data.map((d) => d.time)) : 0;
     }),
   );
@@ -110,7 +123,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   let globalMin = 0;
   let globalMax = 100;
   if (useSingleStreamMode && selectedStreams.length > 0) {
-    const data = streamData[selectedStreams[0]];
+    const data = dataByStream[selectedStreams[0]];
     if (data && data.length > 0) {
       const values = data.map((d) => d.value);
       globalMin = Math.min(...values);
@@ -125,7 +138,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   const streamPathData = (() => {
     return selectedStreams
       .map((streamType) => {
-        const data = streamData[streamType];
+        const data = dataByStream[streamType];
         if (!data || data.length === 0) return null;
 
         const config = streamConfigs[streamType];
@@ -227,7 +240,7 @@ export function WorkoutStreamGraph({ streamData }: WorkoutStreamGraphProps) {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full px-3 py-2.5">
       {/* Stream selector */}
       <div className="flex gap-1.5 sm:gap-2 mb-3 flex-wrap">
         {availableStreams.map((stream) => {

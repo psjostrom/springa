@@ -43,8 +43,8 @@ export function StatsWidget({ event }: WidgetProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-sm text-[#b8a5d4]">
-      {items.flatMap((item, i) => i > 0 ? [<span key={`sep-${i}`}>·</span>, item] : [item])}
+    <div className="px-3 py-2.5 flex flex-wrap items-center gap-x-1 text-sm text-white">
+      {items.flatMap((item, i) => i > 0 ? [<span key={`sep-${i}`} className="text-[#b8a5d4]">·</span>, item] : [item])}
     </div>
   );
 }

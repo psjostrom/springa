@@ -3,7 +3,7 @@ import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
-import type { CachedActivity } from "@/lib/activityStreamsDb";
+import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 import type { XdripReading } from "@/lib/xdrip";
@@ -79,7 +79,7 @@ export const bgModelProgressAtom = atom<{ done: number; total: number }>({
 });
 export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
 export const runBGContextsAtom = atom<Map<string, RunBGContext>>(new Map());
-export const cachedActivitiesAtom = atom<CachedActivity[]>([]);
+export const cachedActivitiesAtom = atom<EnrichedActivity[]>([]);
 
 // ─── Insulin Context ─────────────────────────────────────────
 

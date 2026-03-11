@@ -69,8 +69,8 @@ export function buildEnrichedRunTable(
   const completed = events.filter(
     (e) =>
       e.type === "completed" &&
-      e.streamData?.glucose &&
-      e.streamData.glucose.length >= 2 &&
+      e.glucose &&
+      e.glucose.length >= 2 &&
       e.distance &&
       e.duration,
   );

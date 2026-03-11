@@ -10,19 +10,19 @@ import {
   buildBGModelFromCached,
   type BGResponseModel,
 } from "../bgModel";
-import type { CachedActivity } from "../activityStreamsDb";
+import type { EnrichedActivity } from "../activityStreamsDb";
 
 // --- Test helpers ---
 
-/** Build a CachedActivity from simple arrays (minutes of data). */
+/** Build an EnrichedActivity from simple arrays (minutes of data). */
 function makeActivity(
   activityId: string,
-  category: CachedActivity["category"],
+  category: EnrichedActivity["category"],
   minutes: number,
   hrValue: number,
   glucoseValues: number[],
   fuelRate: number | null = 48,
-): CachedActivity {
+): EnrichedActivity {
   return {
     activityId,
     category,

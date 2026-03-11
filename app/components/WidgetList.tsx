@@ -151,29 +151,30 @@ export function WidgetList({
     );
   }
 
+  const visibleWidgets = order
+    .filter((id) => !hiddenSet.has(id))
+    .map((id) => {
+      const content = renderMap[id](widgetProps);
+      if (content == null) return null;
+      return (
+        <WidgetCard key={id}>
+          {content}
+        </WidgetCard>
+      );
+    })
+    .filter(Boolean);
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => { setEditing(true); }}
-          className="text-[#b8a5d4] hover:text-white transition-colors p-1"
-          aria-label="Edit widget layout"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      {order
-        .filter((id) => !hiddenSet.has(id))
-        .map((id) => {
-          const content = renderMap[id](widgetProps);
-          if (content == null) return null;
-          return (
-            <WidgetCard key={id}>
-              {content}
-            </WidgetCard>
-          );
-        })}
+    <div className="space-y-2 relative">
+      <button
+        type="button"
+        onClick={() => { setEditing(true); }}
+        className="absolute -top-8 right-0 text-[#b8a5d4] hover:text-white transition-colors p-1"
+        aria-label="Edit widget layout"
+      >
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      {visibleWidgets}
     </div>
   );
 }

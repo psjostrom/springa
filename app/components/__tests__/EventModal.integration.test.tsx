@@ -24,7 +24,7 @@ Cooldown
 
 const basePlanned: CalendarEvent = {
   id: "event-100",
-  date: new Date("2026-03-10T14:00:00"),
+  date: new Date("2099-03-10T14:00:00"),
   name: "W02 Hills eco16",
   description: HILLS_DESCRIPTION,
   type: "planned",

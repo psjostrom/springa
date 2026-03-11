@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@/lib/__tests__/test-utils";
 import { useRunData } from "../useRunData";
 import type { CalendarEvent } from "@/lib/types";
-import type { CachedActivity } from "@/lib/activityStreamsDb";
+import type { CachedActivity, EnrichedActivity } from "@/lib/activityStreamsDb";
 
 // Use vi.hoisted() to ensure mocks are available when vi.mock is hoisted
 const { buildBGModelFromCachedMock, buildRunBGContextsMock, useStreamCacheMock } = vi.hoisted(() => ({
@@ -44,7 +44,7 @@ const makeEvent = (id: string, type: "completed" | "planned" = "completed"): Cal
   category: "easy",
 });
 
-const makeCached = (id: string): CachedActivity => ({
+const makeCached = (id: string): EnrichedActivity => ({
   activityId: id,
   category: "easy",
   fuelRate: 48,

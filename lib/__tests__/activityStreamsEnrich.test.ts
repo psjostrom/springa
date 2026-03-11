@@ -12,7 +12,6 @@ function makeActivity(overrides: Partial<CachedActivity> = {}): CachedActivity {
     activityId: "act-1",
     category: "easy",
     fuelRate: 48,
-    glucose: [],
     hr: [{ time: 0, value: 120 }, { time: 30, value: 130 }],
     runStartMs: 1000000,
     ...overrides,
@@ -24,17 +23,16 @@ describe("enrichActivitiesWithGlucose", () => {
     vi.clearAllMocks();
   });
 
-  it("returns same reference for empty activities", async () => {
-    const acts: CachedActivity[] = [];
-    const result = await enrichActivitiesWithGlucose("test@test.com", acts);
-    expect(result).toBe(acts);
+  it("returns empty array for empty activities", async () => {
+    const result = await enrichActivitiesWithGlucose("test@test.com", []);
+    expect(result).toHaveLength(0);
     expect(mockGetXdripReadingsForRange).not.toHaveBeenCalled();
   });
 
-  it("returns same reference when no activities have runStartMs", async () => {
+  it("returns activities with empty glucose when no runStartMs", async () => {
     const acts = [makeActivity({ runStartMs: undefined })];
     const result = await enrichActivitiesWithGlucose("test@test.com", acts);
-    expect(result).toBe(acts);
+    expect(result[0].glucose).toBeUndefined();
     expect(mockGetXdripReadingsForRange).not.toHaveBeenCalled();
   });
 
@@ -57,7 +55,7 @@ describe("enrichActivitiesWithGlucose", () => {
 
     const result = await enrichActivitiesWithGlucose("test@test.com", acts);
     expect(mockGetXdripReadingsForRange).toHaveBeenCalledOnce();
-    expect(result[0].glucose.length).toBeGreaterThan(0);
+    expect(result[0].glucose!.length).toBeGreaterThan(0);
   });
 
   it("excludes activities without runStartMs from maxMs calculation", async () => {

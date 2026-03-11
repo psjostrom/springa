@@ -1,6 +1,6 @@
 import { getXdripReadingsForRange } from "./xdripDb";
 import { enrichWithGlucose } from "./bgAlignment";
-import type { CachedActivity } from "./activityStreamsDb";
+import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 
 /**
  * Enrich cached activities with glucose data from xdrip_readings (server-side).
@@ -9,8 +9,8 @@ import type { CachedActivity } from "./activityStreamsDb";
 export async function enrichActivitiesWithGlucose(
   email: string,
   activities: CachedActivity[],
-): Promise<CachedActivity[]> {
-  if (activities.length === 0) return activities;
+): Promise<EnrichedActivity[]> {
+  if (activities.length === 0) return [];
 
   const startMsValues = activities
     .map((a) => a.runStartMs)

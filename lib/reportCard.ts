@@ -88,7 +88,7 @@ export function parseExpectedRepTime(description: string): {
 // --- Scoring Functions ---
 
 export function scoreBG(event: CalendarEvent): BGScore | null {
-  const glucose = event.streamData?.glucose;
+  const glucose = event.glucose;
   if (!glucose || glucose.length < 2) return null;
 
   const startBG = glucose[0].value;

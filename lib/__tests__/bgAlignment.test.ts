@@ -150,7 +150,6 @@ describe("enrichWithGlucose", () => {
       activityId: "a1",
       category: "easy",
       fuelRate: 48,
-      glucose: [],
       hr: [
         { time: 0, value: 120 },
         { time: 1, value: 125 },
@@ -167,48 +166,32 @@ describe("enrichWithGlucose", () => {
 
     const result = enrichWithGlucose(activities, readings);
     expect(result[0].glucose).toHaveLength(3);
-    expect(result[0].glucose[0].value).toBeCloseTo(8.0);
-    expect(result[0].glucose[2].value).toBeCloseTo(7.0);
+    expect(result[0].glucose![0].value).toBeCloseTo(8.0);
+    expect(result[0].glucose![2].value).toBeCloseTo(7.0);
   });
 
-  it("skips activities that already have glucose", () => {
+  it("returns undefined glucose for activities without runStartMs", () => {
     const activities: CachedActivity[] = [{
       activityId: "a1",
       category: "easy",
       fuelRate: 48,
-      glucose: [{ time: 0, value: 8.0 }],
-      hr: [{ time: 0, value: 120 }],
-      runStartMs: 1000000,
-    }];
-
-    const result = enrichWithGlucose(activities, []);
-    expect(result[0].glucose).toHaveLength(1);
-  });
-
-  it("skips activities without runStartMs", () => {
-    const activities: CachedActivity[] = [{
-      activityId: "a1",
-      category: "easy",
-      fuelRate: 48,
-      glucose: [],
       hr: [{ time: 0, value: 120 }],
     }];
 
     const result = enrichWithGlucose(activities, [{ ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" }]);
-    expect(result[0].glucose).toHaveLength(0);
+    expect(result[0].glucose).toBeUndefined();
   });
 
-  it("returns original array when no readings provided", () => {
+  it("returns undefined glucose when no readings provided", () => {
     const activities: CachedActivity[] = [{
       activityId: "a1",
       category: "easy",
       fuelRate: 48,
-      glucose: [],
       hr: [{ time: 0, value: 120 }],
       runStartMs: 1000000,
     }];
 
     const result = enrichWithGlucose(activities, []);
-    expect(result).toBe(activities); // same reference
+    expect(result[0].glucose).toBeUndefined();
   });
 });

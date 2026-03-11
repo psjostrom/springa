@@ -177,7 +177,7 @@ export async function POST(req: Request) {
 
     // Find the most recent completed run with glucose data to track staleness
     const withGlucose = completedEvents
-      .filter((e) => e.activityId && e.streamData?.glucose)
+      .filter((e) => e.activityId && e.glucose)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
     const latestActivityId = withGlucose[0]?.activityId ?? "";
 

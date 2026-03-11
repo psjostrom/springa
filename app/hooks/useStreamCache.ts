@@ -86,7 +86,6 @@ export function useStreamCache(
               name: e.name,
               category: cat === "other" ? "easy" : cat,
               fuelRate: e.fuelRate ?? null,
-              glucose: [], // reconstructed in useRunData from xDrip readings
               hr: hrPoints,
               pace: extra.pace,
               cadence: extra.cadence,

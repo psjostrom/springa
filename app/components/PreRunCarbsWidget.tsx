@@ -67,7 +67,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
   if (!event.activityId) return null;
 
   return (
-    <div className="px-4 py-3">
+    <div className="px-3 py-2.5">
       <div className="flex items-center justify-between">
         <div className="text-sm text-[#b8a5d4]">Pre-run carbs</div>
         {editState.kind === "editing" || editState.kind === "saving" ? (
