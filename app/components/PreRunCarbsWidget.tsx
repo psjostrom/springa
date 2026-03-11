@@ -71,7 +71,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
       <div className="flex items-center justify-between">
         <div className="text-sm text-[#b8a5d4]">Pre-run carbs</div>
         {editState.kind === "editing" || editState.kind === "saving" ? (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
               min="0"
