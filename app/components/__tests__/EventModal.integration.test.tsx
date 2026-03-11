@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
+import { calendarEventsAtom } from "../../atoms";
 import { EventModal } from "../EventModal";
 import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
 
@@ -23,7 +24,7 @@ Cooldown
 
 const basePlanned: CalendarEvent = {
   id: "event-100",
-  date: new Date("2026-03-10T14:00:00"),
+  date: new Date("2099-03-10T14:00:00"),
   name: "W02 Hills eco16",
   description: HILLS_DESCRIPTION,
   type: "planned",
@@ -124,10 +125,10 @@ describe("EventModal workout card", () => {
     expect(screen.getByText("60 min")).toBeInTheDocument();
     expect(screen.getByText("135 bpm")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();
   });
 
-  it("shows Heart Rate Zones heading while loading stream data", () => {
+  it("shows Heart Rate Zones heading while loading stream data", async () => {
+    const user = userEvent.setup();
     const loading: CalendarEvent = {
       ...baseCompleted,
       streamData: undefined,
@@ -144,11 +145,13 @@ describe("EventModal workout card", () => {
       />,
     );
 
-    // HR zones heading is shown even during loading (skeleton content below it)
+    // HR Zones is in the Deep Dive tab
+    await user.click(screen.getByText("Deep Dive"));
     expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();
   });
 
-  it("does not show Heart Rate Zones when no data and not loading", () => {
+  it("does not show Heart Rate Zones when no data and not loading", async () => {
+    const user = userEvent.setup();
     const noZones: CalendarEvent = {
       ...baseCompleted,
       streamData: undefined,
@@ -166,6 +169,7 @@ describe("EventModal workout card", () => {
       />,
     );
 
+    await user.click(screen.getByText("Deep Dive"));
     expect(screen.queryByText("Heart Rate Zones")).toBeNull();
   });
 });
@@ -176,7 +180,8 @@ describe("EventModal feedback", () => {
     activityId: "i999",
   };
 
-  it("shows rating buttons for unrated completed run", () => {
+  it("shows rating buttons for unrated completed run", async () => {
+    const user = userEvent.setup();
     render(
       <EventModal
         event={completedWithActivity}
@@ -187,13 +192,15 @@ describe("EventModal feedback", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
 
-  it("shows read-only rating for already-rated run", () => {
+  it("shows read-only rating for already-rated run", async () => {
+    const user = userEvent.setup();
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "good",
@@ -210,6 +217,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("Felt great")).toBeInTheDocument();
@@ -217,7 +225,8 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Save")).toBeNull();
   });
 
-  it("shows read-only bad rating without comment", () => {
+  it("shows read-only bad rating without comment", async () => {
+    const user = userEvent.setup();
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "bad",
@@ -233,6 +242,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
     expect(screen.queryByText("Save")).toBeNull();
   });
@@ -270,7 +280,8 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Feedback")).toBeNull();
   });
 
-  it("Save button is disabled until a rating is selected", () => {
+  it("Save button is disabled until a rating is selected", async () => {
+    const user = userEvent.setup();
     render(
       <EventModal
         event={completedWithActivity}
@@ -281,6 +292,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).toBeDisabled();
   });
@@ -298,6 +310,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     await user.click(screen.getByText("\ud83d\udc4d"));
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).not.toBeDisabled();
@@ -322,8 +335,10 @@ describe("EventModal feedback", () => {
         onDelete={noopAsync}
         apiKey="test"
       />,
+      { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
 
+    await user.click(screen.getByText("Analysis"));
     await user.click(screen.getByText("\ud83d\udc4e"));
     const commentInput = screen.getByPlaceholderText("Optional comment...");
     await user.type(commentInput, "Legs were heavy");
@@ -475,6 +490,7 @@ describe("EventModal run analysis", () => {
   };
 
   it("shows run analysis for completed event with activityId", async () => {
+    const user = userEvent.setup();
     render(
       <EventModal
         event={completedWithActivity}
@@ -485,6 +501,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load (MSW returns "Test analysis.")
     expect(await screen.findByText("Run Analysis")).toBeInTheDocument();
     await waitFor(() => {
@@ -493,6 +510,7 @@ describe("EventModal run analysis", () => {
   });
 
   it("shows regenerate button after analysis loads", async () => {
+    const user = userEvent.setup();
     render(
       <EventModal
         event={completedWithActivity}
@@ -503,6 +521,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load
     await waitFor(() => {
       expect(screen.getByText("Test analysis.")).toBeInTheDocument();
@@ -533,6 +552,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {
       expect(screen.getByText("Analysis v1")).toBeInTheDocument();
@@ -576,6 +596,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {
       expect(screen.getByText("Initial analysis")).toBeInTheDocument();

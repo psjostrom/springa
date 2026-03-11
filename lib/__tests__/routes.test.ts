@@ -504,7 +504,6 @@ describe("bg-cache route", () => {
         category: "easy" as const,
         fuelRate: 8,
         startBG: 10.2,
-        glucose: [{ time: 0, value: 10.2 }],
         hr: [{ time: 0, value: 120 }],
       },
     ];

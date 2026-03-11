@@ -129,49 +129,27 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     return null;
   }
 
-  const hasSecondRow = report.entryTrend ?? report.recovery;
+  const row1: React.ReactNode[] = [];
+  if (streamLoading && !report.bg) row1.push(<SkeletonCell key="bg" label="Blood Glucose" />);
+  else if (report.bg) row1.push(<BGCell key="bg" score={report.bg} />);
+  if (hrLoading && !report.hrZone) row1.push(<SkeletonCell key="hr" label="HR Zone" />);
+  else if (report.hrZone) row1.push(<HRCell key="hr" score={report.hrZone} />);
+  if (report.fuel) row1.push(<FuelCell key="fuel" score={report.fuel} />);
+
+  const row2: React.ReactNode[] = [];
+  if (report.entryTrend) row2.push(<EntryTrendCell key="entry" score={report.entryTrend} />);
+  if (report.recovery) row2.push(<RecoveryCell key="recovery" score={report.recovery} />);
 
   return (
-    <div className="space-y-2 mt-3">
-      {/* Row 1: BG, HR Zone, Fuel */}
-      <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-3 gap-3 text-sm">
-        {streamLoading && !report.bg ? (
-          <SkeletonCell label="Blood Glucose" />
-        ) : report.bg ? (
-          <BGCell score={report.bg} />
-        ) : (
-          <div />
-        )}
-
-        {hrLoading && !report.hrZone ? (
-          <SkeletonCell label="HR Zone" />
-        ) : report.hrZone ? (
-          <HRCell score={report.hrZone} />
-        ) : (
-          <div />
-        )}
-
-        {report.fuel ? (
-          <FuelCell score={report.fuel} />
-        ) : (
-          <div />
-        )}
-      </div>
-
-      {/* Row 2: Pre-Run, Recovery */}
-      {hasSecondRow && (
-        <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-2 gap-3 text-sm">
-          {report.entryTrend ? (
-            <EntryTrendCell score={report.entryTrend} />
-          ) : (
-            <div />
-          )}
-
-          {report.recovery ? (
-            <RecoveryCell score={report.recovery} />
-          ) : (
-            <div />
-          )}
+    <div className="space-y-1.5 p-2">
+      {row1.length > 0 && (
+        <div className={`bg-[#2a1f3d] rounded-lg px-3 py-2.5 grid gap-2 text-sm`} style={{ gridTemplateColumns: `repeat(${row1.length}, 1fr)` }}>
+          {row1}
+        </div>
+      )}
+      {row2.length > 0 && (
+        <div className={`bg-[#2a1f3d] rounded-lg px-3 py-2.5 grid gap-2 text-sm`} style={{ gridTemplateColumns: `repeat(${row2.length}, 1fr)` }}>
+          {row2}
         </div>
       )}
     </div>

@@ -1,63 +1,23 @@
-import { useState, useEffect, useRef, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { Info, Pencil } from "lucide-react";
 import { useAtomValue } from "jotai";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
-import { updateEvent, updateActivityCarbs, updateActivityPreRunCarbs } from "@/lib/intervalsApi";
+import { updateEvent } from "@/lib/intervalsApi";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
 import { useCurrentBG } from "../hooks/useCurrentBG";
 import { currentTsbAtom, currentIobAtom } from "../atoms";
-import { HRZoneBreakdown } from "./HRZoneBreakdown";
-import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { WorkoutCard } from "./WorkoutCard";
-import { RunReportCard } from "./RunReportCard";
-import { RunAnalysis } from "./RunAnalysis";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
-import { HRMiniChart } from "./HRMiniChart";
 import { PreRunReadiness } from "./PreRunReadiness";
-import { RouteMap } from "./RouteMap";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
 import { ClothingRecommendation } from "./ClothingRecommendation";
-import { KmSplitsSection } from "./KmSplitsSection";
+import { WidgetTabs } from "./WidgetTabs";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
-
-function StatInfo({ label, tip }: { label: string; tip: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("click", close, true);
-    return () => { document.removeEventListener("click", close, true); };
-  }, [open]);
-
-  return (
-    <span ref={ref} className="relative inline-flex items-center gap-0.5">
-      {label}
-      <button
-        type="button"
-        aria-label={`Info about ${label.split(" ")[0].toLowerCase()}`}
-        onClick={() => { setOpen((v) => !v); }}
-        className="text-[#b8a5d4] hover:text-white transition-colors"
-      >
-        <Info className="w-3 h-3" />
-      </button>
-      {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded-lg bg-[#0d0a1a] text-white text-sm leading-relaxed px-3 py-2 shadow-lg border border-[#3d2b5a] z-10">
-          {tip}
-        </span>
-      )}
-    </span>
-  );
-}
 
 // --- Modal state machine ---
 
@@ -66,20 +26,11 @@ type EditMode =
   | { kind: "editing-date"; editDate: string }
   | { kind: "saving-date"; editDate: string }
   | { kind: "confirming-delete" }
-  | { kind: "deleting" }
-  | { kind: "editing-carbs"; carbsValue: string }
-  | { kind: "saving-carbs"; carbsValue: string }
-  | { kind: "editing-prerun"; preRunG: string; preRunMin: string }
-  | { kind: "saving-prerun"; preRunG: string; preRunMin: string }
-  | { kind: "saving-feedback" };
+  | { kind: "deleting" };
 
 interface ModalState {
   editMode: EditMode;
   error: string | null;
-  savedCarbs: number | null;
-  savedPreRunCarbs: { g: number | null; min: number | null } | null;
-  savedRating: string | null;
-  savedComment: string | null;
   isClosing: boolean;
 }
 
@@ -92,23 +43,11 @@ type ModalAction =
   | { type: "CONFIRM_DELETE" }
   | { type: "DELETE" }
   | { type: "DELETE_FAILED"; error: string }
-  | { type: "START_EDIT_CARBS"; value: string }
-  | { type: "SET_CARBS_VALUE"; value: string }
-  | { type: "SAVE_CARBS" }
-  | { type: "CARBS_SAVED" }
-  | { type: "START_EDIT_PRERUN"; g: string; min: string }
-  | { type: "SET_PRERUN_G"; value: string }
-  | { type: "SET_PRERUN_MIN"; value: string }
-  | { type: "SAVE_PRERUN" }
-  | { type: "PRERUN_SAVED"; g: number | null; min: number | null }
-  | { type: "SAVE_FEEDBACK" }
-  | { type: "FEEDBACK_SAVED"; rating: string; comment: string }
   | { type: "CANCEL" }
   | { type: "RESET" }
-  | { type: "SET_SAVED_CARBS"; value: number | null }
   | { type: "START_CLOSING" };
 
-const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, savedCarbs: null, savedPreRunCarbs: null, savedRating: null, savedComment: null, isClosing: false };
+const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, isClosing: false };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
@@ -131,79 +70,13 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       return { ...state, editMode: { kind: "deleting" } };
     case "DELETE_FAILED":
       return { ...state, editMode: { kind: "confirming-delete" }, error: action.error };
-    case "START_EDIT_CARBS":
-      return { ...state, editMode: { kind: "editing-carbs", carbsValue: action.value }, error: null };
-    case "SET_CARBS_VALUE":
-      if (state.editMode.kind !== "editing-carbs") return state;
-      return { ...state, editMode: { ...state.editMode, carbsValue: action.value } };
-    case "SAVE_CARBS":
-      if (state.editMode.kind !== "editing-carbs") return state;
-      return { ...state, editMode: { kind: "saving-carbs", carbsValue: state.editMode.carbsValue } };
-    case "START_EDIT_PRERUN":
-      return { ...state, editMode: { kind: "editing-prerun", preRunG: action.g, preRunMin: action.min }, error: null };
-    case "SET_PRERUN_G":
-      if (state.editMode.kind !== "editing-prerun") return state;
-      return { ...state, editMode: { ...state.editMode, preRunG: action.value } };
-    case "SET_PRERUN_MIN":
-      if (state.editMode.kind !== "editing-prerun") return state;
-      return { ...state, editMode: { ...state.editMode, preRunMin: action.value } };
-    case "SAVE_PRERUN":
-      if (state.editMode.kind !== "editing-prerun") return state;
-      return { ...state, editMode: { kind: "saving-prerun", preRunG: state.editMode.preRunG, preRunMin: state.editMode.preRunMin } };
-    case "PRERUN_SAVED":
-      return { ...state, editMode: { kind: "idle" }, error: null, savedPreRunCarbs: { g: action.g, min: action.min } };
-    case "SAVE_FEEDBACK":
-      return { ...state, editMode: { kind: "saving-feedback" } };
-    case "FEEDBACK_SAVED":
-      return { ...state, editMode: { kind: "idle" }, savedRating: action.rating, savedComment: action.comment };
-    case "CARBS_SAVED":
     case "CANCEL":
-      return { ...state, editMode: { kind: "idle" } as EditMode, error: null };
+      return { ...state, editMode: { kind: "idle" }, error: null };
     case "RESET":
       return INITIAL_MODAL_STATE;
-    case "SET_SAVED_CARBS":
-      return { ...state, savedCarbs: action.value };
     case "START_CLOSING":
       return { ...state, isClosing: true };
   }
-}
-
-function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: string) => void; isSaving: boolean }) {
-  const [rating, setRating] = useState<string | null>(null);
-  const [comment, setComment] = useState("");
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => { setRating("good"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
-        >
-          {"\ud83d\udc4d"}
-        </button>
-        <button
-          onClick={() => { setRating("bad"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
-        >
-          {"\ud83d\udc4e"}
-        </button>
-      </div>
-      <textarea
-        value={comment}
-        onChange={(e) => { setComment(e.target.value); }}
-        placeholder="Optional comment..."
-        rows={2}
-        className="w-full border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95] resize-none"
-      />
-      <button
-        onClick={() => { if (rating) onSave(rating, comment); }}
-        disabled={!rating || isSaving}
-        className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
-      >
-        {isSaving ? "Saving..." : "Save"}
-      </button>
-    </div>
-  );
 }
 
 interface EventModalProps {
@@ -241,7 +114,6 @@ export function EventModal({
   // Extract values from discriminated union for JSX convenience
   const { editMode } = state;
   const editDate = editMode.kind === "editing-date" || editMode.kind === "saving-date" ? editMode.editDate : "";
-  const carbsValue = editMode.kind === "editing-carbs" || editMode.kind === "saving-carbs" ? editMode.carbsValue : "";
 
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
@@ -265,27 +137,6 @@ export function EventModal({
     dispatch({ type: "RESET" });
   }, [selectedEvent.id]);
 
-  // For completed events, fetch pre-run carbs from Turso (prerun_carbs table) if not on activity.
-  // PreRunCarbsInput stores to Turso by event_id; we look it up via pairedEventId.
-  // Key the state by selectedEvent.id to auto-reset when the event changes.
-  const [dbPreRunCarbs, setDbPreRunCarbs] = useState<{ eventId: string; g: number | null; min: number | null } | null>(null);
-  const dbPreRunForThisEvent = dbPreRunCarbs?.eventId === selectedEvent.id ? dbPreRunCarbs : null;
-  useEffect(() => {
-    // Only fetch if completed activity has a paired event but no pre-run data from Intervals.icu
-    if (selectedEvent.type !== "completed" || !selectedEvent.pairedEventId) return;
-    if (selectedEvent.preRunCarbsG != null || selectedEvent.preRunCarbsMin != null) return;
-
-    let cancelled = false;
-    fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(selectedEvent.pairedEventId))}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data: { carbsG: number | null; minutesBefore: number | null } | null) => {
-        if (cancelled || !data) return;
-        setDbPreRunCarbs({ eventId: selectedEvent.id, g: data.carbsG, min: data.minutesBefore });
-      })
-      .catch(() => {/* ignore */});
-    return () => { cancelled = true; };
-  }, [selectedEvent.id, selectedEvent.type, selectedEvent.pairedEventId, selectedEvent.preRunCarbsG, selectedEvent.preRunCarbsMin]);
-
   const handleClose = () => {
     dispatch({ type: "START_CLOSING" });
     const isMobile = window.innerWidth < 640;
@@ -293,63 +144,6 @@ export function EventModal({
       setTimeout(onClose, 250);
     } else {
       onClose();
-    }
-  };
-
-  const saveCarbs = async () => {
-    const val = parseInt(carbsValue, 10);
-    if (isNaN(val) || val < 0) return;
-    const actId = selectedEvent.activityId;
-    if (!actId) return;
-
-    dispatch({ type: "SAVE_CARBS" });
-    try {
-      await updateActivityCarbs(apiKey, actId, val);
-      dispatch({ type: "SET_SAVED_CARBS", value: val });
-      dispatch({ type: "CARBS_SAVED" });
-    } catch (err) {
-      console.error("Failed to update carbs:", err);
-      dispatch({ type: "CANCEL" });
-    }
-  };
-
-  const savePreRunCarbs = async () => {
-    if (editMode.kind !== "editing-prerun") return;
-    const actId = selectedEvent.activityId;
-    if (!actId) return;
-
-    const g = editMode.preRunG ? parseInt(editMode.preRunG, 10) : null;
-    const min = editMode.preRunMin ? parseInt(editMode.preRunMin, 10) : null;
-
-    dispatch({ type: "SAVE_PRERUN" });
-    try {
-      await updateActivityPreRunCarbs(apiKey, actId, g, min);
-      // Clean up Turso fallback row if this activity has a paired event
-      if (selectedEvent.pairedEventId) {
-        void fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(selectedEvent.pairedEventId))}`, {
-          method: "DELETE",
-        });
-      }
-      dispatch({ type: "PRERUN_SAVED", g, min });
-    } catch (err) {
-      console.error("Failed to update pre-run carbs:", err);
-      dispatch({ type: "CANCEL" });
-    }
-  };
-
-  const saveFeedback = async (rating: string, comment: string) => {
-    const actId = selectedEvent.activityId;
-    if (!actId) return;
-    dispatch({ type: "SAVE_FEEDBACK" });
-    try {
-      await fetch("/api/run-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId: actId, rating, comment: comment || undefined }),
-      });
-      dispatch({ type: "FEEDBACK_SAVED", rating, comment });
-    } catch {
-      dispatch({ type: "CANCEL" });
     }
   };
 
@@ -512,312 +306,64 @@ export function EventModal({
           </div>
         )}
 
-        {selectedEvent.description && (
+        {selectedEvent.description && selectedEvent.type === "planned" && (
           <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr}>
-            {selectedEvent.type === "completed" ? (
-              selectedEvent.zoneTimes ? (
-                <HRMiniChart
-                  z1={selectedEvent.zoneTimes.z1}
-                  z2={selectedEvent.zoneTimes.z2}
-                  z3={selectedEvent.zoneTimes.z3}
-                  z4={selectedEvent.zoneTimes.z4}
-                  z5={selectedEvent.zoneTimes.z5}
-                  maxHeight={48}
-                  hrData={selectedEvent.streamData?.heartrate}
-                  hrZones={hrZones}
-                />
-              ) : isLoadingStreamData ? (
-                <div className="skeleton h-12 w-full rounded" />
-              ) : null
-            ) : (
-              <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
-            )}
+            <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
           </WorkoutCard>
         )}
 
         {selectedEvent.type === "completed" && (
-          <div className="space-y-4">
-            {/* Stats card */}
-            <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-              {/* Primary stats — top strip */}
-              <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                {selectedEvent.distance && (
-                  <div>
-                    <div className="text-[#b8a5d4] text-sm">Distance</div>
-                    <div className="font-semibold text-white">
-                      {(selectedEvent.distance / 1000).toFixed(2)} km
-                    </div>
+          <>
+            {/* Primary stats strip */}
+            <div className="bg-[#2a1f3d] rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
+              {selectedEvent.distance && (
+                <div>
+                  <div className="text-[#b8a5d4] text-sm">Distance</div>
+                  <div className="font-semibold text-white">
+                    {(selectedEvent.distance / 1000).toFixed(2)} km
                   </div>
-                )}
-                {selectedEvent.duration && (
-                  <div>
-                    <div className="text-[#b8a5d4] text-sm">Duration</div>
-                    <div className="font-semibold text-white">
-                      {Math.floor(selectedEvent.duration / 60)} min
-                    </div>
+                </div>
+              )}
+              {selectedEvent.duration && (
+                <div>
+                  <div className="text-[#b8a5d4] text-sm">Duration</div>
+                  <div className="font-semibold text-white">
+                    {Math.floor(selectedEvent.duration / 60)} min
                   </div>
-                )}
-                {selectedEvent.pace && (
-                  <div>
-                    <div className="text-[#b8a5d4] text-sm">Pace</div>
-                    <div className="font-semibold text-white">
-                      {formatPace(selectedEvent.pace)} /km
-                    </div>
+                </div>
+              )}
+              {selectedEvent.pace && (
+                <div>
+                  <div className="text-[#b8a5d4] text-sm">Pace</div>
+                  <div className="font-semibold text-white">
+                    {formatPace(selectedEvent.pace)} /km
                   </div>
-                )}
-                {selectedEvent.avgHr && (
-                  <div>
-                    <div className="text-[#b8a5d4] text-sm">Avg HR</div>
-                    <div className="font-semibold text-white">
-                      {selectedEvent.avgHr} bpm
-                    </div>
+                </div>
+              )}
+              {selectedEvent.avgHr && (
+                <div>
+                  <div className="text-[#b8a5d4] text-sm">Avg HR</div>
+                  <div className="font-semibold text-white">
+                    {selectedEvent.avgHr} bpm
                   </div>
-                )}
-              </div>
-
-              {/* Secondary stats — bottom row */}
-              {(() => {
-                const items: React.ReactNode[] = [];
-                if (selectedEvent.calories) items.push(<span key="cal">{selectedEvent.calories} kcal</span>);
-                if (selectedEvent.cadence) items.push(<span key="cad">{Math.round(selectedEvent.cadence)} spm</span>);
-                if (selectedEvent.maxHr) items.push(<span key="mhr">Max HR {selectedEvent.maxHr} bpm</span>);
-                if (selectedEvent.load) items.push(<StatInfo key="load" label={`Load ${Math.round(selectedEvent.load)}`} tip="Training load estimates how hard an activity was relative to your capabilities. It is calculated from heart rate and pace. 1 hour at threshold is roughly 100 load." />);
-                if (selectedEvent.intensity !== undefined) items.push(<StatInfo key="int" label={`Intensity ${Math.round(selectedEvent.intensity)}%`} tip="Intensity measures how hard the activity was compared to your threshold. Over 100% for an hour or longer suggests your threshold setting is too low." />);
-                if (items.length === 0) return null;
-                return (
-                  <div className="px-4 py-2 flex flex-wrap items-center gap-x-1 text-sm text-[#b8a5d4]">
-                    {items.flatMap((item, i) => i > 0 ? [<span key={`sep-${i}`}>·</span>, item] : [item])}
-                  </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
 
-            {/* Report Card */}
-            <RunReportCard event={selectedEvent} isLoadingStreamData={isLoadingStreamData} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} />
-
-            {/* Run Analysis */}
-            {selectedEvent.activityId && (
-              <RunAnalysis event={selectedEvent} runBGContext={selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined} bgModel={bgModel} isLoadingStreamData={isLoadingStreamData} />
-            )}
-
-            {/* Feedback */}
-            {selectedEvent.activityId && (() => {
-              const rating = state.savedRating ?? selectedEvent.rating;
-              const comment = state.savedComment ?? selectedEvent.feedbackComment;
-              const hasRating = !!rating;
-              return (
-                <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
-                  <div className="text-sm text-[#b8a5d4] mb-2">Feedback</div>
-                  {hasRating ? (
-                    <div className="flex items-center gap-2 text-sm text-white">
-                      <span className="text-lg">{rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
-                      {comment && <span className="text-[#b8a5d4]">{comment}</span>}
-                    </div>
-                  ) : (
-                    <FeedbackForm
-                      key={selectedEvent.id}
-                      onSave={(r, c) => { void saveFeedback(r, c); }}
-                      isSaving={editMode.kind === "saving-feedback"}
-                    />
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Carbs ingested */}
-            <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
-                {editMode.kind === "editing-carbs" || editMode.kind === "saving-carbs" ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      value={carbsValue}
-                      onChange={(e) => { dispatch({ type: "SET_CARBS_VALUE", value: e.target.value }); }}
-                      className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void saveCarbs();
-                        if (e.key === "Escape") dispatch({ type: "CANCEL" });
-                      }}
-                    />
-                    <span className="text-sm text-[#b8a5d4]">g</span>
-                    <button
-                      onClick={() => { void saveCarbs(); }}
-                      disabled={editMode.kind === "saving-carbs"}
-                      className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
-                    >
-                      {editMode.kind === "saving-carbs" ? "..." : "Save"}
-                    </button>
-                    <button
-                      onClick={() => { dispatch({ type: "CANCEL" }); }}
-                      disabled={editMode.kind === "saving-carbs"}
-                      className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      const current = state.savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? 0;
-                      dispatch({ type: "START_EDIT_CARBS", value: String(current) });
-                    }}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
-                  >
-                    {state.savedCarbs ?? selectedEvent.carbsIngested ?? selectedEvent.totalCarbs ?? "—"}g
-                    {selectedEvent.carbsIngested == null && state.savedCarbs == null && (
-                      <span className="text-xs font-normal text-[#b8a5d4]">(planned)</span>
-                    )}
-                    <Pencil className="w-3 h-3 text-[#b8a5d4]" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Pre-run carbs */}
-            {selectedEvent.activityId && (
-              <div className="border-t border-[#3d2b5a] pt-3 mt-4 px-0">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-[#b8a5d4]">Pre-run carbs</div>
-                  {editMode.kind === "editing-prerun" || editMode.kind === "saving-prerun" ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        value={editMode.kind === "editing-prerun" ? editMode.preRunG : (editMode as { preRunG: string }).preRunG}
-                        onChange={(e) => { dispatch({ type: "SET_PRERUN_G", value: e.target.value }); }}
-                        placeholder="g"
-                        className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") void savePreRunCarbs();
-                          if (e.key === "Escape") dispatch({ type: "CANCEL" });
-                        }}
-                      />
-                      <span className="text-sm text-[#b8a5d4]">g</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editMode.kind === "editing-prerun" ? editMode.preRunMin : (editMode as { preRunMin: string }).preRunMin}
-                        onChange={(e) => { dispatch({ type: "SET_PRERUN_MIN", value: e.target.value }); }}
-                        placeholder="min"
-                        className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") void savePreRunCarbs();
-                          if (e.key === "Escape") dispatch({ type: "CANCEL" });
-                        }}
-                      />
-                      <span className="text-sm text-[#b8a5d4]">min before</span>
-                      <button
-                        onClick={() => { void savePreRunCarbs(); }}
-                        disabled={editMode.kind === "saving-prerun"}
-                        className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
-                      >
-                        {editMode.kind === "saving-prerun" ? "..." : "Save"}
-                      </button>
-                      <button
-                        onClick={() => { dispatch({ type: "CANCEL" }); }}
-                        disabled={editMode.kind === "saving-prerun"}
-                        className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG ?? dbPreRunForThisEvent?.g;
-                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin ?? dbPreRunForThisEvent?.min;
-                        dispatch({ type: "START_EDIT_PRERUN", g: g ? String(g) : "", min: min ? String(min) : "" });
-                      }}
-                      className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
-                    >
-                      {(() => {
-                        const g = state.savedPreRunCarbs?.g ?? selectedEvent.preRunCarbsG ?? dbPreRunForThisEvent?.g;
-                        const min = state.savedPreRunCarbs?.min ?? selectedEvent.preRunCarbsMin ?? dbPreRunForThisEvent?.min;
-                        if (g && min) return `${g}g, ${min} min before`;
-                        if (g) return `${g}g`;
-                        return "—";
-                      })()}
-                      <Pencil className="w-3 h-3 text-[#b8a5d4]" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* HR Zones */}
-            {selectedEvent.zoneTimes ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
-                  Heart Rate Zones
-                </div>
-                <HRZoneBreakdown
-                  z1={selectedEvent.zoneTimes.z1}
-                  z2={selectedEvent.zoneTimes.z2}
-                  z3={selectedEvent.zoneTimes.z3}
-                  z4={selectedEvent.zoneTimes.z4}
-                  z5={selectedEvent.zoneTimes.z5}
-                />
-              </div>
-            ) : isLoadingStreamData ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">
-                  Heart Rate Zones
-                </div>
-                <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="skeleton h-5 w-full" />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Km Splits */}
-            {selectedEvent.streamData?.distance ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <KmSplitsSection streamData={selectedEvent.streamData} />
-              </div>
-            ) : isLoadingStreamData ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <KmSplitsSection streamData={{}} isLoading />
-              </div>
-            ) : null}
-
-            {/* Stream Graph */}
-            {selectedEvent.streamData &&
-            Object.keys(selectedEvent.streamData).length > 0 ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <WorkoutStreamGraph streamData={selectedEvent.streamData} />
-              </div>
-            ) : isLoadingStreamData ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="skeleton h-40 w-full" />
-              </div>
-            ) : (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="text-sm text-[#b8a5d4] italic">
-                  Detailed workout data (graphs) not available for this
-                  activity
-                </div>
-              </div>
-            )}
-
-            {/* Route Map */}
-            {selectedEvent.streamData?.latlng && selectedEvent.streamData.latlng.length > 0 ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
-                <RouteMap latlng={selectedEvent.streamData.latlng} className="h-48" />
-              </div>
-            ) : isLoadingStreamData ? (
-              <div className="border-t border-[#3d2b5a] pt-4 mt-4">
-                <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
-                <div className="skeleton h-48 w-full rounded-lg" />
-              </div>
-            ) : null}
-          </div>
+            {/* Tabbed widget system */}
+            <WidgetTabs
+              widgetProps={{
+                event: selectedEvent,
+                isLoadingStreamData,
+                runBGContext: selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined,
+                bgModel,
+                paceTable,
+                hrZones,
+                lthr,
+                apiKey,
+              }}
+            />
+          </>
         )}
       </div>
     </div>

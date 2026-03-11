@@ -17,7 +17,7 @@ const mockEvents: CalendarEvent[] = [
     description: "",
     type: "completed",
     category: "easy",
-    streamData: { glucose: [{ time: 0, value: 6.0 }] },
+    glucose: [{ time: 0, value: 6.0 }],
   },
   {
     id: "e2",
@@ -27,7 +27,7 @@ const mockEvents: CalendarEvent[] = [
     description: "",
     type: "completed",
     category: "long",
-    streamData: { glucose: [{ time: 0, value: 7.0 }] },
+    glucose: [{ time: 0, value: 7.0 }],
   },
   {
     id: "e3",
@@ -37,7 +37,7 @@ const mockEvents: CalendarEvent[] = [
     description: "",
     type: "completed",
     category: "interval",
-    streamData: { glucose: [{ time: 0, value: 5.5 }] },
+    glucose: [{ time: 0, value: 5.5 }],
   },
   {
     id: "e4",
@@ -47,7 +47,7 @@ const mockEvents: CalendarEvent[] = [
     description: "",
     type: "completed",
     category: "easy",
-    streamData: { glucose: [{ time: 0, value: 6.2 }] },
+    glucose: [{ time: 0, value: 6.2 }],
   },
   {
     id: "e5",
@@ -57,7 +57,7 @@ const mockEvents: CalendarEvent[] = [
     description: "",
     type: "completed",
     category: "easy",
-    streamData: { glucose: [{ time: 0, value: 5.8 }] },
+    glucose: [{ time: 0, value: 5.8 }],
   },
 ];
 
@@ -254,7 +254,7 @@ describe("BGPatternsPanel cross-run patterns", () => {
         description: "",
         type: "completed" as const,
         category: "easy" as const,
-        streamData: { glucose: [{ time: 0, value: 6.0 }] },
+        glucose: [{ time: 0, value: 6.0 }],
       },
     ];
 

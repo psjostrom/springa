@@ -12,7 +12,7 @@ import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } fr
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { formatAIError } from "@/lib/aiError";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
-import type { CachedActivity } from "@/lib/activityStreamsDb";
+import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import { nonEmpty } from "@/lib/format";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
@@ -33,19 +33,19 @@ interface RequestBody {
 }
 
 function buildRunHistory(
-  rows: CachedActivity[],
+  rows: EnrichedActivity[],
   activityMap: Map<string, IntervalsActivity>,
 ): RunHistoryEntry[] {
   return rows.map((row) => {
     const { glucose, hr, activityId, category, activityDate } = row;
 
-    const endBG = glucose.length > 0 ? glucose[glucose.length - 1].value : null;
+    const endBG = glucose?.length ? glucose[glucose.length - 1].value : null;
     const avgHRFromStream = hr.length > 0
       ? Math.round(hr.reduce((sum, point) => sum + point.value, 0) / hr.length)
       : null;
 
     let dropRate: number | null = null;
-    if (glucose.length >= 2) {
+    if (glucose && glucose.length >= 2) {
       const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
       const duration10m = durationMin / 10;
       if (duration10m > 0) {
@@ -84,7 +84,7 @@ function buildRunHistory(
       feedbackComment: nonEmpty(activity?.FeedbackComment),
     };
 
-    const startBG = glucose.length > 0 ? glucose[0].value : 0;
+    const startBG = glucose?.length ? glucose[0].value : 0;
 
     return {
       event,

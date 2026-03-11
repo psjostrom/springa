@@ -57,7 +57,8 @@ export async function GET() {
     const target = allCached[i];
 
     // Skip activities with insufficient glucose data
-    if (target.glucose.length < 12) continue; // need at least ~12 min of data
+    const glucose = target.glucose;
+    if (!glucose || glucose.length < 12) continue; // need at least ~12 min of data
 
     // Build model from all OTHER activities (leave-one-out)
     const trainingSet = allCached.filter((_, j) => j !== i);
@@ -67,7 +68,7 @@ export async function GET() {
     if (model.activitiesAnalyzed === 0) continue;
 
     // Determine duration and startBG from glucose stream
-    const sorted = [...target.glucose].sort((a, b) => a.time - b.time);
+    const sorted = [...glucose].sort((a, b) => a.time - b.time);
     if (sorted.length < 2) continue;
     const durationMin = sorted[sorted.length - 1].time - sorted[0].time;
     if (durationMin < 10) continue;
@@ -86,11 +87,11 @@ export async function GET() {
     });
 
     // Validate against actual glucose
-    const validation = validateSimulation(simResult.curve, target.glucose);
+    const validation = validateSimulation(simResult.curve, glucose);
     if (!validation) continue;
 
     // Actual end BG and hypo detection
-    const sortedGlucose = [...target.glucose].sort((a, b) => a.time - b.time);
+    const sortedGlucose = [...glucose].sort((a, b) => a.time - b.time);
     const actualEndBG = sortedGlucose[sortedGlucose.length - 1].value;
     const actualHypo = sortedGlucose.some((p) => p.value < 3.9);
 
@@ -106,7 +107,7 @@ export async function GET() {
       endBandWidth: Math.round((simResult.curve[simResult.curve.length - 1].bgHigh - simResult.curve[simResult.curve.length - 1].bgLow) * 100) / 100,
       actualWithinBand: (() => {
         // Check what % of actual glucose points fall within the sim confidence bands
-        const sortedActual = [...target.glucose].sort((a, b) => a.time - b.time);
+        const sortedActual = [...glucose].sort((a, b) => a.time - b.time);
         let within = 0;
         let compared = 0;
         for (const ap of sortedActual) {

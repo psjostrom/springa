@@ -14,7 +14,7 @@ import {
 } from "../bgModel";
 import { extractObservations } from "../bgObservations";
 import { linearRegression } from "../math";
-import type { CachedActivity } from "../activityStreamsDb";
+import type { EnrichedActivity } from "../activityStreamsDb";
 import type { DataPoint } from "../types";
 
 // Helper: create a BGObservation for unit tests
@@ -137,7 +137,7 @@ describe("suggestFuelAdjustments", () => {
     activityId: string,
     fuelRate: number,
     glucoseFn: (i: number) => number,
-  ): CachedActivity {
+  ): EnrichedActivity {
     return {
       activityId,
       category: "easy",
@@ -604,14 +604,14 @@ describe("calculateTargetFuelRates", () => {
 });
 
 describe("buildBGModelFromCached", () => {
-  // Helper: build CachedActivity with minute-indexed data
+  // Helper: build EnrichedActivity with minute-indexed data
   function makeCached(
     activityId: string,
     category: "easy" | "long" | "interval",
     fuelRate: number | null,
     minutes: number,
     glucoseFn: (i: number) => number,
-  ): CachedActivity {
+  ): EnrichedActivity {
     return {
       activityId,
       category,
@@ -652,7 +652,7 @@ describe("buildBGModelFromCached", () => {
   });
 
   it("skips activities with too few HR points", () => {
-    const cached: CachedActivity = {
+    const cached: EnrichedActivity = {
       activityId: "short",
       category: "easy",
       fuelRate: 48,

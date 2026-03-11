@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { buildBGModelFromCached } from "@/lib/bgModel";
-import { BG_MODEL_MAX_ACTIVITIES } from "@/lib/activityStreamsCache";
 import type { CalendarEvent } from "@/lib/types";
 import type { XdripReading } from "@/lib/xdrip";
 import { buildRunBGContexts } from "@/lib/runBGContext";
@@ -15,9 +14,8 @@ export function useRunData(
   sharedEvents: CalendarEvent[],
   xdripReadings?: XdripReading[],
 ) {
-  // 1. Filter, sort, slice completed runs — memoized so downstream
-  //    values (bgActivityNames, runBGContexts) don't recreate on every
-  //    BG poll cycle when sharedEvents hasn't actually changed.
+  // 1. Filter and sort completed runs — cache all of them.
+  //    BG model and pace calibration apply their own time windows downstream.
   const completedRuns = useMemo(
     () =>
       sharedEvents
@@ -28,8 +26,7 @@ export function useRunData(
             e.category !== "other" &&
             e.category !== "race",
         )
-        .sort((a, b) => b.date.getTime() - a.date.getTime())
-        .slice(0, BG_MODEL_MAX_ACTIVITIES),
+        .sort((a, b) => b.date.getTime() - a.date.getTime()),
     [sharedEvents],
   );
 
@@ -38,10 +35,7 @@ export function useRunData(
 
   // 2.5. Reconstruct glucose from xDrip readings
   const glucoseEnriched = useMemo(
-    () =>
-      xdripReadings && xdripReadings.length > 0
-        ? enrichWithGlucose(cached, xdripReadings)
-        : cached,
+    () => enrichWithGlucose(cached, xdripReadings ?? []),
     [cached, xdripReadings],
   );
 

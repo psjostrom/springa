@@ -38,7 +38,7 @@ describe("scoreBG", () => {
 
   it("returns null when only one glucose point", () => {
     const event = makeEvent({
-      streamData: { glucose: [{ time: 0, value: 8.0 }] },
+      glucose: [{ time: 0, value: 8.0 }],
     });
     expect(scoreBG(event)).toBeNull();
   });
@@ -46,7 +46,7 @@ describe("scoreBG", () => {
   it("rates good when BG is stable", () => {
     // 10.0 → 9.5 over 30 min (6 points, 5 min apart) = -0.5 / 3 units of 10m = -0.167/10m
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([10.0, 9.9, 9.8, 9.7, 9.6, 9.5]) },
+      glucose: glucoseStream([10.0, 9.9, 9.8, 9.7, 9.6, 9.5]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("good");
@@ -57,7 +57,7 @@ describe("scoreBG", () => {
 
   it("rates good when BG rises", () => {
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([8.0, 9.0, 10.0]) },
+      glucose: glucoseStream([8.0, 9.0, 10.0]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("good");
@@ -68,7 +68,7 @@ describe("scoreBG", () => {
     // Drop 3.0 over 20 min (5 points, 5 min apart = 20 min = 2 units of 10m)
     // rate = -3.0 / 2 = -1.5/10m
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([10.0, 9.25, 8.5, 7.75, 7.0]) },
+      glucose: glucoseStream([10.0, 9.25, 8.5, 7.75, 7.0]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("ok");
@@ -78,7 +78,7 @@ describe("scoreBG", () => {
   it("rates bad when drop rate exceeds -2.0", () => {
     // Drop 5.0 over 20 min = -2.5/10m
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([12.0, 10.75, 9.5, 8.25, 7.0]) },
+      glucose: glucoseStream([12.0, 10.75, 9.5, 8.25, 7.0]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("bad");
@@ -87,7 +87,7 @@ describe("scoreBG", () => {
   it("rates bad on hypo even with mild drop rate", () => {
     // Barely any drop but hits 3.8
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([4.0, 3.9, 3.8, 3.9, 4.0]) },
+      glucose: glucoseStream([4.0, 3.9, 3.8, 3.9, 4.0]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("bad");
@@ -98,7 +98,7 @@ describe("scoreBG", () => {
   it("detects hypo at exactly 3.9 as false", () => {
     // 3.9 is NOT hypo (< 3.9 is hypo)
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([5.0, 4.5, 4.0, 3.9, 4.0]) },
+      glucose: glucoseStream([5.0, 4.5, 4.0, 3.9, 4.0]),
     });
     const result = scoreBG(event)!;
     expect(result.hypo).toBe(false);
@@ -107,12 +107,10 @@ describe("scoreBG", () => {
   it("calculates dropRate correctly with non-standard intervals", () => {
     // 2 points, 10 min apart, drop of 2.0 → -2.0/10m
     const event = makeEvent({
-      streamData: {
-        glucose: [
-          { time: 0, value: 10.0 },
-          { time: 10, value: 8.0 },
-        ],
-      },
+      glucose: [
+        { time: 0, value: 10.0 },
+        { time: 10, value: 8.0 },
+      ],
     });
     const result = scoreBG(event)!;
     expect(result.dropRate).toBeCloseTo(-2.0);
@@ -121,12 +119,10 @@ describe("scoreBG", () => {
 
   it("handles zero-duration edge case", () => {
     const event = makeEvent({
-      streamData: {
-        glucose: [
-          { time: 0, value: 10.0 },
-          { time: 0, value: 9.0 },
-        ],
-      },
+      glucose: [
+        { time: 0, value: 10.0 },
+        { time: 0, value: 9.0 },
+      ],
     });
     const result = scoreBG(event)!;
     expect(result.dropRate).toBe(0);
@@ -335,7 +331,7 @@ describe("buildReportCard", () => {
 
   it("populates all three scores when data is available", () => {
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
+      glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]),
       zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
       totalCarbs: 60,
       carbsIngested: 55,
@@ -358,7 +354,7 @@ describe("buildReportCard", () => {
 
   it("populates entryTrend and recovery when RunBGContext provided", () => {
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
+      glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]),
       zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
       totalCarbs: 60,
       carbsIngested: 55,
@@ -380,7 +376,7 @@ describe("buildReportCard", () => {
 
   it("entryTrend and recovery are null when no RunBGContext", () => {
     const event = makeEvent({
-      streamData: { glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]) },
+      glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]),
     });
     const report = buildReportCard(event);
     expect(report.entryTrend).toBeNull();

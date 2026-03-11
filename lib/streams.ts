@@ -5,7 +5,6 @@ import type { IntervalsStream, DataPoint } from "./types";
 export interface RawStreams {
   time: number[];
   heartrate: number[];
-  glucose: number[];
   velocity: number[];
   cadence: number[];
   altitude: number[];
@@ -15,14 +14,13 @@ export interface RawStreams {
 /** Extract raw data arrays from IntervalsStream[]. Single place for stream type mapping. */
 export function extractRawStreams(streams: IntervalsStream[]): RawStreams {
   const raw: RawStreams = {
-    time: [], heartrate: [], glucose: [],
+    time: [], heartrate: [],
     velocity: [], cadence: [], altitude: [],
     distance: [],
   };
   for (const s of streams) {
     if (s.type === "time") raw.time = s.data;
     if (s.type === "heartrate") raw.heartrate = s.data;
-    if (["bloodglucose", "glucose", "ga_smooth"].includes(s.type)) raw.glucose = s.data;
     if (s.type === "velocity_smooth") raw.velocity = s.data;
     if (s.type === "cadence") raw.cadence = s.data;
     if (s.type === "altitude") raw.altitude = s.data;

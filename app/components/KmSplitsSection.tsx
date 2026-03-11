@@ -49,7 +49,7 @@ export function KmSplitsSection({
 }: KmSplitsSectionProps) {
   if (isLoading) {
     return (
-      <div>
+      <div className="px-3 py-2.5">
         <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Splits</div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
@@ -87,7 +87,7 @@ export function KmSplitsSection({
   const gridCols = "28px 48px 1fr 40px 40px";
 
   return (
-    <div>
+    <div className="px-4 py-3">
       <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Splits</div>
 
       <div

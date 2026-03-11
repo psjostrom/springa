@@ -3,7 +3,7 @@ import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
-import type { CachedActivity } from "@/lib/activityStreamsDb";
+import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { WellnessEntry } from "@/lib/intervalsApi";
 import type { XdripReading } from "@/lib/xdrip";
@@ -51,6 +51,16 @@ export const calendarReloadAtom = atom(null, (get) => {
   if (apiKey) void mutate(["calendar-data", apiKey]);
 });
 
+/** Optimistically patch a single CalendarEvent by id after a widget save. */
+export const patchCalendarEventAtom = atom(
+  null,
+  (_get, set, { id, patch }: { id: string; patch: Partial<CalendarEvent> }) => {
+    set(calendarEventsAtom, (prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    );
+  },
+);
+
 // ─── Current BG (xDrip) ─────────────────────────────────────
 
 export const currentBGAtom = atom<number | null>(null);
@@ -69,7 +79,7 @@ export const bgModelProgressAtom = atom<{ done: number; total: number }>({
 });
 export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
 export const runBGContextsAtom = atom<Map<string, RunBGContext>>(new Map());
-export const cachedActivitiesAtom = atom<CachedActivity[]>([]);
+export const cachedActivitiesAtom = atom<EnrichedActivity[]>([]);
 
 // ─── Insulin Context ─────────────────────────────────────────
 

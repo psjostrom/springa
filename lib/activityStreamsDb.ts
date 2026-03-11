@@ -1,14 +1,14 @@
 import { db } from "./db";
-import type { WorkoutCategory } from "./types";
+import type { WorkoutCategory, DataPoint } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import { getWorkoutCategory } from "./constants";
 
+/** What's stored in the activity_streams DB table — no glucose. */
 export interface CachedActivity {
   activityId: string;
   name?: string;
   category: WorkoutCategory;
   fuelRate: number | null;
-  glucose: { time: number; value: number }[];
   hr: { time: number; value: number }[];
   runBGContext?: RunBGContext | null;
   pace?: { time: number; value: number }[];
@@ -19,6 +19,9 @@ export interface CachedActivity {
   activityDate?: string;
   runStartMs?: number;
 }
+
+/** CachedActivity after glucose enrichment from xDrip readings. */
+export type EnrichedActivity = CachedActivity & { glucose?: DataPoint[] };
 
 export async function getActivityStreams(
   email: string,
@@ -48,15 +51,14 @@ export async function getActivityStreams(
       name,
       category: (cat === "other" ? "easy" : cat) as CachedActivity["category"],
       fuelRate: (row.fuel_rate as number | null) ?? null,
-      glucose: [],
       hr: JSON.parse(row.hr as string) as CachedActivity["hr"],
       runBGContext: row.run_bg_context ? (JSON.parse(row.run_bg_context as string) as RunBGContext) : null,
       pace: row.pace ? (JSON.parse(row.pace as string) as CachedActivity["pace"]) : [],
       cadence: row.cadence ? (JSON.parse(row.cadence as string) as CachedActivity["cadence"]) : [],
       altitude: row.altitude ? (JSON.parse(row.altitude as string) as CachedActivity["altitude"]) : [],
       activityDate: (row.activity_date as string) || undefined,
-      distance: row.distance ? JSON.parse(row.distance as string) : undefined,
-      rawTime: row.raw_time ? JSON.parse(row.raw_time as string) : undefined,
+      distance: row.distance ? (JSON.parse(row.distance as string) as CachedActivity["distance"]) : undefined,
+      rawTime: row.raw_time ? (JSON.parse(row.raw_time as string) as CachedActivity["rawTime"]) : undefined,
       runStartMs: row.run_start_ms as number | undefined,
     };
   });

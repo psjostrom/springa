@@ -1,5 +1,5 @@
 import type { WorkoutCategory, DataPoint } from "./types";
-import type { CachedActivity } from "./activityStreamsDb";
+import type { EnrichedActivity } from "./activityStreamsDb";
 import { linearRegression } from "./math";
 import { extractObservations, MIN_ALIGNED_POINTS } from "./bgObservations";
 
@@ -304,13 +304,13 @@ function getConfidence(count: number): "low" | "medium" | "high" {
 }
 
 /** Build BG response model from cached aligned data. */
-export function buildBGModelFromCached(cached: CachedActivity[]): BGResponseModel {
+export function buildBGModelFromCached(cached: EnrichedActivity[]): BGResponseModel {
   const allObservations: BGObservation[] = [];
   let analyzed = 0;
 
   for (const act of cached) {
     const { hr, glucose, activityId, fuelRate, category } = act;
-    if (hr.length < MIN_ALIGNED_POINTS || glucose.length === 0) continue;
+    if (hr.length < MIN_ALIGNED_POINTS || !glucose?.length) continue;
 
     const startBG = glucose[0].value;
     const entrySlope = act.runBGContext?.pre?.entrySlope30m

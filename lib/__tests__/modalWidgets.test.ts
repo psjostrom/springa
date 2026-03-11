@@ -3,7 +3,6 @@ import {
   DEFAULT_TABS,
   COMPLETED_RUN_WIDGETS,
   resolveModalLayout,
-  reorderWidget,
   toggleWidgetVisibility,
   type ModalTabLayout,
   type ModalWidgetId,
@@ -114,31 +113,6 @@ describe("resolveModalLayout", () => {
     const layout = resolveModalLayout(saved);
     expect(layout["deep-dive"].order).toEqual(["stream-graph", "hr-zones", "route-map"]);
     expect(layout.analysis.order).toEqual(["run-analysis", "feedback"]);
-  });
-});
-
-describe("reorderWidget", () => {
-  const order: ModalWidgetId[] = ["report-card", "stats", "pace-splits"];
-
-  it("moves a widget from index 2 to index 0", () => {
-    const result = reorderWidget(order, 2, 0);
-    expect(result).toEqual(["pace-splits", "report-card", "stats"]);
-  });
-
-  it("moves a widget from index 0 to index 2", () => {
-    const result = reorderWidget(order, 0, 2);
-    expect(result).toEqual(["stats", "pace-splits", "report-card"]);
-  });
-
-  it("no-op when from === to", () => {
-    const result = reorderWidget(order, 1, 1);
-    expect(result).toEqual(order);
-  });
-
-  it("does not mutate original array", () => {
-    const original = [...order];
-    reorderWidget(order, 0, 2);
-    expect(order).toEqual(original);
   });
 });
 

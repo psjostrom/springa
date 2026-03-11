@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAtomValue } from "jotai";
+import { readingsAtom } from "../atoms";
 import { useModalURL } from "../hooks/useModalURL";
 import { useActivityStream } from "../hooks/useActivityStream";
+import { mergeStreamData } from "@/lib/enrichEvents";
 import {
   format,
   startOfMonth,
@@ -87,20 +90,13 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   // Lazy-load stream data via SWR when modal opens for a completed workout
   const selectedActivityId = selectedEvent?.type === "completed" ? selectedEvent.activityId : null;
   const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null, apiKey);
+  const xdripReadings = useAtomValue(readingsAtom);
 
-  // Combine event + stream data for modal (join at render time, not merged into state)
-  // Merge streamData to preserve cached glucose (from xDrip) while adding fresh HR/pace/etc
-  const enrichedSelectedEvent = selectedEvent && streamData
-    ? {
-        ...selectedEvent,
-        streamData: {
-          ...selectedEvent.streamData,  // preserve cached glucose from xDrip
-          ...streamData.streamData,      // overlay fresh HR, pace, cadence, altitude
-        },
-        avgHr: streamData.avgHr ?? selectedEvent.avgHr,
-        maxHr: streamData.maxHr ?? selectedEvent.maxHr,
-      }
-    : selectedEvent;
+  // Combine event + fresh stream data for modal (join at render time, not merged into state)
+  const enrichedSelectedEvent = useMemo(
+    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, xdripReadings) : selectedEvent,
+    [selectedEvent, streamData, xdripReadings],
+  );
 
   // Generate calendar grid
   const calendarDays = (() => {

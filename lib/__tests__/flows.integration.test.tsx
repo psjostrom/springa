@@ -145,7 +145,8 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
     expect(screen.getByText("Duration")).toBeInTheDocument();
     expect(screen.getByText("45 min")).toBeInTheDocument();
 
-    // 7. Wait for stream data lazy-load -> HR zone breakdown
+    // 7. Click Deep Dive tab, then wait for stream data lazy-load -> HR zone breakdown
+    await user.click(screen.getByText("Deep Dive"));
     await waitFor(
       () => {
         expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();

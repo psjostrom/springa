@@ -231,8 +231,8 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
   }
 
   // Glucose curve summary from stream data
-  if (event.streamData?.glucose && event.streamData.glucose.length >= 2) {
-    const g = event.streamData.glucose;
+  if (event.glucose && event.glucose.length >= 2) {
+    const g = event.glucose;
     const startVal = g[0].value;
     const endVal = g[g.length - 1].value;
     const minVal = Math.min(...g.map((p) => p.value));
