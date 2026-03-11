@@ -29,8 +29,8 @@ ts-debug.log*
 # vercel
 .vercel
 
-# private project context
-CLAUDE.md
+# private project context (personal/medical data)
+.claude.local.md
 
 # typescript
 tsconfig.tsbuildinfo
