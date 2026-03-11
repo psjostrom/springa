@@ -9,7 +9,7 @@ import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
   | { kind: "idle" }
-  | { kind: "editing"; value: string }
+  | { kind: "editing"; value: string; error?: string }
   | { kind: "saving"; value: string };
 
 /** Carbs ingested widget with inline edit. */
@@ -33,7 +33,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
       setEditState({ kind: "idle" });
     } catch (err) {
       console.error("Failed to update carbs:", err);
-      setEditState({ kind: "editing", value: editState.value });
+      setEditState({ kind: "editing", value: editState.value, error: "Save failed" });
     }
   };
 
@@ -42,7 +42,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
       <div className="flex items-center justify-between">
         <div className="text-sm text-[#b8a5d4]">Carbs ingested</div>
         {editState.kind === "editing" || editState.kind === "saving" ? (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
               min="0"
@@ -70,6 +70,9 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
             >
               ✕
             </button>
+            {editState.kind === "editing" && editState.error && (
+              <span className="text-xs text-red-400 w-full">{editState.error}</span>
+            )}
           </div>
         ) : (
           <button

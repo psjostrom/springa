@@ -46,6 +46,7 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
 /** Feedback widget: shows saved rating or a form to submit one. */
 export function FeedbackWidget({ event }: WidgetProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const patchEvent = useSetAtom(patchCalendarEventAtom);
 
   if (!event.activityId) return null;
@@ -54,6 +55,7 @@ export function FeedbackWidget({ event }: WidgetProps) {
 
   const saveFeedback = async (r: string, c: string) => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch("/api/run-feedback", {
         method: "POST",
@@ -64,6 +66,7 @@ export function FeedbackWidget({ event }: WidgetProps) {
       patchEvent({ id: event.id, patch: { rating: r, feedbackComment: c || null } });
     } catch (err) {
       console.error("Failed to save feedback:", err);
+      setSaveError("Save failed");
     } finally {
       setIsSaving(false);
     }
@@ -78,11 +81,14 @@ export function FeedbackWidget({ event }: WidgetProps) {
           {event.feedbackComment && <span className="text-[#b8a5d4]">{event.feedbackComment}</span>}
         </div>
       ) : (
-        <FeedbackForm
-          key={event.id}
-          onSave={(r, c) => { void saveFeedback(r, c); }}
-          isSaving={isSaving}
-        />
+        <>
+          <FeedbackForm
+            key={event.id}
+            onSave={(r, c) => { void saveFeedback(r, c); }}
+            isSaving={isSaving}
+          />
+          {saveError && <div className="text-xs text-red-400 mt-1">{saveError}</div>}
+        </>
       )}
     </div>
   );

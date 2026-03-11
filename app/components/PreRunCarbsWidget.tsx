@@ -9,7 +9,7 @@ import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
   | { kind: "idle" }
-  | { kind: "editing"; g: string; min: string }
+  | { kind: "editing"; g: string; min: string; error?: string }
   | { kind: "saving"; g: string; min: string };
 
 /** Pre-run carbs widget with two-field inline edit (grams + minutes before). */
@@ -60,7 +60,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
       setEditState({ kind: "idle" });
     } catch (err) {
       console.error("Failed to update pre-run carbs:", err);
-      setEditState({ kind: "editing", g: editState.g, min: editState.min });
+      setEditState({ kind: "editing", g: editState.g, min: editState.min, error: "Save failed" });
     }
   };
 
@@ -117,6 +117,9 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
             >
               ✕
             </button>
+            {editState.kind === "editing" && editState.error && (
+              <span className="text-xs text-red-400 w-full">{editState.error}</span>
+            )}
           </div>
         ) : (
           <button
