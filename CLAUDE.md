@@ -6,6 +6,7 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 
 - **Mobile preview:** Push main to the `dev` branch with `git push origin main:dev`. Vercel deploys it to a fixed preview URL. Google OAuth is pre-configured for this URL. No need to create throwaway branches for testing.
 - **Test locally first.** Don't suggest pushing to dev for testing when localhost is available. Dev deploys are for mobile/OAuth testing that can't run locally.
+- **Worktree directory:** `../Springa-worktrees/<branch>/` (sibling to repo, NOT inside it). Never create worktrees inside the project directory — tools (ESLint, Vitest) will pick up duplicate files and break.
 
 ## Data Integrity
 
