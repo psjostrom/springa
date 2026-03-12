@@ -160,14 +160,6 @@ describe("scoreHRZone", () => {
     expect(result.targetZone).toBe("Z2");
   });
 
-  it("returns null for club runs (no target zone — workout varies)", () => {
-    const event = makeEvent({
-      category: "club",
-      zoneTimes: { z1: 100, z2: 2000, z3: 500, z4: 0, z5: 0 },
-    });
-    expect(scoreHRZone(event)).toBeNull();
-  });
-
   it("returns null for interval without parseable description", () => {
     const event = makeEvent({
       category: "interval",

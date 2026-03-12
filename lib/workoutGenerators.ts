@@ -295,9 +295,9 @@ const generateClubRun = (
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run ${ctx.prefix}`,
     description,
-    external_id: `${ctx.prefix}-club-${wp.weekNum}`,
+    external_id: `${ctx.prefix}-interval-${wp.weekNum}`,
     type: "Run",
-    fuelRate: 60, // Default — intensity varies but 60g/h is a safe starting point
+    fuelRate: ctx.fuelInterval,
     excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
   };
 };

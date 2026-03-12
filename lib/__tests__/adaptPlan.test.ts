@@ -64,7 +64,6 @@ function makeBGModel(targets: TargetFuelResult[] = []): BGResponseModel {
       easy: { category: "easy", avgRate: -0.3, medianRate: -0.3, sampleCount: 20, confidence: "medium", avgFuelRate: 45, activityCount: 5 },
       long: { category: "long", avgRate: -0.6, medianRate: -0.55, sampleCount: 15, confidence: "medium", avgFuelRate: 58, activityCount: 4 },
       interval: { category: "interval", avgRate: -0.8, medianRate: -0.75, sampleCount: 10, confidence: "low", avgFuelRate: 28, activityCount: 3 },
-      club: null,
     },
     observations: [],
     activitiesAnalyzed: 12,
@@ -185,13 +184,6 @@ describe("adaptFuelRate", () => {
     expect(change).toBeNull();
   });
 
-  it("ignores club category", () => {
-    const bgModel = makeBGModel([makeTarget("easy", 50)]);
-    const { rate, change } = adaptFuelRate(60, "club", bgModel);
-
-    expect(rate).toBe(60);
-    expect(change).toBeNull();
-  });
 });
 
 describe("shouldSwapToEasy", () => {
@@ -271,7 +263,7 @@ describe("reconstructExternalId", () => {
   });
 
   it("parses club run by keyword", () => {
-    expect(reconstructExternalId("W05 Club Run eco16", "eco16")).toBe("eco16-club-5");
+    expect(reconstructExternalId("W05 Club Run eco16", "eco16")).toBe("eco16-interval-5");
   });
 
   it("handles legacy day-based names", () => {

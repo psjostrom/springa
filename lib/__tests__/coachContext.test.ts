@@ -36,7 +36,7 @@ function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
 
 function makeBGModel(overrides: Partial<BGResponseModel> = {}): BGResponseModel {
   return {
-    categories: { easy: null, long: null, interval: null, club: null },
+    categories: { easy: null, long: null, interval: null },
     observations: [],
     activitiesAnalyzed: 0,
     bgByStartLevel: [],
@@ -127,7 +127,6 @@ describe("buildSystemPrompt", () => {
         },
         long: null,
         interval: null,
-        club: null,
       },
     });
 

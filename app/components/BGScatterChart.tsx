@@ -17,27 +17,24 @@ interface BGScatterChartProps {
   model: BGResponseModel;
 }
 
-const CATEGORY_ORDER: WorkoutCategory[] = ["easy", "long", "interval", "club"];
+const CATEGORY_ORDER: WorkoutCategory[] = ["easy", "long", "interval"];
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   easy: "#06b6d4",
   long: "#fbbf24",
   interval: "#fb923c",
-  club: "#60a5fa",
 };
 
 const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
   easy: "Easy",
   long: "Long",
   interval: "Interval",
-  club: "Club",
 };
 
 const CATEGORY_X: Record<WorkoutCategory, number> = {
   easy: 1,
   long: 2,
   interval: 3,
-  club: 4,
 };
 
 function xTickFormatter(value: number): string {

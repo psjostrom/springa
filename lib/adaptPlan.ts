@@ -5,7 +5,7 @@ import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
 import { resolveZoneBand } from "./constants";
-import { getCurrentFuelRate, DEFAULT_FUEL } from "./fuelRate";
+import { getCurrentFuelRate } from "./fuelRate";
 
 // --- Types ---
 
@@ -72,10 +72,6 @@ export function adaptFuelRate(
 ): { rate: number | null; change: AdaptationChange | null } {
   if (category === "race" || category === "other") {
     return { rate: current, change: null };
-  }
-  // Club runs use a static default — no BG model learning, but they need a fuel rate
-  if (category === "club") {
-    return { rate: current ?? DEFAULT_FUEL.club, change: null };
   }
 
   const resolved = getCurrentFuelRate(category, bgModel);
@@ -153,7 +149,7 @@ function buildEasyStructure(duration: number | undefined, lthr: number, hrZones:
  * "W05 Long (12km) eco16" → "eco16-long-5"
  * "W01 Easy eco16" → "eco16-easy-1"
  * "W03 Bonus Easy eco16" → "eco16-bonus-3"
- * "W05 Club Run eco16" → "eco16-club-5"
+ * "W05 Club Run eco16" → "eco16-interval-5"
  * "RACE DAY eco16" → "eco16-race"
  *
  * Also handles legacy day-based names for existing events:
@@ -180,7 +176,7 @@ export function reconstructExternalId(
   if (/Short.?Intervals|Hills|Long.?Intervals|Distance.?Intervals|Race.?Pace.?Intervals/i.test(name)) {
     return `${prefix}-speed-${week}`;
   }
-  if (/\bClub\b/i.test(name)) return `${prefix}-club-${week}`;
+  if (/\bClub\b/i.test(name)) return `${prefix}-interval-${week}`;
 
   // Default: easy run (includes "Easy", "Easy + Strides", shakeout, etc.)
   return `${prefix}-easy-${week}`;
