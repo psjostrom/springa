@@ -32,5 +32,8 @@ ts-debug.log*
 # private project context (personal/medical data)
 .claude.local.md
 
+# worktrees
+.worktrees/
+
 # typescript
 tsconfig.tsbuildinfo
