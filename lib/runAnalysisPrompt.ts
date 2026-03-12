@@ -177,17 +177,6 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push(parts.join(", "));
   }
 
-  // Fuel
-  if (reportCard?.fuel) {
-    const f = reportCard.fuel;
-    lines.push("");
-    lines.push("## Fuel");
-    lines.push(`Planned: ${f.planned}g`);
-    lines.push(`Actual: ${f.actual}g`);
-    lines.push(`Adherence: ${Math.round(f.pct)}%`);
-    lines.push(`Rating: ${ratingLabel(f.rating)}`);
-  }
-
   // Athlete's own feedback
   if (athleteFeedback && (athleteFeedback.rating || athleteFeedback.comment)) {
     lines.push("");

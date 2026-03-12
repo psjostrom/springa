@@ -107,7 +107,7 @@ describe("recommendClothing", () => {
       const w = weather({ feelsLike: 7 });
       expect(recommendClothing(w, "easy").upper).toEqual(["Long sleeve"]);
       expect(recommendClothing(w, "long").upper).toEqual(["Long sleeve"]);
-      expect(recommendClothing(w, "club").upper).toEqual(["Long sleeve"]);
+      // club runs are now category "interval", tested via the interval assertion above
       expect(recommendClothing(w, "interval").upper).toEqual(["T-shirt"]);
       expect(recommendClothing(w, "hills").upper).toEqual(["T-shirt"]);
     });

@@ -113,13 +113,8 @@ describe("generatePlan", () => {
   it("sets fuelRate on all events instead of embedding in descriptions", () => {
     const plan = generate();
     for (const event of plan) {
-      // Club runs have no fuelRate — intensity varies, user estimates
-      if (event.name.includes("Club Run")) {
-        expect(event.fuelRate).toBeUndefined();
-      } else {
-        expect(event.fuelRate).toBeDefined();
-        expect(event.fuelRate).toBeGreaterThan(0);
-      }
+      expect(event.fuelRate).toBeDefined();
+      expect(event.fuelRate).toBeGreaterThan(0);
       // Descriptions should NOT contain fuel text
       expect(event.description).not.toContain("FUEL PER 10:");
       expect(event.description).not.toContain("TOTAL:");

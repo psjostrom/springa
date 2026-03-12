@@ -19,14 +19,12 @@ const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
   easy: "Easy Runs",
   long: "Long Runs",
   interval: "Interval Sessions",
-  club: "Club Runs",
 };
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   easy: "#06b6d4",
   long: "#fbbf24",
   interval: "#fb923c",
-  club: "#60a5fa",
 };
 
 function rateColor(rate: number): string {

@@ -6,6 +6,7 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 
 - **Mobile preview:** Push main to the `dev` branch with `git push origin main:dev`. Vercel deploys it to a fixed preview URL. Google OAuth is pre-configured for this URL. No need to create throwaway branches for testing.
 - **Test locally first.** Don't suggest pushing to dev for testing when localhost is available. Dev deploys are for mobile/OAuth testing that can't run locally.
+- **Worktree directory:** `../Springa-worktrees/<branch>/` (sibling to repo, NOT inside it). Never create worktrees inside the project directory — tools (ESLint, Vitest) will pick up duplicate files and break.
 
 ## Data Integrity
 
@@ -297,7 +298,7 @@ The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually
 
 ## 5. Post-Run Report Card
 
-A 3-column scoring strip inside `EventModal` (between the stats card and carbs section) that rates each completed run on three axes. Scoring logic lives in `lib/reportCard.ts`, UI in `app/components/RunReportCard.tsx`.
+A scoring strip inside `EventModal` (between the stats card and carbs section) that rates each completed run on two axes. Scoring logic lives in `lib/reportCard.ts`, UI in `app/components/RunReportCard.tsx`. Additional context scores (entry trend, recovery) appear in a second row when BG context data is available.
 
 ### BG Score (from `streamData.glucose`)
 
@@ -313,16 +314,10 @@ A 3-column scoring strip inside `EventModal` (between the stats card and carbs s
 - `pctInTarget`: seconds in target / total seconds × 100
 - Rating: **good** ≥ 60% | **ok** 40–60% | **bad** < 40%
 
-### Fuel Adherence (from `carbsIngested` vs `totalCarbs`)
-
-- `pct`: actual / planned × 100
-- Rating: **good** 80–120% | **ok** 60–80% or 120–150% | **bad** outside that
-- Returns null if either value missing
-
 ### UI
 
 - Color-coded dots: green (good), yellow (ok), red (bad)
-- Skeleton shimmer while stream data loads; fuel renders immediately
+- Skeleton shimmer while stream data loads
 - Returns null if no scores and not loading
 
 ## 6. xDrip+ Companion Mode Bug
