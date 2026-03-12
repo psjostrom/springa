@@ -284,11 +284,8 @@ const generateClubRun = (
   // Skip club run on base, recovery, race test, taper, and race week
   if (wp.isRaceWeek || wp.isTaper || wp.isRecovery || wp.isRaceTest || wp.isBase) return null;
 
-  // No HR targets or fuel rate — club sessions vary week to week (easy, intervals, hills, etc.)
-  // User should estimate fuel based on expected intensity.
   const description = [
     "Trail running club session — workout varies week to week.",
-    "Estimate fuel based on expected intensity: ~60g/h if easy, ~30g/h if hard intervals.",
     "",
     "- 60m",
     "",
@@ -300,7 +297,7 @@ const generateClubRun = (
     description,
     external_id: `${ctx.prefix}-club-${wp.weekNum}`,
     type: "Run",
-    // No fuelRate — intensity varies, user should estimate based on expected workout
+    fuelRate: 60, // Default — intensity varies but 60g/h is a safe starting point
     excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
   };
 };
