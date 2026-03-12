@@ -42,7 +42,6 @@ function xTickFormatter(value: number): string {
     1: "Easy",
     2: "Long",
     3: "Interval",
-    4: "Club",
   };
   return map[value] ?? "";
 }
