@@ -21,7 +21,7 @@ function makeInput(overrides: Partial<PreRunInput> = {}): PreRunInput {
 
 function makeModel(overrides: Partial<BGResponseModel> = {}): BGResponseModel {
   return {
-    categories: { easy: null, long: null, interval: null, club: null },
+    categories: { easy: null, long: null, interval: null },
     observations: [],
     activitiesAnalyzed: 0,
     bgByStartLevel: [],

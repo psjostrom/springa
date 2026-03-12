@@ -100,13 +100,8 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
     for (const item of capturedUploadPayload as Record<string, unknown>[]) {
       expect(item.category).toBe("WORKOUT");
       expect(item.type).toBe("Run");
-      // All events except club should have carbs_per_hour set
-      // (Club runs have variable intensity — user estimates fuel)
-      const isClub = typeof item.name === "string" && item.name.includes("Club");
-      if (!isClub) {
-        expect(item.carbs_per_hour).toBeDefined();
-        expect(typeof item.carbs_per_hour).toBe("number");
-      }
+      expect(item.carbs_per_hour).toBeDefined();
+      expect(typeof item.carbs_per_hour).toBe("number");
       // Descriptions should NOT contain fuel text
       expect(item.description).not.toContain("FUEL PER 10:");
     }

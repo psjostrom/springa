@@ -159,7 +159,7 @@ export async function GET() {
         }
       : null,
     byCategory: Object.fromEntries(
-      (["easy", "long", "interval", "club"] as const).map((cat) => {
+      (["easy", "long", "interval"] as const).map((cat) => {
         const catResults = results.filter((r) => r.category === cat);
         const catRmses = catResults.map((r) => r.rmse);
         return [

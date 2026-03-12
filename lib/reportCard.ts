@@ -22,13 +22,6 @@ export interface HRZoneScore {
   expectedRepSec?: number; // intervals only: total expected rep time in seconds
 }
 
-export interface FuelScore {
-  rating: Rating;
-  actual: number;
-  planned: number;
-  pct: number; // 0-100+
-}
-
 export interface EntryTrendScore {
   rating: Rating;
   slope30m: number; // mmol/L per 10min
@@ -47,7 +40,6 @@ export interface RecoveryScore {
 export interface ReportCard {
   bg: BGScore | null;
   hrZone: HRZoneScore | null;
-  fuel: FuelScore | null;
   entryTrend: EntryTrendScore | null;
   recovery: RecoveryScore | null;
 }
@@ -120,9 +112,6 @@ export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
   const total = z1 + z2 + z3 + z4 + z5;
   if (total === 0) return null;
 
-  // Club runs have no target zone — workout varies week to week
-  if (event.category === "club") return null;
-
   // Determine target zone based on category
   const cat = event.category;
   let targetSeconds: number;
@@ -169,26 +158,6 @@ export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {
   }
 
   return { rating, targetZone, pctInTarget, zoneTimes: { z1, z2, z3, z4, z5 } };
-}
-
-export function scoreFuel(event: CalendarEvent): FuelScore | null {
-  const actual = event.carbsIngested;
-  const planned = event.totalCarbs;
-
-  if (actual == null || planned == null || planned === 0) return null;
-
-  const pct = (actual / planned) * 100;
-
-  let rating: Rating;
-  if (pct >= 80 && pct <= 120) {
-    rating = "good";
-  } else if (pct >= 60 && pct <= 150) {
-    rating = "ok";
-  } else {
-    rating = "bad";
-  }
-
-  return { rating, actual, planned, pct };
 }
 
 export function scoreEntryTrend(ctx: RunBGContext | null | undefined): EntryTrendScore | null {
@@ -244,7 +213,6 @@ export function buildReportCard(
   return {
     bg: scoreBG(event),
     hrZone: scoreHRZone(event),
-    fuel: scoreFuel(event),
     entryTrend: scoreEntryTrend(runBGContext),
     recovery: scoreRecovery(runBGContext),
   };

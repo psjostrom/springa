@@ -6,7 +6,6 @@ import {
   buildReportCard,
   type BGScore,
   type HRZoneScore,
-  type FuelScore,
   type EntryTrendScore,
   type RecoveryScore,
 } from "@/lib/reportCard";
@@ -50,20 +49,6 @@ function HRCell({ score }: { score: HRZoneScore }) {
         <Dot rating={score.rating} />
         <span className="text-white text-sm font-semibold">
           {Math.round(score.pctInTarget)}% {score.targetZone}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function FuelCell({ score }: { score: FuelScore }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="text-[#b8a5d4] text-xs">Fuel</div>
-      <div className="flex items-center gap-1.5">
-        <Dot rating={score.rating} />
-        <span className="text-white text-sm font-semibold">
-          {Math.round(score.actual)}g / {Math.round(score.planned)}g
         </span>
       </div>
     </div>
@@ -125,7 +110,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
   const hrLoading = isLoadingStreamData && !event.zoneTimes;
 
   // Nothing to show and not loading
-  if (!report.bg && !report.hrZone && !report.fuel && !report.entryTrend && !report.recovery && !streamLoading && !hrLoading) {
+  if (!report.bg && !report.hrZone && !report.entryTrend && !report.recovery && !streamLoading && !hrLoading) {
     return null;
   }
 
@@ -134,8 +119,6 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
   else if (report.bg) row1.push(<BGCell key="bg" score={report.bg} />);
   if (hrLoading && !report.hrZone) row1.push(<SkeletonCell key="hr" label="HR Zone" />);
   else if (report.hrZone) row1.push(<HRCell key="hr" score={report.hrZone} />);
-  if (report.fuel) row1.push(<FuelCell key="fuel" score={report.fuel} />);
-
   const row2: React.ReactNode[] = [];
   if (report.entryTrend) row2.push(<EntryTrendCell key="entry" score={report.entryTrend} />);
   if (report.recovery) row2.push(<RecoveryCell key="recovery" score={report.recovery} />);

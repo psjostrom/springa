@@ -37,12 +37,6 @@ function makeReportCard(overrides: Partial<ReportCard> = {}): ReportCard {
       targetZone: "Z2",
       pctInTarget: 72,
     },
-    fuel: {
-      rating: "good",
-      actual: 32,
-      planned: 35,
-      pct: 91,
-    },
     entryTrend: {
       rating: "good",
       slope30m: -0.1,
@@ -122,18 +116,6 @@ describe("buildRunAnalysisPrompt", () => {
     expect(user).toContain("Min BG: 8.5 mmol/L");
     expect(user).toContain("Drop rate: -0.57 mmol/L per 10min");
     expect(user).toContain("Hypo during run: No");
-  });
-
-  it("includes fuel data", () => {
-    const { user } = buildRunAnalysisPrompt({
-      event: makeEvent(),
-      hrZones: defaultHrZones,
-      reportCard: makeReportCard(),
-    });
-
-    expect(user).toContain("Planned: 35g");
-    expect(user).toContain("Actual: 32g");
-    expect(user).toContain("Adherence: 91%");
   });
 
   it("includes HR zone compliance", () => {
@@ -239,7 +221,6 @@ describe("buildRunAnalysisPrompt", () => {
   it("handles null report card fields gracefully", () => {
     const reportCard = makeReportCard({
       bg: null,
-      fuel: null,
       hrZone: null,
       entryTrend: null,
       recovery: null,

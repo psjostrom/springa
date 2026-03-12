@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   scoreBG,
   scoreHRZone,
-  scoreFuel,
   scoreEntryTrend,
   scoreRecovery,
   buildReportCard,
@@ -161,14 +160,6 @@ describe("scoreHRZone", () => {
     expect(result.targetZone).toBe("Z2");
   });
 
-  it("returns null for club runs (no target zone — workout varies)", () => {
-    const event = makeEvent({
-      category: "club",
-      zoneTimes: { z1: 100, z2: 2000, z3: 500, z4: 0, z5: 0 },
-    });
-    expect(scoreHRZone(event)).toBeNull();
-  });
-
   it("returns null for interval without parseable description", () => {
     const event = makeEvent({
       category: "interval",
@@ -256,69 +247,6 @@ describe("scoreHRZone", () => {
   });
 });
 
-// --- Fuel Scoring ---
-
-describe("scoreFuel", () => {
-  it("returns null when no actual carbs", () => {
-    const event = makeEvent({ totalCarbs: 60, carbsIngested: null });
-    expect(scoreFuel(event)).toBeNull();
-  });
-
-  it("returns null when no planned carbs", () => {
-    const event = makeEvent({ totalCarbs: null, carbsIngested: 45 });
-    expect(scoreFuel(event)).toBeNull();
-  });
-
-  it("returns null when planned carbs is zero", () => {
-    const event = makeEvent({ totalCarbs: 0, carbsIngested: 30 });
-    expect(scoreFuel(event)).toBeNull();
-  });
-
-  it("rates good at 100%", () => {
-    const event = makeEvent({ totalCarbs: 60, carbsIngested: 60 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("good");
-    expect(result.pct).toBeCloseTo(100);
-  });
-
-  it("rates good at 80% boundary", () => {
-    const event = makeEvent({ totalCarbs: 50, carbsIngested: 40 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("good");
-  });
-
-  it("rates good at 120% boundary", () => {
-    const event = makeEvent({ totalCarbs: 50, carbsIngested: 60 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("good");
-  });
-
-  it("rates ok at 70%", () => {
-    const event = makeEvent({ totalCarbs: 100, carbsIngested: 70 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("ok");
-  });
-
-  it("rates ok at 140%", () => {
-    const event = makeEvent({ totalCarbs: 50, carbsIngested: 70 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("ok");
-  });
-
-  it("rates bad below 60%", () => {
-    const event = makeEvent({ totalCarbs: 100, carbsIngested: 50 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("bad");
-    expect(result.pct).toBeCloseTo(50);
-  });
-
-  it("rates bad above 150%", () => {
-    const event = makeEvent({ totalCarbs: 40, carbsIngested: 65 });
-    const result = scoreFuel(event)!;
-    expect(result.rating).toBe("bad");
-  });
-});
-
 // --- buildReportCard ---
 
 describe("buildReportCard", () => {
@@ -326,20 +254,16 @@ describe("buildReportCard", () => {
     const report = buildReportCard(makeEvent({ type: "completed" }));
     expect(report.bg).toBeNull();
     expect(report.hrZone).toBeNull();
-    expect(report.fuel).toBeNull();
   });
 
-  it("populates all three scores when data is available", () => {
+  it("populates bg and hrZone when data is available", () => {
     const event = makeEvent({
       glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]),
       zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
-      totalCarbs: 60,
-      carbsIngested: 55,
     });
     const report = buildReportCard(event);
     expect(report.bg).not.toBeNull();
     expect(report.hrZone).not.toBeNull();
-    expect(report.fuel).not.toBeNull();
   });
 
   it("handles partial data gracefully", () => {
@@ -349,15 +273,12 @@ describe("buildReportCard", () => {
     const report = buildReportCard(event);
     expect(report.bg).toBeNull();
     expect(report.hrZone).not.toBeNull();
-    expect(report.fuel).toBeNull();
   });
 
   it("populates entryTrend and recovery when RunBGContext provided", () => {
     const event = makeEvent({
       glucose: glucoseStream([10, 9.8, 9.6, 9.4, 9.2]),
       zoneTimes: { z1: 60, z2: 1800, z3: 300, z4: 0, z5: 0 },
-      totalCarbs: 60,
-      carbsIngested: 55,
     });
     const ctx: RunBGContext = {
       activityId: "test-1",
@@ -369,7 +290,6 @@ describe("buildReportCard", () => {
     const report = buildReportCard(event, ctx);
     expect(report.bg).not.toBeNull();
     expect(report.hrZone).not.toBeNull();
-    expect(report.fuel).not.toBeNull();
     expect(report.entryTrend).not.toBeNull();
     expect(report.recovery).not.toBeNull();
   });
