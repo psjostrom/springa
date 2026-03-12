@@ -5,7 +5,7 @@ import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
 import { resolveZoneBand } from "./constants";
-import { getCurrentFuelRate } from "./fuelRate";
+import { getCurrentFuelRate, DEFAULT_FUEL } from "./fuelRate";
 
 // --- Types ---
 
@@ -70,8 +70,12 @@ export function adaptFuelRate(
   category: WorkoutCategory | "race" | "other",
   bgModel: BGResponseModel,
 ): { rate: number | null; change: AdaptationChange | null } {
-  if (category === "race" || category === "other" || category === "club") {
+  if (category === "race" || category === "other") {
     return { rate: current, change: null };
+  }
+  // Club runs use a static default — no BG model learning, but they need a fuel rate
+  if (category === "club") {
+    return { rate: current ?? DEFAULT_FUEL.club, change: null };
   }
 
   const resolved = getCurrentFuelRate(category, bgModel);
