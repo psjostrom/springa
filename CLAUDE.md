@@ -8,6 +8,25 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 - **Test locally first.** Don't suggest pushing to dev for testing when localhost is available. Dev deploys are for mobile/OAuth testing that can't run locally.
 - **Worktree directory:** `../Springa-worktrees/<branch>/` (sibling to repo, NOT inside it). Never create worktrees inside the project directory — tools (ESLint, Vitest) will pick up duplicate files and break.
 
+## Tech Stack
+
+Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Tailwind · Vercel
+
+**Commands:** `npm run dev` · `npm test` (`vitest run`) · `npm run lint` (`eslint`) · `npm run build`
+
+## Key Files
+
+- `lib/workoutGenerators.ts` — workout generation logic
+- `lib/bgModel.ts` — BG response model and fuel rate targets
+- `lib/fuelRate.ts` — fuel rate resolution per workout category
+- `lib/reportCard.ts` — post-run scoring (BG + HR compliance)
+- `lib/adaptPlan.ts` — AI-driven plan adaptation
+- `lib/prerun.ts` — pre-run readiness assessment and push notifications
+- `lib/constants.ts` — HR zones, pace zones, zone resolution
+- `lib/xdrip.ts` — xDrip+ data ingestion and direction recomputation
+- `lib/intervalsApi.ts` — Intervals.icu API client (fetch, upload, sync)
+- `lib/calendarPipeline.ts` — calendar event processing pipeline
+
 ## Data Integrity
 
 - **Treat every repo as if the data matters.** Springa manages diabetes and training for a T1D runner. Wrong data can cause real harm. Never treat architecture as disposable. Sloppy state management, redundant storage, and hot fixes compound.
@@ -310,7 +329,6 @@ A scoring strip inside `EventModal` (between the stats card and carbs section) t
 ### HR Zone Compliance (from `hrZones`)
 
 - Target zone by category: easy/long → Z2, interval → Z4, race/other → Z2+Z3
-- Club runs return null (no target zone — intensity varies)
 - `pctInTarget`: seconds in target / total seconds × 100
 - Rating: **good** ≥ 60% | **ok** 40–60% | **bad** < 40%
 
