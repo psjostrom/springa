@@ -11,6 +11,7 @@
 // apps (SugarRun, SugarWave) do the same computation on-device.
 
 import { MGDL_TO_MMOL } from "./constants";
+import { linearRegression } from "./math";
 
 export interface XdripReading {
   sgv: number; // mg/dL (raw from Nightscout)
@@ -139,23 +140,8 @@ export function computeTrend(
     y: r.mmol,
   }));
 
-  const n = points.length;
-  let sumX = 0,
-    sumY = 0,
-    sumXY = 0,
-    sumXX = 0;
-  for (const p of points) {
-    sumX += p.x;
-    sumY += p.y;
-    sumXY += p.x * p.y;
-    sumXX += p.x * p.x;
-  }
-
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return null;
-
+  const { slope: slopePerMin } = linearRegression(points);
   // slope is mmol/L per minute, convert to per 10 minutes
-  const slopePerMin = (n * sumXY - sumX * sumY) / denom;
   const slopePer10 = Math.round(slopePerMin * 10 * 100) / 100;
 
   // Classify — thresholds derived from SuperStable/directionFromDelta:

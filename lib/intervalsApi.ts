@@ -266,7 +266,7 @@ export async function fetchCalendarData(
 ): Promise<CalendarEvent[]> {
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
-  const cacheKey = `${oldest}:${newest}`;
+  const cacheKey = `${apiKey}:${oldest}:${newest}`;
 
   const inflight = calendarInflight.get(cacheKey);
   if (inflight) return inflight;

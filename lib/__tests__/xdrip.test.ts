@@ -187,9 +187,9 @@ describe("computeTrend", () => {
     expect(trend!.direction).toBe("Flat");
   });
 
-  it("returns null when all readings have the same timestamp", () => {
+  it("returns flat when all readings have the same timestamp", () => {
     const readings = makeReadings([8.0, 9.0, 10.0], 0); // 0 interval
     const trend = computeTrend(readings);
-    expect(trend).toBeNull();
+    expect(trend).toEqual({ slope: 0, direction: "Flat" });
   });
 });
