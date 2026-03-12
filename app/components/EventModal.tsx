@@ -139,12 +139,10 @@ export function EventModal({
 
   const handleClose = () => {
     dispatch({ type: "START_CLOSING" });
-    const isMobile = window.innerWidth < 640;
-    if (isMobile) {
-      setTimeout(onClose, 250);
-    } else {
-      onClose();
+    if (window.innerWidth >= 640) {
+      onClose(); // No animation on desktop
     }
+    // On mobile, onClose fires via onAnimationEnd on the panel
   };
 
   const saveEventEdit = async () => {
@@ -176,6 +174,7 @@ export function EventModal({
       <div
         className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
+        onAnimationEnd={(e) => { if (state.isClosing && e.animationName === "slide-down") onClose(); }}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
