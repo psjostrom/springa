@@ -33,7 +33,6 @@ export interface AdaptationInput {
   bgModel: BGResponseModel;
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
-  prefix: string;
   lthr: number;
   hrZones: number[];
 }
@@ -145,24 +144,23 @@ function buildEasyStructure(duration: number | undefined, lthr: number, hrZones:
 
 /**
  * Reconstruct external_id from event name pattern.
- * "W12 Short Intervals eco16" → "eco16-speed-12"
- * "W05 Long (12km) eco16" → "eco16-long-5"
- * "W01 Easy eco16" → "eco16-easy-1"
- * "W03 Bonus Easy eco16" → "eco16-bonus-3"
- * "W05 Club Run eco16" → "eco16-interval-5"
- * "RACE DAY eco16" → "eco16-race"
+ * "W12 Short Intervals" → "speed-12"
+ * "W05 Long (12km)" → "long-5"
+ * "W01 Easy" → "easy-1"
+ * "W03 Bonus Easy" → "bonus-3"
+ * "W05 Club Run" → "interval-5"
+ * "RACE DAY" → "race"
  *
  * Also handles legacy day-based names for existing events:
- * "W12 Thu Short-Intervals eco16" → "eco16-speed-12"
+ * "W12 Thu Short-Intervals" → "speed-12"
  */
 export function reconstructExternalId(
   name: string,
-  prefix: string,
 ): string | null {
   if (/RACE\s+DAY/i.test(name)) {
     const raceWeekMatch = /W(\d+)/i.exec(name);
-    if (raceWeekMatch) return `${prefix}-race-${parseInt(raceWeekMatch[1], 10)}`;
-    return `${prefix}-race`;
+    if (raceWeekMatch) return `race-${parseInt(raceWeekMatch[1], 10)}`;
+    return `race`;
   }
 
   // Extract week number — handles both "W05 Long..." and legacy "W05 Sun Long..."
@@ -171,15 +169,15 @@ export function reconstructExternalId(
   const week = String(parseInt(weekMatch[1], 10));
 
   // Classify by workout type keywords
-  if (/\bLong\b/i.test(name)) return `${prefix}-long-${week}`;
-  if (/\bBonus\b/i.test(name)) return `${prefix}-bonus-${week}`;
+  if (/\bLong\b/i.test(name)) return `long-${week}`;
+  if (/\bBonus\b/i.test(name)) return `bonus-${week}`;
   if (/Short.?Intervals|Hills|Long.?Intervals|Distance.?Intervals|Race.?Pace.?Intervals/i.test(name)) {
-    return `${prefix}-speed-${week}`;
+    return `speed-${week}`;
   }
-  if (/\bClub\b/i.test(name)) return `${prefix}-interval-${week}`;
+  if (/\bClub\b/i.test(name)) return `interval-${week}`;
 
   // Default: easy run (includes "Easy", "Easy + Strides", shakeout, etc.)
-  return `${prefix}-easy-${week}`;
+  return `easy-${week}`;
 }
 
 // --- Orchestrator ---
@@ -189,7 +187,7 @@ export function reconstructExternalId(
  * Returns adapted events ready for AI note generation.
  */
 export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
-  const { upcomingEvents, bgModel, insights, prefix, lthr, hrZones } = input;
+  const { upcomingEvents, bgModel, insights, lthr, hrZones } = input;
 
   return upcomingEvents.map((event) => {
     const changes: AdaptationChange[] = [];
@@ -215,7 +213,7 @@ export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
     }
 
     // 3. Reconstruct external_id
-    const externalId = reconstructExternalId(event.name, prefix);
+    const externalId = reconstructExternalId(event.name);
 
     return {
       original: event,

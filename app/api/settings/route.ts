@@ -47,7 +47,7 @@ export async function PUT(req: Request) {
   if (body.raceDate !== undefined) allowed.raceDate = body.raceDate;
   if (body.raceName !== undefined) allowed.raceName = body.raceName;
   if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
-  if (body.prefix !== undefined) allowed.prefix = body.prefix;
+
   if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;
   if (body.startKm !== undefined) allowed.startKm = body.startKm;
   if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;

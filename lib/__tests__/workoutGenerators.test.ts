@@ -8,7 +8,6 @@ describe("generatePlan", () => {
     bgModel: null,
     raceDateStr: "2026-06-13",
     raceDist: 16,
-    prefix: "eco16",
     totalWeeks: 12,
     startKm: 8,
     lthr: TEST_LTHR,
@@ -19,7 +18,7 @@ describe("generatePlan", () => {
     const args = { ...defaultArgs, ...overrides };
     return generatePlan(
       args.bgModel,
-      args.raceDateStr, args.raceDist, args.prefix,
+      args.raceDateStr, args.raceDist,
       args.totalWeeks, args.startKm, args.lthr, args.hrZones,
     );
   }
@@ -34,16 +33,16 @@ describe("generatePlan", () => {
     expect(plan.length).toBeGreaterThan(0);
   });
 
-  it("includes eco16 suffix in all workout names", () => {
+  it("uses clean workout names without prefix suffix", () => {
     const plan = generate();
     for (const event of plan) {
-      expect(event.name).toContain("eco16");
+      expect(event.name).not.toContain("eco16");
     }
   });
 
   it("names long runs with 'Long' not 'LR'", () => {
     const plan = generate();
-    const longRuns = plan.filter((e) => e.external_id.includes("-long-"));
+    const longRuns = plan.filter((e) => e.external_id.includes("long-"));
     for (const lr of longRuns) {
       if (!lr.name.includes("RACE DAY")) {
         expect(lr.name).toContain("Long");
@@ -54,7 +53,7 @@ describe("generatePlan", () => {
 
   it("names Saturday runs with 'Bonus'", () => {
     const plan = generate();
-    const satRuns = plan.filter((e) => e.external_id.includes("-bonus-"));
+    const satRuns = plan.filter((e) => e.external_id.includes("bonus-"));
     for (const run of satRuns) {
       expect(run.name).toContain("Bonus");
     }
@@ -64,28 +63,27 @@ describe("generatePlan", () => {
     const plan = generate();
     const raceDay = plan.find((e) => e.name.includes("RACE DAY"));
     expect(raceDay).toBeDefined();
-    expect(raceDay!.name).toContain("eco16");
   });
 
   it("skips speed sessions during base phase when enabled", () => {
     // 12-week plan with base: base 1-2, build starts week 3
     function generateWithBase() {
-      return generatePlan(null, "2027-06-12", 16, "eco16", 12, 8, TEST_LTHR, [...TEST_HR_ZONES], true);
+      return generatePlan(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], true);
     }
     const plan = generateWithBase();
-    const w1Speed = plan.find((e) => e.external_id === "eco16-speed-1");
-    const w2Speed = plan.find((e) => e.external_id === "eco16-speed-2");
+    const w1Speed = plan.find((e) => e.external_id === "speed-1");
+    const w2Speed = plan.find((e) => e.external_id === "speed-2");
     if (w1Speed) expect(w1Speed.name).toContain("Easy");
     if (w2Speed) expect(w2Speed.name).toContain("Easy");
     // Week 3 should have a real speed session (first build week)
-    const w3Speed = plan.find((e) => e.external_id === "eco16-speed-3");
+    const w3Speed = plan.find((e) => e.external_id === "speed-3");
     expect(w3Speed).toBeDefined();
     expect(w3Speed!.name).not.toContain("Easy");
   });
 
   it("has speed sessions from week 1 when base phase is disabled", () => {
     const plan = generateFull();
-    const w1Speed = plan.find((e) => e.external_id === "eco16-speed-1");
+    const w1Speed = plan.find((e) => e.external_id === "speed-1");
     expect(w1Speed).toBeDefined();
     expect(w1Speed!.name).not.toContain("Easy");
   });
@@ -93,7 +91,7 @@ describe("generatePlan", () => {
   it("skips speed sessions on recovery weeks", () => {
     // 12-week plan without base: build 1-7, recovery at build index 3 = week 4
     const plan = generateFull();
-    const w4Speed = plan.find((e) => e.external_id === "eco16-speed-4");
+    const w4Speed = plan.find((e) => e.external_id === "speed-4");
     if (w4Speed) {
       expect(w4Speed.name).toContain("Easy");
     }
@@ -162,7 +160,7 @@ describe("generatePlan", () => {
   it("rotates speed session types", () => {
     const plan = generate();
     const speedSessions = plan
-      .filter((e) => e.external_id.includes("-speed-") && !e.name.includes("Easy"))
+      .filter((e) => e.external_id.includes("speed-") && !e.name.includes("Easy"))
       .map((e) => e.name);
 
     const types = new Set<string>();
@@ -223,7 +221,7 @@ describe("generatePlan", () => {
 
   it("assigns easy sessions to Tuesday (day 2)", () => {
     const plan = generateFull();
-    const easySessions = plan.filter((e) => e.external_id.includes("-easy-"));
+    const easySessions = plan.filter((e) => e.external_id.includes("easy-"));
     expect(easySessions.length).toBeGreaterThan(0);
     for (const event of easySessions) {
       expect(getDay(event.start_date_local)).toBe(2);
@@ -232,7 +230,7 @@ describe("generatePlan", () => {
 
   it("assigns speed sessions to Thursday (day 4)", () => {
     const plan = generateFull();
-    const speedSessions = plan.filter((e) => e.external_id.includes("-speed-"));
+    const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));
     expect(speedSessions.length).toBeGreaterThan(0);
     for (const event of speedSessions) {
       expect(getDay(event.start_date_local)).toBe(4);
@@ -241,7 +239,7 @@ describe("generatePlan", () => {
 
   it("assigns bonus sessions to Saturday (day 6)", () => {
     const plan = generateFull();
-    const bonusSessions = plan.filter((e) => e.external_id.includes("-bonus-"));
+    const bonusSessions = plan.filter((e) => e.external_id.includes("bonus-"));
     expect(bonusSessions.length).toBeGreaterThan(0);
     for (const event of bonusSessions) {
       expect(getDay(event.start_date_local)).toBe(6);
@@ -250,7 +248,7 @@ describe("generatePlan", () => {
 
   it("assigns long runs to Sunday (day 0)", () => {
     const plan = generateFull();
-    const longSessions = plan.filter((e) => e.external_id.includes("-long-"));
+    const longSessions = plan.filter((e) => e.external_id.includes("long-"));
     expect(longSessions.length).toBeGreaterThan(0);
     for (const event of longSessions) {
       expect(getDay(event.start_date_local)).toBe(0);
@@ -262,7 +260,7 @@ describe("generatePlan", () => {
   it("rotates long runs between all-easy, sandwich, and progressive", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
+      (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     // At least some should have race pace sections (sandwich or progressive)
     expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
@@ -277,7 +275,7 @@ describe("generatePlan", () => {
   it("progressive long runs build from easy through steady to tempo", () => {
     const plan = generateFull();
     const progressiveRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && e.description.includes("Progressive"),
+      (e) => e.external_id.includes("long-") && e.description.includes("Progressive"),
     );
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
@@ -296,7 +294,7 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && e.description.includes("83-92%"),
+      (e) => e.external_id.includes("long-") && e.description.includes("83-92%"),
     );
     if (sandwichRuns.length < 2) return;
 
@@ -315,7 +313,7 @@ describe("generatePlan", () => {
   it("increases long run total distance progressively", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
-      (e) => e.external_id.includes("-long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
+      (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
     );
 
     const distances = longRuns.map((lr) => {
@@ -369,7 +367,7 @@ describe("generatePlan", () => {
   it("easy runs use single-step format (no warmup/cooldown structure)", () => {
     const plan = generateFull();
     const easyRuns = plan.filter(
-      (e) => e.external_id.includes("-easy-") && !e.name.includes("Strides"),
+      (e) => e.external_id.includes("easy-") && !e.name.includes("Strides"),
     );
     expect(easyRuns.length).toBeGreaterThan(0);
     for (const run of easyRuns) {
@@ -390,7 +388,7 @@ describe("generatePlan", () => {
 
   it("bonus runs use single-step format", () => {
     const plan = generateFull();
-    const bonusRuns = plan.filter((e) => e.external_id.includes("-bonus-"));
+    const bonusRuns = plan.filter((e) => e.external_id.includes("bonus-"));
     expect(bonusRuns.length).toBeGreaterThan(0);
     for (const run of bonusRuns) {
       expect(run.description).not.toContain("Warmup");

@@ -11,7 +11,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
     id: "activity-a1",
     date: new Date(),
-    name: "Easy Run eco16",
+    name: "Easy Run",
     description: "",
     type: "completed",
     category: "easy",
@@ -214,7 +214,7 @@ describe("buildSystemPrompt", () => {
       makeEvent({
         activityId: "run1",
         date: yesterday,
-        name: "Easy Run eco16",
+        name: "Easy Run",
       }),
     ];
 
@@ -269,7 +269,7 @@ describe("buildSystemPrompt", () => {
         id: "activity-run1",
         activityId: "run1",
         date: yesterday,
-        name: "Easy Run eco16",
+        name: "Easy Run",
         distance: 7500,
         pace: 7.2,
         avgHr: 125,
@@ -304,7 +304,7 @@ describe("buildSystemPrompt", () => {
         id: "activity-run1",
         activityId: "run1",
         date: yesterday,
-        name: "Easy Run eco16",
+        name: "Easy Run",
       }),
     ];
 
@@ -333,7 +333,7 @@ describe("buildSystemPrompt", () => {
         id: "activity-run1",
         activityId: undefined,
         date: yesterday,
-        name: "Easy Run eco16",
+        name: "Easy Run",
       }),
     ];
 
@@ -406,7 +406,7 @@ describe("buildSystemPrompt", () => {
     const events: CalendarEvent[] = [
       makeEvent({
         date: yesterday,
-        name: "Easy + Strides eco16",
+        name: "Easy + Strides",
         distance: 7900,
         pace: 7.35,
         avgHr: 128,
@@ -423,7 +423,7 @@ describe("buildSystemPrompt", () => {
       hrZones: defaultHrZones,
     });
 
-    expect(prompt).toContain("Easy + Strides eco16");
+    expect(prompt).toContain("Easy + Strides");
     expect(prompt).toContain("7.9km");
     expect(prompt).toContain("avgHR 128");
     expect(prompt).toContain("load 42");
@@ -436,7 +436,7 @@ describe("buildSystemPrompt", () => {
     const events: CalendarEvent[] = [
       makeEvent({
         date: tomorrow,
-        name: "Short Intervals eco16",
+        name: "Short Intervals",
         type: "planned",
         category: "interval",
         fuelRate: 30,
@@ -451,7 +451,7 @@ describe("buildSystemPrompt", () => {
       hrZones: defaultHrZones,
     });
 
-    expect(prompt).toContain("Short Intervals eco16");
+    expect(prompt).toContain("Short Intervals");
     expect(prompt).toContain("(interval)");
     expect(prompt).toContain("fuel 30g/h");
   });
@@ -459,7 +459,7 @@ describe("buildSystemPrompt", () => {
   it("excludes workouts older than 14 days from completed section", () => {
     const oldEvent = makeEvent({
       date: new Date("2026-02-01T10:00:00Z"),
-      name: "Old Run eco16",
+      name: "Old Run",
     });
 
     const prompt = buildSystemPrompt({
@@ -470,7 +470,7 @@ describe("buildSystemPrompt", () => {
       hrZones: defaultHrZones,
     });
 
-    expect(prompt).not.toContain("Old Run eco16");
+    expect(prompt).not.toContain("Old Run");
     expect(prompt).toContain("No completed workouts in the last 14 days.");
   });
 
@@ -501,7 +501,7 @@ describe("buildSystemPrompt", () => {
       makeEvent({
         activityId: "run1",
         date: yesterday,
-        name: "Easy Run eco16",
+        name: "Easy Run",
       }),
     ];
 
@@ -680,7 +680,7 @@ describe("buildSystemPrompt with feedback", () => {
   it("includes feedback rating and comment inline with completed workout", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16", rating: "bad", feedbackComment: "BG crashed hard" }),
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run", rating: "bad", feedbackComment: "BG crashed hard" }),
     ];
 
     const prompt = buildSystemPrompt({
@@ -698,7 +698,7 @@ describe("buildSystemPrompt with feedback", () => {
   it("includes feedback carbs inline with completed workout", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16", rating: "good", carbsIngested: 45 }),
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run", rating: "good", carbsIngested: 45 }),
     ];
 
     const prompt = buildSystemPrompt({
@@ -715,7 +715,7 @@ describe("buildSystemPrompt with feedback", () => {
   it("works without feedback (no rating on event)", () => {
     const yesterday = new Date("2026-02-18T10:00:00Z");
     const events: CalendarEvent[] = [
-      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run eco16" }),
+      makeEvent({ activityId: "run1", date: yesterday, name: "Easy Run" }),
     ];
 
     const prompt = buildSystemPrompt({
@@ -727,6 +727,6 @@ describe("buildSystemPrompt with feedback", () => {
     });
 
     expect(prompt).not.toContain("feedback:");
-    expect(prompt).toContain("Easy Run eco16");
+    expect(prompt).toContain("Easy Run");
   });
 });

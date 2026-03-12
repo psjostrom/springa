@@ -22,7 +22,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
     id: "activity-a1",
     date: new Date(T0),
-    name: "Easy Run eco16",
+    name: "Easy Run",
     description: "",
     type: "completed",
     category: "easy",

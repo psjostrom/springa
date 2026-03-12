@@ -70,10 +70,10 @@ describe("saveUserSettings", () => {
   });
 
   it("creates new entry when none exists", async () => {
-    await saveUserSettings("new@user.com", { prefix: "eco16" });
+    await saveUserSettings("new@user.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("new@user.com");
-    expect(result).toEqual({ prefix: "eco16" });
+    expect(result).toEqual({ raceName: "EcoTrail" });
   });
 
   it("overwrites existing key values", async () => {

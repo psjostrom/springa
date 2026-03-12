@@ -44,7 +44,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   const raceDist = settings?.raceDist ?? 16;
   const lthr = settings?.lthr ?? DEFAULT_LTHR;
-  const prefix = settings?.prefix ?? "eco16";
   const totalWeeks = settings?.totalWeeks ?? 18;
   const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
@@ -69,7 +68,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, prefix, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false);
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));
@@ -145,7 +144,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           bgModel,
           insights,
           runBGContexts: bgContextRecord,
-          prefix,
           lthr,
           maxHr: settings?.maxHr,
           hrZones: settings?.hrZones,

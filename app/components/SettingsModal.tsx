@@ -17,7 +17,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState(settings.raceDist ?? "");
-  const [prefix, setPrefix] = useState(settings.prefix ?? "");
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
@@ -48,9 +47,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     const rdVal = raceDist === "" ? undefined : Number(raceDist);
     if (rdVal !== settings.raceDist) {
       updates.raceDist = rdVal;
-    }
-    if (prefix.trim() !== (settings.prefix ?? "")) {
-      updates.prefix = prefix.trim();
     }
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
     if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
@@ -139,29 +135,17 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   placeholder="e.g. EcoTrail"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-[#b8a5d4] mb-1">Distance (km)</label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={100}
-                    value={raceDist}
-                    onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                    placeholder="16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#b8a5d4] mb-1">Plan Prefix</label>
-                  <input
-                    type="text"
-                    value={prefix}
-                    onChange={(e) => { setPrefix(e.target.value); }}
-                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
-                    placeholder="eco16"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs text-[#b8a5d4] mb-1">Distance (km)</label>
+                <input
+                  type="number"
+                  min={5}
+                  max={100}
+                  value={raceDist}
+                  onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
+                  className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                  placeholder="16"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

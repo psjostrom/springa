@@ -122,9 +122,9 @@ const generateQualityRun = (
 
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-      name: `${prefixName} ${wp.isRaceTest ? "Easy [PRE-TEST]" : "Easy"} ${ctx.prefix}`,
+      name: `${prefixName} ${wp.isRaceTest ? "Easy [PRE-TEST]" : "Easy"}`,
       description: createSimpleWorkoutText(s(duration, "easy"), notes),
-      external_id: `${ctx.prefix}-speed-${wp.weekNum}`,
+      external_id: `speed-${wp.weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -173,9 +173,9 @@ const generateQualityRun = (
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `${prefixName} ${label} ${ctx.prefix}`,
+    name: `${prefixName} ${label}`,
     description: createWorkoutText(wu, steps, cd, reps, notes),
-    external_id: `${ctx.prefix}-speed-${wp.weekNum}`,
+    external_id: `speed-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelInterval,
   };
@@ -204,7 +204,7 @@ const generateEasyRun = (
       : 20 + Math.round(progress * 25);
 
   const sessionLabel = withStrides ? "Easy + Strides" : "Easy";
-  const name = `W${wp.weekNum.toString().padStart(2, "0")} ${sessionLabel} ${ctx.prefix}${wp.isRaceWeek ? " [SHAKEOUT]" : ""}`;
+  const name = `W${wp.weekNum.toString().padStart(2, "0")} ${sessionLabel}${wp.isRaceWeek ? " [SHAKEOUT]" : ""}`;
 
   let notes: string;
   if (wp.isRaceWeek) {
@@ -229,7 +229,7 @@ const generateEasyRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
-      external_id: `${ctx.prefix}-easy-${wp.weekNum}`,
+      external_id: `easy-${wp.weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -241,7 +241,7 @@ const generateEasyRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createSimpleWorkoutText(s(`${totalDuration}m`, "easy"), notes),
-    external_id: `${ctx.prefix}-easy-${wp.weekNum}`,
+    external_id: `easy-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -263,9 +263,9 @@ const generateBonusRun = (
   // Single-zone easy run — no warmup/cooldown structure needed
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Bonus Easy ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Bonus Easy`,
     description: createSimpleWorkoutText(s("45m", "easy"), notes),
-    external_id: `${ctx.prefix}-bonus-${wp.weekNum}`,
+    external_id: `bonus-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -293,9 +293,9 @@ const generateClubRun = (
 
   return {
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
     description,
-    external_id: `${ctx.prefix}-interval-${wp.weekNum}`,
+    external_id: `interval-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelInterval,
     excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
@@ -311,9 +311,9 @@ const generateLongRun = (
   if (wp.isRaceWeek) {
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-      name: `RACE DAY ${ctx.prefix}`,
+      name: `RACE DAY`,
       description: `RACE DAY! ${ctx.raceDist}km.\n\nGood luck!`,
-      external_id: `${ctx.prefix}-race`,
+      external_id: `race`,
       type: "Run",
       fuelRate: ctx.fuelLong,
     };
@@ -396,9 +396,9 @@ const generateLongRun = (
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Long (${km}km)${type} ${ctx.prefix}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Long (${km}km)${type}`,
     description: createWorkoutText(wu, mainSteps, cd, 1, notes),
-    external_id: `${ctx.prefix}-long-${wp.weekNum}`,
+    external_id: `long-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelLong,
     distance: km,
@@ -411,7 +411,6 @@ function buildContext(
   bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
-  prefix: string,
   totalWeeks: number,
   startKm: number,
   lthr: number,
@@ -425,7 +424,6 @@ function buildContext(
     fuelEasy: getCurrentFuelRate("easy", bgModel),
     raceDate,
     raceDist,
-    prefix,
     totalWeeks,
     startKm,
     lthr,
@@ -454,14 +452,13 @@ export function generatePlan(
   bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
-  prefix: string,
   totalWeeks: number,
   startKm: number,
   lthr: number,
   hrZones: number[],
   includeBasePhase = false,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, prefix, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
   const today = new Date();
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
@@ -475,14 +472,13 @@ export function generateFullPlan(
   bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
-  prefix: string,
   totalWeeks: number,
   startKm: number,
   lthr: number,
   hrZones: number[],
   includeBasePhase = false,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, prefix, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase);
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);

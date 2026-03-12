@@ -18,7 +18,6 @@ interface RequestBody {
   bgModel: BGResponseModel;
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
-  prefix: string;
   lthr: number;
   maxHr?: number;
   hrZones: number[];
@@ -46,7 +45,6 @@ export async function POST(req: Request) {
     bgModel,
     insights,
     runBGContexts,
-    prefix,
     lthr,
     maxHr,
     hrZones,
@@ -82,7 +80,6 @@ export async function POST(req: Request) {
     bgModel,
     insights,
     runBGContexts,
-    prefix,
     lthr,
     hrZones,
   });

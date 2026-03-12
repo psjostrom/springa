@@ -6,7 +6,7 @@ export interface UserSettings {
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
-  prefix?: string;
+
   totalWeeks?: number;
   startKm?: number;
   widgetOrder?: string[];
@@ -28,7 +28,7 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference FROM user_settings WHERE email = ?",
+    sql: "SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -37,7 +37,6 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.race_date) settings.raceDate = row.race_date as string;
   if (row.race_name) settings.raceName = row.race_name as string;
   if (row.race_dist != null) settings.raceDist = row.race_dist as number;
-  if (row.prefix) settings.prefix = row.prefix as string;
   if (row.total_weeks != null) settings.totalWeeks = row.total_weeks as number;
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
@@ -53,13 +52,12 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, prefix, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             race_date = COALESCE(excluded.race_date, race_date),
             race_name = COALESCE(excluded.race_name, race_name),
             race_dist = COALESCE(excluded.race_dist, race_dist),
-            prefix = COALESCE(excluded.prefix, prefix),
             total_weeks = COALESCE(excluded.total_weeks, total_weeks),
             start_km = COALESCE(excluded.start_km, start_km),
             widget_order = COALESCE(excluded.widget_order, widget_order),
@@ -72,7 +70,6 @@ export async function saveUserSettings(
       partial.raceDate ?? null,
       partial.raceName ?? null,
       partial.raceDist ?? null,
-      partial.prefix ?? null,
       partial.totalWeeks ?? null,
       partial.startKm ?? null,
       partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
