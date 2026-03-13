@@ -1,12 +1,14 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 import { format, subDays } from "date-fns";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.INTERVALS_API_KEY;

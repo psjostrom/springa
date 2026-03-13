@@ -1,11 +1,14 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const { searchParams } = new URL(req.url);
@@ -17,7 +20,7 @@ export async function GET(req: Request) {
 
   const result = await db().execute({
     sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-    args: [session.user.email, eventId],
+    args: [email, eventId],
   });
 
   if (result.rows.length === 0) {
@@ -30,9 +33,12 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const body = (await req.json()) as {
@@ -52,16 +58,19 @@ export async function POST(req: Request) {
           ON CONFLICT (email, event_id) DO UPDATE SET
             carbs_g = excluded.carbs_g,
             created_at = excluded.created_at`,
-    args: [session.user.email, eventId, carbsG ?? null, Date.now()],
+    args: [email, eventId, carbsG ?? null, Date.now()],
   });
 
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const { searchParams } = new URL(req.url);
@@ -73,7 +82,7 @@ export async function DELETE(req: Request) {
 
   await db().execute({
     sql: "DELETE FROM prerun_carbs WHERE email = ? AND event_id = ?",
-    args: [session.user.email, eventId],
+    args: [email, eventId],
   });
 
   return NextResponse.json({ ok: true });

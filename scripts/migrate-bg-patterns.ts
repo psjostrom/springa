@@ -26,27 +26,35 @@ async function main() {
     console.log(`  email=${row.email}, activity=${row.latest_activity_id}, analyzed=${new Date(row.analyzed_at as number).toISOString()}`);
   }
 
-  // Recreate table with new schema
+  // Keep only the most recent row per email
+  const byEmail = new Map<string, (typeof existing.rows)[number]>();
+  for (const row of existing.rows) {
+    const email = row.email as string;
+    const prev = byEmail.get(email);
+    if (!prev || (row.analyzed_at as number) > (prev.analyzed_at as number)) {
+      byEmail.set(email, row);
+    }
+  }
+
+  // Recreate table with simplified schema (email-only PK, no run_count)
   await db.execute("ALTER TABLE bg_patterns RENAME TO bg_patterns_old");
 
   await db.execute(`CREATE TABLE bg_patterns (
-    email              TEXT NOT NULL,
+    email              TEXT PRIMARY KEY,
     latest_activity_id TEXT NOT NULL,
-    run_count          INTEGER NOT NULL,
     patterns_text      TEXT NOT NULL,
-    analyzed_at        INTEGER NOT NULL,
-    PRIMARY KEY (email, latest_activity_id)
+    analyzed_at        INTEGER NOT NULL
   )`);
 
-  // Migrate existing data (run_count unknown for old rows, use 0)
-  for (const row of existing.rows) {
+  // Migrate most recent row per email
+  for (const [, row] of byEmail) {
     await db.execute({
-      sql: "INSERT INTO bg_patterns (email, latest_activity_id, run_count, patterns_text, analyzed_at) VALUES (?, ?, ?, ?, ?)",
-      args: [row.email, row.latest_activity_id, 0, row.patterns_text, row.analyzed_at],
+      sql: "INSERT INTO bg_patterns (email, latest_activity_id, patterns_text, analyzed_at) VALUES (?, ?, ?, ?)",
+      args: [row.email, row.latest_activity_id, row.patterns_text, row.analyzed_at],
     });
   }
 
-  console.log(`Migrated ${existing.rows.length} row(s) to new schema`);
+  console.log(`Migrated ${byEmail.size} row(s) to new schema (email-only PK, no run_count)`);
 
   // Drop old table
   await db.execute("DROP TABLE bg_patterns_old");

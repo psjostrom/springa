@@ -1,15 +1,18 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getXdripReadings } from "@/lib/xdripDb";
 import { computeTrend, trendArrow, slopeToArrow } from "@/lib/xdrip";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const readings = await getXdripReadings(session.user.email);
+  const readings = await getXdripReadings(email);
   if (readings.length === 0) {
     return NextResponse.json({ readings: [], trend: null });
   }

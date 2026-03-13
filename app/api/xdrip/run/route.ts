@@ -1,11 +1,14 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getXdripReadingsForRun } from "@/lib/xdripDb";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const { searchParams } = new URL(request.url);
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const readings = await getXdripReadingsForRun(session.user.email, start, end);
+  const readings = await getXdripReadingsForRun(email, start, end);
 
   return NextResponse.json({ readings });
 }

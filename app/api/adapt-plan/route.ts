@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
 import { formatAIError } from "@/lib/aiError";
@@ -25,9 +25,12 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -59,7 +62,7 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const patterns = await getBGPatterns(session.user.email);
+  const patterns = await getBGPatterns(email);
 
   // Build feedback map from CalendarEvent custom fields
   const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();

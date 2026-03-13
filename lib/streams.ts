@@ -31,6 +31,41 @@ export function extractRawStreams(streams: IntervalsStream[]): RawStreams {
 
 // --- Minute-indexed stream conversion ---
 
+interface GroupByMinuteOpts {
+  preFilter?: (raw: number) => boolean;
+  transform?: (raw: number) => number;
+  postFilter?: (transformed: number) => boolean;
+}
+
+/** Group raw values by minute, average within each bucket. Sorted by time. */
+export function groupByMinute(
+  timeData: number[],
+  values: number[],
+  opts?: GroupByMinuteOpts,
+): DataPoint[] {
+  const { preFilter, transform, postFilter } = opts ?? {};
+  const byMin = new Map<number, number[]>();
+  const len = Math.min(timeData.length, values.length);
+
+  for (let i = 0; i < len; i++) {
+    const raw = values[i];
+    if (preFilter && !preFilter(raw)) continue;
+    const val = transform ? transform(raw) : raw;
+    if (postFilter && !postFilter(val)) continue;
+    const minute = Math.round(timeData[i] / 60);
+    const arr = byMin.get(minute) ?? [];
+    arr.push(val);
+    byMin.set(minute, arr);
+  }
+
+  const result: DataPoint[] = [];
+  for (const [min, vals] of byMin) {
+    result.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
+  }
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
 /** Extract minute-indexed pace/cadence/altitude DataPoints from raw streams. */
 export function extractExtraStreams(streams: IntervalsStream[]): {
   pace: DataPoint[];
@@ -38,83 +73,27 @@ export function extractExtraStreams(streams: IntervalsStream[]): {
   altitude: DataPoint[];
 } {
   const { time: timeData, velocity: velocityRaw, cadence: cadenceRaw, altitude: altitudeRaw } = extractRawStreams(streams);
+  if (timeData.length === 0) return { pace: [], cadence: [], altitude: [] };
 
-  const pace: DataPoint[] = [];
-  const cadence: DataPoint[] = [];
-  const altitude: DataPoint[] = [];
-
-  if (timeData.length === 0) return { pace, cadence, altitude };
-
-  // Build minute-indexed maps (same pattern as alignStreams)
-  const paceByMin = new Map<number, number[]>();
-  const cadByMin = new Map<number, number[]>();
-  const altByMin = new Map<number, number[]>();
-
-  for (let i = 0; i < timeData.length; i++) {
-    const minute = Math.round(timeData[i] / 60);
-
-    if (i < velocityRaw.length && velocityRaw[i] > 0) {
-      const p = 1000 / (velocityRaw[i] * 60); // m/s → min/km
-      if (p >= 2.0 && p <= 12.0) {
-        const arr = paceByMin.get(minute) ?? [];
-        arr.push(p);
-        paceByMin.set(minute, arr);
-      }
-    }
-
-    if (i < cadenceRaw.length && cadenceRaw[i] > 0) {
-      const arr = cadByMin.get(minute) ?? [];
-      arr.push(cadenceRaw[i] * 2); // half-cadence → SPM
-      cadByMin.set(minute, arr);
-    }
-
-    if (i < altitudeRaw.length) {
-      const arr = altByMin.get(minute) ?? [];
-      arr.push(altitudeRaw[i]);
-      altByMin.set(minute, arr);
-    }
-  }
-
-  // Average per minute
-  for (const [min, vals] of paceByMin) {
-    pace.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
-  }
-  for (const [min, vals] of cadByMin) {
-    cadence.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
-  }
-  for (const [min, vals] of altByMin) {
-    altitude.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
-  }
-
-  pace.sort((a, b) => a.time - b.time);
-  cadence.sort((a, b) => a.time - b.time);
-  altitude.sort((a, b) => a.time - b.time);
-
-  return { pace, cadence, altitude };
+  return {
+    pace: groupByMinute(timeData, velocityRaw, {
+      preFilter: (v) => v > 0,
+      transform: (v) => 1000 / (v * 60),
+      postFilter: (p) => p >= 2.0 && p <= 12.0,
+    }),
+    cadence: groupByMinute(timeData, cadenceRaw, {
+      preFilter: (v) => v > 0,
+      transform: (v) => v * 2,
+    }),
+    altitude: groupByMinute(timeData, altitudeRaw),
+  };
 }
 
 /** Extract minute-indexed HR DataPoints from streams. */
 export function extractHRStream(streams: IntervalsStream[]): DataPoint[] {
   const { time: timeData, heartrate: hrRaw } = extractRawStreams(streams);
   if (timeData.length === 0 || hrRaw.length === 0) return [];
-
-  const hrByMin = new Map<number, number[]>();
-
-  for (let i = 0; i < timeData.length && i < hrRaw.length; i++) {
-    if (hrRaw[i] <= 0) continue;
-    const minute = Math.round(timeData[i] / 60);
-    const arr = hrByMin.get(minute) ?? [];
-    arr.push(hrRaw[i]);
-    hrByMin.set(minute, arr);
-  }
-
-  const result: DataPoint[] = [];
-  for (const [min, vals] of hrByMin) {
-    result.push({ time: min, value: vals.reduce((a, b) => a + b, 0) / vals.length });
-  }
-
-  result.sort((a, b) => a.time - b.time);
-  return result;
+  return groupByMinute(timeData, hrRaw, { preFilter: (v) => v > 0 });
 }
 
 /** Extract latlng coordinates from streams. Returns [lat, lng][] or empty array.

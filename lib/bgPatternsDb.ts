@@ -26,10 +26,9 @@ export async function saveBGPatterns(
   email: string,
   latestActivityId: string,
   patternsText: string,
-  runCount: number,
 ): Promise<void> {
   await db().execute({
-    sql: "INSERT INTO bg_patterns (email, latest_activity_id, run_count, patterns_text, analyzed_at) VALUES (?, ?, ?, ?, ?)",
-    args: [email, latestActivityId, runCount, patternsText, Date.now()],
+    sql: "INSERT OR REPLACE INTO bg_patterns (email, latest_activity_id, patterns_text, analyzed_at) VALUES (?, ?, ?, ?)",
+    args: [email, latestActivityId, patternsText, Date.now()],
   });
 }

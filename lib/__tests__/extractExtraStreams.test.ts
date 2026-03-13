@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractExtraStreams } from "@/lib/streams";
+import { extractExtraStreams, groupByMinute } from "@/lib/streams";
 import type { IntervalsStream } from "../types";
 
 function stream(type: string, data: number[]): IntervalsStream {
@@ -133,5 +133,51 @@ describe("extractExtraStreams", () => {
     expect(result.pace).toHaveLength(3);
     expect(result.cadence).toHaveLength(3);
     expect(result.altitude).toHaveLength(3);
+  });
+});
+
+describe("groupByMinute", () => {
+  it("groups values by minute and averages them", () => {
+    const timeData = [0, 20, 60, 120];
+    const values = [10, 20, 30, 40];
+    const result = groupByMinute(timeData, values);
+    expect(result).toEqual([
+      { time: 0, value: 15 },
+      { time: 1, value: 30 },
+      { time: 2, value: 40 },
+    ]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(groupByMinute([], [])).toEqual([]);
+  });
+
+  it("skips values where preFilter returns false", () => {
+    const timeData = [0, 60];
+    const values = [0, 10];
+    const result = groupByMinute(timeData, values, { preFilter: (v) => v > 0 });
+    expect(result).toEqual([{ time: 1, value: 10 }]);
+  });
+
+  it("applies transform then filters on transformed value", () => {
+    const timeData = [0, 60, 120];
+    const values = [10, 3, 1]; // 10 m/s → 1.67 (too fast), 3 → 5.56 (ok), 1 → 16.67 (too slow)
+    const result = groupByMinute(timeData, values, {
+      preFilter: (v) => v > 0,
+      transform: (v) => 1000 / (v * 60),
+      postFilter: (p) => p >= 2.0 && p <= 12.0,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBeCloseTo(1000 / (3 * 60), 2);
+  });
+
+  it("applies transform without filter", () => {
+    const timeData = [0, 60];
+    const values = [90, 91];
+    const result = groupByMinute(timeData, values, { transform: (v) => v * 2 });
+    expect(result).toEqual([
+      { time: 0, value: 180 },
+      { time: 1, value: 182 },
+    ]);
   });
 });

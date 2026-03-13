@@ -12,7 +12,7 @@ import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
 import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
 import { wellnessToFitnessData } from "@/lib/fitness";
-import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
+import { getMyLifeData } from "@/lib/apiHelpers";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import type { IntervalsEvent } from "@/lib/types";
 
@@ -57,21 +57,15 @@ export async function GET(req: Request) {
     console.error("[prerun-push] Failed to fetch wellness/TSB:", err);
   }
 
-  const mylifeEmail = process.env.MYLIFE_EMAIL;
-  const mylifePassword = process.env.MYLIFE_PASSWORD;
-  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
-
   let currentIob: number | null = null;
-  if (mylifeEmail && mylifePassword) {
-    try {
-      const session = await mylifeSignIn(mylifeEmail, mylifePassword);
-      const data = await fetchMyLifeData(session, mylifeTz);
+  try {
+    const data = await getMyLifeData();
+    if (data) {
       const ctx = buildInsulinContext(data, now);
       currentIob = ctx?.actionableIOB ?? null;
-    } catch (err) {
-      console.error("[prerun-push] Failed to fetch MyLife/IOB:", err);
-      clearMyLifeSession(mylifeEmail);
     }
+  } catch (err) {
+    console.error("[prerun-push] Failed to fetch MyLife/IOB:", err);
   }
 
   for (const email of emails) {

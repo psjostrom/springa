@@ -1,30 +1,23 @@
-import { auth } from "@/lib/auth";
-import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
+import { requireAuth, getMyLifeData, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const email = process.env.MYLIFE_EMAIL;
-  const password = process.env.MYLIFE_PASSWORD;
-  const tz = process.env.TIMEZONE ?? "Europe/Stockholm";
-
-  if (!email || !password) {
-    return NextResponse.json(null);
-  }
+  const data = await getMyLifeData();
+  if (!data) return NextResponse.json(null);
 
   try {
-    const mylifeSession = await mylifeSignIn(email, password);
-    const data = await fetchMyLifeData(mylifeSession, tz);
     const ctx = buildInsulinContext(data, Date.now());
     return NextResponse.json(ctx);
   } catch (err) {
-    console.error("[insulin-context] Failed:", err);
-    clearMyLifeSession(email);
+    console.error("[insulin-context] buildInsulinContext failed:", err);
     return NextResponse.json(null);
   }
 }
