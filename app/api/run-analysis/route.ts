@@ -79,7 +79,6 @@ function buildRunHistory(
       fuelRate: row.fuelRate,
       carbsIngested: activity?.carbs_ingested ?? null,
       preRunCarbsG: activity?.PreRunCarbsG === 0 ? null : activity?.PreRunCarbsG ?? null,
-      preRunCarbsMin: activity?.PreRunCarbsMin === 0 ? null : activity?.PreRunCarbsMin ?? null,
       rating: nonEmpty(activity?.Rating),
       feedbackComment: nonEmpty(activity?.FeedbackComment),
     };

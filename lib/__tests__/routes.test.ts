@@ -786,8 +786,8 @@ describe("run-feedback route", () => {
 
     // Seed pre-run carbs for event 456
     await testDb().execute({
-      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
-      args: [EMAIL, "456", 30, 20, Date.now()],
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at) VALUES (?, ?, ?, ?)",
+      args: [EMAIL, "456", 30, Date.now()],
     });
 
     mockFetchActivityById.mockResolvedValue({
@@ -802,7 +802,6 @@ describe("run-feedback route", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.preRunCarbsG).toBe(30);
-    expect(data.preRunCarbsMin).toBe(20);
   });
 
   it("GET finds pre-run carbs via matched event when paired_event_id is null", async () => {
@@ -810,8 +809,8 @@ describe("run-feedback route", () => {
 
     // Seed pre-run carbs for event 789
     await testDb().execute({
-      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
-      args: [EMAIL, "789", 25, 30, Date.now()],
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at) VALUES (?, ?, ?, ?)",
+      args: [EMAIL, "789", 25, Date.now()],
     });
 
     // Activity has NO paired_event_id (not yet auto-paired)
@@ -836,7 +835,6 @@ describe("run-feedback route", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.preRunCarbsG).toBe(25);
-    expect(data.preRunCarbsMin).toBe(30);
   });
 
   it("GET computes prescribedCarbsG from planned duration, not actual", async () => {
@@ -873,8 +871,8 @@ describe("run-feedback route", () => {
 
     // Seed pre-run carbs for event 456
     await testDb().execute({
-      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, minutes_before, created_at) VALUES (?, ?, ?, ?, ?)",
-      args: [EMAIL, "456", 30, 20, Date.now()],
+      sql: "INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at) VALUES (?, ?, ?, ?)",
+      args: [EMAIL, "456", 30, Date.now()],
     });
 
     mockFetchActivityById.mockResolvedValue({
@@ -883,7 +881,6 @@ describe("run-feedback route", () => {
       name: "Easy Run",
       paired_event_id: 456,
       PreRunCarbsG: 50, // Activity already has pre-run carbs
-      PreRunCarbsMin: 15,
     });
 
     const res = await getFeedbackByActivity("i123");
@@ -891,7 +888,6 @@ describe("run-feedback route", () => {
     const data = await res.json();
     // Should use activity values, not Turso fallback
     expect(data.preRunCarbsG).toBe(50);
-    expect(data.preRunCarbsMin).toBe(15);
   });
 });
 
@@ -927,36 +923,33 @@ describe("prerun-carbs route", () => {
   it("POST saves pre-run carbs and GET retrieves them", async () => {
     authedSession();
 
-    const postRes = await postPrerunCarbs({ eventId: "evt-123", carbsG: 35, minutesBefore: 25 });
+    const postRes = await postPrerunCarbs({ eventId: "evt-123", carbsG: 35 });
     expect(postRes.status).toBe(200);
 
     const getRes = await getPrerunCarbs("evt-123");
     expect(getRes.status).toBe(200);
     const data = await getRes.json();
     expect(data.carbsG).toBe(35);
-    expect(data.minutesBefore).toBe(25);
   });
 
   it("POST upserts existing pre-run carbs", async () => {
     authedSession();
 
-    await postPrerunCarbs({ eventId: "evt-123", carbsG: 30, minutesBefore: 20 });
-    await postPrerunCarbs({ eventId: "evt-123", carbsG: 40, minutesBefore: 15 });
+    await postPrerunCarbs({ eventId: "evt-123", carbsG: 30 });
+    await postPrerunCarbs({ eventId: "evt-123", carbsG: 40 });
 
     const res = await getPrerunCarbs("evt-123");
     const data = await res.json();
     expect(data.carbsG).toBe(40);
-    expect(data.minutesBefore).toBe(15);
   });
 
-  it("GET returns nulls when no pre-run carbs exist", async () => {
+  it("GET returns null when no pre-run carbs exist", async () => {
     authedSession();
 
     const res = await getPrerunCarbs("evt-nonexistent");
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.carbsG).toBeNull();
-    expect(data.minutesBefore).toBeNull();
   });
 
   it("GET rejects missing eventId", async () => {
@@ -974,7 +967,7 @@ describe("prerun-carbs route", () => {
   it("DELETE removes pre-run carbs row", async () => {
     authedSession();
 
-    await postPrerunCarbs({ eventId: "evt-del", carbsG: 25, minutesBefore: 30 });
+    await postPrerunCarbs({ eventId: "evt-del", carbsG: 25 });
 
     const delRes = await deletePrerunCarbs("evt-del");
     expect(delRes.status).toBe(200);
@@ -983,7 +976,6 @@ describe("prerun-carbs route", () => {
     const getRes = await getPrerunCarbs("evt-del");
     const data = await getRes.json();
     expect(data.carbsG).toBeNull();
-    expect(data.minutesBefore).toBeNull();
   });
 
   it("DELETE rejects missing eventId", async () => {

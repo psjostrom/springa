@@ -12,7 +12,7 @@ import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
 import { db } from "@/lib/db";
-import { estimateWorkoutDuration, calculateWorkoutCarbs } from "@/lib/workoutMath";
+import { estimatePlannedMinutes, calculateWorkoutCarbs } from "@/lib/workoutMath";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
@@ -20,7 +20,7 @@ interface MatchedEvent {
 }
 
 /** Find the matching WORKOUT event for this activity date and compute prescribed carbs
- *  using the PLANNED duration (from the event description), not the actual moving time. */
+ *  using the PLANNED duration, not the actual moving time. */
 async function findMatchingEvent(
   apiKey: string,
   activity: IntervalsActivity,
@@ -37,18 +37,17 @@ async function findMatchingEvent(
     const planned = events.find((e) => e.category === "WORKOUT" && e.carbs_per_hour != null);
     if (!planned?.carbs_per_hour) return { prescribedCarbsG: null, eventId: planned?.id ?? null };
 
-    // Use planned duration from description (same logic as calendarPipeline),
-    // falling back to event durations, then actual moving time as last resort.
-    const estDur = planned.description ? estimateWorkoutDuration(planned.description) : null;
-    const eventDur = planned.moving_time ?? planned.duration ?? planned.elapsed_time;
-    const estMinutes = estDur?.minutes ?? (eventDur ? eventDur / 60 : null) ?? (activity.moving_time ? activity.moving_time / 60 : null);
+    // Same logic as calendarPipeline: event duration first, description fallback, actual moving time last resort.
+    const eventDur = planned.duration ?? planned.elapsed_time ?? planned.moving_time;
+    const estMinutes = estimatePlannedMinutes(planned.description, eventDur, activity.moving_time);
     if (estMinutes == null) return { prescribedCarbsG: null, eventId: planned.id };
 
     return {
       prescribedCarbsG: calculateWorkoutCarbs(estMinutes, planned.carbs_per_hour),
       eventId: planned.id,
     };
-  } catch {
+  } catch (err) {
+    console.error("Failed to find matching event for activity:", activity.id, err);
     return { prescribedCarbsG: null, eventId: null };
   }
 }
@@ -75,7 +74,6 @@ async function findLatestUnratedRun(apiKey: string): Promise<IntervalsActivity |
 
 interface PreRunCarbsFallback {
   carbsG: number | null;
-  minutesBefore: number | null;
 }
 
 function buildResponse(
@@ -96,7 +94,6 @@ function buildResponse(
     activityId: activity.id,
     prescribedCarbsG,
     preRunCarbsG: activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
-    preRunCarbsMin: activity.PreRunCarbsMin ?? preRunFallback?.minutesBefore ?? null,
   };
 }
 
@@ -136,14 +133,12 @@ export async function GET(req: Request) {
     const lookupEventId = activity.paired_event_id ?? matchedEventId;
     if (lookupEventId != null) {
       const result = await db().execute({
-        sql: "SELECT carbs_g, minutes_before FROM prerun_carbs WHERE email = ? AND event_id = ?",
+        sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
         args: [session.user.email, String(lookupEventId)],
       });
       if (result.rows.length > 0) {
-        const row = result.rows[0];
         preRunFallback = {
-          carbsG: row.carbs_g as number | null,
-          minutesBefore: row.minutes_before as number | null,
+          carbsG: result.rows[0].carbs_g as number | null,
         };
       }
     }
@@ -164,9 +159,8 @@ export async function POST(req: Request) {
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
-    preRunCarbsMin?: number;
   };
-  const { activityId, rating, comment, carbsG, preRunCarbsG, preRunCarbsMin } = body;
+  const { activityId, rating, comment, carbsG, preRunCarbsG } = body;
 
   if (!activityId || !rating) {
     return NextResponse.json({ error: "Missing activityId or rating" }, { status: 400 });
@@ -184,13 +178,8 @@ export async function POST(req: Request) {
   if (carbsG != null) {
     await updateActivityCarbs(apiKey, activityId, carbsG);
   }
-  if (preRunCarbsG != null || preRunCarbsMin != null) {
-    await updateActivityPreRunCarbs(
-      apiKey,
-      activityId,
-      preRunCarbsG ?? null,
-      preRunCarbsMin ?? null,
-    );
+  if (preRunCarbsG != null) {
+    await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
   }
 
   return NextResponse.json({ ok: true });

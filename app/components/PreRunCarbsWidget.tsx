@@ -9,13 +9,13 @@ import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
   | { kind: "idle" }
-  | { kind: "editing"; g: string; min: string; error?: string }
-  | { kind: "saving"; g: string; min: string };
+  | { kind: "editing"; g: string; error?: string }
+  | { kind: "saving"; g: string };
 
-/** Pre-run carbs widget with two-field inline edit (grams + minutes before). */
+/** Pre-run carbs widget with inline edit. */
 export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
-  const [dbPreRun, setDbPreRun] = useState<{ eventId: string; g: number | null; min: number | null } | null>(null);
+  const [dbPreRun, setDbPreRun] = useState<{ eventId: string; g: number | null } | null>(null);
   const patchEvent = useSetAtom(patchCalendarEventAtom);
 
   const dbPreRunForThisEvent = dbPreRun?.eventId === event.id ? dbPreRun : null;
@@ -23,21 +23,20 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
   // Fetch pre-run carbs from Turso when the activity has a paired event but no data from Intervals.icu
   useEffect(() => {
     if (event.type !== "completed" || !event.pairedEventId) return;
-    if (event.preRunCarbsG != null || event.preRunCarbsMin != null) return;
+    if (event.preRunCarbsG != null) return;
 
     let cancelled = false;
     fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(event.pairedEventId))}`)
       .then((res) => res.ok ? res.json() : null)
-      .then((data: { carbsG: number | null; minutesBefore: number | null } | null) => {
+      .then((data: { carbsG: number | null } | null) => {
         if (cancelled || !data) return;
-        setDbPreRun({ eventId: event.id, g: data.carbsG, min: data.minutesBefore });
+        setDbPreRun({ eventId: event.id, g: data.carbsG });
       })
       .catch((err: unknown) => { console.error("Failed to fetch pre-run carbs:", err); });
     return () => { cancelled = true; };
-  }, [event.id, event.type, event.pairedEventId, event.preRunCarbsG, event.preRunCarbsMin]);
+  }, [event.id, event.type, event.pairedEventId, event.preRunCarbsG]);
 
   const displayG = event.preRunCarbsG ?? dbPreRunForThisEvent?.g ?? null;
-  const displayMin = event.preRunCarbsMin ?? dbPreRunForThisEvent?.min ?? null;
 
   const savePreRunCarbs = async () => {
     if (editState.kind !== "editing") return;
@@ -45,22 +44,21 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
     if (!actId) return;
 
     const g = editState.g ? parseInt(editState.g, 10) : null;
-    const min = editState.min ? parseInt(editState.min, 10) : null;
 
-    setEditState({ kind: "saving", g: editState.g, min: editState.min });
+    setEditState({ kind: "saving", g: editState.g });
     try {
-      await updateActivityPreRunCarbs(apiKey, actId, g, min);
+      await updateActivityPreRunCarbs(apiKey, actId, g);
       // Clean up Turso fallback row if this activity has a paired event
       if (event.pairedEventId) {
         void fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(event.pairedEventId))}`, {
           method: "DELETE",
         }).catch((err: unknown) => { console.error("Failed to delete Turso pre-run row:", err); });
       }
-      patchEvent({ id: event.id, patch: { preRunCarbsG: g, preRunCarbsMin: min } });
+      patchEvent({ id: event.id, patch: { preRunCarbsG: g } });
       setEditState({ kind: "idle" });
     } catch (err) {
       console.error("Failed to update pre-run carbs:", err);
-      setEditState({ kind: "editing", g: editState.g, min: editState.min, error: "Save failed" });
+      setEditState({ kind: "editing", g: editState.g, error: "Save failed" });
     }
   };
 
@@ -80,7 +78,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 if (editState.kind === "editing") setEditState({ ...editState, g: e.target.value });
               }}
               placeholder="g"
-              className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void savePreRunCarbs();
@@ -88,21 +86,6 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
               }}
             />
             <span className="text-sm text-[#b8a5d4]">g</span>
-            <input
-              type="number"
-              min="0"
-              value={editState.min}
-              onChange={(e) => {
-                if (editState.kind === "editing") setEditState({ ...editState, min: e.target.value });
-              }}
-              placeholder="min"
-              className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void savePreRunCarbs();
-                if (e.key === "Escape") setEditState({ kind: "idle" });
-              }}
-            />
-            <span className="text-sm text-[#b8a5d4]">min before</span>
             <button
               onClick={() => { void savePreRunCarbs(); }}
               disabled={editState.kind === "saving"}
@@ -127,16 +110,11 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
               setEditState({
                 kind: "editing",
                 g: displayG ? String(displayG) : "",
-                min: displayMin ? String(displayMin) : "",
               });
             }}
             className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
           >
-            {(() => {
-              if (displayG && displayMin) return `${displayG}g, ${displayMin} min before`;
-              if (displayG) return `${displayG}g`;
-              return "—";
-            })()}
+            {displayG ? `${displayG}g` : "—"}
             <Pencil className="w-3 h-3 text-[#b8a5d4]" />
           </button>
         )}

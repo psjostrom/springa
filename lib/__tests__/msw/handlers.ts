@@ -77,7 +77,7 @@ export const handlers = [
 
   // GET pre-run carbs (PreRunCarbsInput fetches on mount)
   http.get("/api/prerun-carbs", () => {
-    return HttpResponse.json({ carbsG: null, minutesBefore: null });
+    return HttpResponse.json({ carbsG: null });
   }),
 
   // DELETE pre-run carbs (cleanup after Intervals.icu write)

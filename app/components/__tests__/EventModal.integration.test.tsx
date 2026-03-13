@@ -366,7 +366,7 @@ describe("EventModal pre-run carbs for planned events", () => {
   it("shows pre-run carbs input for planned events", async () => {
     server.use(
       http.get("/api/prerun-carbs", () => {
-        return HttpResponse.json({ carbsG: null, minutesBefore: null });
+        return HttpResponse.json({ carbsG: null });
       }),
     );
 
@@ -389,7 +389,7 @@ describe("EventModal pre-run carbs for planned events", () => {
   it("displays existing pre-run carbs from API", async () => {
     server.use(
       http.get("/api/prerun-carbs", () => {
-        return HttpResponse.json({ carbsG: 30, minutesBefore: 20 });
+        return HttpResponse.json({ carbsG: 30 });
       }),
     );
 
@@ -404,7 +404,7 @@ describe("EventModal pre-run carbs for planned events", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("30g, 20 min before")).toBeInTheDocument();
+      expect(screen.getByText("30g")).toBeInTheDocument();
     });
   });
 
@@ -414,7 +414,7 @@ describe("EventModal pre-run carbs for planned events", () => {
 
     server.use(
       http.get("/api/prerun-carbs", () => {
-        return HttpResponse.json({ carbsG: null, minutesBefore: null });
+        return HttpResponse.json({ carbsG: null });
       }),
       http.post("/api/prerun-carbs", async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>;
@@ -440,25 +440,22 @@ describe("EventModal pre-run carbs for planned events", () => {
     // Click Add to start editing
     await user.click(screen.getByText("Add"));
 
-    // Fill in the values
+    // Fill in the value
     const gInput = screen.getByPlaceholderText("g");
-    const minInput = screen.getByPlaceholderText("min");
     await user.type(gInput, "35");
-    await user.type(minInput, "25");
 
     // Save
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    // Should display saved values
+    // Should display saved value
     await waitFor(() => {
-      expect(screen.getByText("35g, 25 min before")).toBeInTheDocument();
+      expect(screen.getByText("35g")).toBeInTheDocument();
     });
 
     // Verify API call - eventId should be normalized (prefix "event-" stripped)
     expect(capturedBody).toEqual({
       eventId: "100",
       carbsG: 35,
-      minutesBefore: 25,
     });
   });
 
