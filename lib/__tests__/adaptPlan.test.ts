@@ -257,24 +257,6 @@ describe("shouldSwapToEasy", () => {
     expect(result.reason).toContain("TSB");
   });
 
-  it("does not attach confidence to swap changes", () => {
-    const insights = makeInsights({ currentTsb: -25 });
-    const events = [makeEvent({ fuelRate: 30 })];
-    const bgModel = makeBGModel([makeTarget("interval", 36)]);
-
-    const result = applyAdaptations({
-      upcomingEvents: events,
-      bgModel,
-      insights,
-      runBGContexts: {},
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
-    });
-
-    const swapChange = result[0].changes.find((c) => c.type === "swap");
-    expect(swapChange).toBeDefined();
-    expect(swapChange!.confidence).toBeUndefined();
-  });
 });
 
 describe("reconstructExternalId", () => {
@@ -459,6 +441,25 @@ describe("applyAdaptations", () => {
     expect(result[1].fuelRate).toBe(36);
     // Long: fuel change
     expect(result[2].fuelRate).toBe(65);
+  });
+
+  it("does not attach confidence to swap changes", () => {
+    const insights = makeInsights({ currentTsb: -25 });
+    const events = [makeEvent({ fuelRate: 30 })];
+    const bgModel = makeBGModel([makeTarget("interval", 36)]);
+
+    const result = applyAdaptations({
+      upcomingEvents: events,
+      bgModel,
+      insights,
+      runBGContexts: {},
+      lthr: 168,
+      hrZones: [...TEST_HR_ZONES],
+    });
+
+    const swapChange = result[0].changes.find((c) => c.type === "swap");
+    expect(swapChange).toBeDefined();
+    expect(swapChange!.confidence).toBeUndefined();
   });
 
   it("propagates confidence from fuel change to adapted event", () => {

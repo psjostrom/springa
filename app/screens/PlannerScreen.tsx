@@ -8,6 +8,7 @@ import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
+import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
@@ -182,9 +183,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     }
   }, [autoAdapt, bgModel, hasPlannedEvents]);
 
-  const hasLowConfidenceFuel = (event: AdaptedEvent) =>
-    event.changes.some((c) => c.type === "fuel" && c.confidence === "low");
-
   const handleSync = async () => {
     if (!apiKey) {
       setAdaptStatus("Missing API Key");
@@ -197,15 +195,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       return;
     }
 
-    // Filter out events with only low-confidence fuel changes that aren't opted in
-    const toSync = syncable.filter((e) => {
-      const isLowFuel = hasLowConfidenceFuel(e);
-      const isOptedIn = optedIn[e.original.id] ?? false;
-      const hasSwap = e.changes.some((c) => c.type === "swap");
-      return !(isLowFuel && !isOptedIn && !hasSwap);
-    });
+    const payload = buildSyncPayload(syncable, optedIn);
 
-    if (toSync.length === 0) {
+    if (payload.length === 0) {
       setAdaptStatus("No events to sync (all suggestions excluded)");
       return;
     }
@@ -213,20 +205,14 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     setIsSyncing(true);
     try {
       await Promise.all(
-        toSync.map((e) => {
-          const eventId = Number(e.original.id.replace("event-", ""));
-          const isLowFuel = hasLowConfidenceFuel(e);
-          const isOptedIn = optedIn[e.original.id] ?? false;
-          // Revert to original fuel if low-confidence and not opted in (swap-only sync)
-          const fuelRate = isLowFuel && !isOptedIn ? e.original.fuelRate : e.fuelRate;
-
-          return updateEvent(apiKey, eventId, {
-            description: e.description,
+        payload.map(({ eventId, description, fuelRate }) =>
+          updateEvent(apiKey, eventId, {
+            description,
             ...(fuelRate != null && { carbs_per_hour: Math.round(fuelRate) }),
-          });
-        }),
+          }),
+        ),
       );
-      setAdaptStatus(`Synced ${toSync.length} workouts to Intervals.icu`);
+      setAdaptStatus(`Synced ${payload.length} workouts to Intervals.icu`);
       setSyncDone(true);
       calendarReload();
     } catch (e) {
