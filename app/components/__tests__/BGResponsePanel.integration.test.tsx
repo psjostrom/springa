@@ -242,7 +242,7 @@ describe("BGPatternsPanel cross-run patterns", () => {
     });
   });
 
-  it("shows stale indicator when new data available", async () => {
+  it("auto-reanalyzes when new data is available", async () => {
     // Create events where the latest has a different activityId than saved
     const eventsWithNew = [
       ...mockEvents,
@@ -258,6 +258,7 @@ describe("BGPatternsPanel cross-run patterns", () => {
       },
     ];
 
+    let postCalled = false;
     server.use(
       http.get("/api/bg-patterns", () => {
         return HttpResponse.json({
@@ -265,13 +266,24 @@ describe("BGPatternsPanel cross-run patterns", () => {
           latestActivityId: "a5", // Stale - doesn't match a6-new
         });
       }),
+      http.post("/api/bg-patterns", async () => {
+        postCalled = true;
+        return HttpResponse.json({
+          patterns: "Updated patterns with new data.",
+          latestActivityId: "a6-new",
+        });
+      }),
     );
 
     render(<BGPatternsPanel events={eventsWithNew} />);
 
-    // Should show "New data — re-analyze" instead of just "Re-analyze"
+    // Should automatically trigger reanalysis
     await waitFor(() => {
-      expect(screen.getByText("New data — re-analyze")).toBeInTheDocument();
+      expect(postCalled).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Updated patterns with new data/)).toBeInTheDocument();
     });
   });
 });
