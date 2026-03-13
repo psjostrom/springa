@@ -5,14 +5,13 @@ import {
   getRunAnalysis,
   saveRunAnalysis,
   getRecentAnalyzedRuns,
-  type RunHistoryEntry,
+  buildRunHistory,
 } from "@/lib/runAnalysisDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { formatAIError } from "@/lib/aiError";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
-import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import { nonEmpty } from "@/lib/format";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { format, subDays } from "date-fns";
@@ -29,66 +28,6 @@ interface RequestBody {
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
   regenerate?: boolean;
-}
-
-function buildRunHistory(
-  rows: EnrichedActivity[],
-  activityMap: Map<string, IntervalsActivity>,
-): RunHistoryEntry[] {
-  return rows.map((row) => {
-    const { glucose, hr, activityId, category, activityDate } = row;
-
-    const endBG = glucose?.length ? glucose[glucose.length - 1].value : null;
-    const avgHRFromStream = hr.length > 0
-      ? Math.round(hr.reduce((sum, point) => sum + point.value, 0) / hr.length)
-      : null;
-
-    let dropRate: number | null = null;
-    if (glucose && glucose.length >= 2) {
-      const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
-      const duration10m = durationMin / 10;
-      if (duration10m > 0) {
-        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
-      }
-    }
-
-    const activity = activityMap.get(activityId);
-
-    const distanceKm = activity?.distance ? activity.distance / 1000 : undefined;
-    const durationMinCalc = activity?.moving_time ? activity.moving_time / 60 : undefined;
-    let pace: number | undefined;
-    if (distanceKm && durationMinCalc && distanceKm > 0) {
-      pace = durationMinCalc / distanceKm;
-    }
-
-    const event: CalendarEvent = {
-      id: `activity-${activityId}`,
-      activityId,
-      date: activityDate ? new Date(activityDate) : new Date(),
-      name: activity?.name ?? `${category} run`,
-      description: "",
-      type: "completed",
-      category: category as CalendarEvent["category"],
-      distance: activity?.distance,
-      duration: activity?.moving_time,
-      pace: activity?.pace ? 1000 / (activity.pace * 60) : pace,
-      avgHr: (activity?.average_heartrate ?? activity?.average_hr) ?? avgHRFromStream ?? undefined,
-      maxHr: activity?.max_heartrate ?? activity?.max_hr,
-      load: activity?.icu_training_load,
-      fuelRate: row.fuelRate,
-      carbsIngested: activity?.carbs_ingested ?? null,
-      preRunCarbsG: activity?.PreRunCarbsG === 0 ? null : activity?.PreRunCarbsG ?? null,
-      rating: nonEmpty(activity?.Rating),
-      feedbackComment: nonEmpty(activity?.FeedbackComment),
-    };
-
-    const startBG = glucose?.length ? glucose[0].value : 0;
-
-    return {
-      event,
-      bgSummary: { startBG, endBG, dropRate },
-    };
-  });
 }
 
 export async function POST(req: Request) {
