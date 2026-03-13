@@ -56,6 +56,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const [adaptStatus, setAdaptStatus] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
+  const [optedIn, setOptedIn] = useState<Record<string, boolean>>({});
 
   const chartData = useWeeklyVolumeData(planEvents);
 
@@ -158,6 +159,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
       const data = (await res.json()) as { adaptedEvents: AdaptedEvent[] };
       setAdaptedEvents(data.adaptedEvents);
+      setOptedIn({});
       setAdaptStatus(`Adapted ${data.adaptedEvents.length} workouts`);
     } catch (e) {
       setAdaptStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
@@ -180,31 +182,51 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     }
   }, [autoAdapt, bgModel, hasPlannedEvents]);
 
+  const hasLowConfidenceFuel = (event: AdaptedEvent) =>
+    event.changes.some((c) => c.type === "fuel" && c.confidence === "low");
+
   const handleSync = async () => {
     if (!apiKey) {
       setAdaptStatus("Missing API Key");
       return;
     }
 
-    // Extract numeric Intervals.icu event IDs from adapted events
     const syncable = adaptedEvents.filter((e) => e.original.id.startsWith("event-"));
     if (syncable.length === 0) {
       setAdaptStatus("No events to sync");
       return;
     }
 
+    // Filter out events with only low-confidence fuel changes that aren't opted in
+    const toSync = syncable.filter((e) => {
+      const isLowFuel = hasLowConfidenceFuel(e);
+      const isOptedIn = optedIn[e.original.id] ?? false;
+      const hasSwap = e.changes.some((c) => c.type === "swap");
+      return !(isLowFuel && !isOptedIn && !hasSwap);
+    });
+
+    if (toSync.length === 0) {
+      setAdaptStatus("No events to sync (all suggestions excluded)");
+      return;
+    }
+
     setIsSyncing(true);
     try {
       await Promise.all(
-        syncable.map((e) => {
+        toSync.map((e) => {
           const eventId = Number(e.original.id.replace("event-", ""));
+          const isLowFuel = hasLowConfidenceFuel(e);
+          const isOptedIn = optedIn[e.original.id] ?? false;
+          // Revert to original fuel if low-confidence and not opted in (swap-only sync)
+          const fuelRate = isLowFuel && !isOptedIn ? e.original.fuelRate : e.fuelRate;
+
           return updateEvent(apiKey, eventId, {
             description: e.description,
-            ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate) }),
+            ...(fuelRate != null && { carbs_per_hour: Math.round(fuelRate) }),
           });
         }),
       );
-      setAdaptStatus(`Synced ${syncable.length} workouts to Intervals.icu`);
+      setAdaptStatus(`Synced ${toSync.length} workouts to Intervals.icu`);
       setSyncDone(true);
       calendarReload();
     } catch (e) {
@@ -298,18 +320,36 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
                         <span className="text-xs text-[#7a6899]">{event.date}</span>
-                        {event.changes.map((change, j) => (
-                          <span
-                            key={j}
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              change.type === "fuel"
-                                ? "bg-[#ff2d95]/20 text-[#ff2d95] border border-[#ff2d95]/30"
-                                : "bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/30"
-                            }`}
-                          >
-                            {change.type === "fuel" ? "Fuel" : "Swap"}
-                          </span>
-                        ))}
+                        {event.changes.map((change, j) => {
+                          const isLowConfidence = change.type === "fuel" && change.confidence === "low";
+                          return (
+                            <span
+                              key={j}
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                isLowConfidence
+                                  ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-dashed border-[#f59e0b]/30"
+                                  : change.type === "fuel"
+                                    ? "bg-[#ff2d95]/20 text-[#ff2d95] border border-[#ff2d95]/30"
+                                    : "bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/30"
+                              }`}
+                            >
+                              {isLowConfidence ? "Suggestion" : change.type === "fuel" ? "Fuel" : "Swap"}
+                            </span>
+                          );
+                        })}
+                        {hasLowConfidenceFuel(event) && (
+                          <label className="flex items-center gap-1 text-[10px] text-[#f59e0b] ml-auto cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={optedIn[event.original.id] ?? false}
+                              onChange={(e) => {
+                                setOptedIn((prev) => ({ ...prev, [event.original.id]: e.target.checked }));
+                              }}
+                              className="accent-[#f59e0b] w-3 h-3"
+                            />
+                            Include
+                          </label>
+                        )}
                       </div>
                       {event.notes && (
                         <div className="text-sm text-[#b8a5d4] leading-relaxed">
