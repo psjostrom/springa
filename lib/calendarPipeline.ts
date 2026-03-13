@@ -6,7 +6,7 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { getWorkoutCategory } from "./constants";
-import { calculateWorkoutCarbs, estimateWorkoutDuration } from "./workoutMath";
+import { calculateWorkoutCarbs, estimatePlannedMinutes } from "./workoutMath";
 import { nonEmpty } from "./format";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
@@ -65,7 +65,6 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     totalCarbs: null,
     carbsIngested: activity.carbs_ingested ?? null,
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
-    preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
     rating: nonEmpty(activity.Rating),
     feedbackComment: nonEmpty(activity.FeedbackComment),
     activityId: activity.id,
@@ -186,14 +185,11 @@ export function processActivities(
 
     const fuelRate = matchingEvent?.carbs_per_hour ?? null;
 
-    // Calculate total carbs from fuel rate and ESTIMATED duration (from plan, not actual).
-    // This ensures the "planned" amount matches what was prescribed pre-run.
+    // Calculate total carbs from fuel rate and PLANNED duration.
     let totalCarbs: number | null = null;
     if (fuelRate != null) {
-      // Prefer estimated duration from description; fall back to event API durations; last resort: actual
-      const estDur = estimateWorkoutDuration(description);
-      const eventDur = matchingEvent?.moving_time ?? matchingEvent?.duration ?? matchingEvent?.elapsed_time;
-      const estMinutes = estDur?.minutes ?? (eventDur ? eventDur / 60 : null) ?? (activity.moving_time ? activity.moving_time / 60 : null);
+      const eventDur = matchingEvent?.duration ?? matchingEvent?.elapsed_time ?? matchingEvent?.moving_time;
+      const estMinutes = estimatePlannedMinutes(description, eventDur, activity.moving_time);
       if (estMinutes != null) {
         totalCarbs = calculateWorkoutCarbs(estMinutes, fuelRate);
       }
@@ -226,7 +222,6 @@ export function processActivities(
       totalCarbs,
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
-      preRunCarbsMin: nonZero(activity.PreRunCarbsMin),
       rating: nonEmpty(activity.Rating),
       feedbackComment: nonEmpty(activity.FeedbackComment),
       activityId: activity.id,
@@ -270,8 +265,8 @@ export function processPlannedEvents(
     // Calculate total carbs from fuel rate and estimated duration.
     let eventTotalCarbs: number | null = null;
     if (eventFuelRate != null) {
-      const estDur = event.moving_time ?? event.duration ?? event.elapsed_time;
-      const estMinutes = estimateWorkoutDuration(eventDesc)?.minutes ?? (estDur ? estDur / 60 : null);
+      const eventDur = event.duration ?? event.elapsed_time ?? event.moving_time;
+      const estMinutes = estimatePlannedMinutes(eventDesc, eventDur);
       if (estMinutes != null) {
         eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
       }

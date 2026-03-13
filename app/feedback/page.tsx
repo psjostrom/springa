@@ -17,7 +17,6 @@ interface FeedbackResponse {
   activityId: string;
   prescribedCarbsG?: number;
   preRunCarbsG?: number | null;
-  preRunCarbsMin?: number | null;
 }
 
 interface FetchResult {
@@ -75,7 +74,6 @@ function FeedbackContent() {
     comment: string;
     carbsG: string;
     preRunCarbsG: string;
-    preRunCarbsMin: string;
     prescribedCarbsG: number | null;
     activityId: string | null;
     submitted: boolean;
@@ -84,7 +82,6 @@ function FeedbackContent() {
     comment: "",
     carbsG: "",
     preRunCarbsG: "",
-    preRunCarbsMin: "",
     prescribedCarbsG: null,
     activityId: activityIdParam,
     submitted: false,
@@ -104,7 +101,6 @@ function FeedbackContent() {
           comment: data.comment ?? "",
           carbsG: data.carbsG != null ? String(data.carbsG) : (data.prescribedCarbsG != null && !data.rating ? String(data.prescribedCarbsG) : ""),
           preRunCarbsG: data.preRunCarbsG != null ? String(data.preRunCarbsG) : "",
-          preRunCarbsMin: data.preRunCarbsMin != null ? String(data.preRunCarbsMin) : "",
           prescribedCarbsG: data.prescribedCarbsG ?? null,
           activityId: data.activityId,
           submitted: !!data.rating,
@@ -122,7 +118,6 @@ function FeedbackContent() {
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
-    preRunCarbsMin?: number;
   }
 
   const { trigger: submitFeedback, isMutating: submitting, error: submitMutationError } = useSWRMutation<
@@ -152,7 +147,6 @@ function FeedbackContent() {
       comment: formState.comment || undefined,
       carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
       preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
-      preRunCarbsMin: formState.preRunCarbsMin ? Number(formState.preRunCarbsMin) : undefined,
     }).then(() => {
       setFormState((s) => ({ ...s, submitted: true }));
     }).catch(() => {
@@ -231,7 +225,7 @@ function FeedbackContent() {
                 <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
               )}
               {formState.preRunCarbsG && (
-                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {formState.preRunCarbsG}g{formState.preRunCarbsMin ? `, ${formState.preRunCarbsMin} min before` : ""}</p>
+                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {formState.preRunCarbsG}g</p>
               )}
               {formState.comment && (
                 <p className="text-[#b8a5d4] text-sm mt-2">{formState.comment}</p>
@@ -285,29 +279,16 @@ function FeedbackContent() {
           </div>
 
           {/* Pre-run carbs */}
-          <div className="w-full max-w-sm mb-4 flex gap-3">
-            <div className="flex-1">
-              <label className="block text-xs text-[#b8a5d4] mb-1">Pre-run carbs (g)</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={formState.preRunCarbsG}
-                onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
-                placeholder="e.g. 25"
-                className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs text-[#b8a5d4] mb-1">Min before run</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={formState.preRunCarbsMin}
-                onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsMin: e.target.value })); }}
-                placeholder="e.g. 20"
-                className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
-              />
-            </div>
+          <div className="w-full max-w-sm mb-4">
+            <label className="block text-xs text-[#b8a5d4] mb-1">Pre-run carbs (g)</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={formState.preRunCarbsG}
+              onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
+              placeholder="e.g. 25"
+              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+            />
           </div>
 
           {/* Comment */}

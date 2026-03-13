@@ -16,11 +16,9 @@ function normalizeEventId(id: string): string {
 export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
   const normalizedId = normalizeEventId(eventId);
   const [carbsG, setCarbsG] = useState<number | null>(null);
-  const [minutesBefore, setMinutesBefore] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editG, setEditG] = useState("");
-  const [editMin, setEditMin] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +29,9 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
         if (!res.ok) throw new Error("Failed to load");
         return res.json();
       })
-      .then((data: { carbsG: number | null; minutesBefore: number | null }) => {
+      .then((data: { carbsG: number | null }) => {
         if (cancelled) return;
         setCarbsG(data.carbsG);
-        setMinutesBefore(data.minutesBefore);
         setLoaded(true);
       })
       .catch(() => {
@@ -48,19 +45,17 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
   const startEdit = () => {
     setError(null);
     setEditG(carbsG != null ? String(carbsG) : "");
-    setEditMin(minutesBefore != null ? String(minutesBefore) : "");
     setIsEditing(true);
   };
 
   const save = async () => {
     setIsSaving(true);
     const g = editG ? parseInt(editG, 10) : null;
-    const min = editMin ? parseInt(editMin, 10) : null;
     try {
       const res = await fetch("/api/prerun-carbs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: normalizedId, carbsG: g, minutesBefore: min }),
+        body: JSON.stringify({ eventId: normalizedId, carbsG: g }),
       });
       if (!res.ok) {
         setError("Failed to save");
@@ -68,7 +63,6 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
       }
       setError(null);
       setCarbsG(g);
-      setMinutesBefore(min);
       setIsEditing(false);
     } catch {
       setError("Failed to save");
@@ -85,11 +79,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
     );
   }
 
-  const displayValue = (() => {
-    if (carbsG != null && minutesBefore != null) return `${carbsG}g, ${minutesBefore} min before`;
-    if (carbsG != null) return `${carbsG}g`;
-    return null;
-  })();
+  const displayValue = carbsG != null ? `${carbsG}g` : null;
 
   return (
     <div className="mb-4 px-4 py-3 rounded-lg bg-[#2a1f3d]">
@@ -103,7 +93,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
               value={editG}
               onChange={(e) => { setEditG(e.target.value); }}
               placeholder="g"
-              className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
@@ -111,19 +101,6 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
               }}
             />
             <span className="text-sm text-[#b8a5d4]">g</span>
-            <input
-              type="number"
-              min="0"
-              value={editMin}
-              onChange={(e) => { setEditMin(e.target.value); }}
-              placeholder="min"
-              className="w-14 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void save();
-                if (e.key === "Escape") setIsEditing(false);
-              }}
-            />
-            <span className="text-sm text-[#b8a5d4]">min before</span>
             <button
               onClick={() => { void save(); }}
               disabled={isSaving}

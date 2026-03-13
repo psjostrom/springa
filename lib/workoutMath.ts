@@ -45,6 +45,22 @@ export function calculateWorkoutCarbs(
   return Math.round((durationMinutes / 60) * fuelRateGPerHour);
 }
 
+/** Estimate planned duration (minutes) for carbs calculation.
+ *  Priority: event duration (canonical) → description parsing → fallback moving time. */
+export function estimatePlannedMinutes(
+  description: string | undefined,
+  eventDurationSec: number | null | undefined,
+  fallbackMovingTimeSec?: number | null,
+): number | null {
+  if (eventDurationSec) return eventDurationSec / 60;
+  if (description) {
+    const parsed = estimateWorkoutDuration(description);
+    if (parsed) return parsed.minutes;
+  }
+  if (fallbackMovingTimeSec) return fallbackMovingTimeSec / 60;
+  return null;
+}
+
 export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable): number {
   if (event.distance) {
     return event.distance / 1000;

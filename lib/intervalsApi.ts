@@ -509,13 +509,12 @@ export async function updateActivityPreRunCarbs(
   apiKey: string,
   activityId: string,
   carbsG: number | null,
-  minBefore: number | null,
 ): Promise<void> {
   const auth = authHeader(apiKey);
   const res = await fetch(`${API_BASE}/activity/${activityId}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ PreRunCarbsG: carbsG ?? 0, PreRunCarbsMin: minBefore ?? 0 }),
+    body: JSON.stringify({ PreRunCarbsG: carbsG ?? 0 }),
   });
   if (!res.ok) {
     const errorText = await res.text();

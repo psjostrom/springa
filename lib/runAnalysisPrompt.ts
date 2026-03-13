@@ -172,9 +172,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
   if (event.preRunCarbsG != null) {
     lines.push("");
     lines.push("## Pre-Run Carbs");
-    const parts = [`${event.preRunCarbsG}g`];
-    if (event.preRunCarbsMin != null) parts.push(`${event.preRunCarbsMin} min before start`);
-    lines.push(parts.join(", "));
+    lines.push(`${event.preRunCarbsG}g`);
   }
 
   // Athlete's own feedback

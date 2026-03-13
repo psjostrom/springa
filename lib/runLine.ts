@@ -59,9 +59,7 @@ export function formatRunLine(
   if (opts.fuelRate && event.fuelRate != null) parts.push(`fuel ${Math.round(event.fuelRate)}g/h`);
   if (opts.carbsIngested && event.carbsIngested) parts.push(`carbs ${event.carbsIngested}g`);
   if (opts.preRunCarbs && event.preRunCarbsG != null) {
-    const preRunParts = [`pre-run ${event.preRunCarbsG}g`];
-    if (event.preRunCarbsMin != null) preRunParts.push(`${event.preRunCarbsMin}m before`);
-    parts.push(preRunParts.join(" "));
+    parts.push(`pre-run ${event.preRunCarbsG}g`);
   }
 
   if (opts.hrZones && event.zoneTimes) {

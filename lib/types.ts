@@ -78,7 +78,6 @@ export interface IntervalsActivity {
   carbs_ingested?: number;
   paired_event_id?: number | null;
   PreRunCarbsG?: number;
-  PreRunCarbsMin?: number;
   Rating?: string;
   FeedbackComment?: string;
 }
@@ -162,7 +161,6 @@ export interface CalendarEvent {
   totalCarbs?: number | null; // planned total carbs
   carbsIngested?: number | null; // actual carbs consumed (from activity)
   preRunCarbsG?: number | null; // pre-run carbs grams (from Intervals.icu custom field)
-  preRunCarbsMin?: number | null; // minutes before run start (from Intervals.icu custom field)
   rating?: string | null; // athlete feedback rating (from Intervals.icu custom field)
   feedbackComment?: string | null; // athlete feedback comment (from Intervals.icu custom field)
   activityId?: string; // raw Intervals.icu activity ID for API calls
