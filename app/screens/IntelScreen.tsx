@@ -64,6 +64,7 @@ import { PaceCurvesWidget } from "../components/PaceCurvesWidget";
 import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
 import { EventModal } from "../components/EventModal";
+import { WidgetLoadingCard } from "../components/WidgetLoadingCard";
 import { useActivityStream } from "../hooks/useActivityStream";
 import { mergeStreamData } from "@/lib/enrichEvents";
 
@@ -265,14 +266,7 @@ export function IntelScreen() {
   // Widget render map — each key maps to a render function or null if data unavailable
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
     readiness: wellnessLoading
-      ? () => (
-          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              <span className="text-sm">Loading wellness data...</span>
-            </div>
-          </div>
-        )
+      ? () => <WidgetLoadingCard label="Loading wellness data..." />
       : wellnessEntries.length > 0
         ? () => <ReadinessPanel entries={wellnessEntries} />
         : null,
@@ -294,14 +288,7 @@ export function IntelScreen() {
             </div>
           )
         : (wellnessLoading || eventsLoading)
-          ? () => (
-              <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-                <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  <span className="text-sm">Loading fitness data...</span>
-                </div>
-              </div>
-            )
+          ? () => <WidgetLoadingCard label="Loading fitness data..." />
           : fitnessData.length > 0
             ? () => (
                 <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 space-y-4">
@@ -329,16 +316,7 @@ export function IntelScreen() {
         : null,
     "pace-curves": () => <PaceCurvesWidget onActivitySelect={handleActivitySelect} />,
     "bg-categories": bgModelLoading
-      ? () => (
-          <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-            <div className="flex items-center justify-center py-8 text-[#b8a5d4]">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              <span className="text-sm">
-                Analyzing BG response... {bgModelProgress.done}/{bgModelProgress.total} runs
-              </span>
-            </div>
-          </div>
-        )
+      ? () => <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
       : bgModel
         ? () => <BGResponsePanel model={bgModel} activityNames={bgActivityNames} />
         : null,
