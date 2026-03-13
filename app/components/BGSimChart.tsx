@@ -7,17 +7,20 @@ import {
   XAxis,
   YAxis,
   ReferenceLine,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
+  Label,
 } from "recharts";
 import type { SimPoint } from "@/lib/bgSimulation";
 
 interface BGSimChartProps {
   curve: SimPoint[];
   reliable: boolean;
+  maxObservedMinute: number | null;
 }
 
-export function BGSimChart({ curve, reliable }: BGSimChartProps) {
+export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartProps) {
   const data = curve.map((p) => ({
     minute: p.minute,
     bg: p.bg,
@@ -30,6 +33,10 @@ export function BGSimChart({ curve, reliable }: BGSimChartProps) {
   const allValues = curve.flatMap((p) => [p.bgLow, p.bgHigh, p.bg]);
   const minY = Math.floor(Math.min(...allValues) - 0.5);
   const maxY = Math.ceil(Math.max(...allValues) + 0.5);
+
+  const lastMinute = curve[curve.length - 1]?.minute ?? 0;
+  const showUncharted =
+    maxObservedMinute != null && maxObservedMinute < lastMinute;
 
   const opacity = reliable ? 1 : 0.4;
 
@@ -66,6 +73,33 @@ export function BGSimChart({ curve, reliable }: BGSimChartProps) {
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />
+
+          {/* Uncharted territory — beyond longest observed run */}
+          {showUncharted && (
+            <>
+              <ReferenceArea
+                x1={maxObservedMinute}
+                x2={lastMinute}
+                fill="#ffb800"
+                fillOpacity={0.06}
+              />
+              <ReferenceLine
+                x={maxObservedMinute}
+                stroke="#ffb800"
+                strokeDasharray="4 4"
+                strokeOpacity={0.5}
+              >
+                <Label
+                  value="Uncharted"
+                  position="insideTopRight"
+                  fill="#ffb800"
+                  fontSize={11}
+                  opacity={0.7}
+                  offset={4}
+                />
+              </ReferenceLine>
+            </>
+          )}
 
           {/* Confidence band */}
           <Area

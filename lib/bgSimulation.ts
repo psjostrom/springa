@@ -44,6 +44,7 @@ export interface SimulationResult {
   confidence: "low" | "medium" | "high";
   reliable: boolean; // false = don't show prediction to user
   warnings: string[];
+  maxObservedMinute: number | null; // longest run duration in data for used categories (null = no data)
 }
 
 // --- Constants ---
@@ -403,11 +404,19 @@ export function simulateBG(input: SimulationInput): SimulationResult {
       confidence: "low",
       reliable: false,
       warnings: ["No segments to simulate"],
+      maxObservedMinute: null,
     };
   }
 
   const warnings = generateWarnings(input);
   const usedCategories = [...new Set(segments.map((s) => s.category))];
+
+  // Longest actual run duration across used categories
+  const maxObservedMinute = usedCategories.reduce<number | null>((max, cat) => {
+    const catData = bgModel.categories[cat];
+    if (!catData) return max;
+    return Math.max(max ?? 0, catData.maxDurationMin);
+  }, null);
   const fuelKnown = fuelRateGH !== null;
   const confidence: "low" | "medium" | "high" = fuelKnown
     ? overallConfidence(bgModel, usedCategories)
@@ -488,6 +497,7 @@ export function simulateBG(input: SimulationInput): SimulationResult {
     confidence,
     reliable,
     warnings,
+    maxObservedMinute,
   };
 }
 

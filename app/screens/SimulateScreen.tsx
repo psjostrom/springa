@@ -160,7 +160,7 @@ export function SimulateScreen() {
             )}
 
             {/* Chart — always shown but dimmed when unreliable */}
-            <BGSimChart curve={result.curve} reliable={result.reliable} />
+            <BGSimChart curve={result.curve} reliable={result.reliable} maxObservedMinute={result.maxObservedMinute} />
 
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 text-center">
