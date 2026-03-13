@@ -82,6 +82,34 @@ function bolusIOB(bolusUnits: number, minutesAgo: number): number {
   return bolusUnits * (1 + ratio) * Math.exp(-ratio);
 }
 
+interface BasalSegment {
+  segStart: number;
+  effectiveEnd: number;
+  rate: number;
+}
+
+/** Iterate basal rate segments within the lookback window, yielding resolved time ranges. */
+function iterateBasalSegments(
+  sortedEntries: { timestamp: string; rate: number }[],
+  runStartMs: number,
+): BasalSegment[] {
+  const lookbackStart = runStartMs - LOOKBACK_MS;
+  const segments: BasalSegment[] = [];
+
+  for (let i = 0; i < sortedEntries.length; i++) {
+    const segStart = Math.max(new Date(sortedEntries[i].timestamp).getTime(), lookbackStart);
+    const segEnd = i + 1 < sortedEntries.length
+      ? new Date(sortedEntries[i + 1].timestamp).getTime()
+      : runStartMs;
+    const effectiveEnd = Math.min(segEnd, runStartMs);
+    if (segStart >= effectiveEnd) continue;
+
+    segments.push({ segStart, effectiveEnd, rate: sortedEntries[i].rate });
+  }
+
+  return segments;
+}
+
 /**
  * Compute IOB from basal rate segments.
  * Each basal rate entry defines the rate from that timestamp until the next entry.
@@ -93,30 +121,11 @@ function basalIOB(
   sortedEntries: { timestamp: string; rate: number }[],
   runStartMs: number,
 ): number {
-  if (sortedEntries.length === 0) return 0;
-
   let iob = 0;
-  const lookbackStart = runStartMs - LOOKBACK_MS;
-
-  for (let i = 0; i < sortedEntries.length; i++) {
-    const segStart = Math.max(
-      new Date(sortedEntries[i].timestamp).getTime(),
-      lookbackStart,
-    );
-    const segEnd =
-      i + 1 < sortedEntries.length
-        ? new Date(sortedEntries[i + 1].timestamp).getTime()
-        : runStartMs;
-
-    // Only process segments before run start
-    const effectiveEnd = Math.min(segEnd, runStartMs);
-    if (segStart >= effectiveEnd) continue;
-
-    const rateUPerMin = sortedEntries[i].rate / 60; // U/h → U/min
+  for (const { segStart, effectiveEnd, rate } of iterateBasalSegments(sortedEntries, runStartMs)) {
+    const rateUPerMin = rate / 60;
     const durationMin = (effectiveEnd - segStart) / 60000;
-
-    // Approximate: compute IOB at the midpoint of each 5-min block
-    const blockSize = 5; // minutes
+    const blockSize = 5;
     for (let t = 0; t < durationMin; t += blockSize) {
       const blockDuration = Math.min(blockSize, durationMin - t);
       const midpointMs = segStart + (t + blockDuration / 2) * 60000;
@@ -125,7 +134,6 @@ function basalIOB(
       iob += bolusIOB(delivered, minutesAgo);
     }
   }
-
   return iob;
 }
 
@@ -142,26 +150,13 @@ function averageBasalRate(
   sortedEntries: { timestamp: string; rate: number }[],
   runStartMs: number,
 ): number {
-  if (sortedEntries.length === 0) return 0;
-
-  const lookbackStart = runStartMs - LOOKBACK_MS;
   let totalRate = 0;
   let totalDuration = 0;
-
-  for (let i = 0; i < sortedEntries.length; i++) {
-    const segStart = Math.max(new Date(sortedEntries[i].timestamp).getTime(), lookbackStart);
-    const segEnd =
-      i + 1 < sortedEntries.length
-        ? new Date(sortedEntries[i + 1].timestamp).getTime()
-        : runStartMs;
-    const effectiveEnd = Math.min(segEnd, runStartMs);
-    if (segStart >= effectiveEnd) continue;
-
+  for (const { segStart, effectiveEnd, rate } of iterateBasalSegments(sortedEntries, runStartMs)) {
     const durationMs = effectiveEnd - segStart;
-    totalRate += sortedEntries[i].rate * durationMs;
+    totalRate += rate * durationMs;
     totalDuration += durationMs;
   }
-
   return totalDuration > 0 ? totalRate / totalDuration : 0;
 }
 
