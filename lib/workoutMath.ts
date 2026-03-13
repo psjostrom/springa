@@ -52,12 +52,12 @@ export function estimatePlannedMinutes(
   eventDurationSec: number | null | undefined,
   fallbackMovingTimeSec?: number | null,
 ): number | null {
-  if (eventDurationSec) return eventDurationSec / 60;
+  if (eventDurationSec != null && eventDurationSec > 0) return eventDurationSec / 60;
   if (description) {
     const parsed = estimateWorkoutDuration(description);
     if (parsed) return parsed.minutes;
   }
-  if (fallbackMovingTimeSec) return fallbackMovingTimeSec / 60;
+  if (fallbackMovingTimeSec != null && fallbackMovingTimeSec > 0) return fallbackMovingTimeSec / 60;
   return null;
 }
 

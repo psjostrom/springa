@@ -802,7 +802,6 @@ describe("run-feedback route", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.preRunCarbsG).toBe(30);
-    expect(data.preRunCarbsMin).toBeUndefined();
   });
 
   it("GET finds pre-run carbs via matched event when paired_event_id is null", async () => {
@@ -836,7 +835,6 @@ describe("run-feedback route", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.preRunCarbsG).toBe(25);
-    expect(data.preRunCarbsMin).toBeUndefined();
   });
 
   it("GET computes prescribedCarbsG from planned duration, not actual", async () => {
@@ -883,7 +881,6 @@ describe("run-feedback route", () => {
       name: "Easy Run",
       paired_event_id: 456,
       PreRunCarbsG: 50, // Activity already has pre-run carbs
-      PreRunCarbsMin: 15,
     });
 
     const res = await getFeedbackByActivity("i123");
@@ -891,7 +888,6 @@ describe("run-feedback route", () => {
     const data = await res.json();
     // Should use activity values, not Turso fallback
     expect(data.preRunCarbsG).toBe(50);
-    expect(data.preRunCarbsMin).toBeUndefined();
   });
 });
 

@@ -46,7 +46,8 @@ async function findMatchingEvent(
       prescribedCarbsG: calculateWorkoutCarbs(estMinutes, planned.carbs_per_hour),
       eventId: planned.id,
     };
-  } catch {
+  } catch (err) {
+    console.error("Failed to find matching event for activity:", activity.id, err);
     return { prescribedCarbsG: null, eventId: null };
   }
 }
