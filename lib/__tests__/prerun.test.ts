@@ -128,47 +128,48 @@ describe("assessReadiness — trend slope", () => {
   });
 });
 
-// --- Model dimension ---
+// --- Trend-based forecast ---
+
+describe("assessReadiness — 30-min forecast", () => {
+  it("projects BG using current trend slope", () => {
+    // slope -0.8/10m → drop 2.4 in 30m → 7.5 - 2.4 = 5.1
+    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.8 }));
+    expect(g.predictedDrop).toBeCloseTo(-2.4);
+    expect(g.estimatedBGAt30m).toBeCloseTo(5.1);
+  });
+
+  it("shows rising forecast when trending up", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: 0.5 }));
+    expect(g.predictedDrop).toBeCloseTo(1.5);
+    expect(g.estimatedBGAt30m).toBeCloseTo(8.5);
+  });
+
+  it("caution when trend predicts hypo", () => {
+    // slope -1.3/10m → drop 3.9 in 30m → 5.4 - 3.9 = 1.5
+    const g = assessReadiness(makeInput({ currentBG: 5.4, trendSlope: -1.3 }));
+    expect(g.estimatedBGAt30m).toBeCloseTo(1.5);
+    expect(g.reasons).toContain("Trend predicts hypo within 30 min");
+  });
+
+  it("no forecast when trend is null", () => {
+    const g = assessReadiness(makeInput({ trendSlope: null }));
+    expect(g.predictedDrop).toBeNull();
+    expect(g.estimatedBGAt30m).toBeNull();
+  });
+
+  it("stable trend shows minimal change", () => {
+    const g = assessReadiness(makeInput({ currentBG: 8.0, trendSlope: 0.0 }));
+    expect(g.predictedDrop).toBeCloseTo(0);
+    expect(g.estimatedBGAt30m).toBeCloseTo(8.0);
+  });
+});
+
+// --- Model dimension (fuel rates only) ---
 
 describe("assessReadiness — historical model", () => {
-  it("predicts hypo when model says big drop", () => {
-    const model = makeModel({
-      activitiesAnalyzed: 5,
-      bgByStartLevel: [
-        { band: "<8", avgRate: -1.5, medianRate: -1.4, sampleCount: 20, activityCount: 3 },
-      ],
-    });
-    const g = assessReadiness(makeInput({ currentBG: 6.0, bgModel: model }));
-    // predicted drop = -1.5 * 3 = -4.5, estimated = 6.0 + (-4.5) = 1.5
-    expect(g.estimatedBGAt30m).toBeCloseTo(1.5);
-    expect(g.predictedDrop).toBeCloseTo(-4.5);
-    expect(g.level).toBe("caution");
-    expect(g.reasons).toContain("Model predicts hypo within 30 min");
-  });
-
-  it("uses entry slope data when available", () => {
-    const model = makeModel({
-      activitiesAnalyzed: 5,
-      bgByStartLevel: [
-        { band: "<8", avgRate: -0.5, medianRate: -0.5, sampleCount: 10, activityCount: 2 },
-      ],
-      bgByEntrySlope: [
-        { slope: "stable", avgRate: -1.8, medianRate: -1.7, sampleCount: 15, activityCount: 3 },
-      ],
-    });
-    // trendSlope 0.0 → classifyEntrySlope → "stable" → avgRate -1.8
-    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: 0.0, bgModel: model }));
-    // Uses slope-specific rate: -1.8 * 3 = -5.4, estimated = 7.0 - 5.4 = 1.6
-    expect(g.predictedDrop).toBeCloseTo(-5.4);
-    expect(g.estimatedBGAt30m).toBeCloseTo(1.6);
-  });
-
   it("pulls target fuel rate from model", () => {
     const model = makeModel({
       activitiesAnalyzed: 3,
-      bgByStartLevel: [
-        { band: "8-10", avgRate: -0.3, medianRate: -0.3, sampleCount: 10, activityCount: 2 },
-      ],
       targetFuelRates: [
         { category: "easy", targetFuelRate: 30, currentAvgFuel: 25, method: "extrapolation", confidence: "medium" },
         { category: "long", targetFuelRate: 45, currentAvgFuel: 40, method: "regression", confidence: "high" },
@@ -179,50 +180,13 @@ describe("assessReadiness — historical model", () => {
     expect(g.suggestions).toContain("During run: 45g/h");
   });
 
-  it("caution when forecast drops below 5.5", () => {
-    const model = makeModel({
-      activitiesAnalyzed: 5,
-      bgByStartLevel: [
-        { band: "<8", avgRate: -0.5, medianRate: -0.5, sampleCount: 10, activityCount: 3 },
-      ],
-    });
-    // predicted drop = -0.5 * 3 = -1.5, estimated = 7.0 + (-1.5) = 5.5 → borderline
-    const g = assessReadiness(makeInput({ currentBG: 7.0, bgModel: model }));
-    expect(g.estimatedBGAt30m).toBeCloseTo(5.5);
-    expect(g.level).toBe("ready"); // 5.5 is NOT < 5.5
-
-    // Drop slightly more: -0.55 * 3 = -1.65, estimated = 7.0 - 1.65 = 5.35
-    const model2 = makeModel({
-      activitiesAnalyzed: 5,
-      bgByStartLevel: [
-        { band: "<8", avgRate: -0.55, medianRate: -0.55, sampleCount: 10, activityCount: 3 },
-      ],
-    });
-    const g2 = assessReadiness(makeInput({ currentBG: 7.0, bgModel: model2 }));
-    expect(g2.estimatedBGAt30m).toBeCloseTo(5.35);
-    expect(g2.level).toBe("caution");
-    expect(g2.reasons).toContain("Model predicts hypo within 30 min");
-  });
-
   it("graceful degradation with empty model", () => {
     const g = assessReadiness(makeInput({ bgModel: null }));
-    expect(g.predictedDrop).toBeNull();
-    expect(g.estimatedBGAt30m).toBeNull();
+    // Forecast still works (from trend), but no fuel rate without model
+    expect(g.predictedDrop).toBeCloseTo(0); // stable trend → 0 drop
+    expect(g.estimatedBGAt30m).toBeCloseTo(7.5); // stays at default BG
     expect(g.targetFuel).toBeNull();
     expect(g.level).toBe("ready"); // BG and slope are fine
-  });
-
-  it("graceful degradation with model that has no matching band", () => {
-    const model = makeModel({
-      activitiesAnalyzed: 3,
-      bgByStartLevel: [
-        { band: "12+", avgRate: -2.0, medianRate: -2.0, sampleCount: 5, activityCount: 2 },
-      ],
-    });
-    // currentBG 7.0 → band "<8" — no match in model
-    const g = assessReadiness(makeInput({ currentBG: 7.0, bgModel: model }));
-    expect(g.predictedDrop).toBeNull();
-    expect(g.estimatedBGAt30m).toBeNull();
   });
 });
 
@@ -395,12 +359,9 @@ describe("assessReadiness — compound low+falling with IOB", () => {
 
 describe("assessReadiness — worst-case consolidated output", () => {
   it("produces clear, non-redundant suggestions in extreme scenario", () => {
-    // Worst case: low BG (6.5), falling (-0.4), high IOB (0.8u), fatigued (TSB -5), model predicts hypo
+    // Worst case: low BG (6.5), falling (-0.4), high IOB (0.8u), fatigued (TSB -5)
     const model = makeModel({
       activitiesAnalyzed: 5,
-      bgByStartLevel: [
-        { band: "<8", avgRate: -0.6, medianRate: -0.6, sampleCount: 15, activityCount: 4 },
-      ],
       targetFuelRates: [
         { category: "easy", currentAvgFuel: 48, targetFuelRate: 55, method: "regression", confidence: "high" },
       ],
