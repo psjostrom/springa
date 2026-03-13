@@ -23,3 +23,18 @@ export function getCurrentFuelRate(
   }
   return DEFAULT_FUEL[category];
 }
+
+/**
+ * Resolve the confidence level for a category's fuel rate.
+ * Returns the confidence from the BG model target, or null if
+ * the fuel rate didn't come from a model target (category avg or default).
+ */
+export function getFuelConfidence(
+  category: WorkoutCategory,
+  bgModel: BGResponseModel | null | undefined,
+): "low" | "medium" | "high" | null {
+  if (!bgModel) return null;
+  const target = bgModel.targetFuelRates.find((t) => t.category === category);
+  if (target) return target.confidence;
+  return null;
+}
