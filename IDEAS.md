@@ -30,29 +30,29 @@ Same simulation engine as the completed Phase 1, pointed backward. Every complet
 
 **UI:** Overlay simulated vs actual on completed run detail. Sliders to tweak fuel rate/timing and see the predicted curve update live against what actually happened.
 
-### Post-Run Insulin Reconnect Advisor
+### Post-Run Recovery Monitor
 
-The pump goes off before every run. When does it go back on? Reconnect too early with IOB still active and BG still dropping post-exercise — crash. Reconnect too late — BG rockets.
+The pump goes off before every run. After the run, two things are completely unmanaged: **when to eat** (post-exercise hypo is the #1 fear for T1D athletes) and **when to reconnect the pump** (too early with BG dropping → crash, too late → BG rockets). The pre-run system actively monitors and advises. Post-run is a black hole.
 
-Available data: post-run BG trajectory (from stream data), insulin context (IOB at run start, expected decay via Fiasp curve in `insulinContext.ts`), MyLife Cloud data (pump state). Build a simple model: "based on your post-run BG trend and remaining IOB, reconnect in X minutes" or "reconnect now — BG is stable and rising."
+**The feature:** Active BG monitoring for 2 hours after a run, with push notifications for both carb guidance and pump reconnect timing. Uses the same infrastructure as pre-run (xDrip push + BG trend + push notifications) pointed at the recovery window.
 
-This closes the loop on the pump-off protocol: pre-run prep -> during-run fueling -> **post-run reconnect**. The third phase is currently completely unmanaged.
+**Push examples:**
+- "BG 5.8 and dropping at -0.9/10m. Eat 20g now."
+- "BG stable at 8.2 and rising. Safe to reconnect pump."
+- "BG 4.2 — hypo. Eat 15g fast carbs immediately."
+- "Recovery complete — BG stable in range for 15 min."
 
-**Implementation:** Extend `insulinContext.ts` to project IOB forward post-run. New `lib/postrun.ts` module. Push notification: "Run complete. BG 7.2->. Reconnect pump in ~15 min when BG stabilizes above 8."
+**Monitoring logic:**
+- Triggered by `run-completed` webhook (same as post-run feedback push)
+- Poll xDrip readings every 5 min for 2h (or until BG stable in 4.0–10.0 for 15+ consecutive min — same `timeToStable` logic as `runBGContext.ts`)
+- Carb guidance: if BG < 5.5 or dropping > -0.5/10m, suggest carbs (amount scaled by drop rate)
+- Reconnect timing: project IOB decay from pre-run insulin context + current BG trend. Suggest reconnect when BG is stable/rising AND projected IOB < 0.3u
+
+**Implementation:** Extend `insulinContext.ts` to project IOB forward post-run. New `lib/postrun.ts` module with `monitorRecovery()` assessment function (same pattern as `assessReadiness()`). New cron or polling mechanism triggered by `run-completed`.
 
 **MyLife Cloud latency note:** ~2 hour sync delay (tested 2026-03-02) means real-time IOB from MyLife is unavailable post-run. The model must project forward from the last known pre-run IOB state. Since all runs are pump-off, the only insulin decaying is what was active at disconnect — this is fully computable from the pre-run insulin context without fresh MyLife data.
 
-### Aerobic Fitness Trend
-
-Single chart combining cardiac drift (aerobic decoupling) and efficiency factor over time. These measure the same underlying signal — pace:HR relationship — and belong together.
-
-**Aerobic decoupling:** Split each easy/long run into first and second half. Compute pace:HR ratio for each half. Decoupling % = (ratio2 - ratio1) / ratio1 x 100. A decreasing trend indicates improving aerobic fitness. Flag runs where decoupling exceeds 5%.
-
-**Efficiency factor:** EF = normalized pace / avg HR, plotted per week. Rising EF = getting fitter at the same effort.
-
-**Data source:** Stream data (HR + pace) already fetched for completed runs. Computation is straightforward — no new API calls needed.
-
-**UI:** Line chart in Intel tab. Two y-axes: decoupling % (lower is better) and EF (higher is better). Trend lines showing direction over 4-8 week windows.
+**Why this matters:** Post-exercise hypoglycemia can occur 1–2 hours after running, when the runner feels fine and isn't checking. An automated monitor that watches BG and pushes "eat now" at the right moment is genuinely protective.
 
 ### Workout-Specific BG Pacing
 
@@ -148,6 +148,12 @@ Grade-adjusted pace analysis using elevation data from completed runs. Compare G
 The coach already receives category, distance, duration, pace, avgHR, maxHR, load, planned fuel rate, actual carbs, HR zone breakdown (Z1-Z5), BG start + rate, entry slope, recovery patterns, and user feedback per completed workout. That covers ~90% of useful context.
 
 **Rejected (2026-03-05):** The remaining 10% (workout description for planned-vs-actual, cadence) adds 500-1000 tokens per prompt for marginal improvement. The report card already scores HR zone compliance, covering the primary use case. The trigger condition ("coach gives vague execution answers") has never been met.
+
+### Aerobic Fitness Trend
+
+Cardiac drift (aerobic decoupling) and efficiency factor chart over time.
+
+**Rejected (2026-03-13):** Requires specifically organized runs (steady-state efforts held at consistent intensity). Training plan uses varied structures (intervals, sandwiches, strides) that contaminate the pace:HR relationship. Without controlled test runs, the data is too noisy to draw conclusions from.
 
 ### Analysis -> Adapt: Feed Prior Analysis Into Pre-Workout Notes
 

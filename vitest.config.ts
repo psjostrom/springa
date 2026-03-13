@@ -23,7 +23,7 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["**/*.test.ts"],
-          exclude: ["**/node_modules/**", "**/*.flow.test.ts", "**/*.integration.test.tsx"],
+          exclude: ["**/node_modules/**", ".claude/worktrees/**", "**/*.flow.test.ts", "**/*.integration.test.tsx"],
           setupFiles: ["./lib/__tests__/msw/setup.ts"],
         },
       },
@@ -32,7 +32,7 @@ export default defineConfig({
         test: {
           name: "flow",
           include: ["**/*.flow.test.ts"],
-          exclude: ["**/node_modules/**"],
+          exclude: ["**/node_modules/**", ".claude/worktrees/**"],
           setupFiles: ["./lib/__tests__/msw/setup.ts"],
         },
       },
@@ -41,7 +41,7 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["**/*.integration.test.tsx"],
-          exclude: ["**/node_modules/**"],
+          exclude: ["**/node_modules/**", ".claude/worktrees/**"],
           environment: "jsdom",
           setupFiles: [
             "./lib/__tests__/msw/setup.ts",
