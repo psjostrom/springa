@@ -20,7 +20,7 @@ describe("fetchCalendarData", () => {
         id: "123",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Short Intervals eco16",
+        name: "W01 Short Intervals",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -35,7 +35,7 @@ describe("fetchCalendarData", () => {
         id: 456,
         category: "WORKOUT",
         start_date_local: "2026-02-15T12:00:00",
-        name: "W02 Easy eco16",
+        name: "W02 Easy",
         description: "PUMP ON - FUEL PER 10: 8g TOTAL: 32g",
       },
     ];
@@ -64,7 +64,7 @@ describe("fetchCalendarData", () => {
         id: "123",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Short Intervals eco16",
+        name: "W01 Short Intervals",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -75,7 +75,7 @@ describe("fetchCalendarData", () => {
         id: 789,
         category: "WORKOUT",
         start_date_local: "2026-02-10T12:00:00",
-        name: "W01 Short Intervals eco16",
+        name: "W01 Short Intervals",
         description: "some desc",
         paired_activity_id: "123",
       },
@@ -109,7 +109,7 @@ describe("fetchCalendarData", () => {
         id: "123",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -120,7 +120,7 @@ describe("fetchCalendarData", () => {
         id: 789,
         category: "WORKOUT",
         start_date_local: "2026-02-10T12:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         description: "PUMP ON - FUEL PER 10: 8g",
         paired_activity_id: "123",
       },
@@ -149,7 +149,7 @@ describe("fetchCalendarData", () => {
         id: "123",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -160,7 +160,7 @@ describe("fetchCalendarData", () => {
         id: 789,
         category: "WORKOUT",
         start_date_local: "2026-02-12T12:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         description: "PUMP ON - FUEL PER 10: 8g",
       },
     ];
@@ -188,7 +188,7 @@ describe("fetchCalendarData", () => {
         id: "456",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "Järfälla - W03 Bonus Easy eco16",
+        name: "Järfälla - W03 Bonus Easy",
         type: "Run",
         distance: 6352,
         moving_time: 3200,
@@ -199,7 +199,7 @@ describe("fetchCalendarData", () => {
         id: 999,
         category: "WORKOUT",
         start_date_local: "2026-02-10T12:00:00",
-        name: "W03 Bonus Easy eco16",
+        name: "W03 Bonus Easy",
         description: "Easy run.",
       },
     ];
@@ -226,7 +226,7 @@ describe("fetchCalendarData", () => {
         id: "123",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -237,7 +237,7 @@ describe("fetchCalendarData", () => {
         id: 789,
         category: "WORKOUT",
         start_date_local: "2026-02-15T12:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         description: "PUMP ON - FUEL PER 10: 8g",
       },
     ];
@@ -269,7 +269,7 @@ describe("fetchCalendarData", () => {
               id: "act-1",
               start_date: "2026-02-10T10:00:00",
               start_date_local: "2026-02-10T10:00:00",
-              name: "W04 Easy eco16",
+              name: "W04 Easy",
               type: "Run",
               distance: 5000,
               moving_time: 1800,
@@ -286,7 +286,7 @@ describe("fetchCalendarData", () => {
               id: 100,
               category: "WORKOUT",
               start_date_local: "2026-02-10T12:00:00",
-              name: "W04 Easy eco16",
+              name: "W04 Easy",
               description: "Warmup\n- 10m 66-78% LTHR",
               paired_activity_id: "act-1",
               carbs_per_hour: 48,
@@ -314,7 +314,7 @@ describe("fetchCalendarData", () => {
               id: "act-2",
               start_date: "2026-02-10T10:00:00",
               start_date_local: "2026-02-10T10:00:00",
-              name: "W04 Easy eco16",
+              name: "W04 Easy",
               type: "Run",
               distance: 5000,
               moving_time: 1800,
@@ -330,7 +330,7 @@ describe("fetchCalendarData", () => {
               id: 101,
               category: "WORKOUT",
               start_date_local: "2026-02-10T12:00:00",
-              name: "W04 Easy eco16",
+              name: "W04 Easy",
               description: "Warmup\n- 10m 66-78% LTHR",
               paired_activity_id: "act-2",
               carbs_per_hour: 48,
@@ -361,7 +361,7 @@ describe("fetchCalendarData", () => {
               id: 500,
               category: "WORKOUT",
               start_date_local: "2026-02-20T12:00:00",
-              name: "W05 Easy eco16",
+              name: "W05 Easy",
               description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 30m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
               carbs_per_hour: 48,
             },
@@ -390,7 +390,7 @@ describe("fetchCalendarData", () => {
               id: 501,
               category: "WORKOUT",
               start_date_local: "2026-02-20T12:00:00",
-              name: "W05 Easy eco16",
+              name: "W05 Easy",
               description: "Warmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)\n",
             },
           ]),
@@ -419,7 +419,7 @@ describe("fetchCalendarData", () => {
               id: 100,
               category: "WORKOUT",
               start_date_local: "2026-06-13T08:00:00",
-              name: "RACE DAY eco16",
+              name: "RACE DAY",
               description: "Race day!",
             },
           ]),
@@ -439,7 +439,7 @@ describe("fetchCalendarData", () => {
         id: "act-99",
         start_date: "2026-02-10T10:00:00",
         start_date_local: "2026-02-10T10:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         type: "Run",
         distance: 5000,
         moving_time: 1800,
@@ -450,7 +450,7 @@ describe("fetchCalendarData", () => {
         id: 555,
         category: "WORKOUT",
         start_date_local: "2026-02-10T12:00:00",
-        name: "W01 Easy eco16",
+        name: "W01 Easy",
         description: "Easy run",
         // No paired_activity_id — forces fallback matching
       },
@@ -564,7 +564,7 @@ describe("uploadToIntervals", () => {
     }));
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run" },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
     ];
 
     const count = await uploadToIntervals("test-key", events);
@@ -585,7 +585,7 @@ describe("uploadToIntervals", () => {
     }));
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run", fuelRate: 60 },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run", fuelRate: 60 },
     ];
 
     await uploadToIntervals("test-key", events);
@@ -605,7 +605,7 @@ describe("uploadToIntervals", () => {
     }));
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run" },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
     ];
 
     await uploadToIntervals("test-key", events);
@@ -620,7 +620,7 @@ describe("uploadToIntervals", () => {
     }));
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test eco16", description: "Test", external_id: "test-1", type: "Run" },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
     ];
     await expect(uploadToIntervals("test-key", events)).rejects.toThrow("API Error 500");
   });

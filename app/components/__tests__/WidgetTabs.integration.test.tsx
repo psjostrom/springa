@@ -10,7 +10,7 @@ import { WidgetTabs } from "../WidgetTabs";
 const completedEvent: CalendarEvent = {
   id: "e100",
   date: new Date("2026-03-08T10:00:00"),
-  name: "W02 Long (10km) eco16",
+  name: "W02 Long (10km)",
   description: "Easy long run.\n\nWarmup\n- 10m 66-78% LTHR (112-132 bpm)\n\nMain set\n- 40m 66-78% LTHR (112-132 bpm)\n\nCooldown\n- 5m 66-78% LTHR (112-132 bpm)",
   type: "completed",
   category: "long",

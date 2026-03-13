@@ -164,11 +164,11 @@ export function processActivities(
     }) : undefined;
     const matchingEvent = authoritativeMatch ?? fallbackMatch;
 
-    // Log: fallback match → one line; eco16 with no match → detail block; otherwise silent
+    // Log: fallback match → one line; plan workout with no match → detail block; otherwise silent
     if (fallbackMatch) {
       console.log(`[auto-pair] fallback: activity "${activity.name}" → event ${fallbackMatch.id}`);
-    } else if (!matchingEvent && activity.name.toLowerCase().includes("eco16")) {
-      console.log(`[auto-pair] UNMATCHED eco16 activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
+    } else if (!matchingEvent && /^(W\d{2}\b|RACE\s+DAY)/i.test(activity.name)) {
+      console.log(`[auto-pair] UNMATCHED activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
       for (const r of rejections) console.log(`[auto-pair]   rejected: ${r}`);
     }
 

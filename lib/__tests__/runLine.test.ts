@@ -7,7 +7,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
     id: "activity-a1",
     date: new Date("2026-02-18T10:00:00Z"),
-    name: "Easy Run eco16",
+    name: "Easy Run",
     description: "",
     type: "completed",
     category: "easy",
@@ -19,7 +19,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 describe("formatRunLine", () => {
   it("includes date and name by default", () => {
     const line = formatRunLine(makeEvent(), { name: true });
-    expect(line).toBe("- 2026-02-18 | Easy Run eco16");
+    expect(line).toBe("- 2026-02-18 | Easy Run");
   });
 
   it("date defaults to true", () => {
@@ -29,7 +29,7 @@ describe("formatRunLine", () => {
 
   it("date can be disabled", () => {
     const line = formatRunLine(makeEvent(), { date: false, name: true });
-    expect(line).toBe("- Easy Run eco16");
+    expect(line).toBe("- Easy Run");
   });
 
   it("includes all CalendarEvent fields when requested", () => {
@@ -61,7 +61,7 @@ describe("formatRunLine", () => {
     });
 
     expect(line).toContain("2026-02-18");
-    expect(line).toContain("Easy Run eco16");
+    expect(line).toContain("Easy Run");
     expect(line).toContain("(easy)");
     expect(line).toContain("7.5km");
     expect(line).toContain("35m");
@@ -80,7 +80,7 @@ describe("formatRunLine", () => {
       { date: true, name: true, distance: true, pace: true, avgHr: true, load: true },
     );
     // No distance/pace/avgHr/load on the event
-    expect(line).toBe("- 2026-02-18 | Easy Run eco16");
+    expect(line).toBe("- 2026-02-18 | Easy Run");
   });
 
   it("uses | separator", () => {

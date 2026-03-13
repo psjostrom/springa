@@ -42,7 +42,7 @@ export interface PlanContext {
   fuelEasy: number;
   raceDate: Date;
   raceDist: number;
-  prefix: string;
+
   totalWeeks: number;
   startKm: number;
   lthr: number;

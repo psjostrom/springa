@@ -36,7 +36,7 @@ function weather(overrides: Partial<SMHIWeather> = {}): SMHIWeather {
 const plannedEasy: CalendarEvent = {
   id: "event-100",
   date: new Date("2026-03-10T14:00:00"),
-  name: "W05 Easy eco16",
+  name: "W05 Easy",
   description: "Steady easy running.\n\n- 41m 68-83% LTHR (115-140 bpm)",
   type: "planned",
   category: "easy",
@@ -46,7 +46,7 @@ const plannedEasy: CalendarEvent = {
 const completedRun: CalendarEvent = {
   id: "activity-200",
   date: new Date("2026-03-08T10:00:00"),
-  name: "W04 Easy eco16",
+  name: "W04 Easy",
   description: "Easy run.",
   type: "completed",
   category: "easy",
@@ -171,7 +171,7 @@ describe("full weather-to-clothing flow", () => {
   it("Stockholm March interval session: intensity offset makes it warmer", () => {
     const plannedInterval: CalendarEvent = {
       ...plannedEasy,
-      name: "W05 Short Intervals eco16",
+      name: "W05 Short Intervals",
       category: "interval",
     };
     // feelsLike 7 + intensity 5 = effective 12 → t-shirt + shorts
@@ -251,7 +251,7 @@ describe("SettingsModal warmth preference", () => {
     raceDate: "2026-06-13",
     raceName: "EcoTrail 16km",
     raceDist: 16,
-    prefix: "eco16",
+
     totalWeeks: 18,
     startKm: 8,
     warmthPreference: 0,

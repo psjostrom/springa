@@ -177,7 +177,6 @@ export function IntelScreen() {
   const totalWeeks = settings?.totalWeeks ?? 18;
   const raceDate = settings?.raceDate ?? "2026-06-13";
   const raceDist = settings?.raceDist;
-  const prefix = settings?.prefix;
   const startKm = settings?.startKm;
   const lthr = settings?.lthr;
   const hrZones = settings?.hrZones;
@@ -317,7 +316,6 @@ export function IntelScreen() {
         raceDate={raceDate}
         totalWeeks={totalWeeks}
         raceDist={raceDist}
-        prefix={prefix}
         startKm={startKm}
         lthr={lthr}
         hrZones={hrZones}

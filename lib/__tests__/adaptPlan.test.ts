@@ -37,7 +37,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return {
     id: "ev-1",
     date: new Date("2026-03-10"),
-    name: "W14 Short-Intervals eco16",
+    name: "W14 Short-Intervals",
     description:
       "Speed session\nPUMP OFF - FUEL PER 10: 5g TOTAL: 25g\n\nWarmup\n- 10m 112-132 bpm\n\nMain set\n- 6x 2m 150-167 bpm / 2m 112-132 bpm\n\nCooldown\n- 5m 112-132 bpm",
     type: "planned",
@@ -235,42 +235,50 @@ describe("shouldSwapToEasy", () => {
 
 describe("reconstructExternalId", () => {
   it("parses speed session by keyword", () => {
-    expect(reconstructExternalId("W12 Short-Intervals eco16", "eco16")).toBe("eco16-speed-12");
+    expect(reconstructExternalId("W12 Short-Intervals")).toBe("speed-12");
   });
 
   it("parses long run by keyword", () => {
-    expect(reconstructExternalId("W05 Long (12km) eco16", "eco16")).toBe("eco16-long-5");
+    expect(reconstructExternalId("W05 Long (12km)")).toBe("long-5");
   });
 
   it("parses easy run as default", () => {
-    expect(reconstructExternalId("W01 Easy eco16", "eco16")).toBe("eco16-easy-1");
+    expect(reconstructExternalId("W01 Easy")).toBe("easy-1");
   });
 
   it("parses bonus run by keyword", () => {
-    expect(reconstructExternalId("W03 Bonus Easy eco16", "eco16")).toBe("eco16-bonus-3");
+    expect(reconstructExternalId("W03 Bonus Easy")).toBe("bonus-3");
   });
 
   it("parses RACE DAY with week number", () => {
-    expect(reconstructExternalId("W18 RACE DAY eco16", "eco16")).toBe("eco16-race-18");
+    expect(reconstructExternalId("W18 RACE DAY")).toBe("race-18");
   });
 
   it("parses RACE DAY without week number", () => {
-    expect(reconstructExternalId("RACE DAY eco16", "eco16")).toBe("eco16-race");
+    expect(reconstructExternalId("RACE DAY")).toBe("race");
   });
 
   it("returns null for unrecognized patterns", () => {
-    expect(reconstructExternalId("Random event name", "eco16")).toBeNull();
+    expect(reconstructExternalId("Random event name")).toBeNull();
   });
 
   it("parses club run by keyword", () => {
-    expect(reconstructExternalId("W05 Club Run eco16", "eco16")).toBe("eco16-interval-5");
+    expect(reconstructExternalId("W05 Club Run")).toBe("interval-5");
   });
 
   it("handles legacy day-based names", () => {
-    expect(reconstructExternalId("W03 Tue Easy eco16", "eco16")).toBe("eco16-easy-3");
-    expect(reconstructExternalId("W12 Thu Short-Intervals eco16", "eco16")).toBe("eco16-speed-12");
-    expect(reconstructExternalId("W05 Sun Long (12km) eco16", "eco16")).toBe("eco16-long-5");
-    expect(reconstructExternalId("W01 Sat Bonus Easy eco16", "eco16")).toBe("eco16-bonus-1");
+    expect(reconstructExternalId("W03 Tue Easy")).toBe("easy-3");
+    expect(reconstructExternalId("W12 Thu Short-Intervals")).toBe("speed-12");
+    expect(reconstructExternalId("W05 Sun Long (12km)")).toBe("long-5");
+    expect(reconstructExternalId("W01 Sat Bonus Easy")).toBe("bonus-1");
+  });
+
+  it("handles legacy names with eco16 suffix", () => {
+    expect(reconstructExternalId("W12 Short-Intervals eco16")).toBe("speed-12");
+    expect(reconstructExternalId("W05 Long (12km) eco16")).toBe("long-5");
+    expect(reconstructExternalId("W01 Easy eco16")).toBe("easy-1");
+    expect(reconstructExternalId("W03 Bonus Easy eco16")).toBe("bonus-3");
+    expect(reconstructExternalId("RACE DAY eco16")).toBe("race");
   });
 });
 
@@ -285,7 +293,7 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });
@@ -306,7 +314,7 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });
@@ -326,7 +334,7 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });
@@ -337,7 +345,7 @@ describe("applyAdaptations", () => {
   });
 
   it("reconstructs external_id from name", () => {
-    const events = [makeEvent({ name: "W14 Short-Intervals eco16" })];
+    const events = [makeEvent({ name: "W14 Short-Intervals" })];
     const bgModel = makeBGModel();
     const insights = makeInsights();
 
@@ -346,18 +354,18 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });
 
-    expect(result[0].externalId).toBe("eco16-speed-14");
+    expect(result[0].externalId).toBe("speed-14");
   });
 
   it("leaves easy runs unchanged when resolved rate matches current", () => {
     const events = [
       makeEvent({
-        name: "W14 Easy eco16",
+        name: "W14 Easy",
         category: "easy",
         fuelRate: 45, // matches bgModel avgFuelRate for easy
         description: "Easy run\n\nWarmup\n- 10m easy\n\nMain set\n- 30m Z2\n\nCooldown\n- 5m easy",
@@ -371,7 +379,7 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });
@@ -383,9 +391,9 @@ describe("applyAdaptations", () => {
 
   it("handles multiple events", () => {
     const events = [
-      makeEvent({ id: "ev-1", name: "W14 Easy eco16", category: "easy", fuelRate: 45 }), // matches avgFuelRate
-      makeEvent({ id: "ev-2", name: "W14 Short-Intervals eco16", category: "interval", fuelRate: 30 }),
-      makeEvent({ id: "ev-3", name: "W14 Long (10km) eco16", category: "long", fuelRate: 60 }),
+      makeEvent({ id: "ev-1", name: "W14 Easy", category: "easy", fuelRate: 45 }), // matches avgFuelRate
+      makeEvent({ id: "ev-2", name: "W14 Short-Intervals", category: "interval", fuelRate: 30 }),
+      makeEvent({ id: "ev-3", name: "W14 Long (10km)", category: "long", fuelRate: 60 }),
     ];
     const bgModel = makeBGModel([makeTarget("interval", 36), makeTarget("long", 65)]);
     const insights = makeInsights();
@@ -395,7 +403,7 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      prefix: "eco16",
+
       lthr: 168,
       hrZones: [...TEST_HR_ZONES],
     });

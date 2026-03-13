@@ -79,8 +79,8 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
     await waitFor(() => {
       expect(screen.getByText("Preview")).toBeInTheDocument();
     });
-    // Verify workouts contain the prefix
-    const cards = screen.getAllByText(/eco16/);
+    // Verify workout cards are rendered (week numbers visible)
+    const cards = screen.getAllByText(/^W\d+/);
     expect(cards.length).toBeGreaterThan(0);
 
     // 4. Assert action bar
@@ -118,14 +118,14 @@ describe("Flow 2: Calendar — Events load -> Modal details", () => {
 
     // 1. Wait for events to load (MSW returns sampleActivities + sampleEvents)
     await waitFor(() => {
-      expect(screen.getAllByText(/W04 Easy eco16/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/W04 Easy/).length).toBeGreaterThanOrEqual(1);
     });
 
     // 2. Assert completed + planned events visible
-    expect(screen.getAllByText(/W05 Easy \+ Strides eco16/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/W05 Easy \+ Strides/).length).toBeGreaterThanOrEqual(1);
 
     // 3. Click a completed event
-    const completedEvent = screen.getAllByText(/W04 Easy eco16/)[0];
+    const completedEvent = screen.getAllByText(/W04 Easy/)[0];
     await user.click(completedEvent);
 
     // 4. Assert URL updated with workout param
@@ -171,12 +171,12 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
     // 1. Wait for events
     await waitFor(() => {
       expect(
-        screen.getByText(/W05 Easy \+ Strides eco16/),
+        screen.getByText(/W05 Easy \+ Strides/),
       ).toBeInTheDocument();
     });
 
     // 2. Click the planned event
-    const plannedEvent = screen.getByText(/W05 Easy \+ Strides eco16/);
+    const plannedEvent = screen.getByText(/W05 Easy \+ Strides/);
     await user.click(plannedEvent);
 
     // 3. Assert Planned badge and Edit button visible
@@ -297,7 +297,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     // 2. Wait for agenda to render the planned event (name appears in both month + agenda views)
     await waitFor(() => {
       expect(
-        screen.getAllByText(/W05 Easy \+ Strides eco16/).length,
+        screen.getAllByText(/W05 Easy \+ Strides/).length,
       ).toBeGreaterThanOrEqual(1);
     });
 
@@ -307,7 +307,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     });
 
     // 4. Click the event to open modal (click last match = agenda view)
-    const matches = screen.getAllByText(/W05 Easy \+ Strides eco16/);
+    const matches = screen.getAllByText(/W05 Easy \+ Strides/);
     await user.click(matches[matches.length - 1]);
 
     // 5. Assert modal WorkoutCard shows fuel info
@@ -329,7 +329,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     // 2. Wait for agenda to render the planned event (may appear in both month + agenda views)
     await waitFor(() => {
       expect(
-        screen.getAllByText(/W05 Hills eco16/).length,
+        screen.getAllByText(/W05 Hills/).length,
       ).toBeGreaterThanOrEqual(1);
     });
 
@@ -339,7 +339,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
     });
 
     // 4. Click the event to open modal (click last match = agenda view)
-    const hillMatches = screen.getAllByText(/W05 Hills eco16/);
+    const hillMatches = screen.getAllByText(/W05 Hills/);
     await user.click(hillMatches[hillMatches.length - 1]);
 
     // 5. Assert modal WorkoutCard shows fuel info
@@ -369,12 +369,12 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
     // 1. Wait for events to load
     await waitFor(() => {
       expect(
-        screen.getByText(/W05 Easy \+ Strides eco16/),
+        screen.getByText(/W05 Easy \+ Strides/),
       ).toBeInTheDocument();
     });
 
     // 2. Click the planned event
-    const plannedEvent = screen.getByText(/W05 Easy \+ Strides eco16/);
+    const plannedEvent = screen.getByText(/W05 Easy \+ Strides/);
     await user.click(plannedEvent);
 
     // 3. Assert Planned badge and Delete button visible
@@ -399,7 +399,7 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
     // 7. Assert event is removed from the DOM
     await waitFor(() => {
       expect(
-        screen.queryByText(/W05 Easy \+ Strides eco16/),
+        screen.queryByText(/W05 Easy \+ Strides/),
       ).not.toBeInTheDocument();
     });
   });
@@ -428,12 +428,12 @@ describe("Flow 8: Calendar — Long run totalCarbs uses description pace estimat
     // 1. Wait for events to load
     await waitFor(() => {
       expect(
-        screen.getByText(/W05 Long \(8km\) eco16/),
+        screen.getByText(/W05 Long \(8km\)/),
       ).toBeInTheDocument();
     });
 
     // 2. Click the planned long run
-    await user.click(screen.getByText(/W05 Long \(8km\) eco16/));
+    await user.click(screen.getByText(/W05 Long \(8km\)/));
 
     // 3. Assert modal shows correct fuel strip values
     await waitFor(() => {
