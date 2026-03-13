@@ -66,7 +66,7 @@ const eslintConfig = defineConfig([
     // Standalone scripts excluded from tsconfig
     "scripts/**",
     // Claude Code worktrees (isolated copies of the repo)
-    ".claude/worktrees/**",
+    ".claude/**",
   ]),
 ]);
 

@@ -3,10 +3,8 @@ import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib
 import { getRecentXdripReadings } from "@/lib/xdripDb";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
-import { computeTrend } from "@/lib/xdrip";
 import { buildBGModelFromCached } from "@/lib/bgModel";
-import { getWorkoutCategory } from "@/lib/constants";
-import { assessReadiness, formatGuidancePush } from "@/lib/prerun";
+import { buildEventGuidance } from "@/lib/prerunGuidance";
 import { sendPushToUser } from "@/lib/push";
 import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
@@ -92,6 +90,12 @@ export async function GET(req: Request) {
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
 
+      // Fetch readings and build BG model once per user (shared across events)
+      const readings = await getRecentXdripReadings(email);
+      const cached = await getActivityStreams(email);
+      const enriched = await enrichActivitiesWithGlucose(email, cached);
+      const bgModel = buildBGModelFromCached(enriched);
+
       for (const event of upcoming) {
         const eventDateStr = event.start_date_local.slice(0, 10);
         if (await hasPrerunPushSent(email, eventDateStr)) {
@@ -99,41 +103,26 @@ export async function GET(req: Request) {
           continue;
         }
 
-        // Fetch only the last 30 minutes of readings
-        const readings = await getRecentXdripReadings(email);
-        if (readings.length === 0) {
-          skipped++;
-          continue;
-        }
-
-        // Skip if latest reading is stale (>15 min old)
-        const lastReading = readings[readings.length - 1];
-        if (now - lastReading.ts > STALE_THRESHOLD_MS) {
-          skipped++;
-          continue;
-        }
-
-        const trendResult = computeTrend(readings);
-        const trendSlope = trendResult?.slope ?? null;
-        const rawCached = await getActivityStreams(email);
-        const cached = await enrichActivitiesWithGlucose(email, rawCached);
-        const bgModel = buildBGModelFromCached(cached);
-        const currentBG = lastReading.mmol;
-        const rawCategory = getWorkoutCategory(event.name ?? "");
-        const category = rawCategory === "other" ? "easy" : rawCategory;
-
-        const guidance = assessReadiness({
-          currentBG,
-          trendSlope,
+        const result = buildEventGuidance({
+          event,
+          readings,
           bgModel,
-          category,
           currentTsb,
-          iob: currentIob,
+          currentIob,
+          now,
+          staleThresholdMs: STALE_THRESHOLD_MS,
         });
 
-        const { title, body } = formatGuidancePush(guidance, currentBG);
-        const eventId = `event-${event.id}`;
-        await sendPushToUser(email, { title, body, url: `/?tab=calendar&workout=${eventId}` });
+        if (!result) {
+          skipped++;
+          continue;
+        }
+
+        await sendPushToUser(email, {
+          title: result.title,
+          body: result.body,
+          url: `/?tab=calendar&workout=${result.eventId}`,
+        });
         await markPrerunPushSent(email, eventDateStr);
         sent++;
       }
