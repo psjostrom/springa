@@ -1,6 +1,5 @@
 import type { WorkoutCategory } from "./types";
 import type { BGResponseModel } from "./bgModel";
-import { classifyBGBand, classifyEntrySlope } from "./bgModel";
 import { BG_HIGH, BG_EXERCISE_MIN } from "./constants";
 import { getCurrentFuelRate } from "./fuelRate";
 
@@ -73,53 +72,22 @@ function assessTrendSlope(slope: number | null): { level: ReadinessLevel; reason
 }
 
 function assessModel(
-  currentBG: number,
-  trendSlope: number | null,
   bgModel: BGResponseModel | null,
   category: WorkoutCategory,
-): { level: ReadinessLevel; reasons: string[]; suggestions: string[]; predictedDrop: number | null; targetFuel: number | null; estimatedBGAt30m: number | null } {
-  const result = {
-    level: "ready" as ReadinessLevel,
-    reasons: [] as string[],
-    suggestions: [] as string[],
-    predictedDrop: null as number | null,
-    targetFuel: null as number | null,
-    estimatedBGAt30m: null as number | null,
-  };
+): { targetFuel: number | null } {
+  if (!bgModel || bgModel.activitiesAnalyzed === 0) return { targetFuel: null };
+  return { targetFuel: getCurrentFuelRate(category, bgModel) };
+}
 
-  if (!bgModel || bgModel.activitiesAnalyzed === 0) return result;
-
-  // Look up BG band drop rate
-  const band = classifyBGBand(currentBG);
-  const bandData = bgModel.bgByStartLevel.find((b) => b.band === band);
-
-  // Look up entry slope drop rate if available
-  let slopeRate: number | null = null;
-  if (trendSlope !== null) {
-    const slopeCategory = classifyEntrySlope(trendSlope);
-    const slopeData = bgModel.bgByEntrySlope.find((s) => s.slope === slopeCategory);
-    if (slopeData) slopeRate = slopeData.avgRate;
-  }
-
-  // Use the best available rate: prefer slope-specific, fall back to band
-  const avgRate = slopeRate ?? bandData?.avgRate ?? null;
-
-  if (avgRate !== null) {
-    // avgRate is mmol/L per 10 min; project over 30 min
-    result.predictedDrop = avgRate * 3;
-    result.estimatedBGAt30m = currentBG + result.predictedDrop;
-
-    if (result.estimatedBGAt30m < BG_EXERCISE_MIN) {
-      result.level = "caution";
-      result.reasons.push("Model predicts hypo within 30 min");
-      result.suggestions.push(`Forecast: ${result.estimatedBGAt30m.toFixed(1)} at 30 min`);
-    }
-  }
-
-  // Pull target fuel rate for category (suggestion string generated in assessReadiness)
-  result.targetFuel = getCurrentFuelRate(category, bgModel);
-
-  return result;
+// Forecast based on current trend — "where will BG be in 30 min?"
+// Pure trend projection, independent of exercise model.
+function forecast30m(
+  currentBG: number,
+  trendSlope: number | null,
+): { predictedDrop: number | null; estimatedBGAt30m: number | null } {
+  if (trendSlope === null) return { predictedDrop: null, estimatedBGAt30m: null };
+  const predictedDrop = trendSlope * 3; // trendSlope is mmol/L per 10 min
+  return { predictedDrop, estimatedBGAt30m: currentBG + predictedDrop };
 }
 
 export function formatGuidancePush(
@@ -147,9 +115,10 @@ export function formatGuidancePush(
 export function assessReadiness(input: PreRunInput): PreRunGuidance {
   const bg = assessBGLevel(input.currentBG);
   const trend = assessTrendSlope(input.trendSlope);
-  const model = assessModel(input.currentBG, input.trendSlope, input.bgModel, input.category);
+  const model = assessModel(input.bgModel, input.category);
+  const fc = forecast30m(input.currentBG, input.trendSlope);
 
-  let level = worst(worst(bg.level, trend.level), model.level);
+  let level = worst(bg.level, trend.level);
   let targetFuel = model.targetFuel;
 
   // --- Pre-run carb calculation (consolidated) ---
@@ -192,8 +161,11 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
       preRunFactors.push("low BG");
     }
   }
-  // Model reasons always relevant (prediction info)
-  reasons.push(...model.reasons);
+  // Trend-based hypo warning
+  if (fc.estimatedBGAt30m !== null && fc.estimatedBGAt30m < BG_EXERCISE_MIN) {
+    level = worst(level, "caution");
+    reasons.push("Trend predicts hypo within 30 min");
+  }
 
   // IOB: additional carbs that stack on top
   // ~12g per 1u IOB during exercise, rounded to 5g increments
@@ -231,8 +203,10 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
   // 2. Non-carb trend suggestions (wait for reading, hold off)
   suggestions.push(...trend.suggestions);
 
-  // 3. Model forecast (informational)
-  suggestions.push(...model.suggestions);
+  // 3. Trend forecast (informational)
+  if (fc.estimatedBGAt30m !== null) {
+    suggestions.push(`Forecast: ${fc.estimatedBGAt30m.toFixed(1)} at 30 min`);
+  }
 
   // 4. Fuel suggestion (during-run rate) — always include if available
   if (targetFuel !== null) {
@@ -251,8 +225,8 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
     level,
     reasons: reasons.slice(0, 4),
     suggestions, // No slice — all suggestions are actionable/important
-    predictedDrop: model.predictedDrop,
+    predictedDrop: fc.predictedDrop,
     targetFuel,
-    estimatedBGAt30m: model.estimatedBGAt30m,
+    estimatedBGAt30m: fc.estimatedBGAt30m,
   };
 }
