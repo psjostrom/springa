@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { TrendingDown, AlertTriangle, ChevronDown, Loader2 } from "lucide-react";
@@ -266,15 +266,18 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
       if (!res.ok) {
         throw new Error(data.error ?? "Analysis failed");
       }
-      return { patterns: data.patterns ?? null, latestActivityId: data.latestActivityId };
+      // Derive latestActivityId from the events we just analyzed — guarantees
+      // isStale flips false after success, preventing useEffect re-fires.
+      const latest = eventsArg
+        .filter((e) => e.type === "completed" && e.glucose && e.activityId)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return { patterns: data.patterns ?? null, latestActivityId: latest[0]?.activityId ?? data.latestActivityId };
     },
     { populateCache: true, revalidate: false },
   );
 
   const patterns = patternsData?.patterns ?? null;
   const savedLatestActivityId = patternsData?.latestActivityId ?? null;
-
-  const [patternsExpanded, setPatternsExpanded] = useState(true);
 
   const canDiscover = events && events.filter((e) => e.type === "completed" && e.glucose).length >= 5;
 
@@ -293,10 +296,14 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 
   const handleDiscover = () => {
     if (!events || isAnalyzing) return;
-    void discoverPatterns(events).then(() => {
-      setPatternsExpanded(true);
-    }).catch(() => { /* handled by mutationError state */ });
+    void discoverPatterns(events).catch(() => { /* handled by mutationError state */ });
   };
+
+  useEffect(() => {
+    if (isStale && !isAnalyzing && !mutationError && events) {
+      void discoverPatterns(events).catch(() => { /* handled by mutationError state */ });
+    }
+  }, [isStale, isAnalyzing, mutationError, discoverPatterns, events]);
 
   const patternsError = mutationError?.message ?? null;
 
@@ -318,19 +325,9 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <button
             onClick={handleDiscover}
             disabled={!canDiscover}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed ${isStale ? "text-[#fbbf24]" : "text-[#8b7ba8]"}`}
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#8b7ba8] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isStale ? "New data — re-analyze" : "Re-analyze"}
-          </button>
-        )}
-        {patterns && !isAnalyzing && (
-          <button
-            onClick={() => { setPatternsExpanded(!patternsExpanded); }}
-            className="p-1"
-          >
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-[#8b7ba8] transition-transform ${patternsExpanded ? "rotate-180" : ""}`}
-            />
+            Re-analyze
           </button>
         )}
       </div>
@@ -345,12 +342,10 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           </div>
         ) : patternsError ? (
           <div className="text-sm text-[#ff3366]">{patternsError}</div>
-        ) : patterns && patternsExpanded ? (
+        ) : patterns ? (
           <div className="text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
           </div>
-        ) : patterns && !patternsExpanded ? (
-          <div className="text-sm text-[#8b7ba8]">Collapsed — click to expand</div>
         ) : (
           <div className="text-sm text-[#8b7ba8] text-center py-2">
             Click &quot;Discover Patterns&quot; to analyze cross-run trends

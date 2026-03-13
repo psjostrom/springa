@@ -242,7 +242,7 @@ describe("BGPatternsPanel cross-run patterns", () => {
     });
   });
 
-  it("shows stale indicator when new data available", async () => {
+  it("auto-reanalyzes when new data is available", async () => {
     // Create events where the latest has a different activityId than saved
     const eventsWithNew = [
       ...mockEvents,
@@ -265,13 +265,58 @@ describe("BGPatternsPanel cross-run patterns", () => {
           latestActivityId: "a5", // Stale - doesn't match a6-new
         });
       }),
+      http.post("/api/bg-patterns", async () => {
+        return HttpResponse.json({
+          patterns: "Updated patterns with new data.",
+          latestActivityId: "a6-new",
+        });
+      }),
     );
 
     render(<BGPatternsPanel events={eventsWithNew} />);
 
-    // Should show "New data — re-analyze" instead of just "Re-analyze"
+    // Auto-reanalysis should fire and render updated content
     await waitFor(() => {
-      expect(screen.getByText("New data — re-analyze")).toBeInTheDocument();
+      expect(screen.getByText(/Updated patterns with new data/)).toBeInTheDocument();
     });
+  });
+
+  it("shows error and stops retrying when auto-reanalysis fails", async () => {
+    const eventsWithNew = [
+      ...mockEvents,
+      {
+        id: "e6",
+        activityId: "a6-new",
+        date: new Date("2026-03-06"),
+        name: "New run",
+        description: "",
+        type: "completed" as const,
+        category: "easy" as const,
+        glucose: [{ time: 0, value: 6.0 }],
+      },
+    ];
+
+    let postCallCount = 0;
+    server.use(
+      http.get("/api/bg-patterns", () => {
+        return HttpResponse.json({
+          patterns: "Old patterns.",
+          latestActivityId: "a5",
+        });
+      }),
+      http.post("/api/bg-patterns", () => {
+        postCallCount++;
+        return HttpResponse.json({ error: "AI quota exceeded" }, { status: 500 });
+      }),
+    );
+
+    render(<BGPatternsPanel events={eventsWithNew} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("AI quota exceeded")).toBeInTheDocument();
+    });
+
+    // mutationError should gate re-entry — only one POST attempt
+    expect(postCallCount).toBe(1);
   });
 });
