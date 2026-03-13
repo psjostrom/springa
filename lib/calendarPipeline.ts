@@ -164,10 +164,10 @@ export function processActivities(
     }) : undefined;
     const matchingEvent = authoritativeMatch ?? fallbackMatch;
 
-    // Log: fallback match → one line; unmatched run → detail block; otherwise silent
+    // Log: fallback match → one line; plan workout with no match → detail block; otherwise silent
     if (fallbackMatch) {
       console.log(`[auto-pair] fallback: activity "${activity.name}" → event ${fallbackMatch.id}`);
-    } else if (!matchingEvent) {
+    } else if (!matchingEvent && /^(W\d{2}\b|RACE\s+DAY)/i.test(activity.name)) {
       console.log(`[auto-pair] UNMATCHED activity ${activity.id} "${activity.name}" (${activity.start_date_local})`);
       for (const r of rejections) console.log(`[auto-pair]   rejected: ${r}`);
     }

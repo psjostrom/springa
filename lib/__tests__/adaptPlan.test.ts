@@ -272,6 +272,14 @@ describe("reconstructExternalId", () => {
     expect(reconstructExternalId("W05 Sun Long (12km)")).toBe("long-5");
     expect(reconstructExternalId("W01 Sat Bonus Easy")).toBe("bonus-1");
   });
+
+  it("handles legacy names with eco16 suffix", () => {
+    expect(reconstructExternalId("W12 Short-Intervals eco16")).toBe("speed-12");
+    expect(reconstructExternalId("W05 Long (12km) eco16")).toBe("long-5");
+    expect(reconstructExternalId("W01 Easy eco16")).toBe("easy-1");
+    expect(reconstructExternalId("W03 Bonus Easy eco16")).toBe("bonus-3");
+    expect(reconstructExternalId("RACE DAY eco16")).toBe("race");
+  });
 });
 
 describe("applyAdaptations", () => {
