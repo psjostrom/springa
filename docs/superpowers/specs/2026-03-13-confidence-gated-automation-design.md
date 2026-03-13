@@ -75,8 +75,12 @@ Preview cards:
 
 Sync handler:
 - State: `Record<number, boolean>` tracking which low-confidence events the user has opted in.
-- When syncing, low-confidence-only fuel changes are excluded unless opted in.
-- If an event has both a swap and a low-confidence fuel change: the swap syncs, but the fuel rate reverts to the event's original value.
+- When syncing, each adapted event is classified:
+  - **No low-confidence fuel change**: sync as-is (today's behavior).
+  - **Low-confidence fuel change only, not opted in**: skip entirely (no sync for this event).
+  - **Low-confidence fuel change only, opted in**: sync with the adapted fuel rate.
+  - **Swap + low-confidence fuel, not opted in**: sync the swap but use `adapted.original.fuelRate` (revert fuel to pre-adaptation value).
+  - **Swap + low-confidence fuel, opted in**: sync with both the swap and adapted fuel rate.
 
 ### No changes
 
