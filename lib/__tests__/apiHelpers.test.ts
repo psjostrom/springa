@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { requireAuth, validateXdripSecret } from "@/lib/apiHelpers";
+import { requireAuth, validateXdripSecret, AuthError } from "@/lib/apiHelpers";
 import { auth } from "@/lib/auth";
 import { sha1 } from "@/lib/xdripDb";
 
@@ -23,7 +23,7 @@ describe("requireAuth", () => {
 
   it("throws when no session", async () => {
     mockAuth.mockResolvedValue(null);
-    await expect(requireAuth()).rejects.toThrow();
+    await expect(requireAuth()).rejects.toThrow(AuthError);
   });
 
   it("throws when session has no email", async () => {
@@ -31,7 +31,7 @@ describe("requireAuth", () => {
       user: {},
       expires: "",
     } as Session);
-    await expect(requireAuth()).rejects.toThrow();
+    await expect(requireAuth()).rejects.toThrow(AuthError);
   });
 
   it("throws when user is null", async () => {
@@ -39,7 +39,7 @@ describe("requireAuth", () => {
       user: null as never,
       expires: "",
     } as Session);
-    await expect(requireAuth()).rejects.toThrow();
+    await expect(requireAuth()).rejects.toThrow(AuthError);
   });
 });
 
