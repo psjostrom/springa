@@ -258,7 +258,6 @@ describe("BGPatternsPanel cross-run patterns", () => {
       },
     ];
 
-    let postCalled = false;
     server.use(
       http.get("/api/bg-patterns", () => {
         return HttpResponse.json({
@@ -267,7 +266,6 @@ describe("BGPatternsPanel cross-run patterns", () => {
         });
       }),
       http.post("/api/bg-patterns", async () => {
-        postCalled = true;
         return HttpResponse.json({
           patterns: "Updated patterns with new data.",
           latestActivityId: "a6-new",
@@ -277,13 +275,48 @@ describe("BGPatternsPanel cross-run patterns", () => {
 
     render(<BGPatternsPanel events={eventsWithNew} />);
 
-    // Should automatically trigger reanalysis
-    await waitFor(() => {
-      expect(postCalled).toBe(true);
-    });
-
+    // Auto-reanalysis should fire and render updated content
     await waitFor(() => {
       expect(screen.getByText(/Updated patterns with new data/)).toBeInTheDocument();
     });
+  });
+
+  it("shows error and stops retrying when auto-reanalysis fails", async () => {
+    const eventsWithNew = [
+      ...mockEvents,
+      {
+        id: "e6",
+        activityId: "a6-new",
+        date: new Date("2026-03-06"),
+        name: "New run",
+        description: "",
+        type: "completed" as const,
+        category: "easy" as const,
+        glucose: [{ time: 0, value: 6.0 }],
+      },
+    ];
+
+    let postCallCount = 0;
+    server.use(
+      http.get("/api/bg-patterns", () => {
+        return HttpResponse.json({
+          patterns: "Old patterns.",
+          latestActivityId: "a5",
+        });
+      }),
+      http.post("/api/bg-patterns", () => {
+        postCallCount++;
+        return HttpResponse.json({ error: "AI quota exceeded" }, { status: 500 });
+      }),
+    );
+
+    render(<BGPatternsPanel events={eventsWithNew} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("AI quota exceeded")).toBeInTheDocument();
+    });
+
+    // mutationError should gate re-entry — only one POST attempt
+    expect(postCallCount).toBe(1);
   });
 });

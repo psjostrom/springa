@@ -266,7 +266,12 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
       if (!res.ok) {
         throw new Error(data.error ?? "Analysis failed");
       }
-      return { patterns: data.patterns ?? null, latestActivityId: data.latestActivityId };
+      // Derive latestActivityId from the events we just analyzed — guarantees
+      // isStale flips false after success, preventing useEffect re-fires.
+      const latest = eventsArg
+        .filter((e) => e.type === "completed" && e.glucose && e.activityId)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return { patterns: data.patterns ?? null, latestActivityId: latest[0]?.activityId ?? data.latestActivityId };
     },
     { populateCache: true, revalidate: false },
   );
