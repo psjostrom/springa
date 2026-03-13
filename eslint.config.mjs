@@ -65,7 +65,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Standalone scripts excluded from tsconfig
     "scripts/**",
-    // Claude Code worktrees (isolated copies of the repo)
+    // Claude Code worktrees
     ".claude/**",
   ]),
 ]);

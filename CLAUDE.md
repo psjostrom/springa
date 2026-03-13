@@ -8,6 +8,7 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 - **Test locally first.** Don't suggest pushing to dev for testing when localhost is available. Dev deploys are for mobile/OAuth testing that can't run locally.
 - **Worktrees:** Use Claude Code's built-in `--worktree` flag or `isolation: "worktree"` for subagents. Worktrees live at `.claude/worktrees/<name>/` (excluded in vitest, eslint, and gitignore).
 
+
 ## Tech Stack
 
 Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Tailwind · Vercel
