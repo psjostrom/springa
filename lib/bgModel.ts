@@ -24,6 +24,7 @@ export interface CategoryBGResponse {
   confidence: "low" | "medium" | "high"; // <10 / 10-30 / 30+
   avgFuelRate: number | null; // null if no activities in this category had fuel data
   activityCount: number;
+  maxDurationMin: number; // longest activity duration in minutes for this category
 }
 
 export interface BGResponseModel {
@@ -305,6 +306,7 @@ function getConfidence(count: number): "low" | "medium" | "high" {
 /** Build BG response model from cached aligned data. */
 export function buildBGModelFromCached(cached: EnrichedActivity[]): BGResponseModel {
   const allObservations: BGObservation[] = [];
+  const activityDurations = new Map<string, { category: WorkoutCategory; durationMin: number }>();
   let analyzed = 0;
 
   for (const act of cached) {
@@ -317,15 +319,23 @@ export function buildBGModelFromCached(cached: EnrichedActivity[]): BGResponseMo
     const obs = extractObservations(hr, glucose, activityId, fuelRate, startBG, category, entrySlope);
     if (obs.length > 0) {
       allObservations.push(...obs);
+      activityDurations.set(activityId, {
+        category,
+        durationMin: hr[hr.length - 1].time - hr[0].time,
+      });
       analyzed++;
     }
   }
 
-  return aggregateModel(allObservations, analyzed);
+  return aggregateModel(allObservations, analyzed, activityDurations);
 }
 
 /** Aggregate observations into a full BGResponseModel. */
-function aggregateModel(observations: BGObservation[], activitiesAnalyzed: number): BGResponseModel {
+function aggregateModel(
+  observations: BGObservation[],
+  activitiesAnalyzed: number,
+  activityDurations?: Map<string, { category: WorkoutCategory; durationMin: number }>,
+): BGResponseModel {
   const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
     easy: null,
     long: null,
@@ -342,6 +352,18 @@ function aggregateModel(observations: BGObservation[], activitiesAnalyzed: numbe
     const fuels = catObs.map((o) => o.fuelRate).filter((f): f is number => f != null);
     const activityIds = new Set(catObs.map((o) => o.activityId));
 
+    // Max activity duration from HR streams; fall back to max relativeMinute from observations
+    let maxDurationMin = 0;
+    if (activityDurations) {
+      for (const id of activityIds) {
+        const dur = activityDurations.get(id);
+        if (dur && dur.durationMin > maxDurationMin) maxDurationMin = dur.durationMin;
+      }
+    }
+    if (maxDurationMin === 0) {
+      maxDurationMin = Math.max(...catObs.map((o) => o.relativeMinute));
+    }
+
     categories[cat] = {
       category: cat,
       avgRate: rates.reduce((a, b) => a + b, 0) / rates.length,
@@ -350,6 +372,7 @@ function aggregateModel(observations: BGObservation[], activitiesAnalyzed: numbe
       confidence: getConfidence(catObs.length),
       avgFuelRate: fuels.length > 0 ? fuels.reduce((a, b) => a + b, 0) / fuels.length : null,
       activityCount: activityIds.size,
+      maxDurationMin,
     };
   }
 

@@ -124,6 +124,7 @@ describe("buildSystemPrompt", () => {
           confidence: "medium",
           avgFuelRate: 48,
           activityCount: 5,
+          maxDurationMin: 45,
         },
         long: null,
         interval: null,
