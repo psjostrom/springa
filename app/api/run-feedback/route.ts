@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import {
   fetchActivityById,
   fetchActivitiesByDateRange,
@@ -98,9 +98,12 @@ function buildResponse(
 }
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.INTERVALS_API_KEY;
@@ -134,7 +137,7 @@ export async function GET(req: Request) {
     if (lookupEventId != null) {
       const result = await db().execute({
         sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-        args: [session.user.email, String(lookupEventId)],
+        args: [email, String(lookupEventId)],
       });
       if (result.rows.length > 0) {
         preRunFallback = {
@@ -148,9 +151,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const body = (await req.json()) as {

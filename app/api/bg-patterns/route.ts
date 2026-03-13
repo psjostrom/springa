@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError, getMyLifeData } from "@/lib/apiHelpers";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import {
@@ -9,7 +9,6 @@ import {
   buildBGPatternPrompt,
 } from "@/lib/bgPatterns";
 import { formatAIError } from "@/lib/aiError";
-import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import { NextResponse } from "next/server";
 import type { CalendarEvent } from "@/lib/types";
@@ -19,12 +18,15 @@ import { format } from "date-fns";
 import { getBGPatterns, saveBGPatterns } from "@/lib/bgPatternsDb";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const saved = await getBGPatterns(session.user.email);
+  const saved = await getBGPatterns(email);
   if (!saved) {
     return NextResponse.json({ patterns: null });
   }
@@ -41,9 +43,12 @@ interface RequestBody {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -70,9 +75,6 @@ export async function POST(req: Request) {
   }
 
   const intervalsApiKey = process.env.INTERVALS_API_KEY;
-  const mylifeEmail = process.env.MYLIFE_EMAIL;
-  const mylifePassword = process.env.MYLIFE_PASSWORD;
-  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
 
   // Identify completed runs (needed by wellness, xDrip, and MyLife)
   const completedEvents = events.filter((e) => e.type === "completed");
@@ -104,15 +106,7 @@ export async function POST(req: Request) {
   neededMonths.add(monthKey(latestMs));
 
   // Start MyLife fetch in parallel (doesn't depend on wellness or xDrip)
-  const mylifeDataP = mylifeEmail && mylifePassword
-    ? mylifeSignIn(mylifeEmail, mylifePassword)
-        .then((session) => fetchMyLifeData(session, mylifeTz))
-        .catch((err: unknown) => {
-          console.error("MyLife fetch failed (bg-patterns):", err);
-          clearMyLifeSession(mylifeEmail);
-          return null;
-        })
-    : Promise.resolve(null);
+  const mylifeDataP = getMyLifeData();
 
   // Fetch wellness and xDrip readings (parallel with MyLife)
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
@@ -125,7 +119,7 @@ export async function POST(req: Request) {
   // Convert wellness data to fitness points (CTL/ATL/TSB from Intervals.icu)
   const fitnessData = wellnessToFitnessData(wellness);
 
-  const xdripReadings = await getXdripReadings(session.user.email, [...neededMonths]);
+  const xdripReadings = await getXdripReadings(email, [...neededMonths]);
 
   // Build RunBGContexts from the full xDrip dataset
   const bgContextMap = buildRunBGContexts(completedEvents, xdripReadings);
@@ -182,7 +176,7 @@ export async function POST(req: Request) {
     const latestActivityId = withGlucose[0]?.activityId ?? "";
 
     if (latestActivityId) {
-      await saveBGPatterns(session.user.email, latestActivityId, result.text, enrichedRuns.length);
+      await saveBGPatterns(email, latestActivityId, result.text, enrichedRuns.length);
     }
 
     return NextResponse.json({ patterns: result.text, latestActivityId });

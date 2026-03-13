@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { buildBGModelFromCached } from "@/lib/bgModel";
@@ -17,13 +17,16 @@ import { NextResponse } from "next/server";
  * This is proper out-of-sample validation — the model never sees the run it's predicting.
  */
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const rawCached = await getActivityStreams(session.user.email);
-  const allCached = await enrichActivitiesWithGlucose(session.user.email, rawCached);
+  const rawCached = await getActivityStreams(email);
+  const allCached = await enrichActivitiesWithGlucose(email, rawCached);
   if (allCached.length < 3) {
     return NextResponse.json({
       error: "Need at least 3 cached activities for validation",

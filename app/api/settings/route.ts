@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import {
   getUserSettings,
   saveUserSettings,
@@ -8,12 +8,15 @@ import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const settings = await getUserSettings(session.user.email);
+  const settings = await getUserSettings(email);
 
   const apiKey = process.env.INTERVALS_API_KEY;
   if (apiKey) {
@@ -35,9 +38,12 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const body = (await req.json()) as Partial<UserSettings>;
@@ -57,7 +63,7 @@ export async function PUT(req: Request) {
   if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
 
   if (Object.keys(allowed).length > 0) {
-    await saveUserSettings(session.user.email, allowed);
+    await saveUserSettings(email, allowed);
   }
 
   return NextResponse.json({ ok: true });

@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError, getMyLifeData } from "@/lib/apiHelpers";
 import {
   getRunAnalysis,
   saveRunAnalysis,
@@ -14,7 +14,6 @@ import { formatAIError } from "@/lib/aiError";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import { nonEmpty } from "@/lib/format";
-import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "@/lib/mylife";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { format, subDays } from "date-fns";
 import { NextResponse } from "next/server";
@@ -93,9 +92,12 @@ function buildRunHistory(
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -130,49 +132,42 @@ export async function POST(req: Request) {
 
   // Check cache unless regenerating
   if (!regenerate) {
-    const cached = await getRunAnalysis(session.user.email, activityId);
+    const cached = await getRunAnalysis(email, activityId);
     if (cached) {
       return NextResponse.json({ analysis: cached });
     }
   }
 
   const intervalsApiKey = process.env.INTERVALS_API_KEY;
-  const mylifeEmail = process.env.MYLIFE_EMAIL;
-  const mylifePassword = process.env.MYLIFE_PASSWORD;
-  const mylifeTz = process.env.TIMEZONE ?? "Europe/Stockholm";
   const runStartMs = event.date.getTime();
 
   console.log(`[RunAnalysis] Activity ${activityId}, run start: ${event.date.toISOString()}`);
-  console.log(`[RunAnalysis] MyLife credentials: ${mylifeEmail ? "configured" : "NOT configured"}`);
 
   // Start MyLife fetch in parallel (doesn't depend on rows/feedback/profile)
-  const insulinContextP = mylifeEmail && mylifePassword
-    ? mylifeSignIn(mylifeEmail, mylifePassword)
-        .then((session) => fetchMyLifeData(session, mylifeTz))
-        .then((data) => {
-          console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
-          return buildInsulinContext(data, runStartMs);
-        })
-        .catch((err: unknown) => {
-          console.error("[RunAnalysis] MyLife fetch failed:", err);
-          clearMyLifeSession(mylifeEmail);
-          return null;
-        })
-    : Promise.resolve(null);
+  const insulinContextP = getMyLifeData()
+    .then((data) => {
+      if (!data) return null;
+      console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
+      return buildInsulinContext(data, runStartMs);
+    })
+    .catch((err: unknown) => {
+      console.error("[RunAnalysis] MyLife fetch failed:", err);
+      return null;
+    });
 
   const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
-    getRecentAnalyzedRuns(session.user.email),
+    getRecentAnalyzedRuns(email),
     intervalsApiKey
       ? fetchAthleteProfile(intervalsApiKey)
       : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
-    getBGPatterns(session.user.email),
+    getBGPatterns(email),
     intervalsApiKey
       ? fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd"))
       : Promise.resolve([]),
   ]);
 
   // Enrich history rows with glucose from xdrip_readings
-  const rows = await enrichActivitiesWithGlucose(session.user.email, rawRows);
+  const rows = await enrichActivitiesWithGlucose(email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();
@@ -250,7 +245,7 @@ export async function POST(req: Request) {
     const analysis = result.text;
 
     // Cache the result
-    await saveRunAnalysis(session.user.email, activityId, analysis);
+    await saveRunAnalysis(email, activityId, analysis);
 
     return NextResponse.json({ analysis });
   } catch (err) {

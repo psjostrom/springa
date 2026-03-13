@@ -1,14 +1,15 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
-
-  const email = session.user.email;
 
   // Get summary stats
   const countResult = await db().execute({

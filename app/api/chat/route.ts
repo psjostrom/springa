@@ -1,14 +1,17 @@
 import { streamText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { formatAIError } from "@/lib/aiError";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -25,7 +28,7 @@ export async function POST(req: Request) {
   };
   const { messages, context } = body;
 
-  const patterns = await getBGPatterns(session.user.email);
+  const patterns = await getBGPatterns(email);
 
   let systemPrompt = context ?? "";
   if (patterns?.patternsText) {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { validateXdripSecret, unauthorized } from "@/lib/apiHelpers";
 import {
-  sha1,
   getXdripReadings,
   saveXdripReadings,
   monthKey,
@@ -9,14 +9,8 @@ import { db } from "@/lib/db";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/xdrip";
 
 export async function POST(req: Request) {
-  const apiSecret = req.headers.get("api-secret");
-  if (!apiSecret) {
-    return NextResponse.json({ error: "Missing api-secret" }, { status: 401 });
-  }
-
-  // xDrip sends SHA1(secret) as api-secret header
-  if (!process.env.XDRIP_SECRET || apiSecret !== sha1(process.env.XDRIP_SECRET)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!validateXdripSecret(req.headers.get("api-secret"))) {
+    return unauthorized();
   }
 
   // Get the single user's email for DB operations

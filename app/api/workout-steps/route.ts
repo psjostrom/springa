@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { sha1 } from "@/lib/xdripDb";
+import { validateXdripSecret, unauthorized } from "@/lib/apiHelpers";
 import { API_BASE } from "@/lib/constants";
 import { authHeader } from "@/lib/intervalsApi";
 import { resolveTimezone, todayInTimezone } from "@/lib/intervalsHelpers";
 import { extractStepTotals } from "@/lib/descriptionParser";
 
 export async function GET(req: Request) {
-  const apiSecret = req.headers.get("api-secret");
-  if (!apiSecret) {
-    return NextResponse.json({ error: "Missing api-secret" }, { status: 401 });
-  }
-
-  if (!process.env.XDRIP_SECRET || sha1(apiSecret) !== sha1(process.env.XDRIP_SECRET)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!validateXdripSecret(req.headers.get("api-secret"))) {
+    return unauthorized();
   }
 
   const intervalsKey = process.env.INTERVALS_API_KEY;

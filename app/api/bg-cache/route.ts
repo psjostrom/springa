@@ -1,24 +1,30 @@
-import { auth } from "@/lib/auth";
+import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getActivityStreams, saveActivityStreams, type CachedActivity } from "@/lib/activityStreamsDb";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
-  const cache = await getActivityStreams(session.user.email);
+  const cache = await getActivityStreams(email);
   return NextResponse.json(cache);
 }
 
 export async function PUT(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch (e) {
+    if (e instanceof AuthError) return unauthorized();
+    throw e;
   }
 
   const body = (await req.json()) as CachedActivity[];
-  await saveActivityStreams(session.user.email, body);
+  await saveActivityStreams(email, body);
   return NextResponse.json({ ok: true });
 }
