@@ -13,6 +13,11 @@ export async function GET() {
   const data = await getMyLifeData();
   if (!data) return NextResponse.json(null);
 
-  const ctx = buildInsulinContext(data, Date.now());
-  return NextResponse.json(ctx);
+  try {
+    const ctx = buildInsulinContext(data, Date.now());
+    return NextResponse.json(ctx);
+  } catch (err) {
+    console.error("[insulin-context] buildInsulinContext failed:", err);
+    return NextResponse.json(null);
+  }
 }

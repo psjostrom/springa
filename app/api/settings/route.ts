@@ -26,8 +26,8 @@ export async function GET() {
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
-    } catch {
-      // Intervals.icu unavailable — return settings without profile fields
+    } catch (err) {
+      console.warn("[settings] Failed to fetch athlete profile:", err);
     }
   }
 

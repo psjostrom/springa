@@ -182,8 +182,8 @@ export async function POST(req: Request) {
       for (const a of allActivities) {
         activityMap.set(a.id, a);
       }
-    } catch {
-      // API unavailable — build history without metadata
+    } catch (err) {
+      console.warn("[run-analysis] Failed to fetch activity metadata:", err);
     }
   }
 
