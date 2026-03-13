@@ -184,6 +184,31 @@ describe("adaptFuelRate", () => {
     expect(change).toBeNull();
   });
 
+  it("attaches low confidence when target has low confidence", () => {
+    const lowTarget = { ...makeTarget("interval", 36), confidence: "low" as const };
+    const bgModel = makeBGModel([lowTarget]);
+    const { change } = adaptFuelRate(30, "interval", bgModel);
+
+    expect(change).not.toBeNull();
+    expect(change!.confidence).toBe("low");
+  });
+
+  it("attaches medium confidence when target has medium confidence", () => {
+    const bgModel = makeBGModel([makeTarget("interval", 36)]); // makeTarget defaults to "medium"
+    const { change } = adaptFuelRate(30, "interval", bgModel);
+
+    expect(change).not.toBeNull();
+    expect(change!.confidence).toBe("medium");
+  });
+
+  it("omits confidence when fuel comes from category avg (no target)", () => {
+    const bgModel = makeBGModel(); // no targets, falls back to avgFuelRate
+    const { change } = adaptFuelRate(35, "interval", bgModel);
+
+    expect(change).not.toBeNull();
+    expect(change!.confidence).toBeUndefined();
+  });
+
 });
 
 describe("shouldSwapToEasy", () => {
@@ -230,6 +255,25 @@ describe("shouldSwapToEasy", () => {
 
     expect(result.swap).toBe(true);
     expect(result.reason).toContain("TSB");
+  });
+
+  it("does not attach confidence to swap changes", () => {
+    const insights = makeInsights({ currentTsb: -25 });
+    const events = [makeEvent({ fuelRate: 30 })];
+    const bgModel = makeBGModel([makeTarget("interval", 36)]);
+
+    const result = applyAdaptations({
+      upcomingEvents: events,
+      bgModel,
+      insights,
+      runBGContexts: {},
+      lthr: 168,
+      hrZones: [...TEST_HR_ZONES],
+    });
+
+    const swapChange = result[0].changes.find((c) => c.type === "swap");
+    expect(swapChange).toBeDefined();
+    expect(swapChange!.confidence).toBeUndefined();
   });
 });
 
@@ -415,5 +459,24 @@ describe("applyAdaptations", () => {
     expect(result[1].fuelRate).toBe(36);
     // Long: fuel change
     expect(result[2].fuelRate).toBe(65);
+  });
+
+  it("propagates confidence from fuel change to adapted event", () => {
+    const lowTarget = { ...makeTarget("interval", 36), confidence: "low" as const };
+    const events = [makeEvent({ fuelRate: 30 })];
+    const bgModel = makeBGModel([lowTarget]);
+    const insights = makeInsights();
+
+    const result = applyAdaptations({
+      upcomingEvents: events,
+      bgModel,
+      insights,
+      runBGContexts: {},
+      lthr: 168,
+      hrZones: [...TEST_HR_ZONES],
+    });
+
+    const fuelChange = result[0].changes.find((c) => c.type === "fuel");
+    expect(fuelChange?.confidence).toBe("low");
   });
 });

@@ -5,13 +5,14 @@ import type { RunBGContext } from "./runBGContext";
 import { formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
 import { resolveZoneBand } from "./constants";
-import { getCurrentFuelRate } from "./fuelRate";
+import { getCurrentFuelRate, getFuelConfidence } from "./fuelRate";
 
 // --- Types ---
 
 export interface AdaptationChange {
   type: "fuel" | "swap";
   detail: string;
+  confidence?: "low" | "medium" | "high";
 }
 
 export interface AdaptedEvent {
@@ -74,12 +75,15 @@ export function adaptFuelRate(
   }
 
   const resolved = getCurrentFuelRate(category, bgModel);
+  const confidence = getFuelConfidence(category, bgModel) ?? undefined;
+
   if (current != null && resolved !== current && Math.abs(resolved - current) >= 3) {
     return {
       rate: resolved,
       change: {
         type: "fuel",
         detail: `Fuel: ${current} → ${resolved} g/h (BG model target)`,
+        confidence,
       },
     };
   }
@@ -89,6 +93,7 @@ export function adaptFuelRate(
       change: {
         type: "fuel",
         detail: `Fuel: set to ${resolved} g/h (BG model target)`,
+        confidence,
       },
     };
   }
