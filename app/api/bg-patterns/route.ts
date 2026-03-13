@@ -65,15 +65,6 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  // Validate: need completed events
-  const completedEvents = events.filter((e) => e.type === "completed");
-  if (completedEvents.length === 0) {
-    return NextResponse.json(
-      { error: "No completed events provided" },
-      { status: 400 },
-    );
-  }
-
   const context = await buildBGPatternContext({ email, events });
 
   if (context.enrichedRuns.length < 5) {

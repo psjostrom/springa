@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
 import { getRecentXdripReadings } from "@/lib/xdripDb";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
+import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
+import { buildBGModelFromCached } from "@/lib/bgModel";
 import { buildEventGuidance } from "@/lib/prerunGuidance";
 import { sendPushToUser } from "@/lib/push";
 import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
@@ -88,6 +90,12 @@ export async function GET(req: Request) {
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
 
+      // Fetch readings and build BG model once per user (shared across events)
+      const readings = await getRecentXdripReadings(email);
+      const cached = await getActivityStreams(email);
+      const enriched = await enrichActivitiesWithGlucose(email, cached);
+      const bgModel = buildBGModelFromCached(enriched);
+
       for (const event of upcoming) {
         const eventDateStr = event.start_date_local.slice(0, 10);
         if (await hasPrerunPushSent(email, eventDateStr)) {
@@ -95,14 +103,10 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const readings = await getRecentXdripReadings(email);
-        const cached = await getActivityStreams(email);
-
-        const result = await buildEventGuidance({
+        const result = buildEventGuidance({
           event,
-          email,
           readings,
-          cached,
+          bgModel,
           currentTsb,
           currentIob,
           now,
