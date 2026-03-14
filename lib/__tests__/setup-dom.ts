@@ -119,6 +119,9 @@ vi.mock("lucide-react", () => {
     Bell: icon("Bell"),
     GripVertical: icon("GripVertical"),
     Lightbulb: icon("Lightbulb"),
+    Flame: icon("Flame"),
+    Footprints: icon("Footprints"),
+    HeartPulse: icon("HeartPulse"),
   };
 });
 

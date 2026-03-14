@@ -426,28 +426,28 @@ export function IntelScreen() {
     updateLayout({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
   };
 
-  // Widgets pinned outside tabs — excluded from the Deep Dive widget loop
-  const PINNED_WIDGETS = new Set<WidgetKey>(["readiness", "phase-tracker"]);
+  // Widgets that live on Overview only — excluded from the Deep Dive widget loop
+  const OVERVIEW_ONLY = new Set<WidgetKey>(["readiness", "phase-tracker"]);
 
   const firstVisibleKey = editMode
-    ? widgetLayout.widgetOrder.find((k) => !PINNED_WIDGETS.has(k))
+    ? widgetLayout.widgetOrder.find((k) => !OVERVIEW_ONLY.has(k))
     : widgetLayout.widgetOrder.find(
-        (k) => !PINNED_WIDGETS.has(k) && !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
+        (k) => !OVERVIEW_ONLY.has(k) && !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
       );
 
   return (
     <div className="h-full overflow-y-auto bg-[#0d0a1a]">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-        {/* Pinned above tabs — always visible */}
-        <div>
-          <WidgetHeading widgetKey="phase-tracker" meta={widgetMeta["phase-tracker"]} />
-          <PhaseTracker phaseName={phaseName} currentWeek={currentWeek} totalWeeks={totalWeeks} progress={progress} raceDate={raceDate} includeBasePhase={settings?.includeBasePhase} />
-        </div>
-
         <TabBar tabs={INTEL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === "overview" && (
           <div className="space-y-6">
+            {/* Phase Tracker */}
+            <div>
+              <WidgetHeading widgetKey="phase-tracker" meta={widgetMeta["phase-tracker"]} />
+              <PhaseTracker phaseName={phaseName} currentWeek={currentWeek} totalWeeks={totalWeeks} progress={progress} raceDate={raceDate} includeBasePhase={settings?.includeBasePhase} />
+            </div>
+
             {/* Readiness */}
             {(wellnessLoading || wellnessEntries.length > 0) && (
               <div>
@@ -488,7 +488,7 @@ export function IntelScreen() {
           <>
             {/* Widget loop */}
             {widgetLayout.widgetOrder.map((key, idx) => {
-              if (PINNED_WIDGETS.has(key)) return null;
+              if (OVERVIEW_ONLY.has(key)) return null;
 
               const isHidden = widgetLayout.hiddenWidgets.includes(key);
               const render = widgetRenderMap[key];
