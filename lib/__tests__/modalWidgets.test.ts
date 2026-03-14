@@ -41,17 +41,17 @@ describe("resolveModalLayout", () => {
   it("returns default layout when nothing saved", () => {
     const layout = resolveModalLayout();
     expect(layout.overview.order).toEqual([
-      "report-card", "stats", "next-time", "carbs-ingested", "prerun-carbs", "feedback",
+      "report-card", "stats", "pace-splits", "next-time", "carbs-ingested", "prerun-carbs", "feedback",
     ]);
     expect(layout.overview.hidden).toEqual([]);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "pace-splits", "workout", "hr-zones", "route-map"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "route-map"]);
     expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 
   it("preserves saved order within a tab", () => {
     const saved: Partial<ModalTabLayout> = {
       "overview": {
-        order: ["feedback", "report-card", "stats", "next-time", "carbs-ingested", "prerun-carbs"],
+        order: ["feedback", "report-card", "stats", "pace-splits", "next-time", "carbs-ingested", "prerun-carbs"],
         hidden: [],
       },
     };
@@ -68,7 +68,7 @@ describe("resolveModalLayout", () => {
     expect(layout.overview.order.slice(0, 2)).toEqual(["report-card", "stats"]);
     expect(layout.overview.order).toContain("carbs-ingested");
     expect(layout.overview.order).toContain("feedback");
-    expect(layout.overview.order.length).toBe(6);
+    expect(layout.overview.order.length).toBe(7);
   });
 
   it("strips stale widget ids no longer in registry", () => {
@@ -111,7 +111,7 @@ describe("resolveModalLayout", () => {
       "overview": { order: [...DEFAULT_TABS[0].widgets], hidden: [] },
     };
     const layout = resolveModalLayout(saved);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "pace-splits", "workout", "hr-zones", "route-map"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "route-map"]);
     expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 });

@@ -61,8 +61,8 @@ describe("WidgetTabs tab switching", () => {
   it("shows Overview tab content by default and hides Deep Dive content", () => {
     render(<WidgetTabs widgetProps={buildProps()} />);
 
-    // Overview widgets visible
-    expect(screen.getByText("620 kcal")).toBeInTheDocument();
+    // Overview widgets visible (StatsWidget renders as cards)
+    expect(screen.getByText("Calories")).toBeInTheDocument();
     expect(screen.getByText("55g")).toBeInTheDocument();
     expect(screen.getByText("Feedback")).toBeInTheDocument();
 
@@ -78,7 +78,7 @@ describe("WidgetTabs tab switching", () => {
 
     expect(screen.getByText("Heart Rate Zones")).toBeInTheDocument();
     // Overview content gone
-    expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calories")).not.toBeInTheDocument();
   });
 
   it("switches to Analysis tab and does not show Feedback", async () => {
@@ -90,7 +90,7 @@ describe("WidgetTabs tab switching", () => {
     // Feedback is now on Overview, not Analysis
     expect(screen.queryByText("Feedback")).not.toBeInTheDocument();
     // Overview content gone
-    expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calories")).not.toBeInTheDocument();
   });
 });
 
@@ -133,7 +133,7 @@ describe("WidgetTabs hide/show widget", () => {
     render(<WidgetTabs widgetProps={buildProps()} />);
 
     // Stats visible initially
-    expect(screen.getByText("620 kcal")).toBeInTheDocument();
+    expect(screen.getByText("Calories")).toBeInTheDocument();
 
     // Enter edit mode and hide Stats
     await user.click(screen.getByRole("button", { name: "Edit widget layout" }));
@@ -141,7 +141,7 @@ describe("WidgetTabs hide/show widget", () => {
     await user.click(screen.getByText("Done"));
 
     // Stats widget no longer visible
-    expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calories")).not.toBeInTheDocument();
 
     // Re-enter edit mode — Stats row shows as hidden (strikethrough via opacity)
     await user.click(screen.getByRole("button", { name: "Edit widget layout" }));
@@ -153,7 +153,7 @@ describe("WidgetTabs hide/show widget", () => {
     await user.click(screen.getByText("Done"));
 
     // Stats visible again
-    expect(screen.getByText("620 kcal")).toBeInTheDocument();
+    expect(screen.getByText("Calories")).toBeInTheDocument();
   });
 });
 
@@ -187,6 +187,6 @@ describe("WidgetTabs persistence", () => {
     render(<WidgetTabs widgetProps={props} />);
 
     // Stats should still be hidden
-    expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calories")).not.toBeInTheDocument();
   });
 });

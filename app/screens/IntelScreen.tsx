@@ -435,16 +435,16 @@ export function IntelScreen() {
   return (
     <div className="h-full overflow-y-auto bg-[#0d0a1a]">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+        {/* Pinned above tabs — always visible */}
+        <div>
+          <WidgetHeading widgetKey="phase-tracker" meta={widgetMeta["phase-tracker"]} />
+          <PhaseTracker phaseName={phaseName} currentWeek={currentWeek} totalWeeks={totalWeeks} progress={progress} raceDate={raceDate} includeBasePhase={settings?.includeBasePhase} />
+        </div>
+
         <TabBar tabs={INTEL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === "overview" && (
           <div className="space-y-6">
-            {/* Phase Tracker */}
-            <div>
-              <WidgetHeading widgetKey="phase-tracker" meta={widgetMeta["phase-tracker"]} />
-              <PhaseTracker phaseName={phaseName} currentWeek={currentWeek} totalWeeks={totalWeeks} progress={progress} raceDate={raceDate} includeBasePhase={settings?.includeBasePhase} />
-            </div>
-
             {/* Readiness */}
             {(wellnessLoading || wellnessEntries.length > 0) && (
               <div>
@@ -485,6 +485,9 @@ export function IntelScreen() {
           <>
             {/* Widget loop */}
             {widgetLayout.widgetOrder.map((key, idx) => {
+              // Skip widgets that live on Overview or are pinned above tabs
+              if (key === "readiness" || key === "phase-tracker") return null;
+
               const isHidden = widgetLayout.hiddenWidgets.includes(key);
               const render = widgetRenderMap[key];
 
