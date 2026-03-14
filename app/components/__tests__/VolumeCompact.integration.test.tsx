@@ -24,4 +24,11 @@ describe("VolumeCompact", () => {
     );
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
   });
+
+  it("returns null when both target and actual are zero", () => {
+    const { container } = render(
+      <VolumeCompact actualKm={0} targetKm={0} completedRuns={0} totalRuns={0} />
+    );
+    expect(container.firstChild).toBeNull();
+  });
 });

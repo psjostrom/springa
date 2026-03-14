@@ -157,6 +157,14 @@ describe("WidgetTabs hide/show widget", () => {
   });
 });
 
+describe("WidgetTabs NextTime widget", () => {
+  it("does not show Next Time when analysis is not cached", () => {
+    render(<WidgetTabs widgetProps={buildProps()} />);
+    // NextTimeWidget returns null when SWR cache has no analysis
+    expect(screen.queryByText("Next Time")).not.toBeInTheDocument();
+  });
+});
+
 describe("WidgetTabs persistence", () => {
   it("persists hidden widgets to localStorage across remounts", async () => {
     const user = userEvent.setup();

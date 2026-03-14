@@ -297,10 +297,11 @@ export function IntelScreen() {
     for (const pe of planEvents) {
       if (pe.excludeFromPlan) continue;
       const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, { weekStartsOn: 1 });
-      if (weekIdx === currentWeekIdx) {
-        targetKm += estimatePlanEventDistance(pe, paceTable);
-        totalRuns++;
-      }
+      if (weekIdx !== currentWeekIdx) continue;
+      // Exclude bonus/optional runs from target — mirrors VolumeTrendChart
+      if (/bonus|optional/i.test(pe.name)) continue;
+      targetKm += estimatePlanEventDistance(pe, paceTable);
+      totalRuns++;
     }
 
     // Completed
@@ -550,18 +551,6 @@ export function IntelScreen() {
               </div>
             )}
 
-            {/* Widget layout save error */}
-            {widgetSaveError && (
-              <div className="flex items-center justify-center gap-2 pb-4">
-                <p className="text-xs text-red-400">{widgetSaveError}</p>
-                <button
-                  onClick={() => { dismissWidgetSaveError(null); }}
-                  className="text-xs text-red-400/60 hover:text-red-400 underline"
-                >
-                  dismiss
-                </button>
-              </div>
-            )}
           </>
         )}
 
@@ -572,6 +561,19 @@ export function IntelScreen() {
               const render = widgetRenderMap["bg-patterns"];
               return render ? render() : null;
             })()}
+          </div>
+        )}
+
+        {/* Widget layout save error — outside tab conditionals so it's visible after switching tabs */}
+        {widgetSaveError && (
+          <div className="flex items-center justify-center gap-2 pb-4">
+            <p className="text-xs text-red-400">{widgetSaveError}</p>
+            <button
+              onClick={() => { dismissWidgetSaveError(null); }}
+              className="text-xs text-red-400/60 hover:text-red-400 underline"
+            >
+              dismiss
+            </button>
           </div>
         )}
       </div>

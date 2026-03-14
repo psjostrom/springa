@@ -27,6 +27,15 @@ describe("BGCompact", () => {
     expect(moderateLabels).toHaveLength(2);
   });
 
+  it("shows Fast drop label for rates below -1.5", () => {
+    const fastDrop: CategoryBGResponse[] = [
+      { category: "long", avgRate: -2.0, medianRate: -1.8, sampleCount: 10, activityCount: 3, maxDurationMin: 60, avgFuelRate: 60, confidence: "medium" },
+    ];
+    render(<BGCompact categories={fastDrop} />);
+    expect(screen.getByText("Fast drop")).toBeInTheDocument();
+    expect(screen.getByText("-2.0")).toBeInTheDocument();
+  });
+
   it("returns null when no categories", () => {
     const { container } = render(<BGCompact categories={[]} />);
     expect(container.firstChild).toBeNull();

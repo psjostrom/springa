@@ -8,6 +8,7 @@ interface VolumeCompactProps {
 }
 
 export function VolumeCompact({ actualKm, targetKm, completedRuns, totalRuns }: VolumeCompactProps) {
+  if (targetKm <= 0 && actualKm <= 0) return null;
   const pct = targetKm > 0 ? Math.min(100, Math.round((actualKm / targetKm) * 100)) : 0;
 
   return (
