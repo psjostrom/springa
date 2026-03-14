@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAtomValue } from "jotai";
+import useSWR from "swr";
 import { enrichedEventsAtom } from "../atoms";
 import type {
   ModalWidgetId,
@@ -28,7 +29,17 @@ import { StatsWidget } from "./StatsWidget";
 import { CarbsWidget } from "./CarbsWidget";
 import { PreRunCarbsWidget } from "./PreRunCarbsWidget";
 import { FeedbackWidget } from "./FeedbackWidget";
+import { NextTimeWidget } from "./NextTimeWidget";
 import { WidgetList } from "./WidgetList";
+
+function NextTimeSWRBridge({ activityId }: { activityId: string }) {
+  const { data: analysis } = useSWR<string>(
+    ["run-analysis", activityId],
+    null, // no fetcher — read from cache only
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+  return <NextTimeWidget analysis={analysis ?? null} />;
+}
 
 const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.ReactNode | null> = {
   "report-card": (p) => (
@@ -39,6 +50,10 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     />
   ),
   "stats": (p) => <StatsWidget {...p} />,
+  "next-time": (p) =>
+    p.event.activityId ? (
+      <NextTimeSWRBridge activityId={p.event.activityId} />
+    ) : null,
   "pace-splits": (p) =>
     p.event.streamData?.distance || p.isLoadingStreamData ? (
       <KmSplitsSection

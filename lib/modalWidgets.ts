@@ -20,6 +20,7 @@ export interface WidgetProps {
 export type ModalWidgetId =
   | "report-card"
   | "stats"
+  | "next-time"
   | "pace-splits"
   | "workout"
   | "carbs-ingested"
@@ -38,6 +39,7 @@ export interface ModalWidgetDef {
 export const COMPLETED_RUN_WIDGETS: readonly ModalWidgetDef[] = [
   { id: "report-card", label: "Report Card" },
   { id: "stats", label: "Stats" },
+  { id: "next-time", label: "Next Time" },
   { id: "pace-splits", label: "Pace Splits" },
   { id: "workout", label: "Workout" },
   { id: "carbs-ingested", label: "Carbs Ingested" },
@@ -61,7 +63,7 @@ export const DEFAULT_TABS: readonly TabConfig[] = [
   {
     id: "overview",
     label: "Overview",
-    widgets: ["report-card", "stats", "carbs-ingested", "prerun-carbs", "feedback"],
+    widgets: ["report-card", "stats", "next-time", "carbs-ingested", "prerun-carbs", "feedback"],
   },
   {
     id: "deep-dive",
