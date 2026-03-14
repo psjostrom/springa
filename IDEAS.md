@@ -64,14 +64,6 @@ Instead of "10g every 10 minutes," generate a time-varying fuel schedule: "0g fo
 
 **Prerequisite:** Enough observations per time bucket to see the non-linear pattern clearly. Likely needs 20+ runs with BG data per category.
 
-### Confidence-Gated Automation
-
-The BG model has confidence levels (`low`/`medium`/`high`). The adapt system applies fuel changes regardless of confidence. This should be inverted: at `low` confidence, present suggestions as questions ("try 48g/h?") rather than auto-applying. At `high` confidence, auto-apply silently.
-
-Not a feature — a design principle that makes the existing system safer. A low-confidence auto-adjustment to fuel rate before a long run could cause a hypo. The system should be more cautious when it knows less.
-
-**Implementation:** `adaptPlan.ts` fuel adjustment logic — gate auto-apply on `targetFuelRates[].confidence`. Low = suggest only (shown in adapt preview, not auto-synced). Medium = auto-apply with note. High = auto-apply silently.
-
 ### Cross-Run BG Pattern Surfacing — Remaining Phases
 
 Phase 1 (discovery) and Phase 2a (AI consumers) are complete — see Completed section.
@@ -319,3 +311,9 @@ Widget-based Intel tab with reorderable, hideable panels. Widget registry declar
 Auto-syncs LTHR, max HR, and HR zone boundaries from `GET /api/v1/athlete/0` (Run sport settings). Triggered on settings load with 24h throttle. Only updates DB when values change. Falls back to cached values on API error.
 
 **Implementation:** `lib/intervalsApi.ts` (`fetchAthleteProfile`), `app/api/settings/route.ts` (sync trigger), `lib/settings.ts` (`shouldSyncProfile`, `markProfileSynced`). DB columns: `lthr`, `max_hr`, `hr_zones`, `profile_synced_at`.
+
+### Confidence-Gated Fuel Rate Automation
+
+Gated fuel rate auto-sync on BG model confidence. Low confidence = suggest only (shown in adapt preview, not auto-synced). Medium = auto-apply with note. High = auto-apply silently. Prevents low-confidence auto-adjustments from causing hypos.
+
+**Implementation:** `lib/fuelRate.ts` (`getFuelConfidence`), `lib/adaptPlan.ts` (gated sync). PR #53.
