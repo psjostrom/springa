@@ -41,22 +41,22 @@ describe("resolveModalLayout", () => {
   it("returns default layout when nothing saved", () => {
     const layout = resolveModalLayout();
     expect(layout.overview.order).toEqual([
-      "report-card", "stats", "pace-splits", "workout", "carbs-ingested", "prerun-carbs",
+      "report-card", "stats", "carbs-ingested", "prerun-carbs", "feedback",
     ]);
     expect(layout.overview.hidden).toEqual([]);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "hr-zones", "route-map"]);
-    expect(layout.analysis.order).toEqual(["run-analysis", "feedback"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "pace-splits", "workout", "hr-zones", "route-map"]);
+    expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 
   it("preserves saved order within a tab", () => {
     const saved: Partial<ModalTabLayout> = {
       "overview": {
-        order: ["workout", "report-card", "stats", "pace-splits", "carbs-ingested", "prerun-carbs"],
+        order: ["feedback", "report-card", "stats", "carbs-ingested", "prerun-carbs"],
         hidden: [],
       },
     };
     const layout = resolveModalLayout(saved);
-    expect(layout.overview.order[0]).toBe("workout");
+    expect(layout.overview.order[0]).toBe("feedback");
     expect(layout.overview.order[1]).toBe("report-card");
   });
 
@@ -66,9 +66,9 @@ describe("resolveModalLayout", () => {
     };
     const layout = resolveModalLayout(saved);
     expect(layout.overview.order.slice(0, 2)).toEqual(["report-card", "stats"]);
-    expect(layout.overview.order).toContain("pace-splits");
-    expect(layout.overview.order).toContain("workout");
-    expect(layout.overview.order.length).toBe(6);
+    expect(layout.overview.order).toContain("carbs-ingested");
+    expect(layout.overview.order).toContain("feedback");
+    expect(layout.overview.order.length).toBe(5);
   });
 
   it("strips stale widget ids no longer in registry", () => {
@@ -111,8 +111,8 @@ describe("resolveModalLayout", () => {
       "overview": { order: [...DEFAULT_TABS[0].widgets], hidden: [] },
     };
     const layout = resolveModalLayout(saved);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "hr-zones", "route-map"]);
-    expect(layout.analysis.order).toEqual(["run-analysis", "feedback"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "pace-splits", "workout", "hr-zones", "route-map"]);
+    expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 });
 

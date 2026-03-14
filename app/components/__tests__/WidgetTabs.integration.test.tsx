@@ -64,6 +64,7 @@ describe("WidgetTabs tab switching", () => {
     // Overview widgets visible
     expect(screen.getByText("620 kcal")).toBeInTheDocument();
     expect(screen.getByText("55g")).toBeInTheDocument();
+    expect(screen.getByText("Feedback")).toBeInTheDocument();
 
     // Deep Dive content not visible
     expect(screen.queryByText("Heart Rate Zones")).not.toBeInTheDocument();
@@ -80,13 +81,14 @@ describe("WidgetTabs tab switching", () => {
     expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
   });
 
-  it("switches to Analysis tab and shows Feedback", async () => {
+  it("switches to Analysis tab and does not show Feedback", async () => {
     const user = userEvent.setup();
     render(<WidgetTabs widgetProps={buildProps()} />);
 
     await user.click(screen.getByText("Analysis"));
 
-    expect(screen.getByText("Feedback")).toBeInTheDocument();
+    // Feedback is now on Overview, not Analysis
+    expect(screen.queryByText("Feedback")).not.toBeInTheDocument();
     // Overview content gone
     expect(screen.queryByText("620 kcal")).not.toBeInTheDocument();
   });

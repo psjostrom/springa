@@ -192,7 +192,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("Felt great")).toBeInTheDocument();
@@ -242,7 +242,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
     expect(screen.queryByText("Save")).toBeNull();
   });
@@ -292,7 +292,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).toBeDisabled();
   });
@@ -310,7 +310,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     await user.click(screen.getByText("\ud83d\udc4d"));
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).not.toBeDisabled();
@@ -338,7 +338,7 @@ describe("EventModal feedback", () => {
       { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     await user.click(screen.getByText("\ud83d\udc4e"));
     const commentInput = screen.getByPlaceholderText("Optional comment...");
     await user.type(commentInput, "Legs were heavy");
@@ -498,6 +498,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load (MSW returns "Test analysis.")
     expect(await screen.findByText("Run Analysis")).toBeInTheDocument();
@@ -518,6 +519,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load
     await waitFor(() => {
@@ -549,6 +551,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {
@@ -593,6 +596,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {

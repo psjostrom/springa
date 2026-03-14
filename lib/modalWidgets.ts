@@ -61,17 +61,17 @@ export const DEFAULT_TABS: readonly TabConfig[] = [
   {
     id: "overview",
     label: "Overview",
-    widgets: ["report-card", "stats", "pace-splits", "workout", "carbs-ingested", "prerun-carbs"],
+    widgets: ["report-card", "stats", "carbs-ingested", "prerun-carbs", "feedback"],
   },
   {
     id: "deep-dive",
     label: "Deep Dive",
-    widgets: ["stream-graph", "hr-zones", "route-map"],
+    widgets: ["stream-graph", "pace-splits", "workout", "hr-zones", "route-map"],
   },
   {
     id: "analysis",
     label: "Analysis",
-    widgets: ["run-analysis", "feedback"],
+    widgets: ["run-analysis"],
   },
 ] as const;
 
