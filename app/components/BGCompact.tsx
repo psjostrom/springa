@@ -26,9 +26,11 @@ function rateLabel(rate: number): string {
   return "Fast drop";
 }
 
-function confidenceLabel(c: "low" | "medium" | "high"): string {
-  return c === "low" ? "Low confidence" : c === "medium" ? "Medium confidence" : "High confidence";
-}
+const CONFIDENCE_LABELS: Record<"low" | "medium" | "high", string> = {
+  low: "Low confidence",
+  medium: "Medium confidence",
+  high: "High confidence",
+};
 
 function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: () => void }) {
   return (
@@ -42,7 +44,7 @@ function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: (
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-white">{LABELS[cat.category]} Runs</span>
-          <button onClick={onClose} className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -71,7 +73,7 @@ function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: (
           </div>
           <div className="flex justify-between">
             <span className="text-[#b8a5d4]">Confidence</span>
-            <span className="text-white">{confidenceLabel(cat.confidence)}</span>
+            <span className="text-white">{CONFIDENCE_LABELS[cat.confidence]}</span>
           </div>
         </div>
       </div>

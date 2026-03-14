@@ -426,10 +426,13 @@ export function IntelScreen() {
     updateLayout({ ...DEFAULT_LAYOUT, hiddenWidgets: [] });
   };
 
+  // Widgets pinned outside tabs — excluded from the Deep Dive widget loop
+  const PINNED_WIDGETS = new Set<WidgetKey>(["readiness", "phase-tracker"]);
+
   const firstVisibleKey = editMode
-    ? widgetLayout.widgetOrder[0]
+    ? widgetLayout.widgetOrder.find((k) => !PINNED_WIDGETS.has(k))
     : widgetLayout.widgetOrder.find(
-        (k) => !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
+        (k) => !PINNED_WIDGETS.has(k) && !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
       );
 
   return (
@@ -485,8 +488,7 @@ export function IntelScreen() {
           <>
             {/* Widget loop */}
             {widgetLayout.widgetOrder.map((key, idx) => {
-              // Skip widgets that live on Overview or are pinned above tabs
-              if (key === "readiness" || key === "phase-tracker") return null;
+              if (PINNED_WIDGETS.has(key)) return null;
 
               const isHidden = widgetLayout.hiddenWidgets.includes(key);
               const render = widgetRenderMap[key];
@@ -560,10 +562,7 @@ export function IntelScreen() {
         {activeTab === "analysis" && (
           <div>
             <WidgetHeading widgetKey="bg-patterns" meta={null} />
-            {(() => {
-              const render = widgetRenderMap["bg-patterns"];
-              return render ? render() : null;
-            })()}
+            {widgetRenderMap["bg-patterns"]?.()}
           </div>
         )}
 

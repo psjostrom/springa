@@ -24,7 +24,7 @@ function VolumePopover({ actualKm, targetKm, completedRuns, totalRuns, onClose }
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-white">Weekly Volume</span>
-          <button onClick={onClose} className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">

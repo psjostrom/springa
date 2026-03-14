@@ -6,7 +6,6 @@ interface StatCard {
   label: string;
   value: string;
   unit: string;
-  tip?: string;
 }
 
 function StatCardCell({ card }: { card: StatCard }) {
