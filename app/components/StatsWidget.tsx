@@ -5,6 +5,7 @@ import { Flame, Footprints, HeartPulse, Zap, Gauge, Activity } from "lucide-reac
 import type { LucideIcon } from "lucide-react";
 import type { WidgetProps } from "@/lib/modalWidgets";
 import { classifyHR, ZONE_COLORS } from "@/lib/constants";
+import { scoreHRZone } from "@/lib/reportCard";
 
 // --- Judgment helpers ---
 
@@ -133,38 +134,22 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
 export function StatsWidget({ event, hrZones }: WidgetProps) {
   const cards: React.ReactNode[] = [];
 
-  // HR Zone compliance — moved here from Report Card
-  if (event.zoneTimes) {
-    const total = event.zoneTimes.z1 + event.zoneTimes.z2 + event.zoneTimes.z3 + event.zoneTimes.z4 + event.zoneTimes.z5;
-    if (total > 0) {
-      // Determine target zone based on category
-      const cat = event.category;
-      let targetSec: number;
-      let targetLabel: string;
-      if (cat === "interval") {
-        targetSec = event.zoneTimes.z4 + event.zoneTimes.z5;
-        targetLabel = "Z4";
-      } else if (cat === "easy" || cat === "long") {
-        targetSec = event.zoneTimes.z2;
-        targetLabel = "Z2";
-      } else {
-        targetSec = event.zoneTimes.z2 + event.zoneTimes.z3;
-        targetLabel = "Z2+Z3";
-      }
-      const pct = Math.round((targetSec / total) * 100);
-      cards.push(
-        <StatCard
-          key="hr"
-          id="hr"
-          icon={Activity}
-          iconColor="#06b6d4"
-          label="HR Zone"
-          value={`${pct}%`}
-          unit={targetLabel}
-          judgment={judgeHRCompliance(pct)}
-        />
-      );
-    }
+  // HR Zone compliance — uses scoreHRZone from reportCard.ts (single source of truth)
+  const hrScore = scoreHRZone(event);
+  if (hrScore) {
+    const pct = Math.round(hrScore.pctInTarget);
+    cards.push(
+      <StatCard
+        key="hr"
+        id="hr"
+        icon={Activity}
+        iconColor="#06b6d4"
+        label="HR Zone"
+        value={`${pct}%`}
+        unit={hrScore.targetZone}
+        judgment={judgeHRCompliance(pct)}
+      />
+    );
   }
 
   if (event.calories) {
