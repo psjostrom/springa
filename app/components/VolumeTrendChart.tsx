@@ -9,14 +9,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import {
-  startOfWeek,
-  addWeeks,
-  differenceInCalendarWeeks,
-  parseISO,
-} from "date-fns";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
-import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/workoutMath";
+import { estimateWorkoutDistance, estimatePlanEventDistance, getPlanWeekContext, getWeekIdx } from "@/lib/workoutMath";
 import { generateFullPlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
 
@@ -54,14 +48,7 @@ export function VolumeTrendChart({
 }: VolumeTrendChartProps) {
 
   const data = (() => {
-    const rDate = parseISO(raceDate);
-    const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
-    const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
-    const today = new Date();
-
-    const currentWeekIdx = differenceInCalendarWeeks(today, planStartMonday, {
-      weekStartsOn: 1,
-    });
+    const { planStartMonday, currentWeekIdx } = getPlanWeekContext(raceDate, totalWeeks);
 
     const weeks: WeekData[] = Array.from({ length: totalWeeks }, (_, i) => ({
       week: `W${String(i + 1).padStart(2, "0")}`,
@@ -78,9 +65,7 @@ export function VolumeTrendChart({
     for (const pe of planEvents) {
       // Skip events excluded from plan (e.g., club run as alternative to speed session)
       if (pe.excludeFromPlan) continue;
-      const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, {
-        weekStartsOn: 1,
-      });
+      const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
       const km = estimatePlanEventDistance(pe, paceTable);
       const isOptional = /bonus|optional/i.test(pe.name);
@@ -94,9 +79,7 @@ export function VolumeTrendChart({
     // Completed distances from actual API data
     for (const event of events) {
       if (event.type !== "completed") continue;
-      const weekIdx = differenceInCalendarWeeks(event.date, planStartMonday, {
-        weekStartsOn: 1,
-      });
+      const weekIdx = getWeekIdx(event.date, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
       weeks[weekIdx].completed += estimateWorkoutDistance(event, paceTable);
     }

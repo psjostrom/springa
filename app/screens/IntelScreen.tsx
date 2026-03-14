@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode, useState, useEffect, useMemo } from "react";
-import { startOfWeek, addWeeks, differenceInCalendarWeeks, parseISO } from "date-fns";
 import {
   Loader2,
   Pencil,
@@ -73,7 +72,7 @@ import { WidgetLoadingCard } from "../components/WidgetLoadingCard";
 import { useActivityStream } from "../hooks/useActivityStream";
 import { usePaceCurves } from "../hooks/usePaceCurves";
 import { mergeStreamData } from "@/lib/enrichEvents";
-import { estimateWorkoutDistance, estimatePlanEventDistance } from "@/lib/workoutMath";
+import { estimateWorkoutDistance, estimatePlanEventDistance, getPlanWeekContext, getWeekIdx } from "@/lib/workoutMath";
 import { generateFullPlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import type { CategoryBGResponse } from "@/lib/bgModel";
@@ -268,39 +267,35 @@ export function IntelScreen() {
 
   const { data: paceCurveData } = usePaceCurves(apiKey, "all");
 
-  // Current-week volume for VolumeCompact (Overview tab)
-  const currentWeekVolume = useMemo(() => {
+  // Plan is deterministic — separate memo to avoid regenerating on every events change
+  const planTarget = useMemo(() => {
     if (hrZones?.length !== 5) return null;
-
-    const rDate = parseISO(raceDate);
-    const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
-    const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
-    const today = new Date();
-    const currentWeekIdx = differenceInCalendarWeeks(today, planStartMonday, { weekStartsOn: 1 });
-
+    const { planStartMonday, currentWeekIdx } = getPlanWeekContext(raceDate, totalWeeks);
     if (currentWeekIdx < 0 || currentWeekIdx >= totalWeeks) return null;
 
-    // Planned
     const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, settings?.includeBasePhase ?? false);
     let targetKm = 0;
     let totalRuns = 0;
     for (const pe of planEvents) {
       if (pe.excludeFromPlan) continue;
-      const weekIdx = differenceInCalendarWeeks(pe.start_date_local, planStartMonday, { weekStartsOn: 1 });
-      if (weekIdx !== currentWeekIdx) continue;
-      // Exclude bonus/optional runs from target — mirrors VolumeTrendChart
+      if (getWeekIdx(pe.start_date_local, planStartMonday) !== currentWeekIdx) continue;
       if (/bonus|optional/i.test(pe.name)) continue;
       targetKm += estimatePlanEventDistance(pe, paceTable);
       totalRuns++;
     }
+    return { planStartMonday, currentWeekIdx, targetKm: Math.round(targetKm * 10) / 10, totalRuns };
+  }, [raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, settings]);
 
-    // Completed
+  // Completed volume — depends on events
+  const currentWeekVolume = useMemo(() => {
+    if (!planTarget) return null;
+    const { planStartMonday, currentWeekIdx, targetKm, totalRuns } = planTarget;
+
     let actualKm = 0;
     let completedRuns = 0;
     for (const event of events) {
       if (event.type !== "completed") continue;
-      const weekIdx = differenceInCalendarWeeks(event.date, planStartMonday, { weekStartsOn: 1 });
-      if (weekIdx === currentWeekIdx) {
+      if (getWeekIdx(event.date, planStartMonday) === currentWeekIdx) {
         actualKm += estimateWorkoutDistance(event, paceTable);
         completedRuns++;
       }
@@ -312,7 +307,7 @@ export function IntelScreen() {
       completedRuns,
       totalRuns,
     };
-  }, [events, raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, settings]);
+  }, [events, planTarget, paceTable]);
 
   // BG categories for BGCompact (Overview tab)
   const bgCategories = useMemo(() =>

@@ -1,6 +1,32 @@
+import {
+  startOfWeek,
+  addWeeks,
+  differenceInCalendarWeeks,
+  parseISO,
+} from "date-fns";
 import type { CalendarEvent, WorkoutEvent, PaceTable } from "./types";
 import { parseWorkoutSegments, paceForIntensity } from "./descriptionParser";
 import { DEFAULT_WORKOUT_DURATION_MINUTES } from "./constants";
+
+/**
+ * Compute the plan's Monday-based week context.
+ * Single source of truth for week index calculation — used by
+ * VolumeTrendChart, IntelScreen, and usePhaseInfo.
+ */
+export function getPlanWeekContext(raceDate: string, totalWeeks: number) {
+  const rDate = parseISO(raceDate);
+  const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
+  const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
+  const today = new Date();
+  const currentWeekIdx = differenceInCalendarWeeks(today, planStartMonday, { weekStartsOn: 1 });
+
+  return { planStartMonday, currentWeekIdx };
+}
+
+/** Get the week index for a given date within the plan. */
+export function getWeekIdx(date: Date, planStartMonday: Date): number {
+  return differenceInCalendarWeeks(date, planStartMonday, { weekStartsOn: 1 });
+}
 
 export function getEstimatedDuration(event: WorkoutEvent): number {
   if (event.distance) return event.distance * 6;

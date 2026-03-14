@@ -37,10 +37,11 @@ import { TabBar } from "./TabBar";
 function NextTimeSWRBridge({ activityId }: { activityId: string }) {
   const { data: analysis } = useSWR<string>(
     ["run-analysis", activityId],
-    null, // no fetcher — read from cache only
+    null, // read from cache — RunAnalysis on Analysis tab populates it
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
-  return <NextTimeWidget analysis={analysis ?? null} />;
+  if (!analysis) return null; // shows nothing until analysis is generated via Analysis tab
+  return <NextTimeWidget analysis={analysis} />;
 }
 
 const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.ReactNode | null> = {
