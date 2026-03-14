@@ -206,7 +206,11 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
   if (cards.length === 0) return null;
 
   return (
-    <div className="p-2">
+    <div className="px-2 pt-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Activity className="w-4 h-4 text-[#06b6d4]" />
+        <span className="text-sm font-semibold uppercase text-[#b8a5d4]">Performance</span>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {cards}
       </div>

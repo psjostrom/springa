@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Droplets, TrendingDown, ArrowUpFromLine } from "lucide-react";
+import { Droplets, Clock, Heart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -160,7 +160,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     cards.push(
       <BGCard
         key="entry"
-        icon={TrendingDown}
+        icon={Clock}
         iconColor="#c4b5fd"
         label="Pre-Run"
         value={et.label}
@@ -171,10 +171,10 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
         popover={{
           title: "Pre-Run BG Trend",
           lines: [
-            { label: "Entry slope", value: `${sign}${et.slope30m.toFixed(2)} /10m` },
-            { label: "Stability", value: `${et.stability.toFixed(2)} std dev` },
+            { label: "BG direction", value: `${sign}${et.slope30m.toFixed(1)} mmol/L per 10 min` },
+            { label: "How steady", value: et.stability < 0.5 ? "Very steady" : et.stability < 1.0 ? "Steady" : et.stability < 2.0 ? "Some swings" : "Volatile" },
           ],
-          description: "BG trend in the 30 minutes before starting. Stable or gently rising is ideal. Volatile or crashing entry increases hypo risk.",
+          description: "How your BG was behaving in the 30 minutes before starting. Stable or gently rising is ideal for a safe run.",
         }}
       />
     );
@@ -187,7 +187,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     cards.push(
       <BGCard
         key="recovery"
-        icon={ArrowUpFromLine}
+        icon={Heart}
         iconColor="#39ff14"
         label="Recovery"
         value={rec.label}
@@ -198,18 +198,22 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
         popover={{
           title: "Post-Run Recovery",
           lines: [
-            { label: "30m drop", value: `${sign}${rec.drop30m.toFixed(1)} mmol/L` },
-            { label: "Nadir (2h low)", value: `${rec.nadir.toFixed(1)} mmol/L` },
+            { label: "BG change (30 min)", value: `${sign}${rec.drop30m.toFixed(1)} mmol/L` },
+            { label: "Lowest BG after run", value: `${rec.nadir.toFixed(1)} mmol/L` },
             { label: "Post-run hypo", value: rec.postHypo ? "Yes" : "No" },
           ],
-          description: "BG behavior in the 2 hours after finishing. Clean recovery means no post-run crash. The nadir is the lowest point reached.",
+          description: "How your BG behaved in the 2 hours after finishing. Clean means no crash. The lowest point shows how far BG dropped.",
         }}
       />
     );
   }
 
   return (
-    <div className="p-2">
+    <div className="px-2 pt-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Droplets className="w-4 h-4 text-[#06b6d4]" />
+        <span className="text-sm font-semibold uppercase text-[#b8a5d4]">Blood Glucose</span>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {cards}
       </div>
