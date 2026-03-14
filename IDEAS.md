@@ -97,6 +97,10 @@ Phase 2a proved its value — the AI pattern analysis is consistently useful. Th
 
 **MyLife Cloud latency:** Tested 2026-03-02. CamAPS FX -> MyLife Cloud sync has **~2 hour delay** (0.1U test bolus at 10:15, appeared in logbook at 12:05). Sync is batched, not streaming — events arrive in chunks. Insulin data (IOB, time since bolus) is usable for retrospective analysis but **not real-time enough for pre-run decisions**. Pre-run surfacing must rely on variables available in real-time: xDrip BG + trend, Intervals.icu wellness, training load, time of day.
 
+### Onboarding Wizard
+
+Guided first-time setup flow. Currently a new user has to manually navigate settings and figure out which fields to fill. A wizard walks them through connecting Intervals.icu, configuring T1D parameters, setting up xDrip push, enabling push notifications, and generating their first plan — one step at a time.
+
 ---
 
 ## Parked
