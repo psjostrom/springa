@@ -13,7 +13,7 @@ interface TabBarProps<T extends string> {
 
 export function TabBar<T extends string>({ tabs, activeTab, onTabChange }: TabBarProps<T>) {
   return (
-    <div className="flex border-b border-[#3d2b5a] mb-4" role="tablist">
+    <div className="flex border-b border-[#3d2b5a]" role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}

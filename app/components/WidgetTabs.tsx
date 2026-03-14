@@ -31,6 +31,7 @@ import { PreRunCarbsWidget } from "./PreRunCarbsWidget";
 import { FeedbackWidget } from "./FeedbackWidget";
 import { NextTimeWidget } from "./NextTimeWidget";
 import { WidgetList } from "./WidgetList";
+import { TabBar } from "./TabBar";
 
 function NextTimeSWRBridge({ activityId }: { activityId: string }) {
   const { data: analysis } = useSWR<string>(
@@ -198,22 +199,11 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
 
   return (
     <div className="space-y-2">
-      {/* Tab bar */}
-      <div className="flex border-b border-[#3d2b5a]">
-        {DEFAULT_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); }}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? "text-[#ff2d95] border-b-2 border-[#ff2d95]"
-                : "text-[#b8a5d4] hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar
+        tabs={DEFAULT_TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Active tab content */}
       <WidgetList
