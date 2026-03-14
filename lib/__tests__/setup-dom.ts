@@ -123,6 +123,10 @@ vi.mock("lucide-react", () => {
     Footprints: icon("Footprints"),
     HeartPulse: icon("HeartPulse"),
     ArrowUpFromLine: icon("ArrowUpFromLine"),
+    Utensils: icon("Utensils"),
+    MessageSquare: icon("MessageSquare"),
+    BarChart3: icon("BarChart3"),
+    Clock: icon("Clock"),
   };
 });
 

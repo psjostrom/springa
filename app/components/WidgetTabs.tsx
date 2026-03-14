@@ -17,6 +17,7 @@ import {
   saveModalLayout,
   toggleWidgetVisibility,
 } from "@/lib/modalWidgets";
+import { Droplets, Activity, Utensils, MessageSquare, BarChart3, type LucideIcon } from "lucide-react";
 import { RunReportCard } from "./RunReportCard";
 import { RunAnalysis } from "./RunAnalysis";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
@@ -138,7 +139,24 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
         isLoadingStreamData={p.isLoadingStreamData}
       />
     ) : null,
-  "feedback": (p) => <FeedbackWidget {...p} />,
+  "feedback": (p) => p.event.activityId ? <FeedbackWidget {...p} /> : null,
+};
+
+function SectionHeading({ icon: Icon, iconColor, label }: { icon: LucideIcon; iconColor: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className="w-4 h-4" style={{ color: iconColor }} />
+      <span className="text-sm font-semibold uppercase text-[#b8a5d4]">{label}</span>
+    </div>
+  );
+}
+
+const SECTION_HEADINGS: Partial<Record<ModalWidgetId, React.ReactNode>> = {
+  "report-card": <SectionHeading icon={Droplets} iconColor="#06b6d4" label="Blood Glucose" />,
+  "stats": <SectionHeading icon={Activity} iconColor="#06b6d4" label="Performance" />,
+  "carbs-ingested": <SectionHeading icon={Utensils} iconColor="#fbbf24" label="Fueling" />,
+  "feedback": <SectionHeading icon={MessageSquare} iconColor="#c4b5fd" label="Feedback" />,
+  "pace-splits": <SectionHeading icon={BarChart3} iconColor="#06b6d4" label="Pace Splits" />,
 };
 
 interface WidgetTabsProps {
@@ -214,6 +232,7 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
         renderMap={widgetRenderMap}
         onReorder={handleReorder}
         onToggle={handleToggle}
+        sectionHeadings={SECTION_HEADINGS}
       />
     </div>
   );

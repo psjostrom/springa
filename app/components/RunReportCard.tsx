@@ -209,11 +209,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
   }
 
   return (
-    <div className="px-2 pt-2">
-      <div className="flex items-center gap-2 mb-2">
-        <Droplets className="w-4 h-4 text-[#06b6d4]" />
-        <span className="text-sm font-semibold uppercase text-[#b8a5d4]">Blood Glucose</span>
-      </div>
+    <div className="p-2">
       <div className="grid grid-cols-3 gap-2">
         {cards}
       </div>
