@@ -180,8 +180,7 @@ describe("EventModal feedback", () => {
     activityId: "i999",
   };
 
-  it("shows rating buttons for unrated completed run", async () => {
-    const user = userEvent.setup();
+  it("shows rating buttons for unrated completed run", () => {
     render(
       <EventModal
         event={completedWithActivity}
@@ -192,15 +191,14 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
 
-  it("shows read-only rating for already-rated run", async () => {
-    const user = userEvent.setup();
+  it("shows read-only rating for already-rated run", () => {
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "good",
@@ -217,7 +215,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("Feedback")).toBeInTheDocument();
     expect(screen.getByText("\ud83d\udc4d")).toBeInTheDocument();
     expect(screen.getByText("Felt great")).toBeInTheDocument();
@@ -225,8 +223,7 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Save")).toBeNull();
   });
 
-  it("shows read-only bad rating without comment", async () => {
-    const user = userEvent.setup();
+  it("shows read-only bad rating without comment", () => {
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "bad",
@@ -242,7 +239,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     expect(screen.getByText("\ud83d\udc4e")).toBeInTheDocument();
     expect(screen.queryByText("Save")).toBeNull();
   });
@@ -280,8 +277,7 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Feedback")).toBeNull();
   });
 
-  it("Save button is disabled until a rating is selected", async () => {
-    const user = userEvent.setup();
+  it("Save button is disabled until a rating is selected", () => {
     render(
       <EventModal
         event={completedWithActivity}
@@ -292,7 +288,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).toBeDisabled();
   });
@@ -310,7 +306,7 @@ describe("EventModal feedback", () => {
       />,
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     await user.click(screen.getByText("\ud83d\udc4d"));
     const saveBtn = screen.getByText("Save");
     expect(saveBtn).not.toBeDisabled();
@@ -338,7 +334,7 @@ describe("EventModal feedback", () => {
       { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
 
-    await user.click(screen.getByText("Analysis"));
+    // Feedback is on Overview tab (no need to switch)
     await user.click(screen.getByText("\ud83d\udc4e"));
     const commentInput = screen.getByPlaceholderText("Optional comment...");
     await user.type(commentInput, "Legs were heavy");
@@ -498,6 +494,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load (MSW returns "Test analysis.")
     expect(await screen.findByText("Run Analysis")).toBeInTheDocument();
@@ -518,6 +515,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for analysis to load
     await waitFor(() => {
@@ -549,6 +547,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {
@@ -593,6 +592,7 @@ describe("EventModal run analysis", () => {
       />,
     );
 
+    // Run Analysis is on the Analysis tab
     await user.click(screen.getByText("Analysis"));
     // Wait for initial analysis
     await waitFor(() => {

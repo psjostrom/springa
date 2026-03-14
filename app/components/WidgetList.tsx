@@ -33,6 +33,8 @@ interface WidgetListProps {
   renderMap: WidgetRenderMap;
   onReorder: (newOrder: ModalWidgetId[]) => void;
   onToggle: (widgetId: ModalWidgetId) => void;
+  /** Optional section headings rendered above the WidgetCard for specific widgets */
+  sectionHeadings?: Partial<Record<ModalWidgetId, React.ReactNode>>;
 }
 
 const labelMap = new Map(COMPLETED_RUN_WIDGETS.map((w) => [w.id, w.label]));
@@ -98,6 +100,7 @@ export function WidgetList({
   renderMap,
   onReorder,
   onToggle,
+  sectionHeadings,
 }: WidgetListProps) {
   const [editing, setEditing] = useState(false);
   const hiddenSet = new Set(hidden);
@@ -156,10 +159,14 @@ export function WidgetList({
     .map((id) => {
       const content = renderMap[id](widgetProps);
       if (content == null) return null;
+      const heading = sectionHeadings?.[id];
       return (
-        <WidgetCard key={id}>
-          {content}
-        </WidgetCard>
+        <div key={id}>
+          {heading}
+          <WidgetCard>
+            {content}
+          </WidgetCard>
+        </div>
       );
     })
     .filter(Boolean);

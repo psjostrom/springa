@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAtomValue } from "jotai";
+import useSWR from "swr";
 import { enrichedEventsAtom } from "../atoms";
 import type {
   ModalWidgetId,
@@ -16,6 +17,7 @@ import {
   saveModalLayout,
   toggleWidgetVisibility,
 } from "@/lib/modalWidgets";
+import { Droplets, Activity, Utensils, MessageSquare, BarChart3, type LucideIcon } from "lucide-react";
 import { RunReportCard } from "./RunReportCard";
 import { RunAnalysis } from "./RunAnalysis";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
@@ -28,7 +30,19 @@ import { StatsWidget } from "./StatsWidget";
 import { CarbsWidget } from "./CarbsWidget";
 import { PreRunCarbsWidget } from "./PreRunCarbsWidget";
 import { FeedbackWidget } from "./FeedbackWidget";
+import { NextTimeWidget } from "./NextTimeWidget";
 import { WidgetList } from "./WidgetList";
+import { TabBar } from "./TabBar";
+
+function NextTimeSWRBridge({ activityId }: { activityId: string }) {
+  const { data: analysis } = useSWR<string>(
+    ["run-analysis", activityId],
+    null, // read from cache — RunAnalysis on Analysis tab populates it
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+  if (!analysis) return null; // shows nothing until analysis is generated via Analysis tab
+  return <NextTimeWidget analysis={analysis} />;
+}
 
 const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.ReactNode | null> = {
   "report-card": (p) => (
@@ -39,6 +53,10 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     />
   ),
   "stats": (p) => <StatsWidget {...p} />,
+  "next-time": (p) =>
+    p.event.activityId ? (
+      <NextTimeSWRBridge activityId={p.event.activityId} />
+    ) : null,
   "pace-splits": (p) =>
     p.event.streamData?.distance || p.isLoadingStreamData ? (
       <KmSplitsSection
@@ -122,7 +140,24 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
         isLoadingStreamData={p.isLoadingStreamData}
       />
     ) : null,
-  "feedback": (p) => <FeedbackWidget {...p} />,
+  "feedback": (p) => p.event.activityId ? <FeedbackWidget {...p} /> : null,
+};
+
+function SectionHeading({ icon: Icon, iconColor, label }: { icon: LucideIcon; iconColor: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className="w-4 h-4" style={{ color: iconColor }} />
+      <span className="text-sm font-semibold uppercase text-[#b8a5d4]">{label}</span>
+    </div>
+  );
+}
+
+const SECTION_HEADINGS: Partial<Record<ModalWidgetId, React.ReactNode>> = {
+  "report-card": <SectionHeading icon={Droplets} iconColor="#06b6d4" label="Blood Glucose" />,
+  "stats": <SectionHeading icon={Activity} iconColor="#06b6d4" label="Performance" />,
+  "carbs-ingested": <SectionHeading icon={Utensils} iconColor="#fbbf24" label="Fueling" />,
+  "feedback": <SectionHeading icon={MessageSquare} iconColor="#c4b5fd" label="Feedback" />,
+  "pace-splits": <SectionHeading icon={BarChart3} iconColor="#06b6d4" label="Pace Splits" />,
 };
 
 interface WidgetTabsProps {
@@ -183,22 +218,11 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
 
   return (
     <div className="space-y-2">
-      {/* Tab bar */}
-      <div className="flex border-b border-[#3d2b5a]">
-        {DEFAULT_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); }}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? "text-[#ff2d95] border-b-2 border-[#ff2d95]"
-                : "text-[#b8a5d4] hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar
+        tabs={DEFAULT_TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {/* Active tab content */}
       <WidgetList
@@ -209,6 +233,7 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
         renderMap={widgetRenderMap}
         onReorder={handleReorder}
         onToggle={handleToggle}
+        sectionHeadings={SECTION_HEADINGS}
       />
     </div>
   );

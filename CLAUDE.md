@@ -7,6 +7,7 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 - **Mobile preview:** Push main to the `dev` branch with `git push origin main:dev`. Vercel deploys it to a fixed preview URL. Google OAuth is pre-configured for this URL. No need to create throwaway branches for testing.
 - **Test locally first.** Don't suggest pushing to dev for testing when localhost is available. Dev deploys are for mobile/OAuth testing that can't run locally.
 - **Worktrees:** Use Claude Code's built-in `--worktree` flag or `isolation: "worktree"` for subagents. Worktrees live at `.claude/worktrees/<name>/` (excluded in vitest, eslint, and gitignore).
+- **Commits:** For multi-line commit messages, write the message to a temp file and use `git commit -F /tmp/commit-msg.txt`, then delete the temp file. Never use `$()` command substitution in bash — it triggers an approval prompt.
 
 
 ## Tech Stack

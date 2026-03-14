@@ -118,6 +118,15 @@ vi.mock("lucide-react", () => {
     LogOut: icon("LogOut"),
     Bell: icon("Bell"),
     GripVertical: icon("GripVertical"),
+    Lightbulb: icon("Lightbulb"),
+    Flame: icon("Flame"),
+    Footprints: icon("Footprints"),
+    HeartPulse: icon("HeartPulse"),
+    ArrowUpFromLine: icon("ArrowUpFromLine"),
+    Utensils: icon("Utensils"),
+    MessageSquare: icon("MessageSquare"),
+    BarChart3: icon("BarChart3"),
+    Clock: icon("Clock"),
   };
 });
 
