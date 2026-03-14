@@ -38,12 +38,6 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
     return null;
   }
 
-  const handleCardClick = (activityId?: string) => {
-    if (activityId && onActivitySelect) {
-      onActivitySelect(activityId);
-    }
-  };
-
   return (
     <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -51,7 +45,7 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
           <div
             key={effort.label}
             className={`bg-[#2a1f3d] rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-[#3d2b5a] transition-colors" : ""}`}
-            onClick={() => { handleCardClick(effort.activityId); }}
+            onClick={() => { if (effort.activityId) onActivitySelect?.(effort.activityId); }}
           >
             <div className="text-xs text-[#b8a5d4] uppercase">{effort.label}</div>
             <div className="text-lg font-bold text-white">
@@ -65,7 +59,7 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
         {longestRun && (
           <div
             className={`bg-[#2a1f3d] rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-[#3d2b5a] transition-colors" : ""}`}
-            onClick={() => { handleCardClick(longestRun.activityId); }}
+            onClick={() => { onActivitySelect?.(longestRun.activityId); }}
           >
             <div className="text-xs text-[#b8a5d4] uppercase">Longest Run</div>
             <div className="text-lg font-bold text-white">

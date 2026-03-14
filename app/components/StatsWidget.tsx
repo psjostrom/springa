@@ -139,13 +139,19 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
     if (total > 0) {
       // Determine target zone based on category
       const cat = event.category;
-      const targetSec = cat === "interval"
-        ? event.zoneTimes.z4 + event.zoneTimes.z5
-        : cat === "easy" || cat === "long"
-          ? event.zoneTimes.z2
-          : event.zoneTimes.z2 + event.zoneTimes.z3;
+      let targetSec: number;
+      let targetLabel: string;
+      if (cat === "interval") {
+        targetSec = event.zoneTimes.z4 + event.zoneTimes.z5;
+        targetLabel = "Z4";
+      } else if (cat === "easy" || cat === "long") {
+        targetSec = event.zoneTimes.z2;
+        targetLabel = "Z2";
+      } else {
+        targetSec = event.zoneTimes.z2 + event.zoneTimes.z3;
+        targetLabel = "Z2+Z3";
+      }
       const pct = Math.round((targetSec / total) * 100);
-      const targetLabel = cat === "interval" ? "Z4" : cat === "easy" || cat === "long" ? "Z2" : "Z2+Z3";
       cards.push(
         <StatCard
           key="hr"

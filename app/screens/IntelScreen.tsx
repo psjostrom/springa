@@ -258,19 +258,9 @@ export function IntelScreen() {
     [selectedEvent, streamData, xdripReadings],
   );
 
-  const handleActivitySelect = (activityId: string) => {
-    setSelectedActivityId(activityId);
-  };
-
   const handleCloseModal = () => {
     setSelectedActivityId(null);
   };
-
-  // For PB activities, date/delete operations don't make sense - use no-ops
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleDateSaved = (eventId: string, newDate: Date) => { /* no-op for PB modal */ };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleDelete = async (eventId: string) => { /* no-op for PB modal */ };
 
   const fitnessData = wellnessToFitnessData(wellnessEntries);
 
@@ -336,13 +326,32 @@ export function IntelScreen() {
     "bg-categories": bgModel ? `${bgModel.activitiesAnalyzed} runs analyzed` : null,
   };
 
-  // Widget render map — each key maps to a render function or null if data unavailable
+  // Resolve readiness renderer
+  let readinessRenderer: (() => ReactNode) | null = null;
+  if (wellnessLoading) readinessRenderer = () => <WidgetLoadingCard label="Loading wellness data..." />;
+  else if (wellnessEntries.length > 0) readinessRenderer = () => <ReadinessPanel entries={wellnessEntries} />;
+
+  // Resolve fitness-chart renderer
+  let fitnessChartRenderer: (() => ReactNode) | null = null;
+  if (eventsError) {
+    fitnessChartRenderer = () => (
+      <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
+        <ErrorCard message={eventsError} onRetry={onRetryLoad} />
+      </div>
+    );
+  } else if (wellnessLoading || eventsLoading) {
+    fitnessChartRenderer = () => <WidgetLoadingCard label="Loading fitness data..." />;
+  } else if (fitnessData.length > 0) {
+    fitnessChartRenderer = () => (
+      <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 space-y-4">
+        <FitnessChart data={fitnessData} />
+        {insights && <FitnessInsightsPanel insights={insights} />}
+      </div>
+    );
+  }
+
   const widgetRenderMap: Record<WidgetKey, (() => ReactNode) | null> = {
-    readiness: wellnessLoading
-      ? () => <WidgetLoadingCard label="Loading wellness data..." />
-      : wellnessEntries.length > 0
-        ? () => <ReadinessPanel entries={wellnessEntries} />
-        : null,
+    readiness: readinessRenderer,
     "phase-tracker": () => (
       <PhaseTracker
         phaseName={phaseName}
@@ -353,23 +362,7 @@ export function IntelScreen() {
         includeBasePhase={settings?.includeBasePhase}
       />
     ),
-    "fitness-chart":
-      eventsError
-        ? () => (
-            <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6">
-              <ErrorCard message={eventsError} onRetry={onRetryLoad} />
-            </div>
-          )
-        : (wellnessLoading || eventsLoading)
-          ? () => <WidgetLoadingCard label="Loading fitness data..." />
-          : fitnessData.length > 0
-            ? () => (
-                <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 space-y-4">
-                  <FitnessChart data={fitnessData} />
-                  {insights && <FitnessInsightsPanel insights={insights} />}
-                </div>
-              )
-            : null,
+    "fitness-chart": fitnessChartRenderer,
     "volume-trend": () => (
       <VolumeTrendChart
         events={events}
@@ -387,7 +380,7 @@ export function IntelScreen() {
       paceCalibration && lthr
         ? () => <PaceCalibrationCard calibration={paceCalibration} />
         : null,
-    "pace-curves": () => <PaceCurvesWidget onActivitySelect={handleActivitySelect} />,
+    "pace-curves": () => <PaceCurvesWidget onActivitySelect={setSelectedActivityId} />,
     "bg-categories": bgModelLoading
       ? () => <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
       : bgModel
@@ -478,7 +471,7 @@ export function IntelScreen() {
             {paceCurveData && paceCurveData.bestEfforts.length > 0 && (
               <div>
                 <WidgetHeading widgetKey="pace-curves" meta={null} />
-                <PacePBs bestEfforts={paceCurveData.bestEfforts} longestRun={paceCurveData.longestRun} onActivitySelect={handleActivitySelect} />
+                <PacePBs bestEfforts={paceCurveData.bestEfforts} longestRun={paceCurveData.longestRun} onActivitySelect={setSelectedActivityId} />
               </div>
             )}
           </div>
@@ -595,8 +588,8 @@ export function IntelScreen() {
           <EventModal
             event={enrichedSelectedEvent}
             onClose={handleCloseModal}
-            onDateSaved={handleDateSaved}
-            onDelete={handleDelete}
+            onDateSaved={() => { /* no-op: PB modal */ }}
+            onDelete={() => Promise.resolve() /* no-op: PB modal */}
             isLoadingStreamData={isLoadingStreamData}
             apiKey={apiKey}
             runBGContexts={runBGContexts}

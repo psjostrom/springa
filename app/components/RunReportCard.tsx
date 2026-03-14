@@ -127,7 +127,10 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     cards.push(<SkeletonCard key="bg" label="Blood Glucose" />);
   } else if (report.bg) {
     const bg = report.bg;
-    const bgLabel = bg.hypo ? "Hypo" : bg.dropRate < -1.0 ? "Dropping" : "Stable";
+    let bgLabel: string;
+    if (bg.hypo) bgLabel = "Hypo";
+    else if (bg.dropRate < -1.0) bgLabel = "Dropping";
+    else bgLabel = "Stable";
     cards.push(
       <BGCard
         key="bg"
