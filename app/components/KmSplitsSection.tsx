@@ -50,7 +50,7 @@ export function KmSplitsSection({
   if (isLoading) {
     return (
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Splits</div>
+
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="skeleton h-5 w-full" />
