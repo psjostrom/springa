@@ -99,7 +99,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 axisLine={{ stroke: "#3d2b5a" }}
                 tickLine={false}
                 label={{
-                  value: "mmol/L /10m",
+                  value: "mmol/L /5m",
                   angle: -90,
                   position: "insideLeft",
                   style: { fill: "#8b7ba8", fontSize: 10 },
@@ -130,7 +130,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                   const d = (props.payload[0] as { payload: { category: WorkoutCategory; y: number } }).payload;
                   return (
                     <div className="bg-[#0d0a1a] border border-[#3d2b5a] rounded px-2 py-1 text-xs text-[#e0d0f0]">
-                      {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/10m
+                      {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/5m
                     </div>
                   );
                 }}

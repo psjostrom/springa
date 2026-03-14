@@ -11,7 +11,7 @@ export interface BGScore {
   startBG: number;
   minBG: number;
   hypo: boolean;
-  dropRate: number; // mmol/L per 10 min (negative = dropping)
+  dropRate: number; // mmol/L per 5 min (negative = dropping)
 }
 
 export interface HRZoneScore {
@@ -24,7 +24,7 @@ export interface HRZoneScore {
 
 export interface EntryTrendScore {
   rating: Rating;
-  slope30m: number; // mmol/L per 10min
+  slope30m: number; // mmol/L per 5min
   stability: number; // std dev
   label: string; // "Stable" | "Dropping" | "Rising" | "Crashing" | "Volatile"
 }
@@ -88,15 +88,15 @@ export function scoreBG(event: CalendarEvent): BGScore | null {
   const minBG = Math.min(...glucose.map((p) => p.value));
   const hypo = glucose.some((p) => p.value < BG_HYPO);
 
-  // Duration in 10-min units (time is in minutes from intervalsApi)
+  // Duration in 5-min units (time is in minutes from intervalsApi)
   const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
-  const duration10m = durationMin / 10;
-  const dropRate = duration10m > 0 ? (lastBG - startBG) / duration10m : 0;
+  const duration5m = durationMin / 5;
+  const dropRate = duration5m > 0 ? (lastBG - startBG) / duration5m : 0;
 
   let rating: Rating;
-  if (hypo || dropRate < -2.0) {
+  if (hypo || dropRate < -1.0) {
     rating = "bad";
-  } else if (dropRate < -1.0) {
+  } else if (dropRate < -0.5) {
     rating = "ok";
   } else {
     rating = "good";
@@ -166,7 +166,7 @@ export function scoreEntryTrend(ctx: RunBGContext | null | undefined): EntryTren
   const { entrySlope30m: slope, entryStability: stability } = ctx.pre;
 
   // Bad: crashing or volatile
-  if (slope < -1.0) {
+  if (slope < -0.5) {
     return { rating: "bad", slope30m: slope, stability, label: "Crashing" };
   }
   if (stability > 1.5) {
@@ -174,14 +174,14 @@ export function scoreEntryTrend(ctx: RunBGContext | null | undefined): EntryTren
   }
 
   // Good: stable
-  if (Math.abs(slope) <= 0.3 && stability < 0.5) {
+  if (Math.abs(slope) <= 0.15 && stability < 0.5) {
     return { rating: "good", slope30m: slope, stability, label: "Stable" };
   }
 
   // Ok: mild drop, rise, or unsteady
   let label: string;
-  if (slope < -0.3) label = "Dropping";
-  else if (slope > 0.3) label = "Rising";
+  if (slope < -0.15) label = "Dropping";
+  else if (slope > 0.15) label = "Rising";
   else label = "Unsteady";
 
   return { rating: "ok", slope30m: slope, stability, label };

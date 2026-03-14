@@ -15,8 +15,8 @@ export const MGDL_TO_MMOL = 18.018;
 
 export const DEFAULT_LTHR = 168;
 export const DEFAULT_MAX_HR = 189;
-export const CRASH_DROP_RATE = -3.0;
-export const SPIKE_RISE_RATE = 3.0;
+export const CRASH_DROP_RATE = -1.5;
+export const SPIKE_RISE_RATE = 1.5;
 export const DEFAULT_CARBS_G = 10;
 export const API_BASE = "https://intervals.icu/api/v1";
 

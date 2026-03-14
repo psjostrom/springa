@@ -50,12 +50,12 @@ function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: (
           <div className="flex justify-between">
             <span className="text-[#b8a5d4]">BG drop rate</span>
             <span className="font-semibold" style={{ color: rateColor(cat.avgRate) }}>
-              {cat.avgRate.toFixed(2)} /10m
+              {cat.avgRate.toFixed(2)} /5m
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-[#b8a5d4]">Median rate</span>
-            <span className="text-white">{cat.medianRate.toFixed(2)} /10m</span>
+            <span className="text-white">{cat.medianRate.toFixed(2)} /5m</span>
           </div>
           {cat.avgFuelRate != null && (
             <div className="flex justify-between">

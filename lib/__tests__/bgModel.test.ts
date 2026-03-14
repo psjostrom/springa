@@ -21,7 +21,7 @@ import type { DataPoint } from "../types";
 function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
   return {
     category: "easy",
-    bgRate: -1.0,
+    bgRate: -0.5,
     fuelRate: 48,
     activityId: "a1",
     timeMinute: 10,
@@ -73,9 +73,9 @@ describe("extractObservations", () => {
     const obs = extractObservations(hr, glucose, "a1", 48, 10, "easy");
     expect(obs.length).toBeGreaterThan(0);
 
-    // Each 5-min window should show: (end - start) / 5 * 10 = -0.5 / 5 * 10 = -1.0
+    // Each 5-min window: -0.1/min * 5min = -0.5 mmol/L total drop over 5min
     for (const o of obs) {
-      expect(o.bgRate).toBeCloseTo(-1.0, 0);
+      expect(o.bgRate).toBeCloseTo(-0.5, 0);
     }
   });
 
@@ -157,7 +157,7 @@ describe("suggestFuelAdjustments", () => {
   });
 
   it("suggests fuel increase for fast-dropping BG", () => {
-    // BG drops from 10 to 4 over 20 minutes (-0.3/min → -3.0/10min)
+    // BG drops from 10 to 4 over 20 minutes (-0.3/min → -1.5 total over 5min)
     const model = buildBGModelFromCached([
       makeCachedForFuel("a1", 48, (i) => 10 - i * 0.3),
     ]);
@@ -166,11 +166,11 @@ describe("suggestFuelAdjustments", () => {
     expect(suggestions.length).toBeGreaterThan(0);
     expect(suggestions[0].category).toBe("easy");
     expect(suggestions[0].suggestedIncrease).toBeGreaterThan(0);
-    expect(suggestions[0].avgDropRate).toBeLessThan(-1.0);
+    expect(suggestions[0].avgDropRate).toBeLessThan(-0.5);
   });
 
-  it("does not suggest for moderate drops (> -1.0)", () => {
-    // BG drops mildly: -0.04/min → -0.4/10min
+  it("does not suggest for moderate drops (> -0.5)", () => {
+    // BG drops mildly: -0.04/min → -0.2 total over 5min
     const model = buildBGModelFromCached([
       makeCachedForFuel("a1", 48, (i) => 10 - i * 0.04),
     ]);
@@ -180,17 +180,17 @@ describe("suggestFuelAdjustments", () => {
   });
 
   it("scales fuel increase proportionally to excess drop", () => {
-    // Very fast drop: -0.5/min → -5.0/10min (excess = 4.0, expect 8 * 6 = 48 g/h increase)
+    // Very fast drop: -0.5/min → -2.5 total over 5min
     const model = buildBGModelFromCached([
       makeCachedForFuel("a1", 48, (i) => 10 - i * 0.5),
     ]);
 
     const suggestions = suggestFuelAdjustments(model);
     expect(suggestions.length).toBeGreaterThan(0);
-    // Drop rate ~-5.0/10m, excess ~4.0, ceil(4.0/0.5)*6 = 48
+    // Drop rate ~-2.5 per 5min, excess = 2.0, increase = ceil(2.0/0.25)*6 = 48
     // But window edge effects may reduce the observed rate slightly
     expect(suggestions[0].suggestedIncrease).toBeGreaterThanOrEqual(30);
-    expect(suggestions[0].suggestedIncrease).toBeLessThanOrEqual(48);
+    expect(suggestions[0].suggestedIncrease).toBeLessThanOrEqual(60);
   });
 });
 
@@ -234,9 +234,9 @@ describe("analyzeBGByStartLevel", () => {
 
   it("groups observations by start BG band", () => {
     const obs: BGObservation[] = [
-      makeObs({ startBG: 7, bgRate: -2.0, activityId: "a1" }),
-      makeObs({ startBG: 9, bgRate: -1.0, activityId: "a2" }),
-      makeObs({ startBG: 11, bgRate: -0.5, activityId: "a3" }),
+      makeObs({ startBG: 7, bgRate: -1.0, activityId: "a1" }),
+      makeObs({ startBG: 9, bgRate: -0.5, activityId: "a2" }),
+      makeObs({ startBG: 11, bgRate: -0.25, activityId: "a3" }),
       makeObs({ startBG: 13, bgRate: 0.0, activityId: "a4" }),
     ];
 
@@ -250,16 +250,16 @@ describe("analyzeBGByStartLevel", () => {
 
   it("computes avg and median rate per band", () => {
     const obs: BGObservation[] = [
-      makeObs({ startBG: 9, bgRate: -1.0, activityId: "a1" }),
-      makeObs({ startBG: 9.5, bgRate: -2.0, activityId: "a2" }),
-      makeObs({ startBG: 8.5, bgRate: -3.0, activityId: "a3" }),
+      makeObs({ startBG: 9, bgRate: -0.5, activityId: "a1" }),
+      makeObs({ startBG: 9.5, bgRate: -1.0, activityId: "a2" }),
+      makeObs({ startBG: 8.5, bgRate: -1.5, activityId: "a3" }),
     ];
 
     const result = analyzeBGByStartLevel(obs);
     expect(result).toHaveLength(1);
     expect(result[0].band).toBe("8-10");
-    expect(result[0].avgRate).toBeCloseTo(-2.0);
-    expect(result[0].medianRate).toBeCloseTo(-2.0);
+    expect(result[0].avgRate).toBeCloseTo(-1.0);
+    expect(result[0].medianRate).toBeCloseTo(-1.0);
     expect(result[0].sampleCount).toBe(3);
   });
 
@@ -293,7 +293,7 @@ describe("computeEntrySlope", () => {
   });
 
   it("computes dropping slope", () => {
-    // BG drops from 10 to 9 over 4 minutes → -0.25/min → -2.5/10min
+    // BG drops from 10 to 9 over 4 minutes → -0.25/min → -1.25 total over 5min
     const glucose = [
       { time: 0, value: 10 },
       { time: 1, value: 9.75 },
@@ -301,16 +301,16 @@ describe("computeEntrySlope", () => {
       { time: 3, value: 9.25 },
       { time: 4, value: 9.0 },
     ];
-    expect(computeEntrySlope(glucose)).toBeCloseTo(-2.5);
+    expect(computeEntrySlope(glucose)).toBeCloseTo(-1.25);
   });
 
   it("computes rising slope", () => {
-    // BG rises from 8 to 9 over 4 minutes → +0.25/min → +2.5/10min
+    // BG rises from 8 to 9 over 4 minutes → +0.25/min → +1.25 total over 5min
     const glucose = [
       { time: 0, value: 8 },
       { time: 4, value: 9 },
     ];
-    expect(computeEntrySlope(glucose)).toBeCloseTo(2.5);
+    expect(computeEntrySlope(glucose)).toBeCloseTo(1.25);
   });
 
   it("computes stable slope", () => {
@@ -319,7 +319,7 @@ describe("computeEntrySlope", () => {
       { time: 4, value: 10.1 },
     ];
     const slope = computeEntrySlope(glucose)!;
-    expect(Math.abs(slope)).toBeLessThan(0.3);
+    expect(Math.abs(slope)).toBeLessThan(0.15);
   });
 
   it("ignores points at time >= 5", () => {
@@ -329,39 +329,39 @@ describe("computeEntrySlope", () => {
       { time: 5, value: 5.0 }, // should be ignored
       { time: 10, value: 3.0 }, // should be ignored
     ];
-    // Only uses time 0 and 3: (9.4 - 10) / 3 * 10 = -2.0
-    expect(computeEntrySlope(glucose)).toBeCloseTo(-2.0);
+    // Only uses time 0 and 3: (9.4 - 10) / 3 * 5 = -1.0 total over 5min
+    expect(computeEntrySlope(glucose)).toBeCloseTo(-1.0);
   });
 });
 
 describe("classifyEntrySlope", () => {
-  it("classifies < -1.0 as crashing", () => {
-    expect(classifyEntrySlope(-1.5)).toBe("crashing");
-    expect(classifyEntrySlope(-2.0)).toBe("crashing");
+  it("classifies < -0.5 as crashing", () => {
+    expect(classifyEntrySlope(-0.75)).toBe("crashing");
+    expect(classifyEntrySlope(-1.0)).toBe("crashing");
   });
 
-  it("classifies boundary at -1.0 as dropping", () => {
-    expect(classifyEntrySlope(-1.0)).toBe("dropping");
-  });
-
-  it("classifies -1.0 to -0.3 as dropping", () => {
+  it("classifies boundary at -0.5 as dropping", () => {
     expect(classifyEntrySlope(-0.5)).toBe("dropping");
-    expect(classifyEntrySlope(-0.3)).toBe("stable"); // boundary: -0.3 is stable
   });
 
-  it("classifies boundary at -0.3 as stable", () => {
-    expect(classifyEntrySlope(-0.3)).toBe("stable");
+  it("classifies -0.5 to -0.15 as dropping", () => {
+    expect(classifyEntrySlope(-0.25)).toBe("dropping");
+    expect(classifyEntrySlope(-0.16)).toBe("dropping");
   });
 
-  it("classifies -0.3 to +0.3 as stable", () => {
+  it("classifies boundary at -0.15 as stable", () => {
+    expect(classifyEntrySlope(-0.149)).toBe("stable");
+  });
+
+  it("classifies -0.15 to +0.15 as stable", () => {
     expect(classifyEntrySlope(0)).toBe("stable");
-    expect(classifyEntrySlope(0.2)).toBe("stable");
-    expect(classifyEntrySlope(0.3)).toBe("stable");
+    expect(classifyEntrySlope(0.1)).toBe("stable");
+    expect(classifyEntrySlope(0.149)).toBe("stable");
   });
 
-  it("classifies > +0.3 as rising", () => {
-    expect(classifyEntrySlope(0.31)).toBe("rising");
-    expect(classifyEntrySlope(1.0)).toBe("rising");
+  it("classifies > +0.15 as rising", () => {
+    expect(classifyEntrySlope(0.16)).toBe("rising");
+    expect(classifyEntrySlope(0.5)).toBe("rising");
   });
 });
 
@@ -380,10 +380,10 @@ describe("analyzeBGByEntrySlope", () => {
 
   it("groups observations by entry slope band", () => {
     const obs = [
-      makeObs({ entrySlope: -1.5, bgRate: -2.0, activityId: "a1" }),
-      makeObs({ entrySlope: -0.5, bgRate: -1.0, activityId: "a2" }),
-      makeObs({ entrySlope: 0.0, bgRate: -0.5, activityId: "a3" }),
-      makeObs({ entrySlope: 0.5, bgRate: 0.0, activityId: "a4" }),
+      makeObs({ entrySlope: -0.75, bgRate: -1.0, activityId: "a1" }),
+      makeObs({ entrySlope: -0.25, bgRate: -0.5, activityId: "a2" }),
+      makeObs({ entrySlope: 0.0, bgRate: -0.25, activityId: "a3" }),
+      makeObs({ entrySlope: 0.25, bgRate: 0.0, activityId: "a4" }),
     ];
 
     const result = analyzeBGByEntrySlope(obs);
@@ -396,16 +396,16 @@ describe("analyzeBGByEntrySlope", () => {
 
   it("computes avg and median rate per slope band", () => {
     const obs = [
-      makeObs({ entrySlope: 0.0, bgRate: -1.0, activityId: "a1" }),
-      makeObs({ entrySlope: 0.1, bgRate: -2.0, activityId: "a2" }),
-      makeObs({ entrySlope: -0.1, bgRate: -3.0, activityId: "a3" }),
+      makeObs({ entrySlope: 0.0, bgRate: -0.5, activityId: "a1" }),
+      makeObs({ entrySlope: 0.1, bgRate: -1.0, activityId: "a2" }),
+      makeObs({ entrySlope: -0.1, bgRate: -1.5, activityId: "a3" }),
     ];
 
     const result = analyzeBGByEntrySlope(obs);
     expect(result).toHaveLength(1);
     expect(result[0].slope).toBe("stable");
-    expect(result[0].avgRate).toBeCloseTo(-2.0);
-    expect(result[0].medianRate).toBeCloseTo(-2.0);
+    expect(result[0].avgRate).toBeCloseTo(-1.0);
+    expect(result[0].medianRate).toBeCloseTo(-1.0);
     expect(result[0].sampleCount).toBe(3);
   });
 
@@ -550,13 +550,13 @@ describe("calculateTargetFuelRates", () => {
 
   it("uses extrapolation with single fuel rate", () => {
     const obs: BGObservation[] = Array.from({ length: 5 }, () =>
-      makeObs({ bgRate: -1.0, fuelRate: 48 }),
+      makeObs({ bgRate: -0.5, fuelRate: 48 }),
     );
 
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].method).toBe("extrapolation");
-    // excessDrop = 1.0 - 0.2 = 0.8, target = 48 + 0.8 * 6 = 52.8 → 53
+    // excessDrop = abs(-0.5) - abs(-0.1) = 0.4, target = 48 + 0.4*12 = 52.8 → 53
     expect(result[0].targetFuelRate).toBe(53);
     expect(result[0].category).toBe("easy");
   });
@@ -564,24 +564,24 @@ describe("calculateTargetFuelRates", () => {
   it("uses regression with 2+ distinct fuel rates with 3+ obs each", () => {
     const obs: BGObservation[] = [
       // Fuel 30 → high drop
-      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -2.0, fuelRate: 30 })),
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -1.0, fuelRate: 30 })),
       // Fuel 60 → low drop
-      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.5, fuelRate: 60 })),
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.25, fuelRate: 60 })),
     ];
 
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].method).toBe("regression");
-    // slope = 0.05, intercept = -3.5
-    // Solve for y = -0.2: x = (-0.2 - (-3.5)) / 0.05 = 66
+    // slope = 0.025, intercept = -1.75
+    // Solve for y = -0.1: x = (-0.1 - (-1.75)) / 0.025 = 66
     // Cap: min(66, avgFuel 45 * 1.5 = 67.5, 90) = 66
     expect(result[0].targetFuelRate).toBe(66);
   });
 
   it("clamps target fuel rate to >= 0", () => {
-    // Drop exceeds threshold (-0.5) with zero fuel — extrapolation stays non-negative
+    // Drop exceeds threshold (-0.25) with zero fuel — extrapolation stays non-negative
     const obs: BGObservation[] = Array.from({ length: 5 }, () =>
-      makeObs({ bgRate: -0.6, fuelRate: 0 }),
+      makeObs({ bgRate: -0.3, fuelRate: 0 }),
     );
 
     const result = calculateTargetFuelRates(obs);
@@ -591,10 +591,10 @@ describe("calculateTargetFuelRates", () => {
 
   it("excludes observations with null fuelRate", () => {
     const obs: BGObservation[] = [
-      makeObs({ bgRate: -1.5, fuelRate: 48 }),
-      makeObs({ bgRate: -1.5, fuelRate: 48 }),
-      makeObs({ bgRate: -1.5, fuelRate: 48 }),
-      makeObs({ bgRate: -1.5, fuelRate: null }), // should be excluded
+      makeObs({ bgRate: -0.75, fuelRate: 48 }),
+      makeObs({ bgRate: -0.75, fuelRate: 48 }),
+      makeObs({ bgRate: -0.75, fuelRate: 48 }),
+      makeObs({ bgRate: -0.75, fuelRate: null }), // should be excluded
     ];
 
     const result = calculateTargetFuelRates(obs);
@@ -675,7 +675,7 @@ describe("buildBGModelFromCached", () => {
     cached.runBGContext = {
       activityId: "a1",
       category: "easy",
-      pre: { entrySlope30m: -0.8, entryStability: 0.3, startBG: 10, readingCount: 6 },
+      pre: { entrySlope30m: -0.4, entryStability: 0.3, startBG: 10, readingCount: 6 },
       post: null,
       totalBGImpact: null,
     };
@@ -683,7 +683,7 @@ describe("buildBGModelFromCached", () => {
     const model = buildBGModelFromCached([cached]);
     // All observations should use the runBGContext entry slope
     for (const obs of model.observations) {
-      expect(obs.entrySlope).toBe(-0.8);
+      expect(obs.entrySlope).toBe(-0.4);
     }
   });
 

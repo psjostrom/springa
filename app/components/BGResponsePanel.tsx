@@ -117,7 +117,7 @@ function CategoryCard({
         >
           {rate > 0 ? "+" : ""}{rate.toFixed(1)}
         </span>
-        <span className="text-xs text-[#b8a5d4]">mmol/L /10m</span>
+        <span className="text-xs text-[#b8a5d4]">mmol/L /5m</span>
       </div>
 
       <div className="text-xs text-[#8b7ba8]">
@@ -174,7 +174,7 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
           {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
         <span className="text-[#e0d0f0]">
-          BG dropping {Math.abs(suggestion.avgDropRate).toFixed(1)} mmol/L/10m{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
+          BG dropping {Math.abs(suggestion.avgDropRate).toFixed(1)} mmol/L/5m{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
         </span>{" "}
         <span className="text-[#fbbf24]">
           Try +{suggestion.suggestedIncrease} g/h.
