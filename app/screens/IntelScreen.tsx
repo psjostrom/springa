@@ -291,7 +291,7 @@ export function IntelScreen() {
     if (currentWeekIdx < 0 || currentWeekIdx >= totalWeeks) return null;
 
     // Planned
-    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, settings.includeBasePhase ?? false);
+    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, settings?.includeBasePhase ?? false);
     let targetKm = 0;
     let totalRuns = 0;
     for (const pe of planEvents) {

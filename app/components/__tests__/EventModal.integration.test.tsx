@@ -180,8 +180,7 @@ describe("EventModal feedback", () => {
     activityId: "i999",
   };
 
-  it("shows rating buttons for unrated completed run", async () => {
-    const user = userEvent.setup();
+  it("shows rating buttons for unrated completed run", () => {
     render(
       <EventModal
         event={completedWithActivity}
@@ -199,8 +198,7 @@ describe("EventModal feedback", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
 
-  it("shows read-only rating for already-rated run", async () => {
-    const user = userEvent.setup();
+  it("shows read-only rating for already-rated run", () => {
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "good",
@@ -225,8 +223,7 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Save")).toBeNull();
   });
 
-  it("shows read-only bad rating without comment", async () => {
-    const user = userEvent.setup();
+  it("shows read-only bad rating without comment", () => {
     const rated: CalendarEvent = {
       ...completedWithActivity,
       rating: "bad",
@@ -280,8 +277,7 @@ describe("EventModal feedback", () => {
     expect(screen.queryByText("Feedback")).toBeNull();
   });
 
-  it("Save button is disabled until a rating is selected", async () => {
-    const user = userEvent.setup();
+  it("Save button is disabled until a rating is selected", () => {
     render(
       <EventModal
         event={completedWithActivity}

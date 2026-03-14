@@ -5,7 +5,7 @@
 export function parseNextTime(markdown: string | null | undefined): string[] {
   if (!markdown) return [];
 
-  const match = markdown.match(/\*\*Next Time\*\*:?\s*\n([\s\S]*?)(?=\n\*\*|\n##|$)/);
+  const match = /\*\*Next Time\*\*:?\s*\n([\s\S]*?)(?=\n\*\*|\n##|$)/.exec(markdown);
   if (!match) return [];
 
   const block = match[1].trim();
