@@ -22,7 +22,7 @@ export interface SimSegment {
 
 export interface SimulationInput {
   startBG: number; // mmol/L
-  entrySlope: number | null; // mmol/L per 10min (pre-run CGM trend)
+  entrySlope: number | null; // mmol/L per 5min (pre-run CGM trend)
   segments: SimSegment[]; // workout segments in order
   fuelRateGH: number | null; // constant fuel rate in g/h (null = unknown)
   bgModel: BGResponseModel;
@@ -53,7 +53,7 @@ const STEP_MIN = 5;
 const BG_FLOOR = 2.0; // physiological floor
 const ENTRY_SLOPE_DECAY_MIN = 15; // entry slope effect fades over first 15 min
 const MIN_BUCKET_SAMPLES = 3; // minimum observations to trust a time bucket
-const EXTRAPOLATION_FACTOR = 6; // g/h per 1.0 mmol/L/10min (from bgModel.ts)
+const EXTRAPOLATION_FACTOR = 12; // g/h per 1.0 mmol/L/5min (from bgModel.ts)
 const MIN_ACTIVITIES_FOR_RELIABLE = 8; // minimum activities per category before showing predictions
 
 // --- Helpers ---
@@ -85,7 +85,7 @@ function segmentAt(
 // --- Rate computation ---
 
 interface RateResult {
-  rate: number; // mmol/L per 10 min
+  rate: number; // mmol/L per 5 min
   stdDev: number; // observation std dev
 }
 
@@ -181,12 +181,12 @@ function getFuelSensitivity(
     }
   }
 
-  // Extrapolation fallback: 1/EXTRAPOLATION_FACTOR mmol/10min per g/h
+  // Extrapolation fallback: 1/EXTRAPOLATION_FACTOR mmol/5min per g/h
   return 1 / EXTRAPOLATION_FACTOR;
 }
 
 /**
- * Compute the fuel correction: delta in mmol/L per 10min for the planned
+ * Compute the fuel correction: delta in mmol/L per 5min for the planned
  * fuel rate vs the model's average fuel rate for this category.
  */
 function fuelCorrection(
@@ -456,14 +456,14 @@ export function simulateBG(input: SimulationInput): SimulationResult {
       bgModel,
     );
 
-    // BG change for this step: rate is per 10 min, step is STEP_MIN
-    const bgChange = rate * (STEP_MIN / 10);
+    // BG change for this step: rate is per 5 min, step is STEP_MIN
+    const bgChange = rate * (STEP_MIN / 5);
     currentBG = Math.max(BG_FLOOR, currentBG + bgChange);
 
     // Accumulate variance for confidence bands
     // Two sources: observation noise (sd) + model systematic error (residualVar)
-    const observationVar = (sd * (STEP_MIN / 10)) ** 2;
-    const modelVar = (residualVar[seg.category] ?? 0) * (STEP_MIN / 10) ** 2;
+    const observationVar = (sd * (STEP_MIN / 5)) ** 2;
+    const modelVar = (residualVar[seg.category] ?? 0) * (STEP_MIN / 5) ** 2;
     cumulativeVariance += observationVar + modelVar;
     const bandWidth = Math.sqrt(cumulativeVariance);
 

@@ -325,8 +325,8 @@ A scoring strip inside `EventModal` (between the stats card and carbs section) t
 
 - `startBG`: first reading, `minBG`: lowest reading
 - `hypo`: any reading < 3.9 mmol/L
-- `dropRate`: (last − first) / (duration in 10-min units) — matches mmol/L per 10m convention
-- Rating: **good** = no hypo + drop > −1.0 | **ok** = no hypo + drop −1.0 to −2.0 | **bad** = hypo or drop < −2.0
+- `dropRate`: (last − first) / (duration in 5-min units) — matches mmol/L per 5m convention (same unit as CGM readings)
+- Rating: **good** = no hypo + drop > −0.5 | **ok** = no hypo + drop −0.5 to −1.0 | **bad** = hypo or drop < −1.0
 
 ### HR Zone Compliance (from `hrZones`)
 

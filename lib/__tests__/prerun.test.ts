@@ -88,25 +88,25 @@ describe("assessReadiness — BG level", () => {
 // --- Trend slope dimension ---
 
 describe("assessReadiness — trend slope", () => {
-  it("wait when slope < -0.5 (dropping fast)", () => {
-    const g = assessReadiness(makeInput({ trendSlope: -0.8 }));
+  it("wait when slope < -0.25 (dropping fast)", () => {
+    const g = assessReadiness(makeInput({ trendSlope: -0.4 }));
     expect(g.level).toBe("wait");
     expect(g.reasons).toContain("BG dropping fast");
   });
 
-  it("caution when slope -0.5 to -0.3 (BG above 8)", () => {
-    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.4 }));
+  it("caution when slope -0.25 to -0.15 (BG above 8)", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.2 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).toContain("BG trending down");
   });
 
-  it("ready when slope stable (-0.3 to +0.3)", () => {
+  it("ready when slope stable (-0.15 to +0.15)", () => {
     const g = assessReadiness(makeInput({ trendSlope: 0.0 }));
     expect(g.level).toBe("ready");
   });
 
-  it("ready when slope rising (> +0.3)", () => {
-    const g = assessReadiness(makeInput({ trendSlope: 0.8 }));
+  it("ready when slope rising (> +0.15)", () => {
+    const g = assessReadiness(makeInput({ trendSlope: 0.4 }));
     expect(g.level).toBe("ready");
   });
 
@@ -116,13 +116,13 @@ describe("assessReadiness — trend slope", () => {
     expect(g.reasons).toContain("No recent BG data");
   });
 
-  it("exactly -0.5 is caution when BG above 8", () => {
-    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.5 }));
-    expect(g.level).toBe("caution"); // -0.5 is >= -0.5, so it's in the -0.5 to -0.3 range
+  it("exactly -0.25 is caution when BG above 8", () => {
+    const g = assessReadiness(makeInput({ currentBG: 9.0, trendSlope: -0.25 }));
+    expect(g.level).toBe("caution"); // -0.25 is >= -0.25, so it's in the -0.25 to -0.15 range
   });
 
-  it("exactly -0.3 is caution", () => {
-    const g = assessReadiness(makeInput({ trendSlope: -0.3 }));
+  it("exactly -0.15 is caution", () => {
+    const g = assessReadiness(makeInput({ trendSlope: -0.15 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).toContain("BG trending down");
   });
@@ -132,21 +132,21 @@ describe("assessReadiness — trend slope", () => {
 
 describe("assessReadiness — 30-min forecast", () => {
   it("projects BG using current trend slope", () => {
-    // slope -0.8/10m → drop 2.4 in 30m → 7.5 - 2.4 = 5.1
-    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.8 }));
+    // slope -0.4/5m → drop 2.4 in 30m (6 five-min periods) → 7.5 - 2.4 = 5.1
+    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.4 }));
     expect(g.predictedDrop).toBeCloseTo(-2.4);
     expect(g.estimatedBGAt30m).toBeCloseTo(5.1);
   });
 
   it("shows rising forecast when trending up", () => {
-    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: 0.5 }));
+    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: 0.25 }));
     expect(g.predictedDrop).toBeCloseTo(1.5);
     expect(g.estimatedBGAt30m).toBeCloseTo(8.5);
   });
 
   it("caution when trend predicts hypo", () => {
-    // slope -1.3/10m → drop 3.9 in 30m → 5.4 - 3.9 = 1.5
-    const g = assessReadiness(makeInput({ currentBG: 5.4, trendSlope: -1.3 }));
+    // slope -0.65/5m → drop 3.9 in 30m (6 five-min periods) → 5.4 - 3.9 = 1.5
+    const g = assessReadiness(makeInput({ currentBG: 5.4, trendSlope: -0.65 }));
     expect(g.estimatedBGAt30m).toBeCloseTo(1.5);
     expect(g.reasons).toContain("Trend predicts hypo within 30 min");
   });
@@ -194,7 +194,7 @@ describe("assessReadiness — historical model", () => {
 
 describe("assessReadiness — combined", () => {
   it("low BG + dropping → wait", () => {
-    const g = assessReadiness(makeInput({ currentBG: 4.2, trendSlope: -0.6 }));
+    const g = assessReadiness(makeInput({ currentBG: 4.2, trendSlope: -0.3 }));
     expect(g.level).toBe("wait");
     expect(g.reasons.length).toBeGreaterThanOrEqual(2);
   });
@@ -211,7 +211,7 @@ describe("assessReadiness — combined", () => {
   });
 
   it("good BG + rising → ready", () => {
-    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: 1.0 }));
+    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: 0.5 }));
     expect(g.level).toBe("ready");
   });
 
@@ -225,7 +225,7 @@ describe("assessReadiness — combined", () => {
     });
     const g = assessReadiness(makeInput({
       currentBG: 4.0,
-      trendSlope: -0.8,
+      trendSlope: -0.4,
       bgModel: model,
       currentTsb: -6,
       iob: 1.5,
@@ -238,20 +238,20 @@ describe("assessReadiness — combined", () => {
 // --- Compound rule: BG < 8 AND falling ---
 
 describe("assessReadiness — compound low+falling rule", () => {
-  it("wait when BG < 8 and slope < -0.3", () => {
-    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.4 }));
+  it("wait when BG < 8 and slope < -0.15", () => {
+    const g = assessReadiness(makeInput({ currentBG: 7.5, trendSlope: -0.2 }));
     expect(g.level).toBe("wait");
     expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
   });
 
-  it("caution (not wait) when BG >= 8 and slope < -0.3", () => {
-    const g = assessReadiness(makeInput({ currentBG: 8.0, trendSlope: -0.4 }));
+  it("caution (not wait) when BG >= 8 and slope < -0.15", () => {
+    const g = assessReadiness(makeInput({ currentBG: 8.0, trendSlope: -0.2 }));
     expect(g.level).toBe("caution");
     expect(g.reasons).not.toContain("BG below 8 and falling — high hypo risk");
   });
 
   it("does not trigger when slope is only mildly negative", () => {
-    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.2 }));
+    const g = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.1 }));
     expect(g.reasons).not.toContain("BG below 8 and falling — high hypo risk");
   });
 });
@@ -331,7 +331,7 @@ describe("assessReadiness — IOB rule", () => {
 
 describe("assessReadiness — compound low+falling with IOB", () => {
   it("wait when BG < 8, falling, and IOB >= 0.5 with consolidated carbs", () => {
-    const g = assessReadiness(makeInput({ currentBG: 7.2, trendSlope: -0.4, iob: 1.0 }));
+    const g = assessReadiness(makeInput({ currentBG: 7.2, trendSlope: -0.2, iob: 1.0 }));
     expect(g.level).toBe("wait");
     expect(g.reasons).toContain("BG below 8 and falling — high hypo risk");
     expect(g.reasons.some((r) => r.includes("IOB"))).toBe(true);
@@ -344,13 +344,13 @@ describe("assessReadiness — compound low+falling with IOB", () => {
     // Compound: 20g base
     // IOB 0.5u: 0.5 * 12 = 6, round to 5g
     // Total: 25g
-    const g1 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.35, iob: 0.5 }));
+    const g1 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.175, iob: 0.5 }));
     expect(g1.suggestions.some((s) => s.includes("25g"))).toBe(true);
 
     // Compound: 20g base
     // IOB 2.5u: 2.5 * 12 = 30g
     // Total: 50g
-    const g2 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.35, iob: 2.5 }));
+    const g2 = assessReadiness(makeInput({ currentBG: 7.0, trendSlope: -0.175, iob: 2.5 }));
     expect(g2.suggestions.some((s) => s.includes("50g"))).toBe(true);
   });
 });
@@ -359,7 +359,7 @@ describe("assessReadiness — compound low+falling with IOB", () => {
 
 describe("assessReadiness — worst-case consolidated output", () => {
   it("produces clear, non-redundant suggestions in extreme scenario", () => {
-    // Worst case: low BG (6.5), falling (-0.4), high IOB (0.8u), fatigued (TSB -5)
+    // Worst case: low BG (6.5), falling (-0.2), high IOB (0.8u), fatigued (TSB -5)
     const model = makeModel({
       activitiesAnalyzed: 5,
       targetFuelRates: [
@@ -369,7 +369,7 @@ describe("assessReadiness — worst-case consolidated output", () => {
 
     const g = assessReadiness(makeInput({
       currentBG: 6.5,
-      trendSlope: -0.4,
+      trendSlope: -0.2,
       bgModel: model,
       currentTsb: -5,
       iob: 0.8,

@@ -38,9 +38,9 @@ export function trendArrow(direction: string): string {
   return DIRECTION_ARROWS[direction] ?? "?";
 }
 
-/** Derive arrow directly from slope (mmol/L per 10min) — always consistent. */
-export function slopeToArrow(slopePer10min: number): string {
-  const deltaMgdlPer5 = slopePer10min * MGDL_TO_MMOL / 2;
+/** Derive arrow directly from slope (mmol/L per 5min) — always consistent. */
+export function slopeToArrow(slopePer5min: number): string {
+  const deltaMgdlPer5 = slopePer5min * MGDL_TO_MMOL;
   return trendArrow(directionFromDelta(deltaMgdlPer5));
 }
 
@@ -141,14 +141,14 @@ export function computeTrend(
   }));
 
   const { slope: slopePerMin } = linearRegression(points);
-  // slope is mmol/L per minute, convert to per 10 minutes
-  const slopePer10 = Math.round(slopePerMin * 10 * 100) / 100;
+  // slope is mmol/L per minute, convert to per 5 minutes
+  const slopePer5 = Math.round(slopePerMin * 5 * 100) / 100;
 
   // Classify — thresholds derived from SuperStable/directionFromDelta:
-  // SuperStable uses mg/dL per 5min; convert: mgdl5 / MGDL_TO_MMOL * 2 = mmol/L per 10min
-  // 5 → 0.56, 10 → 1.11, 17.5 → 1.94
-  const deltaMgdlPer5 = slopePer10 * MGDL_TO_MMOL / 2;
+  // SuperStable uses mg/dL per 5min; convert: mgdl5 / MGDL_TO_MMOL = mmol/L per 5min
+  // 5 → 0.28, 10 → 0.56, 17.5 → 0.97
+  const deltaMgdlPer5 = slopePer5 * MGDL_TO_MMOL;
   const direction = directionFromDelta(deltaMgdlPer5);
 
-  return { slope: slopePer10, direction };
+  return { slope: slopePer5, direction };
 }

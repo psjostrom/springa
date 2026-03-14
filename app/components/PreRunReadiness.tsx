@@ -73,7 +73,7 @@ export function PreRunReadiness({
           )}
           {trendSlope !== null && (
             <span className="text-xs text-[#b8a5d4]">
-              {trendSlope > 0 ? "+" : ""}{trendSlope.toFixed(1)}/10m
+              {trendSlope > 0 ? "+" : ""}{trendSlope.toFixed(1)}/5m
             </span>
           )}
         </div>
