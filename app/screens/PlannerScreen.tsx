@@ -226,7 +226,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {/* Fuel rates + Generate */}
         <div className="relative overflow-hidden bg-[#1d1828] border border-[#2e293c] rounded-xl p-4 md:p-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#f23b94]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f23b94]/5 via-transparent to-[#f23b94]/5 pointer-events-none" />
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#af9ece]">
@@ -273,10 +273,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         {hasPlannedEvents && (
           <div className={isAdapting ? "retro-adapt-border rounded-xl" : ""}>
           <div className={`relative overflow-hidden bg-[#1d1828] ${isAdapting ? "rounded-[0.65rem]" : "border border-[#2e293c] rounded-xl"} p-4 md:p-5`}>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#6c3aed]/5 via-transparent to-[#00ffff]/5 pointer-events-none" />
             <div className="relative space-y-4">
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-[#00ffff] retro-text-flicker" : "text-[#af9ece]"}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-white" : "text-[#af9ece]"}`}>
                   {isAdapting ? "Adapting..." : "Adapt Upcoming"}
                 </span>
                 <button
@@ -285,7 +284,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   className={`py-2 px-5 text-white rounded-lg font-bold transition text-sm ${
                     isAdapting
                       ? "retro-btn-adapting cursor-not-allowed"
-                      : "bg-[#6c3aed] hover:bg-[#5b2ec7] shadow-lg shadow-[#6c3aed]/20"
+                      : "bg-[#f23b94] hover:bg-[#d42f7e] shadow-lg shadow-[#f23b94]/20"
                   }`}
                 >
                   {isAdapting ? <span className="relative z-10">Adapting...</span> : "Adapt"}
@@ -293,7 +292,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               </div>
 
               {adaptStatus && !isAdapting && (
-                <p className={`text-xs ${adaptStatus.startsWith("Error") ? "text-red-400" : "text-[#00ffff]"}`}>
+                <p className={`text-xs ${adaptStatus.startsWith("Error") ? "text-red-400" : "text-[#af9ece]"}`}>
                   {adaptStatus}
                 </p>
               )}
@@ -316,7 +315,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                                   ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-dashed border-[#f59e0b]/30"
                                   : change.type === "fuel"
                                     ? "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
-                                    : "bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/30"
+                                    : "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
                               }`}
                             >
                               {isLowConfidence ? "Suggestion" : change.type === "fuel" ? "Fuel" : "Swap"}
@@ -362,7 +361,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                         ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 cursor-default"
                         : isSyncing
                           ? "retro-btn-uploading text-white cursor-not-allowed"
-                          : "bg-[#00ffff]/10 text-[#00ffff] border border-[#00ffff]/30 hover:bg-[#00ffff]/20"
+                          : "bg-[#f23b94]/10 text-[#f23b94] border border-[#f23b94]/30 hover:bg-[#f23b94]/20"
                     }`}
                   >
                     <span className="relative z-10">{syncDone ? "Synced \u2713" : isSyncing ? "Syncing..." : "Sync Changes"}</span>

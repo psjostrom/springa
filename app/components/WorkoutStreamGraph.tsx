@@ -43,7 +43,7 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   pace: {
     label: "Pace",
     unit: "min/km",
-    color: "#00ffff",
+    color: "#8b5cf6",
     strokeWidth: 2,
     invertYAxis: true,
     formatValue: (value: number) => {

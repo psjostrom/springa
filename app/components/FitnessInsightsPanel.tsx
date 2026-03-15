@@ -31,9 +31,9 @@ const FORM_ZONE_STYLES: Record<
     icon: Minus,
   },
   fresh: {
-    bg: "bg-[#0d4a5a]",
-    text: "text-[#00ffff]",
-    border: "border-[#00ffff]/30",
+    bg: "bg-[#1a1030]",
+    text: "text-[#8b5cf6]",
+    border: "border-[#8b5cf6]/30",
     icon: Heart,
   },
   transition: {
@@ -210,7 +210,7 @@ function MetricPopover({
           </div>
         )}
         {info.context && (
-          <div className="text-xs text-[#00ffff] leading-relaxed mt-1.5 pt-1.5 border-t border-[#2e293c]">{info.context}</div>
+          <div className="text-xs text-[#8b5cf6] leading-relaxed mt-1.5 pt-1.5 border-t border-[#2e293c]">{info.context}</div>
         )}
         <div
           className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
@@ -265,7 +265,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
 
   const trendIcon =
     insights.ctlTrend > 1 ? (
-      <TrendingUp className="w-4 h-4 text-[#00ffff]" />
+      <TrendingUp className="w-4 h-4 text-[#8b5cf6]" />
     ) : insights.ctlTrend < -1 ? (
       <TrendingDown className="w-4 h-4 text-[#ff3366]" />
     ) : (
@@ -323,7 +323,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           label="Fitness (CTL)"
           value={insights.currentCtl.toString()}
           sub={`Peak: ${insights.peakCtl}`}
-          color="text-[#00ffff]"
+          color="text-[#8b5cf6]"
           onClick={(e) => { handleTap("ctl", e); }}
         />
         <StatCard
@@ -340,7 +340,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
-              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff3366]" : "text-[#00ffff]"}`}
+              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}
             >
               {insights.ctlTrend > 0 ? "+" : ""}
               {insights.ctlTrend}
@@ -354,7 +354,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         >
           <div className="text-sm text-[#af9ece] mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#00ffff]"}`}>
+            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}>
               {insights.rampRate > 0 ? "+" : ""}
               {insights.rampRate}
             </span>

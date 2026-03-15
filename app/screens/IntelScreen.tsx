@@ -138,7 +138,7 @@ function WidgetEditBar({
       <button
         onClick={() => { onMove(widgetKey, "up"); }}
         disabled={isFirst}
-        className="p-1 rounded text-[#af9ece] hover:text-[#00ffff] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
+        className="p-1 rounded text-[#af9ece] hover:text-[#f23b94] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
         aria-label="Move up"
       >
         <ChevronUp size={16} />
@@ -146,14 +146,14 @@ function WidgetEditBar({
       <button
         onClick={() => { onMove(widgetKey, "down"); }}
         disabled={isLast}
-        className="p-1 rounded text-[#af9ece] hover:text-[#00ffff] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
+        className="p-1 rounded text-[#af9ece] hover:text-[#f23b94] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
         aria-label="Move down"
       >
         <ChevronDown size={16} />
       </button>
       <button
         onClick={() => { onToggle(widgetKey); }}
-        className={`p-1 rounded transition ${isHidden ? "text-[#6b5b8a] hover:text-[#af9ece]" : "text-[#af9ece] hover:text-[#00ffff]"}`}
+        className={`p-1 rounded transition ${isHidden ? "text-[#6b5b8a] hover:text-[#af9ece]" : "text-[#af9ece] hover:text-[#f23b94]"}`}
         aria-label={isHidden ? "Show widget" : "Hide widget"}
       >
         {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -505,7 +505,7 @@ export function IntelScreen() {
                     {isFirst && (
                       <button
                         onClick={() => { setEditMode(!editMode); }}
-                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-[#2e293c]/80 text-[#af9ece] hover:text-[#00ffff] hover:bg-[#2e293c]"
+                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-[#2e293c]/80 text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c]"
                         aria-label={editMode ? "Done editing" : "Edit layout"}
                       >
                         {editMode ? <Check size={14} /> : <Pencil size={14} />}

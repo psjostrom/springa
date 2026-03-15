@@ -90,7 +90,7 @@ export function SimulateScreen() {
               step={5}
               value={durationMin}
               onChange={(e) => { setDurationMin(Number(e.target.value)); }}
-              className="w-full accent-[#00ffff]"
+              className="w-full accent-[#f23b94]"
             />
             <span className="text-sm text-white">{durationMin} min</span>
           </label>
@@ -106,7 +106,7 @@ export function SimulateScreen() {
               step={0.5}
               value={startBG}
               onChange={(e) => { setStartBG(Number(e.target.value)); }}
-              className="w-full accent-[#00ffff]"
+              className="w-full accent-[#f23b94]"
             />
             <span className="text-sm text-white">{startBG.toFixed(1)} mmol/L</span>
           </label>
@@ -123,7 +123,7 @@ export function SimulateScreen() {
               value={fuelRate}
               onChange={(e) => { setFuelRate(Number(e.target.value)); }}
               disabled={!fuelKnown}
-              className="w-full accent-[#00ffff] disabled:opacity-30"
+              className="w-full accent-[#f23b94] disabled:opacity-30"
             />
             <div className="flex items-center gap-2">
               <span className="text-sm text-white">{fuelKnown ? `${fuelRate} g/h` : "Unknown"}</span>

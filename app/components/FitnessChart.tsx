@@ -13,7 +13,7 @@ const LINE_CONFIGS: Record<
   VisibleLine,
   { label: string; color: string; unit: string }
 > = {
-  ctl: { label: "Fitness", color: "#00ffff", unit: "" },
+  ctl: { label: "Fitness", color: "#8b5cf6", unit: "" },
   atl: { label: "Fatigue", color: "#af9ece", unit: "" },
   tsb: { label: "Form", color: "#39ff14", unit: "" },
 };

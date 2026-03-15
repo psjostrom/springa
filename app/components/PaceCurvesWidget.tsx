@@ -249,7 +249,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
               <path
                 d={pathD}
                 fill="none"
-                stroke="#00ffff"
+                stroke="#8b5cf6"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -272,7 +272,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                     cx={scaleX(hoverPoint.distance)}
                     cy={scaleY(hoverPoint.pace)}
                     r="5"
-                    fill="#00ffff"
+                    fill="#8b5cf6"
                     stroke="#13101c"
                     strokeWidth="2"
                   />

@@ -137,7 +137,7 @@ function HomeContent() {
             <CurrentBGPill onClick={bgGraph.open} />
             <button
               onClick={() => { setShowSettings(true); }}
-              className="p-2 rounded-lg text-[#af9ece] hover:text-[#00ffff] hover:bg-[#2e293c] transition"
+              className="p-2 rounded-lg text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] transition"
               title="Settings"
             >
               <Settings size={20} />

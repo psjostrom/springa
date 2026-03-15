@@ -144,7 +144,7 @@ export function VolumeTrendChart({
                   return (
                     <div className="rounded-lg border border-[#2e293c] bg-[#1d1828] text-white shadow-lg text-xs px-3 py-2">
                       <div className="font-medium mb-1">Week {weekNum}</div>
-                      <div className="text-[#00ffff]">Planned : {d.planned} km</div>
+                      <div className="text-[#af9ece]">Planned : {d.planned} km</div>
                       {d.plannedOptional > 0 && (
                         <div className="text-[#af9ece]">Optional : {d.plannedOptional} km</div>
                       )}
@@ -182,7 +182,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="planned"
                 dataKey="planned"
-                fill="#00ffff"
+                fill="#8b5cf6"
                 fillOpacity={0.3}
                 radius={2}
                 maxBarSize={14}
@@ -204,7 +204,7 @@ export function VolumeTrendChart({
             Actual
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#00ffff]/40" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#8b5cf6]/40" />
             Planned
           </span>
           <span className="flex items-center gap-1">

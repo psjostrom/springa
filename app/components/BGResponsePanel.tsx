@@ -316,7 +316,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
         {canDiscover && !isAnalyzing && !patterns && (
           <button
             onClick={handleDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#00ffff] hover:bg-[#2e293c] border border-[#2e293c]"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c]"
           >
             Discover Patterns
           </button>
@@ -325,7 +325,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <button
             onClick={handleDiscover}
             disabled={!canDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#8b7ba8] hover:text-[#00ffff] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#8b7ba8] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Re-analyze
           </button>

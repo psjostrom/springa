@@ -364,7 +364,7 @@ function ReadinessBanner({
   if (readiness >= 70) {
     state = { bg: "bg-[#1a3d25]", border: "border-[#39ff14]/30", text: "text-[#39ff14]", label: "Ready to train" };
   } else if (readiness >= 50) {
-    state = { bg: "bg-[#0d4a5a]", border: "border-[#00ffff]/30", text: "text-[#00ffff]", label: "Good to go" };
+    state = { bg: "bg-[#1a2e1a]", border: "border-[#4ade80]/30", text: "text-[#4ade80]", label: "Good to go" };
   } else if (readiness >= 30) {
     state = { bg: "bg-[#3d2b1a]", border: "border-[#ffb800]/30", text: "text-[#ffb800]", label: "Monitor recovery" };
   } else {
@@ -399,7 +399,7 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
   } else if (tsb < 5) {
     zone = { label: "Neutral", color: "text-[#af9ece]", bg: "bg-[#2e293c]" };
   } else if (tsb < 15) {
-    zone = { label: "Fresh", color: "text-[#00ffff]", bg: "bg-[#0d4a5a]" };
+    zone = { label: "Fresh", color: "text-[#4ade80]", bg: "bg-[#1a2e1a]" };
   } else {
     zone = { label: "Peaked", color: "text-[#39ff14]", bg: "bg-[#1a3d25]" };
   }
@@ -544,8 +544,8 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
               unit="ms"
               sparkline={data.hrvSparkline}
               icon={Activity}
-              color="#00ffff"
-              onClick={(e) => { if (data.hrv != null) handleTap("hrv", data.hrv, data.hrvBaseline, data.hrvSparkline, "#00ffff", e); }}
+              color="#8b5cf6"
+              onClick={(e) => { if (data.hrv != null) handleTap("hrv", data.hrv, data.hrvBaseline, data.hrvSparkline, "#8b5cf6", e); }}
             />
           )}
           {data.restingHR != null && (

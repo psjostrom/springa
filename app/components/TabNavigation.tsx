@@ -45,7 +45,7 @@ export function TabNavigation({
 						className={`px-6 py-3 font-medium transition-all relative ${
 							localTab === key
 								? "text-[#ff69b4]"
-								: "text-[#af9ece] hover:text-[#00ffff]"
+								: "text-[#af9ece] hover:text-[#f23b94]"
 						}`}
 					>
 						{label}
@@ -65,10 +65,10 @@ export function TabNavigation({
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							localTab === key
 								? "text-[#ff69b4]"
-								: "text-[#af9ece] hover:text-[#00ffff]"
+								: "text-[#af9ece] hover:text-[#f23b94]"
 						}`}
 					>
-						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #f23b94)" } : undefined} />
+						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} />
 						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}

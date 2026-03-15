@@ -169,7 +169,7 @@ function FeedbackContent() {
         <button
           onClick={() => { void mutate(); }}
           disabled={isLoading}
-          className="px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
+          className="px-5 py-2.5 text-sm font-bold text-[#f23b94] border border-[#f23b94]/30 rounded-lg bg-[#f23b94]/10 hover:bg-[#f23b94]/20 transition disabled:opacity-40"
         >
           Try again
         </button>
@@ -232,7 +232,7 @@ function FeedbackContent() {
               )}
               <Link
                 href="/?tab=planner&adapt=true"
-                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition"
+                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-[#f23b94] border border-[#f23b94]/30 rounded-lg bg-[#f23b94]/10 hover:bg-[#f23b94]/20 transition"
               >
                 Adapt upcoming &rarr;
               </Link>

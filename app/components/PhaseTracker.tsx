@@ -105,7 +105,7 @@ function PhasePopover({
 					<div className="space-y-1">
 						{currentPhase.focus.map((item, i) => (
 							<div key={i} className="flex items-center gap-2 text-xs">
-								<span className="w-1 h-1 rounded-full bg-[#00ffff]" />
+								<span className="w-1 h-1 rounded-full bg-[#f23b94]" />
 								<span className="text-[#af9ece]">{item}</span>
 							</div>
 						))}

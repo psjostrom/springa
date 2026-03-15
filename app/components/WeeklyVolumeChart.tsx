@@ -22,7 +22,7 @@ interface BarShapeProps {
 export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 	const coloredData = data.map((item, index) => ({
 		...item,
-		barFill: index >= data.length - 2 ? "#f23b94" : "#00ffff",
+		barFill: index >= data.length - 2 ? "#f23b94" : "#8b5cf6",
 	}));
 
 	return (
@@ -58,7 +58,7 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 								const { x = 0, y = 0, width = 0, height = 0, barFill } = props;
 								const rx = 4;
 								return (
-									<rect x={x} y={y} width={width} height={height} fill={barFill ?? "#00ffff"} rx={rx} ry={rx} />
+									<rect x={x} y={y} width={width} height={height} fill={barFill ?? "#8b5cf6"} rx={rx} ry={rx} />
 								);
 							}}
 						/>

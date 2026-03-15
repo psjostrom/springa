@@ -97,7 +97,7 @@ summary {
 .prose-analysis li { margin-top: 0.125rem; }
 
 /* BG pattern discovery markdown */
-.prose-patterns h2 { font-size: 1rem; font-weight: 700; color: #00ffff; margin-top: 1.75rem; margin-bottom: 0.5rem; }
+.prose-patterns h2 { font-size: 1rem; font-weight: 700; color: #f23b94; margin-top: 1.75rem; margin-bottom: 0.5rem; }
 .prose-patterns h2:first-child { margin-top: 0; }
 .prose-patterns h3 { font-size: 0.9375rem; font-weight: 700; color: #fbbf24; margin-top: 2rem; margin-bottom: 0.375rem; }
 .prose-patterns h3:first-child { margin-top: 0; }
@@ -113,7 +113,7 @@ summary {
 .prose-patterns td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #2e293c; }
 .prose-patterns tr:last-child td { border-bottom: none; }
 .prose-patterns hr { display: none; }
-.prose-patterns code { background: #2e293c; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; color: #00ffff; }
+.prose-patterns code { background: #2e293c; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; color: #f23b94; }
 
 /* Suppress mobile tap highlight on interactive charts */
 .no-tap-highlight,
