@@ -452,6 +452,32 @@ describe("buildRunBGContexts", () => {
   });
 });
 
+// --- computePostRunContext: spike fields ---
+
+describe("computePostRunContext spike fields", () => {
+  const runEndMs = T0 + 40 * 60 * 1000;
+
+  it("computes peak30m and spike30m from post-run readings", () => {
+    // End BG = 7.0 (closest to runEnd), peak in 30m window = 11.0
+    const postReadings = makeReadings(runEndMs, [7.0, 9.0, 11.0, 10.0, 8.5, 7.5, 7.0]);
+    const preReadings = makeReadings(T0 - 30 * 60 * 1000, [10, 9.5, 9, 8.5, 8, 7.5, 7.0]);
+    const allReadings = [...preReadings, ...postReadings];
+
+    const result = computePostRunContext(allReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak30m).toBe(11.0);
+    expect(result!.spike30m).toBe(4.0); // 11.0 - 7.0
+  });
+
+  it("spike30m is zero when BG only drops post-run", () => {
+    const postReadings = makeReadings(runEndMs, [8.0, 7.5, 7.0, 6.5, 6.0, 5.5, 5.0]);
+    const result = computePostRunContext(postReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak30m).toBe(8.0);
+    expect(result!.spike30m).toBe(0);
+  });
+});
+
 // --- Integration test: realistic run scenario ---
 
 describe("integration: realistic run scenario", () => {

@@ -7,15 +7,15 @@ function makeTarget(
   rate: number,
   confidence: "low" | "medium" | "high" = "medium",
 ): TargetFuelResult {
-  return { category, targetFuelRate: rate, currentAvgFuel: rate - 5, method: "regression", confidence };
+  return { category, targetFuelRate: rate, currentAvgFuel: rate - 5, method: "regression", confidence, spikeAdjustment: null };
 }
 
 function makeBGModel(targets: TargetFuelResult[] = []): BGResponseModel {
   return {
     categories: {
-      easy: { category: "easy", avgRate: -0.3, medianRate: -0.3, sampleCount: 20, confidence: "medium", avgFuelRate: 45, activityCount: 5 },
-      long: { category: "long", avgRate: -0.6, medianRate: -0.55, sampleCount: 15, confidence: "medium", avgFuelRate: 58, activityCount: 4 },
-      interval: { category: "interval", avgRate: -0.8, medianRate: -0.75, sampleCount: 10, confidence: "low", avgFuelRate: 28, activityCount: 3 },
+      easy: { category: "easy", avgRate: -0.3, medianRate: -0.3, sampleCount: 20, confidence: "medium", avgFuelRate: 45, activityCount: 5, maxDurationMin: 40 },
+      long: { category: "long", avgRate: -0.6, medianRate: -0.55, sampleCount: 15, confidence: "medium", avgFuelRate: 58, activityCount: 4, maxDurationMin: 60 },
+      interval: { category: "interval", avgRate: -0.8, medianRate: -0.75, sampleCount: 10, confidence: "low", avgFuelRate: 28, activityCount: 3, maxDurationMin: 30 },
     },
     observations: [],
     activitiesAnalyzed: 12,

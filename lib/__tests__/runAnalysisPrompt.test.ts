@@ -71,6 +71,8 @@ function makeRunBGContext(overrides: Partial<RunBGContext> = {}): RunBGContext {
       postRunHypo: false,
       endBG: 7.1,
       readingCount: 20,
+      peak30m: 7.1,
+      spike30m: 0,
     },
     totalBGImpact: -3.1,
     ...overrides,

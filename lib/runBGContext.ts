@@ -20,6 +20,8 @@ export interface PostRunContext {
   postRunHypo: boolean; // any reading < 3.9 in 2h after
   endBG: number; // closest xDrip reading to run end
   readingCount: number;
+  peak30m: number; // max BG in 30m after end
+  spike30m: number; // peak30m - endBG (positive = BG rose post-run)
 }
 
 export interface RunBGContext {
@@ -198,6 +200,12 @@ export function computePostRunContext(
       recovery30m[recovery30m.length - 1].mmol - recovery30m[0].mmol;
   }
 
+  // Peak BG in first 30 min after run end
+  const peak30m = recovery30m.length >= 2
+    ? Math.max(...recovery30m.map((r) => r.mmol))
+    : endReading.mmol;
+  const spike30m = Math.max(0, peak30m - endReading.mmol);
+
   // Nadir: lowest in 2h after
   const nadirPostRun = Math.min(...postReadings.map((r) => r.mmol));
 
@@ -214,6 +222,8 @@ export function computePostRunContext(
     postRunHypo,
     endBG: endReading.mmol,
     readingCount: postReadings.length,
+    peak30m,
+    spike30m,
   };
 }
 

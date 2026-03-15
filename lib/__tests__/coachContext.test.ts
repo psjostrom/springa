@@ -245,6 +245,7 @@ describe("buildSystemPrompt", () => {
           currentAvgFuel: 48,
           method: "extrapolation",
           confidence: "medium",
+          spikeAdjustment: null,
         },
       ],
     });
@@ -511,7 +512,7 @@ describe("buildSystemPrompt", () => {
         activityId: "run1",
         category: "easy",
         pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
-        post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+        post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
         totalBGImpact: -5,
       }],
     ]);
@@ -540,7 +541,7 @@ describe("buildSystemPrompt", () => {
         activityId: "run1",
         category: "easy",
         pre: null,
-        post: { recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8 },
+        post: { recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8, peak30m: 6.0, spike30m: 0 },
         totalBGImpact: null,
       }],
     ]);
@@ -581,14 +582,14 @@ describe("buildSystemPrompt", () => {
         activityId: "r1",
         category: "easy",
         pre: null,
-        post: { recoveryDrop30m: -0.5, nadirPostRun: 5.8, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 },
+        post: { recoveryDrop30m: -0.5, nadirPostRun: 5.8, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5, peak30m: 7, spike30m: 0 },
         totalBGImpact: null,
       }],
       ["r2", {
         activityId: "r2",
         category: "long",
         pre: null,
-        post: { recoveryDrop30m: -1.8, nadirPostRun: 4.2, timeToStable: null, postRunHypo: true, endBG: 6, readingCount: 8 },
+        post: { recoveryDrop30m: -1.8, nadirPostRun: 4.2, timeToStable: null, postRunHypo: true, endBG: 6, readingCount: 8, peak30m: 6, spike30m: 0 },
         totalBGImpact: null,
       }],
     ]);
@@ -625,9 +626,9 @@ describe("buildSystemPrompt", () => {
 describe("summarizeRecoveryPatterns", () => {
   it("groups by category correctly", () => {
     const contexts = new Map<string, RunBGContext>([
-      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 }, totalBGImpact: null }],
-      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.7, nadirPostRun: 5.5, timeToStable: 15, postRunHypo: false, endBG: 6.5, readingCount: 5 }, totalBGImpact: null }],
-      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 4.0, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8 }, totalBGImpact: null }],
+      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5, peak30m: 7, spike30m: 0 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.7, nadirPostRun: 5.5, timeToStable: 15, postRunHypo: false, endBG: 6.5, readingCount: 5, peak30m: 6.5, spike30m: 0 }, totalBGImpact: null }],
+      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 4.0, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8, peak30m: 5, spike30m: 0 }, totalBGImpact: null }],
     ]);
 
     const result = summarizeRecoveryPatterns(contexts);
@@ -638,8 +639,8 @@ describe("summarizeRecoveryPatterns", () => {
 
   it("calculates correct averages per category", () => {
     const contexts = new Map<string, RunBGContext>([
-      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.4, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5 }, totalBGImpact: null }],
-      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.6, nadirPostRun: 5.0, timeToStable: 15, postRunHypo: false, endBG: 6, readingCount: 5 }, totalBGImpact: null }],
+      ["r1", { activityId: "r1", category: "easy", pre: null, post: { recoveryDrop30m: -0.4, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7, readingCount: 5, peak30m: 7, spike30m: 0 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "easy", pre: null, post: { recoveryDrop30m: -0.6, nadirPostRun: 5.0, timeToStable: 15, postRunHypo: false, endBG: 6, readingCount: 5, peak30m: 6, spike30m: 0 }, totalBGImpact: null }],
     ]);
 
     const result = summarizeRecoveryPatterns(contexts);
@@ -651,9 +652,9 @@ describe("summarizeRecoveryPatterns", () => {
 
   it("shows hypo counts as fraction", () => {
     const contexts = new Map<string, RunBGContext>([
-      ["r1", { activityId: "r1", category: "long", pre: null, post: { recoveryDrop30m: -1.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8 }, totalBGImpact: null }],
-      ["r2", { activityId: "r2", category: "long", pre: null, post: { recoveryDrop30m: -1.0, nadirPostRun: 5.0, timeToStable: 20, postRunHypo: false, endBG: 6, readingCount: 8 }, totalBGImpact: null }],
-      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 4, readingCount: 8 }, totalBGImpact: null }],
+      ["r1", { activityId: "r1", category: "long", pre: null, post: { recoveryDrop30m: -1.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 5, readingCount: 8, peak30m: 5, spike30m: 0 }, totalBGImpact: null }],
+      ["r2", { activityId: "r2", category: "long", pre: null, post: { recoveryDrop30m: -1.0, nadirPostRun: 5.0, timeToStable: 20, postRunHypo: false, endBG: 6, readingCount: 8, peak30m: 6, spike30m: 0 }, totalBGImpact: null }],
+      ["r3", { activityId: "r3", category: "long", pre: null, post: { recoveryDrop30m: -2.0, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 4, readingCount: 8, peak30m: 4, spike30m: 0 }, totalBGImpact: null }],
     ]);
 
     const result = summarizeRecoveryPatterns(contexts);

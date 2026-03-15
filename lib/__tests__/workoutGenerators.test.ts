@@ -364,35 +364,91 @@ describe("generatePlan", () => {
 
   // --- EASY RUN FORMAT ---
 
-  it("easy runs use single-step format (no warmup/cooldown structure)", () => {
+  it("easy runs use WU/main/CD structure with 15m cooldown", () => {
     const plan = generateFull();
     const easyRuns = plan.filter(
       (e) => e.external_id.includes("easy-") && !e.name.includes("Strides"),
     );
     expect(easyRuns.length).toBeGreaterThan(0);
     for (const run of easyRuns) {
-      expect(run.description).not.toContain("Warmup");
-      expect(run.description).not.toContain("Cooldown");
+      expect(run.description).toContain("Warmup");
+      expect(run.description).toContain("Cooldown");
+      // CD is 15m for most runs, 10m for very short runs (shakeout/race-test)
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
+      expect(cdMatch).not.toBeNull();
+      expect(parseInt(cdMatch![1], 10)).toBeGreaterThanOrEqual(10);
+      expect(parseInt(cdMatch![1], 10)).toBeLessThanOrEqual(15);
     }
   });
 
-  it("easy + strides runs use structured format with warmup/cooldown", () => {
+  it("easy + strides cooldown is 15m", () => {
     const plan = generateFull();
     const strideRuns = plan.filter((e) => e.name.includes("Strides"));
     expect(strideRuns.length).toBeGreaterThan(0);
     for (const run of strideRuns) {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
+      expect(cdMatch).not.toBeNull();
+      expect(parseInt(cdMatch![1], 10)).toBe(15);
     }
   });
 
-  it("bonus runs use single-step format", () => {
+  it("bonus runs use WU/main/CD structure with 15m cooldown", () => {
     const plan = generateFull();
     const bonusRuns = plan.filter((e) => e.external_id.includes("bonus-"));
     expect(bonusRuns.length).toBeGreaterThan(0);
     for (const run of bonusRuns) {
-      expect(run.description).not.toContain("Warmup");
-      expect(run.description).not.toContain("Cooldown");
+      expect(run.description).toContain("Warmup");
+      expect(run.description).toContain("Cooldown");
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
+      expect(cdMatch).not.toBeNull();
+      expect(parseInt(cdMatch![1], 10)).toBe(15);
+    }
+  });
+
+  it("long run cooldown is 2km", () => {
+    const plan = generateFull();
+    const longRuns = plan.filter(
+      (e) => e.external_id.includes("long-") && !e.name.includes("RACE DAY"),
+    );
+    expect(longRuns.length).toBeGreaterThan(0);
+    for (const run of longRuns) {
+      const cdMatch = /Cooldown\n- .*?(\d+)km/.exec(run.description);
+      expect(cdMatch).not.toBeNull();
+      expect(parseInt(cdMatch![1], 10)).toBe(2);
+    }
+  });
+
+  it("interval cooldown remains 5m (no taper)", () => {
+    const plan = generateFull();
+    const intervals = plan.filter(
+      (e) => e.external_id.includes("speed-") && !e.name.includes("Easy"),
+    );
+    expect(intervals.length).toBeGreaterThan(0);
+    for (const run of intervals) {
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
+      expect(cdMatch).not.toBeNull();
+      expect(parseInt(cdMatch![1], 10)).toBe(5);
+    }
+  });
+
+  it("easy run total duration is preserved after taper restructure", () => {
+    const plan = generateFull();
+    const easyRuns = plan.filter(
+      (e) => e.external_id.includes("easy-") && !e.name.includes("Strides"),
+    );
+    for (const run of easyRuns) {
+      const stepLines = run.description.split("\n").filter((l: string) => l.startsWith("- "));
+      let totalMin = 0;
+      for (const line of stepLines) {
+        const match = /(\d+)m\s/.exec(line);
+        if (match) totalMin += parseInt(match[1], 10);
+      }
+      // Total should be >= 30 (shortest easy: 10m WU + 10m main + 10m CD)
+      // and <= 70 (longest: 10m WU + 45m main + 15m CD)
+      expect(totalMin).toBeGreaterThanOrEqual(30);
+      expect(totalMin).toBeLessThanOrEqual(70);
     }
   });
 });
