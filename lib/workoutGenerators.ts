@@ -236,7 +236,7 @@ const generateEasyRun = (
     };
   }
 
-  const totalDuration = duration + 25; // 10m WU + main + 15m CD
+  const totalDuration = duration + 15; // preserve original total (was single step)
   const cdDuration = Math.min(15, totalDuration - 10 - 10); // WU=10, min main=10
   const mainDuration = totalDuration - 10 - cdDuration;
   const wu = s("10m", "easy", "Warmup");
