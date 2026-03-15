@@ -35,8 +35,8 @@ ts-debug.log*
 # claude code worktrees
 .claude/worktrees/
 
-# superpowers plan artifacts
-docs/superpowers/plans/
+# superpowers ephemeral artifacts (plans are consumed during implementation)
+docs/superpowers/
 
 # superpowers brainstorm sessions
 .superpowers/
