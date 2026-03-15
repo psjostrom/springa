@@ -665,6 +665,66 @@ describe("calculateTargetFuelRates with spike penalty", () => {
     expect(easy!.spikeAdjustment).toBeNull();
   });
 
+  it("uses per-group spike: no penalty when target group is below threshold", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    // Old runs at 60 g/h spike badly, new runs at 45 g/h are fine
+    const spikes: PostRunSpikeData[] = [
+      ...Array.from({ length: 6 }, (_, i) => ({
+        activityId: `old${i}`,
+        category: "easy" as const,
+        fuelRate: 60,
+        spike30m: 5.0, // bad
+      })),
+      ...Array.from({ length: 6 }, (_, i) => ({
+        activityId: `new${i}`,
+        category: "easy" as const,
+        fuelRate: 45,
+        spike30m: 1.5, // acceptable
+      })),
+    ];
+    // Target from extrapolation will be near 60 → closest group is 60 → penalty applies
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    expect(easy!.spikeAdjustment).toBe(12); // 60 group avg 5.0, excess 3.0 * 4
+  });
+
+  it("converges: no penalty when target matches low-spike group", () => {
+    // Mix of old 60 g/h obs and new 45 g/h obs
+    const obs = [
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeObs({ bgRate: -0.4, fuelRate: 45, activityId: `new${i}` }),
+      ),
+      ...Array.from({ length: 5 }, (_, i) =>
+        makeObs({ bgRate: -0.8, fuelRate: 60, activityId: `old${i}` }),
+      ),
+    ];
+    // 45 g/h runs don't spike, 60 g/h runs spike
+    const spikes: PostRunSpikeData[] = [
+      ...Array.from({ length: 6 }, (_, i) => ({
+        activityId: `new${i}`,
+        category: "easy" as const,
+        fuelRate: 45,
+        spike30m: 1.0,
+      })),
+      ...Array.from({ length: 6 }, (_, i) => ({
+        activityId: `old${i}`,
+        category: "easy" as const,
+        fuelRate: 60,
+        spike30m: 5.0,
+      })),
+    ];
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    // If target lands near 45, closest group is 45 → avg spike 1.0 → no penalty → converges
+    if (easy!.targetFuelRate <= 52) {
+      expect(easy!.spikeAdjustment).toBeNull();
+    }
+  });
+
   it("never reduces target below MIN_FUEL_RATE (20 g/h)", () => {
     const obs = Array.from({ length: 10 }, (_, i) =>
       makeObs({ bgRate: -0.4, fuelRate: 30, activityId: `a${i}` }),

@@ -279,19 +279,41 @@ export function calculateTargetFuelRates(
       method = "extrapolation";
     }
 
-    // Apply spike penalty if post-run spike data available.
-    // Averages across all activities in the category (not per fuel-rate group).
-    // With uniform rates this is identical to per-group; if rates diversify,
-    // per-group penalization can be added as a refinement.
+    // Apply spike penalty from the fuel-rate group closest to the computed target.
+    // Per-group averaging prevents old high-rate runs from inflating the spike
+    // after the model has already reduced the target — required for convergence.
     let spikeAdjustment: number | null = null;
     if (spikeData) {
       const catSpikes = spikeData.filter((s) => s.category === category);
       if (catSpikes.length >= MIN_POST_RUN_OBS) {
-        const avgSpike = catSpikes.reduce((sum, s) => sum + s.spike30m, 0) / catSpikes.length;
-        if (avgSpike > ACCEPTABLE_SPIKE) {
-          const penalty = (avgSpike - ACCEPTABLE_SPIKE) * SPIKE_PENALTY_FACTOR;
-          spikeAdjustment = Math.round(penalty);
-          target = target - penalty;
+        // Group spikes by fuel rate
+        const spikeGroups = new Map<number, number[]>();
+        for (const s of catSpikes) {
+          const key = s.fuelRate ?? 0;
+          const list = spikeGroups.get(key) ?? [];
+          list.push(s.spike30m);
+          spikeGroups.set(key, list);
+        }
+
+        // Find group closest to the computed target
+        let closestRate = 0;
+        let closestDist = Infinity;
+        for (const rate of spikeGroups.keys()) {
+          const dist = Math.abs(rate - target);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestRate = rate;
+          }
+        }
+
+        const groupSpikes = spikeGroups.get(closestRate);
+        if (groupSpikes && groupSpikes.length >= MIN_POST_RUN_OBS) {
+          const avgSpike = groupSpikes.reduce((a, b) => a + b, 0) / groupSpikes.length;
+          if (avgSpike > ACCEPTABLE_SPIKE) {
+            const penalty = (avgSpike - ACCEPTABLE_SPIKE) * SPIKE_PENALTY_FACTOR;
+            spikeAdjustment = Math.round(penalty);
+            target = target - penalty;
+          }
         }
       }
     }
