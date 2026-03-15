@@ -73,7 +73,7 @@ Pure easy pace. Conversational. The foundation of the plan. Duration follows the
 - **Pace:** Easy (7:00–7:30/km)
 - **HR:** Z2
 - **T1D:** Pump off, moderate fuel
-- **Duration formula:** `20 + Math.round(progress * 25)` min main set (+ 10m WU, 5m CD). Recovery/taper/race-test: 20m main. Race week shakeout: 15m main.
+- **Duration formula:** `20 + Math.round(progress * 25)` min main set (+ 10m WU, 15m CD). Recovery/taper/race-test: 20m main. Race week shakeout: 15m main.
 
 #### Easy Run + Strides
 
@@ -241,13 +241,13 @@ Warmup
 - 1km 68-83% LTHR (115-140 bpm)
 
 Main set
-- 6km 68-83% LTHR (115-140 bpm)
+- 5km 68-83% LTHR (115-140 bpm)
 
 Cooldown
-- 1km 68-83% LTHR (115-140 bpm)
+- 2km 68-83% LTHR (115-140 bpm)
 ```
 
-Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with sandwich/progressive variants.
+Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with sandwich/progressive variants. The 2km cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change.
 
 ### Example D: Long Run — Race Pace Sandwich
 
@@ -262,12 +262,12 @@ Warmup
 - 1km 68-83% LTHR (115-140 bpm)
 
 Main set
-- 4km 68-83% LTHR (115-140 bpm)
+- 3km 68-83% LTHR (115-140 bpm)
 - 3km 84-92% LTHR (141-155 bpm)
 - 3km 68-83% LTHR (115-140 bpm)
 
 Cooldown
-- 1km 68-83% LTHR (115-140 bpm)
+- 2km 68-83% LTHR (115-140 bpm)
 ```
 
 ### Example E: Easy Run
@@ -279,10 +279,17 @@ Cooldown
 ```text
 Steady easy running to build your aerobic base. This should feel comfortable and conversational the entire way. If you can't chat in full sentences, slow down. Easy days make hard days possible.
 
-- 35m 68-83% LTHR (115-140 bpm)
+Warmup
+- 10m 68-83% LTHR (115-140 bpm)
+
+Main set
+- 10m 68-83% LTHR (115-140 bpm)
+
+Cooldown
+- 15m 68-83% LTHR (115-140 bpm)
 ```
 
-Note: Easy runs use a single step (no warmup/cooldown structure) since the entire run is in the same HR zone.
+Note: Easy runs use WU/main/CD structure even though all zones are the same. The extended 15m cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change, cueing the runner to stop eating.
 
 ### Example F: Easy Run + Strides
 
@@ -297,17 +304,17 @@ Warmup
 - 10m 68-83% LTHR (115-140 bpm)
 
 Main set
-- 21m 68-83% LTHR (115-140 bpm)
+- 11m 68-83% LTHR (115-140 bpm)
 
 Strides 4x
 - 20s 100-113% LTHR (168-189 bpm)
 - 1m 68-83% LTHR (115-140 bpm)
 
 Cooldown
-- 5m 68-83% LTHR (115-140 bpm)
+- 15m 68-83% LTHR (115-140 bpm)
 ```
 
-Note: Easy + Strides keeps the warmup/cooldown structure because strides are in a different HR zone (Z5).
+Note: Easy + Strides keeps the warmup/cooldown structure because strides are in a different HR zone (Z5). The 15m cooldown is the fuel taper signal.
 
 ### Example G: Bonus Easy
 
@@ -316,9 +323,16 @@ Note: Easy + Strides keeps the warmup/cooldown structure because strides are in 
 **Description:**
 
 ```text
-The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 30 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.
+The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.
 
-- 45m 68-83% LTHR (115-140 bpm)
+Warmup
+- 10m 68-83% LTHR (115-140 bpm)
+
+Main set
+- 20m 68-83% LTHR (115-140 bpm)
+
+Cooldown
+- 15m 68-83% LTHR (115-140 bpm)
 ```
 
 ## 5. Post-Run Report Card
