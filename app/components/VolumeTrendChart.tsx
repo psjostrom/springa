@@ -98,7 +98,7 @@ export function VolumeTrendChart({
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-[#1e1535] py-3 rounded-xl shadow-sm border border-[#3d2b5a] no-tap-highlight">
+    <div className="bg-[#1d1828] py-3 rounded-xl shadow-sm border border-[#2e293c] no-tap-highlight">
         <div className="h-72 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
@@ -125,7 +125,7 @@ export function VolumeTrendChart({
                 axisLine={false}
                 interval={1}
                 padding={{ left: 2, right: 2 }}
-                tick={{ fill: "#b8a5d4" }}
+                tick={{ fill: "#af9ece" }}
               />
               <YAxis
                 width={30}
@@ -133,25 +133,25 @@ export function VolumeTrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `${v}`}
-                tick={{ fill: "#b8a5d4" }}
+                tick={{ fill: "#af9ece" }}
               />
               <Tooltip
-                cursor={{ fill: "#2a1f3d" }}
+                cursor={{ fill: "#2e293c" }}
                 content={({ active, payload }) => {
                   if (!active || payload.length === 0) return null;
                   const d = (payload[0] as { payload: WeekData }).payload;
                   const weekNum = parseInt(d.week.replace("W", ""), 10);
                   return (
-                    <div className="rounded-lg border border-[#3d2b5a] bg-[#1e1535] text-white shadow-lg text-xs px-3 py-2">
+                    <div className="rounded-lg border border-[#2e293c] bg-[#1d1828] text-white shadow-lg text-xs px-3 py-2">
                       <div className="font-medium mb-1">Week {weekNum}</div>
-                      <div className="text-[#00ffff]">Planned : {d.planned} km</div>
+                      <div className="text-[#af9ece]">Planned : {d.planned} km</div>
                       {d.plannedOptional > 0 && (
-                        <div className="text-[#c4b5fd]">Optional : {d.plannedOptional} km</div>
+                        <div className="text-[#af9ece]">Optional : {d.plannedOptional} km</div>
                       )}
                       <div className="text-white">Total : {d.plannedTotal} km</div>
                       {d.completed > 0 && (
                         <>
-                          <div className="border-t border-[#3d2b5a] my-1.5" />
+                          <div className="border-t border-[#2e293c] my-1.5" />
                           <div className="text-[#39ff14]">Actual : {d.completed} km</div>
                         </>
                       )}
@@ -164,7 +164,7 @@ export function VolumeTrendChart({
                   <ReferenceLine
                     x={data.weeks[data.currentWeekIdx].week}
                     xAxisId="actual"
-                    stroke="#ff2d95"
+                    stroke="#f23b94"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
                   />
@@ -173,7 +173,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="plannedTotal"
                 dataKey="plannedTotal"
-                fill="#c4b5fd"
+                fill="#af9ece"
                 fillOpacity={0.25}
                 radius={2}
                 maxBarSize={14}
@@ -182,7 +182,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="planned"
                 dataKey="planned"
-                fill="#00ffff"
+                fill="#8b5cf6"
                 fillOpacity={0.3}
                 radius={2}
                 maxBarSize={14}
@@ -198,17 +198,17 @@ export function VolumeTrendChart({
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2 text-sm text-[#b8a5d4]">
+        <div className="flex items-center justify-center gap-4 mt-2 text-sm text-[#af9ece]">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#39ff14]" />
             Actual
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#00ffff]/40" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#8b5cf6]/40" />
             Planned
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#c4b5fd]/40" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#af9ece]/40" />
             Optional
           </span>
         </div>

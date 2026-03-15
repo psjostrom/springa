@@ -22,11 +22,11 @@ interface BarShapeProps {
 export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 	const coloredData = data.map((item, index) => ({
 		...item,
-		barFill: index >= data.length - 2 ? "#ff2d95" : "#00ffff",
+		barFill: index >= data.length - 2 ? "#f23b94" : "#8b5cf6",
 	}));
 
 	return (
-		<section className="bg-[#1e1535] p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
+		<section className="bg-[#1d1828] p-6 rounded-xl shadow-sm border border-[#2e293c]">
 			<h2 className="text-lg font-bold mb-6 text-white">
 				Weekly Volume (Estimated Minutes)
 			</h2>
@@ -38,15 +38,15 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 							fontSize={12}
 							tickLine={false}
 							axisLine={false}
-							tick={{ fill: "#b8a5d4" }}
+							tick={{ fill: "#af9ece" }}
 						/>
 						<YAxis hide />
 						<Tooltip
-							cursor={{ fill: "#2a1f3d" }}
+							cursor={{ fill: "#2e293c" }}
 							contentStyle={{
 								borderRadius: "8px",
-								border: "1px solid #3d2b5a",
-								backgroundColor: "#1e1535",
+								border: "1px solid #2e293c",
+								backgroundColor: "#1d1828",
 								color: "#fff",
 								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.3)",
 							}}
@@ -58,7 +58,7 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 								const { x = 0, y = 0, width = 0, height = 0, barFill } = props;
 								const rx = 4;
 								return (
-									<rect x={x} y={y} width={width} height={height} fill={barFill ?? "#00ffff"} rx={rx} ry={rx} />
+									<rect x={x} y={y} width={width} height={height} fill={barFill ?? "#8b5cf6"} rx={rx} ry={rx} />
 								);
 							}}
 						/>

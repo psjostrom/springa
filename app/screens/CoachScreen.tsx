@@ -100,12 +100,12 @@ export function CoachScreen() {
   const showWelcome = messages.length === 0 && !contextLoading;
 
   return (
-    <div className="h-full flex flex-col bg-[#0d0a1a]">
+    <div className="h-full flex flex-col bg-[#13101c]">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
           {contextLoading && (
-            <div className="flex items-center justify-center py-12 text-[#b8a5d4]">
+            <div className="flex items-center justify-center py-12 text-[#af9ece]">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               <span className="text-sm">Loading training data...</span>
             </div>
@@ -114,7 +114,7 @@ export function CoachScreen() {
           {showWelcome && (
             <div className="pt-8 pb-4">
               <h2 className="text-lg font-bold text-white mb-1">AI Coach</h2>
-              <p className="text-sm text-[#b8a5d4] mb-6">
+              <p className="text-sm text-[#af9ece] mb-6">
                 Ask about training, fueling, BG management, or upcoming
                 workouts.
               </p>
@@ -123,7 +123,7 @@ export function CoachScreen() {
                   <button
                     key={s}
                     onClick={() => { handleSend(s); }}
-                    className="text-sm px-3 py-1.5 rounded-full border border-[#3d2b5a] bg-[#1e1535] text-[#c4b5fd] hover:border-[#ff2d95]/50 hover:text-white transition-colors"
+                    className="text-sm px-3 py-1.5 rounded-full border border-[#2e293c] bg-[#1d1828] text-[#af9ece] hover:border-[#f23b94]/50 hover:text-white transition-colors"
                   >
                     {s}
                   </button>
@@ -150,8 +150,8 @@ export function CoachScreen() {
             messages.length > 0 &&
             getMessageText(messages[messages.length - 1].parts) === "" && (
               <div className="flex justify-start">
-                <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-2xl px-4 py-2.5">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#b8a5d4]" />
+                <div className="bg-[#1d1828] border border-[#2e293c] rounded-2xl px-4 py-2.5">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#af9ece]" />
                 </div>
               </div>
             )}

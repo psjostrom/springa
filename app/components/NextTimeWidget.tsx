@@ -15,7 +15,7 @@ export function NextTimeWidget({ analysis }: NextTimeWidgetProps) {
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-1.5 mb-2">
         <Lightbulb className="w-4 h-4 text-[#fbbf24]" />
-        <span className="text-sm font-semibold text-[#c4b5fd]">Next Time</span>
+        <span className="text-sm font-semibold text-[#af9ece]">Next Time</span>
       </div>
       <ul className="space-y-1">
         {bullets.map((bullet, i) => (

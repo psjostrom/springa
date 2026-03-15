@@ -205,7 +205,7 @@ function EnlargedSparkline({ data, color, baseline }: { data: number[]; color: s
           );
         })}
       </svg>
-      <div className="flex justify-between text-xs text-[#b8a5d4]">
+      <div className="flex justify-between text-xs text-[#af9ece]">
         <span>Min: {Math.round(min)}</span>
         <span>Avg: {avg}</span>
         <span>Max: {Math.round(max)}</span>
@@ -249,21 +249,21 @@ function ReadinessDetailPopover({
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
+        className="fixed z-50 bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
         style={positionStyle}
       >
-        <div className="text-xs text-[#b8a5d4] leading-relaxed">{info.definition}</div>
-        <div className="text-xs leading-relaxed mt-1.5 pt-1.5 border-t border-[#3d2b5a]" style={{ color }}>
+        <div className="text-xs text-[#af9ece] leading-relaxed">{info.definition}</div>
+        <div className="text-xs leading-relaxed mt-1.5 pt-1.5 border-t border-[#2e293c]" style={{ color }}>
           {info.context}
         </div>
         {showGraph && (
-          <div className="mt-3 pt-3 border-t border-[#3d2b5a]">
-            <div className="text-xs text-[#b8a5d4] mb-2">Last 14 days</div>
+          <div className="mt-3 pt-3 border-t border-[#2e293c]">
+            <div className="text-xs text-[#af9ece] mb-2">Last 14 days</div>
             <EnlargedSparkline data={sparkline} color={color} baseline={baseline} />
           </div>
         )}
         <div
-          className={`absolute w-2.5 h-2.5 bg-[#1e1535] border-[#3d2b5a] rotate-45 ${
+          className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
             showBelow ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-r border-b"
           }`}
           style={{ left: arrowLeft }}
@@ -332,17 +332,17 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] ${onClick ? "cursor-pointer active:bg-[#2a1f3d] transition-colors" : ""}`}
+      className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className="w-3.5 h-3.5" style={{ color }} />
-        <span className="text-xs text-[#b8a5d4]">{label}</span>
+        <span className="text-xs text-[#af9ece]">{label}</span>
       </div>
       <div className="flex items-end justify-between">
         <div>
           <span className="text-lg font-bold" style={{ color }}>{value}</span>
-          {unit && <span className="text-xs text-[#b8a5d4] ml-1">{unit}</span>}
+          {unit && <span className="text-xs text-[#af9ece] ml-1">{unit}</span>}
         </div>
         <Sparkline data={sparkline} color={color} />
       </div>
@@ -364,7 +364,7 @@ function ReadinessBanner({
   if (readiness >= 70) {
     state = { bg: "bg-[#1a3d25]", border: "border-[#39ff14]/30", text: "text-[#39ff14]", label: "Ready to train" };
   } else if (readiness >= 50) {
-    state = { bg: "bg-[#0d4a5a]", border: "border-[#00ffff]/30", text: "text-[#00ffff]", label: "Good to go" };
+    state = { bg: "bg-[#1a2e1a]", border: "border-[#4ade80]/30", text: "text-[#4ade80]", label: "Good to go" };
   } else if (readiness >= 30) {
     state = { bg: "bg-[#3d2b1a]", border: "border-[#ffb800]/30", text: "text-[#ffb800]", label: "Monitor recovery" };
   } else {
@@ -379,7 +379,7 @@ function ReadinessBanner({
       <Gauge className={`w-6 h-6 ${state.text} flex-shrink-0`} />
       <div className="flex-1">
         <div className={`font-bold text-base ${state.text}`}>{state.label}</div>
-        <div className="text-sm text-[#c4b5fd]">
+        <div className="text-sm text-[#af9ece]">
           {computed ? "Based on HRV, HR, sleep, form" : "From wearable"}
         </div>
       </div>
@@ -397,22 +397,22 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
   } else if (tsb < -10) {
     zone = { label: "Loading", color: "text-[#ffb800]", bg: "bg-[#3d2b1a]" };
   } else if (tsb < 5) {
-    zone = { label: "Neutral", color: "text-[#c4b5fd]", bg: "bg-[#2a1f3d]" };
+    zone = { label: "Neutral", color: "text-[#af9ece]", bg: "bg-[#2e293c]" };
   } else if (tsb < 15) {
-    zone = { label: "Fresh", color: "text-[#00ffff]", bg: "bg-[#0d4a5a]" };
+    zone = { label: "Fresh", color: "text-[#4ade80]", bg: "bg-[#1a2e1a]" };
   } else {
     zone = { label: "Peaked", color: "text-[#39ff14]", bg: "bg-[#1a3d25]" };
   }
 
   return (
     <div
-      className={`${zone.bg} rounded-lg p-3 border border-[#3d2b5a] ${onClick ? "cursor-pointer active:opacity-80 transition-opacity" : ""}`}
+      className={`${zone.bg} rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:opacity-80 transition-opacity" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Zap className={`w-4 h-4 ${zone.color}`} />
-          <span className="text-sm text-[#b8a5d4]">Form (TSB)</span>
+          <span className="text-sm text-[#af9ece]">Form (TSB)</span>
         </div>
         <span className={`text-sm font-semibold ${zone.color}`}>{zone.label}</span>
       </div>
@@ -421,8 +421,8 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
         <span className={`text-2xl font-bold ${zone.color}`}>
           {tsb > 0 ? "+" : ""}{tsb}
         </span>
-        <div className="flex-1 h-2 bg-[#1a1030] rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-[#ff3366] via-[#ffb800] via-[#c4b5fd] via-[#00ffff] to-[#39ff14]" style={{ width: "100%" }} />
+        <div className="flex-1 h-2 bg-[#13101c] rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-[#ff3366] via-[#ffb800] via-[#af9ece] via-[#00ffff] to-[#39ff14]" style={{ width: "100%" }} />
         </div>
       </div>
 
@@ -495,7 +495,7 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
 
   if (!data) {
     return (
-      <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center text-[#b8a5d4]">
+      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-[#af9ece]">
         No wellness data available
       </div>
     );
@@ -531,7 +531,7 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
         <ReadinessBanner
           readiness={data.readiness}
           computed={data.isComputed}
-          onClick={(e) => { if (data.readiness != null) handleTap("readiness", data.readiness, { mean: 50, sd: 15 }, [], "#c4b5fd", e); }}
+          onClick={(e) => { if (data.readiness != null) handleTap("readiness", data.readiness, { mean: 50, sd: 15 }, [], "#af9ece", e); }}
         />
       )}
 
@@ -544,8 +544,8 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
               unit="ms"
               sparkline={data.hrvSparkline}
               icon={Activity}
-              color="#00ffff"
-              onClick={(e) => { if (data.hrv != null) handleTap("hrv", data.hrv, data.hrvBaseline, data.hrvSparkline, "#00ffff", e); }}
+              color="#8b5cf6"
+              onClick={(e) => { if (data.hrv != null) handleTap("hrv", data.hrv, data.hrvBaseline, data.hrvSparkline, "#8b5cf6", e); }}
             />
           )}
           {data.restingHR != null && (
@@ -555,8 +555,8 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
               unit="bpm"
               sparkline={data.hrSparkline}
               icon={Heart}
-              color="#ff2d95"
-              onClick={(e) => { if (data.restingHR != null) handleTap("rhr", data.restingHR, data.rhrBaseline, data.hrSparkline, "#ff2d95", e); }}
+              color="#f23b94"
+              onClick={(e) => { if (data.restingHR != null) handleTap("rhr", data.restingHR, data.rhrBaseline, data.hrSparkline, "#f23b94", e); }}
             />
           )}
           {data.sleep != null && (
@@ -566,8 +566,8 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
               unit={data.sleepUnit}
               sparkline={data.sleepSparkline}
               icon={Moon}
-              color="#c4b5fd"
-              onClick={(e) => { if (data.sleep != null) handleTap("sleep", data.sleep, { mean: 0, sd: 0 }, data.sleepSparkline, "#c4b5fd", e); }}
+              color="#af9ece"
+              onClick={(e) => { if (data.sleep != null) handleTap("sleep", data.sleep, { mean: 0, sd: 0 }, data.sleepSparkline, "#af9ece", e); }}
             />
           )}
         </div>
@@ -576,12 +576,12 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
       {data.tsb != null && (
         <TSBGauge
           tsb={data.tsb}
-          onClick={(e) => { if (data.tsb != null) handleTap("tsb", data.tsb, { mean: 0, sd: 0 }, [], "#c4b5fd", e); }}
+          onClick={(e) => { if (data.tsb != null) handleTap("tsb", data.tsb, { mean: 0, sd: 0 }, [], "#af9ece", e); }}
         />
       )}
 
       {data.readiness == null && !hasMetrics && data.tsb == null && (
-        <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center text-[#b8a5d4]">
+        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-[#af9ece]">
           No wellness data for today
         </div>
       )}

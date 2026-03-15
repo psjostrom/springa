@@ -99,19 +99,19 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
         <div className="skeleton h-40 w-full" />
       </div>
     ) : (
-      <div className="text-sm text-[#b8a5d4] italic px-3 py-2.5">
+      <div className="text-sm text-[#af9ece] italic px-3 py-2.5">
         Detailed workout data (graphs) not available for this activity
       </div>
     ),
   "hr-zones": (p) =>
     p.event.zoneTimes ? (
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Heart Rate Zones</div>
+        <div className="text-sm font-semibold text-[#af9ece] mb-3">Heart Rate Zones</div>
         <HRZoneBreakdown {...p.event.zoneTimes} />
       </div>
     ) : p.isLoadingStreamData ? (
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Heart Rate Zones</div>
+        <div className="text-sm font-semibold text-[#af9ece] mb-3">Heart Rate Zones</div>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="skeleton h-5 w-full" />
@@ -122,12 +122,12 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
   "route-map": (p) =>
     p.event.streamData?.latlng && p.event.streamData.latlng.length > 0 ? (
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
+        <div className="text-sm font-semibold text-[#af9ece] mb-3">Route</div>
         <RouteMap latlng={p.event.streamData.latlng} className="h-48" />
       </div>
     ) : p.isLoadingStreamData ? (
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Route</div>
+        <div className="text-sm font-semibold text-[#af9ece] mb-3">Route</div>
         <div className="skeleton h-48 w-full rounded-lg" />
       </div>
     ) : null,
@@ -147,7 +147,7 @@ function SectionHeading({ icon: Icon, iconColor, label }: { icon: LucideIcon; ic
   return (
     <div className="flex items-center gap-2 mb-2">
       <Icon className="w-4 h-4" style={{ color: iconColor }} />
-      <span className="text-sm font-semibold uppercase text-[#b8a5d4]">{label}</span>
+      <span className="text-sm font-semibold uppercase text-[#af9ece]">{label}</span>
     </div>
   );
 }
@@ -156,7 +156,7 @@ const SECTION_HEADINGS: Partial<Record<ModalWidgetId, React.ReactNode>> = {
   "report-card": <SectionHeading icon={Droplets} iconColor="#06b6d4" label="Blood Glucose" />,
   "stats": <SectionHeading icon={Activity} iconColor="#06b6d4" label="Performance" />,
   "carbs-ingested": <SectionHeading icon={Utensils} iconColor="#fbbf24" label="Fueling" />,
-  "feedback": <SectionHeading icon={MessageSquare} iconColor="#c4b5fd" label="Feedback" />,
+  "feedback": <SectionHeading icon={MessageSquare} iconColor="#af9ece" label="Feedback" />,
   "pace-splits": <SectionHeading icon={BarChart3} iconColor="#06b6d4" label="Pace Splits" />,
 };
 

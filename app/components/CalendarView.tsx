@@ -215,14 +215,14 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   return (
     <div className="max-w-7xl mx-auto flex-1 flex flex-col min-h-0 w-full overflow-y-auto">
       {/* Navigation */}
-      <div className="bg-[#1e1535] p-2 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a] mb-1.5 sm:mb-6">
+      <div className="bg-[#1d1828] p-2 sm:p-6 rounded-xl shadow-sm border border-[#2e293c] mb-1.5 sm:mb-6">
         {viewMode !== "agenda" && (
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => {
                 if (viewMode === "week") { navigateWeek("prev"); } else { navigateMonth("prev"); }
               }}
-              className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
+              className="p-2 hover:bg-[#2e293c] rounded-lg transition text-[#af9ece]"
             >
               <ChevronLeft size={20} />
             </button>
@@ -240,7 +240,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               onClick={() => {
                 if (viewMode === "week") { navigateWeek("next"); } else { navigateMonth("next"); }
               }}
-              className="p-2 hover:bg-[#2a1f3d] rounded-lg transition text-[#c4b5fd]"
+              className="p-2 hover:bg-[#2e293c] rounded-lg transition text-[#af9ece]"
             >
               <ChevronRight size={20} />
             </button>
@@ -253,8 +253,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               onClick={() => { setViewMode(mode); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
-                  ? "bg-[#ff2d95] text-white shadow-lg shadow-[#ff2d95]/20"
-                  : "bg-[#2a1f3d] text-[#b8a5d4] hover:bg-[#3d2b5a] hover:text-[#c4b5fd]"
+                  ? "bg-[#f23b94] text-white shadow-lg shadow-[#f23b94]/20"
+                  : "bg-[#2e293c] text-[#af9ece] hover:bg-[#2e293c] hover:text-[#af9ece]"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -264,10 +264,10 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       </div>
 
       {/* Calendar / Agenda */}
-      <div className="bg-[#1e1535] p-2 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
+      <div className="bg-[#1d1828] p-2 sm:p-6 rounded-xl shadow-sm border border-[#2e293c]">
         {isLoadingInitial && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-[#ff2d95]" size={32} />
+            <Loader2 className="animate-spin text-[#f23b94]" size={32} />
           </div>
         )}
 
@@ -286,17 +286,17 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
         {!isLoadingInitial && !initialError && viewMode === "month" && (
           <div className="calendar-grid">
-            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
+            <div className="grid grid-cols-7 gap-px bg-[#2e293c] border border-[#2e293c]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-[#2a1f3d] p-2 text-center text-sm font-semibold text-[#b8a5d4]"
+                  className="bg-[#2e293c] p-2 text-center text-sm font-semibold text-[#af9ece]"
                 >
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border-x border-b border-[#3d2b5a] min-h-[500px]">
+            <div className="grid grid-cols-7 gap-px bg-[#2e293c] border-x border-b border-[#2e293c] min-h-[500px]">
               {calendarDays.map((day, idx) =>
                 renderDayCell(day, idx, "min-h-[80px] sm:min-h-[120px]", true)
               )}
@@ -306,17 +306,17 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
         {!isLoadingInitial && !initialError && viewMode === "week" && (
           <div className="calendar-grid">
-            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border border-[#3d2b5a]">
+            <div className="grid grid-cols-7 gap-px bg-[#2e293c] border border-[#2e293c]">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-[#2a1f3d] p-2 text-center text-sm font-semibold text-[#b8a5d4]"
+                  className="bg-[#2e293c] p-2 text-center text-sm font-semibold text-[#af9ece]"
                 >
                   {day}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-px bg-[#3d2b5a] border-x border-b border-[#3d2b5a]">
+            <div className="grid grid-cols-7 gap-px bg-[#2e293c] border-x border-b border-[#2e293c]">
               {weekDays.map((day, idx) =>
                 renderDayCell(day, idx, "min-h-[200px] sm:min-h-[300px]", false)
               )}

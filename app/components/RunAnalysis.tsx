@@ -85,7 +85,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
   return (
     <div className="px-3 py-2.5">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#c4b5fd]">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#af9ece]">
           <Sparkles className="w-4 h-4" />
           Run Analysis
         </div>
@@ -93,7 +93,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           <button
             onClick={() => { void trigger({ activityId, event, runBGContext, bgModel, regenerate: true }).catch(() => { /* Error state handled by useSWRMutation */ }); }}
             disabled={isMutating}
-            className="p-1 text-[#b8a5d4] hover:text-white transition-colors disabled:opacity-50"
+            className="p-1 text-[#af9ece] hover:text-white transition-colors disabled:opacity-50"
             aria-label="Regenerate analysis"
           >
             {isMutating ? (

@@ -35,7 +35,7 @@ function rateColor(rate: number): string {
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {
-    low: "bg-[#3d2b5a] text-[#b8a5d4]",
+    low: "bg-[#2e293c] text-[#af9ece]",
     medium: "bg-[#3d2b1a] text-[#ffb800]",
     high: "bg-[#1a3d25] text-[#39ff14]",
   };
@@ -102,7 +102,7 @@ function CategoryCard({
     : [];
 
   return (
-    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-3">
+    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold" style={{ color }}>
           {CATEGORY_LABELS[response.category]}
@@ -117,7 +117,7 @@ function CategoryCard({
         >
           {rate > 0 ? "+" : ""}{rate.toFixed(1)}
         </span>
-        <span className="text-xs text-[#b8a5d4]">mmol/L /5m</span>
+        <span className="text-xs text-[#af9ece]">mmol/L /5m</span>
       </div>
 
       <div className="text-xs text-[#8b7ba8]">
@@ -133,7 +133,7 @@ function CategoryCard({
       {/* Expandable activity breakdown */}
       <button
         onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1 mt-2 text-xs text-[#8b7ba8] hover:text-[#c4b5fd] transition-colors w-full"
+        className="flex items-center gap-1 mt-2 text-xs text-[#8b7ba8] hover:text-[#af9ece] transition-colors w-full"
       >
         <ChevronDown
           className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -142,11 +142,11 @@ function CategoryCard({
       </button>
 
       {expanded && breakdown.length > 0 && (
-        <div className="mt-2 space-y-1.5 border-t border-[#3d2b5a] pt-2">
+        <div className="mt-2 space-y-1.5 border-t border-[#2e293c] pt-2">
           {breakdown.map((b) => (
             <div key={b.activityId} className="text-xs">
               <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[#c4b5fd] truncate flex-1">{b.name}</span>
+                <span className="text-[#af9ece] truncate flex-1">{b.name}</span>
                 <span
                   className="tabular-nums font-medium flex-shrink-0"
                   style={{ color: rateColor(b.avgRate) }}
@@ -193,7 +193,7 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
   return (
     <div className="space-y-3">
       {activeCategories.length === 0 ? (
-        <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-6 text-center text-sm text-[#8b7ba8]">
+        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-sm text-[#8b7ba8]">
           No runs with both HR and glucose data found.
         </div>
       ) : (
@@ -217,7 +217,7 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
 
           {suggestions.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-[#b8a5d4]">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-[#af9ece]">
                 <TrendingDown className="w-3.5 h-3.5" />
                 Fuel Suggestions
               </div>
@@ -316,7 +316,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
         {canDiscover && !isAnalyzing && !patterns && (
           <button
             onClick={handleDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#c4b5fd] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a]"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c]"
           >
             Discover Patterns
           </button>
@@ -325,16 +325,16 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <button
             onClick={handleDiscover}
             disabled={!canDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2a1f3d] text-[#8b7ba8] hover:text-[#00ffff] hover:bg-[#3d2b5a] border border-[#3d2b5a] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#8b7ba8] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Re-analyze
           </button>
         )}
       </div>
 
-      <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-4">
+      <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-4">
         {isAnalyzing ? (
-          <div className="flex items-center justify-center py-4 text-[#b8a5d4]">
+          <div className="flex items-center justify-center py-4 text-[#af9ece]">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-sm">
               Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.glucose).length ?? 0} runs...
@@ -358,13 +358,13 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 
 export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
   return (
-    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden">
         {bands.map((b) => (
           <div
             key={b.band}
-            className="flex items-center justify-between px-3 py-2 border-b border-[#3d2b5a] last:border-b-0"
+            className="flex items-center justify-between px-3 py-2 border-b border-[#2e293c] last:border-b-0"
           >
-            <span className="text-xs text-[#c4b5fd] w-12">{b.band}</span>
+            <span className="text-xs text-[#af9ece] w-12">{b.band}</span>
             <span
               className="text-sm font-bold tabular-nums flex-1 text-right"
               style={{ color: rateColor(b.avgRate) }}
@@ -389,13 +389,13 @@ const SLOPE_LABELS: Record<string, string> = {
 
 export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   return (
-    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] overflow-hidden">
+    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden">
         {slopes.map((s) => (
           <div
             key={s.slope}
-            className="flex items-center justify-between px-3 py-2 border-b border-[#3d2b5a] last:border-b-0"
+            className="flex items-center justify-between px-3 py-2 border-b border-[#2e293c] last:border-b-0"
           >
-            <span className="text-xs text-[#c4b5fd] w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
+            <span className="text-xs text-[#af9ece] w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
             <span
               className="text-sm font-bold tabular-nums flex-1 text-right"
               style={{ color: rateColor(s.avgRate) }}
@@ -415,12 +415,12 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
   const maxRate = Math.max(...buckets.map((b) => Math.abs(b.avgRate)), 0.1);
 
   return (
-    <div className="bg-[#1e1535] rounded-lg border border-[#3d2b5a] p-3 space-y-2">
+    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-3 space-y-2">
         {buckets.map((b) => {
           const barWidth = (Math.abs(b.avgRate) / maxRate) * 100;
           return (
             <div key={b.bucket} className="flex items-center gap-2">
-              <span className="text-xs text-[#c4b5fd] w-10 flex-shrink-0">{b.bucket}</span>
+              <span className="text-xs text-[#af9ece] w-10 flex-shrink-0">{b.bucket}</span>
               <div className="flex-1 h-4 bg-[#2a1f45] rounded overflow-hidden">
                 <div
                   className="h-full rounded"

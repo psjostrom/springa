@@ -13,8 +13,8 @@ const LINE_CONFIGS: Record<
   VisibleLine,
   { label: string; color: string; unit: string }
 > = {
-  ctl: { label: "Fitness", color: "#00ffff", unit: "" },
-  atl: { label: "Fatigue", color: "#c4b5fd", unit: "" },
+  ctl: { label: "Fitness", color: "#8b5cf6", unit: "" },
+  atl: { label: "Fatigue", color: "#af9ece", unit: "" },
   tsb: { label: "Form", color: "#39ff14", unit: "" },
 };
 
@@ -146,13 +146,13 @@ export function FitnessChart({ data }: FitnessChartProps) {
               aria-label={`Toggle ${cfg.label}`}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                 active
-                  ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
-                  : "bg-[#1a1030] text-[#b8a5d4] hover:bg-[#2a1f3d] border border-transparent"
+                  ? "bg-[#2e293c] text-white border border-[#2e293c]"
+                  : "bg-[#13101c] text-[#af9ece] hover:bg-[#2e293c] border border-transparent"
               }`}
             >
               <div
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: active ? cfg.color : "#3d2b5a" }}
+                style={{ backgroundColor: active ? cfg.color : "#2e293c" }}
               />
               {cfg.label}
             </button>
@@ -163,14 +163,14 @@ export function FitnessChart({ data }: FitnessChartProps) {
       <div ref={wrapperRef} className="relative">
         {hoverData && tooltipPos && (
           <div
-            className="absolute top-2 z-10 bg-[#1e1535] border border-[#3d2b5a] rounded-lg px-3 py-2 text-xs sm:text-sm pointer-events-none"
+            className="absolute top-2 z-10 bg-[#1d1828] border border-[#2e293c] rounded-lg px-3 py-2 text-xs sm:text-sm pointer-events-none"
             style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.4)", ...tooltipPos }}
           >
-            <div className="text-[#b8a5d4] font-medium mb-1">{hoverData.date}</div>
+            <div className="text-[#af9ece] font-medium mb-1">{hoverData.date}</div>
             {(["ctl", "atl", "tsb"] as VisibleLine[]).filter(l => visibleLines.has(l)).map(line => (
               <div key={line} className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: LINE_CONFIGS[line].color }} />
-                <span className="text-[#b8a5d4]">{LINE_CONFIGS[line].label}</span>
+                <span className="text-[#af9ece]">{LINE_CONFIGS[line].label}</span>
                 <span className="font-bold text-white ml-auto">{hoverData[line]}</span>
               </div>
             ))}
@@ -194,7 +194,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y1={tick.y}
             x2={width - padding.right}
             y2={tick.y}
-            stroke="#3d2b5a"
+            stroke="#2e293c"
             strokeWidth="1"
           />
         ))}
@@ -206,7 +206,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y1={zeroY}
             x2={width - padding.right}
             y2={zeroY}
-            stroke="#b8a5d4"
+            stroke="#af9ece"
             strokeWidth="1"
             strokeDasharray="4 2"
           />
@@ -224,7 +224,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
                 scaleY(yMin) - zeroY,
                 height - padding.bottom - zeroY,
               )}
-              fill="#ff2d95"
+              fill="#f23b94"
               opacity="0.05"
             />
             {/* Positive zone (freshness) */}
@@ -247,7 +247,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y={tick.y + 4}
             textAnchor="end"
             fontSize="11"
-            fill="#b8a5d4"
+            fill="#af9ece"
           >
             {tick.label}
           </text>
@@ -261,7 +261,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
             y={height - padding.bottom + 16}
             textAnchor="middle"
             fontSize="11"
-            fill="#b8a5d4"
+            fill="#af9ece"
           >
             {tick.label}
           </text>
@@ -289,7 +289,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
               y1={padding.top}
               x2={scaleX(hoverIdx)}
               y2={height - padding.bottom}
-              stroke="#b8a5d4"
+              stroke="#af9ece"
               strokeWidth="1"
               strokeDasharray="4 2"
               opacity="0.5"
@@ -303,7 +303,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
                   cy={scaleY(dp[line])}
                   r="4"
                   fill={LINE_CONFIGS[line].color}
-                  stroke="#0d0a1a"
+                  stroke="#13101c"
                   strokeWidth="2"
                 />
               );

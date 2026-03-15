@@ -24,9 +24,9 @@ interface WorkoutCardProps {
 }
 
 const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
-  easy: { bg: ZONE_COLORS.z1, text: "#0d0a1a" },
-  steady: { bg: ZONE_COLORS.z3, text: "#0d0a1a" },
-  tempo: { bg: ZONE_COLORS.z4, text: "#0d0a1a" },
+  easy: { bg: ZONE_COLORS.z1, text: "#13101c" },
+  steady: { bg: ZONE_COLORS.z3, text: "#13101c" },
+  tempo: { bg: ZONE_COLORS.z4, text: "#13101c" },
   hard: { bg: ZONE_COLORS.z5, text: "#ffffff" },
 };
 
@@ -34,7 +34,7 @@ function StepRow({ step }: { step: WorkoutStep }) {
   return (
     <div className="flex items-center gap-2 sm:gap-3 py-1.5">
       {step.label && (
-        <span className="text-sm font-medium text-[#c4b5fd] w-20 shrink-0">
+        <span className="text-sm font-medium text-[#af9ece] w-20 shrink-0">
           {step.label}
         </span>
       )}
@@ -47,7 +47,7 @@ function StepRow({ step }: { step: WorkoutStep }) {
       >
         {getZoneLabel(step.zone)}
       </span>
-      <span className="text-sm text-[#b8a5d4]">{step.bpmRange}</span>
+      <span className="text-sm text-[#af9ece]">{step.bpmRange}</span>
     </div>
   );
 }
@@ -60,12 +60,12 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
           {section.name}
         </span>
         {section.repeats && (
-          <span className="text-sm font-bold bg-[#ff2d95] text-white px-2 py-0.5 rounded-full">
+          <span className="text-sm font-bold bg-[#f23b94] text-white px-2 py-0.5 rounded-full">
             {section.repeats}x
           </span>
         )}
       </div>
-      <div className="pl-3 border-l-2 border-[#3d2b5a]">
+      <div className="pl-3 border-l-2 border-[#2e293c]">
         {section.steps.map((step, i) => (
           <StepRow key={i} step={step} />
         ))}
@@ -81,8 +81,8 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
     return (
-      <div className="bg-[#2a1f3d] rounded-lg p-3 sm:p-4">
-        <div className="text-sm whitespace-pre-wrap text-[#c4b5fd]">{description}</div>
+      <div className="bg-[#2e293c] rounded-lg p-3 sm:p-4">
+        <div className="text-sm whitespace-pre-wrap text-[#af9ece]">{description}</div>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   return (
     <div>
       {/* Duration + Fuel Strip */}
-      <div className="px-3 py-2.5 bg-[#2d1a35] border-b border-[#ff2d95]/30">
+      <div className="px-3 py-2.5 bg-[#2d1a35] border-b border-[#f23b94]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {estDuration != null && (
             <div className="flex items-center gap-2">
@@ -133,21 +133,21 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
       </div>
 
       {/* Workout Structure */}
-      <div className="bg-[#1e1535] px-3 py-3">
+      <div className="bg-[#1d1828] px-3 py-3">
         {sections.map((section, i) => (
           <SectionBlock key={i} section={section} />
         ))}
 
-        {children && <div className="mt-3 pt-3 border-t border-[#3d2b5a]">{children}</div>}
+        {children && <div className="mt-3 pt-3 border-t border-[#2e293c]">{children}</div>}
 
         {/* Zone Paces */}
         {zones.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-[#3d2b5a]">
+          <div className="mt-3 pt-3 border-t border-[#2e293c]">
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               {zones.map((zone) => {
                 const entry = getPaceForZone(paceTable ?? FALLBACK_PACE_TABLE, zone);
                 return (
-                  <span key={zone} className="text-sm text-[#c4b5fd]">
+                  <span key={zone} className="text-sm text-[#af9ece]">
                     <span className="font-semibold text-white">{getZoneLabel(zone)}</span>{" "}
                     ~{formatPace(entry.avgPace)}/km
                     {entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
@@ -161,13 +161,13 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
 
       {/* Notes */}
       {notes && (
-        <div className="bg-[#2a1f3d] px-3 py-2.5 border-t border-[#3d2b5a] text-sm text-[#c4b5fd] leading-relaxed">
+        <div className="bg-[#2e293c] px-3 py-2.5 border-t border-[#2e293c] text-sm text-[#af9ece] leading-relaxed">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
               p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
               strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-              em: ({ children }) => <em className="text-[#c4b5fd]">{children}</em>,
+              em: ({ children }) => <em className="text-[#af9ece]">{children}</em>,
             }}
           >
             {notes}

@@ -25,15 +25,15 @@ const FORM_ZONE_STYLES: Record<
     icon: Zap,
   },
   grey: {
-    bg: "bg-[#2a1f3d]",
-    text: "text-[#c4b5fd]",
-    border: "border-[#c4b5fd]/30",
+    bg: "bg-[#2e293c]",
+    text: "text-[#af9ece]",
+    border: "border-[#af9ece]/30",
     icon: Minus,
   },
   fresh: {
-    bg: "bg-[#0d4a5a]",
-    text: "text-[#00ffff]",
-    border: "border-[#00ffff]/30",
+    bg: "bg-[#13101c]",
+    text: "text-[#8b5cf6]",
+    border: "border-[#8b5cf6]/30",
     icon: Heart,
   },
   transition: {
@@ -195,25 +195,25 @@ function MetricPopover({
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-3 py-3 shadow-lg shadow-black/50"
+        className="fixed z-50 bg-[#1d1828] border border-[#2e293c] rounded-xl px-3 py-3 shadow-lg shadow-black/50"
         style={positionStyle}
       >
-        <div className="text-xs text-[#b8a5d4] leading-relaxed">{info.definition}</div>
+        <div className="text-xs text-[#af9ece] leading-relaxed">{info.definition}</div>
         {info.scale && (
-          <div className="mt-1.5 pt-1.5 border-t border-[#3d2b5a] space-y-0.5">
+          <div className="mt-1.5 pt-1.5 border-t border-[#2e293c] space-y-0.5">
             {info.scale.map((s) => (
               <div key={s.range} className="flex gap-1.5 text-xs">
                 <span className="text-white font-bold shrink-0 whitespace-nowrap">{s.range}</span>
-                <span className="text-[#b8a5d4]">{s.label}</span>
+                <span className="text-[#af9ece]">{s.label}</span>
               </div>
             ))}
           </div>
         )}
         {info.context && (
-          <div className="text-xs text-[#00ffff] leading-relaxed mt-1.5 pt-1.5 border-t border-[#3d2b5a]">{info.context}</div>
+          <div className="text-xs text-[#8b5cf6] leading-relaxed mt-1.5 pt-1.5 border-t border-[#2e293c]">{info.context}</div>
         )}
         <div
-          className={`absolute w-2.5 h-2.5 bg-[#1e1535] border-[#3d2b5a] rotate-45 ${
+          className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
             showBelow
               ? "-top-[6px] border-l border-t"
               : "-bottom-[6px] border-r border-b"
@@ -240,12 +240,12 @@ function StatCard({
 }) {
   return (
     <div
-      className={`bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] ${onClick ? "cursor-pointer active:bg-[#2a1f3d] transition-colors" : ""}`}
+      className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
       onClick={onClick}
     >
-      <div className="text-sm text-[#b8a5d4] mb-1">{label}</div>
+      <div className="text-sm text-[#af9ece] mb-1">{label}</div>
       <div className={`text-xl font-bold ${color ?? "text-white"}`}>{value}</div>
-      {sub && <div className="text-sm text-[#c4b5fd] mt-0.5">{sub}</div>}
+      {sub && <div className="text-sm text-[#af9ece] mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -265,11 +265,11 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
 
   const trendIcon =
     insights.ctlTrend > 1 ? (
-      <TrendingUp className="w-4 h-4 text-[#00ffff]" />
+      <TrendingUp className="w-4 h-4 text-[#8b5cf6]" />
     ) : insights.ctlTrend < -1 ? (
       <TrendingDown className="w-4 h-4 text-[#ff3366]" />
     ) : (
-      <Minus className="w-4 h-4 text-[#b8a5d4]" />
+      <Minus className="w-4 h-4 text-[#af9ece]" />
     );
 
   const rampWarning =
@@ -300,7 +300,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           <div className={`font-bold text-base ${formStyle.text}`}>
             Form: {insights.formZoneLabel}
           </div>
-          <div className="text-sm text-[#c4b5fd]">
+          <div className="text-sm text-[#af9ece]">
             {insights.currentTsb > 0 ? "+" : ""}
             {insights.currentTsb}
             {insights.formZone === "optimal" &&
@@ -323,42 +323,42 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           label="Fitness (CTL)"
           value={insights.currentCtl.toString()}
           sub={`Peak: ${insights.peakCtl}`}
-          color="text-[#00ffff]"
+          color="text-[#8b5cf6]"
           onClick={(e) => { handleTap("ctl", e); }}
         />
         <StatCard
           label="Fatigue (ATL)"
           value={insights.currentAtl.toString()}
-          color="text-[#c4b5fd]"
+          color="text-[#af9ece]"
           onClick={(e) => { handleTap("atl", e); }}
         />
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("trend", e); }}
         >
-          <div className="text-sm text-[#b8a5d4] mb-1">Fitness Trend</div>
+          <div className="text-sm text-[#af9ece] mb-1">Fitness Trend</div>
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
-              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff3366]" : "text-[#00ffff]"}`}
+              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}
             >
               {insights.ctlTrend > 0 ? "+" : ""}
               {insights.ctlTrend}
             </span>
-            <span className="text-sm text-[#b8a5d4]">in 28d</span>
+            <span className="text-sm text-[#af9ece]">in 28d</span>
           </div>
         </div>
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("ramp", e); }}
         >
-          <div className="text-sm text-[#b8a5d4] mb-1">Ramp Rate</div>
+          <div className="text-sm text-[#af9ece] mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#00ffff]"}`}>
+            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}>
               {insights.rampRate > 0 ? "+" : ""}
               {insights.rampRate}
             </span>
-            <span className="text-sm text-[#b8a5d4]">/week</span>
+            <span className="text-sm text-[#af9ece]">/week</span>
           </div>
         </div>
       </div>
@@ -374,30 +374,30 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Activity Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load7", e); }}
         >
-          <div className="text-sm text-[#b8a5d4] mb-1">Last 7 days</div>
+          <div className="text-sm text-[#af9ece] mb-1">Last 7 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities7d}{" "}
-            <span className="text-sm font-normal text-[#b8a5d4]">
+            <span className="text-sm font-normal text-[#af9ece]">
               {insights.totalActivities7d === 1 ? "run" : "runs"}
             </span>
           </div>
-          <div className="text-sm text-[#c4b5fd] mt-0.5">
+          <div className="text-sm text-[#af9ece] mt-0.5">
             {insights.totalLoad7d} load
           </div>
         </div>
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#3d2b5a] cursor-pointer active:bg-[#2a1f3d] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load28", e); }}
         >
-          <div className="text-sm text-[#b8a5d4] mb-1">Last 28 days</div>
+          <div className="text-sm text-[#af9ece] mb-1">Last 28 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities28d}{" "}
-            <span className="text-sm font-normal text-[#b8a5d4]">runs</span>
+            <span className="text-sm font-normal text-[#af9ece]">runs</span>
           </div>
-          <div className="text-sm text-[#c4b5fd] mt-0.5">
+          <div className="text-sm text-[#af9ece] mt-0.5">
             {insights.totalLoad28d} load
           </div>
         </div>

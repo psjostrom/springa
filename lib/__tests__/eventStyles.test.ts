@@ -16,7 +16,7 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 
 describe("getEventStyle", () => {
   it("returns race style for race events", () => {
-    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("ff2d95");
+    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("f23b94");
   });
 
   it("returns completed long style", () => {
@@ -32,7 +32,7 @@ describe("getEventStyle", () => {
   });
 
   it("returns planned long style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "long" }))).toContain("00ffff");
+    expect(getEventStyle(makeEvent({ type: "planned", category: "long" }))).toContain("af9ece");
   });
 
   it("returns planned interval style", () => {
@@ -40,7 +40,7 @@ describe("getEventStyle", () => {
   });
 
   it("returns planned default style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "easy" }))).toContain("00ffff");
+    expect(getEventStyle(makeEvent({ type: "planned", category: "easy" }))).toContain("af9ece");
   });
 });
 

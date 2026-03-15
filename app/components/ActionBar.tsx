@@ -17,92 +17,83 @@ export function ActionBar({
 }: ActionBarProps) {
 	if (isUploading) {
 		return (
-			<div className={`${POSITION} retro-upload-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#f23b94] rounded-lg flex items-center justify-between p-4`}>
 					<div>
-						<h3 className="font-bold text-[#00ffff] text-sm md:text-base retro-text-flicker">
+						<h3 className="font-bold text-white text-sm md:text-base">
 							Syncing to Intervals.icu...
 						</h3>
-						<p className="text-sm text-[#c4b5fd]">
+						<p className="text-sm text-[#af9ece]">
 							{workoutCount} workouts uploading
 						</p>
 					</div>
 					<button
 						disabled
-						className="relative flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold transition text-sm md:text-base retro-btn-uploading"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#d42c85] opacity-60 cursor-not-allowed"
 					>
-						<span className="relative z-10">Syncing...</span>
+						<span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+						Syncing
 					</button>
-				</div>
 			</div>
 		);
 	}
 
 	if (statusMsg.includes("Error")) {
 		return (
-			<div className={`${POSITION} retro-error-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#ff6b8a] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3 min-w-0">
 						<AlertTriangle size={22} className="text-[#ff6b8a] shrink-0" />
 						<div className="min-w-0">
 							<h3 className="font-bold text-[#ff6b8a] text-sm md:text-base">
 								Sync failed
 							</h3>
-							<p className="text-sm text-[#c4b5fd] truncate">
+							<p className="text-sm text-[#af9ece] truncate">
 								{statusMsg.replace(/^Error:\s*/, "")}
 							</p>
 						</div>
 					</div>
 					<button
 						onClick={onUpload}
-						className="relative overflow-hidden flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[linear-gradient(135deg,#ff6b8a,#ff2d95)] shadow-[0_0_12px_rgba(255,107,138,0.4)] hover:shadow-[0_0_18px_rgba(255,107,138,0.6)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 retro-scanline-static"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#f23b94] hover:bg-[#d42f7e] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 					>
-						<span className="relative z-10 flex items-center gap-2">
-							<RotateCcw size={16} /> Retry
-						</span>
+						<RotateCcw size={16} /> Retry
 					</button>
-				</div>
 			</div>
 		);
 	}
 
 	if (statusMsg) {
 		return (
-			<div className={`${POSITION} retro-success-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#4ade80] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3">
 						<CheckCircle size={22} className="text-[#39ff14] shrink-0" />
 						<div>
 							<h3 className="font-bold text-[#39ff14] text-sm md:text-base">
 								Upload complete
 							</h3>
-							<p className="text-sm text-[#c4b5fd]">
+							<p className="text-sm text-[#af9ece]">
 								{statusMsg}
 							</p>
 						</div>
 					</div>
-				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className={`${POSITION} flex items-center justify-between bg-[#1e1535] p-4 rounded-lg border border-[#3d2b5a] shadow-xl shadow-[#ff2d95]/10 backdrop-blur-sm`}>
+		<div className={`${POSITION} flex items-center justify-between bg-[#1d1828] p-4 rounded-lg border border-[#2e293c] shadow-xl shadow-[#f23b94]/10 backdrop-blur-sm`}>
 			<div>
-				<h3 className="font-bold text-[#00ffff] text-sm md:text-base">
+				<h3 className="font-bold text-white text-sm md:text-base">
 					Ready to sync?
 				</h3>
-				<p className="text-sm text-[#c4b5fd]">
+				<p className="text-sm text-[#af9ece]">
 					{workoutCount} workouts generated.
 				</p>
 			</div>
 			<button
 				onClick={onUpload}
-				className="relative overflow-hidden flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[linear-gradient(135deg,#ff2d95,#d946ef)] shadow-[0_0_12px_rgba(255,45,149,0.4),0_0_24px_rgba(255,45,149,0.15)] hover:shadow-[0_0_18px_rgba(255,45,149,0.6),0_0_36px_rgba(217,70,239,0.3)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 retro-scanline-static"
+				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#f23b94] hover:bg-[#d42f7e] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 			>
-				<span className="relative z-10 flex items-center gap-2">
-					<UploadCloud size={18} /> Sync
-				</span>
+				<UploadCloud size={18} /> Sync
 			</button>
 		</div>
 	);

@@ -51,8 +51,8 @@ function formatDistance(meters: number): string {
 export default function FeedbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
-        <p className="text-[#b8a5d4]">Loading...</p>
+      <div className="min-h-screen bg-[#13101c] flex items-center justify-center">
+        <p className="text-[#af9ece]">Loading...</p>
       </div>
     }>
       <FeedbackContent />
@@ -156,20 +156,20 @@ function FeedbackContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
-        <p className="text-[#b8a5d4]">Loading...</p>
+      <div className="min-h-screen bg-[#13101c] flex items-center justify-center">
+        <p className="text-[#af9ece]">Loading...</p>
       </div>
     );
   }
 
   if (waitingForSync) {
     return (
-      <div className="min-h-screen bg-[#0d0a1a] flex flex-col items-center justify-center p-4 gap-4">
-        <p className="text-[#b8a5d4]">Waiting for your run to sync from Garmin...</p>
+      <div className="min-h-screen bg-[#13101c] flex flex-col items-center justify-center p-4 gap-4">
+        <p className="text-[#af9ece]">Waiting for your run to sync from Garmin...</p>
         <button
           onClick={() => { void mutate(); }}
           disabled={isLoading}
-          className="px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition disabled:opacity-40"
+          className="px-5 py-2.5 text-sm font-bold text-[#f23b94] border border-[#f23b94]/30 rounded-lg bg-[#f23b94]/10 hover:bg-[#f23b94]/20 transition disabled:opacity-40"
         >
           Try again
         </button>
@@ -179,34 +179,34 @@ function FeedbackContent() {
 
   if (swrError && !feedback) {
     return (
-      <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#13101c] flex items-center justify-center p-4">
         <p className="text-[#ff3366]">{swrError.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0a1a] flex flex-col items-center p-4 pt-12">
+    <div className="min-h-screen bg-[#13101c] flex flex-col items-center p-4 pt-12">
       <h1 className="text-2xl font-bold text-white mb-6">How was the run?</h1>
 
       {/* Run summary */}
       {feedback && (
         <div className="flex gap-3 mb-8 flex-wrap justify-center">
           {feedback.distance != null && (
-            <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Distance</p>
+            <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
+              <p className="text-xs text-[#af9ece]">Distance</p>
               <p className="text-lg font-bold text-white">{formatDistance(feedback.distance)}</p>
             </div>
           )}
           {feedback.duration != null && (
-            <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Time</p>
+            <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
+              <p className="text-xs text-[#af9ece]">Time</p>
               <p className="text-lg font-bold text-white">{formatDuration(feedback.duration)}</p>
             </div>
           )}
           {feedback.avgHr != null && (
-            <div className="bg-[#1e1535] border border-[#3d2b5a] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#b8a5d4]">Avg HR</p>
+            <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
+              <p className="text-xs text-[#af9ece]">Avg HR</p>
               <p className="text-lg font-bold text-white">{Math.round(feedback.avgHr)}</p>
             </div>
           )}
@@ -216,23 +216,23 @@ function FeedbackContent() {
       {formState.submitted ? (
         <div className="text-center">
           {formState.rating === "skipped" ? (
-            <p className="text-[#b8a5d4] text-lg">Skipped</p>
+            <p className="text-[#af9ece] text-lg">Skipped</p>
           ) : (
             <>
               <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
               <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
               {(formState.carbsG || formState.prescribedCarbsG) && (
-                <p className="text-[#b8a5d4] text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
+                <p className="text-[#af9ece] text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
               )}
               {formState.preRunCarbsG && (
-                <p className="text-[#b8a5d4] text-sm mt-1">Pre-run: {formState.preRunCarbsG}g</p>
+                <p className="text-[#af9ece] text-sm mt-1">Pre-run: {formState.preRunCarbsG}g</p>
               )}
               {formState.comment && (
-                <p className="text-[#b8a5d4] text-sm mt-2">{formState.comment}</p>
+                <p className="text-[#af9ece] text-sm mt-2">{formState.comment}</p>
               )}
               <Link
                 href="/?tab=planner&adapt=true"
-                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-[#00ffff] border border-[#00ffff]/30 rounded-lg bg-[#00ffff]/10 hover:bg-[#00ffff]/20 transition"
+                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-[#f23b94] border border-[#f23b94]/30 rounded-lg bg-[#f23b94]/10 hover:bg-[#f23b94]/20 transition"
               >
                 Adapt upcoming &rarr;
               </Link>
@@ -248,7 +248,7 @@ function FeedbackContent() {
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "good"
                   ? "border-[#39ff14] bg-[#39ff14]/10"
-                  : "border-[#3d2b5a] bg-[#1e1535]"
+                  : "border-[#2e293c] bg-[#1d1828]"
               }`}
             >
               {"\uD83D\uDC4D"}
@@ -258,7 +258,7 @@ function FeedbackContent() {
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "bad"
                   ? "border-[#ff3366] bg-[#ff3366]/10"
-                  : "border-[#3d2b5a] bg-[#1e1535]"
+                  : "border-[#2e293c] bg-[#1d1828]"
               }`}
             >
               {"\uD83D\uDC4E"}
@@ -267,27 +267,27 @@ function FeedbackContent() {
 
           {/* Carbs ingested */}
           <div className="w-full max-w-sm mb-4">
-            <label className="block text-xs text-[#b8a5d4] mb-1">Carbs ingested (g)</label>
+            <label className="block text-xs text-[#af9ece] mb-1">Carbs ingested (g)</label>
             <input
               type="number"
               inputMode="numeric"
               value={formState.carbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, carbsG: e.target.value })); }}
               placeholder={formState.prescribedCarbsG != null ? `${formState.prescribedCarbsG} (prescribed)` : "e.g. 40"}
-              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              className="w-full px-4 py-3 bg-[#1d1828] border border-[#2e293c] rounded-xl text-white placeholder:text-[#af9ece] focus:outline-none focus:ring-2 focus:ring-[#f23b94] text-sm"
             />
           </div>
 
           {/* Pre-run carbs */}
           <div className="w-full max-w-sm mb-4">
-            <label className="block text-xs text-[#b8a5d4] mb-1">Pre-run carbs (g)</label>
+            <label className="block text-xs text-[#af9ece] mb-1">Pre-run carbs (g)</label>
             <input
               type="number"
               inputMode="numeric"
               value={formState.preRunCarbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
               placeholder="e.g. 25"
-              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              className="w-full px-4 py-3 bg-[#1d1828] border border-[#2e293c] rounded-xl text-white placeholder:text-[#af9ece] focus:outline-none focus:ring-2 focus:ring-[#f23b94] text-sm"
             />
           </div>
 
@@ -297,14 +297,14 @@ function FeedbackContent() {
             onChange={(e) => { setFormState((s) => ({ ...s, comment: e.target.value })); }}
             placeholder="Comment (optional)"
             rows={3}
-            className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm mb-4 resize-none"
+            className="w-full max-w-sm px-4 py-3 bg-[#1d1828] border border-[#2e293c] rounded-xl text-white placeholder:text-[#af9ece] focus:outline-none focus:ring-2 focus:ring-[#f23b94] text-sm mb-4 resize-none"
           />
 
           {/* Submit */}
           <button
             onClick={handleSubmit}
             disabled={!formState.rating || !formState.activityId || submitting}
-            className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
+            className="w-full max-w-sm py-3 bg-[#f23b94] text-white rounded-xl font-bold hover:bg-[#d42f7e] transition shadow-lg shadow-[#f23b94]/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
           </button>
@@ -325,7 +325,7 @@ function FeedbackContent() {
               });
             }}
             disabled={submitting}
-            className="w-full max-w-sm py-2 mt-2 text-sm text-[#b8a5d4] hover:text-white transition disabled:opacity-40"
+            className="w-full max-w-sm py-2 mt-2 text-sm text-[#af9ece] hover:text-white transition disabled:opacity-40"
           >
             Skip
           </button>
