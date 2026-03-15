@@ -7,7 +7,7 @@ import { nonEmpty } from "./format";
 export interface RunHistoryBG {
   startBG: number;
   endBG: number | null;
-  dropRate: number | null; // mmol/L per 10min
+  dropRate: number | null; // mmol/L per 5min
 }
 
 export interface RunHistoryEntry {
@@ -82,9 +82,9 @@ export function buildRunHistory(
     let dropRate: number | null = null;
     if (glucose && glucose.length >= 2) {
       const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
-      const duration10m = durationMin / 10;
-      if (duration10m > 0) {
-        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration10m;
+      const duration5m = durationMin / 5;
+      if (duration5m > 0) {
+        dropRate = (glucose[glucose.length - 1].value - glucose[0].value) / duration5m;
       }
     }
 

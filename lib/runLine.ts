@@ -28,11 +28,11 @@ export interface RunLineExtras {
 }
 
 export function classifyEntryLabel(slope: number, stability: number): string {
-  if (slope < -1.0) return "crashing";
+  if (slope < -0.5) return "crashing";
   if (stability > 1.5) return "volatile";
-  if (Math.abs(slope) <= 0.3 && stability < 0.5) return "stable";
-  if (slope < -0.3) return "dropping";
-  if (slope > 0.3) return "rising";
+  if (Math.abs(slope) <= 0.15 && stability < 0.5) return "stable";
+  if (slope < -0.15) return "dropping";
+  if (slope > 0.15) return "rising";
   return "unsteady";
 }
 
@@ -79,9 +79,9 @@ export function formatRunLine(
     let bgText = `startBG ${bg.startBG.toFixed(1)}`;
     if (bg.entrySlope != null) {
       const slopeSign = bg.entrySlope >= 0 ? "+" : "";
-      bgText += ` (entry ${slopeSign}${bg.entrySlope.toFixed(1)}/10m)`;
+      bgText += ` (entry ${slopeSign}${bg.entrySlope.toFixed(1)}/5m)`;
     }
-    bgText += ` | BG rate ${sign}${bg.avgRate.toFixed(2)}/10min`;
+    bgText += ` | BG rate ${sign}${bg.avgRate.toFixed(2)}/5min`;
     parts.push(bgText);
   }
 
@@ -90,7 +90,7 @@ export function formatRunLine(
     const bg = extras.bgSummary;
     const bgParts = [`startBG ${bg.startBG.toFixed(1)}`];
     if (bg.endBG != null) bgParts.push(`endBG ${bg.endBG.toFixed(1)}`);
-    if (bg.dropRate != null) bgParts.push(`drop ${bg.dropRate >= 0 ? "+" : ""}${bg.dropRate.toFixed(2)}/10m`);
+    if (bg.dropRate != null) bgParts.push(`drop ${bg.dropRate >= 0 ? "+" : ""}${bg.dropRate.toFixed(2)}/5m`);
     parts.push(bgParts.join(", "));
   }
 
@@ -98,7 +98,7 @@ export function formatRunLine(
   if (extras?.runBGContext?.pre) {
     const pre = extras.runBGContext.pre;
     const slopeSign = pre.entrySlope30m >= 0 ? "+" : "";
-    parts.push(`start BG ${pre.startBG.toFixed(1)} | entry: ${slopeSign}${pre.entrySlope30m.toFixed(1)}/10m (${classifyEntryLabel(pre.entrySlope30m, pre.entryStability)})`);
+    parts.push(`start BG ${pre.startBG.toFixed(1)} | entry: ${slopeSign}${pre.entrySlope30m.toFixed(1)}/5m (${classifyEntryLabel(pre.entrySlope30m, pre.entryStability)})`);
   }
   if (extras?.runBGContext?.post) {
     const post = extras.runBGContext.post;

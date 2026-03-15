@@ -84,10 +84,10 @@ describe("computeSlope", () => {
   });
 
   it("steadily dropping readings → negative slope, correct magnitude", () => {
-    // Drop 1 mmol per 5 min = 2 mmol per 10 min
+    // Drop 1 mmol per 5 min = 1 mmol per 5 min
     const readings = makeReadings(T0, [10, 9, 8, 7, 6]);
     const slope = computeSlope(readings)!;
-    expect(slope).toBeCloseTo(-2.0, 1);
+    expect(slope).toBeCloseTo(-1.0, 1);
     expect(slope).toBeLessThan(0);
   });
 
@@ -95,14 +95,14 @@ describe("computeSlope", () => {
     const readings = makeReadings(T0, [6, 7, 8, 9, 10]);
     const slope = computeSlope(readings)!;
     expect(slope).toBeGreaterThan(0);
-    expect(slope).toBeCloseTo(2.0, 1);
+    expect(slope).toBeCloseTo(1.0, 1);
   });
 
   it("2 readings → correct slope (minimal case)", () => {
     const readings = makeReadings(T0, [10, 9]);
     const slope = computeSlope(readings)!;
-    // Drop 1 in 5 min = 2 per 10 min
-    expect(slope).toBeCloseTo(-2.0, 1);
+    // Drop 1 in 5 min = 1 per 5 min
+    expect(slope).toBeCloseTo(-1.0, 1);
   });
 
   it("1 reading → returns null", () => {
@@ -119,16 +119,16 @@ describe("computeSlope", () => {
     const readings = makeReadings(T0, [10, 9.5, 10.2, 9.0, 8.8, 8.0]);
     const slope = computeSlope(readings)!;
     expect(slope).toBeLessThan(0);
-    // Should be roughly -0.8/10min (drop of ~2 over 25 min ≈ 0.8/10min)
-    expect(slope).toBeCloseTo(-0.8, 0);
+    // Should be roughly -0.4/5min (drop of ~2 over 25 min ≈ 0.4/5min)
+    expect(slope).toBeCloseTo(-0.4, 0);
   });
 
-  it("correct units: result is mmol/L per 10 minutes", () => {
-    // Drop 0.5 mmol over 10 min (2 readings, 5 min apart)
+  it("correct units: result is mmol/L per 5 minutes", () => {
+    // Drop 0.5 mmol over 5 min (2 readings, 5 min apart)
     const readings = makeReadings(T0, [10.0, 9.5]);
     const slope = computeSlope(readings)!;
-    // 0.5 per 5 min = 1.0 per 10 min
-    expect(slope).toBeCloseTo(-1.0, 1);
+    // 0.5 per 5 min = 0.5 per 5 min
+    expect(slope).toBeCloseTo(-0.5, 1);
   });
 });
 
@@ -487,9 +487,9 @@ describe("integration: realistic run scenario", () => {
     expect(ctx.pre).not.toBeNull();
     expect(ctx.post).not.toBeNull();
 
-    // Entry slope should be negative (dropping ~0.5/10min)
+    // Entry slope should be negative (dropping ~0.16/5min)
     expect(ctx.pre!.entrySlope30m).toBeLessThan(0);
-    expect(ctx.pre!.entrySlope30m).toBeCloseTo(-0.33, 0);
+    expect(ctx.pre!.entrySlope30m).toBeCloseTo(-0.16, 0);
 
     // Recovery: significant drop in 30 min
     expect(ctx.post!.recoveryDrop30m).toBeLessThan(0);
