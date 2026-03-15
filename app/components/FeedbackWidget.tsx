@@ -30,7 +30,7 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
         onChange={(e) => { setComment(e.target.value); }}
         placeholder="Optional comment..."
         rows={2}
-        className="w-full border border-[#2e293c] bg-[#1a1030] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94] resize-none"
+        className="w-full border border-[#2e293c] bg-[#13101c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94] resize-none"
       />
       <button
         onClick={() => { if (rating) onSave(rating, comment); }}

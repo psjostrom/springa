@@ -115,7 +115,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               type="date"
               value={raceDate}
               onChange={(e) => { setRaceDate(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+              className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
             />
           </div>
 
@@ -131,7 +131,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   type="text"
                   value={raceName}
                   onChange={(e) => { setRaceName(e.target.value); }}
-                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
                   placeholder="e.g. EcoTrail"
                 />
               </div>
@@ -143,7 +143,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   max={100}
                   value={raceDist}
                   onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
                   placeholder="16"
                 />
               </div>
@@ -156,7 +156,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
                     placeholder="18"
                   />
                   <p className="text-[10px] text-[#7a6899] mt-1">
@@ -171,7 +171,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={startKm}
                     onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
                     placeholder="8"
                   />
                 </div>

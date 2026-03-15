@@ -147,7 +147,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                 active
                   ? "bg-[#2e293c] text-white border border-[#2e293c]"
-                  : "bg-[#1a1030] text-[#af9ece] hover:bg-[#2e293c] border border-transparent"
+                  : "bg-[#13101c] text-[#af9ece] hover:bg-[#2e293c] border border-transparent"
               }`}
             >
               <div

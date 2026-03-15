@@ -332,7 +332,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
+      className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-1.5 mb-1">
@@ -421,7 +421,7 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
         <span className={`text-2xl font-bold ${zone.color}`}>
           {tsb > 0 ? "+" : ""}{tsb}
         </span>
-        <div className="flex-1 h-2 bg-[#1a1030] rounded-full overflow-hidden">
+        <div className="flex-1 h-2 bg-[#13101c] rounded-full overflow-hidden">
           <div className="h-full bg-gradient-to-r from-[#ff3366] via-[#ffb800] via-[#af9ece] via-[#00ffff] to-[#39ff14]" style={{ width: "100%" }} />
         </div>
       </div>

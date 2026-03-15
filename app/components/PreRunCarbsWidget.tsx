@@ -78,7 +78,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 if (editState.kind === "editing") setEditState({ ...editState, g: e.target.value });
               }}
               placeholder="g"
-              className="w-16 border border-[#2e293c] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
+              className="w-16 border border-[#2e293c] bg-[#13101c] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void savePreRunCarbs();

@@ -184,7 +184,7 @@ export function EventModal({
                   type="datetime-local"
                   value={editDate}
                   onChange={(e) => { dispatch({ type: "SET_EDIT_DATE", date: e.target.value }); }}
-                  className="border border-[#2e293c] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
+                  className="border border-[#2e293c] bg-[#13101c] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
                 />
               </div>
             ) : (

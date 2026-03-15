@@ -300,7 +300,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               {adaptedEvents.length > 0 && (
                 <div className="space-y-3">
                   {adaptedEvents.map((event) => (
-                    <div key={event.original.id} className="bg-[#1a1030] border border-[#2e293c] rounded-lg p-3 space-y-2">
+                    <div key={event.original.id} className="bg-[#13101c] border border-[#2e293c] rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
                         <span className="text-xs text-[#7a6899]">{event.date}</span>

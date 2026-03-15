@@ -31,7 +31,7 @@ const FORM_ZONE_STYLES: Record<
     icon: Minus,
   },
   fresh: {
-    bg: "bg-[#1a1030]",
+    bg: "bg-[#13101c]",
     text: "text-[#8b5cf6]",
     border: "border-[#8b5cf6]/30",
     icon: Heart,
@@ -240,7 +240,7 @@ function StatCard({
 }) {
   return (
     <div
-      className={`bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
+      className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
       onClick={onClick}
     >
       <div className="text-sm text-[#af9ece] mb-1">{label}</div>
@@ -333,7 +333,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           onClick={(e) => { handleTap("atl", e); }}
         />
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("trend", e); }}
         >
           <div className="text-sm text-[#af9ece] mb-1">Fitness Trend</div>
@@ -349,7 +349,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           </div>
         </div>
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("ramp", e); }}
         >
           <div className="text-sm text-[#af9ece] mb-1">Ramp Rate</div>
@@ -374,7 +374,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Activity Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load7", e); }}
         >
           <div className="text-sm text-[#af9ece] mb-1">Last 7 days</div>
@@ -389,7 +389,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           </div>
         </div>
         <div
-          className="bg-[#1a1030] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load28", e); }}
         >
           <div className="text-sm text-[#af9ece] mb-1">Last 28 days</div>
