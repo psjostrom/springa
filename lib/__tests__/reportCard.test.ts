@@ -284,7 +284,7 @@ describe("buildReportCard", () => {
       activityId: "test-1",
       category: "easy",
       pre: { entrySlope30m: -0.1, entryStability: 0.3, startBG: 10, readingCount: 6 },
-      post: { recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      post: { recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
       totalBGImpact: -4,
     };
     const report = buildReportCard(event, ctx);
@@ -321,7 +321,7 @@ describe("buildReportCard", () => {
       activityId: "test-1",
       category: "easy",
       pre: null,
-      post: { recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      post: { recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
       totalBGImpact: null,
     };
     const report = buildReportCard(makeEvent(), ctx);
@@ -415,28 +415,28 @@ describe("scoreEntryTrend", () => {
 
 describe("scoreRecovery", () => {
   it("clean recovery (drop -0.25, nadir 6.0, no hypo) → good, Clean", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.25, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("good");
     expect(score.label).toBe("Clean");
   });
 
   it("dipping (drop -0.75, nadir 4.3) → ok, Dipping", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.75, nadirPostRun: 4.3, timeToStable: 20, postRunHypo: false, endBG: 7.0, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.75, nadirPostRun: 4.3, timeToStable: 20, postRunHypo: false, endBG: 7.0, readingCount: 8, peak30m: 7.0, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("ok");
     expect(score.label).toBe("Dipping");
   });
 
   it("crashed (drop -1.25, nadir 3.5, hypo) → bad, Crashed", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -1.25, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -1.25, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8, peak30m: 6.0, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("bad");
     expect(score.label).toBe("Crashed");
   });
 
   it("post-hypo alone triggers bad even with mild drop", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.25, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 7.0, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.25, nadirPostRun: 3.8, timeToStable: null, postRunHypo: true, endBG: 7.0, readingCount: 8, peak30m: 7.0, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("bad");
     expect(score.label).toBe("Crashed");
@@ -453,19 +453,19 @@ describe("scoreRecovery", () => {
   });
 
   it("boundary: drop exactly -0.5 → good (not ok)", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 6.0, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("good");
   });
 
   it("boundary: nadir exactly 3.9 → bad", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 3.9, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.5, nadirPostRun: 3.9, timeToStable: 10, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("bad");
   });
 
   it("boundary: nadir 4.5 → ok (not good)", () => {
-    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.75, nadirPostRun: 4.5, timeToStable: 15, postRunHypo: false, endBG: 7.0, readingCount: 8 });
+    const ctx = makeCtxWithPost({ recoveryDrop30m: -0.75, nadirPostRun: 4.5, timeToStable: 15, postRunHypo: false, endBG: 7.0, readingCount: 8, peak30m: 7.0, spike30m: 0 });
     const score = scoreRecovery(ctx)!;
     expect(score.rating).toBe("ok");
   });

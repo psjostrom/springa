@@ -149,7 +149,7 @@ describe("formatRunLine", () => {
       activityId: "a1",
       category: "easy",
       pre: null,
-      post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
       totalBGImpact: null,
     };
     const line = formatRunLine(makeEvent(), {}, { runBGContext: ctx });
@@ -162,7 +162,7 @@ describe("formatRunLine", () => {
       activityId: "a1",
       category: "easy",
       pre: null,
-      post: { recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8 },
+      post: { recoveryDrop30m: -2.5, nadirPostRun: 3.5, timeToStable: null, postRunHypo: true, endBG: 6.0, readingCount: 8, peak30m: 6.0, spike30m: 0 },
       totalBGImpact: null,
     };
     const line = formatRunLine(makeEvent(), {}, { runBGContext: ctx });
@@ -235,7 +235,7 @@ describe("formatRunLine", () => {
       activityId: "a1",
       category: "easy",
       pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
-      post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8 },
+      post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
       totalBGImpact: -5,
     };
     const line = formatRunLine(
