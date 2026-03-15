@@ -159,7 +159,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
                 />
                 <span className="text-sm text-[#af9ece]">{label}</span>
                 {isHardExtrapolated && (
-                  <span className="text-[10px] text-[#d946ef]">(extrapolated)</span>
+                  <span className="text-[10px] text-[#f23b94]">(extrapolated)</span>
                 )}
               </div>
 
