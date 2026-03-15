@@ -37,7 +37,7 @@ export function TabNavigation({
 	return (
 		<>
 			{/* Desktop: horizontal text tabs in header */}
-			<div className="hidden md:flex gap-2 border-b border-[#3d2b5a] mb-6">
+			<div className="hidden md:flex gap-2 border-b border-[#2e293c] mb-6">
 				{TABS.map(({ key, label }) => (
 					<button
 						key={key}
@@ -45,19 +45,19 @@ export function TabNavigation({
 						className={`px-6 py-3 font-medium transition-all relative ${
 							localTab === key
 								? "text-[#ff69b4]"
-								: "text-[#c4b5fd] hover:text-[#00ffff]"
+								: "text-[#af9ece] hover:text-[#00ffff]"
 						}`}
 					>
 						{label}
 						{localTab === key && (
-							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e8368f]"></div>
+							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f23b94]"></div>
 						)}
 					</button>
 				))}
 			</div>
 
 			{/* Mobile: fixed bottom tab bar with icons */}
-			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1e1535] border-t border-[#3d2b5a] justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1d1828] border-t border-[#2e293c] justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
@@ -65,10 +65,10 @@ export function TabNavigation({
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							localTab === key
 								? "text-[#ff69b4]"
-								: "text-[#c4b5fd] hover:text-[#00ffff]"
+								: "text-[#af9ece] hover:text-[#00ffff]"
 						}`}
 					>
-						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #e8368f)" } : undefined} />
+						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #f23b94)" } : undefined} />
 						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}

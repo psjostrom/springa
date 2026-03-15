@@ -37,13 +37,13 @@ const splashFallback = (
       <defs>
         <linearGradient id="sp-neon" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#00ffff" />
-          <stop offset="40%" stopColor="#e8368f" />
-          <stop offset="100%" stopColor="#e8368f" />
+          <stop offset="40%" stopColor="#f23b94" />
+          <stop offset="100%" stopColor="#f23b94" />
         </linearGradient>
         <linearGradient id="sp-gc" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#00ffff" />
           <stop offset="50%" stopColor="#d946ef" />
-          <stop offset="100%" stopColor="#e8368f" />
+          <stop offset="100%" stopColor="#f23b94" />
         </linearGradient>
         <filter id="sp-gb" x="-80%" y="-80%" width="260%" height="260%">
           <feGaussianBlur stdDeviation="30" />
@@ -123,12 +123,12 @@ function HomeContent() {
   if (settingsLoading) return splashFallback;
 
   return (
-    <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
-      <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30 shadow-sm">
+    <div className="h-screen bg-[#13101c] flex flex-col text-white font-sans overflow-hidden">
+      <div className="bg-[#1d1828] border-b border-[#2e293c] flex-shrink-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
             onClick={() => { handleTabChange("calendar"); }}
-            className="text-xl md:text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#e8368f] tracking-tight hover:scale-105 active:scale-95 transition-all"
+            className="text-xl md:text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] tracking-tight hover:scale-105 active:scale-95 transition-all"
           >
             springa
           </button>
@@ -137,7 +137,7 @@ function HomeContent() {
             <CurrentBGPill onClick={bgGraph.open} />
             <button
               onClick={() => { setShowSettings(true); }}
-              className="p-2 rounded-lg text-[#b8a5d4] hover:text-[#00ffff] hover:bg-[#2a1f3d] transition"
+              className="p-2 rounded-lg text-[#af9ece] hover:text-[#00ffff] hover:bg-[#2e293c] transition"
               title="Settings"
             >
               <Settings size={20} />

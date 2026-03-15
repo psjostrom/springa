@@ -18,12 +18,12 @@ export function ActionBar({
 	if (isUploading) {
 		return (
 			<div className={`${POSITION} retro-upload-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
 					<div>
 						<h3 className="font-bold text-[#00ffff] text-sm md:text-base retro-text-flicker">
 							Syncing to Intervals.icu...
 						</h3>
-						<p className="text-sm text-[#c4b5fd]">
+						<p className="text-sm text-[#af9ece]">
 							{workoutCount} workouts uploading
 						</p>
 					</div>
@@ -41,21 +41,21 @@ export function ActionBar({
 	if (statusMsg.includes("Error")) {
 		return (
 			<div className={`${POSITION} retro-error-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
 					<div className="flex items-center gap-3 min-w-0">
 						<AlertTriangle size={22} className="text-[#ff6b8a] shrink-0" />
 						<div className="min-w-0">
 							<h3 className="font-bold text-[#ff6b8a] text-sm md:text-base">
 								Sync failed
 							</h3>
-							<p className="text-sm text-[#c4b5fd] truncate">
+							<p className="text-sm text-[#af9ece] truncate">
 								{statusMsg.replace(/^Error:\s*/, "")}
 							</p>
 						</div>
 					</div>
 					<button
 						onClick={onUpload}
-						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#e8368f] hover:bg-[#c52e7a] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#f23b94] hover:bg-[#d42f7e] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 					>
 						<RotateCcw size={16} /> Retry
 					</button>
@@ -67,14 +67,14 @@ export function ActionBar({
 	if (statusMsg) {
 		return (
 			<div className={`${POSITION} retro-success-border rounded-lg`}>
-				<div className="bg-[#1e1535] flex items-center justify-between p-4 rounded-[0.4rem]">
+				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
 					<div className="flex items-center gap-3">
 						<CheckCircle size={22} className="text-[#39ff14] shrink-0" />
 						<div>
 							<h3 className="font-bold text-[#39ff14] text-sm md:text-base">
 								Upload complete
 							</h3>
-							<p className="text-sm text-[#c4b5fd]">
+							<p className="text-sm text-[#af9ece]">
 								{statusMsg}
 							</p>
 						</div>
@@ -85,18 +85,18 @@ export function ActionBar({
 	}
 
 	return (
-		<div className={`${POSITION} flex items-center justify-between bg-[#1e1535] p-4 rounded-lg border border-[#3d2b5a] shadow-xl shadow-[#e8368f]/10 backdrop-blur-sm`}>
+		<div className={`${POSITION} flex items-center justify-between bg-[#1d1828] p-4 rounded-lg border border-[#2e293c] shadow-xl shadow-[#f23b94]/10 backdrop-blur-sm`}>
 			<div>
 				<h3 className="font-bold text-[#00ffff] text-sm md:text-base">
 					Ready to sync?
 				</h3>
-				<p className="text-sm text-[#c4b5fd]">
+				<p className="text-sm text-[#af9ece]">
 					{workoutCount} workouts generated.
 				</p>
 			</div>
 			<button
 				onClick={onUpload}
-				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#e8368f] hover:bg-[#c52e7a] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
+				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#f23b94] hover:bg-[#d42f7e] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 			>
 				<UploadCloud size={18} /> Sync
 			</button>

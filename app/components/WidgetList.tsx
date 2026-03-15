@@ -67,24 +67,24 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-        isDragging ? "bg-[#3d2b5a] z-10 shadow-lg" : "bg-[#1e1535]"
+        isDragging ? "bg-[#2e293c] z-10 shadow-lg" : "bg-[#1d1828]"
       } ${isHidden ? "opacity-50" : ""}`}
     >
       <button
         type="button"
-        className="touch-none text-[#b8a5d4] hover:text-white cursor-grab active:cursor-grabbing"
+        className="touch-none text-[#af9ece] hover:text-white cursor-grab active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="w-4 h-4" />
       </button>
-      <span className={`flex-1 text-sm ${isHidden ? "line-through text-[#b8a5d4]" : "text-white"}`}>
+      <span className={`flex-1 text-sm ${isHidden ? "line-through text-[#af9ece]" : "text-white"}`}>
         {labelMap.get(id) ?? id}
       </span>
       <button
         type="button"
         onClick={onToggle}
-        className="text-[#b8a5d4] hover:text-white transition-colors"
+        className="text-[#af9ece] hover:text-white transition-colors"
         aria-label={isHidden ? `Show ${labelMap.get(id)}` : `Hide ${labelMap.get(id)}`}
       >
         {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -125,10 +125,10 @@ export function WidgetList({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1 mb-2">
-          <span className="text-sm font-semibold text-[#c4b5fd]">Editing layout</span>
+          <span className="text-sm font-semibold text-[#af9ece]">Editing layout</span>
           <button
             onClick={() => { setEditing(false); }}
-            className="px-3 py-1 text-xs bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded-lg transition"
+            className="px-3 py-1 text-xs bg-[#f23b94] hover:bg-[#d42f7e] text-white rounded-lg transition"
           >
             Done
           </button>
@@ -176,7 +176,7 @@ export function WidgetList({
       <button
         type="button"
         onClick={() => { setEditing(true); }}
-        className="absolute -top-8 right-0 text-[#b8a5d4] hover:text-white transition-colors p-1"
+        className="absolute -top-8 right-0 text-[#af9ece] hover:text-white transition-colors p-1"
         aria-label="Edit widget layout"
       >
         <Pencil className="w-3.5 h-3.5" />

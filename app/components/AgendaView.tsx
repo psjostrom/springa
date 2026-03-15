@@ -25,21 +25,21 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
     <div
       data-event-id={event.id}
       onClick={onSelect}
-      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2a1f3d] cursor-pointer rounded-lg transition border overflow-hidden ${
+      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border overflow-hidden ${
         isMissed
           ? "border-[#ff3366]/30 bg-[#3d1525]/30 opacity-60"
-          : "border-[#3d2b5a]"
+          : "border-[#2e293c]"
       }`}
     >
       {/* Date */}
       <div className="flex-shrink-0 text-center w-10 sm:w-20">
-        <div className="text-sm text-[#b8a5d4] uppercase">
+        <div className="text-sm text-[#af9ece] uppercase">
           {format(event.date, "EEE", { locale: enGB })}
         </div>
         <div className="text-2xl sm:text-3xl font-bold text-white">
           {format(event.date, "d", { locale: enGB })}
         </div>
-        <div className="text-sm text-[#b8a5d4]">
+        <div className="text-sm text-[#af9ece]">
           {format(event.date, "MMM", { locale: enGB })}
         </div>
       </div>
@@ -88,7 +88,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
 
         {event.type === "completed" && (
           <>
-            <div className="flex flex-wrap gap-x-3 text-sm text-[#c4b5fd] mb-2">
+            <div className="flex flex-wrap gap-x-3 text-sm text-[#af9ece] mb-2">
               {event.duration != null && (
                 <span className="font-semibold text-white">
                   {formatDuration(event.duration)}
@@ -209,7 +209,7 @@ export function AgendaView({
 
   if (events.length === 0) {
     return (
-      <div className="text-center py-12 text-[#b8a5d4]">
+      <div className="text-center py-12 text-[#af9ece]">
         No workouts scheduled
       </div>
     );
@@ -220,7 +220,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => { setView("upcoming"); }}
-          className="flex items-center gap-1.5 py-2 text-sm text-[#b8a5d4] hover:text-[#c4b5fd] transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -245,7 +245,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => { setView("history"); }}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#b8a5d4] hover:text-[#c4b5fd] transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

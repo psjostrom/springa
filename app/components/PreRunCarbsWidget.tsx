@@ -67,7 +67,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
   return (
     <div className="px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-[#b8a5d4]">Pre-run carbs</div>
+        <div className="text-sm text-[#af9ece]">Pre-run carbs</div>
         {editState.kind === "editing" || editState.kind === "saving" ? (
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -78,25 +78,25 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 if (editState.kind === "editing") setEditState({ ...editState, g: e.target.value });
               }}
               placeholder="g"
-              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#e8368f]"
+              className="w-16 border border-[#2e293c] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void savePreRunCarbs();
                 if (e.key === "Escape") setEditState({ kind: "idle" });
               }}
             />
-            <span className="text-sm text-[#b8a5d4]">g</span>
+            <span className="text-sm text-[#af9ece]">g</span>
             <button
               onClick={() => { void savePreRunCarbs(); }}
               disabled={editState.kind === "saving"}
-              className="px-2 py-1 text-xs bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded transition disabled:opacity-50"
+              className="px-2 py-1 text-xs bg-[#f23b94] hover:bg-[#d42f7e] text-white rounded transition disabled:opacity-50"
             >
               {editState.kind === "saving" ? "..." : "Save"}
             </button>
             <button
               onClick={() => { setEditState({ kind: "idle" }); }}
               disabled={editState.kind === "saving"}
-              className="px-2 py-1 text-xs bg-[#2a1f3d] hover:bg-[#3d2b5a] text-[#c4b5fd] rounded transition"
+              className="px-2 py-1 text-xs bg-[#2e293c] hover:bg-[#2e293c] text-[#af9ece] rounded transition"
             >
               ✕
             </button>
@@ -112,10 +112,10 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 g: displayG ? String(displayG) : "",
               });
             }}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#e8368f] transition"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#f23b94] transition"
           >
             {displayG ? `${displayG}g` : "—"}
-            <Pencil className="w-3 h-3 text-[#b8a5d4]" />
+            <Pencil className="w-3 h-3 text-[#af9ece]" />
           </button>
         )}
       </div>

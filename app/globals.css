@@ -4,10 +4,10 @@
   --background: #13101c;
   --foreground: #f0e6ff;
   --surface: #1d1828;
-  --surface-alt: #2a1f3d;
+  --surface-alt: #2e293c;
   --border: #2e293c;
   --muted: #af9ece;
-  --accent-pink: #e8368f;
+  --accent-pink: #f23b94;
   --accent-cyan: #00ffff;
   --accent-purple: #d946ef;
   --color-bg: #13101c;
@@ -83,7 +83,7 @@ summary {
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #2a1f3d 25%, #3d2b5a 50%, #2a1f3d 75%);
+  background: linear-gradient(90deg, #1d1828 25%, #2e293c 50%, #1d1828 75%);
   background-size: 200% 100%;
   animation: shimmer 6s infinite;
   border-radius: 0.375rem;
@@ -92,7 +92,7 @@ summary {
 /* Run analysis markdown */
 .prose-analysis p { margin-top: 0.5rem; }
 .prose-analysis p:first-child { margin-top: 0; }
-.prose-analysis strong { color: #c4b5fd; }
+.prose-analysis strong { color: #af9ece; }
 .prose-analysis ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.25rem; }
 .prose-analysis li { margin-top: 0.125rem; }
 
@@ -103,17 +103,17 @@ summary {
 .prose-patterns h3:first-child { margin-top: 0; }
 .prose-patterns p { margin-top: 0.25rem; margin-bottom: 0.25rem; line-height: 1.5; }
 .prose-patterns h3 + p { margin-top: 0.375rem; }
-.prose-patterns strong { color: #c4b5fd; }
+.prose-patterns strong { color: #af9ece; }
 .prose-patterns ul, .prose-patterns ol { padding-left: 1.25rem; margin-top: 0.375rem; margin-bottom: 0.375rem; }
 .prose-patterns ul { list-style: disc; }
 .prose-patterns ol { list-style: decimal; }
 .prose-patterns li { margin-top: 0.25rem; line-height: 1.4; }
 .prose-patterns table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 0; font-size: 0.75rem; }
-.prose-patterns th { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid #3d2b5a; color: #b8a5d4; font-weight: 600; white-space: nowrap; }
-.prose-patterns td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #2a1f3d; }
+.prose-patterns th { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid #2e293c; color: #af9ece; font-weight: 600; white-space: nowrap; }
+.prose-patterns td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #2e293c; }
 .prose-patterns tr:last-child td { border-bottom: none; }
 .prose-patterns hr { display: none; }
-.prose-patterns code { background: #2a1f3d; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; color: #00ffff; }
+.prose-patterns code { background: #2e293c; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.75rem; color: #00ffff; }
 
 /* Suppress mobile tap highlight on interactive charts */
 .no-tap-highlight,

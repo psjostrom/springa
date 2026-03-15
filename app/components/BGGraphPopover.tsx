@@ -78,10 +78,10 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up px-4 py-8 text-center"
+        className="bg-[#13101c] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1d1828] animate-slide-up px-4 py-8 text-center"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
-        <p className="text-[#b8a5d4] text-sm">No BG data available</p>
+        <p className="text-[#af9ece] text-sm">No BG data available</p>
       </div>
     </div>
   );
@@ -182,7 +182,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#0d0a1a] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1e1535] animate-slide-up"
+        className="bg-[#13101c] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1d1828] animate-slide-up"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         {/* Header */}
@@ -202,25 +202,25 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 {delta > 0 ? "+" : ""}{delta.toFixed(1)}
               </span>
             )}
-            <span className="text-sm text-[#b8a5d4]">{ageStr}</span>
+            <span className="text-sm text-[#af9ece]">{ageStr}</span>
           </div>
           <div className="relative">
             <button
               onClick={() => { setShowWindowPicker((v) => !v); }}
-              className="text-xs text-[#b8a5d4] font-medium px-2 py-0.5 rounded bg-[#1e1535] hover:bg-[#2a1f3d] hover:text-[#00ffff] transition active:scale-95"
+              className="text-xs text-[#af9ece] font-medium px-2 py-0.5 rounded bg-[#1d1828] hover:bg-[#2e293c] hover:text-[#00ffff] transition active:scale-95"
             >
               {windowHours}h
             </button>
             {showWindowPicker && (
-              <div className="absolute right-0 top-full mt-1 flex gap-0.5 bg-[#1e1535] border border-[#3d2b5a] rounded-lg p-0.5 shadow-lg shadow-black/40 z-10">
+              <div className="absolute right-0 top-full mt-1 flex gap-0.5 bg-[#1d1828] border border-[#2e293c] rounded-lg p-0.5 shadow-lg shadow-black/40 z-10">
                 {WINDOWS.map((w, i) => (
                   <button
                     key={w}
                     onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); void updateSettings({ bgChartWindow: w }); }}
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
-                        ? "bg-[#2a1f3d] text-[#00ffff]"
-                        : "text-[#7a6899] hover:text-[#b8a5d4]"
+                        ? "bg-[#2e293c] text-[#00ffff]"
+                        : "text-[#7a6899] hover:text-[#af9ece]"
                     }`}
                   >
                     {w}h
@@ -295,7 +295,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 />
                 <text
                   x={PAD.left - 4} y={scaleY(v) + 3}
-                  textAnchor="end" fill="#b8a5d4" fontSize={9} opacity={0.6}
+                  textAnchor="end" fill="#af9ece" fontSize={9} opacity={0.6}
                 >
                   {v}
                 </text>
@@ -312,7 +312,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 />
                 <text
                   x={scaleX(t)} y={HEIGHT - PAD.bottom + 14}
-                  textAnchor="middle" fill="#b8a5d4" fontSize={9} opacity={0.6}
+                  textAnchor="middle" fill="#af9ece" fontSize={9} opacity={0.6}
                 >
                   {formatTime(t)}
                 </text>
@@ -350,7 +350,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                   cy={scaleY(scrubReading.mmol)}
                   r={5}
                   fill={bgColor(scrubReading.mmol)}
-                  stroke="#0d0a1a"
+                  stroke="#13101c"
                   strokeWidth={2}
                 />
               </>

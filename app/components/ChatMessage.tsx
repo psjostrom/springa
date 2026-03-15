@@ -16,8 +16,8 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? "bg-[#e8368f]/20 border border-[#e8368f]/30 text-white whitespace-pre-wrap"
-            : "bg-[#1e1535] border border-[#3d2b5a] text-[#f0e6ff]"
+            ? "bg-[#f23b94]/20 border border-[#f23b94]/30 text-white whitespace-pre-wrap"
+            : "bg-[#1d1828] border border-[#2e293c] text-[#f0e6ff]"
         }`}
       >
         {isUser ? content : (
@@ -29,20 +29,20 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
               ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 last:mb-0 space-y-1">{children}</ol>,
               li: ({ children }) => <li>{children}</li>,
               strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-              em: ({ children }) => <em className="text-[#c4b5fd]">{children}</em>,
-              del: ({ children }) => <del className="text-[#b8a5d4] line-through">{children}</del>,
+              em: ({ children }) => <em className="text-[#af9ece]">{children}</em>,
+              del: ({ children }) => <del className="text-[#af9ece] line-through">{children}</del>,
               h1: ({ children }) => <h1 className="text-base font-bold text-white mb-1">{children}</h1>,
               h2: ({ children }) => <h2 className="text-base font-bold text-white mb-1">{children}</h2>,
               h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-1">{children}</h3>,
-              code: ({ children }) => <code className="bg-[#0d0a1a] px-1 py-0.5 rounded text-[#00ffff] text-xs">{children}</code>,
-              pre: ({ children }) => <pre className="bg-[#0d0a1a] rounded p-2 mb-2 last:mb-0 overflow-x-auto text-xs">{children}</pre>,
-              blockquote: ({ children }) => <blockquote className="border-l-2 border-[#e8368f] pl-3 text-[#c4b5fd] mb-2 last:mb-0">{children}</blockquote>,
+              code: ({ children }) => <code className="bg-[#13101c] px-1 py-0.5 rounded text-[#00ffff] text-xs">{children}</code>,
+              pre: ({ children }) => <pre className="bg-[#13101c] rounded p-2 mb-2 last:mb-0 overflow-x-auto text-xs">{children}</pre>,
+              blockquote: ({ children }) => <blockquote className="border-l-2 border-[#f23b94] pl-3 text-[#af9ece] mb-2 last:mb-0">{children}</blockquote>,
               table: ({ children }) => <div className="overflow-x-auto mb-2 last:mb-0"><table className="text-xs w-full border-collapse">{children}</table></div>,
-              thead: ({ children }) => <thead className="border-b border-[#3d2b5a]">{children}</thead>,
+              thead: ({ children }) => <thead className="border-b border-[#2e293c]">{children}</thead>,
               th: ({ children }) => <th className="text-left px-2 py-1 text-white font-semibold">{children}</th>,
-              td: ({ children }) => <td className="px-2 py-1 border-t border-[#3d2b5a]/50">{children}</td>,
+              td: ({ children }) => <td className="px-2 py-1 border-t border-[#2e293c]/50">{children}</td>,
               a: ({ href, children }) => <a href={href} className="text-[#00ffff] underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-              hr: () => <hr className="border-[#3d2b5a] my-2" />,
+              hr: () => <hr className="border-[#2e293c] my-2" />,
               img: () => null,
             }}
           >

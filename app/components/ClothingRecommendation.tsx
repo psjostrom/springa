@@ -37,7 +37,7 @@ export function ClothingRecommendation({ recommendation }: Props) {
         {items.map((item) => (
           <span
             key={item}
-            className="text-xs px-1.5 py-0.5 rounded bg-[#2a1f3d] text-[#c4b5fd] border border-[#3d2b5a]"
+            className="text-xs px-1.5 py-0.5 rounded bg-[#2e293c] text-[#af9ece] border border-[#2e293c]"
           >
             {item}
           </span>

@@ -30,7 +30,7 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   glucose: {
     label: "Blood Glucose",
     unit: "mmol/L",
-    color: "#c4b5fd",
+    color: "#af9ece",
     strokeWidth: 3,
     targetRange: { min: BG_HYPO, max: BG_STABLE_MAX, color: "#1a3d25" },
   },
@@ -254,14 +254,14 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
               aria-label={`Toggle ${config.label}`}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
                 isSelected
-                  ? "bg-[#2a1f3d] text-white border border-[#3d2b5a]"
-                  : "bg-[#1a1030] text-[#b8a5d4] hover:bg-[#2a1f3d] border border-transparent"
+                  ? "bg-[#2e293c] text-white border border-[#2e293c]"
+                  : "bg-[#1a1030] text-[#af9ece] hover:bg-[#2e293c] border border-transparent"
               }`}
             >
               <div
                 className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                 style={{
-                  backgroundColor: isSelected ? config.color : "#3d2b5a",
+                  backgroundColor: isSelected ? config.color : "#2e293c",
                 }}
               />
               <span className="hidden sm:inline">{config.label}</span>
@@ -288,7 +288,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
               >
                 {config.label}:
               </span>
-              <span className="text-[#c4b5fd] text-sm whitespace-nowrap font-semibold">
+              <span className="text-[#af9ece] text-sm whitespace-nowrap font-semibold">
                 {isHovering && hoverValue !== null
                   ? `${formatVal(hoverValue)} ${config.unit}`
                   : `${formatVal(minValue)} - ${formatVal(maxValue)} ${config.unit}`}
@@ -321,7 +321,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
                 y1={y}
                 x2={WIDTH - PAD_STREAM.right}
                 y2={y}
-                stroke="#3d2b5a"
+                stroke="#2e293c"
                 strokeWidth="1"
               />
             );
@@ -354,7 +354,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
                 y={y + 4}
                 textAnchor="end"
                 fontSize="11"
-                fill="#b8a5d4"
+                fill="#af9ece"
               >
                 {label}
               </text>
@@ -384,7 +384,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
                 y1={PAD_STREAM.top}
                 x2={(hoverTime / maxTime) * CHART_WIDTH + PAD_STREAM.left}
                 y2={HEIGHT - PAD_STREAM.bottom}
-                stroke="#b8a5d4"
+                stroke="#af9ece"
                 strokeWidth="1"
                 strokeDasharray="4 2"
                 opacity="0.6"
@@ -399,7 +399,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
                     cy={path.hoverY}
                     r="4"
                     fill={path.config.color}
-                    stroke="#0d0a1a"
+                    stroke="#13101c"
                     strokeWidth="2"
                   />
                 );
@@ -410,7 +410,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
                 y={PAD_STREAM.top - 5}
                 textAnchor="middle"
                 fontSize="11"
-                fill="#c4b5fd"
+                fill="#af9ece"
                 fontWeight="600"
               >
                 {Math.round(hoverTime)}m
@@ -426,7 +426,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
               y={HEIGHT - PAD_STREAM.bottom + 14}
               textAnchor="middle"
               fontSize="11"
-              fill="#b8a5d4"
+              fill="#af9ece"
             >
               {Math.round(frac * maxTime)}m
             </text>
@@ -439,7 +439,7 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
               y={HEIGHT / 2}
               textAnchor="middle"
               fontSize="12"
-              fill="#b8a5d4"
+              fill="#af9ece"
               fontWeight="500"
               transform={`rotate(-90, 10, ${HEIGHT / 2})`}
             >

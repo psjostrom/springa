@@ -36,7 +36,7 @@ export function SimulateScreen() {
 
   if (bgModelLoading) {
     return (
-      <div className="h-full flex items-center justify-center text-[#b8a5d4]">
+      <div className="h-full flex items-center justify-center text-[#af9ece]">
         Loading BG model…
       </div>
     );
@@ -44,7 +44,7 @@ export function SimulateScreen() {
 
   if (!bgModel || bgModel.activitiesAnalyzed === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-[#b8a5d4] px-6 text-center">
+      <div className="h-full flex items-center justify-center text-[#af9ece] px-6 text-center">
         No BG data yet. Complete some runs with glucose data to enable simulation.
       </div>
     );
@@ -64,7 +64,7 @@ export function SimulateScreen() {
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 category === key
                   ? "text-white shadow-lg"
-                  : "text-[#b8a5d4] bg-[#1e1535] hover:bg-[#2a1f3d]"
+                  : "text-[#af9ece] bg-[#1d1828] hover:bg-[#2e293c]"
               }`}
               style={
                 category === key
@@ -80,7 +80,7 @@ export function SimulateScreen() {
         {/* Inputs */}
         <div className="grid grid-cols-2 gap-3">
           <label className="space-y-1">
-            <span className="text-xs text-[#b8a5d4] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] flex items-center gap-1">
               <Timer size={12} /> Duration
             </span>
             <input
@@ -96,7 +96,7 @@ export function SimulateScreen() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#b8a5d4] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] flex items-center gap-1">
               <TrendingDown size={12} /> Start BG
             </span>
             <input
@@ -112,7 +112,7 @@ export function SimulateScreen() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#b8a5d4] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] flex items-center gap-1">
               <Zap size={12} /> Fuel rate
             </span>
             <input
@@ -150,7 +150,7 @@ export function SimulateScreen() {
                 <AlertTriangle size={18} className="text-[#ffb800] flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="text-[#ffb800] font-medium">Prediction not yet reliable</p>
-                  <ul className="text-[#b8a5d4] mt-1 space-y-0.5">
+                  <ul className="text-[#af9ece] mt-1 space-y-0.5">
                     {result.warnings.map((w, i) => (
                       <li key={i}>• {w}</li>
                     ))}
@@ -164,20 +164,20 @@ export function SimulateScreen() {
 
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-[#1e1535] rounded-lg p-2">
-                <div className="text-xs text-[#b8a5d4]">End BG</div>
+              <div className="bg-[#1d1828] rounded-lg p-2">
+                <div className="text-xs text-[#af9ece]">End BG</div>
                 <div className="text-lg font-semibold text-white">
                   {result.curve[result.curve.length - 1].bg.toFixed(1)}
                 </div>
               </div>
-              <div className="bg-[#1e1535] rounded-lg p-2">
-                <div className="text-xs text-[#b8a5d4]">Min BG</div>
+              <div className="bg-[#1d1828] rounded-lg p-2">
+                <div className="text-xs text-[#af9ece]">Min BG</div>
                 <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-[#ff3366]" : "text-white"}`}>
                   {result.minBG.toFixed(1)}
                 </div>
               </div>
-              <div className="bg-[#1e1535] rounded-lg p-2">
-                <div className="text-xs text-[#b8a5d4]">Hypo risk</div>
+              <div className="bg-[#1d1828] rounded-lg p-2">
+                <div className="text-xs text-[#af9ece]">Hypo risk</div>
                 <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-[#ff3366]" : "text-[#39ff14]"}`}>
                   {result.hypoMinute != null ? `${result.hypoMinute}m` : "None"}
                 </div>
@@ -186,7 +186,7 @@ export function SimulateScreen() {
 
             {/* Confidence band at end */}
             {result.reliable && (
-              <div className="text-xs text-[#b8a5d4] text-center">
+              <div className="text-xs text-[#af9ece] text-center">
                 End range: {result.curve[result.curve.length - 1].bgLow.toFixed(1)} – {result.curve[result.curve.length - 1].bgHigh.toFixed(1)} mmol/L
               </div>
             )}

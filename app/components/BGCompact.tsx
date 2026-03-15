@@ -39,40 +39,40 @@ function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: (
       onClick={onClose}
     >
       <div
-        className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 w-64 shadow-xl"
+        className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 w-64 shadow-xl"
         onClick={(e) => { e.stopPropagation(); }}
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-white">{LABELS[cat.category]} Runs</span>
-          <button onClick={onClose} aria-label="Close" className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[#af9ece] hover:text-white text-sm">✕</button>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-[#b8a5d4]">BG drop rate</span>
+            <span className="text-[#af9ece]">BG drop rate</span>
             <span className="font-semibold" style={{ color: rateColor(cat.avgRate) }}>
               {cat.avgRate.toFixed(2)} /5m
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#b8a5d4]">Median rate</span>
+            <span className="text-[#af9ece]">Median rate</span>
             <span className="text-white">{cat.medianRate.toFixed(2)} /5m</span>
           </div>
           {cat.avgFuelRate != null && (
             <div className="flex justify-between">
-              <span className="text-[#b8a5d4]">Avg fuel</span>
+              <span className="text-[#af9ece]">Avg fuel</span>
               <span className="text-white">{Math.round(cat.avgFuelRate)} g/h</span>
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-[#b8a5d4]">Runs analyzed</span>
+            <span className="text-[#af9ece]">Runs analyzed</span>
             <span className="text-white">{cat.activityCount}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#b8a5d4]">Data points</span>
+            <span className="text-[#af9ece]">Data points</span>
             <span className="text-white">{cat.sampleCount}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#b8a5d4]">Confidence</span>
+            <span className="text-[#af9ece]">Confidence</span>
             <span className="text-white">{CONFIDENCE_LABELS[cat.confidence]}</span>
           </div>
         </div>
@@ -94,9 +94,9 @@ export function BGCompact({ categories }: BGCompactProps) {
             key={cat.category}
             type="button"
             onClick={() => { setSelectedCat(cat); }}
-            className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-3 text-center transition-colors active:bg-[#2a1f3d]"
+            className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-3 text-center transition-colors active:bg-[#2e293c]"
           >
-            <div className="text-xs text-[#b8a5d4] mb-1">{LABELS[cat.category]}</div>
+            <div className="text-xs text-[#af9ece] mb-1">{LABELS[cat.category]}</div>
             <div className="flex items-center justify-center gap-1.5 mb-0.5">
               <span
                 className="w-2 h-2 rounded-full"

@@ -53,15 +53,15 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
 
           <XAxis
             dataKey="minute"
-            tick={{ fill: "#b8a5d4", fontSize: 12 }}
-            axisLine={{ stroke: "#3d2b5a" }}
+            tick={{ fill: "#af9ece", fontSize: 12 }}
+            axisLine={{ stroke: "#2e293c" }}
             tickLine={false}
             tickFormatter={(v: number) => `${v}m`}
           />
           <YAxis
             domain={[minY, maxY]}
-            tick={{ fill: "#b8a5d4", fontSize: 12 }}
-            axisLine={{ stroke: "#3d2b5a" }}
+            tick={{ fill: "#af9ece", fontSize: 12 }}
+            axisLine={{ stroke: "#2e293c" }}
             tickLine={false}
             tickFormatter={(v: number) => v.toFixed(1)}
           />
@@ -111,7 +111,7 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           <Area
             dataKey="bgLow"
             stroke="none"
-            fill="#0d0a1a"
+            fill="#13101c"
             isAnimationActive={false}
           />
 
@@ -127,8 +127,8 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
 
           <Tooltip
             contentStyle={{
-              background: "#1e1535",
-              border: "1px solid #3d2b5a",
+              background: "#1d1828",
+              border: "1px solid #2e293c",
               borderRadius: 8,
               fontSize: 13,
             }}

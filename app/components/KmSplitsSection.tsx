@@ -88,10 +88,10 @@ export function KmSplitsSection({
 
   return (
     <div className="px-4 py-3">
-      <div className="text-sm font-semibold text-[#c4b5fd] mb-3">Splits</div>
+      <div className="text-sm font-semibold text-[#af9ece] mb-3">Splits</div>
 
       <div
-        className="grid gap-2 pb-1.5 text-[11px] text-[#b8a5d4] uppercase tracking-wide border-b border-[#3d2b5a] mb-1"
+        className="grid gap-2 pb-1.5 text-[11px] text-[#af9ece] uppercase tracking-wide border-b border-[#2e293c] mb-1"
         style={{ gridTemplateColumns: gridCols }}
       >
         <span>Km</span>
@@ -114,10 +114,10 @@ export function KmSplitsSection({
         return (
           <div
             key={split.km}
-            className="grid gap-2 items-center py-1.5 text-[13px] border-b border-[#3d2b5a]/10 last:border-b-0"
+            className="grid gap-2 items-center py-1.5 text-[13px] border-b border-[#2e293c]/10 last:border-b-0"
             style={{ gridTemplateColumns: gridCols }}
           >
-            <span className="text-[#b8a5d4] tabular-nums">{split.km}</span>
+            <span className="text-[#af9ece] tabular-nums">{split.km}</span>
             <span className="text-white font-semibold tabular-nums">
               {formatPace(split.paceMinPerKm)}
             </span>
@@ -127,19 +127,19 @@ export function KmSplitsSection({
                 style={{ width: `${barWidth}%`, backgroundColor: color }}
               />
             </div>
-            <span className="text-[#b8a5d4] tabular-nums text-right text-xs">
+            <span className="text-[#af9ece] tabular-nums text-right text-xs">
               {split.elevChange > 0
                 ? `+${split.elevChange}`
                 : split.elevChange}
             </span>
-            <span className="text-[#c4b5fd] tabular-nums text-right text-xs">
+            <span className="text-[#af9ece] tabular-nums text-right text-xs">
               {split.avgHr ?? "\u2014"}
             </span>
           </div>
         );
       })}
 
-      <div className="flex gap-3 mt-3 pt-2 border-t border-[#3d2b5a]/20 text-[10px] text-[#b8a5d4]">
+      <div className="flex gap-3 mt-3 pt-2 border-t border-[#2e293c]/20 text-[10px] text-[#af9ece]">
         {[
           { color: "#ef4444", label: "Hard" },
           { color: "#f59e0b", label: "Interval" },

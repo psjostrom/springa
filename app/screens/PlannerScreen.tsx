@@ -222,14 +222,14 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0d0a1a]">
+    <div className="h-full overflow-y-auto bg-[#13101c]">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {/* Fuel rates + Generate */}
-        <div className="relative overflow-hidden bg-[#1e1535] border border-[#3d2b5a] rounded-xl p-4 md:p-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#e8368f]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
+        <div className="relative overflow-hidden bg-[#1d1828] border border-[#2e293c] rounded-xl p-4 md:p-5">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f23b94]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#b8a5d4]">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#af9ece]">
                 Fuel rates <span className="text-[#7a6899]">g/h</span>
               </span>
               <div className="grid grid-cols-3 gap-3 mt-2">
@@ -237,9 +237,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   const rate = getCurrentFuelRate(cat, bgModel);
                   const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
                   return (
-                    <div key={cat} className="flex flex-col text-xs text-[#b8a5d4] gap-1">
+                    <div key={cat} className="flex flex-col text-xs text-[#af9ece] gap-1">
                       <span className="capitalize">{cat}</span>
-                      <span className={`text-sm font-medium ${isDefault ? "text-[#7a6899]" : "text-[#e8368f]"}`}>
+                      <span className={`text-sm font-medium ${isDefault ? "text-[#7a6899]" : "text-[#f23b94]"}`}>
                         {rate} g/h{isDefault ? " (default)" : ""}
                       </span>
                     </div>
@@ -249,7 +249,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             </div>
             <button
               onClick={handleGenerate}
-              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#e8368f] text-white rounded-lg font-bold hover:bg-[#c52e7a] transition shadow-lg shadow-[#e8368f]/20 shrink-0"
+              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#f23b94] text-white rounded-lg font-bold hover:bg-[#d42f7e] transition shadow-lg shadow-[#f23b94]/20 shrink-0"
             >
               Generate Plan
             </button>
@@ -272,11 +272,11 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         {/* Adapt Upcoming */}
         {hasPlannedEvents && (
           <div className={isAdapting ? "retro-adapt-border rounded-xl" : ""}>
-          <div className={`relative overflow-hidden bg-[#1e1535] ${isAdapting ? "rounded-[0.65rem]" : "border border-[#3d2b5a] rounded-xl"} p-4 md:p-5`}>
+          <div className={`relative overflow-hidden bg-[#1d1828] ${isAdapting ? "rounded-[0.65rem]" : "border border-[#2e293c] rounded-xl"} p-4 md:p-5`}>
             <div className="absolute inset-0 bg-gradient-to-r from-[#6c3aed]/5 via-transparent to-[#00ffff]/5 pointer-events-none" />
             <div className="relative space-y-4">
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-[#00ffff] retro-text-flicker" : "text-[#b8a5d4]"}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-[#00ffff] retro-text-flicker" : "text-[#af9ece]"}`}>
                   {isAdapting ? "Adapting..." : "Adapt Upcoming"}
                 </span>
                 <button
@@ -302,7 +302,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               {adaptedEvents.length > 0 && (
                 <div className="space-y-3">
                   {adaptedEvents.map((event) => (
-                    <div key={event.original.id} className="bg-[#1a1030] border border-[#3d2b5a] rounded-lg p-3 space-y-2">
+                    <div key={event.original.id} className="bg-[#1a1030] border border-[#2e293c] rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
                         <span className="text-xs text-[#7a6899]">{event.date}</span>
@@ -315,7 +315,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                                 isLowConfidence
                                   ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-dashed border-[#f59e0b]/30"
                                   : change.type === "fuel"
-                                    ? "bg-[#e8368f]/20 text-[#e8368f] border border-[#e8368f]/30"
+                                    ? "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
                                     : "bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/30"
                               }`}
                             >
@@ -338,13 +338,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                         )}
                       </div>
                       {event.notes && (
-                        <div className="text-sm text-[#b8a5d4] leading-relaxed">
+                        <div className="text-sm text-[#af9ece] leading-relaxed">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                               p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
                               strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-                              em: ({ children }) => <em className="text-[#c4b5fd]">{children}</em>,
+                              em: ({ children }) => <em className="text-[#af9ece]">{children}</em>,
                             }}
                           >
                             {event.notes}

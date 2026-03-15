@@ -15,7 +15,7 @@ const routeGlowLayer: LayerProps = {
   id: "route-glow",
   type: "line",
   paint: {
-    "line-color": "#e8368f",
+    "line-color": "#f23b94",
     "line-width": 8,
     "line-opacity": 0.3,
     "line-blur": 3,
@@ -27,7 +27,7 @@ const routeLayer: LayerProps = {
   id: "route",
   type: "line",
   paint: {
-    "line-color": "#e8368f",
+    "line-color": "#f23b94",
     "line-width": 3,
     "line-opacity": 1,
   },
@@ -80,7 +80,7 @@ export function RouteMap({ latlng, className }: RouteMapProps) {
 
   if (!mapboxToken) {
     return (
-      <div className={`bg-[#2a1f3d] rounded-lg flex items-center justify-center text-[#b8a5d4] text-sm ${className}`}>
+      <div className={`bg-[#2e293c] rounded-lg flex items-center justify-center text-[#af9ece] text-sm ${className}`}>
         Map unavailable (no API key)
       </div>
     );
@@ -123,7 +123,7 @@ export function RouteMap({ latlng, className }: RouteMapProps) {
         {/* End marker - pink */}
         {endPoint && (
           <Marker longitude={endPoint[1]} latitude={endPoint[0]} anchor="center">
-            <div className="w-4 h-4 bg-[#e8368f] rounded-full border-2 border-white shadow-lg" />
+            <div className="w-4 h-4 bg-[#f23b94] rounded-full border-2 border-white shadow-lg" />
           </Marker>
         )}
       </Map>

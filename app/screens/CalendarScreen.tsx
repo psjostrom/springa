@@ -26,8 +26,8 @@ export function CalendarScreen() {
   const settings = useAtomValue(settingsAtom);
 
   return (
-    <div className="h-full bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
-      <main className="flex-1 bg-[#0d0a1a] min-h-0 min-w-0">
+    <div className="h-full bg-[#13101c] flex flex-col text-white font-sans overflow-hidden">
+      <main className="flex-1 bg-[#13101c] min-h-0 min-w-0">
         <div className="px-1 py-1 md:p-6 h-full flex flex-col overflow-hidden">
           <CalendarView apiKey={apiKey} initialEvents={events} isLoadingInitial={isLoading} initialError={error} onRetryLoad={reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} warmthPreference={settings?.warmthPreference} />
         </div>

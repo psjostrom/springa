@@ -25,7 +25,7 @@ function judgeCadence(spm: number): Judgment {
 
 function judgeMaxHR(hr: number, hrZones?: number[]): Judgment {
   if (!hrZones || hrZones.length < 5) {
-    return { label: "", color: "#b8a5d4", fraction: 0.5 };
+    return { label: "", color: "#af9ece", fraction: 0.5 };
   }
   const zone = classifyHR(hr, hrZones);
   const fractions: Record<string, number> = { z1: 0.2, z2: 0.4, z3: 0.6, z4: 0.8, z5: 1.0 };
@@ -71,12 +71,12 @@ const STAT_INFO: Record<string, PopoverContent> = {
 function StatPopover({ info, onClose }: { info: PopoverContent; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#1e1535] rounded-xl border border-[#3d2b5a] p-4 w-64 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
+      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 w-64 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-white">{info.title}</span>
-          <button onClick={onClose} aria-label="Close" className="text-[#b8a5d4] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-[#af9ece] hover:text-white text-sm">✕</button>
         </div>
-        <p className="text-sm text-[#b8a5d4] leading-relaxed">{info.description}</p>
+        <p className="text-sm text-[#af9ece] leading-relaxed">{info.description}</p>
       </div>
     </div>
   );
@@ -103,11 +103,11 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
       <button
         type="button"
         onClick={() => { setShowPopover(true); }}
-        className="bg-[#2a1f3d] rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-[#3d2b5a]"
+        className="bg-[#2e293c] rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-[#2e293c]"
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-          <span className="text-xs text-[#b8a5d4]">{label}</span>
+          <span className="text-xs text-[#af9ece]">{label}</span>
           {judgment.label && (
             <span className="ml-auto text-xs font-medium" style={{ color: judgment.color }}>
               {judgment.label}
@@ -117,7 +117,7 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
         <div className="text-lg font-bold text-white">
           {value} <span className="text-sm text-[#8b7ba8] font-normal">{unit}</span>
         </div>
-        <div className="h-1 bg-[#1e1535] rounded-full overflow-hidden">
+        <div className="h-1 bg-[#1d1828] rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${Math.round(judgment.fraction * 100)}%`, backgroundColor: judgment.color }}
@@ -190,7 +190,7 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
   if (event.intensity !== undefined) {
     const pct = Math.round(event.intensity);
     cards.push(
-      <StatCard key="int" id="int" icon={Gauge} iconColor="#c4b5fd" label="Intensity" value={`${pct}%`} unit="" judgment={judgeIntensity(pct)} />
+      <StatCard key="int" id="int" icon={Gauge} iconColor="#af9ece" label="Intensity" value={`${pct}%`} unit="" judgment={judgeIntensity(pct)} />
     );
   }
 
