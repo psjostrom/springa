@@ -29,6 +29,10 @@ Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Ta
 - `lib/intervalsApi.ts` — Intervals.icu API client (fetch, upload, sync)
 - `lib/calendarPipeline.ts` — calendar event processing pipeline
 
+## Language
+
+- **Use plain language.** No medical/scientific jargon when a simple word exists. Say "lowest BG" not "nadir," "swing" not "amplitude," "spike" not "excursion." The runner is not a researcher — use words a runner would use mid-conversation.
+
 ## Data Integrity
 
 - **Treat every repo as if the data matters.** Springa manages diabetes and training for a T1D runner. Wrong data can cause real harm. Never treat architecture as disposable. Sloppy state management, redundant storage, and hot fixes compound.

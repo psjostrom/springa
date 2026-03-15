@@ -38,5 +38,8 @@ ts-debug.log*
 # superpowers plan artifacts
 docs/superpowers/plans/
 
+# superpowers brainstorm sessions
+.superpowers/
+
 # typescript
 tsconfig.tsbuildinfo
