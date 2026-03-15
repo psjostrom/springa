@@ -73,7 +73,7 @@ Pure easy pace. Conversational. The foundation of the plan. Duration follows the
 - **Pace:** Easy (7:00–7:30/km)
 - **HR:** Z2
 - **T1D:** Pump off, moderate fuel
-- **Duration formula:** `20 + Math.round(progress * 25)` min main set (+ 10m WU, 15m CD). Recovery/taper/race-test: 20m main. Race week shakeout: 15m main.
+- **Duration formula:** Total = `20 + Math.round(progress * 25) + 15` min, split as WU 10m + main + CD 15m. Main step = total − 25. Recovery/taper/race-test: 35m total (10m main). Race week shakeout: 30m total (10m main, 10m CD).
 
 #### Easy Run + Strides
 

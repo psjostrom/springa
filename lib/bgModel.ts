@@ -279,7 +279,10 @@ export function calculateTargetFuelRates(
       method = "extrapolation";
     }
 
-    // Apply spike penalty if post-run spike data available
+    // Apply spike penalty if post-run spike data available.
+    // Averages across all activities in the category (not per fuel-rate group).
+    // With uniform rates this is identical to per-group; if rates diversify,
+    // per-group penalization can be added as a refinement.
     let spikeAdjustment: number | null = null;
     if (spikeData) {
       const catSpikes = spikeData.filter((s) => s.category === category);

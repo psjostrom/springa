@@ -46,7 +46,7 @@ The runner takes one final fuel at the cooldown transition, then nothing. This g
 
 Extend `calculateTargetFuelRates()` to penalize fuel rates that cause post-run spikes.
 
-**Current model objective:** Find the fuel rate where in-run BG drop rate = ACCEPTABLE_DROP (-0.2 mmol/L per 10min).
+**Current model objective:** Find the fuel rate where in-run BG drop rate = ACCEPTABLE_DROP (-0.1 mmol/L per 5min).
 
 **New model objective:** Find the fuel rate where in-run BG drop rate = ACCEPTABLE_DROP AND post-run BG rise stays below a threshold.
 
