@@ -243,16 +243,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
             onTouchEnd={handlePointerEnd}
           >
             <defs>
-              {/* Neon glow filter — 3 layers */}
-              <filter id="bg-glow-wide" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="6" result="blur" />
-                <feFlood floodColor="#00ffff" floodOpacity="0.3" />
-                <feComposite in2="blur" operator="in" />
-              </filter>
-              <filter id="bg-glow-mid" x="-10%" y="-10%" width="120%" height="120%">
-                <feGaussianBlur stdDeviation="2.5" result="blur" />
-                <feFlood floodColor="#00ffff" floodOpacity="0.5" />
-                <feComposite in2="blur" operator="in" />
+              <filter id="bg-blur" x="-10%" y="-10%" width="120%" height="120%">
+                <feGaussianBlur stdDeviation="3" />
               </filter>
             </defs>
 
@@ -319,10 +311,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               </g>
             ))}
 
-            {/* Glow layers */}
-            <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={4} filter="url(#bg-glow-wide)" opacity={0.4} />
-            <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={2.5} filter="url(#bg-glow-mid)" opacity={0.6} />
-            {/* Core line */}
+            {/* BG line */}
+            <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={2.5} filter="url(#bg-blur)" opacity={0.3} />
             <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={1.5} strokeLinejoin="round" />
 
             {/* Dots */}

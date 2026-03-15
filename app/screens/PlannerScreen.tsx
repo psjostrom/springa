@@ -271,8 +271,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
         {/* Adapt Upcoming */}
         {hasPlannedEvents && (
-          <div className={isAdapting ? "retro-adapt-border rounded-xl" : ""}>
-          <div className={`relative overflow-hidden bg-[#1d1828] ${isAdapting ? "rounded-[0.65rem]" : "border border-[#2e293c] rounded-xl"} p-4 md:p-5`}>
+          <div className={`relative overflow-hidden bg-[#1d1828] border border-[#2e293c] ${isAdapting ? "border-l-[3px] border-l-[#f23b94]" : ""} rounded-xl p-4 md:p-5`}>
             <div className="relative space-y-4">
               <div className="flex items-center justify-between">
                 <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-white" : "text-[#af9ece]"}`}>
@@ -283,11 +282,11 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   disabled={isAdapting}
                   className={`py-2 px-5 text-white rounded-lg font-bold transition text-sm ${
                     isAdapting
-                      ? "retro-btn-adapting cursor-not-allowed"
+                      ? "bg-[#d42c85] opacity-60 cursor-not-allowed"
                       : "bg-[#f23b94] hover:bg-[#d42f7e] shadow-lg shadow-[#f23b94]/20"
                   }`}
                 >
-                  {isAdapting ? <span className="relative z-10">Adapting...</span> : "Adapt"}
+                  {isAdapting ? <><span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Adapting</> : "Adapt"}
                 </button>
               </div>
 
@@ -360,7 +359,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                       syncDone
                         ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 cursor-default"
                         : isSyncing
-                          ? "retro-btn-uploading text-white cursor-not-allowed"
+                          ? "bg-[#d42c85] text-white opacity-60 cursor-not-allowed"
                           : "bg-[#f23b94]/10 text-[#f23b94] border border-[#f23b94]/30 hover:bg-[#f23b94]/20"
                     }`}
                   >
@@ -369,7 +368,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                 </div>
               )}
             </div>
-          </div>
           </div>
         )}
       </div>

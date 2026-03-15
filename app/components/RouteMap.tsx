@@ -10,18 +10,6 @@ interface RouteMapProps {
   className?: string;
 }
 
-// Glow effect underneath the route
-const routeGlowLayer: LayerProps = {
-  id: "route-glow",
-  type: "line",
-  paint: {
-    "line-color": "#f23b94",
-    "line-width": 8,
-    "line-opacity": 0.3,
-    "line-blur": 3,
-  },
-};
-
 // Main route line
 const routeLayer: LayerProps = {
   id: "route",
@@ -109,7 +97,6 @@ export function RouteMap({ latlng, className }: RouteMapProps) {
         attributionControl={false}
       >
         <Source id="route" type="geojson" data={geojson}>
-          <Layer {...routeGlowLayer} />
           <Layer {...routeLayer} />
         </Source>
 

@@ -17,8 +17,7 @@ export function ActionBar({
 }: ActionBarProps) {
 	if (isUploading) {
 		return (
-			<div className={`${POSITION} retro-upload-border rounded-lg`}>
-				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#f23b94] rounded-lg flex items-center justify-between p-4`}>
 					<div>
 						<h3 className="font-bold text-white text-sm md:text-base">
 							Syncing to Intervals.icu...
@@ -29,19 +28,18 @@ export function ActionBar({
 					</div>
 					<button
 						disabled
-						className="relative flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold transition text-sm md:text-base retro-btn-uploading"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#d42c85] opacity-60 cursor-not-allowed"
 					>
-						<span className="relative z-10">Syncing...</span>
+						<span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+						Syncing
 					</button>
-				</div>
 			</div>
 		);
 	}
 
 	if (statusMsg.includes("Error")) {
 		return (
-			<div className={`${POSITION} retro-error-border rounded-lg`}>
-				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#ff6b8a] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3 min-w-0">
 						<AlertTriangle size={22} className="text-[#ff6b8a] shrink-0" />
 						<div className="min-w-0">
@@ -59,15 +57,13 @@ export function ActionBar({
 					>
 						<RotateCcw size={16} /> Retry
 					</button>
-				</div>
 			</div>
 		);
 	}
 
 	if (statusMsg) {
 		return (
-			<div className={`${POSITION} retro-success-border rounded-lg`}>
-				<div className="bg-[#1d1828] flex items-center justify-between p-4 rounded-[0.4rem]">
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#4ade80] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3">
 						<CheckCircle size={22} className="text-[#39ff14] shrink-0" />
 						<div>
@@ -79,7 +75,6 @@ export function ActionBar({
 							</p>
 						</div>
 					</div>
-				</div>
 			</div>
 		);
 	}
