@@ -7,7 +7,7 @@ import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
 // --- Types ---
 
 export interface PreRunContext {
-  entrySlope30m: number; // mmol/L per 10min, linear regression over 30 min before start
+  entrySlope30m: number; // mmol/L per 5min, linear regression over 30 min before start
   entryStability: number; // std dev of mmol readings in 60 min before start
   startBG: number; // closest xDrip reading to run start
   readingCount: number; // readings that contributed
@@ -73,7 +73,7 @@ export function findReadingsInWindow(
   return readings.slice(startIdx, endIdx);
 }
 
-/** Linear regression returning mmol/L per 10min. Null if < 2 readings. */
+/** Linear regression returning mmol/L per 5min. Null if < 2 readings. */
 export function computeSlope(readings: XdripReading[]): number | null {
   if (readings.length < MIN_READINGS) return null;
 
@@ -84,8 +84,8 @@ export function computeSlope(readings: XdripReading[]): number | null {
   }));
 
   const { slope } = linearRegression(points);
-  // slope is mmol/L per minute → multiply by 10 for per-10-min
-  return slope * 10;
+  // slope is mmol/L per minute → multiply by 5 for per-5-min
+  return slope * 5;
 }
 
 /** Standard deviation of mmol values. Returns 0 for single value. */

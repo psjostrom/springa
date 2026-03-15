@@ -7,7 +7,7 @@ import { getCurrentFuelRate } from "./fuelRate";
 
 export interface PreRunInput {
   currentBG: number; // mmol/L
-  trendSlope: number | null; // mmol/L per 10min (from computeTrend)
+  trendSlope: number | null; // mmol/L per 5min (from computeTrend)
   bgModel: BGResponseModel | null;
   category: WorkoutCategory;
   currentTsb?: number | null; // Training Stress Balance (fatigue indicator)
@@ -53,14 +53,14 @@ function assessTrendSlope(slope: number | null): { level: ReadinessLevel; reason
       suggestions: ["Wait for a fresh reading"],
     };
   }
-  if (slope < -0.5) {
+  if (slope < -0.25) {
     return {
       level: "wait",
       reasons: ["BG dropping fast"],
       suggestions: ["Hold off until the trend levels out"],
     };
   }
-  if (slope <= -0.3) {
+  if (slope <= -0.15) {
     return {
       level: "caution",
       reasons: ["BG trending down"],
@@ -86,7 +86,7 @@ function forecast30m(
   trendSlope: number | null,
 ): { predictedDrop: number | null; estimatedBGAt30m: number | null } {
   if (trendSlope === null) return { predictedDrop: null, estimatedBGAt30m: null };
-  const predictedDrop = trendSlope * 3; // trendSlope is mmol/L per 10 min
+  const predictedDrop = trendSlope * 6; // trendSlope is mmol/L per 5 min
   return { predictedDrop, estimatedBGAt30m: currentBG + predictedDrop };
 }
 
@@ -133,7 +133,7 @@ export function assessReadiness(input: PreRunInput): PreRunGuidance {
 
   // Compound rule: BG < 8 AND falling → highest priority, requires wait
   // This supersedes individual "low BG" and "trending down" reasons
-  const compoundTriggered = input.currentBG < 8.0 && input.trendSlope !== null && input.trendSlope < -0.3;
+  const compoundTriggered = input.currentBG < 8.0 && input.trendSlope !== null && input.trendSlope < -0.15;
 
   // Build reasons array
   // When compound triggers, skip "BG on the low side" (redundant with compound's "low + falling")

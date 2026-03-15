@@ -30,7 +30,7 @@ function makeReportCard(overrides: Partial<ReportCard> = {}): ReportCard {
       startBG: 10.2,
       minBG: 8.5,
       hypo: false,
-      dropRate: -0.57,
+      dropRate: -0.285,
     },
     hrZone: {
       rating: "good",
@@ -39,13 +39,13 @@ function makeReportCard(overrides: Partial<ReportCard> = {}): ReportCard {
     },
     entryTrend: {
       rating: "good",
-      slope30m: -0.1,
+      slope30m: -0.05,
       stability: 0.3,
       label: "Stable",
     },
     recovery: {
       rating: "ok",
-      drop30m: -1.5,
+      drop30m: -0.75,
       nadir: 4.8,
       postHypo: false,
       label: "Dipping",
@@ -59,13 +59,13 @@ function makeRunBGContext(overrides: Partial<RunBGContext> = {}): RunBGContext {
     activityId: "a123",
     category: "easy",
     pre: {
-      entrySlope30m: -0.1,
+      entrySlope30m: -0.05,
       entryStability: 0.3,
       startBG: 10.2,
       readingCount: 6,
     },
     post: {
-      recoveryDrop30m: -1.5,
+      recoveryDrop30m: -0.75,
       nadirPostRun: 4.8,
       timeToStable: 25,
       postRunHypo: false,
@@ -114,7 +114,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(user).toContain("Start BG: 10.2 mmol/L");
     expect(user).toContain("Min BG: 8.5 mmol/L");
-    expect(user).toContain("Drop rate: -0.57 mmol/L per 10min");
+    expect(user).toContain("Drop rate: -0.28 mmol/L per 5min");
     expect(user).toContain("Hypo during run: No");
   });
 
@@ -137,9 +137,9 @@ describe("buildRunAnalysisPrompt", () => {
       reportCard: makeReportCard(),
     });
 
-    expect(user).toContain("Entry slope: -0.10");
+    expect(user).toContain("Entry slope: -0.05");
     expect(user).toContain("Label: Stable");
-    expect(user).toContain("30m recovery drop: -1.5 mmol/L");
+    expect(user).toContain("30m recovery drop: -0.8 mmol/L");
     expect(user).toContain("Nadir (lowest in 2h): 4.8 mmol/L");
     expect(user).toContain("Time to stable BG: 25 min");
     expect(user).toContain("Total BG impact (start to 2h post): -3.1 mmol/L");
@@ -184,7 +184,7 @@ describe("buildRunAnalysisPrompt", () => {
         startBG: 9.0,
         minBG: 3.2,
         hypo: true,
-        dropRate: -2.5,
+        dropRate: -1.25,
       },
     });
 

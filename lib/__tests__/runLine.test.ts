@@ -113,21 +113,21 @@ describe("formatRunLine", () => {
       bgStartAndRate: { startBG: 10.5, avgRate: -0.6, entrySlope: null },
     });
     expect(line).toContain("startBG 10.5");
-    expect(line).toContain("BG rate -0.60/10min");
+    expect(line).toContain("BG rate -0.60/5min");
   });
 
   it("includes entry slope in bgStartAndRate", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgStartAndRate: { startBG: 10.5, avgRate: -0.6, entrySlope: -0.8 },
     });
-    expect(line).toContain("startBG 10.5 (entry -0.8/10m)");
+    expect(line).toContain("startBG 10.5 (entry -0.8/5m)");
   });
 
   it("shows positive sign for rising BG rate", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgStartAndRate: { startBG: 10.0, avgRate: 0.3, entrySlope: null },
     });
-    expect(line).toContain("BG rate +0.30/10min");
+    expect(line).toContain("BG rate +0.30/5min");
   });
 
   // --- Extras: runBGContext ---
@@ -136,12 +136,12 @@ describe("formatRunLine", () => {
     const ctx: RunBGContext = {
       activityId: "a1",
       category: "easy",
-      pre: { entrySlope30m: -0.3, entryStability: 0.2, startBG: 10, readingCount: 6 },
+      pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
       post: null,
       totalBGImpact: null,
     };
     const line = formatRunLine(makeEvent(), {}, { runBGContext: ctx });
-    expect(line).toContain("entry: -0.3/10m (stable)");
+    expect(line).toContain("entry: -0.1/5m (stable)");
   });
 
   it("includes runBGContext post data", () => {
@@ -181,7 +181,7 @@ describe("formatRunLine", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgSummary: { startBG: 10.2, endBG: 7.5, dropRate: -0.54 },
     });
-    expect(line).toContain("startBG 10.2, endBG 7.5, drop -0.54/10m");
+    expect(line).toContain("startBG 10.2, endBG 7.5, drop -0.54/5m");
   });
 
   it("handles bgSummary with null endBG and dropRate", () => {
@@ -197,7 +197,7 @@ describe("formatRunLine", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgSummary: { startBG: 8.0, endBG: 9.5, dropRate: 0.3 },
     });
-    expect(line).toContain("drop +0.30/10m");
+    expect(line).toContain("drop +0.30/5m");
   });
 
   // --- Extras: feedback ---
@@ -234,7 +234,7 @@ describe("formatRunLine", () => {
     const ctx: RunBGContext = {
       activityId: "a1",
       category: "easy",
-      pre: { entrySlope30m: -0.3, entryStability: 0.2, startBG: 10, readingCount: 6 },
+      pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
       post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8 },
       totalBGImpact: -5,
     };

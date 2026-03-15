@@ -24,7 +24,7 @@ export interface EnrichedRun {
   // BG
   startBG: number;
   minBG: number;
-  dropRatePer10m: number;
+  dropRatePer5m: number;
   hypo: boolean;
   bgScore: string; // good/ok/bad
   entrySlope: number | null;
@@ -173,7 +173,7 @@ export function buildEnrichedRunTable(
       trainingLoad: event.load ?? null,
       startBG: bg.startBG,
       minBG: bg.minBG,
-      dropRatePer10m: Math.round(bg.dropRate * 100) / 100,
+      dropRatePer5m: Math.round(bg.dropRate * 100) / 100,
       hypo: bg.hypo,
       bgScore: bg.rating,
       entrySlope,
@@ -220,7 +220,7 @@ const COLUMNS = [
   "load",
   "startBG",
   "minBG",
-  "drop/10m",
+  "drop/5m",
   "hypo",
   "bgScore",
   "entrySlope",
@@ -271,7 +271,7 @@ export function formatRunTable(runs: EnrichedRun[]): string {
       val(r.trainingLoad),
       val(r.startBG),
       val(r.minBG),
-      val(r.dropRatePer10m),
+      val(r.dropRatePer5m),
       val(r.hypo),
       r.bgScore,
       val(r.entrySlope),
@@ -322,7 +322,7 @@ Column reference (do NOT use these abbreviations in your output — use plain En
 - entrySlope: was blood sugar rising or falling before the run started (positive = rising, negative = falling)
 - TSB: training fatigue score (negative = tired/accumulated fatigue, positive = fresh/rested)
 - minBG: lowest blood sugar during the run
-- drop/10m: how fast blood sugar dropped per 10 minutes
+- drop/5m: how fast blood sugar dropped per 5 minutes
 
 Higher active insulin and shorter gaps since eating predict steeper blood sugar drops.
 
@@ -351,7 +351,7 @@ ${table}
 
 "?" = not recorded (missing data, not zero). Exclude rows with "?" from that variable's analysis.
 
-Find cross-run BG patterns in drop/10m, minBG, hypo. Min 4 observations per bucket. Include n for every claim.`;
+Find cross-run BG patterns in drop/5m, minBG, hypo. Min 4 observations per bucket. Include n for every claim.`;
 
   return { system, user };
 }
