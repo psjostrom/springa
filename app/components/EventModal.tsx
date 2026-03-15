@@ -172,7 +172,7 @@ export function EventModal({
       onClick={handleClose}
     >
       <div
-        className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#ff2d95]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className={`bg-[#1e1535] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#e8368f]/10 border-t sm:border border-[#3d2b5a] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
         onAnimationEnd={(e) => { if (state.isClosing && e.animationName === "slide-down") onClose(); }}
       >
@@ -184,7 +184,7 @@ export function EventModal({
                   type="datetime-local"
                   value={editDate}
                   onChange={(e) => { dispatch({ type: "SET_EDIT_DATE", date: e.target.value }); }}
-                  className="border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+                  className="border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8368f]"
                 />
               </div>
             ) : (
@@ -254,7 +254,7 @@ export function EventModal({
                 <button
                   onClick={() => { void saveEventEdit(); }}
                   disabled={editMode.kind === "saving-date"}
-                  className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "saving-date" ? "Saving..." : "Save"}
                 </button>

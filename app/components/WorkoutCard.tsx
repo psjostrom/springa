@@ -60,7 +60,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
           {section.name}
         </span>
         {section.repeats && (
-          <span className="text-sm font-bold bg-[#ff2d95] text-white px-2 py-0.5 rounded-full">
+          <span className="text-sm font-bold bg-[#e8368f] text-white px-2 py-0.5 rounded-full">
             {section.repeats}x
           </span>
         )}
@@ -100,7 +100,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   return (
     <div>
       {/* Duration + Fuel Strip */}
-      <div className="px-3 py-2.5 bg-[#2d1a35] border-b border-[#ff2d95]/30">
+      <div className="px-3 py-2.5 bg-[#2d1a35] border-b border-[#e8368f]/30">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {estDuration != null && (
             <div className="flex items-center gap-2">

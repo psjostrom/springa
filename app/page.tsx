@@ -37,13 +37,13 @@ const splashFallback = (
       <defs>
         <linearGradient id="sp-neon" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#00ffff" />
-          <stop offset="40%" stopColor="#ff2d95" />
-          <stop offset="100%" stopColor="#ff2d95" />
+          <stop offset="40%" stopColor="#e8368f" />
+          <stop offset="100%" stopColor="#e8368f" />
         </linearGradient>
         <linearGradient id="sp-gc" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#00ffff" />
           <stop offset="50%" stopColor="#d946ef" />
-          <stop offset="100%" stopColor="#ff2d95" />
+          <stop offset="100%" stopColor="#e8368f" />
         </linearGradient>
         <filter id="sp-gb" x="-80%" y="-80%" width="260%" height="260%">
           <feGaussianBlur stdDeviation="30" />

@@ -80,7 +80,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#1e1535] rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-[#3d2b5a] shadow-lg shadow-[#ff2d95]/10">
+      <div className="bg-[#1e1535] rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-[#3d2b5a] shadow-lg shadow-[#e8368f]/10">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#3d2b5a]">
           <h2 className="text-lg font-bold text-white">Settings</h2>
           <button
@@ -115,7 +115,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               type="date"
               value={raceDate}
               onChange={(e) => { setRaceDate(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+              className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#e8368f] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
             />
           </div>
 
@@ -131,7 +131,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   type="text"
                   value={raceName}
                   onChange={(e) => { setRaceName(e.target.value); }}
-                  className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                  className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#e8368f] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                   placeholder="e.g. EcoTrail"
                 />
               </div>
@@ -143,7 +143,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   max={100}
                   value={raceDist}
                   onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                  className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                  className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#e8368f] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                   placeholder="16"
                 />
               </div>
@@ -156,7 +156,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#e8368f] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="18"
                   />
                   <p className="text-[10px] text-[#7a6899] mt-1">
@@ -171,7 +171,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={startKm}
                     onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
+                    className="w-full px-3 py-2 border border-[#3d2b5a] rounded-lg text-white bg-[#1a1030] focus:outline-none focus:ring-2 focus:ring-[#e8368f] focus:border-transparent placeholder:text-[#b8a5d4] text-sm"
                     placeholder="8"
                   />
                 </div>
@@ -196,7 +196,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     disabled={baseDisabled}
                     onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
                     className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                      baseDisabled ? "bg-[#2a1f3d] opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-[#ff2d95]" : "bg-[#3d2b5a]"
+                      baseDisabled ? "bg-[#2a1f3d] opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-[#e8368f]" : "bg-[#3d2b5a]"
                     }`}
                   >
                     <span
@@ -269,7 +269,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           {/* Notifications */}
           <div className="border-t border-[#3d2b5a] pt-4">
             <div className="flex items-center gap-2 mb-2">
-              <Bell className="text-[#ff2d95]" size={16} />
+              <Bell className="text-[#e8368f]" size={16} />
               <span className="text-sm font-semibold text-[#c4b5fd]">
                 Notifications
               </span>
@@ -287,7 +287,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                       .then((result) => { setPushPermission(result); })
                       .catch(() => { setPushPermission("denied"); });
                   }}
-                  className="px-4 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-sm text-[#ff2d95] hover:bg-[#3d2b5a] transition"
+                  className="px-4 py-2 bg-[#2a1f3d] border border-[#3d2b5a] rounded-lg text-sm text-[#e8368f] hover:bg-[#3d2b5a] transition"
                 >
                   Enable notifications
                 </button>
@@ -300,7 +300,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           <button
             onClick={() => { void handleSave(); }}
             disabled={saving || (totalWeeks !== "" && Number(totalWeeks) < MIN_PLAN_WEEKS)}
-            className="w-full py-2.5 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-50"
+            className="w-full py-2.5 bg-[#e8368f] text-white rounded-lg font-bold hover:bg-[#c52e7a] transition shadow-lg shadow-[#e8368f]/20 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
           </button>

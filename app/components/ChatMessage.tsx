@@ -16,7 +16,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? "bg-[#ff2d95]/20 border border-[#ff2d95]/30 text-white whitespace-pre-wrap"
+            ? "bg-[#e8368f]/20 border border-[#e8368f]/30 text-white whitespace-pre-wrap"
             : "bg-[#1e1535] border border-[#3d2b5a] text-[#f0e6ff]"
         }`}
       >
@@ -36,7 +36,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
               h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-1">{children}</h3>,
               code: ({ children }) => <code className="bg-[#0d0a1a] px-1 py-0.5 rounded text-[#00ffff] text-xs">{children}</code>,
               pre: ({ children }) => <pre className="bg-[#0d0a1a] rounded p-2 mb-2 last:mb-0 overflow-x-auto text-xs">{children}</pre>,
-              blockquote: ({ children }) => <blockquote className="border-l-2 border-[#ff2d95] pl-3 text-[#c4b5fd] mb-2 last:mb-0">{children}</blockquote>,
+              blockquote: ({ children }) => <blockquote className="border-l-2 border-[#e8368f] pl-3 text-[#c4b5fd] mb-2 last:mb-0">{children}</blockquote>,
               table: ({ children }) => <div className="overflow-x-auto mb-2 last:mb-0"><table className="text-xs w-full border-collapse">{children}</table></div>,
               thead: ({ children }) => <thead className="border-b border-[#3d2b5a]">{children}</thead>,
               th: ({ children }) => <th className="text-left px-2 py-1 text-white font-semibold">{children}</th>,

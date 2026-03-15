@@ -14,7 +14,7 @@ export function WorkoutList({ events }: WorkoutListProps) {
 			{events.map((ev) => (
 				<div
 					key={ev.external_id}
-					className="bg-[#1e1535] p-4 rounded border border-[#3d2b5a] flex flex-col gap-2 hover:border-[#ff2d95]/50 transition"
+					className="bg-[#1e1535] p-4 rounded border border-[#3d2b5a] flex flex-col gap-2 hover:border-[#e8368f]/50 transition"
 				>
 					<div className="flex justify-between items-baseline">
 						<h4 className="font-bold text-white">{ev.name}</h4>

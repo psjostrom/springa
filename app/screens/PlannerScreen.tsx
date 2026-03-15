@@ -226,7 +226,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {/* Fuel rates + Generate */}
         <div className="relative overflow-hidden bg-[#1e1535] border border-[#3d2b5a] rounded-xl p-4 md:p-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#ff2d95]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#e8368f]/5 via-transparent to-[#6c3aed]/5 pointer-events-none" />
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#b8a5d4]">
@@ -239,7 +239,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   return (
                     <div key={cat} className="flex flex-col text-xs text-[#b8a5d4] gap-1">
                       <span className="capitalize">{cat}</span>
-                      <span className={`text-sm font-medium ${isDefault ? "text-[#7a6899]" : "text-[#ff2d95]"}`}>
+                      <span className={`text-sm font-medium ${isDefault ? "text-[#7a6899]" : "text-[#e8368f]"}`}>
                         {rate} g/h{isDefault ? " (default)" : ""}
                       </span>
                     </div>
@@ -249,7 +249,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             </div>
             <button
               onClick={handleGenerate}
-              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#ff2d95] text-white rounded-lg font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 shrink-0"
+              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#e8368f] text-white rounded-lg font-bold hover:bg-[#c52e7a] transition shadow-lg shadow-[#e8368f]/20 shrink-0"
             >
               Generate Plan
             </button>
@@ -315,7 +315,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                                 isLowConfidence
                                   ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-dashed border-[#f59e0b]/30"
                                   : change.type === "fuel"
-                                    ? "bg-[#ff2d95]/20 text-[#ff2d95] border border-[#ff2d95]/30"
+                                    ? "bg-[#e8368f]/20 text-[#e8368f] border border-[#e8368f]/30"
                                     : "bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/30"
                               }`}
                             >

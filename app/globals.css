@@ -7,7 +7,7 @@
   --surface-alt: #2a1f3d;
   --border: #3d2b5a;
   --muted: #b8a5d4;
-  --accent-pink: #ff2d95;
+  --accent-pink: #e8368f;
   --accent-cyan: #00ffff;
   --accent-purple: #d946ef;
   --neon-glow: 0 0 12px rgba(255, 45, 149, 0.3);
@@ -229,7 +229,7 @@ input[type="datetime-local"] {
 
 /* Animated border wrappers (divs — no preflight conflict) */
 .retro-error-border {
-  background: linear-gradient(270deg, #ff6b8a, #ff2d95, #ff6b8a);
+  background: linear-gradient(270deg, #ff6b8a, #e8368f, #ff6b8a);
   background-size: 300% 300%;
   animation: retro-border-flow 3s ease infinite;
   box-shadow: 0 0 15px rgba(255, 107, 138, 0.3), 0 0 30px rgba(255, 107, 138, 0.1);
@@ -252,7 +252,7 @@ input[type="datetime-local"] {
 }
 
 .retro-upload-border {
-  background: linear-gradient(270deg, #ff2d95, #00ffff, #d946ef, #ff2d95);
+  background: linear-gradient(270deg, #e8368f, #00ffff, #d946ef, #e8368f);
   background-size: 300% 300%;
   animation: retro-border-flow 3s ease infinite, retro-glow-pulse 2s ease-in-out infinite;
   padding: 2px;
@@ -282,7 +282,7 @@ input[type="datetime-local"] {
   .retro-btn-uploading {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(270deg, #ff2d95, #d946ef, #ff2d95);
+    background: linear-gradient(270deg, #e8368f, #d946ef, #e8368f);
     background-size: 200% 200%;
     animation: retro-border-flow 3s ease infinite;
   }

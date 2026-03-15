@@ -56,7 +56,7 @@ export function DayCell({
       className={`bg-[#1e1535] p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
         !isCurrentMonth ? "opacity-40" : ""
       } ${isTodayDate && !isDropTarget ? "ring-2 ring-[#00ffff] ring-inset" : ""} ${
-        isDropTarget ? "ring-2 ring-[#ff2d95] ring-inset bg-[#2a1f3d]" : ""
+        isDropTarget ? "ring-2 ring-[#e8368f] ring-inset bg-[#2a1f3d]" : ""
       }`}
     >
       <div className="flex flex-col h-full">

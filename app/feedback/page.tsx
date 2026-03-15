@@ -274,7 +274,7 @@ function FeedbackContent() {
               value={formState.carbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, carbsG: e.target.value })); }}
               placeholder={formState.prescribedCarbsG != null ? `${formState.prescribedCarbsG} (prescribed)` : "e.g. 40"}
-              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#e8368f] text-sm"
             />
           </div>
 
@@ -287,7 +287,7 @@ function FeedbackContent() {
               value={formState.preRunCarbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
               placeholder="e.g. 25"
-              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm"
+              className="w-full px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#e8368f] text-sm"
             />
           </div>
 
@@ -297,14 +297,14 @@ function FeedbackContent() {
             onChange={(e) => { setFormState((s) => ({ ...s, comment: e.target.value })); }}
             placeholder="Comment (optional)"
             rows={3}
-            className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#ff2d95] text-sm mb-4 resize-none"
+            className="w-full max-w-sm px-4 py-3 bg-[#1e1535] border border-[#3d2b5a] rounded-xl text-white placeholder:text-[#b8a5d4] focus:outline-none focus:ring-2 focus:ring-[#e8368f] text-sm mb-4 resize-none"
           />
 
           {/* Submit */}
           <button
             onClick={handleSubmit}
             disabled={!formState.rating || !formState.activityId || submitting}
-            className="w-full max-w-sm py-3 bg-[#ff2d95] text-white rounded-xl font-bold hover:bg-[#e0207a] transition shadow-lg shadow-[#ff2d95]/20 disabled:opacity-40"
+            className="w-full max-w-sm py-3 bg-[#e8368f] text-white rounded-xl font-bold hover:bg-[#c52e7a] transition shadow-lg shadow-[#e8368f]/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
           </button>

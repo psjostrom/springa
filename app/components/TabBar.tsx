@@ -22,7 +22,7 @@ export function TabBar<T extends string>({ tabs, activeTab, onTabChange }: TabBa
           onClick={() => { onTabChange(tab.id); }}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === tab.id
-              ? "text-[#ff2d95] border-b-2 border-[#ff2d95]"
+              ? "text-[#e8368f] border-b-2 border-[#e8368f]"
               : "text-[#b8a5d4] hover:text-white"
           }`}
         >

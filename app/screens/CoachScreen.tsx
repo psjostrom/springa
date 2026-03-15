@@ -123,7 +123,7 @@ export function CoachScreen() {
                   <button
                     key={s}
                     onClick={() => { handleSend(s); }}
-                    className="text-sm px-3 py-1.5 rounded-full border border-[#3d2b5a] bg-[#1e1535] text-[#c4b5fd] hover:border-[#ff2d95]/50 hover:text-white transition-colors"
+                    className="text-sm px-3 py-1.5 rounded-full border border-[#3d2b5a] bg-[#1e1535] text-[#c4b5fd] hover:border-[#e8368f]/50 hover:text-white transition-colors"
                   >
                     {s}
                   </button>

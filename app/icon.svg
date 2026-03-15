@@ -7,18 +7,18 @@
     </linearGradient>
     <linearGradient id="neon" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#00ffff"/>
-      <stop offset="40%" stop-color="#ff2d95"/>
-      <stop offset="100%" stop-color="#ff2d95"/>
+      <stop offset="40%" stop-color="#e8368f"/>
+      <stop offset="100%" stop-color="#e8368f"/>
     </linearGradient>
     <linearGradient id="glowColor" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#00ffff"/>
       <stop offset="50%" stop-color="#d946ef"/>
-      <stop offset="100%" stop-color="#ff2d95"/>
+      <stop offset="100%" stop-color="#e8368f"/>
     </linearGradient>
     <linearGradient id="gridStroke" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#d946ef" stop-opacity="0"/>
       <stop offset="40%" stop-color="#d946ef" stop-opacity="0.08"/>
-      <stop offset="100%" stop-color="#ff2d95" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#e8368f" stop-opacity="0.5"/>
     </linearGradient>
     <filter id="glow1" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="18" result="b"/>

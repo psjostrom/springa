@@ -253,7 +253,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               onClick={() => { setViewMode(mode); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
-                  ? "bg-[#ff2d95] text-white shadow-lg shadow-[#ff2d95]/20"
+                  ? "bg-[#e8368f] text-white shadow-lg shadow-[#e8368f]/20"
                   : "bg-[#2a1f3d] text-[#b8a5d4] hover:bg-[#3d2b5a] hover:text-[#c4b5fd]"
               }`}
             >
@@ -267,7 +267,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       <div className="bg-[#1e1535] p-2 sm:p-6 rounded-xl shadow-sm border border-[#3d2b5a]">
         {isLoadingInitial && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-[#ff2d95]" size={32} />
+            <Loader2 className="animate-spin text-[#e8368f]" size={32} />
           </div>
         )}
 

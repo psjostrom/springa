@@ -50,7 +50,7 @@ export function TabNavigation({
 					>
 						{label}
 						{localTab === key && (
-							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff2d95] shadow-[0_0_8px_#ff2d95]"></div>
+							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e8368f] shadow-[0_0_8px_#e8368f]"></div>
 						)}
 					</button>
 				))}
@@ -68,7 +68,7 @@ export function TabNavigation({
 								: "text-[#c4b5fd] hover:text-[#00ffff]"
 						}`}
 					>
-						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #ff2d95)" } : undefined} />
+						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} style={localTab === key ? { filter: "drop-shadow(0 0 6px #ff69b4) drop-shadow(0 0 12px #e8368f)" } : undefined} />
 						<span className="text-sm font-medium">{label}</span>
 					</button>
 				))}

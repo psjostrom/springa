@@ -536,7 +536,7 @@ export function IntelScreen() {
               <div className="flex justify-center pt-2 pb-4">
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold uppercase transition bg-[#1e1535] border border-[#3d2b5a] text-[#b8a5d4] hover:text-[#ff2d95] hover:border-[#ff2d95]/40"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold uppercase transition bg-[#1e1535] border border-[#3d2b5a] text-[#b8a5d4] hover:text-[#e8368f] hover:border-[#e8368f]/40"
                 >
                   <RotateCcw size={14} />
                   Reset to default

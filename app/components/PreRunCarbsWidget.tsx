@@ -78,7 +78,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 if (editState.kind === "editing") setEditState({ ...editState, g: e.target.value });
               }}
               placeholder="g"
-              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#ff2d95]"
+              className="w-16 border border-[#3d2b5a] bg-[#1a1030] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#e8368f]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void savePreRunCarbs();
@@ -89,7 +89,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
             <button
               onClick={() => { void savePreRunCarbs(); }}
               disabled={editState.kind === "saving"}
-              className="px-2 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded transition disabled:opacity-50"
+              className="px-2 py-1 text-xs bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded transition disabled:opacity-50"
             >
               {editState.kind === "saving" ? "..." : "Save"}
             </button>
@@ -112,7 +112,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
                 g: displayG ? String(displayG) : "",
               });
             }}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#ff2d95] transition"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#e8368f] transition"
           >
             {displayG ? `${displayG}g` : "—"}
             <Pencil className="w-3 h-3 text-[#b8a5d4]" />

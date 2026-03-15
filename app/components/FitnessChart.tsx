@@ -224,7 +224,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
                 scaleY(yMin) - zeroY,
                 height - padding.bottom - zeroY,
               )}
-              fill="#ff2d95"
+              fill="#e8368f"
               opacity="0.05"
             />
             {/* Positive zone (freshness) */}

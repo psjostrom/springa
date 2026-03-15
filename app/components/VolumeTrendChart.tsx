@@ -164,7 +164,7 @@ export function VolumeTrendChart({
                   <ReferenceLine
                     x={data.weeks[data.currentWeekIdx].week}
                     xAxisId="actual"
-                    stroke="#ff2d95"
+                    stroke="#e8368f"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
                   />

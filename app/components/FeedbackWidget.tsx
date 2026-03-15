@@ -14,13 +14,13 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
       <div className="flex items-center gap-2">
         <button
           onClick={() => { setRating("good"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-[#3d2b5a] ring-1 ring-[#e8368f]" : "hover:bg-[#2a1f3d]"}`}
         >
           {"\ud83d\udc4d"}
         </button>
         <button
           onClick={() => { setRating("bad"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-[#3d2b5a] ring-1 ring-[#ff2d95]" : "hover:bg-[#2a1f3d]"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-[#3d2b5a] ring-1 ring-[#e8368f]" : "hover:bg-[#2a1f3d]"}`}
         >
           {"\ud83d\udc4e"}
         </button>
@@ -30,12 +30,12 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
         onChange={(e) => { setComment(e.target.value); }}
         placeholder="Optional comment..."
         rows={2}
-        className="w-full border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff2d95] resize-none"
+        className="w-full border border-[#3d2b5a] bg-[#1a1030] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#e8368f] resize-none"
       />
       <button
         onClick={() => { if (rating) onSave(rating, comment); }}
         disabled={!rating || isSaving}
-        className="px-3 py-1.5 text-sm bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition disabled:opacity-50"
+        className="px-3 py-1.5 text-sm bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded-lg transition disabled:opacity-50"
       >
         {isSaving ? "Saving..." : "Save"}
       </button>

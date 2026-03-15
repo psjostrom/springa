@@ -10,7 +10,7 @@ export function ErrorCard({ message, onRetry }: ErrorCardProps) {
 			<div className="text-sm text-[#c4b5fd]">{message}</div>
 			<button
 				onClick={onRetry}
-				className="mt-4 px-4 py-2 bg-[#ff2d95] text-white rounded-lg hover:bg-[#e0207a] transition"
+				className="mt-4 px-4 py-2 bg-[#e8368f] text-white rounded-lg hover:bg-[#c52e7a] transition"
 			>
 				Retry
 			</button>

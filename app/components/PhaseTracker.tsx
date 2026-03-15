@@ -88,7 +88,7 @@ function PhasePopover({
 			>
 				{/* Race countdown */}
 				{raceDate && weeksLeft !== null && weeksLeft > 0 && (
-					<div className="text-xs text-[#ff2d95] font-semibold mb-2">
+					<div className="text-xs text-[#e8368f] font-semibold mb-2">
 						{weeksLeft} week{weeksLeft !== 1 ? "s" : ""} to race day • {formatRaceDate(raceDate)}
 					</div>
 				)}
@@ -193,7 +193,7 @@ export function PhaseTracker({
 				</div>
 				<div className="w-full bg-[#2a1f3d] rounded-full h-2">
 					<div
-						className="bg-[#ff2d95] h-2 rounded-full transition-all duration-500 shadow-[0_0_8px_#ff2d95]"
+						className="bg-[#e8368f] h-2 rounded-full transition-all duration-500 shadow-[0_0_8px_#e8368f]"
 						style={{ width: `${progress}%` }}
 					></div>
 				</div>

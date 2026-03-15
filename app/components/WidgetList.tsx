@@ -128,7 +128,7 @@ export function WidgetList({
           <span className="text-sm font-semibold text-[#c4b5fd]">Editing layout</span>
           <button
             onClick={() => { setEditing(false); }}
-            className="px-3 py-1 text-xs bg-[#ff2d95] hover:bg-[#e0207a] text-white rounded-lg transition"
+            className="px-3 py-1 text-xs bg-[#e8368f] hover:bg-[#c52e7a] text-white rounded-lg transition"
           >
             Done
           </button>

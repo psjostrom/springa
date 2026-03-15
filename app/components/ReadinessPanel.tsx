@@ -555,8 +555,8 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
               unit="bpm"
               sparkline={data.hrSparkline}
               icon={Heart}
-              color="#ff2d95"
-              onClick={(e) => { if (data.restingHR != null) handleTap("rhr", data.restingHR, data.rhrBaseline, data.hrSparkline, "#ff2d95", e); }}
+              color="#e8368f"
+              onClick={(e) => { if (data.restingHR != null) handleTap("rhr", data.restingHR, data.rhrBaseline, data.hrSparkline, "#e8368f", e); }}
             />
           )}
           {data.sleep != null && (

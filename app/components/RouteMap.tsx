@@ -15,7 +15,7 @@ const routeGlowLayer: LayerProps = {
   id: "route-glow",
   type: "line",
   paint: {
-    "line-color": "#ff2d95",
+    "line-color": "#e8368f",
     "line-width": 8,
     "line-opacity": 0.3,
     "line-blur": 3,
@@ -27,7 +27,7 @@ const routeLayer: LayerProps = {
   id: "route",
   type: "line",
   paint: {
-    "line-color": "#ff2d95",
+    "line-color": "#e8368f",
     "line-width": 3,
     "line-opacity": 1,
   },
@@ -123,7 +123,7 @@ export function RouteMap({ latlng, className }: RouteMapProps) {
         {/* End marker - pink */}
         {endPoint && (
           <Marker longitude={endPoint[1]} latitude={endPoint[0]} anchor="center">
-            <div className="w-4 h-4 bg-[#ff2d95] rounded-full border-2 border-white shadow-lg" />
+            <div className="w-4 h-4 bg-[#e8368f] rounded-full border-2 border-white shadow-lg" />
           </Marker>
         )}
       </Map>
