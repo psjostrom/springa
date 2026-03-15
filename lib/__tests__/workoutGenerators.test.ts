@@ -374,7 +374,7 @@ describe("generatePlan", () => {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
       // CD is 15m for most runs, 10m for very short runs (shakeout/race-test)
-      const cdMatch = run.description.match(/Cooldown\n- .*?(\d+)m/);
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBeGreaterThanOrEqual(10);
       expect(parseInt(cdMatch![1], 10)).toBeLessThanOrEqual(15);
@@ -388,7 +388,7 @@ describe("generatePlan", () => {
     for (const run of strideRuns) {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
-      const cdMatch = run.description.match(/Cooldown\n- .*?(\d+)m/);
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBe(15);
     }
@@ -401,7 +401,7 @@ describe("generatePlan", () => {
     for (const run of bonusRuns) {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
-      const cdMatch = run.description.match(/Cooldown\n- .*?(\d+)m/);
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBe(15);
     }
@@ -414,7 +414,7 @@ describe("generatePlan", () => {
     );
     expect(longRuns.length).toBeGreaterThan(0);
     for (const run of longRuns) {
-      const cdMatch = run.description.match(/Cooldown\n- .*?(\d+)km/);
+      const cdMatch = /Cooldown\n- .*?(\d+)km/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBe(2);
     }
@@ -427,7 +427,7 @@ describe("generatePlan", () => {
     );
     expect(intervals.length).toBeGreaterThan(0);
     for (const run of intervals) {
-      const cdMatch = run.description.match(/Cooldown\n- .*?(\d+)m/);
+      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBe(5);
     }
@@ -442,7 +442,7 @@ describe("generatePlan", () => {
       const stepLines = run.description.split("\n").filter((l: string) => l.startsWith("- "));
       let totalMin = 0;
       for (const line of stepLines) {
-        const match = line.match(/(\d+)m\s/);
+        const match = /(\d+)m\s/.exec(line);
         if (match) totalMin += parseInt(match[1], 10);
       }
       // Total should be >= 30 (shortest easy: 10m WU + 10m main + 10m CD)

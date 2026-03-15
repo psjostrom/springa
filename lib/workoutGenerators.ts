@@ -217,11 +217,12 @@ const generateEasyRun = (
 
   if (withStrides) {
     const wu = s("10m", "easy", "Warmup");
-    const cd = s("5m", "easy", "Cooldown");
+    const cd = s("15m", "easy", "Cooldown");
+    const mainDuration = Math.max(duration - 10, 10);
     const lines = [
       notes, "",
       "Warmup", `- ${wu}`, "",
-      "Main set", `- ${s(`${duration}m`, "easy", "Easy")}`, "",
+      "Main set", `- ${s(`${mainDuration}m`, "easy", "Easy")}`, "",
       "Strides 4x", `- ${s("20s", "hard", "Stride")}`, `- ${s("1m", "walk")}`, "",
       "Cooldown", `- ${cd}`, "",
     ];
@@ -235,12 +236,15 @@ const generateEasyRun = (
     };
   }
 
-  // Single-zone easy run — no warmup/cooldown structure needed
-  const totalDuration = duration + 15; // 10m warmup + main + 5m cooldown
+  const totalDuration = duration + 25; // 10m WU + main + 15m CD
+  const cdDuration = Math.min(15, totalDuration - 10 - 10); // WU=10, min main=10
+  const mainDuration = totalDuration - 10 - cdDuration;
+  const wu = s("10m", "easy", "Warmup");
+  const cd = s(`${cdDuration}m`, "easy", "Cooldown");
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createSimpleWorkoutText(s(`${totalDuration}m`, "easy"), notes),
+    description: createWorkoutText(wu, [s(`${mainDuration}m`, "easy")], cd, 1, notes),
     external_id: `easy-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -258,13 +262,14 @@ const generateBonusRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 30 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
+  const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
 
-  // Single-zone easy run — no warmup/cooldown structure needed
+  const wu = s("10m", "easy", "Warmup");
+  const cd = s("15m", "easy", "Cooldown");
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Bonus Easy`,
-    description: createSimpleWorkoutText(s("45m", "easy"), notes),
+    description: createWorkoutText(wu, [s("20m", "easy")], cd, 1, notes),
     external_id: `bonus-${wp.weekNum}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -360,9 +365,9 @@ const generateLongRun = (
     longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "progressive";
   }
 
-  const mainKm = Math.max(km - 2, 1); // -1km WU, -1km CD
+  const mainKm = Math.max(km - 3, 1); // -1km WU, -2km CD
   const wu = s("1km", "easy", "Warmup");
-  const cd = s("1km", "easy", "Cooldown");
+  const cd = s("2km", "easy", "Cooldown");
 
   let mainSteps: string[];
   let notes: string;
