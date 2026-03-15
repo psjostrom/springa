@@ -55,11 +55,9 @@ export function ActionBar({
 					</div>
 					<button
 						onClick={onUpload}
-						className="relative overflow-hidden flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[linear-gradient(135deg,#ff6b8a,#e8368f)] shadow-[0_0_12px_rgba(255,107,138,0.4)] hover:shadow-[0_0_18px_rgba(255,107,138,0.6)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 retro-scanline-static"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#e8368f] hover:bg-[#c52e7a] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 					>
-						<span className="relative z-10 flex items-center gap-2">
-							<RotateCcw size={16} /> Retry
-						</span>
+						<RotateCcw size={16} /> Retry
 					</button>
 				</div>
 			</div>
@@ -98,11 +96,9 @@ export function ActionBar({
 			</div>
 			<button
 				onClick={onUpload}
-				className="relative overflow-hidden flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[linear-gradient(135deg,#e8368f,#d946ef)] shadow-[0_0_12px_rgba(232,54,143,0.4),0_0_24px_rgba(232,54,143,0.15)] hover:shadow-[0_0_18px_rgba(232,54,143,0.6),0_0_36px_rgba(217,70,239,0.3)] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 retro-scanline-static"
+				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-[#e8368f] hover:bg-[#c52e7a] hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 			>
-				<span className="relative z-10 flex items-center gap-2">
-					<UploadCloud size={18} /> Sync
-				</span>
+				<UploadCloud size={18} /> Sync
 			</button>
 		</div>
 	);

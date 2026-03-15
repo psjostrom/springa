@@ -193,7 +193,7 @@ export function PhaseTracker({
 				</div>
 				<div className="w-full bg-[#2a1f3d] rounded-full h-2">
 					<div
-						className="bg-[#e8368f] h-2 rounded-full transition-all duration-500 shadow-[0_0_8px_#e8368f]"
+						className="bg-[#e8368f] h-2 rounded-full transition-all duration-500"
 						style={{ width: `${progress}%` }}
 					></div>
 				</div>

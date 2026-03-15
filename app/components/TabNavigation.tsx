@@ -50,7 +50,7 @@ export function TabNavigation({
 					>
 						{label}
 						{localTab === key && (
-							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e8368f] shadow-[0_0_8px_#e8368f]"></div>
+							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e8368f]"></div>
 						)}
 					</button>
 				))}
