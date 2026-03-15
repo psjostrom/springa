@@ -124,13 +124,13 @@ function HomeContent() {
 
   return (
     <div className="h-screen bg-[#0d0a1a] flex flex-col text-white font-sans overflow-hidden">
-      <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30 shadow-[0_2px_12px_rgba(255,45,149,0.15)]">
+      <div className="bg-[#1e1535] border-b border-[#3d2b5a] flex-shrink-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
             onClick={() => { handleTabChange("calendar"); }}
-            className="text-xl md:text-2xl font-bold bg-[linear-gradient(135deg,#00ffff,#d946ef,#ff2d95)] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(0,255,255,0.4)] hover:drop-shadow-[0_0_16px_rgba(0,255,255,0.8)] hover:scale-105 active:scale-95 transition-all"
+            className="text-xl md:text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#e8368f] tracking-tight hover:scale-105 active:scale-95 transition-all"
           >
-            Springa
+            springa
           </button>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">

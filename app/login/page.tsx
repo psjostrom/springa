@@ -4,11 +4,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center p-4">
       <div className="bg-[#1e1535] rounded-xl p-8 max-w-sm w-full shadow-lg shadow-[#ff2d95]/10 border border-[#3d2b5a] text-center">
-        <h1 className="text-2xl font-bold text-white mb-2">Springa</h1>
+        <h1 className="text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#e8368f] tracking-tight mb-2">springa</h1>
         <p className="text-[#c4b5fd] text-sm mb-2">
           Sign in to access your training planner
         </p>
-        <p className="text-4xl mb-6">🐇</p>
+        <p className="text-4xl font-[family-name:var(--font-sora)] font-extrabold text-[#e8368f] mb-6">s</p>
         <form
           action={async () => {
             "use server";
