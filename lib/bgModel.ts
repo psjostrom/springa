@@ -2,6 +2,7 @@ import type { WorkoutCategory, DataPoint } from "./types";
 import type { EnrichedActivity } from "./activityStreamsDb";
 import { linearRegression } from "./math";
 import { extractObservations, MIN_ALIGNED_POINTS } from "./bgObservations";
+import { extractPostRunSpikes, type PostRunSpikeData } from "./postRunSpike";
 
 // --- Types ---
 
@@ -202,6 +203,7 @@ export interface TargetFuelResult {
   currentAvgFuel: number | null;
   method: "regression" | "extrapolation";
   confidence: "low" | "medium" | "high";
+  spikeAdjustment: number | null;
 }
 
 const EXTRAPOLATION_FACTOR = 12; // g/h per 1.0 mmol/L/5min excess drop
@@ -209,6 +211,10 @@ const ACCEPTABLE_DROP = -0.1; // mmol/L per 5min — a mild drop is normal durin
 const MIN_DROP_TO_SUGGEST = -0.25; // only suggest fuel increases beyond this threshold
 const MAX_FUEL_MULTIPLIER = 1.5; // cap target at 1.5× current fuel
 const MAX_FUEL_ABSOLUTE = 90; // absolute ceiling in g/h
+const ACCEPTABLE_SPIKE = 2.0; // mmol/L post-run 30m peak above end BG
+const SPIKE_PENALTY_FACTOR = 4; // g/h per 1.0 mmol/L excess spike
+const MIN_POST_RUN_OBS = 5;
+const MIN_FUEL_RATE = 20; // g/h safety floor
 
 function capFuel(target: number, current: number): number {
   const upperBound = current > 0
@@ -217,7 +223,10 @@ function capFuel(target: number, current: number): number {
   return Math.max(0, Math.round(Math.min(target, upperBound)));
 }
 
-export function calculateTargetFuelRates(observations: BGObservation[]): TargetFuelResult[] {
+export function calculateTargetFuelRates(
+  observations: BGObservation[],
+  spikeData?: PostRunSpikeData[],
+): TargetFuelResult[] {
   const categoryNames: WorkoutCategory[] = ["easy", "long", "interval"];
   const results: TargetFuelResult[] = [];
 
@@ -246,6 +255,10 @@ export function calculateTargetFuelRates(observations: BGObservation[]): TargetF
     // Check if we have 2+ distinct fuel rates with 3+ observations each
     const qualifiedGroups = [...fuelGroups.entries()].filter(([, obs]) => obs.length >= 3);
 
+    let target: number;
+    let method: "regression" | "extrapolation";
+    const confidence = getConfidence(catObs.length);
+
     if (qualifiedGroups.length >= 2) {
       // Regression: fuel rate (x) vs avg BG rate (y) per group
       const points = qualifiedGroups.map(([fuel, obs]) => {
@@ -255,32 +268,39 @@ export function calculateTargetFuelRates(observations: BGObservation[]): TargetF
 
       const reg = linearRegression(points);
       // Solve for y = ACCEPTABLE_DROP → x = (ACCEPTABLE_DROP - intercept) / slope
-      const target = reg.slope > 0
+      target = reg.slope > 0
         ? (ACCEPTABLE_DROP - reg.intercept) / reg.slope
         : currentAvgFuel;
-      const confidence = getConfidence(catObs.length);
-
-      results.push({
-        category,
-        targetFuelRate: capFuel(target, currentAvgFuel),
-        currentAvgFuel,
-        method: "regression",
-        confidence,
-      });
+      method = "regression";
     } else {
       // Extrapolation: only compensate for the excess drop beyond acceptable
       const excessDrop = Math.abs(avgRate) - Math.abs(ACCEPTABLE_DROP);
-      const target = currentAvgFuel + excessDrop * EXTRAPOLATION_FACTOR;
-      const confidence = getConfidence(catObs.length);
-
-      results.push({
-        category,
-        targetFuelRate: capFuel(target, currentAvgFuel),
-        currentAvgFuel,
-        method: "extrapolation",
-        confidence,
-      });
+      target = currentAvgFuel + excessDrop * EXTRAPOLATION_FACTOR;
+      method = "extrapolation";
     }
+
+    // Apply spike penalty if post-run spike data available
+    let spikeAdjustment: number | null = null;
+    if (spikeData) {
+      const catSpikes = spikeData.filter((s) => s.category === category);
+      if (catSpikes.length >= MIN_POST_RUN_OBS) {
+        const avgSpike = catSpikes.reduce((sum, s) => sum + s.spike30m, 0) / catSpikes.length;
+        if (avgSpike > ACCEPTABLE_SPIKE) {
+          const penalty = (avgSpike - ACCEPTABLE_SPIKE) * SPIKE_PENALTY_FACTOR;
+          spikeAdjustment = Math.round(penalty);
+          target = target - penalty;
+        }
+      }
+    }
+
+    results.push({
+      category,
+      targetFuelRate: Math.max(capFuel(target, currentAvgFuel), MIN_FUEL_RATE),
+      currentAvgFuel,
+      method,
+      confidence,
+      spikeAdjustment,
+    });
   }
 
   return results;
@@ -327,7 +347,8 @@ export function buildBGModelFromCached(cached: EnrichedActivity[]): BGResponseMo
     }
   }
 
-  return aggregateModel(allObservations, analyzed, activityDurations);
+  const spikeData = extractPostRunSpikes(cached);
+  return aggregateModel(allObservations, analyzed, activityDurations, spikeData);
 }
 
 /** Aggregate observations into a full BGResponseModel. */
@@ -335,6 +356,7 @@ function aggregateModel(
   observations: BGObservation[],
   activitiesAnalyzed: number,
   activityDurations?: Map<string, { category: WorkoutCategory; durationMin: number }>,
+  spikeData?: PostRunSpikeData[],
 ): BGResponseModel {
   const categories: Record<WorkoutCategory, CategoryBGResponse | null> = {
     easy: null,
@@ -383,7 +405,7 @@ function aggregateModel(
     bgByStartLevel: analyzeBGByStartLevel(observations),
     bgByEntrySlope: analyzeBGByEntrySlope(observations),
     bgByTime: analyzeBGByTime(observations),
-    targetFuelRates: calculateTargetFuelRates(observations),
+    targetFuelRates: calculateTargetFuelRates(observations, spikeData),
   };
 }
 

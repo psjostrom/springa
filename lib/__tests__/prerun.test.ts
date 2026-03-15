@@ -171,8 +171,8 @@ describe("assessReadiness — historical model", () => {
     const model = makeModel({
       activitiesAnalyzed: 3,
       targetFuelRates: [
-        { category: "easy", targetFuelRate: 30, currentAvgFuel: 25, method: "extrapolation", confidence: "medium" },
-        { category: "long", targetFuelRate: 45, currentAvgFuel: 40, method: "regression", confidence: "high" },
+        { category: "easy", targetFuelRate: 30, currentAvgFuel: 25, method: "extrapolation", confidence: "medium", spikeAdjustment: null },
+        { category: "long", targetFuelRate: 45, currentAvgFuel: 40, method: "regression", confidence: "high", spikeAdjustment: null },
       ],
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, category: "long" }));
@@ -262,7 +262,7 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
   it("bumps fuel when TSB < -4", () => {
     const model = makeModel({
       activitiesAnalyzed: 5,
-      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high" }],
+      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high", spikeAdjustment: null }],
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -6 }));
     expect(g.reasons).toContain("High fatigue — expect steeper BG drops");
@@ -273,7 +273,7 @@ describe("assessReadiness — fatigue fuel adjustment", () => {
   it("no fatigue bump when TSB >= -4", () => {
     const model = makeModel({
       activitiesAnalyzed: 5,
-      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high" }],
+      targetFuelRates: [{ category: "easy", currentAvgFuel: 48, targetFuelRate: 48, method: "regression", confidence: "high", spikeAdjustment: null }],
     });
     const g = assessReadiness(makeInput({ currentBG: 9.0, bgModel: model, currentTsb: -2 }));
     expect(g.reasons).not.toContain("High fatigue — expect steeper BG drops");
@@ -363,7 +363,7 @@ describe("assessReadiness — worst-case consolidated output", () => {
     const model = makeModel({
       activitiesAnalyzed: 5,
       targetFuelRates: [
-        { category: "easy", currentAvgFuel: 48, targetFuelRate: 55, method: "regression", confidence: "high" },
+        { category: "easy", currentAvgFuel: 48, targetFuelRate: 55, method: "regression", confidence: "high", spikeAdjustment: null },
       ],
     });
 

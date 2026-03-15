@@ -245,6 +245,7 @@ describe("buildSystemPrompt", () => {
           currentAvgFuel: 48,
           method: "extrapolation",
           confidence: "medium",
+          spikeAdjustment: null,
         },
       ],
     });

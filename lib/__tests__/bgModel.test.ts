@@ -16,6 +16,7 @@ import { extractObservations } from "../bgObservations";
 import { linearRegression } from "../math";
 import type { EnrichedActivity } from "../activityStreamsDb";
 import type { DataPoint } from "../types";
+import type { PostRunSpikeData } from "../postRunSpike";
 
 // Helper: create a BGObservation for unit tests
 function makeObs(overrides: Partial<BGObservation> = {}): BGObservation {
@@ -600,6 +601,84 @@ describe("calculateTargetFuelRates", () => {
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].currentAvgFuel).toBe(48);
+  });
+});
+
+describe("calculateTargetFuelRates with spike penalty", () => {
+  it("returns spikeAdjustment: null when no spike data provided", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const results = calculateTargetFuelRates(obs);
+    for (const r of results) {
+      expect(r.spikeAdjustment).toBeNull();
+    }
+  });
+
+  it("applies no penalty when avg spike is below threshold", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 6 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 60,
+      spike30m: 1.5, // below ACCEPTABLE_SPIKE (2.0)
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    expect(easy!.spikeAdjustment).toBeNull();
+  });
+
+  it("reduces target when avg spike exceeds threshold", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 6 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 60,
+      spike30m: 5.0, // 3.0 above ACCEPTABLE_SPIKE
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    // SPIKE_PENALTY_FACTOR = 4, excess = 3.0, penalty = 12 g/h
+    expect(easy!.spikeAdjustment).toBe(12);
+    expect(easy!.targetFuelRate).toBeLessThan(60);
+  });
+
+  it("skips penalty when fewer than MIN_POST_RUN_OBS spikes", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 3 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 60,
+      spike30m: 5.0,
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    expect(easy!.spikeAdjustment).toBeNull();
+  });
+
+  it("never reduces target below MIN_FUEL_RATE (20 g/h)", () => {
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 30, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 6 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 30,
+      spike30m: 10.0, // massive spike — penalty would be 32 g/h
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    expect(easy!.targetFuelRate).toBeGreaterThanOrEqual(20);
   });
 });
 

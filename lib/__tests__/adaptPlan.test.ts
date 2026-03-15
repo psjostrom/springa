@@ -55,6 +55,7 @@ function makeTarget(category: "easy" | "long" | "interval", rate: number): Targe
     currentAvgFuel: rate - 5,
     method: "regression",
     confidence: "medium",
+    spikeAdjustment: null,
   };
 }
 

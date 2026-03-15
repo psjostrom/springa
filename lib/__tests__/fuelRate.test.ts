@@ -7,7 +7,7 @@ function makeTarget(
   rate: number,
   confidence: "low" | "medium" | "high" = "medium",
 ): TargetFuelResult {
-  return { category, targetFuelRate: rate, currentAvgFuel: rate - 5, method: "regression", confidence };
+  return { category, targetFuelRate: rate, currentAvgFuel: rate - 5, method: "regression", confidence, spikeAdjustment: null };
 }
 
 function makeBGModel(targets: TargetFuelResult[] = []): BGResponseModel {
