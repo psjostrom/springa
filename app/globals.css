@@ -1,16 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d0a1a;
+  --background: #13101c;
   --foreground: #f0e6ff;
-  --surface: #1e1535;
+  --surface: #1d1828;
   --surface-alt: #2a1f3d;
-  --border: #3d2b5a;
-  --muted: #b8a5d4;
+  --border: #2e293c;
+  --muted: #af9ece;
   --accent-pink: #e8368f;
   --accent-cyan: #00ffff;
   --accent-purple: #d946ef;
-  --neon-glow: 0 0 12px rgba(255, 45, 149, 0.3);
+  --color-bg: #13101c;
+  --color-surface: #1d1828;
+  --color-border: #2e293c;
+  --color-muted: #af9ece;
+  --color-text: #ffffff;
+  --color-brand: #f23b94;
+  --color-brand-btn: #d42c85;
+  --color-brand-hover: #d42f7e;
+  --color-border-subtle: #4a4358;
 }
 
 @theme inline {
@@ -120,187 +128,23 @@ input[type="datetime-local"] {
   color-scheme: dark;
 }
 
-/* ── Retrowave Splash ── */
+/* Splash */
 .splash {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: linear-gradient(
-    to bottom,
-    #0d0a1a 0%,
-    #150d28 40%,
-    #1f1040 60%,
-    #2d1050 78%,
-    #3a1060 100%
-  );
+  background: #13101c;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-.splash-glow {
-  position: absolute;
-  width: 340px;
-  height: 340px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 45, 149, 0.3) 0%,
-    rgba(217, 70, 239, 0.15) 35%,
-    transparent 65%
-  );
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -65%);
-  pointer-events: none;
+/* Utility animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.splash-logo {
-  position: relative;
-  z-index: 2;
-  width: 140px;
-  height: 140px;
-  margin-top: -8vh;
-  animation: splash-logo-pulse 2.5s ease-in-out infinite;
-  overflow: visible;
-}
-
-@keyframes splash-logo-pulse {
+@keyframes gentle-pulse {
   0%, 100% { opacity: 0.85; }
   50% { opacity: 1; }
 }
-
-.splash-floor {
-  position: absolute;
-  inset: 0;
-  left: -200%;
-  right: -200%;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, transparent 26%, black 42%, black 52%, transparent 66%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 26%, black 42%, black 52%, transparent 66%);
-}
-
-.splash-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 45, 149, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 45, 149, 0.12) 1px, transparent 1px);
-  background-size: 30px 18px;
-  transform: perspective(200px) rotateX(55deg);
-  transform-origin: center 28%;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  animation: splash-grid-flow 2s linear infinite;
-}
-
-@keyframes splash-grid-flow {
-  from { background-position: 0 0; }
-  to { background-position: 0 18px; }
-}
-
-/* ── Retrowave Upload Animation ── */
-@keyframes retro-border-flow {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes retro-glow-pulse {
-  0%, 100% { box-shadow: 0 0 15px rgba(255, 45, 149, 0.5), 0 0 30px rgba(255, 45, 149, 0.2); }
-  50%      { box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.2); }
-}
-
-@keyframes retro-adapt-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(108, 58, 237, 0.5), 0 0 30px rgba(108, 58, 237, 0.2); }
-  50%      { box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.2); }
-}
-
-@keyframes retro-text-flicker {
-  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-  20%, 24%, 55% { opacity: 0.6; }
-}
-
-/* Animated border wrappers (divs — no preflight conflict) */
-.retro-error-border {
-  background: linear-gradient(270deg, #ff6b8a, #e8368f, #ff6b8a);
-  background-size: 300% 300%;
-  animation: retro-border-flow 3s ease infinite;
-  box-shadow: 0 0 15px rgba(255, 107, 138, 0.3), 0 0 30px rgba(255, 107, 138, 0.1);
-  padding: 2px;
-}
-
-.retro-success-border {
-  background: linear-gradient(270deg, #39ff14, #00ffff, #39ff14);
-  background-size: 300% 300%;
-  animation: retro-border-flow 3s ease infinite;
-  box-shadow: 0 0 15px rgba(57, 255, 20, 0.3), 0 0 30px rgba(57, 255, 20, 0.1);
-  padding: 2px;
-}
-
-.retro-adapt-border {
-  background: linear-gradient(270deg, #6c3aed, #00ffff, #d946ef, #6c3aed);
-  background-size: 300% 300%;
-  animation: retro-border-flow 3s ease infinite, retro-adapt-glow 2s ease-in-out infinite;
-  padding: 2px;
-}
-
-.retro-upload-border {
-  background: linear-gradient(270deg, #e8368f, #00ffff, #d946ef, #e8368f);
-  background-size: 300% 300%;
-  animation: retro-border-flow 3s ease infinite, retro-glow-pulse 2s ease-in-out infinite;
-  padding: 2px;
-}
-
-.retro-text-flicker {
-  animation: retro-text-flicker 3s linear infinite;
-}
-
-/* Uploading button — animated gradient needs @layer to beat button preflight */
-@layer components {
-  .retro-btn-uploading {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(270deg, #e8368f, #d946ef, #e8368f);
-    background-size: 200% 200%;
-    animation: retro-border-flow 3s ease infinite;
-  }
-
-  .retro-btn-uploading::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.15) 2px,
-      rgba(0, 0, 0, 0.15) 4px
-    );
-    pointer-events: none;
-  }
-
-  .retro-btn-adapting {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(270deg, #6c3aed, #00ffff, #6c3aed);
-    background-size: 200% 200%;
-    animation: retro-border-flow 3s ease infinite;
-  }
-
-  .retro-btn-adapting::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.15) 2px,
-      rgba(0, 0, 0, 0.15) 4px
-    );
-    pointer-events: none;
-  }
-}
-
