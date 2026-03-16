@@ -80,7 +80,7 @@ export function SimulateScreen() {
         {/* Inputs */}
         <div className="grid grid-cols-2 gap-3">
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
               <Timer size={12} /> Duration
             </span>
             <input
@@ -96,7 +96,7 @@ export function SimulateScreen() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
               <TrendingDown size={12} /> Start BG
             </span>
             <input
@@ -112,7 +112,7 @@ export function SimulateScreen() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] flex items-center gap-1">
+            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
               <Zap size={12} /> Fuel rate
             </span>
             <input
@@ -165,19 +165,19 @@ export function SimulateScreen() {
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece]">End BG</div>
+                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">End BG</div>
                 <div className="text-lg font-semibold text-white">
                   {result.curve[result.curve.length - 1].bg.toFixed(1)}
                 </div>
               </div>
               <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece]">Min BG</div>
+                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Min BG</div>
                 <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-[#ff3366]" : "text-white"}`}>
                   {result.minBG.toFixed(1)}
                 </div>
               </div>
               <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece]">Hypo risk</div>
+                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Hypo risk</div>
                 <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-[#ff3366]" : "text-[#39ff14]"}`}>
                   {result.hypoMinute != null ? `${result.hypoMinute}m` : "None"}
                 </div>

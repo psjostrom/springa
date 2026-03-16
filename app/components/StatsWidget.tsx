@@ -107,7 +107,7 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-          <span className="text-xs text-[#af9ece]">{label}</span>
+          <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</span>
           {judgment.label && (
             <span className="ml-auto text-xs font-medium" style={{ color: judgment.color }}>
               {judgment.label}

@@ -20,16 +20,24 @@ interface AgendaViewProps {
   clothingMap?: Map<string, ClothingRec>;
 }
 
+function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
+  if (isMissed) return "border-l-[#ff6b8a]";
+  if (event.type === "completed") return "border-l-[#4ade80]";
+  if (event.type === "race") return "border-l-[#f23b94]";
+  if (/bonus|optional/i.test(event.name)) return "border-l-[#4a4358]";
+  return "border-l-[#f23b94]";
+}
+
 function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; clothing?: ClothingRec }) {
   return (
     <div
       data-event-id={event.id}
       onClick={onSelect}
-      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border overflow-hidden ${
+      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border border-l-[3px] overflow-hidden ${
         isMissed
           ? "border-[#ff3366]/30 bg-[#3d1525]/30 opacity-60"
           : "border-[#2e293c]"
-      }`}
+      } ${getLeftBorderColor(event, isMissed)}`}
     >
       {/* Date */}
       <div className="flex-shrink-0 text-center w-10 sm:w-20">
@@ -59,7 +67,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                     ? "bg-[#1a3d25] text-[#39ff14] border-[#39ff14]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
                     : event.type === "race"
                       ? "bg-[#3d1525] text-[#ff6b8a] border-[#ff3366]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
-                      : "bg-[#1d1828] text-[#00ffff] border-[#00ffff]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      : "bg-[#2e293c] text-white border-[#2e293c] sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
               }`}
             >
               {event.name}
@@ -73,7 +81,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   ? "hidden sm:inline-block bg-[#1a3d25] text-[#39ff14]"
                   : event.type === "race"
                     ? "hidden sm:inline-block bg-[#3d1525] text-[#ff6b8a]"
-                    : "hidden sm:inline-block bg-[#1d1828] text-[#00ffff]"
+                    : "hidden sm:inline-block bg-[#2e293c] text-[#af9ece]"
             }`}
           >
             {isMissed
@@ -154,7 +162,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-[#00ffff] bg-[#13101c] border border-[#00ffff]/30 rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-white bg-[#2e293c] border border-[#2e293c] rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );

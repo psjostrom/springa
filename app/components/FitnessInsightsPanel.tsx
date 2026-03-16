@@ -243,7 +243,7 @@ function StatCard({
       className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
       onClick={onClick}
     >
-      <div className="text-sm text-[#af9ece] mb-1">{label}</div>
+      <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">{label}</div>
       <div className={`text-xl font-bold ${color ?? "text-white"}`}>{value}</div>
       {sub && <div className="text-sm text-[#af9ece] mt-0.5">{sub}</div>}
     </div>
@@ -336,7 +336,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("trend", e); }}
         >
-          <div className="text-sm text-[#af9ece] mb-1">Fitness Trend</div>
+          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Fitness Trend</div>
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
@@ -352,7 +352,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("ramp", e); }}
         >
-          <div className="text-sm text-[#af9ece] mb-1">Ramp Rate</div>
+          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
             <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}>
               {insights.rampRate > 0 ? "+" : ""}
@@ -377,7 +377,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load7", e); }}
         >
-          <div className="text-sm text-[#af9ece] mb-1">Last 7 days</div>
+          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Last 7 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities7d}{" "}
             <span className="text-sm font-normal text-[#af9ece]">
@@ -392,7 +392,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
           onClick={(e) => { handleTap("load28", e); }}
         >
-          <div className="text-sm text-[#af9ece] mb-1">Last 28 days</div>
+          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Last 28 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities28d}{" "}
             <span className="text-sm font-normal text-[#af9ece]">runs</span>

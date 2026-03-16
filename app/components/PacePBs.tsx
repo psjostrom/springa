@@ -47,7 +47,7 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
             className={`bg-[#2e293c] rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
             onClick={() => { if (effort.activityId) onActivitySelect?.(effort.activityId); }}
           >
-            <div className="text-xs text-[#af9ece] uppercase">{effort.label}</div>
+            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{effort.label}</div>
             <div className="text-lg font-bold text-white">
               {formatTime(effort.timeSeconds)}
             </div>
@@ -61,7 +61,7 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
             className={`bg-[#2e293c] rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
             onClick={() => { onActivitySelect?.(longestRun.activityId); }}
           >
-            <div className="text-xs text-[#af9ece] uppercase">Longest Run</div>
+            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Longest Run</div>
             <div className="text-lg font-bold text-white">
               {formatDistance(longestRun.distance)}
             </div>

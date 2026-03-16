@@ -27,11 +27,12 @@ type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
 const splashFallback = (
   <div className="splash">
-    <div className="text-center">
-      <p className="text-6xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] animate-[gentle-pulse_2.5s_ease-in-out_infinite]">
-        s
-      </p>
-      <p className="text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] opacity-70 tracking-tight mt-2">
+    <div className="text-center animate-[gentle-pulse_2.5s_ease-in-out_infinite]">
+      <svg className="w-16 h-16 mx-auto" viewBox="0 0 432 474" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 357.8,42.9 L 196.9,264.7 A 75,75 0 1,1 106.3,151.8 Z" fill="#f23b94"/>
+        <path d="M 72.2,461.1 L 233.1,239.3 A 75,75 0 1,1 323.7,352.2 Z" fill="#f23b94"/>
+      </svg>
+      <p className="text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] opacity-70 tracking-tight mt-3">
         springa
       </p>
     </div>

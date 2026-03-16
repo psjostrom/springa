@@ -71,7 +71,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-          <span className="text-xs text-[#af9ece]">{label}</span>
+          <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</span>
           <span className="ml-auto text-xs font-medium" style={{ color: judgmentColor }}>
             {judgmentLabel}
           </span>
@@ -94,7 +94,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
 function SkeletonCard({ label }: { label: string }) {
   return (
     <div className="bg-[#2e293c] rounded-lg p-3 space-y-1.5">
-      <div className="text-xs text-[#af9ece]">{label}</div>
+      <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</div>
       <div className="skeleton h-6 w-24" />
       <div className="skeleton h-1 w-full rounded-full" />
     </div>

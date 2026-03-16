@@ -96,7 +96,7 @@ export function BGCompact({ categories }: BGCompactProps) {
             onClick={() => { setSelectedCat(cat); }}
             className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-3 text-center transition-colors active:bg-[#2e293c]"
           >
-            <div className="text-xs text-[#af9ece] mb-1">{LABELS[cat.category]}</div>
+            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">{LABELS[cat.category]}</div>
             <div className="flex items-center justify-center gap-1.5 mb-0.5">
               <span
                 className="w-2 h-2 rounded-full"
