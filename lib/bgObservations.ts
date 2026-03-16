@@ -49,8 +49,8 @@ export function extractObservations(
     // Need glucose at start and end of window
     if (gStart == null || gEnd == null) continue;
 
-    // BG slope: (end - start) / windowMin * 5 → mmol/L per 5 min
-    const bgRate = ((gEnd - gStart) / WINDOW_SIZE) * 5;
+    // BG slope: (end - start) / windowMin → mmol/L per min
+    const bgRate = (gEnd - gStart) / WINDOW_SIZE;
 
     observations.push({
       category,

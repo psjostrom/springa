@@ -38,10 +38,10 @@ export function trendArrow(direction: string): string {
   return DIRECTION_ARROWS[direction] ?? "?";
 }
 
-/** Derive arrow directly from slope (mmol/L per 5min) — always consistent. */
-export function slopeToArrow(slopePer5min: number): string {
-  const deltaMgdlPer5 = slopePer5min * MGDL_TO_MMOL;
-  return trendArrow(directionFromDelta(deltaMgdlPer5));
+/** Derive arrow directly from slope (mmol/L per min) — always consistent. */
+export function slopeToArrow(slopePerMin: number): string {
+  const deltaMgdlPerMin = slopePerMin * MGDL_TO_MMOL;
+  return trendArrow(directionFromDelta(deltaMgdlPerMin));
 }
 
 // --- Parse Nightscout entries ---
@@ -87,15 +87,15 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
 // xDrip+ companion mode returns stale/wrong direction fields (~31% error rate).
 // See: https://github.com/NightscoutFoundation/xDrip/issues/3787
 // This function recomputes direction for each reading from adjacent sgv values,
-// using the same mg/dL-per-5-min thresholds as SuperStable/xDrip+ internals.
+// using mg/dL-per-minute thresholds (derived from SuperStable/xDrip+ values ÷ 5).
 
-function directionFromDelta(deltaMgdlPer5min: number): string {
-  if (deltaMgdlPer5min <= -17.5) return "DoubleDown";
-  if (deltaMgdlPer5min <= -10) return "SingleDown";
-  if (deltaMgdlPer5min <= -5) return "FortyFiveDown";
-  if (deltaMgdlPer5min <= 5) return "Flat";
-  if (deltaMgdlPer5min <= 10) return "FortyFiveUp";
-  if (deltaMgdlPer5min <= 17.5) return "SingleUp";
+function directionFromDelta(deltaMgdlPerMin: number): string {
+  if (deltaMgdlPerMin <= -3.5) return "DoubleDown";
+  if (deltaMgdlPerMin <= -2.0) return "SingleDown";
+  if (deltaMgdlPerMin <= -1.0) return "FortyFiveDown";
+  if (deltaMgdlPerMin <= 1.0) return "Flat";
+  if (deltaMgdlPerMin <= 2.0) return "FortyFiveUp";
+  if (deltaMgdlPerMin <= 3.5) return "SingleUp";
   return "DoubleUp";
 }
 
@@ -114,8 +114,8 @@ export function recomputeDirections(readings: XdripReading[]): void {
       continue;
     }
     const rawDelta = curr.sgv - prev.sgv;
-    const deltaPer5min = rawDelta / (dtMs / 300000);
-    readings[i].direction = directionFromDelta(deltaPer5min);
+    const deltaPerMin = rawDelta / (dtMs / 60000);
+    readings[i].direction = directionFromDelta(deltaPerMin);
   }
 }
 
@@ -141,14 +141,10 @@ export function computeTrend(
   }));
 
   const { slope: slopePerMin } = linearRegression(points);
-  // slope is mmol/L per minute, convert to per 5 minutes
-  const slopePer5 = Math.round(slopePerMin * 5 * 100) / 100;
+  const slopeRounded = Math.round(slopePerMin * 100) / 100;
 
-  // Classify — thresholds derived from SuperStable/directionFromDelta:
-  // SuperStable uses mg/dL per 5min; convert: mgdl5 / MGDL_TO_MMOL = mmol/L per 5min
-  // 5 → 0.28, 10 → 0.56, 17.5 → 0.97
-  const deltaMgdlPer5 = slopePer5 * MGDL_TO_MMOL;
-  const direction = directionFromDelta(deltaMgdlPer5);
+  const deltaMgdlPerMin = slopeRounded * MGDL_TO_MMOL;
+  const direction = directionFromDelta(deltaMgdlPerMin);
 
-  return { slope: slopePer5, direction };
+  return { slope: slopeRounded, direction };
 }

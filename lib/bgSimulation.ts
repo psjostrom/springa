@@ -22,7 +22,7 @@ export interface SimSegment {
 
 export interface SimulationInput {
   startBG: number; // mmol/L
-  entrySlope: number | null; // mmol/L per 5min (pre-run CGM trend)
+  entrySlope: number | null; // mmol/L per min (pre-run CGM trend)
   segments: SimSegment[]; // workout segments in order
   fuelRateGH: number | null; // constant fuel rate in g/h (null = unknown)
   bgModel: BGResponseModel;
@@ -49,11 +49,11 @@ export interface SimulationResult {
 
 // --- Constants ---
 
-const STEP_MIN = 5;
+const STEP_MIN = 1;
 const BG_FLOOR = 2.0; // physiological floor
 const ENTRY_SLOPE_DECAY_MIN = 15; // entry slope effect fades over first 15 min
 const MIN_BUCKET_SAMPLES = 3; // minimum observations to trust a time bucket
-const EXTRAPOLATION_FACTOR = 12; // g/h per 1.0 mmol/L/5min (from bgModel.ts)
+const EXTRAPOLATION_FACTOR = 60; // g/h per 1.0 mmol/L/min
 const MIN_ACTIVITIES_FOR_RELIABLE = 8; // minimum activities per category before showing predictions
 
 // --- Helpers ---
@@ -85,7 +85,7 @@ function segmentAt(
 // --- Rate computation ---
 
 interface RateResult {
-  rate: number; // mmol/L per 5 min
+  rate: number; // mmol/L per min
   stdDev: number; // observation std dev
 }
 
@@ -181,7 +181,7 @@ function getFuelSensitivity(
     }
   }
 
-  // Extrapolation fallback: 1/EXTRAPOLATION_FACTOR mmol/5min per g/h
+  // Extrapolation fallback: 1/EXTRAPOLATION_FACTOR mmol/min per g/h
   return 1 / EXTRAPOLATION_FACTOR;
 }
 
@@ -456,14 +456,14 @@ export function simulateBG(input: SimulationInput): SimulationResult {
       bgModel,
     );
 
-    // BG change for this step: rate is per 5 min, step is STEP_MIN
-    const bgChange = rate * (STEP_MIN / 5);
+    // BG change for this step: rate is per minute, step is STEP_MIN minutes
+    const bgChange = rate * STEP_MIN;
     currentBG = Math.max(BG_FLOOR, currentBG + bgChange);
 
     // Accumulate variance for confidence bands
     // Two sources: observation noise (sd) + model systematic error (residualVar)
-    const observationVar = (sd * (STEP_MIN / 5)) ** 2;
-    const modelVar = (residualVar[seg.category] ?? 0) * (STEP_MIN / 5) ** 2;
+    const observationVar = (sd * STEP_MIN) ** 2;
+    const modelVar = (residualVar[seg.category] ?? 0) * STEP_MIN ** 2;
     cumulativeVariance += observationVar + modelVar;
     const bandWidth = Math.sqrt(cumulativeVariance);
 

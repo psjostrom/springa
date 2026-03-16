@@ -1,6 +1,6 @@
 import type { XdripReading } from "../../xdrip";
 
-/** Generate XdripReading[] at 5-min intervals from a starting timestamp. */
+/** Generate XdripReading[] at 1-min intervals from a starting timestamp. */
 export function makeReadings(
   startMs: number,
   mmolValues: number[],
@@ -8,7 +8,7 @@ export function makeReadings(
   return mmolValues.map((mmol, i) => ({
     sgv: Math.round(mmol * 18.018),
     mmol,
-    ts: startMs + i * 5 * 60 * 1000, // 5-min intervals
+    ts: startMs + i * 1 * 60 * 1000, // 1-min intervals
     direction: "Flat",
   }));
 }

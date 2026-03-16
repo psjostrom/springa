@@ -145,24 +145,24 @@ describe("computeTrend", () => {
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
     expect(trend!.direction).toBe("Flat");
-    expect(Math.abs(trend!.slope)).toBeLessThan(0.25);
+    expect(Math.abs(trend!.slope)).toBeLessThan(0.05);
   });
 
   it("detects dropping BG", () => {
-    // Dropping ~0.5 mmol/L per 5 min
+    // Dropping ~0.1 mmol/L per minute
     const readings = makeReadings([10.0, 9.0, 8.0, 7.0, 6.0, 5.0]);
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
-    expect(trend!.slope).toBeLessThan(-0.5);
+    expect(trend!.slope).toBeLessThan(-0.1);
     expect(["SingleDown", "DoubleDown"]).toContain(trend!.direction);
   });
 
   it("detects rising BG", () => {
-    // Rising ~0.5 mmol/L per 5 min
+    // Rising ~0.1 mmol/L per minute
     const readings = makeReadings([5.0, 6.0, 7.0, 8.0, 9.0, 10.0]);
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
-    expect(trend!.slope).toBeGreaterThan(0.5);
+    expect(trend!.slope).toBeGreaterThan(0.1);
     expect(["SingleUp", "DoubleUp"]).toContain(trend!.direction);
   });
 
