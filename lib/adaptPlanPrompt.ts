@@ -129,7 +129,7 @@ Rules:
     if (catData) {
       lines.push("");
       lines.push(`## BG patterns (${cat})`);
-      lines.push(`Avg BG drop: ${catData.avgRate.toFixed(2)} mmol/L per 5min`);
+      lines.push(`Avg BG drop: ${catData.avgRate.toFixed(3)} mmol/L per min`);
       if (catData.avgFuelRate != null) {
         lines.push(`Avg fuel rate: ${Math.round(catData.avgFuelRate)} g/h`);
       }

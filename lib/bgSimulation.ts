@@ -186,7 +186,7 @@ function getFuelSensitivity(
 }
 
 /**
- * Compute the fuel correction: delta in mmol/L per 5min for the planned
+ * Compute the fuel correction: delta in mmol/L per min for the planned
  * fuel rate vs the model's average fuel rate for this category.
  */
 function fuelCorrection(

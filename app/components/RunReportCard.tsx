@@ -147,10 +147,10 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
           lines: [
             { label: "Start BG", value: `${bg.startBG.toFixed(1)} mmol/L` },
             { label: "Min BG", value: `${bg.minBG.toFixed(1)} mmol/L` },
-            { label: "Drop rate", value: `${bg.dropRate.toFixed(2)} /5m` },
+            { label: "Drop rate", value: `${bg.dropRate.toFixed(3)} /min` },
             { label: "Hypo", value: bg.hypo ? "Yes" : "No" },
           ],
-          description: "BG response during the run. Stable (drop < 0.5/5m) is good. Hypo (< 3.9) or fast drop (> 1.0/5m) flags a problem.",
+          description: "BG response during the run. Stable (drop < 0.1/min) is good. Hypo (< 3.9) or fast drop (> 0.2/min) flags a problem.",
         }}
       />
     );
@@ -168,13 +168,13 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
         label="Pre-Run"
         value={et.label}
         unit=""
-        judgmentLabel={`${sign}${et.slope30m.toFixed(1)}/5m`}
+        judgmentLabel={`${sign}${et.slope30m.toFixed(2)}/min`}
         judgmentColor={RATING_COLORS[et.rating]}
         fraction={RATING_FRACTIONS[et.rating]}
         popover={{
           title: "Pre-Run BG Trend",
           lines: [
-            { label: "BG direction", value: `${sign}${et.slope30m.toFixed(1)} mmol/L per 5 min` },
+            { label: "BG direction", value: `${sign}${et.slope30m.toFixed(2)} mmol/L per min` },
             { label: "How steady", value: et.stability < 0.5 ? "Very steady" : et.stability < 1.0 ? "Steady" : et.stability < 2.0 ? "Some swings" : "Volatile" },
           ],
           description: "How your BG was behaving in the 30 minutes before starting. Stable or gently rising is ideal for a safe run.",
