@@ -59,7 +59,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                     ? "bg-[#1a3d25] text-[#39ff14] border-[#39ff14]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
                     : event.type === "race"
                       ? "bg-[#3d1525] text-[#ff6b8a] border-[#ff3366]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
-                      : "bg-[#1d1828] text-[#00ffff] border-[#00ffff]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      : "bg-[#2e293c] text-white border-[#2e293c] sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
               }`}
             >
               {event.name}
@@ -73,7 +73,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   ? "hidden sm:inline-block bg-[#1a3d25] text-[#39ff14]"
                   : event.type === "race"
                     ? "hidden sm:inline-block bg-[#3d1525] text-[#ff6b8a]"
-                    : "hidden sm:inline-block bg-[#1d1828] text-[#00ffff]"
+                    : "hidden sm:inline-block bg-[#2e293c] text-[#af9ece]"
             }`}
           >
             {isMissed
@@ -154,7 +154,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-[#00ffff] bg-[#13101c] border border-[#00ffff]/30 rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-white bg-[#2e293c] border border-[#2e293c] rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
