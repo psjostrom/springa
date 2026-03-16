@@ -15,7 +15,7 @@ const LINE_CONFIGS: Record<
 > = {
   ctl: { label: "Fitness", color: "#8b5cf6", unit: "" },
   atl: { label: "Fatigue", color: "#af9ece", unit: "" },
-  tsb: { label: "Form", color: "#39ff14", unit: "" },
+  tsb: { label: "Form", color: "#4ade80", unit: "" },
 };
 
 export function FitnessChart({ data }: FitnessChartProps) {
@@ -233,7 +233,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
               y={Math.max(padding.top, scaleY(yMax))}
               width={chartWidth}
               height={zeroY - Math.max(padding.top, scaleY(yMax))}
-              fill="#39ff14"
+              fill="#4ade80"
               opacity="0.05"
             />
           </>

@@ -16,7 +16,7 @@ function WeatherSummary({ weather }: { weather: ClothingRec["weather"] }) {
   }
 
   return (
-    <span className="text-xs text-[#7a6899]">
+    <span className="text-xs text-[#af9ece]">
       {parts.join(" · ")}
     </span>
   );
@@ -29,7 +29,7 @@ export function ClothingRecommendation({ recommendation }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {(weather.isRain || weather.isSnow) && (
-        <span className="text-xs px-1.5 py-0.5 rounded bg-[#3d2b1a] text-[#ffb800] border border-[#ffb800]/30 font-medium">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-[#3d2b1a] text-white border border-[#ffb800]/30 font-medium">
           {weather.isSnow ? "Snow" : "Rain"} {weather.precipitation.toFixed(1)} mm/h
         </span>
       )}

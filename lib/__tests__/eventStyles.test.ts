@@ -49,7 +49,7 @@ describe("getEventStyle", () => {
   it("returns missed style with error border and reduced opacity", () => {
     vi.useFakeTimers({ now: new Date("2026-03-10T12:00:00") });
     const style = getEventStyle(makeEvent({ type: "planned", date: new Date("2026-03-08") }));
-    expect(style).toContain("ff6b8a");
+    expect(style).toContain("ff4d6a");
     expect(style).toContain("opacity-70");
     vi.useRealTimers();
   });

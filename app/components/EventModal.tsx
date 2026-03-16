@@ -219,7 +219,7 @@ export function EventModal({
                 )}
                 <button
                   onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
-                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#5a1f3a] text-[#ff6b8a] rounded-lg transition"
+                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#2e293c] text-white rounded-lg transition"
                 >
                   Delete
                 </button>
@@ -227,7 +227,7 @@ export function EventModal({
             )}
             {(editMode.kind === "confirming-delete" || editMode.kind === "deleting") && (
               <>
-                <span className="text-sm text-[#ff6b8a]">Delete this workout?</span>
+                <span className="text-sm text-[#ff4d6a]">Delete this workout?</span>
                 <button
                   onClick={() => {
                     dispatch({ type: "DELETE" });
@@ -236,7 +236,7 @@ export function EventModal({
                     });
                   }}
                   disabled={editMode.kind === "deleting"}
-                  className="px-3 py-1.5 text-sm bg-[#ff3366] hover:bg-[#e0294f] text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#ff4d6a] hover:brightness-110 text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "deleting" ? "Deleting..." : "Confirm"}
                 </button>
@@ -277,7 +277,7 @@ export function EventModal({
         </div>
 
         {state.error && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm">
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-white text-sm">
             {state.error}
           </div>
         )}

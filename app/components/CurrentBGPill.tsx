@@ -5,9 +5,9 @@ import { useAtomValue } from "jotai";
 import { currentBGAtom, trendAtom, lastBGUpdateAtom } from "../atoms";
 
 export function bgColor(mmol: number): string {
-  if (mmol < 3.5 || mmol > 14.0) return "#ff3366";
-  if (mmol < 4.0 || mmol > 10.0) return "#fbbf24";
-  return "#39ff14";
+  if (mmol < 3.5 || mmol > 14.0) return "#ff4d6a";
+  if (mmol < 4.0 || mmol > 10.0) return "#ffb800";
+  return "#4ade80";
 }
 
 function relativeTime(date: Date, now: number): string {

@@ -107,7 +107,7 @@ function WidgetHeading({ widgetKey, meta }: { widgetKey: WidgetKey; meta?: strin
         {label}
       </span>
       {meta && (
-        <span className="text-xs text-[#8b7ba8]">{meta}</span>
+        <span className="text-xs text-[#af9ece]">{meta}</span>
       )}
     </div>
   );
@@ -153,7 +153,7 @@ function WidgetEditBar({
       </button>
       <button
         onClick={() => { onToggle(widgetKey); }}
-        className={`p-1 rounded transition ${isHidden ? "text-[#6b5b8a] hover:text-[#af9ece]" : "text-[#af9ece] hover:text-[#f23b94]"}`}
+        className={`p-1 rounded transition ${isHidden ? "text-[#af9ece]/60" : "text-[#af9ece] hover:text-[#f23b94]"}`}
         aria-label={isHidden ? "Show widget" : "Hide widget"}
       >
         {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -515,7 +515,7 @@ export function IntelScreen() {
                     {editMode && isHidden ? (
                       <div className="opacity-30 pointer-events-none select-none">
                         <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4">
-                          <div className="text-xs text-[#6b5b8a] uppercase font-semibold">
+                          <div className="text-xs text-[#af9ece] uppercase font-semibold">
                             {LABEL_MAP.get(key) ?? key} (hidden)
                           </div>
                         </div>

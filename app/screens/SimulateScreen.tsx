@@ -10,7 +10,7 @@ import { bgModelAtom, bgModelLoadingAtom } from "../atoms";
 
 const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
   { key: "easy", label: "Easy", color: "#06b6d4" },
-  { key: "long", label: "Long", color: "#fbbf24" },
+  { key: "long", label: "Long", color: "#ffb800" },
   { key: "interval", label: "Interval", color: "#fb923c" },
 ];
 
@@ -131,8 +131,8 @@ export function SimulateScreen() {
                 onClick={() => { setFuelKnown(!fuelKnown); }}
                 className={`text-xs px-1.5 py-0.5 rounded transition ${
                   fuelKnown
-                    ? "bg-[#1a3d25] text-[#39ff14]"
-                    : "bg-[#3d2b1a] text-[#ffb800]"
+                    ? "bg-[#1a3d25] text-white"
+                    : "bg-[#3d2b1a] text-white"
                 }`}
               >
                 {fuelKnown ? "known" : "unknown"}
@@ -147,9 +147,9 @@ export function SimulateScreen() {
             {/* Reliability gate */}
             {!result.reliable && (
               <div className="bg-[#3d2b1a] border border-[#ffb800]/30 rounded-lg p-3 flex items-start gap-2">
-                <AlertTriangle size={18} className="text-[#ffb800] flex-shrink-0 mt-0.5" />
+                <AlertTriangle size={18} className="text-white flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="text-[#ffb800] font-medium">Prediction not yet reliable</p>
+                  <p className="text-white font-medium">Prediction not yet reliable</p>
                   <ul className="text-[#af9ece] mt-1 space-y-0.5">
                     {result.warnings.map((w, i) => (
                       <li key={i}>• {w}</li>
@@ -172,13 +172,13 @@ export function SimulateScreen() {
               </div>
               <div className="bg-[#1d1828] rounded-lg p-2">
                 <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Min BG</div>
-                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-[#ff3366]" : "text-white"}`}>
+                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-[#ff4d6a]" : "text-white"}`}>
                   {result.minBG.toFixed(1)}
                 </div>
               </div>
               <div className="bg-[#1d1828] rounded-lg p-2">
                 <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Hypo risk</div>
-                <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-[#ff3366]" : "text-[#39ff14]"}`}>
+                <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-[#ff4d6a]" : "text-[#4ade80]"}`}>
                   {result.hypoMinute != null ? `${result.hypoMinute}m` : "None"}
                 </div>
               </div>

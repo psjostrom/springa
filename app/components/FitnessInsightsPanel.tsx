@@ -14,14 +14,14 @@ const FORM_ZONE_STYLES: Record<
 > = {
   "high-risk": {
     bg: "bg-[#3d1525]",
-    text: "text-[#ff3366]",
-    border: "border-[#ff3366]/30",
+    text: "text-white",
+    border: "border-[#ff4d6a]/30",
     icon: AlertTriangle,
   },
   optimal: {
     bg: "bg-[#1a3d25]",
-    text: "text-[#39ff14]",
-    border: "border-[#39ff14]/30",
+    text: "text-white",
+    border: "border-[#4ade80]/30",
     icon: Zap,
   },
   grey: {
@@ -38,7 +38,7 @@ const FORM_ZONE_STYLES: Record<
   },
   transition: {
     bg: "bg-[#3d2b1a]",
-    text: "text-[#ffb800]",
+    text: "text-white",
     border: "border-[#ffb800]/30",
     icon: Activity,
   },
@@ -267,7 +267,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
     insights.ctlTrend > 1 ? (
       <TrendingUp className="w-4 h-4 text-[#8b5cf6]" />
     ) : insights.ctlTrend < -1 ? (
-      <TrendingDown className="w-4 h-4 text-[#ff3366]" />
+      <TrendingDown className="w-4 h-4 text-[#ff4d6a]" />
     ) : (
       <Minus className="w-4 h-4 text-[#af9ece]" />
     );
@@ -340,7 +340,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
-              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}
+              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff4d6a]" : "text-[#8b5cf6]"}`}
             >
               {insights.ctlTrend > 0 ? "+" : ""}
               {insights.ctlTrend}
@@ -354,7 +354,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
         >
           <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff3366]" : "text-[#8b5cf6]"}`}>
+            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff4d6a]" : "text-[#8b5cf6]"}`}>
               {insights.rampRate > 0 ? "+" : ""}
               {insights.rampRate}
             </span>
@@ -366,8 +366,8 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Ramp Warning */}
       {rampWarning && (
         <div className="bg-[#3d2b1a] border border-[#ffb800]/30 rounded-lg px-4 py-2 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-[#ffb800] flex-shrink-0" />
-          <span className="text-sm text-[#ffb800]">{rampWarning}</span>
+          <AlertTriangle className="w-4 h-4 text-white flex-shrink-0" />
+          <span className="text-sm text-white">{rampWarning}</span>
         </div>
       )}
 

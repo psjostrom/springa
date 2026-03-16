@@ -152,7 +152,7 @@ export function VolumeTrendChart({
                       {d.completed > 0 && (
                         <>
                           <div className="border-t border-[#2e293c] my-1.5" />
-                          <div className="text-[#39ff14]">Actual : {d.completed} km</div>
+                          <div className="text-[#4ade80]">Actual : {d.completed} km</div>
                         </>
                       )}
                     </div>
@@ -191,7 +191,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="actual"
                 dataKey="completed"
-                fill="#39ff14"
+                fill="#4ade80"
                 radius={2}
                 maxBarSize={14}
               />
@@ -200,7 +200,7 @@ export function VolumeTrendChart({
         </div>
         <div className="flex items-center justify-center gap-4 mt-2 text-sm text-[#af9ece]">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#39ff14]" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#4ade80]" />
             Actual
           </span>
           <span className="flex items-center gap-1">

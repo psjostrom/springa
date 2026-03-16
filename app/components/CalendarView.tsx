@@ -254,7 +254,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
                   ? "bg-[#f23b94] text-white shadow-lg shadow-[#f23b94]/20"
-                  : "bg-[#2e293c] text-[#af9ece] hover:bg-[#2e293c] hover:text-[#af9ece]"
+                  : "bg-[#2e293c] text-[#af9ece] hover:bg-[#4a4358] hover:text-white"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -278,9 +278,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
         )}
 
         {dragError && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-[#ff6b8a] text-sm flex items-center justify-between">
+          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-white text-sm flex items-center justify-between">
             <span>{dragError}</span>
-            <button onClick={clearDragError} className="text-[#ff6b8a] hover:text-white ml-2">✕</button>
+            <button onClick={clearDragError} className="text-[#af9ece] hover:text-white ml-2">✕</button>
           </div>
         )}
 

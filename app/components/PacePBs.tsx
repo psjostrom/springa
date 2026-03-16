@@ -51,7 +51,7 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
             <div className="text-lg font-bold text-white">
               {formatTime(effort.timeSeconds)}
             </div>
-            <div className="text-xs text-[#8b7ba8]">
+            <div className="text-xs text-[#af9ece]">
               {formatPace(effort.pace)}/km
             </div>
           </div>

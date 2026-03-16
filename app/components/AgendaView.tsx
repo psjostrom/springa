@@ -21,7 +21,7 @@ interface AgendaViewProps {
 }
 
 function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
-  if (isMissed) return "border-l-[#ff6b8a]";
+  if (isMissed) return "border-l-[#ff4d6a]";
   if (event.type === "completed") return "border-l-[#4ade80]";
   if (event.type === "race") return "border-l-[#f23b94]";
   if (/bonus|optional/i.test(event.name)) return "border-l-[#4a4358]";
@@ -35,7 +35,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
       onClick={onSelect}
       className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border border-l-[3px] overflow-hidden ${
         isMissed
-          ? "border-[#ff3366]/30 bg-[#3d1525]/30 opacity-60"
+          ? "border-[#ff4d6a]/30 bg-[#3d1525]/30 opacity-60"
           : "border-[#2e293c]"
       } ${getLeftBorderColor(event, isMissed)}`}
     >
@@ -62,11 +62,11 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
             <h3
               className={`font-semibold truncate px-2 py-0.5 rounded text-sm border ${
                 isMissed
-                  ? "bg-[#3d1525] text-[#ff6b8a] border-[#ff3366]/30 sm:bg-transparent sm:text-[#ff6b8a] sm:border-transparent sm:px-0 sm:py-0 line-through"
+                  ? "bg-[#3d1525] text-white border-[#ff4d6a]/30 sm:bg-transparent sm:text-[#ff4d6a] sm:border-transparent sm:px-0 sm:py-0 line-through"
                   : event.type === "completed"
-                    ? "bg-[#1a3d25] text-[#39ff14] border-[#39ff14]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                    ? "bg-[#1a3d25] text-white border-[#4ade80]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
                     : event.type === "race"
-                      ? "bg-[#3d1525] text-[#ff6b8a] border-[#ff3366]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      ? "bg-[#3d1525] text-white border-[#ff4d6a]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
                       : "bg-[#2e293c] text-white border-[#2e293c] sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
               }`}
             >
@@ -76,11 +76,11 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
           <span
             className={`px-2 py-0.5 rounded text-sm font-medium flex-shrink-0 ${
               isMissed
-                ? "hidden sm:inline-block bg-[#3d1525] text-[#ff6b8a]"
+                ? "hidden sm:inline-block bg-[#3d1525] text-white"
                 : event.type === "completed"
-                  ? "hidden sm:inline-block bg-[#1a3d25] text-[#39ff14]"
+                  ? "hidden sm:inline-block bg-[#1a3d25] text-white"
                   : event.type === "race"
-                    ? "hidden sm:inline-block bg-[#3d1525] text-[#ff6b8a]"
+                    ? "hidden sm:inline-block bg-[#3d1525] text-white"
                     : "hidden sm:inline-block bg-[#2e293c] text-[#af9ece]"
             }`}
           >
@@ -179,7 +179,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   totalCarbs != null ? `${totalCarbs}g total` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-[#ffb800] bg-[#2d1a35] border border-[#ffb800]/30 rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-white bg-[#3d2b1a] border border-[#ffb800]/30 rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
@@ -228,7 +228,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => { setView("upcoming"); }}
-          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -253,7 +253,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => { setView("history"); }}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

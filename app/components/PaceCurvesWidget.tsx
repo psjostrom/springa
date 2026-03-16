@@ -170,14 +170,14 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                 className={`px-2 py-1 text-xs rounded transition-colors ${
                   timeWindow.label === tw.label
                     ? "bg-[#2e293c] text-white"
-                    : "text-[#8b7ba8] hover:text-white"
+                    : "text-[#af9ece] hover:text-white"
                 }`}
               >
                 {tw.label}
               </button>
             ))}
             {isLoading && (
-              <span className="text-xs text-[#8b7ba8] ml-2 self-center">Loading...</span>
+              <span className="text-xs text-[#af9ece] ml-2 self-center">Loading...</span>
             )}
           </div>
           <div ref={wrapperRef} className="relative">

@@ -21,7 +21,7 @@ const CATEGORY_ORDER: WorkoutCategory[] = ["easy", "long", "interval"];
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   easy: "#06b6d4",
-  long: "#fbbf24",
+  long: "#ffb800",
   interval: "#fb923c",
 };
 
@@ -102,25 +102,25 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                   value: "mmol/L /5m",
                   angle: -90,
                   position: "insideLeft",
-                  style: { fill: "#8b7ba8", fontSize: 10 },
+                  style: { fill: "#af9ece", fontSize: 10 },
                   offset: 20,
                 }}
               />
               <ReferenceLine
                 y={0}
-                stroke="#39ff14"
+                stroke="#4ade80"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
               />
               <ReferenceLine
                 y={CRASH_DROP_RATE}
-                stroke="#ff3366"
+                stroke="#ff4d6a"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
                 label={{
                   value: "crash",
                   position: "right",
-                  fill: "#ff3366",
+                  fill: "#ff4d6a",
                   fontSize: 10,
                 }}
               />
@@ -129,7 +129,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                   if (props.payload.length === 0) return null;
                   const d = (props.payload[0] as { payload: { category: WorkoutCategory; y: number } }).payload;
                   return (
-                    <div className="bg-[#13101c] border border-[#2e293c] rounded px-2 py-1 text-xs text-[#e0d0f0]">
+                    <div className="bg-[#13101c] border border-[#2e293c] rounded px-2 py-1 text-xs text-[#af9ece]">
                       {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/5m
                     </div>
                   );

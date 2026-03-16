@@ -15,9 +15,9 @@ const LABELS: Record<WorkoutCategory, string> = {
 };
 
 function rateColor(rate: number): string {
-  if (rate > -0.5) return "#39ff14";
-  if (rate > -1.5) return "#fbbf24";
-  return "#ff3366";
+  if (rate > -0.5) return "#4ade80";
+  if (rate > -1.5) return "#ffb800";
+  return "#ff4d6a";
 }
 
 function rateLabel(rate: number): string {
@@ -113,7 +113,7 @@ export function BGCompact({ categories }: BGCompactProps) {
               {rateLabel(cat.avgRate)}
             </div>
             {cat.avgFuelRate != null && (
-              <div className="text-xs text-[#6b5b8a] mt-1">{Math.round(cat.avgFuelRate)} g/h</div>
+              <div className="text-xs text-[#af9ece] mt-1">{Math.round(cat.avgFuelRate)} g/h</div>
             )}
           </button>
         ))}

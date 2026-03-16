@@ -362,13 +362,13 @@ function ReadinessBanner({
   let state: { bg: string; border: string; text: string; label: string };
 
   if (readiness >= 70) {
-    state = { bg: "bg-[#1a3d25]", border: "border-[#39ff14]/30", text: "text-[#39ff14]", label: "Ready to train" };
+    state = { bg: "bg-[#1a3d25]", border: "border-[#4ade80]/30", text: "text-white", label: "Ready to train" };
   } else if (readiness >= 50) {
-    state = { bg: "bg-[#1a2e1a]", border: "border-[#4ade80]/30", text: "text-[#4ade80]", label: "Good to go" };
+    state = { bg: "bg-[#1a3d25]", border: "border-[#4ade80]/30", text: "text-white", label: "Good to go" };
   } else if (readiness >= 30) {
-    state = { bg: "bg-[#3d2b1a]", border: "border-[#ffb800]/30", text: "text-[#ffb800]", label: "Monitor recovery" };
+    state = { bg: "bg-[#3d2b1a]", border: "border-[#ffb800]/30", text: "text-white", label: "Monitor recovery" };
   } else {
-    state = { bg: "bg-[#3d1525]", border: "border-[#ff3366]/30", text: "text-[#ff3366]", label: "Recovery day" };
+    state = { bg: "bg-[#3d1525]", border: "border-[#ff4d6a]/30", text: "text-white", label: "Recovery day" };
   }
 
   return (
@@ -393,15 +393,15 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
 
   let zone: { label: string; color: string; bg: string };
   if (tsb < -20) {
-    zone = { label: "Fatigued", color: "text-[#ff3366]", bg: "bg-[#3d1525]" };
+    zone = { label: "Fatigued", color: "text-white", bg: "bg-[#3d1525]" };
   } else if (tsb < -10) {
-    zone = { label: "Loading", color: "text-[#ffb800]", bg: "bg-[#3d2b1a]" };
+    zone = { label: "Loading", color: "text-white", bg: "bg-[#3d2b1a]" };
   } else if (tsb < 5) {
     zone = { label: "Neutral", color: "text-[#af9ece]", bg: "bg-[#2e293c]" };
   } else if (tsb < 15) {
-    zone = { label: "Fresh", color: "text-[#4ade80]", bg: "bg-[#1a2e1a]" };
+    zone = { label: "Fresh", color: "text-white", bg: "bg-[#1a3d25]" };
   } else {
-    zone = { label: "Peaked", color: "text-[#39ff14]", bg: "bg-[#1a3d25]" };
+    zone = { label: "Peaked", color: "text-white", bg: "bg-[#1a3d25]" };
   }
 
   return (
@@ -422,7 +422,7 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
           {tsb > 0 ? "+" : ""}{tsb}
         </span>
         <div className="flex-1 h-2 bg-[#13101c] rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-[#ff3366] via-[#ffb800] via-[#af9ece] via-[#00ffff] to-[#39ff14]" style={{ width: "100%" }} />
+          <div className="h-full bg-gradient-to-r from-[#ff4d6a] via-[#ffb800] via-[#af9ece] via-[#00ffff] to-[#4ade80]" style={{ width: "100%" }} />
         </div>
       </div>
 

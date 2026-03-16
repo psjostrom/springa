@@ -127,7 +127,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
         )}
       </div>
       {error && (
-        <p className="text-xs text-[#ff3366] mt-1">{error}</p>
+        <p className="text-xs text-[#ff4d6a] mt-1">{error}</p>
       )}
     </div>
   );

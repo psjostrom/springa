@@ -6,7 +6,7 @@ interface ErrorCardProps {
 export function ErrorCard({ message, onRetry }: ErrorCardProps) {
 	return (
 		<div className="text-center py-4">
-			<div className="text-[#ff3366] font-semibold mb-2">Error</div>
+			<div className="text-[#ff4d6a] font-semibold mb-2">Error</div>
 			<div className="text-sm text-[#af9ece]">{message}</div>
 			<button
 				onClick={onRetry}

@@ -69,7 +69,7 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           {/* Hypo threshold */}
           <ReferenceLine
             y={3.9}
-            stroke="#ff3366"
+            stroke="#ff4d6a"
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />

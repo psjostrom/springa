@@ -78,7 +78,7 @@ function PaceZonesPopover({
                 style={{ backgroundColor: color }}
               />
               <span className="text-[#af9ece] font-medium w-12">{label}</span>
-              <span className="text-[#8b7ba8]">{ZONE_PURPOSE[zone]}</span>
+              <span className="text-[#af9ece]">{ZONE_PURPOSE[zone]}</span>
             </div>
           ))}
         </div>
@@ -96,15 +96,15 @@ function PaceZonesPopover({
 }
 
 function TrendArrow({ slope }: { slope: number | null }) {
-  if (slope === null) return <span className="text-[#8b7ba8]">—</span>;
+  if (slope === null) return <span className="text-[#af9ece]">—</span>;
   // slope is min/km per day — negative = faster
   if (Math.abs(slope) < 0.003) {
-    return <span className="text-[#8b7ba8]">→</span>;
+    return <span className="text-[#af9ece]">→</span>;
   }
   if (slope < 0) {
-    return <span className="text-[#39ff14]">↓</span>;
+    return <span className="text-[#4ade80]">↓</span>;
   }
-  return <span className="text-[#ff3366]">↑</span>;
+  return <span className="text-[#ff4d6a]">↑</span>;
 }
 
 export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
@@ -133,7 +133,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
         className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden cursor-pointer active:bg-[#2e293c] transition-colors"
       >
         {/* Header */}
-        <div className="flex items-center px-3 py-2 border-b border-[#2e293c] text-xs text-[#8b7ba8]">
+        <div className="flex items-center px-3 py-2 border-b border-[#2e293c] text-xs text-[#af9ece]">
           <span className="w-16">Zone</span>
           <span className="flex-1 text-right">Pace</span>
           <span className="w-12 text-right">HR</span>
@@ -167,18 +167,18 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
               <div className="flex-1 text-right">
                 <span
                   className={`text-sm tabular-nums ${
-                    entry.calibrated ? "font-bold text-white" : "text-[#8b7ba8]"
+                    entry.calibrated ? "font-bold text-white" : "text-[#af9ece]"
                   }`}
                 >
                   {formatPace(entry.pace)}
                 </span>
                 {!entry.calibrated && (
-                  <span className="text-[10px] text-[#6b5b8a] ml-1">fallback</span>
+                  <span className="text-[10px] text-[#af9ece] ml-1">fallback</span>
                 )}
               </div>
 
               {/* Avg HR */}
-              <span className="w-12 text-right text-xs tabular-nums text-[#8b7ba8]">
+              <span className="w-12 text-right text-xs tabular-nums text-[#af9ece]">
                 {summary ? Math.round(summary.avgHr) : "—"}
               </span>
 

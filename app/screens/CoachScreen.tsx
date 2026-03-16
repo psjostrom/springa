@@ -133,7 +133,7 @@ export function CoachScreen() {
           )}
 
           {error && (
-            <div className="bg-[#3d1525] border border-[#ff3366]/30 rounded-xl px-4 py-3 text-sm text-[#ff3366]">
+            <div className="bg-[#3d1525] border border-[#ff4d6a]/30 rounded-xl px-4 py-3 text-sm text-white">
               Failed to get response. Check your API key and try again.
             </div>
           )}

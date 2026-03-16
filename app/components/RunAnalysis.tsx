@@ -114,11 +114,11 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           <div className="skeleton h-4 w-3/4 rounded" />
         </div>
       ) : displayError ? (
-        <div className="text-sm text-[#ff3366] italic">
+        <div className="text-sm text-[#ff4d6a] italic">
           {displayError instanceof Error ? displayError.message : "Failed to load analysis"}
         </div>
       ) : analysis ? (
-        <div className="text-sm text-[#e2d9f3] leading-relaxed prose-analysis">
+        <div className="text-sm text-[#af9ece] leading-relaxed prose-analysis">
           <ReactMarkdown>{analysis}</ReactMarkdown>
         </div>
       ) : null}

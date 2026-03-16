@@ -8,9 +8,9 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import { buildReportCard } from "@/lib/reportCard";
 
 const RATING_COLORS = {
-  good: "#39ff14",
-  ok: "#fbbf24",
-  bad: "#ff3366",
+  good: "#4ade80",
+  ok: "#ffb800",
+  bad: "#ff4d6a",
 } as const;
 
 const RATING_FRACTIONS = { good: 0.9, ok: 0.55, bad: 0.25 } as const;
@@ -39,7 +39,7 @@ function BGPopover({ content, onClose }: { content: PopoverContent; onClose: () 
             </div>
           ))}
         </div>
-        <p className="text-xs text-[#8b7ba8] leading-relaxed">{content.description}</p>
+        <p className="text-xs text-[#af9ece] leading-relaxed">{content.description}</p>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
           </span>
         </div>
         <div className="text-lg font-bold text-white">
-          {value} <span className="text-sm text-[#8b7ba8] font-normal">{unit}</span>
+          {value} <span className="text-sm text-[#af9ece] font-normal">{unit}</span>
         </div>
         <div className="h-1 bg-[#1d1828] rounded-full overflow-hidden">
           <div
@@ -191,7 +191,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
       <BGCard
         key="recovery"
         icon={Heart}
-        iconColor="#39ff14"
+        iconColor="#4ade80"
         label="Recovery"
         value={rec.label}
         unit=""
