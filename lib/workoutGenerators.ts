@@ -379,7 +379,7 @@ const generateLongRun = (
     mainSteps = [s(`${easyBeforeKm}km`, "easy", "Easy"), s(`${rpBlockKm}km`, "steady", "Race Pace"), s(`${easyAfterKm}km`, "easy", "Easy")];
     notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
   } else if (longRunVariant === "progressive" && mainKm >= 4) {
-    const easyKm = Math.ceil(mainKm * 0.5);
+    const easyKm = Math.floor(mainKm * 0.5);
     const steadyKm = Math.max(Math.floor(mainKm * 0.3), 1);
     const tempoKm = mainKm - easyKm - steadyKm;
     mainSteps = [s(`${easyKm}km`, "easy", "Easy"), s(`${steadyKm}km`, "steady", "Race Pace"), s(`${tempoKm}km`, "tempo", "Fast")];
