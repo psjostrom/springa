@@ -100,21 +100,40 @@ function directionFromDelta(deltaMgdlPerMin: number): string {
 }
 
 export function recomputeDirections(readings: XdripReading[]): void {
+  const WINDOW_MS = 5 * 60 * 1000;
+
+  // Average sgv of readings[idx-1..idx+1] (clamped to array bounds)
+  const avgSgv = (idx: number) => {
+    const lo = Math.max(0, idx - 1);
+    const hi = Math.min(readings.length - 1, idx + 1);
+    let sum = 0, count = 0;
+    for (let j = lo; j <= hi; j++) { sum += readings[j].sgv; count++; }
+    return sum / count;
+  };
+
   for (let i = 0; i < readings.length; i++) {
-    if (i === 0) {
-      readings[i].direction = "NONE";
-      continue;
-    }
-    const prev = readings[i - 1];
     const curr = readings[i];
-    const dtMs = curr.ts - prev.ts;
-    if (dtMs <= 0 || dtMs > 600000) {
-      // Gap > 10 min or invalid — can't compute reliably
+
+    // Find reading closest to 5 min before current
+    let pastIdx: number | null = null;
+    const targetTs = curr.ts - WINDOW_MS;
+    for (let j = i - 1; j >= 0; j--) {
+      if (readings[j].ts <= targetTs) {
+        const next = j + 1 < i ? j + 1 : null;
+        pastIdx = next != null && Math.abs(readings[next].ts - targetTs) < Math.abs(readings[j].ts - targetTs) ? next : j;
+        break;
+      }
+    }
+
+    if (pastIdx === null || curr.ts - readings[pastIdx].ts > 600000) {
       readings[i].direction = "NONE";
       continue;
     }
-    const rawDelta = curr.sgv - prev.sgv;
-    const deltaPerMin = rawDelta / (dtMs / 60000);
+
+    const dtMin = (curr.ts - readings[pastIdx].ts) / 60000;
+    if (dtMin <= 0) { readings[i].direction = "NONE"; continue; }
+
+    const deltaPerMin = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
     readings[i].direction = directionFromDelta(deltaPerMin);
   }
 }
