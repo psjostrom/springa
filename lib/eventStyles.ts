@@ -1,12 +1,11 @@
 import type { CalendarEvent } from "./types";
 
 export const getEventStyle = (event: CalendarEvent): string => {
-  const base = "bg-[#1d1828] text-white border-l-[3px]";
-  if (event.type === "race") return `${base} border-l-[#f23b94]`;
-  if (event.type === "completed") return `${base} border-l-[#4ade80]`;
-  if (isMissedEvent(event)) return `${base} border-l-[#ff6b8a] opacity-60`;
-  if (event.name.toLowerCase().includes("bonus")) return `${base} border-l-[#4a4358] text-[#af9ece]`;
-  return `${base} border-l-[#f23b94]`;
+  if (event.type === "race") return "bg-[#f23b94]/12 text-white border-l-[3px] border-l-[#f23b94]";
+  if (event.type === "completed") return "bg-[#4ade80]/12 text-white border-l-[3px] border-l-[#4ade80]";
+  if (isMissedEvent(event)) return "bg-[#ff6b8a]/12 text-[#ff6b8a] border-l-[3px] border-l-[#ff6b8a] opacity-70";
+  if (event.name.toLowerCase().includes("bonus")) return "bg-[#4a4358]/30 text-[#af9ece] border-l-[3px] border-l-[#4a4358]";
+  return "bg-[#f23b94]/12 text-white border-l-[3px] border-l-[#f23b94]";
 };
 
 export function isMissedEvent(event: CalendarEvent): boolean {
