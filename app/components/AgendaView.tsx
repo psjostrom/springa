@@ -20,16 +20,24 @@ interface AgendaViewProps {
   clothingMap?: Map<string, ClothingRec>;
 }
 
+function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
+  if (isMissed) return "border-l-[#ff6b8a]";
+  if (event.type === "completed") return "border-l-[#4ade80]";
+  if (event.type === "race") return "border-l-[#f23b94]";
+  if (/bonus|optional/i.test(event.name)) return "border-l-[#4a4358]";
+  return "border-l-[#f23b94]";
+}
+
 function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; clothing?: ClothingRec }) {
   return (
     <div
       data-event-id={event.id}
       onClick={onSelect}
-      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border overflow-hidden ${
+      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border border-l-[3px] overflow-hidden ${
         isMissed
           ? "border-[#ff3366]/30 bg-[#3d1525]/30 opacity-60"
           : "border-[#2e293c]"
-      }`}
+      } ${getLeftBorderColor(event, isMissed)}`}
     >
       {/* Date */}
       <div className="flex-shrink-0 text-center w-10 sm:w-20">
