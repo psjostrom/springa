@@ -1,11 +1,11 @@
 import type { CalendarEvent } from "./types";
 
 export const getEventStyle = (event: CalendarEvent): string => {
-  if (event.type === "race") return "bg-[#f23b94]/12 text-white border-l-[3px] border-l-[#f23b94]";
-  if (event.type === "completed") return "bg-[#4ade80]/12 text-white border-l-[3px] border-l-[#4ade80]";
-  if (isMissedEvent(event)) return "bg-[#ff4d6a]/12 text-[#ff4d6a] border-l-[3px] border-l-[#ff4d6a] opacity-70";
-  if (event.name.toLowerCase().includes("bonus")) return "bg-[#4a4358]/30 text-[#af9ece] border-l-[3px] border-l-[#4a4358]";
-  return "bg-[#f23b94]/12 text-white border-l-[3px] border-l-[#f23b94]";
+  if (event.type === "race") return "bg-brand/12 text-white border-l-[3px] border-l-brand";
+  if (event.type === "completed") return "bg-success/12 text-white border-l-[3px] border-l-success";
+  if (isMissedEvent(event)) return "bg-error/12 text-error border-l-[3px] border-l-error opacity-70";
+  if (event.name.toLowerCase().includes("bonus")) return "bg-border-subtle/30 text-muted border-l-[3px] border-l-border-subtle";
+  return "bg-brand/12 text-white border-l-[3px] border-l-brand";
 };
 
 export function isMissedEvent(event: CalendarEvent): boolean {
@@ -16,7 +16,7 @@ export function isMissedEvent(event: CalendarEvent): boolean {
 }
 
 export function getEventStatusBadge(event: CalendarEvent): { label: string; className: string } {
-  if (isMissedEvent(event)) return { label: "Missed", className: "bg-[#1d1828] text-[#ff4d6a]" };
+  if (isMissedEvent(event)) return { label: "Missed", className: "bg-surface text-error" };
   if (event.type === "completed") return { label: "Completed", className: getEventStyle(event) };
   if (event.type === "race") return { label: "Race", className: getEventStyle(event) };
   return { label: "Planned", className: getEventStyle(event) };

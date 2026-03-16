@@ -9,9 +9,9 @@ interface KmSplitsSectionProps {
 
 function getZoneColor(paceMinPerKm: number): string {
   if (paceMinPerKm < 5.083) return "#ef4444"; // Hard: <5:05/km
-  if (paceMinPerKm < 5.583) return "#ffb800"; // Interval: 5:05-5:34
-  if (paceMinPerKm < 7.0) return "#06b6d4"; // Race Pace: 5:35-6:59
-  return "#4ade80"; // Easy: ≥7:00
+  if (paceMinPerKm < 5.583) return "var(--color-warning)"; // Interval: 5:05-5:34
+  if (paceMinPerKm < 7.0) return "var(--color-chart-secondary)"; // Race Pace: 5:35-6:59
+  return "var(--color-success)"; // Easy: ≥7:00
 }
 
 function avgHrForWindow(
@@ -88,10 +88,10 @@ export function KmSplitsSection({
 
   return (
     <div className="px-4 py-3">
-      <div className="text-sm font-semibold text-[#af9ece] mb-3">Splits</div>
+      <div className="text-sm font-semibold text-muted mb-3">Splits</div>
 
       <div
-        className="grid gap-2 pb-1.5 text-[11px] text-[#af9ece] uppercase tracking-wide border-b border-[#2e293c] mb-1"
+        className="grid gap-2 pb-1.5 text-[11px] text-muted uppercase tracking-wide border-b border-border mb-1"
         style={{ gridTemplateColumns: gridCols }}
       >
         <span>Km</span>
@@ -114,10 +114,10 @@ export function KmSplitsSection({
         return (
           <div
             key={split.km}
-            className="grid gap-2 items-center py-1.5 text-[13px] border-b border-[#2e293c]/10 last:border-b-0"
+            className="grid gap-2 items-center py-1.5 text-[13px] border-b border-border/10 last:border-b-0"
             style={{ gridTemplateColumns: gridCols }}
           >
-            <span className="text-[#af9ece] tabular-nums">{split.km}</span>
+            <span className="text-muted tabular-nums">{split.km}</span>
             <span className="text-white font-semibold tabular-nums">
               {formatPace(split.paceMinPerKm)}
             </span>
@@ -127,24 +127,24 @@ export function KmSplitsSection({
                 style={{ width: `${barWidth}%`, backgroundColor: color }}
               />
             </div>
-            <span className="text-[#af9ece] tabular-nums text-right text-xs">
+            <span className="text-muted tabular-nums text-right text-xs">
               {split.elevChange > 0
                 ? `+${split.elevChange}`
                 : split.elevChange}
             </span>
-            <span className="text-[#af9ece] tabular-nums text-right text-xs">
+            <span className="text-muted tabular-nums text-right text-xs">
               {split.avgHr ?? "\u2014"}
             </span>
           </div>
         );
       })}
 
-      <div className="flex gap-3 mt-3 pt-2 border-t border-[#2e293c]/20 text-[10px] text-[#af9ece]">
+      <div className="flex gap-3 mt-3 pt-2 border-t border-border/20 text-[10px] text-muted">
         {[
           { color: "#ef4444", label: "Hard" },
-          { color: "#ffb800", label: "Interval" },
-          { color: "#06b6d4", label: "Race" },
-          { color: "#4ade80", label: "Easy" },
+          { color: "var(--color-warning)", label: "Interval" },
+          { color: "var(--color-chart-secondary)", label: "Race" },
+          { color: "var(--color-success)", label: "Easy" },
         ].map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1">
             <span

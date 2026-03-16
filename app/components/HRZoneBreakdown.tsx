@@ -48,7 +48,7 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 							<div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
 							<span className="text-sm font-medium" style={{ color }}>{label}</span>
 						</div>
-						<div className="flex-1 bg-[#2e293c] rounded-full h-2 overflow-hidden">
+						<div className="flex-1 bg-border rounded-full h-2 overflow-hidden">
 							<div
 								className="h-full"
 								style={{ backgroundColor: color, width: `${percentage}%` }}
@@ -58,7 +58,7 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 							<span className="text-sm font-semibold text-white">
 								{formatTime(seconds)}
 							</span>
-							<span className="text-sm text-[#af9ece]">
+							<span className="text-sm text-muted">
 								{percentage.toFixed(1)}%
 							</span>
 						</div>

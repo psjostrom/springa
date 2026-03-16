@@ -83,12 +83,12 @@ function PhasePopover({
 		<>
 			<div className="fixed inset-0 z-40" onClick={onClose} />
 			<div
-				className="fixed z-50 bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
+				className="fixed z-50 bg-surface border border-border rounded-xl px-4 py-3 shadow-lg shadow-black/50"
 				style={positionStyle}
 			>
 				{/* Race countdown */}
 				{raceDate && weeksLeft !== null && weeksLeft > 0 && (
-					<div className="text-xs text-[#f23b94] font-semibold mb-2">
+					<div className="text-xs text-brand font-semibold mb-2">
 						{weeksLeft} week{weeksLeft !== 1 ? "s" : ""} to race day • {formatRaceDate(raceDate)}
 					</div>
 				)}
@@ -97,16 +97,16 @@ function PhasePopover({
 				<div className="mb-3">
 					<div className="text-sm font-bold text-white mb-1">
 						{currentPhase.displayName}
-						{recovery && <span className="text-xs font-normal text-[#ffb800] ml-2">Recovery Week</span>}
+						{recovery && <span className="text-xs font-normal text-warning ml-2">Recovery Week</span>}
 					</div>
-					<div className="text-xs text-[#af9ece] leading-relaxed mb-2">
+					<div className="text-xs text-muted leading-relaxed mb-2">
 						{currentPhase.description}
 					</div>
 					<div className="space-y-1">
 						{currentPhase.focus.map((item, i) => (
 							<div key={i} className="flex items-center gap-2 text-xs">
-								<span className="w-1 h-1 rounded-full bg-[#f23b94]" />
-								<span className="text-[#af9ece]">{item}</span>
+								<span className="w-1 h-1 rounded-full bg-brand" />
+								<span className="text-muted">{item}</span>
 							</div>
 						))}
 					</div>
@@ -114,8 +114,8 @@ function PhasePopover({
 
 				{/* Upcoming phases */}
 				{upcomingPhases.length > 0 && (
-					<div className="pt-2 border-t border-[#2e293c]">
-						<div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-2">
+					<div className="pt-2 border-t border-border">
+						<div className="text-xs text-muted uppercase tracking-wider font-semibold mb-2">
 							Coming up
 						</div>
 						<div className="space-y-2">
@@ -123,8 +123,8 @@ function PhasePopover({
 								const weeksToPhase = phase.startWeek - currentWeek;
 								return (
 									<div key={i} className="flex items-center justify-between">
-										<span className="text-xs text-[#af9ece]">{phase.displayName}</span>
-										<span className="text-xs text-[#af9ece]">
+										<span className="text-xs text-muted">{phase.displayName}</span>
+										<span className="text-xs text-muted">
 											{weeksToPhase === 1 ? "Next week" : `In ${weeksToPhase} weeks`}
 										</span>
 									</div>
@@ -136,7 +136,7 @@ function PhasePopover({
 
 				{/* Arrow */}
 				<div
-					className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
+					className={`absolute w-2.5 h-2.5 bg-surface border-border rotate-45 ${
 						showBelow ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-r border-b"
 					}`}
 					style={{ left: arrowLeft }}
@@ -183,17 +183,17 @@ export function PhaseTracker({
 			)}
 			<div
 				onClick={handleClick}
-				className="bg-[#1d1828] text-white p-4 rounded-lg border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+				className="bg-surface text-white p-4 rounded-lg border border-border cursor-pointer active:bg-border transition-colors"
 			>
 				<div className="flex justify-between text-sm mb-1">
 					<span className="font-bold">{phaseName}</span>
-					<span className="text-[#af9ece]">
+					<span className="text-muted">
 						Week {currentWeek} of {totalWeeks}
 					</span>
 				</div>
-				<div className="w-full bg-[#2e293c] rounded-full h-2">
+				<div className="w-full bg-border rounded-full h-2">
 					<div
-						className="bg-[#f23b94] h-2 rounded-full transition-all duration-500"
+						className="bg-brand h-2 rounded-full transition-all duration-500"
 						style={{ width: `${progress}%` }}
 					></div>
 				</div>

@@ -46,22 +46,22 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
           <defs>
             <linearGradient id="simBand" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00ffff" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#00ffff" stopOpacity={0.05} />
+              <stop offset="0%" stopColor="var(--color-glucose)" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="var(--color-glucose)" stopOpacity={0.05} />
             </linearGradient>
           </defs>
 
           <XAxis
             dataKey="minute"
-            tick={{ fill: "#af9ece", fontSize: 12 }}
-            axisLine={{ stroke: "#2e293c" }}
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            axisLine={{ stroke: "var(--color-border)" }}
             tickLine={false}
             tickFormatter={(v: number) => `${v}m`}
           />
           <YAxis
             domain={[minY, maxY]}
-            tick={{ fill: "#af9ece", fontSize: 12 }}
-            axisLine={{ stroke: "#2e293c" }}
+            tick={{ fill: "var(--color-muted)", fontSize: 12 }}
+            axisLine={{ stroke: "var(--color-border)" }}
             tickLine={false}
             tickFormatter={(v: number) => v.toFixed(1)}
           />
@@ -69,7 +69,7 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           {/* Hypo threshold */}
           <ReferenceLine
             y={3.9}
-            stroke="#ff4d6a"
+            stroke="var(--color-error)"
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />
@@ -80,19 +80,19 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
               <ReferenceArea
                 x1={maxObservedMinute}
                 x2={lastMinute}
-                fill="#ffb800"
+                fill="var(--color-warning)"
                 fillOpacity={0.06}
               />
               <ReferenceLine
                 x={maxObservedMinute}
-                stroke="#ffb800"
+                stroke="var(--color-warning)"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
               >
                 <Label
                   value="Uncharted"
                   position="insideTopRight"
-                  fill="#ffb800"
+                  fill="var(--color-warning)"
                   fontSize={11}
                   opacity={0.7}
                   offset={4}
@@ -111,7 +111,7 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           <Area
             dataKey="bgLow"
             stroke="none"
-            fill="#13101c"
+            fill="var(--color-bg)"
             isAnimationActive={false}
           />
 
@@ -119,7 +119,7 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           <Line
             type="monotone"
             dataKey="bg"
-            stroke="#00ffff"
+            stroke="var(--color-glucose)"
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}
@@ -127,8 +127,8 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
 
           <Tooltip
             contentStyle={{
-              background: "#1d1828",
-              border: "1px solid #2e293c",
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
               borderRadius: 8,
               fontSize: 13,
             }}

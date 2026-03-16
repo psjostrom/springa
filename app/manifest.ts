@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Training planner and workout tracker with T1D blood glucose management, synced to Intervals.icu.",
     start_url: "/",
     display: "standalone",
-    background_color: "#13101c",
-    theme_color: "#13101c",
+    background_color: "var(--color-bg)",
+    theme_color: "var(--color-bg)",
     icons: [
       {
         src: "/icon-192.png",

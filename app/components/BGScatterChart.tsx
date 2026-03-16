@@ -20,8 +20,8 @@ interface BGScatterChartProps {
 const CATEGORY_ORDER: WorkoutCategory[] = ["easy", "long", "interval"];
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
-  easy: "#06b6d4",
-  long: "#ffb800",
+  easy: "var(--color-chart-secondary)",
+  long: "var(--color-warning)",
   interval: "#fb923c",
 };
 
@@ -77,7 +77,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
   if (scatterData.length === 0) return null;
 
   return (
-    <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 no-tap-highlight">
+    <div className="bg-surface rounded-xl border border-border p-4 no-tap-highlight">
       <div className="overflow-x-auto -mx-2">
         <div className="min-w-[320px]">
           <ResponsiveContainer width="100%" height={220}>
@@ -88,39 +88,39 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 domain={[0.5, 4.5]}
                 ticks={[1, 2, 3, 4]}
                 tickFormatter={xTickFormatter}
-                tick={{ fill: "#af9ece", fontSize: 11 }}
-                axisLine={{ stroke: "#2e293c" }}
+                tick={{ fill: "var(--color-muted)", fontSize: 11 }}
+                axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
               />
               <YAxis
                 type="number"
                 dataKey="y"
-                tick={{ fill: "#af9ece", fontSize: 11 }}
-                axisLine={{ stroke: "#2e293c" }}
+                tick={{ fill: "var(--color-muted)", fontSize: 11 }}
+                axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 label={{
                   value: "mmol/L /5m",
                   angle: -90,
                   position: "insideLeft",
-                  style: { fill: "#af9ece", fontSize: 10 },
+                  style: { fill: "var(--color-muted)", fontSize: 10 },
                   offset: 20,
                 }}
               />
               <ReferenceLine
                 y={0}
-                stroke="#4ade80"
+                stroke="var(--color-success)"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
               />
               <ReferenceLine
                 y={CRASH_DROP_RATE}
-                stroke="#ff4d6a"
+                stroke="var(--color-error)"
                 strokeDasharray="4 4"
                 strokeOpacity={0.5}
                 label={{
                   value: "crash",
                   position: "right",
-                  fill: "#ff4d6a",
+                  fill: "var(--color-error)",
                   fontSize: 10,
                 }}
               />
@@ -129,7 +129,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                   if (props.payload.length === 0) return null;
                   const d = (props.payload[0] as { payload: { category: WorkoutCategory; y: number } }).payload;
                   return (
-                    <div className="bg-[#13101c] border border-[#2e293c] rounded px-2 py-1 text-xs text-[#af9ece]">
+                    <div className="bg-bg border border-border rounded px-2 py-1 text-xs text-muted">
                       {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/5m
                     </div>
                   );
@@ -150,8 +150,8 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
               })}
               <Scatter
                 data={avgMarkers}
-                fill="#ffffff"
-                stroke="#ffffff"
+                fill="var(--color-text)"
+                stroke="var(--color-text)"
                 strokeWidth={2}
                 r={6}
                 shape="diamond"

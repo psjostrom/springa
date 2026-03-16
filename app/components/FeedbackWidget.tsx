@@ -14,13 +14,13 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
       <div className="flex items-center gap-2">
         <button
           onClick={() => { setRating("good"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-[#2e293c] ring-1 ring-[#f23b94]" : "hover:bg-[#2e293c]"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-border ring-1 ring-brand" : "hover:bg-border"}`}
         >
           {"\ud83d\udc4d"}
         </button>
         <button
           onClick={() => { setRating("bad"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-[#2e293c] ring-1 ring-[#f23b94]" : "hover:bg-[#2e293c]"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-border ring-1 ring-brand" : "hover:bg-border"}`}
         >
           {"\ud83d\udc4e"}
         </button>
@@ -30,12 +30,12 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
         onChange={(e) => { setComment(e.target.value); }}
         placeholder="Optional comment..."
         rows={2}
-        className="w-full border border-[#2e293c] bg-[#13101c] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94] resize-none"
+        className="w-full border border-border bg-bg text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
       />
       <button
         onClick={() => { if (rating) onSave(rating, comment); }}
         disabled={!rating || isSaving}
-        className="px-3 py-1.5 text-sm bg-[#f23b94] hover:bg-[#d42f7e] text-white rounded-lg transition disabled:opacity-50"
+        className="px-3 py-1.5 text-sm bg-brand hover:bg-brand-hover text-white rounded-lg transition disabled:opacity-50"
       >
         {isSaving ? "Saving..." : "Save"}
       </button>
@@ -77,7 +77,7 @@ export function FeedbackWidget({ event }: WidgetProps) {
       {hasRating ? (
         <div className="flex items-center gap-2 text-sm text-white">
           <span className="text-lg">{event.rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
-          {event.feedbackComment && <span className="text-[#af9ece]">{event.feedbackComment}</span>}
+          {event.feedbackComment && <span className="text-muted">{event.feedbackComment}</span>}
         </div>
       ) : (
         <>

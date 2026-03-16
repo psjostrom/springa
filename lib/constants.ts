@@ -52,7 +52,7 @@ export const SPEED_SESSION_LABELS: Record<SpeedSessionType, string> = {
 /** Zone colors used across the app (bars, badges, charts, breakdowns). */
 export const ZONE_COLORS = {
   z1: "#6ee7b7",
-  z2: "#06b6d4",
+  z2: "var(--color-chart-secondary)",
   z3: "#fbbf24",
   z4: "#fb923c",
   z5: "#ef4444",

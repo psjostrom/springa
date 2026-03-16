@@ -49,7 +49,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
   const data = fetchedData ?? propData;
   if (!data) {
     return isLoading ? (
-      <div className="text-[#af9ece] text-sm">Loading pace curves...</div>
+      <div className="text-muted text-sm">Loading pace curves...</div>
     ) : null;
   }
 
@@ -160,7 +160,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
 
       {/* Pace Curve Chart */}
       {curve.length > 0 && (
-        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4">
+        <div className="bg-surface rounded-xl border border-border p-4">
           {/* Time Window Selector */}
           <div className="flex gap-1 mb-3">
             {TIME_WINDOWS.map((tw) => (
@@ -169,24 +169,24 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                 onClick={() => { setTimeWindow(tw); }}
                 className={`px-2 py-1 text-xs rounded transition-colors ${
                   timeWindow.label === tw.label
-                    ? "bg-[#2e293c] text-white"
-                    : "text-[#af9ece] hover:text-white"
+                    ? "bg-border text-white"
+                    : "text-muted hover:text-white"
                 }`}
               >
                 {tw.label}
               </button>
             ))}
             {isLoading && (
-              <span className="text-xs text-[#af9ece] ml-2 self-center">Loading...</span>
+              <span className="text-xs text-muted ml-2 self-center">Loading...</span>
             )}
           </div>
           <div ref={wrapperRef} className="relative">
             {hoverPoint && tooltipPos && (
               <div
-                className="absolute top-2 z-10 bg-[#1d1828] border border-[#2e293c] rounded-lg px-3 py-2 text-xs pointer-events-none"
+                className="absolute top-2 z-10 bg-surface border border-border rounded-lg px-3 py-2 text-xs pointer-events-none"
                 style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.4)", ...tooltipPos }}
               >
-                <div className="text-[#af9ece] font-medium">
+                <div className="text-muted font-medium">
                   {formatDistance(hoverPoint.distance)}
                 </div>
                 <div className="text-white font-bold">
@@ -212,7 +212,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                   y1={tick.y}
                   x2={width - padding.right}
                   y2={tick.y}
-                  stroke="#2e293c"
+                  stroke="var(--color-border)"
                   strokeWidth="1"
                 />
               ))}
@@ -225,7 +225,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                   y={tick.y + 4}
                   textAnchor="end"
                   fontSize="11"
-                  fill="#af9ece"
+                  fill="var(--color-muted)"
                 >
                   {tick.label}
                 </text>
@@ -239,7 +239,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                   y={height - padding.bottom + 16}
                   textAnchor="middle"
                   fontSize="11"
-                  fill="#af9ece"
+                  fill="var(--color-muted)"
                 >
                   {formatDistance(d)}
                 </text>
@@ -249,7 +249,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
               <path
                 d={pathD}
                 fill="none"
-                stroke="#8b5cf6"
+                stroke="var(--color-chart-primary)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -263,7 +263,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                     y1={padding.top}
                     x2={scaleX(hoverPoint.distance)}
                     y2={height - padding.bottom}
-                    stroke="#af9ece"
+                    stroke="var(--color-muted)"
                     strokeWidth="1"
                     strokeDasharray="4 2"
                     opacity="0.5"
@@ -272,8 +272,8 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                     cx={scaleX(hoverPoint.distance)}
                     cy={scaleY(hoverPoint.pace)}
                     r="5"
-                    fill="#8b5cf6"
-                    stroke="#13101c"
+                    fill="var(--color-chart-primary)"
+                    stroke="var(--color-bg)"
                     strokeWidth="2"
                   />
                 </>

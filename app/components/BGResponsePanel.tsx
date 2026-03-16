@@ -22,22 +22,22 @@ const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
 };
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
-  easy: "#06b6d4",
-  long: "#ffb800",
+  easy: "var(--color-chart-secondary)",
+  long: "var(--color-warning)",
   interval: "#fb923c",
 };
 
 function rateColor(rate: number): string {
-  if (rate > -0.5) return "#4ade80"; // green — stable
-  if (rate > -1.5) return "#ffb800"; // yellow — moderate drop
-  return "#ff4d6a"; // red — fast drop
+  if (rate > -0.5) return "var(--color-success)"; // green — stable
+  if (rate > -1.5) return "var(--color-warning)"; // yellow — moderate drop
+  return "var(--color-error)"; // red — fast drop
 }
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {
-    low: "bg-[#2e293c] text-[#af9ece]",
-    medium: "bg-[#3d2b1a] text-white",
-    high: "bg-[#1a3d25] text-white",
+    low: "bg-border text-muted",
+    medium: "bg-tint-warning text-white",
+    high: "bg-tint-success text-white",
   };
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded ${styles[confidence]}`}>
@@ -102,7 +102,7 @@ function CategoryCard({
     : [];
 
   return (
-    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-3">
+    <div className="bg-surface rounded-lg border border-border p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-semibold" style={{ color }}>
           {CATEGORY_LABELS[response.category]}
@@ -117,15 +117,15 @@ function CategoryCard({
         >
           {rate > 0 ? "+" : ""}{rate.toFixed(1)}
         </span>
-        <span className="text-xs text-[#af9ece]">mmol/L /5m</span>
+        <span className="text-xs text-muted">mmol/L /5m</span>
       </div>
 
-      <div className="text-xs text-[#af9ece]">
+      <div className="text-xs text-muted">
         {response.sampleCount} samples · {response.activityCount} runs{response.avgFuelRate != null ? ` · ${Math.round(response.avgFuelRate)} g/h fuel` : ""}
       </div>
 
       {targetFuel && Math.abs(targetFuel.targetFuelRate - (targetFuel.currentAvgFuel ?? 0)) > 3 && (
-        <div className="text-xs text-[#ffb800] mt-1">
+        <div className="text-xs text-warning mt-1">
           Target: {targetFuel.targetFuelRate} g/h (est.)
         </div>
       )}
@@ -133,7 +133,7 @@ function CategoryCard({
       {/* Expandable activity breakdown */}
       <button
         onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1 mt-2 text-xs text-[#af9ece] hover:text-white transition-colors w-full"
+        className="flex items-center gap-1 mt-2 text-xs text-muted hover:text-white transition-colors w-full"
       >
         <ChevronDown
           className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -142,11 +142,11 @@ function CategoryCard({
       </button>
 
       {expanded && breakdown.length > 0 && (
-        <div className="mt-2 space-y-1.5 border-t border-[#2e293c] pt-2">
+        <div className="mt-2 space-y-1.5 border-t border-border pt-2">
           {breakdown.map((b) => (
             <div key={b.activityId} className="text-xs">
               <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[#af9ece] truncate flex-1">{b.name}</span>
+                <span className="text-muted truncate flex-1">{b.name}</span>
                 <span
                   className="tabular-nums font-medium flex-shrink-0"
                   style={{ color: rateColor(b.avgRate) }}
@@ -154,7 +154,7 @@ function CategoryCard({
                   {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
                 </span>
               </div>
-              <div className="text-[#af9ece]">
+              <div className="text-muted">
                 {b.sampleCount} samples{b.fuelRate != null ? ` · ${Math.round(b.fuelRate)} g/h` : ""}
               </div>
             </div>
@@ -167,13 +167,13 @@ function CategoryCard({
 
 function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   return (
-    <div className="flex items-start gap-2 bg-[#3d1525] rounded-lg border border-[#ff4d6a]/20 p-3">
+    <div className="flex items-start gap-2 bg-tint-error rounded-lg border border-error/20 p-3">
       <AlertTriangle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
       <div className="text-sm">
         <span className="text-white font-medium">
           {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
-        <span className="text-[#af9ece]">
+        <span className="text-muted">
           BG dropping {Math.abs(suggestion.avgDropRate).toFixed(1)} mmol/L/5m{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
         </span>{" "}
         <span className="text-white font-medium">
@@ -193,7 +193,7 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
   return (
     <div className="space-y-3">
       {activeCategories.length === 0 ? (
-        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-sm text-[#af9ece]">
+        <div className="bg-surface rounded-xl border border-border p-6 text-center text-sm text-muted">
           No runs with both HR and glucose data found.
         </div>
       ) : (
@@ -217,7 +217,7 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
 
           {suggestions.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-[#af9ece]">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-muted">
                 <TrendingDown className="w-3.5 h-3.5" />
                 Fuel Suggestions
               </div>
@@ -316,7 +316,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
         {canDiscover && !isAnalyzing && !patterns && (
           <button
             onClick={handleDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c]"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-border text-muted hover:text-brand hover:bg-border border border-border"
           >
             Discover Patterns
           </button>
@@ -325,29 +325,29 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <button
             onClick={handleDiscover}
             disabled={!canDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-border text-muted hover:text-brand hover:bg-border border border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Re-analyze
           </button>
         )}
       </div>
 
-      <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-4">
+      <div className="bg-surface rounded-lg border border-border p-4">
         {isAnalyzing ? (
-          <div className="flex items-center justify-center py-4 text-[#af9ece]">
+          <div className="flex items-center justify-center py-4 text-muted">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-sm">
               Analyzing patterns across {events?.filter((e) => e.type === "completed" && e.glucose).length ?? 0} runs...
             </span>
           </div>
         ) : patternsError ? (
-          <div className="text-sm text-[#ff4d6a]">{patternsError}</div>
+          <div className="text-sm text-error">{patternsError}</div>
         ) : patterns ? (
-          <div className="text-sm text-[#af9ece] leading-relaxed prose-patterns">
+          <div className="text-sm text-muted leading-relaxed prose-patterns">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
           </div>
         ) : (
-          <div className="text-sm text-[#af9ece] text-center py-2">
+          <div className="text-sm text-muted text-center py-2">
             Click &quot;Discover Patterns&quot; to analyze cross-run trends
           </div>
         )}
@@ -358,20 +358,20 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 
 export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
   return (
-    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden">
+    <div className="bg-surface rounded-lg border border-border overflow-hidden">
         {bands.map((b) => (
           <div
             key={b.band}
-            className="flex items-center justify-between px-3 py-2 border-b border-[#2e293c] last:border-b-0"
+            className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
           >
-            <span className="text-xs text-[#af9ece] w-12">{b.band}</span>
+            <span className="text-xs text-muted w-12">{b.band}</span>
             <span
               className="text-sm font-bold tabular-nums flex-1 text-right"
               style={{ color: rateColor(b.avgRate) }}
             >
               {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
             </span>
-            <span className="text-xs text-[#af9ece] w-16 text-right">
+            <span className="text-xs text-muted w-16 text-right">
               {b.sampleCount} obs
             </span>
           </div>
@@ -389,20 +389,20 @@ const SLOPE_LABELS: Record<string, string> = {
 
 export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   return (
-    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden">
+    <div className="bg-surface rounded-lg border border-border overflow-hidden">
         {slopes.map((s) => (
           <div
             key={s.slope}
-            className="flex items-center justify-between px-3 py-2 border-b border-[#2e293c] last:border-b-0"
+            className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
           >
-            <span className="text-xs text-[#af9ece] w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
+            <span className="text-xs text-muted w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
             <span
               className="text-sm font-bold tabular-nums flex-1 text-right"
               style={{ color: rateColor(s.avgRate) }}
             >
               {s.avgRate > 0 ? "+" : ""}{s.avgRate.toFixed(1)}
             </span>
-            <span className="text-xs text-[#af9ece] w-16 text-right">
+            <span className="text-xs text-muted w-16 text-right">
               {s.sampleCount} obs
             </span>
           </div>
@@ -415,13 +415,13 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
   const maxRate = Math.max(...buckets.map((b) => Math.abs(b.avgRate)), 0.1);
 
   return (
-    <div className="bg-[#1d1828] rounded-lg border border-[#2e293c] p-3 space-y-2">
+    <div className="bg-surface rounded-lg border border-border p-3 space-y-2">
         {buckets.map((b) => {
           const barWidth = (Math.abs(b.avgRate) / maxRate) * 100;
           return (
             <div key={b.bucket} className="flex items-center gap-2">
-              <span className="text-xs text-[#af9ece] w-10 flex-shrink-0">{b.bucket}</span>
-              <div className="flex-1 h-4 bg-[#1d1828] rounded overflow-hidden">
+              <span className="text-xs text-muted w-10 flex-shrink-0">{b.bucket}</span>
+              <div className="flex-1 h-4 bg-surface rounded overflow-hidden">
                 <div
                   className="h-full rounded"
                   style={{

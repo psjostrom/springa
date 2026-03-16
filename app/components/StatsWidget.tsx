@@ -17,15 +17,15 @@ interface Judgment {
 }
 
 function judgeCadence(spm: number): Judgment {
-  if (spm >= 180) return { label: "Excellent", color: "#4ade80", fraction: 1.0 };
-  if (spm >= 170) return { label: "Good", color: "#06b6d4", fraction: 0.75 };
-  if (spm >= 160) return { label: "OK", color: "#ffb800", fraction: 0.5 };
-  return { label: "Low", color: "#ff4d6a", fraction: 0.25 };
+  if (spm >= 180) return { label: "Excellent", color: "var(--color-success)", fraction: 1.0 };
+  if (spm >= 170) return { label: "Good", color: "var(--color-chart-secondary)", fraction: 0.75 };
+  if (spm >= 160) return { label: "OK", color: "var(--color-warning)", fraction: 0.5 };
+  return { label: "Low", color: "var(--color-error)", fraction: 0.25 };
 }
 
 function judgeMaxHR(hr: number, hrZones?: number[]): Judgment {
   if (!hrZones || hrZones.length < 5) {
-    return { label: "", color: "#af9ece", fraction: 0.5 };
+    return { label: "", color: "var(--color-muted)", fraction: 0.5 };
   }
   const zone = classifyHR(hr, hrZones);
   const fractions: Record<string, number> = { z1: 0.2, z2: 0.4, z3: 0.6, z4: 0.8, z5: 1.0 };
@@ -33,23 +33,23 @@ function judgeMaxHR(hr: number, hrZones?: number[]): Judgment {
 }
 
 function judgeLoad(load: number): Judgment {
-  if (load >= 150) return { label: "Very Hard", color: "#ff4d6a", fraction: 1.0 };
+  if (load >= 150) return { label: "Very Hard", color: "var(--color-error)", fraction: 1.0 };
   if (load >= 100) return { label: "Hard", color: "#fb923c", fraction: 0.75 };
-  if (load >= 50) return { label: "Moderate", color: "#ffb800", fraction: 0.5 };
-  return { label: "Light", color: "#4ade80", fraction: 0.25 };
+  if (load >= 50) return { label: "Moderate", color: "var(--color-warning)", fraction: 0.5 };
+  return { label: "Light", color: "var(--color-success)", fraction: 0.25 };
 }
 
 function judgeIntensity(pct: number): Judgment {
-  if (pct >= 100) return { label: "Maximum", color: "#ff4d6a", fraction: 1.0 };
+  if (pct >= 100) return { label: "Maximum", color: "var(--color-error)", fraction: 1.0 };
   if (pct >= 80) return { label: "Hard", color: "#fb923c", fraction: 0.75 };
-  if (pct >= 60) return { label: "Moderate", color: "#ffb800", fraction: 0.5 };
-  return { label: "Easy", color: "#4ade80", fraction: 0.25 };
+  if (pct >= 60) return { label: "Moderate", color: "var(--color-warning)", fraction: 0.5 };
+  return { label: "Easy", color: "var(--color-success)", fraction: 0.25 };
 }
 
 function judgeHRCompliance(pct: number): Judgment {
-  if (pct >= 60) return { label: "Good", color: "#4ade80", fraction: 0.9 };
-  if (pct >= 40) return { label: "OK", color: "#ffb800", fraction: 0.6 };
-  return { label: "Poor", color: "#ff4d6a", fraction: 0.3 };
+  if (pct >= 60) return { label: "Good", color: "var(--color-success)", fraction: 0.9 };
+  if (pct >= 40) return { label: "OK", color: "var(--color-warning)", fraction: 0.6 };
+  return { label: "Poor", color: "var(--color-error)", fraction: 0.3 };
 }
 
 // --- Popover ---
@@ -71,12 +71,12 @@ const STAT_INFO: Record<string, PopoverContent> = {
 function StatPopover({ info, onClose }: { info: PopoverContent; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 w-64 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
+      <div className="bg-surface rounded-xl border border-border p-4 w-64 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-white">{info.title}</span>
-          <button onClick={onClose} aria-label="Close" className="text-[#af9ece] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-white text-sm">✕</button>
         </div>
-        <p className="text-sm text-[#af9ece] leading-relaxed">{info.description}</p>
+        <p className="text-sm text-muted leading-relaxed">{info.description}</p>
       </div>
     </div>
   );
@@ -103,11 +103,11 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
       <button
         type="button"
         onClick={() => { setShowPopover(true); }}
-        className="bg-[#2e293c] rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-[#2e293c]"
+        className="bg-border rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-          <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</span>
+          <span className="text-xs text-muted uppercase tracking-wider font-semibold">{label}</span>
           {judgment.label && (
             <span className="ml-auto text-xs font-medium" style={{ color: judgment.color }}>
               {judgment.label}
@@ -115,9 +115,9 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
           )}
         </div>
         <div className="text-lg font-bold text-white">
-          {value} <span className="text-sm text-[#af9ece] font-normal">{unit}</span>
+          {value} <span className="text-sm text-muted font-normal">{unit}</span>
         </div>
-        <div className="h-1 bg-[#1d1828] rounded-full overflow-hidden">
+        <div className="h-1 bg-surface rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${Math.round(judgment.fraction * 100)}%`, backgroundColor: judgment.color }}
@@ -143,7 +143,7 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
         key="hr"
         id="hr"
         icon={Activity}
-        iconColor="#06b6d4"
+        iconColor="var(--color-chart-secondary)"
         label="HR Zone"
         value={`${pct}%`}
         unit={hrScore.targetZone}
@@ -170,27 +170,27 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
   if (event.cadence) {
     const spm = Math.round(event.cadence);
     cards.push(
-      <StatCard key="cad" id="cad" icon={Footprints} iconColor="#06b6d4" label="Cadence" value={String(spm)} unit="spm" judgment={judgeCadence(spm)} />
+      <StatCard key="cad" id="cad" icon={Footprints} iconColor="var(--color-chart-secondary)" label="Cadence" value={String(spm)} unit="spm" judgment={judgeCadence(spm)} />
     );
   }
 
   if (event.maxHr) {
     cards.push(
-      <StatCard key="mhr" id="mhr" icon={HeartPulse} iconColor="#ff4d6a" label="Max HR" value={String(event.maxHr)} unit="bpm" judgment={judgeMaxHR(event.maxHr, hrZones)} />
+      <StatCard key="mhr" id="mhr" icon={HeartPulse} iconColor="var(--color-error)" label="Max HR" value={String(event.maxHr)} unit="bpm" judgment={judgeMaxHR(event.maxHr, hrZones)} />
     );
   }
 
   if (event.load) {
     const load = Math.round(event.load);
     cards.push(
-      <StatCard key="load" id="load" icon={Zap} iconColor="#ffb800" label="Load" value={String(load)} unit="" judgment={judgeLoad(load)} />
+      <StatCard key="load" id="load" icon={Zap} iconColor="var(--color-warning)" label="Load" value={String(load)} unit="" judgment={judgeLoad(load)} />
     );
   }
 
   if (event.intensity !== undefined) {
     const pct = Math.round(event.intensity);
     cards.push(
-      <StatCard key="int" id="int" icon={Gauge} iconColor="#af9ece" label="Intensity" value={`${pct}%`} unit="" judgment={judgeIntensity(pct)} />
+      <StatCard key="int" id="int" icon={Gauge} iconColor="var(--color-muted)" label="Intensity" value={`${pct}%`} unit="" judgment={judgeIntensity(pct)} />
     );
   }
 

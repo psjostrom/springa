@@ -53,16 +53,16 @@ export function DayCell({
       onDragEnter={() => { onDragEnter(dateKey); }}
       onDragLeave={onDragLeave}
       onDrop={(e) => { e.preventDefault(); onDrop(e, day); }}
-      className={`bg-[#1d1828] p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
+      className={`bg-surface p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
         !isCurrentMonth ? "opacity-40" : ""
-      } ${isTodayDate && !isDropTarget ? "ring-2 ring-[#f23b94] ring-inset" : ""} ${
-        isDropTarget ? "ring-2 ring-[#f23b94] ring-inset bg-[#2e293c]" : ""
+      } ${isTodayDate && !isDropTarget ? "ring-2 ring-brand ring-inset" : ""} ${
+        isDropTarget ? "ring-2 ring-brand ring-inset bg-border" : ""
       }`}
     >
       <div className="flex flex-col h-full">
         <div
           className={`text-sm mb-1 ${
-            isTodayDate ? "font-bold text-[#f23b94]" : "text-[#af9ece]"
+            isTodayDate ? "font-bold text-brand" : "text-muted"
           }`}
         >
           {showMonthOpacity ? format(day, "d") : format(day, "d MMM")}

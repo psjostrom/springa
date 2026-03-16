@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root {
+@theme inline {
   /* Core */
   --color-bg: #13101c;
   --color-surface: #1d1828;
@@ -27,15 +27,7 @@
   /* Chart series */
   --color-chart-primary: #8b5cf6;
   --color-chart-secondary: #06b6d4;
-}
 
-@theme inline {
-  --color-bg: var(--color-bg);
-  --color-surface: var(--color-surface);
-  --color-border: var(--color-border);
-  --color-muted: var(--color-muted);
-  --color-text: var(--color-text);
-  --color-brand: var(--color-brand);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

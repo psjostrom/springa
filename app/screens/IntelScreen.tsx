@@ -102,12 +102,12 @@ function WidgetHeading({ widgetKey, meta }: { widgetKey: WidgetKey; meta?: strin
   const label = LABEL_MAP.get(widgetKey) ?? widgetKey;
   return (
     <div className="flex items-center gap-2 mb-2">
-      <Icon className="w-4 h-4 text-[#06b6d4]" />
-      <span className="text-sm font-semibold uppercase text-[#af9ece]">
+      <Icon className="w-4 h-4 text-chart-secondary" />
+      <span className="text-sm font-semibold uppercase text-muted">
         {label}
       </span>
       {meta && (
-        <span className="text-xs text-[#af9ece]">{meta}</span>
+        <span className="text-xs text-muted">{meta}</span>
       )}
     </div>
   );
@@ -131,14 +131,14 @@ function WidgetEditBar({
   onToggle: (key: WidgetKey) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 bg-[#2e293c] rounded-lg px-3 py-1.5 mb-1">
-      <span className="text-xs font-semibold uppercase text-[#af9ece] flex-1 truncate">
+    <div className="flex items-center gap-2 bg-border rounded-lg px-3 py-1.5 mb-1">
+      <span className="text-xs font-semibold uppercase text-muted flex-1 truncate">
         {label}
       </span>
       <button
         onClick={() => { onMove(widgetKey, "up"); }}
         disabled={isFirst}
-        className="p-1 rounded text-[#af9ece] hover:text-[#f23b94] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
+        className="p-1 rounded text-muted hover:text-brand disabled:opacity-30 disabled:hover:text-muted transition"
         aria-label="Move up"
       >
         <ChevronUp size={16} />
@@ -146,14 +146,14 @@ function WidgetEditBar({
       <button
         onClick={() => { onMove(widgetKey, "down"); }}
         disabled={isLast}
-        className="p-1 rounded text-[#af9ece] hover:text-[#f23b94] disabled:opacity-30 disabled:hover:text-[#af9ece] transition"
+        className="p-1 rounded text-muted hover:text-brand disabled:opacity-30 disabled:hover:text-muted transition"
         aria-label="Move down"
       >
         <ChevronDown size={16} />
       </button>
       <button
         onClick={() => { onToggle(widgetKey); }}
-        className={`p-1 rounded transition ${isHidden ? "text-[#af9ece]/60" : "text-[#af9ece] hover:text-[#f23b94]"}`}
+        className={`p-1 rounded transition ${isHidden ? "text-muted/60" : "text-muted hover:text-brand"}`}
         aria-label={isHidden ? "Show widget" : "Hide widget"}
       >
         {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -330,7 +330,7 @@ export function IntelScreen() {
   let fitnessChartRenderer: (() => ReactNode) | null = null;
   if (eventsError) {
     fitnessChartRenderer = () => (
-      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6">
+      <div className="bg-surface rounded-xl border border-border p-6">
         <ErrorCard message={eventsError} onRetry={onRetryLoad} />
       </div>
     );
@@ -338,7 +338,7 @@ export function IntelScreen() {
     fitnessChartRenderer = () => <WidgetLoadingCard label="Loading fitness data..." />;
   } else if (fitnessData.length > 0) {
     fitnessChartRenderer = () => (
-      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 space-y-4">
+      <div className="bg-surface rounded-xl border border-border p-4 space-y-4">
         <FitnessChart data={fitnessData} />
         {insights && <FitnessInsightsPanel insights={insights} />}
       </div>
@@ -424,7 +424,7 @@ export function IntelScreen() {
       );
 
   return (
-    <div className="h-full overflow-y-auto bg-[#13101c]">
+    <div className="h-full overflow-y-auto bg-bg">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         <TabBar tabs={INTEL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -505,7 +505,7 @@ export function IntelScreen() {
                     {isFirst && (
                       <button
                         onClick={() => { setEditMode(!editMode); }}
-                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-[#2e293c]/80 text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c]"
+                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-border/80 text-muted hover:text-brand hover:bg-border"
                         aria-label={editMode ? "Done editing" : "Edit layout"}
                       >
                         {editMode ? <Check size={14} /> : <Pencil size={14} />}
@@ -514,8 +514,8 @@ export function IntelScreen() {
                     )}
                     {editMode && isHidden ? (
                       <div className="opacity-30 pointer-events-none select-none">
-                        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4">
-                          <div className="text-xs text-[#af9ece] uppercase font-semibold">
+                        <div className="bg-surface rounded-xl border border-border p-4">
+                          <div className="text-xs text-muted uppercase font-semibold">
                             {LABEL_MAP.get(key) ?? key} (hidden)
                           </div>
                         </div>
@@ -536,7 +536,7 @@ export function IntelScreen() {
               <div className="flex justify-center pt-2 pb-4">
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold uppercase transition bg-[#1d1828] border border-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:border-[#f23b94]/40"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold uppercase transition bg-surface border border-border text-muted hover:text-brand hover:border-brand/40"
                 >
                   <RotateCcw size={14} />
                   Reset to default
@@ -572,8 +572,8 @@ export function IntelScreen() {
       {(Boolean(enrichedSelectedEvent) || isFetchingEvent) && (
         isFetchingEvent ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6">
-              <div className="flex items-center gap-3 text-[#af9ece]">
+            <div className="bg-surface rounded-xl border border-border p-6">
+              <div className="flex items-center gap-3 text-muted">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="text-sm">Loading activity...</span>
               </div>

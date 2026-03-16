@@ -78,10 +78,10 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#13101c] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1d1828] animate-slide-up px-4 py-8 text-center"
+        className="bg-bg rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up px-4 py-8 text-center"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
-        <p className="text-[#af9ece] text-sm">No BG data available</p>
+        <p className="text-muted text-sm">No BG data available</p>
       </div>
     </div>
   );
@@ -182,7 +182,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[#13101c] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-[#00ffff]/10 border-t sm:border border-[#1d1828] animate-slide-up"
+        className="bg-bg rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         {/* Header */}
@@ -198,29 +198,29 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               {scrubReading ? trendArrow(scrubReading.direction) : trend}
             </span>
             {delta !== null && (
-              <span className="text-sm font-semibold" style={{ color: delta > 0 ? "#ffb800" : delta < -0.3 ? "#ff4d6a" : "#4ade80" }}>
+              <span className="text-sm font-semibold" style={{ color: delta > 0 ? "var(--color-warning)" : delta < -0.3 ? "var(--color-error)" : "var(--color-success)" }}>
                 {delta > 0 ? "+" : ""}{delta.toFixed(1)}
               </span>
             )}
-            <span className="text-sm text-[#af9ece]">{ageStr}</span>
+            <span className="text-sm text-muted">{ageStr}</span>
           </div>
           <div className="relative">
             <button
               onClick={() => { setShowWindowPicker((v) => !v); }}
-              className="text-xs text-[#af9ece] font-medium px-2 py-0.5 rounded bg-[#1d1828] hover:bg-[#2e293c] hover:text-[#00ffff] transition active:scale-95"
+              className="text-xs text-muted font-medium px-2 py-0.5 rounded bg-surface hover:bg-border hover:text-glucose transition active:scale-95"
             >
               {windowHours}h
             </button>
             {showWindowPicker && (
-              <div className="absolute right-0 top-full mt-1 flex gap-0.5 bg-[#1d1828] border border-[#2e293c] rounded-lg p-0.5 shadow-lg shadow-black/40 z-10">
+              <div className="absolute right-0 top-full mt-1 flex gap-0.5 bg-surface border border-border rounded-lg p-0.5 shadow-lg shadow-black/40 z-10">
                 {WINDOWS.map((w, i) => (
                   <button
                     key={w}
                     onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); void updateSettings({ bgChartWindow: w }); }}
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
-                        ? "bg-[#2e293c] text-[#00ffff]"
-                        : "text-[#af9ece] hover:text-white"
+                        ? "bg-border text-glucose"
+                        : "text-muted hover:text-white"
                     }`}
                   >
                     {w}h
@@ -287,7 +287,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 />
                 <text
                   x={PAD.left - 4} y={scaleY(v) + 3}
-                  textAnchor="end" fill="#af9ece" fontSize={9} opacity={0.6}
+                  textAnchor="end" fill="var(--color-muted)" fontSize={9} opacity={0.6}
                 >
                   {v}
                 </text>
@@ -304,7 +304,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                 />
                 <text
                   x={scaleX(t)} y={HEIGHT - PAD.bottom + 14}
-                  textAnchor="middle" fill="#af9ece" fontSize={9} opacity={0.6}
+                  textAnchor="middle" fill="var(--color-muted)" fontSize={9} opacity={0.6}
                 >
                   {formatTime(t)}
                 </text>
@@ -312,8 +312,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
             ))}
 
             {/* BG line */}
-            <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={2.5} filter="url(#bg-blur)" opacity={0.3} />
-            <path d={pathD} fill="none" stroke="#00ffff" strokeWidth={1.5} strokeLinejoin="round" />
+            <path d={pathD} fill="none" stroke="var(--color-glucose)" strokeWidth={2.5} filter="url(#bg-blur)" opacity={0.3} />
+            <path d={pathD} fill="none" stroke="var(--color-glucose)" strokeWidth={1.5} strokeLinejoin="round" />
 
             {/* Dots */}
             {data.map((r, i) => (
@@ -340,7 +340,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                   cy={scaleY(scrubReading.mmol)}
                   r={5}
                   fill={bgColor(scrubReading.mmol)}
-                  stroke="#13101c"
+                  stroke="var(--color-bg)"
                   strokeWidth={2}
                 />
               </>
@@ -351,7 +351,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
         {/* Pre-run readiness — shown when there's a planned workout today */}
         {todaysWorkout && currentBG != null && (
           <div className="px-3 pb-4">
-            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1.5 px-1">
+            <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1.5 px-1">
               {todaysWorkout.name}
             </div>
             <PreRunReadiness

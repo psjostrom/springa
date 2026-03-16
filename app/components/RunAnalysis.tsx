@@ -85,7 +85,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
   return (
     <div className="px-3 py-2.5">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-[#af9ece]">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-muted">
           <Sparkles className="w-4 h-4" />
           Run Analysis
         </div>
@@ -93,7 +93,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           <button
             onClick={() => { void trigger({ activityId, event, runBGContext, bgModel, regenerate: true }).catch(() => { /* Error state handled by useSWRMutation */ }); }}
             disabled={isMutating}
-            className="p-1 text-[#af9ece] hover:text-white transition-colors disabled:opacity-50"
+            className="p-1 text-muted hover:text-white transition-colors disabled:opacity-50"
             aria-label="Regenerate analysis"
           >
             {isMutating ? (
@@ -114,11 +114,11 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           <div className="skeleton h-4 w-3/4 rounded" />
         </div>
       ) : displayError ? (
-        <div className="text-sm text-[#ff4d6a] italic">
+        <div className="text-sm text-error italic">
           {displayError instanceof Error ? displayError.message : "Failed to load analysis"}
         </div>
       ) : analysis ? (
-        <div className="text-sm text-[#af9ece] leading-relaxed prose-analysis">
+        <div className="text-sm text-muted leading-relaxed prose-analysis">
           <ReactMarkdown>{analysis}</ReactMarkdown>
         </div>
       ) : null}

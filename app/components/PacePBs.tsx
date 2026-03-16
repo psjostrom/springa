@@ -39,29 +39,29 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
   }
 
   return (
-    <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4">
+    <div className="bg-surface rounded-xl border border-border p-4">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {bestEfforts.map((effort) => (
           <div
             key={effort.label}
-            className={`bg-[#2e293c] rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
+            className={`bg-border rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
             onClick={() => { if (effort.activityId) onActivitySelect?.(effort.activityId); }}
           >
-            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{effort.label}</div>
+            <div className="text-xs text-muted uppercase tracking-wider font-semibold">{effort.label}</div>
             <div className="text-lg font-bold text-white">
               {formatTime(effort.timeSeconds)}
             </div>
-            <div className="text-xs text-[#af9ece]">
+            <div className="text-xs text-muted">
               {formatPace(effort.pace)}/km
             </div>
           </div>
         ))}
         {longestRun && (
           <div
-            className={`bg-[#2e293c] rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
+            className={`bg-border rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
             onClick={() => { onActivitySelect?.(longestRun.activityId); }}
           >
-            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Longest Run</div>
+            <div className="text-xs text-muted uppercase tracking-wider font-semibold">Longest Run</div>
             <div className="text-lg font-bold text-white">
               {formatDistance(longestRun.distance)}
             </div>

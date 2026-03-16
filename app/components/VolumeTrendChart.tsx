@@ -98,7 +98,7 @@ export function VolumeTrendChart({
   if (events.length === 0) return null;
 
   return (
-    <div className="bg-[#1d1828] py-3 rounded-xl shadow-sm border border-[#2e293c] no-tap-highlight">
+    <div className="bg-surface py-3 rounded-xl shadow-sm border border-border no-tap-highlight">
         <div className="h-72 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart
@@ -125,7 +125,7 @@ export function VolumeTrendChart({
                 axisLine={false}
                 interval={1}
                 padding={{ left: 2, right: 2 }}
-                tick={{ fill: "#af9ece" }}
+                tick={{ fill: "var(--color-muted)" }}
               />
               <YAxis
                 width={30}
@@ -133,26 +133,26 @@ export function VolumeTrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => `${v}`}
-                tick={{ fill: "#af9ece" }}
+                tick={{ fill: "var(--color-muted)" }}
               />
               <Tooltip
-                cursor={{ fill: "#2e293c" }}
+                cursor={{ fill: "var(--color-border)" }}
                 content={({ active, payload }) => {
                   if (!active || payload.length === 0) return null;
                   const d = (payload[0] as { payload: WeekData }).payload;
                   const weekNum = parseInt(d.week.replace("W", ""), 10);
                   return (
-                    <div className="rounded-lg border border-[#2e293c] bg-[#1d1828] text-white shadow-lg text-xs px-3 py-2">
+                    <div className="rounded-lg border border-border bg-surface text-white shadow-lg text-xs px-3 py-2">
                       <div className="font-medium mb-1">Week {weekNum}</div>
-                      <div className="text-[#af9ece]">Planned : {d.planned} km</div>
+                      <div className="text-muted">Planned : {d.planned} km</div>
                       {d.plannedOptional > 0 && (
-                        <div className="text-[#af9ece]">Optional : {d.plannedOptional} km</div>
+                        <div className="text-muted">Optional : {d.plannedOptional} km</div>
                       )}
                       <div className="text-white">Total : {d.plannedTotal} km</div>
                       {d.completed > 0 && (
                         <>
-                          <div className="border-t border-[#2e293c] my-1.5" />
-                          <div className="text-[#4ade80]">Actual : {d.completed} km</div>
+                          <div className="border-t border-border my-1.5" />
+                          <div className="text-success">Actual : {d.completed} km</div>
                         </>
                       )}
                     </div>
@@ -164,7 +164,7 @@ export function VolumeTrendChart({
                   <ReferenceLine
                     x={data.weeks[data.currentWeekIdx].week}
                     xAxisId="actual"
-                    stroke="#f23b94"
+                    stroke="var(--color-brand)"
                     strokeDasharray="3 3"
                     strokeWidth={1.5}
                   />
@@ -173,7 +173,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="plannedTotal"
                 dataKey="plannedTotal"
-                fill="#af9ece"
+                fill="var(--color-muted)"
                 fillOpacity={0.25}
                 radius={2}
                 maxBarSize={14}
@@ -182,7 +182,7 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="planned"
                 dataKey="planned"
-                fill="#8b5cf6"
+                fill="var(--color-chart-primary)"
                 fillOpacity={0.3}
                 radius={2}
                 maxBarSize={14}
@@ -191,24 +191,24 @@ export function VolumeTrendChart({
               <Bar
                 xAxisId="actual"
                 dataKey="completed"
-                fill="#4ade80"
+                fill="var(--color-success)"
                 radius={2}
                 maxBarSize={14}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2 text-sm text-[#af9ece]">
+        <div className="flex items-center justify-center gap-4 mt-2 text-sm text-muted">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#4ade80]" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-success" />
             Actual
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#8b5cf6]/40" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-chart-primary/40" />
             Planned
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#af9ece]/40" />
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted/40" />
             Optional
           </span>
         </div>

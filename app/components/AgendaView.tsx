@@ -21,11 +21,11 @@ interface AgendaViewProps {
 }
 
 function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
-  if (isMissed) return "border-l-[#ff4d6a]";
-  if (event.type === "completed") return "border-l-[#4ade80]";
-  if (event.type === "race") return "border-l-[#f23b94]";
-  if (/bonus|optional/i.test(event.name)) return "border-l-[#4a4358]";
-  return "border-l-[#f23b94]";
+  if (isMissed) return "border-l-error";
+  if (event.type === "completed") return "border-l-success";
+  if (event.type === "race") return "border-l-brand";
+  if (/bonus|optional/i.test(event.name)) return "border-l-border-subtle";
+  return "border-l-brand";
 }
 
 function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; clothing?: ClothingRec }) {
@@ -33,21 +33,21 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
     <div
       data-event-id={event.id}
       onClick={onSelect}
-      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-[#2e293c] cursor-pointer rounded-lg transition border border-l-[3px] overflow-hidden ${
+      className={`flex gap-1.5 sm:gap-4 p-1.5 sm:p-4 hover:bg-border cursor-pointer rounded-lg transition border border-l-[3px] overflow-hidden ${
         isMissed
-          ? "border-[#ff4d6a]/30 bg-[#3d1525]/30 opacity-60"
-          : "border-[#2e293c]"
+          ? "border-error/30 bg-tint-error/30 opacity-60"
+          : "border-border"
       } ${getLeftBorderColor(event, isMissed)}`}
     >
       {/* Date */}
       <div className="flex-shrink-0 text-center w-10 sm:w-20">
-        <div className="text-sm text-[#af9ece] uppercase">
+        <div className="text-sm text-muted uppercase">
           {format(event.date, "EEE", { locale: enGB })}
         </div>
         <div className="text-2xl sm:text-3xl font-bold text-white">
           {format(event.date, "d", { locale: enGB })}
         </div>
-        <div className="text-sm text-[#af9ece]">
+        <div className="text-sm text-muted">
           {format(event.date, "MMM", { locale: enGB })}
         </div>
       </div>
@@ -62,12 +62,12 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
             <h3
               className={`font-semibold truncate px-2 py-0.5 rounded text-sm border ${
                 isMissed
-                  ? "bg-[#3d1525] text-white border-[#ff4d6a]/30 sm:bg-transparent sm:text-[#ff4d6a] sm:border-transparent sm:px-0 sm:py-0 line-through"
+                  ? "bg-tint-error text-white border-error/30 sm:bg-transparent sm:text-error sm:border-transparent sm:px-0 sm:py-0 line-through"
                   : event.type === "completed"
-                    ? "bg-[#1a3d25] text-white border-[#4ade80]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                    ? "bg-tint-success text-white border-success/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
                     : event.type === "race"
-                      ? "bg-[#3d1525] text-white border-[#ff4d6a]/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
-                      : "bg-[#2e293c] text-white border-[#2e293c] sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      ? "bg-tint-error text-white border-error/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      : "bg-border text-white border-border sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
               }`}
             >
               {event.name}
@@ -76,12 +76,12 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
           <span
             className={`px-2 py-0.5 rounded text-sm font-medium flex-shrink-0 ${
               isMissed
-                ? "hidden sm:inline-block bg-[#3d1525] text-white"
+                ? "hidden sm:inline-block bg-tint-error text-white"
                 : event.type === "completed"
-                  ? "hidden sm:inline-block bg-[#1a3d25] text-white"
+                  ? "hidden sm:inline-block bg-tint-success text-white"
                   : event.type === "race"
-                    ? "hidden sm:inline-block bg-[#3d1525] text-white"
-                    : "hidden sm:inline-block bg-[#2e293c] text-[#af9ece]"
+                    ? "hidden sm:inline-block bg-tint-error text-white"
+                    : "hidden sm:inline-block bg-border text-muted"
             }`}
           >
             {isMissed
@@ -96,7 +96,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
 
         {event.type === "completed" && (
           <>
-            <div className="flex flex-wrap gap-x-3 text-sm text-[#af9ece] mb-2">
+            <div className="flex flex-wrap gap-x-3 text-sm text-muted mb-2">
               {event.duration != null && (
                 <span className="font-semibold text-white">
                   {formatDuration(event.duration)}
@@ -162,7 +162,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-white bg-[#2e293c] border border-[#2e293c] rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-white bg-border border border-border rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
@@ -179,7 +179,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   totalCarbs != null ? `${totalCarbs}g total` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-white bg-[#3d2b1a] border border-[#ffb800]/30 rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-white bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
@@ -217,7 +217,7 @@ export function AgendaView({
 
   if (events.length === 0) {
     return (
-      <div className="text-center py-12 text-[#af9ece]">
+      <div className="text-center py-12 text-muted">
         No workouts scheduled
       </div>
     );
@@ -228,7 +228,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => { setView("upcoming"); }}
-          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-muted hover:text-white transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -253,7 +253,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => { setView("history"); }}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-muted hover:text-white transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

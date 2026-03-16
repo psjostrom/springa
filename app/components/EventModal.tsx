@@ -172,7 +172,7 @@ export function EventModal({
       onClick={handleClose}
     >
       <div
-        className={`bg-[#1d1828] rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-[#f23b94]/10 border-t sm:border border-[#2e293c] max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className={`bg-surface rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-brand/10 border-t sm:border border-border max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
         onAnimationEnd={(e) => { if (state.isClosing && e.animationName === "slide-down") onClose(); }}
       >
@@ -184,11 +184,11 @@ export function EventModal({
                   type="datetime-local"
                   value={editDate}
                   onChange={(e) => { dispatch({ type: "SET_EDIT_DATE", date: e.target.value }); }}
-                  className="border border-[#2e293c] bg-[#13101c] text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
+                  className="border border-border bg-bg text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
             ) : (
-              <div className="text-sm text-[#af9ece] mb-1">
+              <div className="text-sm text-muted mb-1">
                 {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
                   locale: enGB,
                 })}
@@ -212,14 +212,14 @@ export function EventModal({
                 {selectedEvent.type === "planned" && (
                   <button
                     onClick={() => { dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") }); }}
-                    className="px-3 py-1.5 text-sm bg-[#2e293c] hover:bg-[#2e293c] text-[#af9ece] rounded-lg transition"
+                    className="px-3 py-1.5 text-sm bg-border hover:bg-border text-muted rounded-lg transition"
                   >
                     Edit
                   </button>
                 )}
                 <button
                   onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
-                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#2e293c] text-white rounded-lg transition"
+                  className="px-3 py-1.5 text-sm bg-tint-error hover:bg-border text-white rounded-lg transition"
                 >
                   Delete
                 </button>
@@ -227,7 +227,7 @@ export function EventModal({
             )}
             {(editMode.kind === "confirming-delete" || editMode.kind === "deleting") && (
               <>
-                <span className="text-sm text-[#ff4d6a]">Delete this workout?</span>
+                <span className="text-sm text-error">Delete this workout?</span>
                 <button
                   onClick={() => {
                     dispatch({ type: "DELETE" });
@@ -236,14 +236,14 @@ export function EventModal({
                     });
                   }}
                   disabled={editMode.kind === "deleting"}
-                  className="px-3 py-1.5 text-sm bg-[#ff4d6a] hover:brightness-110 text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-error hover:brightness-110 text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "deleting" ? "Deleting..." : "Confirm"}
                 </button>
                 <button
                   onClick={() => { dispatch({ type: "CANCEL" }); }}
                   disabled={editMode.kind === "deleting"}
-                  className="px-3 py-1.5 text-sm bg-[#2e293c] hover:bg-[#2e293c] text-[#af9ece] rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-border hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -254,14 +254,14 @@ export function EventModal({
                 <button
                   onClick={() => { void saveEventEdit(); }}
                   disabled={editMode.kind === "saving-date"}
-                  className="px-3 py-1.5 text-sm bg-[#f23b94] hover:bg-[#d42f7e] text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-brand hover:bg-brand-hover text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "saving-date" ? "Saving..." : "Save"}
                 </button>
                 <button
                   onClick={() => { dispatch({ type: "CANCEL" }); }}
                   disabled={editMode.kind === "saving-date"}
-                  className="px-3 py-1.5 text-sm bg-[#2e293c] hover:bg-[#2e293c] text-[#af9ece] rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-border hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -269,7 +269,7 @@ export function EventModal({
             )}
             <button
               onClick={handleClose}
-              className="text-[#af9ece] hover:text-white text-xl"
+              className="text-muted hover:text-white text-xl"
             >
               ✕
             </button>
@@ -277,7 +277,7 @@ export function EventModal({
         </div>
 
         {state.error && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-[#3d1525] text-white text-sm">
+          <div className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-white text-sm">
             {state.error}
           </div>
         )}
@@ -299,8 +299,8 @@ export function EventModal({
         )}
 
         {clothing && selectedEvent.type === "planned" && (
-          <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#2e293c]/50 border border-[#2e293c]">
-            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1.5">What to wear</div>
+          <div className="mb-4 px-3 py-2.5 rounded-lg bg-border/50 border border-border">
+            <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1.5">What to wear</div>
             <ClothingRecommendation recommendation={clothing} />
           </div>
         )}
@@ -314,10 +314,10 @@ export function EventModal({
         {selectedEvent.type === "completed" && (
           <>
             {/* Primary stats strip */}
-            <div className="bg-[#2e293c] rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
+            <div className="bg-border rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
               {selectedEvent.distance && (
                 <div>
-                  <div className="text-[#af9ece] text-sm">Distance</div>
+                  <div className="text-muted text-sm">Distance</div>
                   <div className="font-semibold text-white">
                     {(selectedEvent.distance / 1000).toFixed(2)} km
                   </div>
@@ -325,7 +325,7 @@ export function EventModal({
               )}
               {selectedEvent.duration && (
                 <div>
-                  <div className="text-[#af9ece] text-sm">Duration</div>
+                  <div className="text-muted text-sm">Duration</div>
                   <div className="font-semibold text-white">
                     {Math.floor(selectedEvent.duration / 60)} min
                   </div>
@@ -333,7 +333,7 @@ export function EventModal({
               )}
               {selectedEvent.pace && (
                 <div>
-                  <div className="text-[#af9ece] text-sm">Pace</div>
+                  <div className="text-muted text-sm">Pace</div>
                   <div className="font-semibold text-white">
                     {formatPace(selectedEvent.pace)} /km
                   </div>
@@ -341,7 +341,7 @@ export function EventModal({
               )}
               {selectedEvent.avgHr && (
                 <div>
-                  <div className="text-[#af9ece] text-sm">Avg HR</div>
+                  <div className="text-muted text-sm">Avg HR</div>
                   <div className="font-semibold text-white">
                     {selectedEvent.avgHr} bpm
                   </div>
