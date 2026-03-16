@@ -54,6 +54,14 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
             <div className="text-xs text-[#af9ece]">
               {formatPace(effort.pace)}/km
             </div>
+            {effort.activityName && (
+              <div className="text-[10px] text-[#6b5f80] mt-1 truncate">{effort.activityName}</div>
+            )}
+            {effort.activityDate && (
+              <div className="text-[10px] text-[#6b5f80]">
+                {new Date(effort.activityDate).toLocaleDateString("sv-SE")}
+              </div>
+            )}
           </div>
         ))}
         {longestRun && (

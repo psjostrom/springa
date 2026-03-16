@@ -25,7 +25,7 @@ export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "fitness-chart", label: "Fitness / Fatigue / Form" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
-  { key: "pace-curves", label: "Pace Curves" },
+  { key: "pace-curves", label: "Personal Bests" },
   { key: "bg-categories", label: "BG Response" },
   { key: "bg-start-level", label: "BG by Start Level" },
   { key: "bg-entry-slope", label: "BG by Entry Slope" },
