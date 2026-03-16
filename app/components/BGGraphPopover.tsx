@@ -220,7 +220,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
                         ? "bg-[#2e293c] text-[#00ffff]"
-                        : "text-[#af9ece] hover:text-[#af9ece]"
+                        : "text-[#af9ece] hover:text-white"
                     }`}
                   >
                     {w}h

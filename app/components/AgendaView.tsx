@@ -228,7 +228,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => { setView("upcoming"); }}
-          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -253,7 +253,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => { setView("history"); }}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-[#af9ece] transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-[#af9ece] hover:text-white transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

@@ -254,7 +254,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
                   ? "bg-[#f23b94] text-white shadow-lg shadow-[#f23b94]/20"
-                  : "bg-[#2e293c] text-[#af9ece] hover:bg-[#2e293c] hover:text-[#af9ece]"
+                  : "bg-[#2e293c] text-[#af9ece] hover:bg-[#4a4358] hover:text-white"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}

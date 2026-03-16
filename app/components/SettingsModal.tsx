@@ -206,7 +206,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     />
                   </button>
                   <div>
-                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#af9ece]" : "text-[#af9ece]"}`}>
+                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#af9ece]/60" : "text-[#af9ece]"}`}>
                       Include base phase
                     </label>
                     <p className="text-xs text-[#af9ece] mt-0.5 leading-relaxed">

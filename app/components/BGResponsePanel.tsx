@@ -133,7 +133,7 @@ function CategoryCard({
       {/* Expandable activity breakdown */}
       <button
         onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1 mt-2 text-xs text-[#af9ece] hover:text-[#af9ece] transition-colors w-full"
+        className="flex items-center gap-1 mt-2 text-xs text-[#af9ece] hover:text-white transition-colors w-full"
       >
         <ChevronDown
           className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}

@@ -219,7 +219,7 @@ export function EventModal({
                 )}
                 <button
                   onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
-                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#3d1525] text-white rounded-lg transition"
+                  className="px-3 py-1.5 text-sm bg-[#3d1525] hover:bg-[#2e293c] text-white rounded-lg transition"
                 >
                   Delete
                 </button>
@@ -236,7 +236,7 @@ export function EventModal({
                     });
                   }}
                   disabled={editMode.kind === "deleting"}
-                  className="px-3 py-1.5 text-sm bg-[#ff4d6a] hover:bg-[#ff4d6a] text-white rounded-lg transition disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-[#ff4d6a] hover:brightness-110 text-white rounded-lg transition disabled:opacity-50"
                 >
                   {editMode.kind === "deleting" ? "Deleting..." : "Confirm"}
                 </button>

@@ -153,7 +153,7 @@ function WidgetEditBar({
       </button>
       <button
         onClick={() => { onToggle(widgetKey); }}
-        className={`p-1 rounded transition ${isHidden ? "text-[#af9ece] hover:text-[#af9ece]" : "text-[#af9ece] hover:text-[#f23b94]"}`}
+        className={`p-1 rounded transition ${isHidden ? "text-[#af9ece]/60" : "text-[#af9ece] hover:text-[#f23b94]"}`}
         aria-label={isHidden ? "Show widget" : "Hide widget"}
       >
         {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
