@@ -57,11 +57,11 @@ function buildTestModel(
 /** Build a model with multiple fuel rates for regression testing. */
 function buildRegressionModel(): BGResponseModel {
   const activities = [
-    // Low fuel (30 g/h) → BG drops fast (-0.2/min = -1.0/5min)
+    // Low fuel (30 g/h) → BG drops fast (-0.2/min)
     ...Array.from({ length: 4 }, (_, i) =>
       makeActivity(`low-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.2), 30),
     ),
-    // High fuel (60 g/h) → BG drops slowly (-0.05/min = -0.25/5min)
+    // High fuel (60 g/h) → BG drops slowly (-0.05/min)
     ...Array.from({ length: 4 }, (_, i) =>
       makeActivity(`high-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.05), 60),
     ),
@@ -123,7 +123,7 @@ describe("simulateBG", () => {
   });
 
   it("BG drops over time with negative model rates", () => {
-    const model = buildTestModel("easy", 0.1); // -0.5 mmol/5min
+    const model = buildTestModel("easy", 0.1); // -0.1 mmol/min
     const result = simulateBG({
       startBG: 10,
       entrySlope: null,
@@ -154,8 +154,8 @@ describe("simulateBG", () => {
   });
 
   it("detects hypo crossing", () => {
-    // Fast-dropping model: -1.5 mmol/5min, start at 6 → should hit 3.9 quickly
-    const model = buildTestModel("easy", 0.3, 48, 8); // -1.5/5min, 8 activities for reliable
+    // Fast-dropping model: -0.3 mmol/min, start at 6 → should hit 3.9 quickly
+    const model = buildTestModel("easy", 0.3, 48, 8); // -0.3/min, 8 activities for reliable
     const result = simulateBG({
       startBG: 6,
       entrySlope: null,

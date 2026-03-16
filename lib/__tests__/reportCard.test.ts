@@ -43,7 +43,7 @@ describe("scoreBG", () => {
   });
 
   it("rates good when BG is stable", () => {
-    // 10.0 → 9.5 over 25 min (6 points, 5 min apart) = -0.5 / 5 units of 5m = -0.1/5m
+    // 10.0 → 9.5 over 25 min (6 points, 5 min apart) = -0.5 / 25 = -0.02/min
     const event = makeEvent({
       glucose: glucoseStream([10.0, 9.9, 9.8, 9.7, 9.6, 9.5]),
     });
@@ -75,7 +75,7 @@ describe("scoreBG", () => {
   });
 
   it("rates bad when drop rate exceeds -1.0", () => {
-    // Drop 5.0 over 20 min (4 units of 5m) = -1.25/5m
+    // Drop 5.0 over 20 min = -0.25/min
     const event = makeEvent({
       glucose: glucoseStream([12.0, 10.75, 9.5, 8.25, 7.0]),
     });

@@ -170,7 +170,7 @@ describe("suggestFuelAdjustments", () => {
     expect(suggestions[0].avgDropRate).toBeLessThan(-0.1);
   });
 
-  it("does not suggest for moderate drops (> -0.5)", () => {
+  it("does not suggest for moderate drops (> -0.1)", () => {
     // BG drops mildly: -0.04/min → -0.2 total over 5min
     const model = buildBGModelFromCached([
       makeCachedForFuel("a1", 48, (i) => 10 - i * 0.04),
@@ -188,7 +188,7 @@ describe("suggestFuelAdjustments", () => {
 
     const suggestions = suggestFuelAdjustments(model);
     expect(suggestions.length).toBeGreaterThan(0);
-    // Drop rate ~-2.5 per 5min, excess = 2.0, increase = ceil(2.0/0.25)*6 = 48
+    // Drop rate ~-0.5/min, excess = 0.4, increase = ceil(0.4/0.05)*6 = 48
     // But window edge effects may reduce the observed rate slightly
     expect(suggestions[0].suggestedIncrease).toBeGreaterThanOrEqual(30);
     expect(suggestions[0].suggestedIncrease).toBeLessThanOrEqual(60);
