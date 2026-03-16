@@ -163,7 +163,7 @@ function summarizeLiveBG(ctx: CoachContext): string {
   const parts = [`Current BG: ${ctx.currentBG.toFixed(1)} mmol/L`];
   if (ctx.trendArrow) parts.push(`Trend: ${ctx.trendArrow}`);
   if (ctx.trendSlope != null) {
-    parts.push(`Rate: ${ctx.trendSlope > 0 ? "+" : ""}${ctx.trendSlope.toFixed(2)} mmol/L per 5min`);
+    parts.push(`Rate: ${ctx.trendSlope > 0 ? "+" : ""}${ctx.trendSlope.toFixed(3)} mmol/L per min`);
   }
   parts.push(`(${ageMin < 1 ? "just now" : `${ageMin}m ago`})`);
   lines.push(parts.join(" | "));

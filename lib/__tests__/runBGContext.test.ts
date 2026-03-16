@@ -39,9 +39,9 @@ describe("findReadingsInWindow", () => {
 
   it("returns readings within exact window boundaries", () => {
     const result = findReadingsInWindow(readings, T0, T0 + 3 * FIVE_MIN);
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(5);
     expect(result[0].mmol).toBe(10);
-    expect(result[2].mmol).toBe(9);
+    expect(result[4].mmol).toBe(8);
   });
 
   it("handles empty input", () => {
@@ -67,8 +67,8 @@ describe("findReadingsInWindow", () => {
   it("works with large datasets (binary search)", () => {
     const values = Array.from({ length: 10000 }, (_, i) => 10 + (i % 5) * 0.1);
     const large = makeReadings(T0, values);
-    const windowStart = T0 + 5000 * FIVE_MIN;
-    const windowEnd = T0 + 5010 * FIVE_MIN;
+    const windowStart = T0 + 5000 * 60 * 1000;
+    const windowEnd = T0 + 5010 * 60 * 1000;
     const result = findReadingsInWindow(large, windowStart, windowEnd);
     expect(result).toHaveLength(10);
   });
@@ -84,7 +84,7 @@ describe("computeSlope", () => {
   });
 
   it("steadily dropping readings → negative slope, correct magnitude", () => {
-    // Drop 1 mmol per 5 min = 1 mmol per 5 min
+    // Drop 1 mmol per min = 1 mmol per min
     const readings = makeReadings(T0, [10, 9, 8, 7, 6]);
     const slope = computeSlope(readings)!;
     expect(slope).toBeCloseTo(-1.0, 1);
@@ -101,7 +101,7 @@ describe("computeSlope", () => {
   it("2 readings → correct slope (minimal case)", () => {
     const readings = makeReadings(T0, [10, 9]);
     const slope = computeSlope(readings)!;
-    // Drop 1 in 5 min = 1 per 5 min
+    // Drop 1 in 1 min = 1 per min
     expect(slope).toBeCloseTo(-1.0, 1);
   });
 
@@ -119,15 +119,15 @@ describe("computeSlope", () => {
     const readings = makeReadings(T0, [10, 9.5, 10.2, 9.0, 8.8, 8.0]);
     const slope = computeSlope(readings)!;
     expect(slope).toBeLessThan(0);
-    // Should be roughly -0.4/5min (drop of ~2 over 25 min ≈ 0.4/5min)
+    // Should be roughly -0.4/min (drop of ~2 over 5 min ≈ 0.4/min)
     expect(slope).toBeCloseTo(-0.4, 0);
   });
 
-  it("correct units: result is mmol/L per 5 minutes", () => {
-    // Drop 0.5 mmol over 5 min (2 readings, 5 min apart)
+  it("correct units: result is mmol/L per minute", () => {
+    // Drop 0.5 mmol over 1 min (2 readings, 1 min apart)
     const readings = makeReadings(T0, [10.0, 9.5]);
     const slope = computeSlope(readings)!;
-    // 0.5 per 5 min = 0.5 per 5 min
+    // 0.5 per 1 min = 0.5 per min
     expect(slope).toBeCloseTo(-0.5, 1);
   });
 });
@@ -158,11 +158,11 @@ describe("closestReading", () => {
   const readings = makeReadings(T0, [10, 9.5, 9, 8.5, 8]);
 
   it("returns nearest reading to target timestamp", () => {
-    // Target 2.5 min after T0 → should return T0 or T0+5min
+    // Target 2.5 min after T0 → should return reading at 2min or 3min
     const result = closestReading(readings, T0 + 2.5 * 60 * 1000)!;
     expect(result).not.toBeNull();
     // Should be one of the two nearest
-    expect([10, 9.5]).toContain(result.mmol);
+    expect([9, 8.5]).toContain(result.mmol);
   });
 
   it("respects maxGapMs — returns null if nearest is too far", () => {
@@ -181,15 +181,15 @@ describe("closestReading", () => {
   });
 
   it("handles target after all readings", () => {
-    const result = closestReading(readings, T0 + 4 * FIVE_MIN + 60000);
+    const result = closestReading(readings, T0 + 4 * 60 * 1000 + 30000);
     expect(result).not.toBeNull();
     expect(result!.mmol).toBe(8);
   });
 
   it("handles target exactly on a reading timestamp", () => {
-    const result = closestReading(readings, T0 + 2 * FIVE_MIN)!;
+    const result = closestReading(readings, T0 + 2 * 60 * 1000)!;
     expect(result.mmol).toBe(9);
-    expect(result.ts).toBe(T0 + 2 * FIVE_MIN);
+    expect(result.ts).toBe(T0 + 2 * 60 * 1000);
   });
 });
 
@@ -197,9 +197,9 @@ describe("closestReading", () => {
 
 describe("computePreRunContext", () => {
   it("stable entry → slope ≈ 0, low stability", () => {
-    const readings = makeReadings(T0 - 30 * 60 * 1000, [
-      10, 10, 10, 10, 10, 10,
-    ]); // 30 min before
+    const readings = makeReadings(T0 - 30 * 60 * 1000,
+      Array.from({ length: 31 }, () => 10)
+    ); // 30 min before, 1-min intervals
     const ctx = computePreRunContext(readings, T0)!;
     expect(ctx).not.toBeNull();
     expect(Math.abs(ctx.entrySlope30m)).toBeLessThan(0.1);
@@ -208,27 +208,27 @@ describe("computePreRunContext", () => {
   });
 
   it("dropping entry → negative slope", () => {
-    // 6 readings over 25 min before run, dropping 10→8
-    const readings = makeReadings(T0 - 25 * 60 * 1000, [
-      10, 9.6, 9.2, 8.8, 8.4, 8.0,
-    ]);
+    // 26 readings over 25 min before run, dropping 10→8
+    const readings = makeReadings(T0 - 25 * 60 * 1000,
+      Array.from({ length: 26 }, (_, i) => 10 - i * 0.08)
+    );
     const ctx = computePreRunContext(readings, T0)!;
     expect(ctx).not.toBeNull();
     expect(ctx.entrySlope30m).toBeLessThan(0);
   });
 
   it("rising entry → positive slope", () => {
-    const readings = makeReadings(T0 - 25 * 60 * 1000, [
-      6, 7, 8, 9, 10, 11,
-    ]);
+    const readings = makeReadings(T0 - 25 * 60 * 1000,
+      Array.from({ length: 26 }, (_, i) => 6 + i * 0.2)
+    );
     const ctx = computePreRunContext(readings, T0)!;
     expect(ctx.entrySlope30m).toBeGreaterThan(0);
   });
 
   it("volatile entry → low |slope| but high stability", () => {
-    const readings = makeReadings(T0 - 25 * 60 * 1000, [
-      6, 13, 6, 13, 6, 13,
-    ]);
+    const readings = makeReadings(T0 - 25 * 60 * 1000,
+      Array.from({ length: 26 }, (_, i) => i % 2 === 0 ? 6 : 13)
+    );
     const ctx = computePreRunContext(readings, T0)!;
     expect(ctx.entryStability).toBeGreaterThan(2.0);
   });
@@ -255,9 +255,9 @@ describe("computePreRunContext", () => {
   });
 
   it("sign correctness: dropping BG MUST produce negative slope", () => {
-    const readings = makeReadings(T0 - 25 * 60 * 1000, [
-      12, 11, 10, 9, 8, 7,
-    ]);
+    const readings = makeReadings(T0 - 25 * 60 * 1000,
+      Array.from({ length: 26 }, (_, i) => 12 - i * 0.2)
+    );
     const ctx = computePreRunContext(readings, T0)!;
     expect(ctx.entrySlope30m).toBeLessThan(0);
   });
@@ -307,10 +307,10 @@ describe("computePostRunContext", () => {
   it("timeToStable: BG enters 4-10 and stays 15+ min → correct minute count", () => {
     // First 3 readings high (outside range), then enters range and stays
     const readings = makeReadings(runEndMs, [
-      12, 11, 10.5, 9.5, 9, 8.5, 8, 7.5, 7, 6.5,
+      12, 11, 10.5, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5, 5, 5, 5, 5, 5, 5, 5,
     ]);
-    // Reading at index 3 (9.5) is first in range at runEnd + 15min
-    // Stays in range through rest → stable from 15min for at least 15min
+    // Reading at index 3 (9.5) is first in range at runEnd + 3min
+    // Stays in range through rest → stable from 3min for at least 15min
     const ctx = computePostRunContext(readings, runEndMs)!;
     expect(ctx.timeToStable).not.toBeNull();
   });
@@ -343,7 +343,7 @@ describe("computePostRunContext", () => {
 
 describe("buildRunBGContext", () => {
   it("completed event with full xDrip coverage → pre and post populated", () => {
-    const preReadings = makeReadings(T0 - 30 * 60 * 1000, [10, 10, 10, 10, 10, 10]);
+    const preReadings = makeReadings(T0 - 30 * 60 * 1000, Array.from({ length: 31 }, () => 10));
     const duringReadings = makeReadings(T0, [9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5]);
     const postReadings = makeReadings(T0 + 40 * 60 * 1000, [5.5, 5, 5.5, 6, 6.5, 7, 7.5, 8]);
     const allReadings = [...preReadings, ...duringReadings, ...postReadings];
@@ -358,7 +358,7 @@ describe("buildRunBGContext", () => {
   });
 
   it("completed event with pre-run data only → pre populated, post null", () => {
-    const preReadings = makeReadings(T0 - 30 * 60 * 1000, [10, 10, 10, 10, 10, 10]);
+    const preReadings = makeReadings(T0 - 30 * 60 * 1000, Array.from({ length: 31 }, () => 10));
     const event = makeEvent();
     const ctx = buildRunBGContext(event, preReadings)!;
     expect(ctx.pre).not.toBeNull();
@@ -386,7 +386,7 @@ describe("buildRunBGContext", () => {
   });
 
   it("totalBGImpact sign: if BG drops from 10 to 6, impact is negative", () => {
-    const preReadings = makeReadings(T0 - 25 * 60 * 1000, [10, 10, 10, 10, 10, 10]);
+    const preReadings = makeReadings(T0 - 25 * 60 * 1000, Array.from({ length: 26 }, () => 10));
     const postReadings = makeReadings(T0 + 40 * 60 * 1000, [
       8, 7, 6.5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
     ]);
@@ -413,10 +413,10 @@ describe("buildRunBGContexts", () => {
 
     // Coverage for both events
     const readings = [
-      ...makeReadings(event1Start - 30 * 60 * 1000, [10, 10, 10, 10, 10, 10]),
+      ...makeReadings(event1Start - 30 * 60 * 1000, Array.from({ length: 31 }, () => 10)),
       ...makeReadings(event1Start, [9, 8, 7, 6, 5, 5, 5, 5]),
       ...makeReadings(event1Start + 40 * 60 * 1000, [5, 5.5, 6, 6.5, 7, 7.5, 8, 8]),
-      ...makeReadings(event2Start - 30 * 60 * 1000, [9, 9, 9, 9, 9, 9]),
+      ...makeReadings(event2Start - 30 * 60 * 1000, Array.from({ length: 31 }, () => 9)),
       ...makeReadings(event2Start, [8, 7, 6, 5, 5, 5, 5, 5]),
       ...makeReadings(event2Start + 40 * 60 * 1000, [5, 5, 5.5, 6, 6.5, 7, 7, 7]),
     ].sort((a, b) => a.ts - b.ts);
@@ -460,7 +460,7 @@ describe("computePostRunContext spike fields", () => {
   it("computes peak30m and spike30m from post-run readings", () => {
     // End BG = 7.0 (closest to runEnd), peak in 30m window = 11.0
     const postReadings = makeReadings(runEndMs, [7.0, 9.0, 11.0, 10.0, 8.5, 7.5, 7.0]);
-    const preReadings = makeReadings(T0 - 30 * 60 * 1000, [10, 9.5, 9, 8.5, 8, 7.5, 7.0]);
+    const preReadings = makeReadings(T0 - 30 * 60 * 1000, Array.from({ length: 31 }, (_, i) => 10 - i * 0.1));
     const allReadings = [...preReadings, ...postReadings];
 
     const result = computePostRunContext(allReadings, runEndMs);
@@ -485,10 +485,10 @@ describe("integration: realistic run scenario", () => {
     const runStart = T0;
     const runEnd = T0 + 40 * 60 * 1000;
 
-    // Pre-run: 30 min before, dropping slightly
-    const preReadings = makeReadings(runStart - 30 * 60 * 1000, [
-      10.5, 10.3, 10.1, 9.9, 9.8, 9.7,
-    ]);
+    // Pre-run: 30 min before, dropping slightly (31 readings over 30 min)
+    const preReadings = makeReadings(runStart - 30 * 60 * 1000,
+      Array.from({ length: 31 }, (_, i) => 10.5 - i * ((10.5 - 9.7) / 30))
+    );
 
     // During run: 40 min
     const duringReadings = makeReadings(runStart, [
@@ -513,9 +513,9 @@ describe("integration: realistic run scenario", () => {
     expect(ctx.pre).not.toBeNull();
     expect(ctx.post).not.toBeNull();
 
-    // Entry slope should be negative (dropping ~0.16/5min)
+    // Entry slope should be negative (dropping ~0.027/min)
     expect(ctx.pre!.entrySlope30m).toBeLessThan(0);
-    expect(ctx.pre!.entrySlope30m).toBeCloseTo(-0.16, 0);
+    expect(ctx.pre!.entrySlope30m).toBeCloseTo(-0.027, 1);
 
     // Recovery: significant drop in 30 min
     expect(ctx.post!.recoveryDrop30m).toBeLessThan(0);
@@ -531,9 +531,9 @@ describe("integration: realistic run scenario", () => {
     const runStart = T0;
     const runEnd = T0 + 60 * 60 * 1000; // 60 min run
 
-    const preReadings = makeReadings(runStart - 30 * 60 * 1000, [
-      10, 10, 10, 10, 10, 10,
-    ]);
+    const preReadings = makeReadings(runStart - 30 * 60 * 1000,
+      Array.from({ length: 31 }, () => 10)
+    );
 
     const postReadings = makeReadings(runEnd, [
       7, 6, 5, 4, 3.5, 3.8, 4.5, 5, 5.5, 6,

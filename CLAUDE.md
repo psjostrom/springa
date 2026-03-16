@@ -88,7 +88,7 @@ The BG model also applies a **spike penalty** — if post-run data shows BG spik
 
 The BG model (`lib/bgModel.ts`) learns from completed runs to predict BG behavior and recommend fuel rates.
 
-**Inputs:** HR + glucose streams from completed activities, aligned in 5-min sliding windows. Each window produces a `BGObservation` with BG rate (mmol/L per 5min), fuel rate, category, start BG, entry slope.
+**Inputs:** HR + glucose streams from completed activities, aligned in 5-min sliding windows. Each window produces a `BGObservation` with BG rate (mmol/L per min), fuel rate, category, start BG, entry slope.
 
 **Outputs:**
 - Per-category BG response stats (avg/median drop rate, confidence)
@@ -102,7 +102,7 @@ The BG model (`lib/bgModel.ts`) learns from completed runs to predict BG behavio
 
 Scoring strip in `EventModal` rating each completed run. Logic in `lib/reportCard.ts`, UI in `app/components/RunReportCard.tsx`.
 
-- **BG Score:** drop rate + hypo detection. Good/ok/bad based on mmol/L per 5min thresholds.
+- **BG Score:** drop rate + hypo detection. Good/ok/bad based on mmol/L per min thresholds.
 - **HR Zone Compliance:** % time in target zone by category (easy→Z2, interval→Z4).
 - Additional context scores (entry trend, recovery) when BG context data is available.
 

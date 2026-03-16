@@ -47,7 +47,7 @@ CRITICAL T1D physiology:
 - NEVER suggest reducing carbs to prevent BG dropping. That is backwards and dangerous.
 - Hypo (<3.9 mmol/L) is the primary safety risk.
 - Starting below 9 is a risk factor. Below 8 is a serious concern.
-- A gentle decline (e.g. -0.25/5min) staying above 5.0 is a GOOD outcome.
+- A gentle decline (e.g. -0.05/min) staying above 5.0 is a GOOD outcome.
 - Insulin on board (IOB) at run start matters: residual bolus insulin accelerates BG drop on top of exercise-driven uptake. High IOB + exercise = compounding hypo risk.
 - Time since last meal affects entrySlope: a recent bolus (< 2h) means insulin is still peaking, which can cause steep pre-run BG drops even before the run starts.
 
@@ -106,7 +106,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push("## Blood Glucose (in-run)");
     lines.push(`Start BG: ${bg.startBG.toFixed(1)} mmol/L`);
     lines.push(`Min BG: ${bg.minBG.toFixed(1)} mmol/L`);
-    lines.push(`Drop rate: ${bg.dropRate.toFixed(2)} mmol/L per 5min`);
+    lines.push(`Drop rate: ${bg.dropRate.toFixed(3)} mmol/L per min`);
     lines.push(`Hypo during run: ${bg.hypo ? "YES" : "No"}`);
     lines.push(`Rating: ${ratingLabel(bg.rating)}`);
   }
@@ -116,7 +116,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     const et = reportCard.entryTrend;
     lines.push("");
     lines.push("## Pre-Run BG");
-    lines.push(`Entry slope: ${et.slope30m.toFixed(2)} mmol/L per 5min`);
+    lines.push(`Entry slope: ${et.slope30m.toFixed(3)} mmol/L per min`);
     lines.push(`Stability: ${et.stability.toFixed(2)} std dev`);
     lines.push(`Label: ${et.label}`);
     lines.push(`Rating: ${ratingLabel(et.rating)}`);

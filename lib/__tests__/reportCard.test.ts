@@ -43,7 +43,7 @@ describe("scoreBG", () => {
   });
 
   it("rates good when BG is stable", () => {
-    // 10.0 → 9.5 over 25 min (6 points, 5 min apart) = -0.5 / 5 units of 5m = -0.1/5m
+    // 10.0 → 9.5 over 25 min (6 points, 5 min apart) = -0.5 / 25 = -0.02/min
     const event = makeEvent({
       glucose: glucoseStream([10.0, 9.9, 9.8, 9.7, 9.6, 9.5]),
     });
@@ -63,19 +63,19 @@ describe("scoreBG", () => {
     expect(result.dropRate).toBeGreaterThan(0);
   });
 
-  it("rates ok when drop rate is between -0.5 and -1.0", () => {
-    // Drop 3.0 over 20 min (5 points, 5 min apart = 20 min = 4 units of 5m)
-    // rate = -3.0 / 4 = -0.75/5m
+  it("rates ok when drop rate is between -0.1 and -0.2", () => {
+    // Drop 3.0 over 20 min (5 points, 5 min apart = 20 min)
+    // rate = -3.0 / 20 = -0.15/min
     const event = makeEvent({
       glucose: glucoseStream([10.0, 9.25, 8.5, 7.75, 7.0]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("ok");
-    expect(result.dropRate).toBeCloseTo(-0.75);
+    expect(result.dropRate).toBeCloseTo(-0.15);
   });
 
   it("rates bad when drop rate exceeds -1.0", () => {
-    // Drop 5.0 over 20 min (4 units of 5m) = -1.25/5m
+    // Drop 5.0 over 20 min = -0.25/min
     const event = makeEvent({
       glucose: glucoseStream([12.0, 10.75, 9.5, 8.25, 7.0]),
     });
@@ -104,7 +104,7 @@ describe("scoreBG", () => {
   });
 
   it("calculates dropRate correctly with non-standard intervals", () => {
-    // 2 points, 10 min apart, drop of 2.0 → -2.0 / (10/5) = -1.0/5m
+    // 2 points, 10 min apart, drop of 2.0 → -2.0 / 10 = -0.2/min
     const event = makeEvent({
       glucose: [
         { time: 0, value: 10.0 },
@@ -112,8 +112,8 @@ describe("scoreBG", () => {
       ],
     });
     const result = scoreBG(event)!;
-    expect(result.dropRate).toBeCloseTo(-1.0);
-    expect(result.rating).toBe("ok"); // exactly -1.0 is boundary — "bad" requires < -1.0
+    expect(result.dropRate).toBeCloseTo(-0.2);
+    expect(result.rating).toBe("ok"); // exactly -0.2 is boundary — "bad" requires < -0.2
   });
 
   it("handles zero-duration edge case", () => {
@@ -360,22 +360,22 @@ describe("scoreEntryTrend", () => {
     expect(score.label).toBe("Stable");
   });
 
-  it("mild drop (slope -0.25, stability 0.3) → ok, Dropping", () => {
-    const ctx = makeCtxWithPre({ entrySlope30m: -0.25, entryStability: 0.3, startBG: 10, readingCount: 6 });
+  it("mild drop (slope -0.05, stability 0.3) → ok, Dropping", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.05, entryStability: 0.3, startBG: 10, readingCount: 6 });
     const score = scoreEntryTrend(ctx)!;
     expect(score.rating).toBe("ok");
     expect(score.label).toBe("Dropping");
   });
 
-  it("mild rise (slope +0.25, stability 0.3) → ok, Rising", () => {
-    const ctx = makeCtxWithPre({ entrySlope30m: 0.25, entryStability: 0.3, startBG: 10, readingCount: 6 });
+  it("mild rise (slope +0.05, stability 0.3) → ok, Rising", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: 0.05, entryStability: 0.3, startBG: 10, readingCount: 6 });
     const score = scoreEntryTrend(ctx)!;
     expect(score.rating).toBe("ok");
     expect(score.label).toBe("Rising");
   });
 
-  it("crashing entry (slope -0.75) → bad, Crashing", () => {
-    const ctx = makeCtxWithPre({ entrySlope30m: -0.75, entryStability: 0.3, startBG: 10, readingCount: 6 });
+  it("crashing entry (slope -0.15) → bad, Crashing", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.15, entryStability: 0.3, startBG: 10, readingCount: 6 });
     const score = scoreEntryTrend(ctx)!;
     expect(score.rating).toBe("bad");
     expect(score.label).toBe("Crashing");
@@ -398,14 +398,14 @@ describe("scoreEntryTrend", () => {
     expect(scoreEntryTrend(undefined)).toBeNull();
   });
 
-  it("boundary: slope exactly -0.5 → ok (not bad)", () => {
-    const ctx = makeCtxWithPre({ entrySlope30m: -0.5, entryStability: 0.3, startBG: 10, readingCount: 6 });
+  it("boundary: slope exactly -0.1 → ok (not bad)", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.1, entryStability: 0.3, startBG: 10, readingCount: 6 });
     const score = scoreEntryTrend(ctx)!;
     expect(score.rating).toBe("ok");
   });
 
-  it("boundary: slope exactly -0.15 → good (not ok)", () => {
-    const ctx = makeCtxWithPre({ entrySlope30m: -0.15, entryStability: 0.3, startBG: 10, readingCount: 6 });
+  it("boundary: slope exactly -0.03 → good (not ok)", () => {
+    const ctx = makeCtxWithPre({ entrySlope30m: -0.03, entryStability: 0.3, startBG: 10, readingCount: 6 });
     const score = scoreEntryTrend(ctx)!;
     expect(score.rating).toBe("good");
   });
