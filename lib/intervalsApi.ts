@@ -580,6 +580,7 @@ interface PaceCurveApiResponse {
 
 const STANDARD_DISTANCES: { label: string; meters: number }[] = [
   { label: "1km", meters: 1000 },
+  { label: "2km", meters: 2000 },
   { label: "5km", meters: 5000 },
   { label: "10km", meters: 10000 },
   { label: "16km", meters: 16000 },

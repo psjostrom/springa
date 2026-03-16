@@ -716,7 +716,7 @@ describe("fetchPaceCurves", () => {
     const result = await fetchPaceCurves("test-key");
 
     expect(result).not.toBeNull();
-    expect(result!.bestEfforts.length).toBe(3); // 1km, 5km, 10km
+    expect(result!.bestEfforts.length).toBe(4); // 1km, 2km, 5km, 10km
     expect(result!.bestEfforts[0].label).toBe("1km");
     expect(result!.bestEfforts[0].timeSeconds).toBe(300);
     expect(result!.bestEfforts[0].pace).toBeCloseTo(5.0, 1); // 5:00/km

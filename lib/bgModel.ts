@@ -8,18 +8,18 @@ import { extractPostRunSpikes, type PostRunSpikeData } from "./postRunSpike";
 
 export interface BGObservation {
   category: WorkoutCategory;
-  bgRate: number; // mmol/L per 5 min
+  bgRate: number; // mmol/L per min
   fuelRate: number | null; // g/h (from the activity's planned fuel), null if unknown
   activityId: string;
   timeMinute: number;
   startBG: number; // activity starting glucose (mmol/L)
   relativeMinute: number; // minutes since activity start
-  entrySlope: number | null; // mmol/L per 5 min pre-workout trend, null if insufficient data
+  entrySlope: number | null; // mmol/L per min pre-workout trend, null if insufficient data
 }
 
 export interface CategoryBGResponse {
   category: WorkoutCategory;
-  avgRate: number; // mmol/L per 5 min (negative = dropping)
+  avgRate: number; // mmol/L per min (negative = dropping)
   medianRate: number;
   sampleCount: number;
   confidence: "low" | "medium" | "high"; // <10 / 10-30 / 30+
@@ -42,7 +42,7 @@ export interface FuelSuggestion {
   category: WorkoutCategory;
   currentAvgFuel: number | null; // g/h, null if no fuel data
   suggestedIncrease: number; // g/h
-  avgDropRate: number; // mmol/L per 5 min
+  avgDropRate: number; // mmol/L per min
 }
 
 // --- Starting BG Analysis ---
@@ -104,23 +104,24 @@ export interface EntrySlopeResponse {
 const SKIP_START = 5; // minutes — used by computeEntrySlope
 
 /** Compute BG rate of change from glucose points in the first SKIP_START minutes.
- *  Returns mmol/L per 5 min. Null if fewer than 2 points in that window. */
+ *  Uses linear regression to smooth out single-reading noise.
+ *  Returns mmol/L per min. Null if fewer than 2 points in that window. */
 export function computeEntrySlope(glucose: DataPoint[]): number | null {
   const entryPoints = glucose.filter((p) => p.time < SKIP_START);
   if (entryPoints.length < 2) return null;
 
   const first = entryPoints[0];
   const last = entryPoints[entryPoints.length - 1];
-  const timeDiffMinutes = last.time - first.time;
-  if (timeDiffMinutes <= 0) return null;
+  if (last.time - first.time <= 0) return null;
 
-  return ((last.value - first.value) / timeDiffMinutes) * 5;
+  const points = entryPoints.map((p) => ({ x: p.time - first.time, y: p.value }));
+  return linearRegression(points).slope;
 }
 
 export function classifyEntrySlope(slope: number): EntrySlope {
-  if (slope < -0.5) return "crashing";
-  if (slope < -0.15) return "dropping";
-  if (slope <= 0.15) return "stable";
+  if (slope < -0.1) return "crashing";
+  if (slope < -0.03) return "dropping";
+  if (slope <= 0.03) return "stable";
   return "rising";
 }
 
@@ -206,9 +207,9 @@ export interface TargetFuelResult {
   spikeAdjustment: number | null;
 }
 
-const EXTRAPOLATION_FACTOR = 12; // g/h per 1.0 mmol/L/5min excess drop
-const ACCEPTABLE_DROP = -0.1; // mmol/L per 5min — a mild drop is normal during running
-const MIN_DROP_TO_SUGGEST = -0.25; // only suggest fuel increases beyond this threshold
+const EXTRAPOLATION_FACTOR = 60; // g/h per 1.0 mmol/L/min excess drop
+const ACCEPTABLE_DROP = -0.02; // mmol/L per min — a mild drop is normal during running
+const MIN_DROP_TO_SUGGEST = -0.05; // only suggest fuel increases beyond this threshold
 const MAX_FUEL_MULTIPLIER = 1.5; // cap target at 1.5× current fuel
 const MAX_FUEL_ABSOLUTE = 90; // absolute ceiling in g/h
 const ACCEPTABLE_SPIKE = 2.0; // mmol/L post-run 30m peak above end BG
@@ -436,8 +437,8 @@ function aggregateModel(
 
 // --- Fuel suggestions ---
 
-const DROP_THRESHOLD = -0.5; // mmol/L per 5 min — suggest fuel increase beyond this
-const FUEL_INCREASE_PER_HALF = 6; // +6 g/h per 0.25 mmol/L/5min excess drop
+const DROP_THRESHOLD = -0.1; // mmol/L per min — suggest fuel increase beyond this
+const FUEL_INCREASE_PER_HALF = 6; // +6 g/h per 0.05 mmol/L/min excess drop
 
 /** Suggest fuel adjustments for categories with excessive BG drops. */
 export function suggestFuelAdjustments(model: BGResponseModel): FuelSuggestion[] {
@@ -448,7 +449,7 @@ export function suggestFuelAdjustments(model: BGResponseModel): FuelSuggestion[]
     if (response.avgRate >= DROP_THRESHOLD) continue;
 
     const excessDrop = Math.abs(response.avgRate) - Math.abs(DROP_THRESHOLD);
-    const suggestedIncrease = Math.ceil(excessDrop / 0.25) * FUEL_INCREASE_PER_HALF;
+    const suggestedIncrease = Math.ceil(excessDrop / 0.05) * FUEL_INCREASE_PER_HALF;
 
     suggestions.push({
       category: response.category,
@@ -473,7 +474,7 @@ export function summarizeBGModel(bgModel: BGResponseModel | null): string {
     const c = bgModel.categories[cat];
     if (!c) continue;
     lines.push(
-      `- ${cat}: avg BG change ${c.avgRate > 0 ? "+" : ""}${c.avgRate.toFixed(2)} mmol/L per 5min` +
+      `- ${cat}: avg BG change ${c.avgRate > 0 ? "+" : ""}${c.avgRate.toFixed(2)} mmol/L per min` +
         ` (${c.confidence} confidence, ${c.activityCount} activities)` +
         (c.avgFuelRate != null ? `, avg fuel ${c.avgFuelRate.toFixed(0)}g/h` : ""),
     );
@@ -491,7 +492,7 @@ export function summarizeBGModel(bgModel: BGResponseModel | null): string {
     lines.push("BG response by starting level:");
     for (const b of bgModel.bgByStartLevel) {
       lines.push(
-        `- Start ${b.band} mmol/L: avg ${b.avgRate > 0 ? "+" : ""}${b.avgRate.toFixed(2)} mmol/L per 5min (${b.activityCount} activities)`,
+        `- Start ${b.band} mmol/L: avg ${b.avgRate > 0 ? "+" : ""}${b.avgRate.toFixed(2)} mmol/L per min (${b.activityCount} activities)`,
       );
     }
   }
@@ -500,7 +501,7 @@ export function summarizeBGModel(bgModel: BGResponseModel | null): string {
     lines.push("BG response by entry slope (pre-run trend):");
     for (const s of bgModel.bgByEntrySlope) {
       lines.push(
-        `- Entry ${s.slope}: avg ${s.avgRate > 0 ? "+" : ""}${s.avgRate.toFixed(2)} mmol/L per 5min (${s.activityCount} activities)`,
+        `- Entry ${s.slope}: avg ${s.avgRate > 0 ? "+" : ""}${s.avgRate.toFixed(2)} mmol/L per min (${s.activityCount} activities)`,
       );
     }
   }
@@ -509,7 +510,7 @@ export function summarizeBGModel(bgModel: BGResponseModel | null): string {
     lines.push("BG response by time into run:");
     for (const t of bgModel.bgByTime) {
       lines.push(
-        `- ${t.bucket}min: avg ${t.avgRate > 0 ? "+" : ""}${t.avgRate.toFixed(2)} mmol/L per 5min (${t.sampleCount} samples)`,
+        `- ${t.bucket}min: avg ${t.avgRate > 0 ? "+" : ""}${t.avgRate.toFixed(2)} mmol/L per min (${t.sampleCount} samples)`,
       );
     }
   }

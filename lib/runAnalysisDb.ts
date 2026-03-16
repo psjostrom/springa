@@ -7,7 +7,7 @@ import { nonEmpty } from "./format";
 export interface RunHistoryBG {
   startBG: number;
   endBG: number | null;
-  dropRate: number | null; // mmol/L per 5min
+  dropRate: number | null; // mmol/L per min
 }
 
 export interface RunHistoryEntry {

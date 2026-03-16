@@ -140,7 +140,7 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("Activities analyzed: 5");
-    expect(prompt).toContain("easy: avg BG change -0.45 mmol/L per 5min");
+    expect(prompt).toContain("easy: avg BG change -0.45 mmol/L per min");
     expect(prompt).toContain("medium confidence, 5 activities");
     expect(prompt).toContain("avg fuel 48g/h");
   });
@@ -162,8 +162,8 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("BG response by starting level:");
-    expect(prompt).toContain("Start 8-10 mmol/L: avg -0.60 mmol/L per 5min (3 activities)");
-    expect(prompt).toContain("Start 10-12 mmol/L: avg -0.30 mmol/L per 5min (2 activities)");
+    expect(prompt).toContain("Start 8-10 mmol/L: avg -0.60 mmol/L per min (3 activities)");
+    expect(prompt).toContain("Start 10-12 mmol/L: avg -0.30 mmol/L per min (2 activities)");
   });
 
   it("includes BG by time buckets in prompt", () => {
@@ -183,8 +183,8 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("BG response by time into run:");
-    expect(prompt).toContain("0-15min: avg -0.20 mmol/L per 5min (20 samples)");
-    expect(prompt).toContain("15-30min: avg -0.70 mmol/L per 5min (18 samples)");
+    expect(prompt).toContain("0-15min: avg -0.20 mmol/L per min (20 samples)");
+    expect(prompt).toContain("15-30min: avg -0.70 mmol/L per min (18 samples)");
   });
 
   it("includes BG by entry slope in prompt", () => {
@@ -204,8 +204,8 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("BG response by entry slope (pre-run trend):");
-    expect(prompt).toContain("Entry dropping: avg -1.20 mmol/L per 5min (3 activities)");
-    expect(prompt).toContain("Entry stable: avg -0.50 mmol/L per 5min (4 activities)");
+    expect(prompt).toContain("Entry dropping: avg -1.20 mmol/L per min (3 activities)");
+    expect(prompt).toContain("Entry stable: avg -0.50 mmol/L per min (4 activities)");
   });
 
   it("includes entry slope in per-workout BG data", () => {
@@ -233,7 +233,7 @@ describe("buildSystemPrompt", () => {
       hrZones: defaultHrZones,
     });
 
-    expect(prompt).toContain("startBG 10.5 (entry -0.4/5m)");
+    expect(prompt).toContain("startBG 10.5 (entry -0.40/min)");
   });
 
   it("includes target fuel rate suggestions", () => {
@@ -295,7 +295,7 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("startBG 10.5");
-    expect(prompt).toContain("BG rate -0.60/5min");
+    expect(prompt).toContain("BG rate -0.600/min");
   });
 
   it("does not include BG data for workouts without matching observations", () => {
@@ -373,7 +373,7 @@ describe("buildSystemPrompt", () => {
       hrZones: defaultHrZones,
     });
 
-    expect(prompt).toContain("BG rate +0.30/5min");
+    expect(prompt).toContain("BG rate +0.300/min");
   });
 
   it("includes fitness load data when insights provided", () => {
@@ -511,7 +511,7 @@ describe("buildSystemPrompt", () => {
       ["run1", {
         activityId: "run1",
         category: "easy",
-        pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
+        pre: { entrySlope30m: -0.02, entryStability: 0.2, startBG: 10, readingCount: 6 },
         post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
         totalBGImpact: -5,
       }],
@@ -526,7 +526,7 @@ describe("buildSystemPrompt", () => {
       runBGContexts,
     });
 
-    expect(prompt).toContain("entry: -0.1/5m (stable)");
+    expect(prompt).toContain("entry: -0.02/min (stable)");
     expect(prompt).toContain("recovery 30m: -1.5, lowest post-run 4.8");
   });
 

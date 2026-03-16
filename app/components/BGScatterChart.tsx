@@ -99,7 +99,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 label={{
-                  value: "mmol/L /5m",
+                  value: "mmol/L /min",
                   angle: -90,
                   position: "insideLeft",
                   style: { fill: "var(--color-muted)", fontSize: 10 },

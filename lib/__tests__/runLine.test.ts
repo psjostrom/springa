@@ -113,21 +113,21 @@ describe("formatRunLine", () => {
       bgStartAndRate: { startBG: 10.5, avgRate: -0.6, entrySlope: null },
     });
     expect(line).toContain("startBG 10.5");
-    expect(line).toContain("BG rate -0.60/5min");
+    expect(line).toContain("BG rate -0.600/min");
   });
 
   it("includes entry slope in bgStartAndRate", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgStartAndRate: { startBG: 10.5, avgRate: -0.6, entrySlope: -0.8 },
     });
-    expect(line).toContain("startBG 10.5 (entry -0.8/5m)");
+    expect(line).toContain("startBG 10.5 (entry -0.80/min)");
   });
 
   it("shows positive sign for rising BG rate", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgStartAndRate: { startBG: 10.0, avgRate: 0.3, entrySlope: null },
     });
-    expect(line).toContain("BG rate +0.30/5min");
+    expect(line).toContain("BG rate +0.300/min");
   });
 
   // --- Extras: runBGContext ---
@@ -136,12 +136,12 @@ describe("formatRunLine", () => {
     const ctx: RunBGContext = {
       activityId: "a1",
       category: "easy",
-      pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
+      pre: { entrySlope30m: -0.02, entryStability: 0.2, startBG: 10, readingCount: 6 },
       post: null,
       totalBGImpact: null,
     };
     const line = formatRunLine(makeEvent(), {}, { runBGContext: ctx });
-    expect(line).toContain("entry: -0.1/5m (stable)");
+    expect(line).toContain("entry: -0.02/min (stable)");
   });
 
   it("includes runBGContext post data", () => {
@@ -181,7 +181,7 @@ describe("formatRunLine", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgSummary: { startBG: 10.2, endBG: 7.5, dropRate: -0.54 },
     });
-    expect(line).toContain("startBG 10.2, endBG 7.5, drop -0.54/5m");
+    expect(line).toContain("startBG 10.2, endBG 7.5, drop -0.540/min");
   });
 
   it("handles bgSummary with null endBG and dropRate", () => {
@@ -197,7 +197,7 @@ describe("formatRunLine", () => {
     const line = formatRunLine(makeEvent(), {}, {
       bgSummary: { startBG: 8.0, endBG: 9.5, dropRate: 0.3 },
     });
-    expect(line).toContain("drop +0.30/5m");
+    expect(line).toContain("drop +0.300/min");
   });
 
   // --- Extras: feedback ---
@@ -234,7 +234,7 @@ describe("formatRunLine", () => {
     const ctx: RunBGContext = {
       activityId: "a1",
       category: "easy",
-      pre: { entrySlope30m: -0.1, entryStability: 0.2, startBG: 10, readingCount: 6 },
+      pre: { entrySlope30m: -0.02, entryStability: 0.2, startBG: 10, readingCount: 6 },
       post: { recoveryDrop30m: -1.5, nadirPostRun: 4.8, timeToStable: 25, postRunHypo: false, endBG: 7.5, readingCount: 8, peak30m: 7.5, spike30m: 0 },
       totalBGImpact: -5,
     };
@@ -259,7 +259,7 @@ describe("formatRunLine", () => {
 
 describe("classifyEntryLabel", () => {
   it("returns crashing for steep negative slope", () => {
-    expect(classifyEntryLabel(-1.5, 0.3)).toBe("crashing");
+    expect(classifyEntryLabel(-0.3, 0.3)).toBe("crashing");
   });
 
   it("returns volatile for high stability", () => {
@@ -267,18 +267,18 @@ describe("classifyEntryLabel", () => {
   });
 
   it("returns stable for flat, calm readings", () => {
-    expect(classifyEntryLabel(0.1, 0.3)).toBe("stable");
+    expect(classifyEntryLabel(0.02, 0.3)).toBe("stable");
   });
 
   it("returns dropping for moderate negative slope", () => {
-    expect(classifyEntryLabel(-0.5, 0.3)).toBe("dropping");
+    expect(classifyEntryLabel(-0.05, 0.3)).toBe("dropping");
   });
 
   it("returns rising for positive slope", () => {
-    expect(classifyEntryLabel(0.5, 0.3)).toBe("rising");
+    expect(classifyEntryLabel(0.05, 0.3)).toBe("rising");
   });
 
   it("returns unsteady for near-zero slope with moderate variability", () => {
-    expect(classifyEntryLabel(0.1, 0.8)).toBe("unsteady");
+    expect(classifyEntryLabel(0.02, 0.8)).toBe("unsteady");
   });
 });

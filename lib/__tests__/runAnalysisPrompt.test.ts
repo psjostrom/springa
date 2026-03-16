@@ -116,7 +116,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(user).toContain("Start BG: 10.2 mmol/L");
     expect(user).toContain("Min BG: 8.5 mmol/L");
-    expect(user).toContain("Drop rate: -0.28 mmol/L per 5min");
+    expect(user).toContain("Drop rate: -0.285 mmol/L per min");
     expect(user).toContain("Hypo during run: No");
   });
 

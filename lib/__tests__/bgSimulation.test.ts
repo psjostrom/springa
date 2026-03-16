@@ -57,11 +57,11 @@ function buildTestModel(
 /** Build a model with multiple fuel rates for regression testing. */
 function buildRegressionModel(): BGResponseModel {
   const activities = [
-    // Low fuel (30 g/h) → BG drops fast (-0.2/min = -1.0/5min)
+    // Low fuel (30 g/h) → BG drops fast (-0.2/min)
     ...Array.from({ length: 4 }, (_, i) =>
       makeActivity(`low-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.2), 30),
     ),
-    // High fuel (60 g/h) → BG drops slowly (-0.05/min = -0.25/5min)
+    // High fuel (60 g/h) → BG drops slowly (-0.05/min)
     ...Array.from({ length: 4 }, (_, i) =>
       makeActivity(`high-fuel-${i}`, "easy", 40, 125, Array.from({ length: 40 }, (_, j) => 10 - j * 0.05), 60),
     ),
@@ -115,15 +115,15 @@ describe("simulateBG", () => {
       bgModel: model,
     });
 
-    // 30 min / 5 min steps = 6 steps + initial = 7 points
-    expect(result.curve).toHaveLength(7);
+    // 30 min / 1 min steps + 1 = 31 points
+    expect(result.curve).toHaveLength(31);
     expect(result.curve[0].minute).toBe(0);
-    expect(result.curve[6].minute).toBe(30);
+    expect(result.curve[30].minute).toBe(30);
     expect(result.totalDurationMin).toBe(30);
   });
 
   it("BG drops over time with negative model rates", () => {
-    const model = buildTestModel("easy", 0.1); // -0.5 mmol/5min
+    const model = buildTestModel("easy", 0.1); // -0.1 mmol/min
     const result = simulateBG({
       startBG: 10,
       entrySlope: null,
@@ -154,8 +154,8 @@ describe("simulateBG", () => {
   });
 
   it("detects hypo crossing", () => {
-    // Fast-dropping model: -1.5 mmol/5min, start at 6 → should hit 3.9 quickly
-    const model = buildTestModel("easy", 0.3, 48, 8); // -1.5/5min, 8 activities for reliable
+    // Fast-dropping model: -0.3 mmol/min, start at 6 → should hit 3.9 quickly
+    const model = buildTestModel("easy", 0.3, 48, 8); // -0.3/min, 8 activities for reliable
     const result = simulateBG({
       startBG: 6,
       entrySlope: null,
@@ -258,14 +258,14 @@ describe("simulateBG", () => {
       bgModel: model,
     });
 
-    // Total = 35 min → 35/5 + 1 = 8 points
-    expect(result.curve).toHaveLength(8);
+    // Total = 35 min → 35/1 + 1 = 36 points
+    expect(result.curve).toHaveLength(36);
     expect(result.totalDurationMin).toBe(35);
 
     // Segment indices should transition
     expect(result.curve[0].segmentIndex).toBe(0); // warmup
-    expect(result.curve[3].segmentIndex).toBe(1); // main (minute 15)
-    expect(result.curve[7].segmentIndex).toBe(2); // cooldown (minute 35)
+    expect(result.curve[15].segmentIndex).toBe(1); // main (minute 15)
+    expect(result.curve[35].segmentIndex).toBe(2); // cooldown (minute 35)
   });
 
   it("generates warning when simulation exceeds observed data", () => {
@@ -498,7 +498,7 @@ describe("race simulation scenario", () => {
     });
 
     // Basic sanity checks
-    expect(result.curve.length).toBe(21); // 100min / 5min + 1
+    expect(result.curve.length).toBe(101); // 100min / 1min + 1
     expect(result.totalDurationMin).toBe(100);
     expect(result.curve[0].bg).toBe(11);
 
@@ -632,7 +632,7 @@ describe("edge cases", () => {
     });
 
     // Should produce a flat line (rate = 0 with no data)
-    expect(result.curve).toHaveLength(7);
+    expect(result.curve).toHaveLength(31);
     for (const point of result.curve) {
       expect(point.bg).toBeCloseTo(10, 0);
     }
@@ -648,8 +648,8 @@ describe("edge cases", () => {
       bgModel: model,
     });
 
-    // Only initial point since 3 min < 5 min step
-    expect(result.curve).toHaveLength(1);
+    // 3 min >= 1 min step → 3/1 + 1 = 4 points
+    expect(result.curve).toHaveLength(4);
     expect(result.totalDurationMin).toBe(3);
   });
 
@@ -666,8 +666,8 @@ describe("edge cases", () => {
       bgModel: model,
     });
 
-    // 20 min total / 5 min + 1 = 5 points
-    expect(result.curve).toHaveLength(5);
+    // 20 min total / 1 min + 1 = 21 points
+    expect(result.curve).toHaveLength(21);
   });
 
   it("minBG tracks the lowest point correctly", () => {
