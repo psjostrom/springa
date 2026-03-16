@@ -104,6 +104,7 @@ export interface EntrySlopeResponse {
 const SKIP_START = 5; // minutes — used by computeEntrySlope
 
 /** Compute BG rate of change from glucose points in the first SKIP_START minutes.
+ *  Uses linear regression to smooth out single-reading noise.
  *  Returns mmol/L per min. Null if fewer than 2 points in that window. */
 export function computeEntrySlope(glucose: DataPoint[]): number | null {
   const entryPoints = glucose.filter((p) => p.time < SKIP_START);
@@ -111,10 +112,10 @@ export function computeEntrySlope(glucose: DataPoint[]): number | null {
 
   const first = entryPoints[0];
   const last = entryPoints[entryPoints.length - 1];
-  const timeDiffMinutes = last.time - first.time;
-  if (timeDiffMinutes <= 0) return null;
+  if (last.time - first.time <= 0) return null;
 
-  return (last.value - first.value) / timeDiffMinutes;
+  const points = entryPoints.map((p) => ({ x: p.time - first.time, y: p.value }));
+  return linearRegression(points).slope;
 }
 
 export function classifyEntrySlope(slope: number): EntrySlope {

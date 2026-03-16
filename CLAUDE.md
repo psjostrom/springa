@@ -110,4 +110,4 @@ Scoring strip in `EventModal` rating each completed run. Logic in `lib/reportCar
 
 xDrip+ in **companion mode** returns stale/wrong `direction` and `delta` fields (31% mismatch rate). Root cause: [NightscoutFoundation/xDrip#3787](https://github.com/NightscoutFoundation/xDrip/issues/3787).
 
-**Fix:** `recomputeDirections()` in `lib/xdrip.ts` recomputes direction from adjacent sgv values on ingestion. The xDrip+ `direction` field is never stored as-is. Garmin side: SugarRun and SugarWave also compute delta and direction from sgv values on-device.
+**Fix:** `recomputeDirections()` in `lib/xdrip.ts` recomputes direction using 3-point averaged sgv values ~5 min apart on ingestion. The xDrip+ `direction` field is never stored as-is. Garmin side: SugarRun and SugarWave also compute delta and direction from sgv values on-device.
