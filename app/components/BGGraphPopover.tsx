@@ -198,7 +198,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               {scrubReading ? trendArrow(scrubReading.direction) : trend}
             </span>
             {delta !== null && (
-              <span className="text-sm font-semibold" style={{ color: delta > 0 ? "#fbbf24" : delta < -0.3 ? "#ff3366" : "#39ff14" }}>
+              <span className="text-sm font-semibold" style={{ color: delta > 0 ? "#ffb800" : delta < -0.3 ? "#ff4d6a" : "#4ade80" }}>
                 {delta > 0 ? "+" : ""}{delta.toFixed(1)}
               </span>
             )}
@@ -220,7 +220,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
                         ? "bg-[#2e293c] text-[#00ffff]"
-                        : "text-[#7a6899] hover:text-[#af9ece]"
+                        : "text-[#af9ece] hover:text-[#af9ece]"
                     }`}
                   >
                     {w}h
@@ -254,18 +254,18 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               y={scaleY(BG_STABLE_MAX)}
               width={CHART_W}
               height={scaleY(BG_HYPO) - scaleY(BG_STABLE_MAX)}
-              fill="#39ff1410"
+              fill="#4ade8010"
             />
             {/* Dashed borders for target range */}
             <line
               x1={PAD.left} y1={scaleY(BG_STABLE_MAX)}
               x2={WIDTH - PAD.right} y2={scaleY(BG_STABLE_MAX)}
-              stroke="#39ff1430" strokeDasharray="4 3" strokeWidth={0.5}
+              stroke="#4ade8030" strokeDasharray="4 3" strokeWidth={0.5}
             />
             <line
               x1={PAD.left} y1={scaleY(BG_HYPO)}
               x2={WIDTH - PAD.right} y2={scaleY(BG_HYPO)}
-              stroke="#39ff1430" strokeDasharray="4 3" strokeWidth={0.5}
+              stroke="#4ade8030" strokeDasharray="4 3" strokeWidth={0.5}
             />
 
             {/* Low danger zone */}
@@ -274,7 +274,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               y={scaleY(BG_HYPO)}
               width={CHART_W}
               height={scaleY(yMin) - scaleY(BG_HYPO)}
-              fill="#ff336610"
+              fill="#ff4d6a10"
             />
 
             {/* Y-axis ticks */}
@@ -351,7 +351,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
         {/* Pre-run readiness — shown when there's a planned workout today */}
         {todaysWorkout && currentBG != null && (
           <div className="px-3 pb-4">
-            <div className="text-xs text-[#7a6899] uppercase tracking-wider font-semibold mb-1.5 px-1">
+            <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1.5 px-1">
               {todaysWorkout.name}
             </div>
             <PreRunReadiness

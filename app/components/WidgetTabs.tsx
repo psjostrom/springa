@@ -155,7 +155,7 @@ function SectionHeading({ icon: Icon, iconColor, label }: { icon: LucideIcon; ic
 const SECTION_HEADINGS: Partial<Record<ModalWidgetId, React.ReactNode>> = {
   "report-card": <SectionHeading icon={Droplets} iconColor="#06b6d4" label="Blood Glucose" />,
   "stats": <SectionHeading icon={Activity} iconColor="#06b6d4" label="Performance" />,
-  "carbs-ingested": <SectionHeading icon={Utensils} iconColor="#fbbf24" label="Fueling" />,
+  "carbs-ingested": <SectionHeading icon={Utensils} iconColor="#ffb800" label="Fueling" />,
   "feedback": <SectionHeading icon={MessageSquare} iconColor="#af9ece" label="Feedback" />,
   "pace-splits": <SectionHeading icon={BarChart3} iconColor="#06b6d4" label="Pace Splits" />,
 };

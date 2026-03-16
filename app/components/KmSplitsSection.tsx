@@ -9,9 +9,9 @@ interface KmSplitsSectionProps {
 
 function getZoneColor(paceMinPerKm: number): string {
   if (paceMinPerKm < 5.083) return "#ef4444"; // Hard: <5:05/km
-  if (paceMinPerKm < 5.583) return "#f59e0b"; // Interval: 5:05-5:34
-  if (paceMinPerKm < 7.0) return "#3b82f6"; // Race Pace: 5:35-6:59
-  return "#22c55e"; // Easy: ≥7:00
+  if (paceMinPerKm < 5.583) return "#ffb800"; // Interval: 5:05-5:34
+  if (paceMinPerKm < 7.0) return "#06b6d4"; // Race Pace: 5:35-6:59
+  return "#4ade80"; // Easy: ≥7:00
 }
 
 function avgHrForWindow(
@@ -142,9 +142,9 @@ export function KmSplitsSection({
       <div className="flex gap-3 mt-3 pt-2 border-t border-[#2e293c]/20 text-[10px] text-[#af9ece]">
         {[
           { color: "#ef4444", label: "Hard" },
-          { color: "#f59e0b", label: "Interval" },
-          { color: "#3b82f6", label: "Race" },
-          { color: "#22c55e", label: "Easy" },
+          { color: "#ffb800", label: "Interval" },
+          { color: "#06b6d4", label: "Race" },
+          { color: "#4ade80", label: "Easy" },
         ].map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1">
             <span

@@ -16,9 +16,9 @@ interface PreRunReadinessProps {
 }
 
 const LEVEL_COLORS: Record<ReadinessLevel, string> = {
-  ready: "#39ff14",
-  caution: "#fbbf24",
-  wait: "#ff3366",
+  ready: "#4ade80",
+  caution: "#ffb800",
+  wait: "#ff4d6a",
 };
 
 const LEVEL_LABELS: Record<ReadinessLevel, string> = {

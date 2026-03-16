@@ -44,7 +44,7 @@ export function TabNavigation({
 						onClick={() => { handleClick(key); }}
 						className={`px-6 py-3 font-medium transition-all relative ${
 							localTab === key
-								? "text-[#ff69b4]"
+								? "text-[#f23b94]"
 								: "text-[#af9ece] hover:text-[#f23b94]"
 						}`}
 					>
@@ -64,7 +64,7 @@ export function TabNavigation({
 						onClick={() => { handleClick(key); }}
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							localTab === key
-								? "text-[#ff69b4]"
+								? "text-[#f23b94]"
 								: "text-[#af9ece] hover:text-[#f23b94]"
 						}`}
 					>

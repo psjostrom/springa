@@ -21,7 +21,7 @@ export function UnratedRunBanner() {
         </p>
         <a
           href={`/feedback?activityId=${unrated.activityId}`}
-          className="px-3 py-1.5 text-xs font-bold text-[#13101c] bg-[#39ff14] rounded-lg hover:bg-[#2dd610] transition flex-shrink-0"
+          className="px-3 py-1.5 text-xs font-bold text-[#13101c] bg-[#4ade80] rounded-lg hover:bg-[#4ade80] transition flex-shrink-0"
         >
           Rate
         </a>

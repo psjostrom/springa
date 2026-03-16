@@ -37,7 +37,7 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   heartrate: {
     label: "Heart Rate",
     unit: "bpm",
-    color: "#ff3366",
+    color: "#ff4d6a",
     strokeWidth: 2,
   },
   pace: {
@@ -61,7 +61,7 @@ const streamConfigs: Record<StreamType, StreamConfig> = {
   altitude: {
     label: "Elevation",
     unit: "m",
-    color: "#39ff14",
+    color: "#4ade80",
     strokeWidth: 2,
   },
 };

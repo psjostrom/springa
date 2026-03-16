@@ -97,7 +97,7 @@ function PhasePopover({
 				<div className="mb-3">
 					<div className="text-sm font-bold text-white mb-1">
 						{currentPhase.displayName}
-						{recovery && <span className="text-xs font-normal text-[#fbbf24] ml-2">Recovery Week</span>}
+						{recovery && <span className="text-xs font-normal text-[#ffb800] ml-2">Recovery Week</span>}
 					</div>
 					<div className="text-xs text-[#af9ece] leading-relaxed mb-2">
 						{currentPhase.description}
@@ -115,7 +115,7 @@ function PhasePopover({
 				{/* Upcoming phases */}
 				{upcomingPhases.length > 0 && (
 					<div className="pt-2 border-t border-[#2e293c]">
-						<div className="text-xs text-[#7a6899] uppercase tracking-wider font-semibold mb-2">
+						<div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-2">
 							Coming up
 						</div>
 						<div className="space-y-2">
@@ -124,7 +124,7 @@ function PhasePopover({
 								return (
 									<div key={i} className="flex items-center justify-between">
 										<span className="text-xs text-[#af9ece]">{phase.displayName}</span>
-										<span className="text-xs text-[#7a6899]">
+										<span className="text-xs text-[#af9ece]">
 											{weeksToPhase === 1 ? "Next week" : `In ${weeksToPhase} weeks`}
 										</span>
 									</div>

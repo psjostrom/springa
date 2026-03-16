@@ -230,7 +230,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#af9ece]">
-                Fuel rates <span className="text-[#7a6899]">g/h</span>
+                Fuel rates <span className="text-[#af9ece]">g/h</span>
               </span>
               <div className="grid grid-cols-3 gap-3 mt-2">
                 {(["easy", "long", "interval"] as const).map((cat) => {
@@ -239,7 +239,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   return (
                     <div key={cat} className="flex flex-col text-xs text-[#af9ece] gap-1">
                       <span className="capitalize">{cat}</span>
-                      <span className={`text-sm font-medium ${isDefault ? "text-[#7a6899]" : "text-[#f23b94]"}`}>
+                      <span className={`text-sm font-medium ${isDefault ? "text-[#af9ece]" : "text-[#f23b94]"}`}>
                         {rate} g/h{isDefault ? " (default)" : ""}
                       </span>
                     </div>
@@ -303,7 +303,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                     <div key={event.original.id} className="bg-[#13101c] border border-[#2e293c] rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
-                        <span className="text-xs text-[#7a6899]">{event.date}</span>
+                        <span className="text-xs text-[#af9ece]">{event.date}</span>
                         {event.changes.map((change, j) => {
                           const isLowConfidence = change.type === "fuel" && change.confidence === "low";
                           return (
@@ -311,7 +311,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                               key={j}
                               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                                 isLowConfidence
-                                  ? "bg-[#f59e0b]/20 text-[#f59e0b] border border-dashed border-[#f59e0b]/30"
+                                  ? "bg-[#ffb800]/20 text-[#ffb800] border border-dashed border-[#ffb800]/30"
                                   : change.type === "fuel"
                                     ? "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
                                     : "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
@@ -322,14 +322,14 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                           );
                         })}
                         {hasLowConfidenceFuel(event) && (
-                          <label className="flex items-center gap-1 text-[10px] text-[#f59e0b] ml-auto cursor-pointer">
+                          <label className="flex items-center gap-1 text-[10px] text-[#ffb800] ml-auto cursor-pointer">
                             <input
                               type="checkbox"
                               checked={optedIn[event.original.id] ?? false}
                               onChange={(e) => {
                                 setOptedIn((prev) => ({ ...prev, [event.original.id]: e.target.checked }));
                               }}
-                              className="accent-[#f59e0b] w-3 h-3"
+                              className="accent-[#ffb800] w-3 h-3"
                             />
                             Include
                           </label>
@@ -357,7 +357,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                     disabled={isSyncing || syncDone}
                     className={`w-full py-2.5 rounded-lg font-bold transition text-sm ${
                       syncDone
-                        ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 cursor-default"
+                        ? "bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/30 cursor-default"
                         : isSyncing
                           ? "bg-[#d42c85] text-white opacity-60 cursor-not-allowed"
                           : "bg-[#f23b94]/10 text-[#f23b94] border border-[#f23b94]/30 hover:bg-[#f23b94]/20"

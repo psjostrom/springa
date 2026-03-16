@@ -24,8 +24,51 @@ Replace Springa's retrowave visual identity with a clean, professional design sy
 | Role | Hex | Usage |
 |------|-----|-------|
 | BG/glucose data | `#00ffff` | BG pill, BG chart line, BG values — and NOTHING else |
-| Success | `#4ade80` | Completed workouts (border), sync success, in-range BG |
-| Error/warning | `#ff6b8a` | Sync failed, error states, destructive actions |
+| Success | `#4ade80` | Completed workout borders, sync success, BG in range, readiness "ready," enabled state |
+| Warning | `#ffb800` | BG rising/falling, moderate readiness, monitor state, caution indicators |
+| Error | `#ff4d6a` | Error borders, failed sync, BG out of range, low readiness, destructive actions |
+
+One set of semantic colors used everywhere — card borders, status text, tinted pills, data values. No two-tier split.
+
+### Status Tinted Backgrounds
+
+Dark fills paired with status indicator text. Used for pills, badges, and status banners. Always combined with a matching `/30` opacity border.
+
+| Role | Background | Border |
+|------|-----------|--------|
+| Success | `#1a3d25` | `#4ade80/30` |
+| Warning | `#3d2b1a` | `#ffb800/30` |
+| Error | `#3d1525` | `#ff4d6a/30` |
+| Brand | `#2d1a35` | `#f23b94/30` |
+
+**Text on tinted backgrounds is always `#ffffff` (titles) or `#af9ece` (subtitles).** Never use a semantic color as text on its own tint — the background + border already communicates the state. This keeps every tint combo above WCAG AAA (15:1+).
+
+These are the ONLY tinted backgrounds. Do not invent new tints — if it doesn't fit one of these four, use surface (`#1d1828`).
+
+### HR Zone Colors
+
+Fixed 5-color ramp for heart rate zones. Defined in `lib/constants.ts` as `ZONE_COLORS`. Used in zone bars, badges, HR breakdown charts, and workout stream graphs. Not used for anything else.
+
+| Zone | Hex | Tailwind origin |
+|------|-----|-----------------|
+| Z1 | `#6ee7b7` | emerald-300 |
+| Z2 | `#06b6d4` | cyan-600 |
+| Z3 | `#fbbf24` | amber-400 |
+| Z4 | `#fb923c` | orange-400 |
+| Z5 | `#ef4444` | red-500 |
+
+These overlap with semantic colors (`#fbbf24` ~ warning, `#ef4444` ~ error) but are a separate system. HR zone colors are never used outside HR context; semantic colors are never used for HR zones.
+
+### Chart Series Colors
+
+For multi-series data visualizations where HR zones and status colors don't apply (fitness trends, pace curves, volume breakdowns).
+
+| Series | Hex | Typical use |
+|--------|-----|-------------|
+| Primary series | `#8b5cf6` | ATL, fitness load, pace trend line |
+| Secondary series | `#06b6d4` | CTL, secondary metric, comparison line |
+
+When a chart needs more than 2 non-zone series, pull from the semantic colors (`#4ade80`, `#ffb800`, `#ff4d6a`) before inventing new colors.
 
 ### Removed Colors
 
@@ -38,6 +81,23 @@ Replace Springa's retrowave visual identity with a clean, professional design sy
 | `#1e1535` (purple surface) | Cards, header | `#1d1828` |
 | `#3d2b5a` (purple border) | Borders, dividers | `#2e293c` |
 | `#2a1f3d` (purple hover) | Hover backgrounds | `#2e293c` or `#1d1828` |
+| `#8b7ba8` | Darker muted text | `#af9ece` — one muted text color, no variants |
+| `#7a6899` | Even darker muted | `#af9ece` |
+| `#6b5b8a` | Darkest muted | `#af9ece` |
+| `#e0d0f0`, `#f0e6ff`, `#e2d9f3` | Light purple text | `#af9ece` or `#ffffff` depending on context |
+| `#ff69b4` | Hot pink (TabNav) | `#f23b94` (brand) |
+| `#ff6b8a` | Old soft error pink | `#ff4d6a` (error) |
+| `#ff3366` | Old vivid danger red | `#ff4d6a` (error) |
+| `#39ff14` | Old neon green | `#4ade80` (success) |
+| `#2dd610` | Alt neon green | `#4ade80` (success) |
+| `#22c55e` | Tailwind green-500 | `#4ade80` (success) |
+| `#fbbf24` (non-zone usage) | Yellow used outside HR zones | `#ffb800` (warning) |
+| `#3b82f6`, `#2563eb`, `#1d4ed8` | Tailwind blues | Not in palette — replace per context |
+| `#e0294f`, `#5a1f3a` | Ad-hoc reds/pinks | `#ff4d6a` (error) / `#3d1525` (error tint) |
+| `#2a1f45` | Dark purple fill | `#1d1828` (surface) |
+| `#1a2e1a` | Alt dark green tint | `#1a3d25` (success tint) |
+| `#4a4458`, `#6b5f7d` | Ad-hoc grays | `#4a4358` (border-subtle) or `#2e293c` (border) |
+| `#f0f0f0` | Light gray (debug page) | Exempt (debug-only) |
 
 ## Typography
 
@@ -76,7 +136,7 @@ Replace Springa's retrowave visual identity with a clean, professional design sy
 | Completed workout | `#4ade80` (success) |
 | Optional/bonus | `#4a4358` (midpoint between surface and muted text — visible but de-emphasized) |
 | Actionable (sync available) | `#f23b94` (brand) |
-| Failed (sync error, API error) | `#ff6b8a` (error) |
+| Failed (sync error, API error) | `#ff4d6a` (error) |
 | Neutral/loading | `#2e293c` (border color) |
 
 ### What Cards Don't Have
@@ -103,9 +163,9 @@ Replace Springa's retrowave visual identity with a clean, professional design sy
 
 ### Error
 
-- Left border: `#ff6b8a`
-- Title in `#ff6b8a`
-- Solid `#ff6b8a` retry button
+- Left border: `#ff4d6a`
+- Title in `#ff4d6a`
+- Solid `#ff4d6a` retry button
 
 ### Success
 
@@ -216,6 +276,7 @@ Define the 7 core palette colors as CSS custom properties in `globals.css` `:roo
 
 ```css
 :root {
+  /* Core */
   --color-bg: #13101c;
   --color-surface: #1d1828;
   --color-border: #2e293c;
@@ -225,10 +286,43 @@ Define the 7 core palette colors as CSS custom properties in `globals.css` `:roo
   --color-brand-btn: #d42c85;
   --color-brand-hover: #d42f7e;
   --color-border-subtle: #4a4358;
+
+  /* Semantic */
+  --color-glucose: #00ffff;
+  --color-success: #4ade80;
+  --color-warning: #ffb800;
+  --color-error: #ff4d6a;
+
+  /* Tinted backgrounds */
+  --color-tint-success: #1a3d25;
+  --color-tint-warning: #3d2b1a;
+  --color-tint-error: #3d1525;
+  --color-tint-brand: #2d1a35;
+
+  /* Chart series */
+  --color-chart-primary: #8b5cf6;
+  --color-chart-secondary: #06b6d4;
 }
 ```
 
+HR zone colors are NOT CSS variables — they're defined in `lib/constants.ts` as `ZONE_COLORS` because they're consumed by chart libraries and JS logic, not CSS.
+
 Migration to variables is incremental — not every file needs to switch in the first pass.
+
+## Closed Palette Rule
+
+The palette defined in this spec is exhaustive. No hex color may appear in source files (`*.ts`, `*.tsx`, `*.css`) unless it is one of:
+
+1. A **core color** (9 values: 5 layout + 3 brand + border-subtle)
+2. A **semantic color** (4 values: glucose, success, warning, error)
+3. A **tinted background** (4 values: success, warning, error, brand)
+4. An **HR zone color** (5 values in `ZONE_COLORS`)
+5. A **chart series color** (2 values)
+6. A **shimmer gradient midpoint** (`#3a3448` — loading skeleton only)
+
+Any other hex color is a violation. Fix it by mapping to the nearest palette color, not by adding a new one.
+
+Exceptions: `app/debug/` pages are exempt.
 
 ## Out of Scope
 

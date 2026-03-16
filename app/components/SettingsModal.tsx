@@ -97,7 +97,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <span className="text-sm text-[#af9ece] truncate">{email}</span>
             <button
               onClick={() => { void signOut(); }}
-              className="flex items-center gap-1.5 text-sm text-[#af9ece] hover:text-[#ff3366] transition"
+              className="flex items-center gap-1.5 text-sm text-[#af9ece] hover:text-[#ff4d6a] transition"
             >
               <LogOut size={14} />
               Sign out
@@ -159,7 +159,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
                     placeholder="18"
                   />
-                  <p className="text-[10px] text-[#7a6899] mt-1">
+                  <p className="text-[10px] text-[#af9ece] mt-1">
                     Min {MIN_PLAN_WEEKS}. Includes build, 2-week race test, 2-week taper, and race week.
                   </p>
                 </div>
@@ -206,10 +206,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     />
                   </button>
                   <div>
-                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#7a6899]" : "text-[#af9ece]"}`}>
+                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#af9ece]" : "text-[#af9ece]"}`}>
                       Include base phase
                     </label>
-                    <p className="text-xs text-[#7a6899] mt-0.5 leading-relaxed">
+                    <p className="text-xs text-[#af9ece] mt-0.5 leading-relaxed">
                       {baseDisabled
                         ? `Requires at least ${minWeeksForBase} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
                         : "Adds 2-3 weeks of easy-only running at the start of the plan. Recommended if you're new to structured training or returning from a break."}
@@ -225,7 +225,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             <span className="block text-sm font-semibold text-[#af9ece] mb-1">
               Running temperature
             </span>
-            <p className="text-xs text-[#7a6899] mb-3">
+            <p className="text-xs text-[#af9ece] mb-3">
               Shifts clothing recommendations. If you tend to overheat, move toward warmer. If you get cold easily, move toward colder.
             </p>
             <div className="flex items-center gap-2">
@@ -233,11 +233,11 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               <div className="flex gap-1 flex-1 justify-center">
                 {([-2, -1, 0, 1, 2] as const).map((val) => {
                   const colors = [
-                    "bg-[#b45309] border-[#d97706]",
-                    "bg-[#d97706] border-[#f59e0b]",
-                    "bg-[#4a4458] border-[#6b5f7d]",
-                    "bg-[#2563eb] border-[#3b82f6]",
-                    "bg-[#1d4ed8] border-[#2563eb]",
+                    "bg-[#ffb800] border-[#ffb800]",
+                    "bg-[#ffb800] border-[#ffb800]",
+                    "bg-[#4a4358] border-[#4a4358]",
+                    "bg-[#06b6d4] border-[#06b6d4]",
+                    "bg-[#2e293c] border-[#06b6d4]",
                   ];
                   const isSelected = warmthPreference === val;
                   return (
@@ -253,7 +253,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   );
                 })}
               </div>
-              <span className="text-xs text-[#3b82f6] w-14 flex-shrink-0">Colder</span>
+              <span className="text-xs text-[#06b6d4] w-14 flex-shrink-0">Colder</span>
             </div>
             {warmthPreference !== 0 && (
               <button
@@ -276,9 +276,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             </div>
             <div className="flex items-center justify-between">
               {pushPermission === "granted" ? (
-                <span className="text-sm text-[#39ff14]">Enabled</span>
+                <span className="text-sm text-[#4ade80]">Enabled</span>
               ) : pushPermission === "denied" ? (
-                <span className="text-sm text-[#ff3366]">Blocked in browser</span>
+                <span className="text-sm text-[#ff4d6a]">Blocked in browser</span>
               ) : (
                 <button
                   type="button"

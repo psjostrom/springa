@@ -17,10 +17,10 @@ interface Judgment {
 }
 
 function judgeCadence(spm: number): Judgment {
-  if (spm >= 180) return { label: "Excellent", color: "#39ff14", fraction: 1.0 };
+  if (spm >= 180) return { label: "Excellent", color: "#4ade80", fraction: 1.0 };
   if (spm >= 170) return { label: "Good", color: "#06b6d4", fraction: 0.75 };
-  if (spm >= 160) return { label: "OK", color: "#fbbf24", fraction: 0.5 };
-  return { label: "Low", color: "#ff3366", fraction: 0.25 };
+  if (spm >= 160) return { label: "OK", color: "#ffb800", fraction: 0.5 };
+  return { label: "Low", color: "#ff4d6a", fraction: 0.25 };
 }
 
 function judgeMaxHR(hr: number, hrZones?: number[]): Judgment {
@@ -33,23 +33,23 @@ function judgeMaxHR(hr: number, hrZones?: number[]): Judgment {
 }
 
 function judgeLoad(load: number): Judgment {
-  if (load >= 150) return { label: "Very Hard", color: "#ff3366", fraction: 1.0 };
+  if (load >= 150) return { label: "Very Hard", color: "#ff4d6a", fraction: 1.0 };
   if (load >= 100) return { label: "Hard", color: "#fb923c", fraction: 0.75 };
-  if (load >= 50) return { label: "Moderate", color: "#fbbf24", fraction: 0.5 };
-  return { label: "Light", color: "#39ff14", fraction: 0.25 };
+  if (load >= 50) return { label: "Moderate", color: "#ffb800", fraction: 0.5 };
+  return { label: "Light", color: "#4ade80", fraction: 0.25 };
 }
 
 function judgeIntensity(pct: number): Judgment {
-  if (pct >= 100) return { label: "Maximum", color: "#ff3366", fraction: 1.0 };
+  if (pct >= 100) return { label: "Maximum", color: "#ff4d6a", fraction: 1.0 };
   if (pct >= 80) return { label: "Hard", color: "#fb923c", fraction: 0.75 };
-  if (pct >= 60) return { label: "Moderate", color: "#fbbf24", fraction: 0.5 };
-  return { label: "Easy", color: "#39ff14", fraction: 0.25 };
+  if (pct >= 60) return { label: "Moderate", color: "#ffb800", fraction: 0.5 };
+  return { label: "Easy", color: "#4ade80", fraction: 0.25 };
 }
 
 function judgeHRCompliance(pct: number): Judgment {
-  if (pct >= 60) return { label: "Good", color: "#39ff14", fraction: 0.9 };
-  if (pct >= 40) return { label: "OK", color: "#fbbf24", fraction: 0.6 };
-  return { label: "Poor", color: "#ff3366", fraction: 0.3 };
+  if (pct >= 60) return { label: "Good", color: "#4ade80", fraction: 0.9 };
+  if (pct >= 40) return { label: "OK", color: "#ffb800", fraction: 0.6 };
+  return { label: "Poor", color: "#ff4d6a", fraction: 0.3 };
 }
 
 // --- Popover ---
@@ -115,7 +115,7 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
           )}
         </div>
         <div className="text-lg font-bold text-white">
-          {value} <span className="text-sm text-[#8b7ba8] font-normal">{unit}</span>
+          {value} <span className="text-sm text-[#af9ece] font-normal">{unit}</span>
         </div>
         <div className="h-1 bg-[#1d1828] rounded-full overflow-hidden">
           <div
@@ -176,14 +176,14 @@ export function StatsWidget({ event, hrZones }: WidgetProps) {
 
   if (event.maxHr) {
     cards.push(
-      <StatCard key="mhr" id="mhr" icon={HeartPulse} iconColor="#ff3366" label="Max HR" value={String(event.maxHr)} unit="bpm" judgment={judgeMaxHR(event.maxHr, hrZones)} />
+      <StatCard key="mhr" id="mhr" icon={HeartPulse} iconColor="#ff4d6a" label="Max HR" value={String(event.maxHr)} unit="bpm" judgment={judgeMaxHR(event.maxHr, hrZones)} />
     );
   }
 
   if (event.load) {
     const load = Math.round(event.load);
     cards.push(
-      <StatCard key="load" id="load" icon={Zap} iconColor="#fbbf24" label="Load" value={String(load)} unit="" judgment={judgeLoad(load)} />
+      <StatCard key="load" id="load" icon={Zap} iconColor="#ffb800" label="Load" value={String(load)} unit="" judgment={judgeLoad(load)} />
     );
   }
 

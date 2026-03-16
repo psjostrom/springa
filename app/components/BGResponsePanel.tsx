@@ -23,21 +23,21 @@ const CATEGORY_LABELS: Record<WorkoutCategory, string> = {
 
 const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   easy: "#06b6d4",
-  long: "#fbbf24",
+  long: "#ffb800",
   interval: "#fb923c",
 };
 
 function rateColor(rate: number): string {
-  if (rate > -0.5) return "#39ff14"; // green — stable
-  if (rate > -1.5) return "#fbbf24"; // yellow — moderate drop
-  return "#ff3366"; // red — fast drop
+  if (rate > -0.5) return "#4ade80"; // green — stable
+  if (rate > -1.5) return "#ffb800"; // yellow — moderate drop
+  return "#ff4d6a"; // red — fast drop
 }
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {
     low: "bg-[#2e293c] text-[#af9ece]",
-    medium: "bg-[#3d2b1a] text-[#ffb800]",
-    high: "bg-[#1a3d25] text-[#39ff14]",
+    medium: "bg-[#3d2b1a] text-white",
+    high: "bg-[#1a3d25] text-white",
   };
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded ${styles[confidence]}`}>
@@ -120,12 +120,12 @@ function CategoryCard({
         <span className="text-xs text-[#af9ece]">mmol/L /5m</span>
       </div>
 
-      <div className="text-xs text-[#8b7ba8]">
+      <div className="text-xs text-[#af9ece]">
         {response.sampleCount} samples · {response.activityCount} runs{response.avgFuelRate != null ? ` · ${Math.round(response.avgFuelRate)} g/h fuel` : ""}
       </div>
 
       {targetFuel && Math.abs(targetFuel.targetFuelRate - (targetFuel.currentAvgFuel ?? 0)) > 3 && (
-        <div className="text-xs text-[#fbbf24] mt-1">
+        <div className="text-xs text-[#ffb800] mt-1">
           Target: {targetFuel.targetFuelRate} g/h (est.)
         </div>
       )}
@@ -133,7 +133,7 @@ function CategoryCard({
       {/* Expandable activity breakdown */}
       <button
         onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1 mt-2 text-xs text-[#8b7ba8] hover:text-[#af9ece] transition-colors w-full"
+        className="flex items-center gap-1 mt-2 text-xs text-[#af9ece] hover:text-[#af9ece] transition-colors w-full"
       >
         <ChevronDown
           className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -154,7 +154,7 @@ function CategoryCard({
                   {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
                 </span>
               </div>
-              <div className="text-[#8b7ba8]">
+              <div className="text-[#af9ece]">
                 {b.sampleCount} samples{b.fuelRate != null ? ` · ${Math.round(b.fuelRate)} g/h` : ""}
               </div>
             </div>
@@ -167,16 +167,16 @@ function CategoryCard({
 
 function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   return (
-    <div className="flex items-start gap-2 bg-[#3d1525] rounded-lg border border-[#ff3366]/20 p-3">
-      <AlertTriangle className="w-4 h-4 text-[#ff3366] flex-shrink-0 mt-0.5" />
+    <div className="flex items-start gap-2 bg-[#3d1525] rounded-lg border border-[#ff4d6a]/20 p-3">
+      <AlertTriangle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
       <div className="text-sm">
-        <span className="text-[#ff3366] font-medium">
+        <span className="text-white font-medium">
           {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
-        <span className="text-[#e0d0f0]">
+        <span className="text-[#af9ece]">
           BG dropping {Math.abs(suggestion.avgDropRate).toFixed(1)} mmol/L/5m{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
         </span>{" "}
-        <span className="text-[#fbbf24]">
+        <span className="text-white font-medium">
           Try +{suggestion.suggestedIncrease} g/h.
         </span>
       </div>
@@ -193,7 +193,7 @@ export function BGResponsePanel({ model, activityNames }: Omit<BGResponsePanelPr
   return (
     <div className="space-y-3">
       {activeCategories.length === 0 ? (
-        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-sm text-[#8b7ba8]">
+        <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-6 text-center text-sm text-[#af9ece]">
           No runs with both HR and glucose data found.
         </div>
       ) : (
@@ -325,7 +325,7 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
           <button
             onClick={handleDiscover}
             disabled={!canDiscover}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#8b7ba8] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition bg-[#2e293c] text-[#af9ece] hover:text-[#f23b94] hover:bg-[#2e293c] border border-[#2e293c] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Re-analyze
           </button>
@@ -341,13 +341,13 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
             </span>
           </div>
         ) : patternsError ? (
-          <div className="text-sm text-[#ff3366]">{patternsError}</div>
+          <div className="text-sm text-[#ff4d6a]">{patternsError}</div>
         ) : patterns ? (
-          <div className="text-sm text-[#e0d0f0] leading-relaxed prose-patterns">
+          <div className="text-sm text-[#af9ece] leading-relaxed prose-patterns">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{patterns}</ReactMarkdown>
           </div>
         ) : (
-          <div className="text-sm text-[#8b7ba8] text-center py-2">
+          <div className="text-sm text-[#af9ece] text-center py-2">
             Click &quot;Discover Patterns&quot; to analyze cross-run trends
           </div>
         )}
@@ -371,7 +371,7 @@ export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
             >
               {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
             </span>
-            <span className="text-xs text-[#8b7ba8] w-16 text-right">
+            <span className="text-xs text-[#af9ece] w-16 text-right">
               {b.sampleCount} obs
             </span>
           </div>
@@ -402,7 +402,7 @@ export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) 
             >
               {s.avgRate > 0 ? "+" : ""}{s.avgRate.toFixed(1)}
             </span>
-            <span className="text-xs text-[#8b7ba8] w-16 text-right">
+            <span className="text-xs text-[#af9ece] w-16 text-right">
               {s.sampleCount} obs
             </span>
           </div>
@@ -421,7 +421,7 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
           return (
             <div key={b.bucket} className="flex items-center gap-2">
               <span className="text-xs text-[#af9ece] w-10 flex-shrink-0">{b.bucket}</span>
-              <div className="flex-1 h-4 bg-[#2a1f45] rounded overflow-hidden">
+              <div className="flex-1 h-4 bg-[#1d1828] rounded overflow-hidden">
                 <div
                   className="h-full rounded"
                   style={{

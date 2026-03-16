@@ -180,7 +180,7 @@ function FeedbackContent() {
   if (swrError && !feedback) {
     return (
       <div className="min-h-screen bg-[#13101c] flex items-center justify-center p-4">
-        <p className="text-[#ff3366]">{swrError.message}</p>
+        <p className="text-[#ff4d6a]">{swrError.message}</p>
       </div>
     );
   }
@@ -220,7 +220,7 @@ function FeedbackContent() {
           ) : (
             <>
               <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
-              <p className="text-[#39ff14] text-lg font-bold">Thanks!</p>
+              <p className="text-[#4ade80] text-lg font-bold">Thanks!</p>
               {(formState.carbsG || formState.prescribedCarbsG) && (
                 <p className="text-[#af9ece] text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
               )}
@@ -247,7 +247,7 @@ function FeedbackContent() {
               onClick={() => { setFormState((s) => ({ ...s, rating: "good" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "good"
-                  ? "border-[#39ff14] bg-[#39ff14]/10"
+                  ? "border-[#4ade80] bg-[#4ade80]/10"
                   : "border-[#2e293c] bg-[#1d1828]"
               }`}
             >
@@ -257,7 +257,7 @@ function FeedbackContent() {
               onClick={() => { setFormState((s) => ({ ...s, rating: "bad" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "bad"
-                  ? "border-[#ff3366] bg-[#ff3366]/10"
+                  ? "border-[#ff4d6a] bg-[#ff4d6a]/10"
                   : "border-[#2e293c] bg-[#1d1828]"
               }`}
             >
@@ -330,7 +330,7 @@ function FeedbackContent() {
             Skip
           </button>
 
-          {submitError && <p className="text-[#ff3366] text-sm mt-3">{submitError}</p>}
+          {submitError && <p className="text-[#ff4d6a] text-sm mt-3">{submitError}</p>}
         </>
       )}
     </div>

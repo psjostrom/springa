@@ -75,7 +75,7 @@ export function VolumeCompact({ actualKm, targetKm, completedRuns, totalRuns }: 
           <span className="text-sm text-[#af9ece]">{Math.round(targetKm)} km target</span>
         </div>
         <div
-          className="h-2 bg-[#2a1f45] rounded-full overflow-hidden mb-1.5"
+          className="h-2 bg-[#1d1828] rounded-full overflow-hidden mb-1.5"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
@@ -85,11 +85,11 @@ export function VolumeCompact({ actualKm, targetKm, completedRuns, totalRuns }: 
             className="h-full rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              backgroundColor: pct >= 100 ? "#39ff14" : "#06b6d4",
+              backgroundColor: pct >= 100 ? "#4ade80" : "#06b6d4",
             }}
           />
         </div>
-        <span className="text-xs text-[#8b7ba8]">{completedRuns} of {totalRuns} runs</span>
+        <span className="text-xs text-[#af9ece]">{completedRuns} of {totalRuns} runs</span>
       </button>
       {showPopover && (
         <VolumePopover

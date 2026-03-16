@@ -17,7 +17,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
             ? "bg-[#f23b94]/20 border border-[#f23b94]/30 text-white whitespace-pre-wrap"
-            : "bg-[#1d1828] border border-[#2e293c] text-[#f0e6ff]"
+            : "bg-[#1d1828] border border-[#2e293c] text-[#af9ece]"
         }`}
       >
         {isUser ? content : (

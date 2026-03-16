@@ -39,11 +39,11 @@ export function ActionBar({
 
 	if (statusMsg.includes("Error")) {
 		return (
-			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#ff6b8a] rounded-lg flex items-center justify-between p-4`}>
+			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#ff4d6a] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3 min-w-0">
-						<AlertTriangle size={22} className="text-[#ff6b8a] shrink-0" />
+						<AlertTriangle size={22} className="text-[#ff4d6a] shrink-0" />
 						<div className="min-w-0">
-							<h3 className="font-bold text-[#ff6b8a] text-sm md:text-base">
+							<h3 className="font-bold text-[#ff4d6a] text-sm md:text-base">
 								Sync failed
 							</h3>
 							<p className="text-sm text-[#af9ece] truncate">
@@ -65,9 +65,9 @@ export function ActionBar({
 		return (
 			<div className={`${POSITION} bg-[#1d1828] border border-[#2e293c] border-l-[3px] border-l-[#4ade80] rounded-lg flex items-center justify-between p-4`}>
 					<div className="flex items-center gap-3">
-						<CheckCircle size={22} className="text-[#39ff14] shrink-0" />
+						<CheckCircle size={22} className="text-[#4ade80] shrink-0" />
 						<div>
-							<h3 className="font-bold text-[#39ff14] text-sm md:text-base">
+							<h3 className="font-bold text-[#4ade80] text-sm md:text-base">
 								Upload complete
 							</h3>
 							<p className="text-sm text-[#af9ece]">
