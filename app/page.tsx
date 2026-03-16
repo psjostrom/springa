@@ -98,8 +98,12 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
             onClick={() => { handleTabChange("calendar"); }}
-            className="text-xl md:text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] tracking-tight hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 text-xl md:text-2xl font-[family-name:var(--font-sora)] font-extrabold text-[#f23b94] tracking-tight hover:scale-105 active:scale-95 transition-all"
           >
+            <svg className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 432 474" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 357.8,42.9 L 196.9,264.7 A 75,75 0 1,1 106.3,151.8 Z" fill="currentColor"/>
+              <path d="M 72.2,461.1 L 233.1,239.3 A 75,75 0 1,1 323.7,352.2 Z" fill="currentColor"/>
+            </svg>
             springa
           </button>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
