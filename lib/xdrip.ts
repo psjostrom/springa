@@ -7,8 +7,9 @@
 // says "FortyFiveDown". See: github.com/NightscoutFoundation/xDrip/issues/3787
 //
 // We NEVER trust the direction field from xDrip+. On ingestion, we recompute
-// direction from adjacent sgv values via recomputeDirections(). The Garmin
-// apps (SugarRun, SugarWave) do the same computation on-device.
+// direction from 3-point averaged sgv values ~5 min apart via
+// recomputeDirections(). The Garmin apps (SugarRun, SugarWave) do the same
+// computation on-device.
 
 import { MGDL_TO_MMOL } from "./constants";
 import { linearRegression } from "./math";
@@ -86,8 +87,8 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
 // --- Recompute direction from sgv values ---
 // xDrip+ companion mode returns stale/wrong direction fields (~31% error rate).
 // See: https://github.com/NightscoutFoundation/xDrip/issues/3787
-// This function recomputes direction for each reading from adjacent sgv values,
-// using mg/dL-per-minute thresholds (derived from SuperStable/xDrip+ values ÷ 5).
+// Recomputes direction using 3-point averaged sgv values ~5 min apart to reduce
+// per-minute noise. Thresholds in mg/dL per minute (SuperStable/xDrip+ values ÷ 5).
 
 function directionFromDelta(deltaMgdlPerMin: number): string {
   if (deltaMgdlPerMin <= -3.5) return "DoubleDown";
