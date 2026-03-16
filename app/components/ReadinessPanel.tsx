@@ -337,7 +337,7 @@ function MetricCard({
     >
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className="w-3.5 h-3.5" style={{ color }} />
-        <span className="text-xs text-[#af9ece]">{label}</span>
+        <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</span>
       </div>
       <div className="flex items-end justify-between">
         <div>
@@ -412,7 +412,7 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Zap className={`w-4 h-4 ${zone.color}`} />
-          <span className="text-sm text-[#af9ece]">Form (TSB)</span>
+          <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Form (TSB)</span>
         </div>
         <span className={`text-sm font-semibold ${zone.color}`}>{zone.label}</span>
       </div>

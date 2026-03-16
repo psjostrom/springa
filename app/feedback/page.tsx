@@ -194,19 +194,19 @@ function FeedbackContent() {
         <div className="flex gap-3 mb-8 flex-wrap justify-center">
           {feedback.distance != null && (
             <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#af9ece]">Distance</p>
+              <p className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Distance</p>
               <p className="text-lg font-bold text-white">{formatDistance(feedback.distance)}</p>
             </div>
           )}
           {feedback.duration != null && (
             <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#af9ece]">Time</p>
+              <p className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Time</p>
               <p className="text-lg font-bold text-white">{formatDuration(feedback.duration)}</p>
             </div>
           )}
           {feedback.avgHr != null && (
             <div className="bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 text-center">
-              <p className="text-xs text-[#af9ece]">Avg HR</p>
+              <p className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Avg HR</p>
               <p className="text-lg font-bold text-white">{Math.round(feedback.avgHr)}</p>
             </div>
           )}
@@ -267,7 +267,7 @@ function FeedbackContent() {
 
           {/* Carbs ingested */}
           <div className="w-full max-w-sm mb-4">
-            <label className="block text-xs text-[#af9ece] mb-1">Carbs ingested (g)</label>
+            <label className="block text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Carbs ingested (g)</label>
             <input
               type="number"
               inputMode="numeric"
@@ -280,7 +280,7 @@ function FeedbackContent() {
 
           {/* Pre-run carbs */}
           <div className="w-full max-w-sm mb-4">
-            <label className="block text-xs text-[#af9ece] mb-1">Pre-run carbs (g)</label>
+            <label className="block text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Pre-run carbs (g)</label>
             <input
               type="number"
               inputMode="numeric"
