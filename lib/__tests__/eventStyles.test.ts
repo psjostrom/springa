@@ -19,28 +19,39 @@ describe("getEventStyle", () => {
     expect(getEventStyle(makeEvent({ type: "race" }))).toContain("f23b94");
   });
 
-  it("returns completed long style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "long" }))).toContain("39ff14");
+  it("returns completed style with green border", () => {
+    const style = getEventStyle(makeEvent({ type: "completed", category: "long" }));
+    expect(style).toContain("4ade80");
+    expect(style).toContain("border-l-");
   });
 
-  it("returns completed interval style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "interval" }))).toContain("4a2080");
+  it("returns same completed style regardless of category", () => {
+    const easy = getEventStyle(makeEvent({ type: "completed", category: "easy" }));
+    const interval = getEventStyle(makeEvent({ type: "completed", category: "interval" }));
+    expect(easy).toBe(interval);
   });
 
-  it("returns completed default style", () => {
-    expect(getEventStyle(makeEvent({ type: "completed", category: "easy" }))).toContain("39ff14");
+  it("returns planned style with brand border", () => {
+    vi.useFakeTimers({ now: new Date("2026-02-28T12:00:00") });
+    const style = getEventStyle(makeEvent({ type: "planned", category: "long" }));
+    expect(style).toContain("f23b94");
+    expect(style).toContain("border-l-");
+    vi.useRealTimers();
   });
 
-  it("returns planned long style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "long" }))).toContain("af9ece");
+  it("returns bonus style with muted border", () => {
+    vi.useFakeTimers({ now: new Date("2026-02-28T12:00:00") });
+    const style = getEventStyle(makeEvent({ type: "planned", category: "easy", name: "Bonus Easy eco16" }));
+    expect(style).toContain("4a4358");
+    vi.useRealTimers();
   });
 
-  it("returns planned interval style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "interval" }))).toContain("e0d0ff");
-  });
-
-  it("returns planned default style", () => {
-    expect(getEventStyle(makeEvent({ type: "planned", category: "easy" }))).toContain("af9ece");
+  it("returns missed style with error border and reduced opacity", () => {
+    vi.useFakeTimers({ now: new Date("2026-03-10T12:00:00") });
+    const style = getEventStyle(makeEvent({ type: "planned", date: new Date("2026-03-08") }));
+    expect(style).toContain("ff6b8a");
+    expect(style).toContain("opacity-60");
+    vi.useRealTimers();
   });
 });
 
