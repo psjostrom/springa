@@ -149,10 +149,10 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
             { label: "Start BG", value: `${bg.startBG.toFixed(1)} mmol/L` },
             { label: "Min BG", value: `${bg.minBG.toFixed(1)} mmol/L` },
             { label: "Worst rate", value: `${bg.worstRate.toFixed(3)} /min` },
-            { label: "LBGI", value: bg.lbgi.toFixed(1) },
+            { label: "Low BG risk", value: bg.lbgi.toFixed(1) },
             { label: "Hypo", value: bg.hypo ? "Yes" : "No" },
           ],
-          description: "BG response during the run. Scored by lowest BG (below 6 = too close) and steepest drop rate (EASD thresholds). LBGI is the Kovatchev Low BG Index — higher = more hypo risk.",
+          description: "BG response during the run. Scored by lowest BG (below 6 = too close) and steepest drop rate. Low BG risk shows how risky the run was for going low — higher = more hypo risk.",
         }}
       />
     );
