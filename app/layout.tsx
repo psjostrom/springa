@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Sora } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Providers } from "./components/Providers";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased`}
 			>
 				<Providers>{children}</Providers>
+				<SpeedInsights />
 			</body>
 		</html>
 	);

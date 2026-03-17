@@ -20,6 +20,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@libsql/client": "^0.17.0",
+    "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.91",
     "babel-plugin-react-compiler": "^1.0.0",
     "cheerio": "^1.2.0",
