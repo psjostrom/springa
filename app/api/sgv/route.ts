@@ -71,10 +71,7 @@ export async function GET(req: Request) {
     }
 
     if (pastIdx != null && row.ts - rows[pastIdx].ts <= 600000) {
-      const dtMin = (row.ts - rows[pastIdx].ts) / 60000;
-      if (dtMin > 0) {
-        delta = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
-      }
+      delta = avgSgv(i) - avgSgv(pastIdx);
     }
 
     return {
