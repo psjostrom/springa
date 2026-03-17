@@ -38,25 +38,50 @@ export async function GET(req: Request) {
     args: [email, count],
   });
 
-  // Compute delta between consecutive readings (per minute, matching xDrip format)
-  const entries = readings.rows.map((row, i) => {
-    const ts = Number(row.ts);
-    const sgv = Number(row.sgv);
+  // Build typed array for smoothed delta computation
+  const rows = readings.rows.map((row) => ({
+    ts: Number(row.ts),
+    sgv: Number(row.sgv),
+    direction: row.direction as string,
+  }));
+
+  // 3-point averaged sgv (matches recomputeDirections in lib/xdrip.ts)
+  const avgSgv = (idx: number) => {
+    const lo = Math.max(0, idx - 1);
+    const hi = Math.min(rows.length - 1, idx + 1);
+    let sum = 0, n = 0;
+    for (let j = lo; j <= hi; j++) { sum += rows[j].sgv; n++; }
+    return sum / n;
+  };
+
+  const WINDOW_MS = 5 * 60 * 1000;
+
+  const entries = rows.map((row, i) => {
     let delta = 0;
-    if (i < readings.rows.length - 1) {
-      const prevSgv = Number(readings.rows[i + 1].sgv);
-      const prevTs = Number(readings.rows[i + 1].ts);
-      const dtMin = (ts - prevTs) / 60000;
+
+    // Find reading closest to 5 min earlier (rows sorted DESC, so look forward)
+    const targetTs = row.ts - WINDOW_MS;
+    let pastIdx: number | null = null;
+    for (let j = i + 1; j < rows.length; j++) {
+      if (rows[j].ts <= targetTs) {
+        const prev = j - 1 > i ? j - 1 : null;
+        pastIdx = prev != null && Math.abs(rows[prev].ts - targetTs) < Math.abs(rows[j].ts - targetTs) ? prev : j;
+        break;
+      }
+    }
+
+    if (pastIdx != null && row.ts - rows[pastIdx].ts <= 600000) {
+      const dtMin = (row.ts - rows[pastIdx].ts) / 60000;
       if (dtMin > 0) {
-        delta = (sgv - prevSgv) / dtMin;
+        delta = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
       }
     }
 
     return {
-      date: ts,
-      sgv,
+      date: row.ts,
+      sgv: row.sgv,
       delta: Math.round(delta * 1000) / 1000,
-      direction: row.direction as string,
+      direction: row.direction,
       units_hint: "mmol",
     };
   });
