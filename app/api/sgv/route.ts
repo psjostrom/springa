@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     direction: row.direction as string,
   }));
 
-  // 3-point averaged sgv (matches recomputeDirections in lib/xdrip.ts)
+  // 3-point averaged sgv (same smoothing as recomputeDirections in lib/xdrip.ts)
   const avgSgv = (idx: number) => {
     const lo = Math.max(0, idx - 1);
     const hi = Math.min(rows.length - 1, idx + 1);
@@ -71,10 +71,7 @@ export async function GET(req: Request) {
     }
 
     if (pastIdx != null && row.ts - rows[pastIdx].ts <= 600000) {
-      const dtMin = (row.ts - rows[pastIdx].ts) / 60000;
-      if (dtMin > 0) {
-        delta = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
-      }
+      delta = avgSgv(i) - avgSgv(pastIdx);
     }
 
     return {
