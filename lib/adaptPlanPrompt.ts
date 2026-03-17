@@ -41,24 +41,33 @@ Format: two short paragraphs separated by a blank line.
 1. **Running** — what the session is, pacing/effort cues from recent data. 2–3 short sentences.
 2. **Fuel & BG** — fuel rate, why, any BG-specific heads-up. 1–2 short sentences.
 
-Keep sentences short and punchy. No run-on sentences. No filler.
+Keep sentences short and punchy. No run-on sentences. No filler. Use mmol/L, g/h, and min/km. Use **bold** for the fuel rate only. No headers, no bullets, no lists.
+
+Examples of good notes:
+
+Easy run:
+"Bonus easy 45 minutes — your last two easy runs averaged 7:15/km at 138 bpm, right in the pocket.
+
+Fuel holds at **60 g/h** — BG stayed flat on both Mar 14 and Mar 17, starting at 8.1 and finishing at 7.9, so no reason to change."
+
+Intervals:
+"Long intervals — 4×8min at tempo, targeting 5:10–5:20/km and 152–158 bpm based on your Mar 12 session (5:12/km, 155 bpm avg). Keep the recovery jogs genuinely easy.
+
+Fuel is **65 g/h**, bumped from 60 — BG dropped from 9.1 to 5.8 on Mar 12, steeper than your easy runs at the same rate."
 
 Rules:
-- First: what's the session about? Pacing cues, effort targets, what it's training (e.g. "long intervals at tempo to build lactate tolerance — aim for 5:10–5:20/km based on recent paces"). Reference recent performance where relevant.
-- Then: fuel and BG. State the rate, cite specific runs if it was adjusted ("dropped from 9.2 to 4.1 on Feb 18 → bumped to **64g/h**"). If unchanged, one line is enough.
-- Skip generic advice the runner already knows ("run easy", "stay under LTHR", "aerobic maintenance", "keep effort relaxed", "let pace float"). For easy runs, one sentence on the running side is enough — focus on what's specific to *this* session.
-- LTHR is the **absolute ceiling**, not a target. Long intervals are tempo (zone 3–4), typically 10–20 bpm below LTHR. Never tell the runner to "keep HR under LTHR" for intervals — give a specific target range based on the workout type and recent HR data.
-- Cite specific BG values, dates, paces, and HR from the data. These make the note useful.
-- Never echo model internals: no sample counts, no window counts, no fitness/load numbers, no drop rates as raw stats.
-- Fuel adjustments go both ways: increase if BG drops too fast during a run, decrease if BG stays high during a run. NEVER frame a fuel decrease as a response to a BG crash — that's backwards. If recent feedback reports a crash, the note should either justify increasing fuel or explain why the current rate is being held despite the crash (e.g. different category, different conditions).
-- If entry BG was rising or stable on recent runs and during-run drop rates were acceptable, hold the fuel rate — do NOT bump it up "as a precaution." Rising entry BG means fueling is already sufficient at that intensity. Only increase fuel if during-run BG actually dropped too fast.
-- CRITICAL: distinguish during-run BG from post-run BG. "end BG" is BG when the run stopped. "lowest in 2h after run" is the nadir during recovery (pump reconnected, sitting down). A post-run crash is a recovery/pump issue, NOT a mid-run fueling issue. Never cite a post-run nadir as evidence for changing mid-run fuel rate. Only cite "start BG" and "end BG" for fueling decisions.
-- Use mmol/L, g/h, and min/km. Use **bold** sparingly. No headers, no bullets, no lists.
-- If a recent run has a "bad" rating or mentions a hypo in its feedback, connect it to what's different this time.
+- Cite specific BG values, dates, paces, and HR from the data. These make the note useful. Never echo model internals (sample counts, window counts, fitness numbers, raw drop rates).
+- For easy and club runs, one sentence on the running side is enough. Skip advice the runner already knows ("run easy", "stay under LTHR", "keep effort relaxed", "let pace float"). Club runs are interval-type sessions — focus on fuel/BG prep.
+- LTHR is the **absolute ceiling**, not a target. For intervals, give a specific HR target range 10–20 bpm below LTHR based on recent data. Never say "keep HR under LTHR."
+- Fuel adjustments go both ways: increase if during-run BG drops too fast, decrease if BG stays high. But NEVER bump fuel "as a precaution" when entry BG was rising/stable and drops were acceptable. And NEVER frame a decrease as a response to a crash — that's backwards.
+- CRITICAL: "end BG" is when the run stopped. "lowest post-run" is recovery (pump reconnected, sitting). A post-run crash is a recovery issue, NOT a mid-run fueling issue. Never cite a post-run value as evidence for changing mid-run fuel rate.
+- Entry trends from past runs are historical data, not predictions. Never cite one past entry trend and give contradictory conditional advice ("Mar 17 was rising, so if it's falling…"). Base pre-run advice on the *pattern* across multiple runs, not a single reading.
+- If a recent run has a "bad" rating or mentions a hypo, connect it to what's different this time.
 - If the workout was swapped to easy, explain why.
-- Club runs: these are interval-type sessions (hills, fartlek, intervals). Focus on fuel/BG prep as for any interval session. Keep the running paragraph to one sentence acknowledging the club format.
-- Only state distances and durations that appear in the data below. Never guess or infer distances from workout names.
-- If "Cross-Run BG Patterns" are provided, weave relevant findings into the Fuel & BG paragraph — e.g. cite a pattern about entrySlope or drop rate that applies to this session type. Don't list patterns mechanically; use the ones that matter for *this* workout.`;
+- Only state distances and durations that appear in the data. Never guess from workout names.
+- If "Cross-Run BG Patterns" are provided, weave relevant findings into the fuel paragraph — only the ones that matter for this session.
+- If "Other recent run feedback" appears, only reference it if a crash, hypo, or bad rating from a different category is relevant to this session's fuel strategy. Otherwise ignore it.
+- Only mention fitness/fatigue if TSB is below -15 or ramp rate suggests overreaching. The runner doesn't need a form report.`;
 
   const lines: string[] = [];
 
@@ -126,38 +135,38 @@ Rules:
   const cat = adapted.category;
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const catData = bgModel.categories[cat];
-    if (catData) {
+    const target = bgModel.targetFuelRates.find((t) => t.category === cat);
+    const hasAvgFuel = catData && catData.avgFuelRate != null;
+    if (hasAvgFuel || target) {
       lines.push("");
       lines.push(`## BG patterns (${cat})`);
-      lines.push(`Avg BG drop: ${catData.avgRate.toFixed(3)} mmol/L per min`);
-      if (catData.avgFuelRate != null) {
-        lines.push(`Avg fuel rate: ${Math.round(catData.avgFuelRate)} g/h`);
+      if (hasAvgFuel) {
+        lines.push(`Avg fuel rate used: ${Math.round(catData!.avgFuelRate!)} g/h across ${catData!.activityCount} runs`);
       }
-      lines.push(`Samples: ${catData.sampleCount} windows across ${catData.activityCount} runs`);
-    }
-
-    const target = bgModel.targetFuelRates.find((t) => t.category === cat);
-    if (target) {
-      lines.push(
-        `Target fuel: ${Math.round(target.targetFuelRate)} g/h (${target.method}, ${target.confidence} confidence)`,
-      );
+      if (target) {
+        lines.push(
+          `Target fuel: ${Math.round(target.targetFuelRate)} g/h (${target.method}, ${target.confidence} confidence)`,
+        );
+      }
     }
   }
 
-  // 4. Fitness (only include TSB/form for today or tomorrow — it's stale for later dates)
-  lines.push("");
-  lines.push("## Fitness");
+  // 4. Fitness — only include when actionable (fatigued or overreaching)
   const workoutDate = new Date(adapted.date + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const daysOut = Math.round((workoutDate.getTime() - today.getTime()) / 86400000);
-  lines.push(`Fitness load: ${insights.currentCtl}, recent load: ${insights.currentAtl}`);
-  lines.push(`Weekly ramp: ${insights.rampRate}/week`);
-  if (daysOut <= 1) {
-    lines.push(`Freshness (TSB): ${insights.currentTsb}`);
-    lines.push(`Current form: ${insights.formZoneLabel}`);
-  } else {
-    lines.push(`(TSB/form omitted — workout is ${daysOut} days out, today's fatigue is not predictive)`);
+  const fatigued = daysOut <= 1 && insights.currentTsb < -15;
+  const overreaching = insights.rampRate > 7; // CTL/week — above 7 risks overreaching
+  if (fatigued || overreaching) {
+    lines.push("");
+    lines.push("## Fitness");
+    if (fatigued) {
+      lines.push(`Freshness (TSB): ${insights.currentTsb} — runner is fatigued`);
+    }
+    if (overreaching) {
+      lines.push(`Weekly ramp: ${insights.rampRate}/week — high ramp rate`);
+    }
   }
 
   // 5. Recovery patterns for category
