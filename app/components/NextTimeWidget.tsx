@@ -14,13 +14,13 @@ export function NextTimeWidget({ analysis }: NextTimeWidgetProps) {
   return (
     <div className="px-3 py-2.5">
       <div className="flex items-center gap-1.5 mb-2">
-        <Lightbulb className="w-4 h-4 text-[#ffb800]" />
-        <span className="text-sm font-semibold text-[#af9ece]">Next Time</span>
+        <Lightbulb className="w-4 h-4 text-warning" />
+        <span className="text-sm font-semibold text-muted">Next Time</span>
       </div>
       <ul className="space-y-1">
         {bullets.map((bullet, i) => (
-          <li key={i} className="text-sm text-[#af9ece] flex gap-2">
-            <span className="text-[#ffb800] mt-0.5">-</span>
+          <li key={i} className="text-sm text-muted flex gap-2">
+            <span className="text-warning mt-0.5">-</span>
             <span>{bullet}</span>
           </li>
         ))}

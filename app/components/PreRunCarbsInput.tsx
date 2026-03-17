@@ -73,7 +73,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
 
   if (!loaded) {
     return (
-      <div className="mb-4 px-4 py-3 rounded-lg bg-[#2e293c]">
+      <div className="mb-4 px-4 py-3 rounded-lg bg-border">
         <div className="skeleton h-5 w-32" />
       </div>
     );
@@ -82,9 +82,9 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
   const displayValue = carbsG != null ? `${carbsG}g` : null;
 
   return (
-    <div className="mb-4 px-4 py-3 rounded-lg bg-[#2e293c]">
+    <div className="mb-4 px-4 py-3 rounded-lg bg-border">
       <div className="flex items-center justify-between">
-        <div className="text-sm text-[#af9ece]">Pre-run carbs</div>
+        <div className="text-sm text-muted">Pre-run carbs</div>
         {isEditing ? (
           <div className="flex items-center gap-2">
             <input
@@ -93,25 +93,25 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
               value={editG}
               onChange={(e) => { setEditG(e.target.value); }}
               placeholder="g"
-              className="w-16 border border-[#2e293c] bg-[#13101c] text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-[#f23b94]"
+              className="w-16 border border-border bg-bg text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
                 if (e.key === "Escape") setIsEditing(false);
               }}
             />
-            <span className="text-sm text-[#af9ece]">g</span>
+            <span className="text-sm text-muted">g</span>
             <button
               onClick={() => { void save(); }}
               disabled={isSaving}
-              className="px-2 py-1 text-xs bg-[#f23b94] hover:bg-[#d42f7e] text-white rounded transition disabled:opacity-50"
+              className="px-2 py-1 text-xs bg-brand hover:bg-brand-hover text-white rounded transition disabled:opacity-50"
             >
               {isSaving ? "..." : "Save"}
             </button>
             <button
               onClick={() => { setIsEditing(false); }}
               disabled={isSaving}
-              className="px-2 py-1 text-xs bg-[#2e293c] hover:bg-[#2e293c] text-[#af9ece] rounded transition"
+              className="px-2 py-1 text-xs bg-border hover:bg-border text-muted rounded transition"
             >
               Cancel
             </button>
@@ -119,15 +119,15 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
         ) : (
           <button
             onClick={startEdit}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-[#f23b94] transition"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-brand transition"
           >
             {displayValue ?? "Add"}
-            <Pencil className="w-3 h-3 text-[#af9ece]" />
+            <Pencil className="w-3 h-3 text-muted" />
           </button>
         )}
       </div>
       {error && (
-        <p className="text-xs text-[#ff4d6a] mt-1">{error}</p>
+        <p className="text-xs text-error mt-1">{error}</p>
       )}
     </div>
   );

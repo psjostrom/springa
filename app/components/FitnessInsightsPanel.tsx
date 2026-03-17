@@ -13,33 +13,33 @@ const FORM_ZONE_STYLES: Record<
   { bg: string; text: string; border: string; icon: typeof AlertTriangle }
 > = {
   "high-risk": {
-    bg: "bg-[#3d1525]",
+    bg: "bg-tint-error",
     text: "text-white",
-    border: "border-[#ff4d6a]/30",
+    border: "border-error/30",
     icon: AlertTriangle,
   },
   optimal: {
-    bg: "bg-[#1a3d25]",
+    bg: "bg-tint-success",
     text: "text-white",
-    border: "border-[#4ade80]/30",
+    border: "border-success/30",
     icon: Zap,
   },
   grey: {
-    bg: "bg-[#2e293c]",
-    text: "text-[#af9ece]",
-    border: "border-[#af9ece]/30",
+    bg: "bg-border",
+    text: "text-muted",
+    border: "border-muted/30",
     icon: Minus,
   },
   fresh: {
-    bg: "bg-[#13101c]",
-    text: "text-[#8b5cf6]",
-    border: "border-[#8b5cf6]/30",
+    bg: "bg-bg",
+    text: "text-chart-primary",
+    border: "border-chart-primary/30",
     icon: Heart,
   },
   transition: {
-    bg: "bg-[#3d2b1a]",
+    bg: "bg-tint-warning",
     text: "text-white",
-    border: "border-[#ffb800]/30",
+    border: "border-warning/30",
     icon: Activity,
   },
 };
@@ -195,25 +195,25 @@ function MetricPopover({
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 bg-[#1d1828] border border-[#2e293c] rounded-xl px-3 py-3 shadow-lg shadow-black/50"
+        className="fixed z-50 bg-surface border border-border rounded-xl px-3 py-3 shadow-lg shadow-black/50"
         style={positionStyle}
       >
-        <div className="text-xs text-[#af9ece] leading-relaxed">{info.definition}</div>
+        <div className="text-xs text-muted leading-relaxed">{info.definition}</div>
         {info.scale && (
-          <div className="mt-1.5 pt-1.5 border-t border-[#2e293c] space-y-0.5">
+          <div className="mt-1.5 pt-1.5 border-t border-border space-y-0.5">
             {info.scale.map((s) => (
               <div key={s.range} className="flex gap-1.5 text-xs">
                 <span className="text-white font-bold shrink-0 whitespace-nowrap">{s.range}</span>
-                <span className="text-[#af9ece]">{s.label}</span>
+                <span className="text-muted">{s.label}</span>
               </div>
             ))}
           </div>
         )}
         {info.context && (
-          <div className="text-xs text-[#8b5cf6] leading-relaxed mt-1.5 pt-1.5 border-t border-[#2e293c]">{info.context}</div>
+          <div className="text-xs text-chart-primary leading-relaxed mt-1.5 pt-1.5 border-t border-border">{info.context}</div>
         )}
         <div
-          className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
+          className={`absolute w-2.5 h-2.5 bg-surface border-border rotate-45 ${
             showBelow
               ? "-top-[6px] border-l border-t"
               : "-bottom-[6px] border-r border-b"
@@ -240,12 +240,12 @@ function StatCard({
 }) {
   return (
     <div
-      className={`bg-[#13101c] rounded-lg p-3 border border-[#2e293c] ${onClick ? "cursor-pointer active:bg-[#2e293c] transition-colors" : ""}`}
+      className={`bg-bg rounded-lg p-3 border border-border ${onClick ? "cursor-pointer active:bg-border transition-colors" : ""}`}
       onClick={onClick}
     >
-      <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">{label}</div>
+      <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">{label}</div>
       <div className={`text-xl font-bold ${color ?? "text-white"}`}>{value}</div>
-      {sub && <div className="text-sm text-[#af9ece] mt-0.5">{sub}</div>}
+      {sub && <div className="text-sm text-muted mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -265,11 +265,11 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
 
   const trendIcon =
     insights.ctlTrend > 1 ? (
-      <TrendingUp className="w-4 h-4 text-[#8b5cf6]" />
+      <TrendingUp className="w-4 h-4 text-chart-primary" />
     ) : insights.ctlTrend < -1 ? (
-      <TrendingDown className="w-4 h-4 text-[#ff4d6a]" />
+      <TrendingDown className="w-4 h-4 text-error" />
     ) : (
-      <Minus className="w-4 h-4 text-[#af9ece]" />
+      <Minus className="w-4 h-4 text-muted" />
     );
 
   const rampWarning =
@@ -300,7 +300,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           <div className={`font-bold text-base ${formStyle.text}`}>
             Form: {insights.formZoneLabel}
           </div>
-          <div className="text-sm text-[#af9ece]">
+          <div className="text-sm text-muted">
             {insights.currentTsb > 0 ? "+" : ""}
             {insights.currentTsb}
             {insights.formZone === "optimal" &&
@@ -323,49 +323,49 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           label="Fitness (CTL)"
           value={insights.currentCtl.toString()}
           sub={`Peak: ${insights.peakCtl}`}
-          color="text-[#8b5cf6]"
+          color="text-chart-primary"
           onClick={(e) => { handleTap("ctl", e); }}
         />
         <StatCard
           label="Fatigue (ATL)"
           value={insights.currentAtl.toString()}
-          color="text-[#af9ece]"
+          color="text-muted"
           onClick={(e) => { handleTap("atl", e); }}
         />
         <div
-          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("trend", e); }}
         >
-          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Fitness Trend</div>
+          <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Fitness Trend</div>
           <div className="flex items-center gap-1.5">
             {trendIcon}
             <span
-              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-[#ff4d6a]" : "text-[#8b5cf6]"}`}
+              className={`text-xl font-bold ${insights.ctlTrend < -1 ? "text-error" : "text-chart-primary"}`}
             >
               {insights.ctlTrend > 0 ? "+" : ""}
               {insights.ctlTrend}
             </span>
-            <span className="text-sm text-[#af9ece]">in 28d</span>
+            <span className="text-sm text-muted">in 28d</span>
           </div>
         </div>
         <div
-          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("ramp", e); }}
         >
-          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Ramp Rate</div>
+          <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Ramp Rate</div>
           <div className="flex items-baseline gap-1.5">
-            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-[#ffb800]" : insights.rampRate < -1 ? "text-[#ff4d6a]" : "text-[#8b5cf6]"}`}>
+            <span className={`text-xl font-bold ${insights.rampRate > 5 ? "text-warning" : insights.rampRate < -1 ? "text-error" : "text-chart-primary"}`}>
               {insights.rampRate > 0 ? "+" : ""}
               {insights.rampRate}
             </span>
-            <span className="text-sm text-[#af9ece]">/week</span>
+            <span className="text-sm text-muted">/week</span>
           </div>
         </div>
       </div>
 
       {/* Ramp Warning */}
       {rampWarning && (
-        <div className="bg-[#3d2b1a] border border-[#ffb800]/30 rounded-lg px-4 py-2 flex items-center gap-2">
+        <div className="bg-tint-warning border border-warning/30 rounded-lg px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-white flex-shrink-0" />
           <span className="text-sm text-white">{rampWarning}</span>
         </div>
@@ -374,30 +374,30 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Activity Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div
-          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("load7", e); }}
         >
-          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Last 7 days</div>
+          <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Last 7 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities7d}{" "}
-            <span className="text-sm font-normal text-[#af9ece]">
+            <span className="text-sm font-normal text-muted">
               {insights.totalActivities7d === 1 ? "run" : "runs"}
             </span>
           </div>
-          <div className="text-sm text-[#af9ece] mt-0.5">
+          <div className="text-sm text-muted mt-0.5">
             {insights.totalLoad7d} load
           </div>
         </div>
         <div
-          className="bg-[#13101c] rounded-lg p-3 border border-[#2e293c] cursor-pointer active:bg-[#2e293c] transition-colors"
+          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("load28", e); }}
         >
-          <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold mb-1">Last 28 days</div>
+          <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Last 28 days</div>
           <div className="text-lg font-bold text-white">
             {insights.totalActivities28d}{" "}
-            <span className="text-sm font-normal text-[#af9ece]">runs</span>
+            <span className="text-sm font-normal text-muted">runs</span>
           </div>
-          <div className="text-sm text-[#af9ece] mt-0.5">
+          <div className="text-sm text-muted mt-0.5">
             {insights.totalLoad28d} load
           </div>
         </div>

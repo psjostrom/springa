@@ -8,9 +8,9 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import { buildReportCard } from "@/lib/reportCard";
 
 const RATING_COLORS = {
-  good: "#4ade80",
-  ok: "#ffb800",
-  bad: "#ff4d6a",
+  good: "var(--color-success)",
+  ok: "var(--color-warning)",
+  bad: "var(--color-error)",
 } as const;
 
 const RATING_FRACTIONS = { good: 0.9, ok: 0.55, bad: 0.25 } as const;
@@ -26,20 +26,20 @@ interface PopoverContent {
 function BGPopover({ content, onClose }: { content: PopoverContent; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#1d1828] rounded-xl border border-[#2e293c] p-4 w-72 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
+      <div className="bg-surface rounded-xl border border-border p-4 w-72 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-white">{content.title}</span>
-          <button onClick={onClose} aria-label="Close" className="text-[#af9ece] hover:text-white text-sm">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-white text-sm">✕</button>
         </div>
         <div className="space-y-1.5 text-sm mb-3">
           {content.lines.map((line) => (
             <div key={line.label} className="flex justify-between">
-              <span className="text-[#af9ece]">{line.label}</span>
+              <span className="text-muted">{line.label}</span>
               <span className="text-white">{line.value}</span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-[#af9ece] leading-relaxed">{content.description}</p>
+        <p className="text-xs text-muted leading-relaxed">{content.description}</p>
       </div>
     </div>
   );
@@ -67,19 +67,19 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
       <button
         type="button"
         onClick={() => { setShowPopover(true); }}
-        className="bg-[#2e293c] rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-[#2e293c]"
+        className="bg-border rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
-          <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</span>
+          <span className="text-xs text-muted uppercase tracking-wider font-semibold">{label}</span>
           <span className="ml-auto text-xs font-medium" style={{ color: judgmentColor }}>
             {judgmentLabel}
           </span>
         </div>
         <div className="text-lg font-bold text-white">
-          {value} <span className="text-sm text-[#af9ece] font-normal">{unit}</span>
+          {value} <span className="text-sm text-muted font-normal">{unit}</span>
         </div>
-        <div className="h-1 bg-[#1d1828] rounded-full overflow-hidden">
+        <div className="h-1 bg-surface rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${Math.round(fraction * 100)}%`, backgroundColor: judgmentColor }}
@@ -93,8 +93,8 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
 
 function SkeletonCard({ label }: { label: string }) {
   return (
-    <div className="bg-[#2e293c] rounded-lg p-3 space-y-1.5">
-      <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">{label}</div>
+    <div className="bg-border rounded-lg p-3 space-y-1.5">
+      <div className="text-xs text-muted uppercase tracking-wider font-semibold">{label}</div>
       <div className="skeleton h-6 w-24" />
       <div className="skeleton h-1 w-full rounded-full" />
     </div>
@@ -135,7 +135,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
       <BGCard
         key="bg"
         icon={Droplets}
-        iconColor="#06b6d4"
+        iconColor="var(--color-chart-secondary)"
         label="Blood Glucose"
         value={`${bg.startBG.toFixed(1)} → ${bg.minBG.toFixed(1)}`}
         unit=""
@@ -164,7 +164,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
       <BGCard
         key="entry"
         icon={Clock}
-        iconColor="#af9ece"
+        iconColor="var(--color-muted)"
         label="Pre-Run"
         value={et.label}
         unit=""
@@ -191,7 +191,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
       <BGCard
         key="recovery"
         icon={Heart}
-        iconColor="#4ade80"
+        iconColor="var(--color-success)"
         label="Recovery"
         value={rec.label}
         unit=""

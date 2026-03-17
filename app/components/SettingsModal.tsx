@@ -80,12 +80,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#1d1828] rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-[#2e293c] shadow-lg shadow-[#f23b94]/10">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e293c]">
+      <div className="bg-surface rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-border shadow-lg shadow-brand/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-bold text-white">Settings</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#af9ece] hover:text-white hover:bg-[#2e293c] transition"
+            className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-border transition"
           >
             <X size={18} />
           </button>
@@ -94,84 +94,84 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
         <div className="px-6 py-4 space-y-4">
           {/* Account */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#af9ece] truncate">{email}</span>
+            <span className="text-sm text-muted truncate">{email}</span>
             <button
               onClick={() => { void signOut(); }}
-              className="flex items-center gap-1.5 text-sm text-[#af9ece] hover:text-[#ff4d6a] transition"
+              className="flex items-center gap-1.5 text-sm text-muted hover:text-error transition"
             >
               <LogOut size={14} />
               Sign out
             </button>
           </div>
 
-          <div className="border-t border-[#2e293c]" />
+          <div className="border-t border-border" />
 
           {/* Race Date */}
           <div>
-            <label className="block text-sm font-semibold text-[#af9ece] mb-1.5">
+            <label className="block text-sm font-semibold text-muted mb-1.5">
               Race Date
             </label>
             <input
               type="date"
               value={raceDate}
               onChange={(e) => { setRaceDate(e.target.value); }}
-              className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+              className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
             />
           </div>
 
           {/* Race & Plan */}
-          <div className="border-t border-[#2e293c] pt-4">
-            <span className="block text-sm font-semibold text-[#af9ece] mb-3">
+          <div className="border-t border-border pt-4">
+            <span className="block text-sm font-semibold text-muted mb-3">
               Race & Plan
             </span>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-[#af9ece] mb-1">Race Name</label>
+                <label className="block text-xs text-muted mb-1">Race Name</label>
                 <input
                   type="text"
                   value={raceName}
                   onChange={(e) => { setRaceName(e.target.value); }}
-                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                   placeholder="e.g. EcoTrail"
                 />
               </div>
               <div>
-                <label className="block text-xs text-[#af9ece] mb-1">Distance (km)</label>
+                <label className="block text-xs text-muted mb-1">Distance (km)</label>
                 <input
                   type="number"
                   min={5}
                   max={100}
                   value={raceDist}
                   onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                  className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                   placeholder="16"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-[#af9ece] mb-1">Total Weeks</label>
+                  <label className="block text-xs text-muted mb-1">Total Weeks</label>
                   <input
                     type="number"
                     min={MIN_PLAN_WEEKS}
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                     placeholder="18"
                   />
-                  <p className="text-[10px] text-[#af9ece] mt-1">
+                  <p className="text-[10px] text-muted mt-1">
                     Min {MIN_PLAN_WEEKS}. Includes build, 2-week race test, 2-week taper, and race week.
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs text-[#af9ece] mb-1">Start km</label>
+                  <label className="block text-xs text-muted mb-1">Start km</label>
                   <input
                     type="number"
                     min={2}
                     max={30}
                     value={startKm}
                     onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-[#2e293c] rounded-lg text-white bg-[#13101c] focus:outline-none focus:ring-2 focus:ring-[#f23b94] focus:border-transparent placeholder:text-[#af9ece] text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                     placeholder="8"
                   />
                 </div>
@@ -187,7 +187,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             const baseTooShort = weeksNum > 0 && weeksNum < minWeeksForBase;
             const baseDisabled = baseTooShort;
             return (
-              <div className="border-t border-[#2e293c] pt-4">
+              <div className="border-t border-border pt-4">
                 <div className="flex items-start gap-3">
                   <button
                     type="button"
@@ -196,7 +196,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     disabled={baseDisabled}
                     onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
                     className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                      baseDisabled ? "bg-[#2e293c] opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-[#f23b94]" : "bg-[#2e293c]"
+                      baseDisabled ? "bg-border opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-brand" : "bg-border"
                     }`}
                   >
                     <span
@@ -206,10 +206,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     />
                   </button>
                   <div>
-                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-[#af9ece]/60" : "text-[#af9ece]"}`}>
+                    <label className={`block text-sm font-semibold ${baseDisabled ? "text-muted/60" : "text-muted"}`}>
                       Include base phase
                     </label>
-                    <p className="text-xs text-[#af9ece] mt-0.5 leading-relaxed">
+                    <p className="text-xs text-muted mt-0.5 leading-relaxed">
                       {baseDisabled
                         ? `Requires at least ${minWeeksForBase} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
                         : "Adds 2-3 weeks of easy-only running at the start of the plan. Recommended if you're new to structured training or returning from a break."}
@@ -221,23 +221,23 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           })()}
 
           {/* Warmth Preference */}
-          <div className="border-t border-[#2e293c] pt-4">
-            <span className="block text-sm font-semibold text-[#af9ece] mb-1">
+          <div className="border-t border-border pt-4">
+            <span className="block text-sm font-semibold text-muted mb-1">
               Running temperature
             </span>
-            <p className="text-xs text-[#af9ece] mb-3">
+            <p className="text-xs text-muted mb-3">
               Shifts clothing recommendations. If you tend to overheat, move toward warmer. If you get cold easily, move toward colder.
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#ffb800] w-14 text-right flex-shrink-0">Warmer</span>
+              <span className="text-xs text-warning w-14 text-right flex-shrink-0">Warmer</span>
               <div className="flex gap-1 flex-1 justify-center">
                 {([-2, -1, 0, 1, 2] as const).map((val) => {
                   const colors = [
-                    "bg-[#ffb800] border-[#ffb800]",
-                    "bg-[#ffb800] border-[#ffb800]",
-                    "bg-[#4a4358] border-[#4a4358]",
-                    "bg-[#06b6d4] border-[#06b6d4]",
-                    "bg-[#2e293c] border-[#06b6d4]",
+                    "bg-warning border-warning",
+                    "bg-warning border-warning",
+                    "bg-border-subtle border-border-subtle",
+                    "bg-chart-secondary border-chart-secondary",
+                    "bg-border border-chart-secondary",
                   ];
                   const isSelected = warmthPreference === val;
                   return (
@@ -246,20 +246,20 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                       type="button"
                       onClick={() => { setWarmthPreference(val); }}
                       className={`w-9 h-9 rounded-lg border-2 transition ${colors[val + 2]} ${
-                        isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-[#1d1828] scale-110" : "opacity-60 hover:opacity-80"
+                        isSelected ? "ring-2 ring-white ring-offset-1 ring-offset-surface scale-110" : "opacity-60 hover:opacity-80"
                       }`}
                       aria-label={`Warmth ${val}`}
                     />
                   );
                 })}
               </div>
-              <span className="text-xs text-[#06b6d4] w-14 flex-shrink-0">Colder</span>
+              <span className="text-xs text-chart-secondary w-14 flex-shrink-0">Colder</span>
             </div>
             {warmthPreference !== 0 && (
               <button
                 type="button"
                 onClick={() => { setWarmthPreference(0); }}
-                className="mt-2 text-xs text-[#af9ece] hover:text-white transition"
+                className="mt-2 text-xs text-muted hover:text-white transition"
               >
                 Reset to neutral
               </button>
@@ -267,18 +267,18 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           </div>
 
           {/* Notifications */}
-          <div className="border-t border-[#2e293c] pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex items-center gap-2 mb-2">
-              <Bell className="text-[#f23b94]" size={16} />
-              <span className="text-sm font-semibold text-[#af9ece]">
+              <Bell className="text-brand" size={16} />
+              <span className="text-sm font-semibold text-muted">
                 Notifications
               </span>
             </div>
             <div className="flex items-center justify-between">
               {pushPermission === "granted" ? (
-                <span className="text-sm text-[#4ade80]">Enabled</span>
+                <span className="text-sm text-success">Enabled</span>
               ) : pushPermission === "denied" ? (
-                <span className="text-sm text-[#ff4d6a]">Blocked in browser</span>
+                <span className="text-sm text-error">Blocked in browser</span>
               ) : (
                 <button
                   type="button"
@@ -287,7 +287,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                       .then((result) => { setPushPermission(result); })
                       .catch(() => { setPushPermission("denied"); });
                   }}
-                  className="px-4 py-2 bg-[#2e293c] border border-[#2e293c] rounded-lg text-sm text-[#f23b94] hover:bg-[#2e293c] transition"
+                  className="px-4 py-2 bg-border border border-border rounded-lg text-sm text-brand hover:bg-border transition"
                 >
                   Enable notifications
                 </button>
@@ -296,11 +296,11 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-[#2e293c]">
+        <div className="px-6 py-4 border-t border-border">
           <button
             onClick={() => { void handleSave(); }}
             disabled={saving || (totalWeeks !== "" && Number(totalWeeks) < MIN_PLAN_WEEKS)}
-            className="w-full py-2.5 bg-[#f23b94] text-white rounded-lg font-bold hover:bg-[#d42f7e] transition shadow-lg shadow-[#f23b94]/20 disabled:opacity-50"
+            className="w-full py-2.5 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
           </button>

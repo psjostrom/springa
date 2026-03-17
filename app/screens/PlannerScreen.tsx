@@ -222,24 +222,24 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-[#13101c]">
+    <div className="h-full overflow-y-auto bg-bg">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {/* Fuel rates + Generate */}
-        <div className="relative overflow-hidden bg-[#1d1828] border border-[#2e293c] rounded-xl p-4 md:p-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#f23b94]/5 via-transparent to-[#f23b94]/5 pointer-events-none" />
+        <div className="relative overflow-hidden bg-surface border border-border rounded-xl p-4 md:p-5">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#af9ece]">
-                Fuel rates <span className="text-[#af9ece]">g/h</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                Fuel rates <span className="text-muted">g/h</span>
               </span>
               <div className="grid grid-cols-3 gap-3 mt-2">
                 {(["easy", "long", "interval"] as const).map((cat) => {
                   const rate = getCurrentFuelRate(cat, bgModel);
                   const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
                   return (
-                    <div key={cat} className="flex flex-col text-xs text-[#af9ece] gap-1">
+                    <div key={cat} className="flex flex-col text-xs text-muted gap-1">
                       <span className="capitalize">{cat}</span>
-                      <span className={`text-sm font-medium ${isDefault ? "text-[#af9ece]" : "text-[#f23b94]"}`}>
+                      <span className={`text-sm font-medium ${isDefault ? "text-muted" : "text-brand"}`}>
                         {rate} g/h{isDefault ? " (default)" : ""}
                       </span>
                     </div>
@@ -249,7 +249,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             </div>
             <button
               onClick={handleGenerate}
-              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-[#f23b94] text-white rounded-lg font-bold hover:bg-[#d42f7e] transition shadow-lg shadow-[#f23b94]/20 shrink-0"
+              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 shrink-0"
             >
               Generate Plan
             </button>
@@ -271,10 +271,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
         {/* Adapt Upcoming */}
         {hasPlannedEvents && (
-          <div className={`relative overflow-hidden bg-[#1d1828] border border-[#2e293c] ${isAdapting ? "border-l-[3px] border-l-[#f23b94]" : ""} rounded-xl p-4 md:p-5`}>
+          <div className={`relative overflow-hidden bg-surface border border-border ${isAdapting ? "border-l-[3px] border-l-brand" : ""} rounded-xl p-4 md:p-5`}>
             <div className="relative space-y-4">
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-white" : "text-[#af9ece]"}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-white" : "text-muted"}`}>
                   {isAdapting ? "Adapting..." : "Adapt Upcoming"}
                 </span>
                 <button
@@ -282,8 +282,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   disabled={isAdapting}
                   className={`py-2 px-5 text-white rounded-lg font-bold transition text-sm ${
                     isAdapting
-                      ? "bg-[#d42c85] opacity-60 cursor-not-allowed"
-                      : "bg-[#f23b94] hover:bg-[#d42f7e] shadow-lg shadow-[#f23b94]/20"
+                      ? "bg-brand-btn opacity-60 cursor-not-allowed"
+                      : "bg-brand hover:bg-brand-hover shadow-lg shadow-brand/20"
                   }`}
                 >
                   {isAdapting ? <><span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Adapting</> : "Adapt"}
@@ -291,7 +291,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               </div>
 
               {adaptStatus && !isAdapting && (
-                <p className={`text-xs ${adaptStatus.startsWith("Error") ? "text-red-400" : "text-[#af9ece]"}`}>
+                <p className={`text-xs ${adaptStatus.startsWith("Error") ? "text-red-400" : "text-muted"}`}>
                   {adaptStatus}
                 </p>
               )}
@@ -300,10 +300,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               {adaptedEvents.length > 0 && (
                 <div className="space-y-3">
                   {adaptedEvents.map((event) => (
-                    <div key={event.original.id} className="bg-[#13101c] border border-[#2e293c] rounded-lg p-3 space-y-2">
+                    <div key={event.original.id} className="bg-bg border border-border rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white">{event.name}</span>
-                        <span className="text-xs text-[#af9ece]">{event.date}</span>
+                        <span className="text-xs text-muted">{event.date}</span>
                         {event.changes.map((change, j) => {
                           const isLowConfidence = change.type === "fuel" && change.confidence === "low";
                           return (
@@ -311,10 +311,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                               key={j}
                               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                                 isLowConfidence
-                                  ? "bg-[#ffb800]/20 text-[#ffb800] border border-dashed border-[#ffb800]/30"
+                                  ? "bg-warning/20 text-warning border border-dashed border-warning/30"
                                   : change.type === "fuel"
-                                    ? "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
-                                    : "bg-[#f23b94]/20 text-[#f23b94] border border-[#f23b94]/30"
+                                    ? "bg-brand/20 text-brand border border-brand/30"
+                                    : "bg-brand/20 text-brand border border-brand/30"
                               }`}
                             >
                               {isLowConfidence ? "Suggestion" : change.type === "fuel" ? "Fuel" : "Swap"}
@@ -322,27 +322,27 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                           );
                         })}
                         {hasLowConfidenceFuel(event) && (
-                          <label className="flex items-center gap-1 text-[10px] text-[#ffb800] ml-auto cursor-pointer">
+                          <label className="flex items-center gap-1 text-[10px] text-warning ml-auto cursor-pointer">
                             <input
                               type="checkbox"
                               checked={optedIn[event.original.id] ?? false}
                               onChange={(e) => {
                                 setOptedIn((prev) => ({ ...prev, [event.original.id]: e.target.checked }));
                               }}
-                              className="accent-[#ffb800] w-3 h-3"
+                              className="accent-warning w-3 h-3"
                             />
                             Include
                           </label>
                         )}
                       </div>
                       {event.notes && (
-                        <div className="text-sm text-[#af9ece] leading-relaxed">
+                        <div className="text-sm text-muted leading-relaxed">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                               p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
                               strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-                              em: ({ children }) => <em className="text-[#af9ece]">{children}</em>,
+                              em: ({ children }) => <em className="text-muted">{children}</em>,
                             }}
                           >
                             {event.notes}
@@ -357,10 +357,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                     disabled={isSyncing || syncDone}
                     className={`w-full py-2.5 rounded-lg font-bold transition text-sm ${
                       syncDone
-                        ? "bg-[#4ade80]/10 text-[#4ade80] border border-[#4ade80]/30 cursor-default"
+                        ? "bg-success/10 text-success border border-success/30 cursor-default"
                         : isSyncing
-                          ? "bg-[#d42c85] text-white opacity-60 cursor-not-allowed"
-                          : "bg-[#f23b94]/10 text-[#f23b94] border border-[#f23b94]/30 hover:bg-[#f23b94]/20"
+                          ? "bg-brand-btn text-white opacity-60 cursor-not-allowed"
+                          : "bg-brand/10 text-brand border border-brand/30 hover:bg-brand/20"
                     }`}
                   >
                     <span className="relative z-10">{syncDone ? "Synced \u2713" : isSyncing ? "Syncing..." : "Sync Changes"}</span>

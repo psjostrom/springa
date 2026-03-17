@@ -9,8 +9,8 @@ import { BGSimChart } from "../components/BGSimChart";
 import { bgModelAtom, bgModelLoadingAtom } from "../atoms";
 
 const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
-  { key: "easy", label: "Easy", color: "#06b6d4" },
-  { key: "long", label: "Long", color: "#ffb800" },
+  { key: "easy", label: "Easy", color: "var(--color-chart-secondary)" },
+  { key: "long", label: "Long", color: "var(--color-warning)" },
   { key: "interval", label: "Interval", color: "#fb923c" },
 ];
 
@@ -36,7 +36,7 @@ export function SimulateScreen() {
 
   if (bgModelLoading) {
     return (
-      <div className="h-full flex items-center justify-center text-[#af9ece]">
+      <div className="h-full flex items-center justify-center text-muted">
         Loading BG model…
       </div>
     );
@@ -44,7 +44,7 @@ export function SimulateScreen() {
 
   if (!bgModel || bgModel.activitiesAnalyzed === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-[#af9ece] px-6 text-center">
+      <div className="h-full flex items-center justify-center text-muted px-6 text-center">
         No BG data yet. Complete some runs with glucose data to enable simulation.
       </div>
     );
@@ -64,7 +64,7 @@ export function SimulateScreen() {
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 category === key
                   ? "text-white shadow-lg"
-                  : "text-[#af9ece] bg-[#1d1828] hover:bg-[#2e293c]"
+                  : "text-muted bg-surface hover:bg-border"
               }`}
               style={
                 category === key
@@ -80,7 +80,7 @@ export function SimulateScreen() {
         {/* Inputs */}
         <div className="grid grid-cols-2 gap-3">
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
+            <span className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-1">
               <Timer size={12} /> Duration
             </span>
             <input
@@ -90,13 +90,13 @@ export function SimulateScreen() {
               step={5}
               value={durationMin}
               onChange={(e) => { setDurationMin(Number(e.target.value)); }}
-              className="w-full accent-[#f23b94]"
+              className="w-full accent-brand"
             />
             <span className="text-sm text-white">{durationMin} min</span>
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
+            <span className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-1">
               <TrendingDown size={12} /> Start BG
             </span>
             <input
@@ -106,13 +106,13 @@ export function SimulateScreen() {
               step={0.5}
               value={startBG}
               onChange={(e) => { setStartBG(Number(e.target.value)); }}
-              className="w-full accent-[#f23b94]"
+              className="w-full accent-brand"
             />
             <span className="text-sm text-white">{startBG.toFixed(1)} mmol/L</span>
           </label>
 
           <label className="space-y-1">
-            <span className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold flex items-center gap-1">
+            <span className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-1">
               <Zap size={12} /> Fuel rate
             </span>
             <input
@@ -123,7 +123,7 @@ export function SimulateScreen() {
               value={fuelRate}
               onChange={(e) => { setFuelRate(Number(e.target.value)); }}
               disabled={!fuelKnown}
-              className="w-full accent-[#f23b94] disabled:opacity-30"
+              className="w-full accent-brand disabled:opacity-30"
             />
             <div className="flex items-center gap-2">
               <span className="text-sm text-white">{fuelKnown ? `${fuelRate} g/h` : "Unknown"}</span>
@@ -131,8 +131,8 @@ export function SimulateScreen() {
                 onClick={() => { setFuelKnown(!fuelKnown); }}
                 className={`text-xs px-1.5 py-0.5 rounded transition ${
                   fuelKnown
-                    ? "bg-[#1a3d25] text-white"
-                    : "bg-[#3d2b1a] text-white"
+                    ? "bg-tint-success text-white"
+                    : "bg-tint-warning text-white"
                 }`}
               >
                 {fuelKnown ? "known" : "unknown"}
@@ -146,11 +146,11 @@ export function SimulateScreen() {
           <>
             {/* Reliability gate */}
             {!result.reliable && (
-              <div className="bg-[#3d2b1a] border border-[#ffb800]/30 rounded-lg p-3 flex items-start gap-2">
+              <div className="bg-tint-warning border border-warning/30 rounded-lg p-3 flex items-start gap-2">
                 <AlertTriangle size={18} className="text-white flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="text-white font-medium">Prediction not yet reliable</p>
-                  <ul className="text-[#af9ece] mt-1 space-y-0.5">
+                  <ul className="text-muted mt-1 space-y-0.5">
                     {result.warnings.map((w, i) => (
                       <li key={i}>• {w}</li>
                     ))}
@@ -164,21 +164,21 @@ export function SimulateScreen() {
 
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">End BG</div>
+              <div className="bg-surface rounded-lg p-2">
+                <div className="text-xs text-muted uppercase tracking-wider font-semibold">End BG</div>
                 <div className="text-lg font-semibold text-white">
                   {result.curve[result.curve.length - 1].bg.toFixed(1)}
                 </div>
               </div>
-              <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Min BG</div>
-                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-[#ff4d6a]" : "text-white"}`}>
+              <div className="bg-surface rounded-lg p-2">
+                <div className="text-xs text-muted uppercase tracking-wider font-semibold">Min BG</div>
+                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-error" : "text-white"}`}>
                   {result.minBG.toFixed(1)}
                 </div>
               </div>
-              <div className="bg-[#1d1828] rounded-lg p-2">
-                <div className="text-xs text-[#af9ece] uppercase tracking-wider font-semibold">Hypo risk</div>
-                <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-[#ff4d6a]" : "text-[#4ade80]"}`}>
+              <div className="bg-surface rounded-lg p-2">
+                <div className="text-xs text-muted uppercase tracking-wider font-semibold">Hypo risk</div>
+                <div className={`text-lg font-semibold ${result.hypoMinute != null ? "text-error" : "text-success"}`}>
                   {result.hypoMinute != null ? `${result.hypoMinute}m` : "None"}
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function SimulateScreen() {
 
             {/* Confidence band at end */}
             {result.reliable && (
-              <div className="text-xs text-[#af9ece] text-center">
+              <div className="text-xs text-muted text-center">
                 End range: {result.curve[result.curve.length - 1].bgLow.toFixed(1)} – {result.curve[result.curve.length - 1].bgHigh.toFixed(1)} mmol/L
               </div>
             )}

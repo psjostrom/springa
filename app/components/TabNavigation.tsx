@@ -37,35 +37,35 @@ export function TabNavigation({
 	return (
 		<>
 			{/* Desktop: horizontal text tabs in header */}
-			<div className="hidden md:flex gap-2 border-b border-[#2e293c] mb-6">
+			<div className="hidden md:flex gap-2 border-b border-border mb-6">
 				{TABS.map(({ key, label }) => (
 					<button
 						key={key}
 						onClick={() => { handleClick(key); }}
 						className={`px-6 py-3 font-medium transition-all relative ${
 							localTab === key
-								? "text-[#f23b94]"
-								: "text-[#af9ece] hover:text-[#f23b94]"
+								? "text-brand"
+								: "text-muted hover:text-brand"
 						}`}
 					>
 						{label}
 						{localTab === key && (
-							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f23b94]"></div>
+							<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand"></div>
 						)}
 					</button>
 				))}
 			</div>
 
 			{/* Mobile: fixed bottom tab bar with icons */}
-			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1d1828] border-t border-[#2e293c] justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
 				{TABS.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
 						onClick={() => { handleClick(key); }}
 						className={`flex flex-col items-center gap-0.5 px-1 transition-all active:scale-90 ${
 							localTab === key
-								? "text-[#f23b94]"
-								: "text-[#af9ece] hover:text-[#f23b94]"
+								? "text-brand"
+								: "text-muted hover:text-brand"
 						}`}
 					>
 						<Icon size={22} strokeWidth={localTab === key ? 2.5 : 2} />

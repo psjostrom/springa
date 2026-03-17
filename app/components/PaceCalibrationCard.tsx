@@ -62,10 +62,10 @@ function PaceZonesPopover({
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 bg-[#1d1828] border border-[#2e293c] rounded-xl px-4 py-3 shadow-lg shadow-black/50"
+        className="fixed z-50 bg-surface border border-border rounded-xl px-4 py-3 shadow-lg shadow-black/50"
         style={positionStyle}
       >
-        <div className="text-xs text-[#af9ece] leading-relaxed mb-3">
+        <div className="text-xs text-muted leading-relaxed mb-3">
           Pace at each HR zone, calibrated from {totalMinutes} min of training.
         </div>
 
@@ -77,15 +77,15 @@ function PaceZonesPopover({
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: color }}
               />
-              <span className="text-[#af9ece] font-medium w-12">{label}</span>
-              <span className="text-[#af9ece]">{ZONE_PURPOSE[zone]}</span>
+              <span className="text-muted font-medium w-12">{label}</span>
+              <span className="text-muted">{ZONE_PURPOSE[zone]}</span>
             </div>
           ))}
         </div>
 
         {/* Arrow */}
         <div
-          className={`absolute w-2.5 h-2.5 bg-[#1d1828] border-[#2e293c] rotate-45 ${
+          className={`absolute w-2.5 h-2.5 bg-surface border-border rotate-45 ${
             showBelow ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-r border-b"
           }`}
           style={{ left: arrowLeft }}
@@ -96,15 +96,15 @@ function PaceZonesPopover({
 }
 
 function TrendArrow({ slope }: { slope: number | null }) {
-  if (slope === null) return <span className="text-[#af9ece]">—</span>;
+  if (slope === null) return <span className="text-muted">—</span>;
   // slope is min/km per day — negative = faster
   if (Math.abs(slope) < 0.003) {
-    return <span className="text-[#af9ece]">→</span>;
+    return <span className="text-muted">→</span>;
   }
   if (slope < 0) {
-    return <span className="text-[#4ade80]">↓</span>;
+    return <span className="text-success">↓</span>;
   }
-  return <span className="text-[#ff4d6a]">↑</span>;
+  return <span className="text-error">↑</span>;
 }
 
 export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
@@ -130,10 +130,10 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
       )}
       <div
         onClick={handleClick}
-        className="bg-[#1d1828] rounded-lg border border-[#2e293c] overflow-hidden cursor-pointer active:bg-[#2e293c] transition-colors"
+        className="bg-surface rounded-lg border border-border overflow-hidden cursor-pointer active:bg-border transition-colors"
       >
         {/* Header */}
-        <div className="flex items-center px-3 py-2 border-b border-[#2e293c] text-xs text-[#af9ece]">
+        <div className="flex items-center px-3 py-2 border-b border-border text-xs text-muted">
           <span className="w-16">Zone</span>
           <span className="flex-1 text-right">Pace</span>
           <span className="w-12 text-right">HR</span>
@@ -149,7 +149,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
           return (
             <div
               key={zone}
-              className="flex items-center px-3 py-2 border-b border-[#2e293c] last:border-b-0"
+              className="flex items-center px-3 py-2 border-b border-border last:border-b-0"
             >
               {/* Zone dot + label */}
               <div className="flex-shrink-0 flex items-center gap-1.5">
@@ -157,9 +157,9 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-sm text-[#af9ece]">{label}</span>
+                <span className="text-sm text-muted">{label}</span>
                 {isHardExtrapolated && (
-                  <span className="text-[10px] text-[#f23b94]">(extrapolated)</span>
+                  <span className="text-[10px] text-brand">(extrapolated)</span>
                 )}
               </div>
 
@@ -167,18 +167,18 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
               <div className="flex-1 text-right">
                 <span
                   className={`text-sm tabular-nums ${
-                    entry.calibrated ? "font-bold text-white" : "text-[#af9ece]"
+                    entry.calibrated ? "font-bold text-white" : "text-muted"
                   }`}
                 >
                   {formatPace(entry.pace)}
                 </span>
                 {!entry.calibrated && (
-                  <span className="text-[10px] text-[#af9ece] ml-1">fallback</span>
+                  <span className="text-[10px] text-muted ml-1">fallback</span>
                 )}
               </div>
 
               {/* Avg HR */}
-              <span className="w-12 text-right text-xs tabular-nums text-[#af9ece]">
+              <span className="w-12 text-right text-xs tabular-nums text-muted">
                 {summary ? Math.round(summary.avgHr) : "—"}
               </span>
 

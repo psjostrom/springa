@@ -13,7 +13,7 @@ interface TabBarProps<T extends string> {
 
 export function TabBar<T extends string>({ tabs, activeTab, onTabChange }: TabBarProps<T>) {
   return (
-    <div className="flex border-b border-[#2e293c]" role="tablist">
+    <div className="flex border-b border-border" role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -22,8 +22,8 @@ export function TabBar<T extends string>({ tabs, activeTab, onTabChange }: TabBa
           onClick={() => { onTabChange(tab.id); }}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === tab.id
-              ? "text-[#f23b94] border-b-2 border-[#f23b94]"
-              : "text-[#af9ece] hover:text-white"
+              ? "text-brand border-b-2 border-brand"
+              : "text-muted hover:text-white"
           }`}
         >
           {tab.label}

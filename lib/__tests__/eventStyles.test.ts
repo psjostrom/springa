@@ -16,12 +16,12 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
 
 describe("getEventStyle", () => {
   it("returns race style for race events", () => {
-    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("f23b94");
+    expect(getEventStyle(makeEvent({ type: "race" }))).toContain("brand");
   });
 
   it("returns completed style with green border", () => {
     const style = getEventStyle(makeEvent({ type: "completed", category: "long" }));
-    expect(style).toContain("4ade80");
+    expect(style).toContain("success");
     expect(style).toContain("border-l-");
   });
 
@@ -34,7 +34,7 @@ describe("getEventStyle", () => {
   it("returns planned style with brand border", () => {
     vi.useFakeTimers({ now: new Date("2026-02-28T12:00:00") });
     const style = getEventStyle(makeEvent({ type: "planned", category: "long" }));
-    expect(style).toContain("f23b94");
+    expect(style).toContain("brand");
     expect(style).toContain("border-l-");
     vi.useRealTimers();
   });
@@ -42,14 +42,14 @@ describe("getEventStyle", () => {
   it("returns bonus style with muted border", () => {
     vi.useFakeTimers({ now: new Date("2026-02-28T12:00:00") });
     const style = getEventStyle(makeEvent({ type: "planned", category: "easy", name: "Bonus Easy eco16" }));
-    expect(style).toContain("4a4358");
+    expect(style).toContain("border-subtle");
     vi.useRealTimers();
   });
 
   it("returns missed style with error border and reduced opacity", () => {
     vi.useFakeTimers({ now: new Date("2026-03-10T12:00:00") });
     const style = getEventStyle(makeEvent({ type: "planned", date: new Date("2026-03-08") }));
-    expect(style).toContain("ff4d6a");
+    expect(style).toContain("error");
     expect(style).toContain("opacity-70");
     vi.useRealTimers();
   });
