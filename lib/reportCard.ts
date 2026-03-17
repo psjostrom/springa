@@ -1,4 +1,4 @@
-import type { CalendarEvent } from "./types";
+import type { CalendarEvent, DataPoint } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import { BG_HYPO } from "./constants";
 
@@ -11,7 +11,8 @@ export interface BGScore {
   startBG: number;
   minBG: number;
   hypo: boolean;
-  dropRate: number; // mmol/L per min (negative = dropping)
+  worstRate: number; // steepest 5-min drop rate, mmol/L per min (negative = dropping)
+  lbgi: number; // Kovatchev Low BG Index for exercise window
 }
 
 export interface HRZoneScore {
@@ -77,6 +78,90 @@ export function parseExpectedRepTime(description: string): {
   return { repCount, repDurationSec, totalRepSec, targetZone };
 }
 
+// --- Kovatchev Risk Function (LBGI) ---
+// Kovatchev et al. 1997 — symmetrizes the glucose scale and applies
+// a quadratic risk function that weights proximity to hypoglycemia
+// exponentially. Validated predictor of severe hypoglycemia risk.
+
+const MMOL_TO_MGDL = 18.0182;
+
+/** Per-reading low BG risk (Kovatchev). Returns 0 for readings above ~6.25 mmol/L. */
+export function kovatchevLowRisk(bgMmol: number): number {
+  const bgMgdl = bgMmol * MMOL_TO_MGDL;
+  if (bgMgdl <= 0) return 0;
+  const f = 1.509 * (Math.pow(Math.log(bgMgdl), 1.084) - 5.381);
+  return f < 0 ? 10 * f * f : 0;
+}
+
+/** Compute LBGI (mean low risk) over a glucose trace. */
+export function computeLBGI(glucose: DataPoint[]): number {
+  if (glucose.length === 0) return 0;
+  let sum = 0;
+  for (const p of glucose) {
+    sum += kovatchevLowRisk(p.value);
+  }
+  return sum / glucose.length;
+}
+
+// --- Worst Rate (steepest short-term drop) ---
+// Uses EASD CGM arrow thresholds for interpretation:
+//   >= -0.06: stable    -0.06 to -0.11: falling
+//   -0.11 to -0.17: dropping    < -0.17: crashing
+
+const WORST_RATE_WINDOW_MIN = 3;
+const WORST_RATE_WINDOW_MAX = 7;
+
+/** Find the steepest sustained drop rate over a ~5-min sliding window. */
+export function computeWorstRate(glucose: DataPoint[]): number {
+  if (glucose.length < 2) return 0;
+
+  let worstRate = 0;
+  let found = false;
+
+  for (let i = 0; i < glucose.length; i++) {
+    for (let j = i + 1; j < glucose.length; j++) {
+      const dt = glucose[j].time - glucose[i].time;
+      if (dt < WORST_RATE_WINDOW_MIN) continue;
+      if (dt > WORST_RATE_WINDOW_MAX) break;
+
+      const rate = (glucose[j].value - glucose[i].value) / dt;
+      if (rate < worstRate) worstRate = rate;
+      found = true;
+    }
+  }
+
+  // Fallback for very short traces where no pair spans 3-7 min
+  if (!found) {
+    const dt = glucose[glucose.length - 1].time - glucose[0].time;
+    if (dt > 0) {
+      const startVal = glucose[0].value;
+      const minVal = Math.min(...glucose.map((p) => p.value));
+      worstRate = (minVal - startVal) / dt;
+    }
+  }
+
+  return worstRate;
+}
+
+// --- BG Scoring ---
+// Combines two validated frameworks:
+// 1. Nadir (Kovatchev-inspired): where minBG landed relative to danger
+// 2. Rate (EASD CGM thresholds): how fast the steepest drop was
+//
+// Nadir is the primary signal. Rate is a modifier that can downgrade
+// but never upgrade. Matches GRI's 3-4x hypo weighting.
+
+const NADIR_BAD = 4.5; // below this = one bad reading from clinical hypo (3.9)
+const NADIR_OK = 6.0; // Per's comfort floor
+const RATE_DROPPING = -0.11; // mmol/L per min — EASD "falling" → "dropping" boundary
+const RATE_CRASHING = -0.17; // mmol/L per min — EASD "dropping" → "crashing" boundary
+
+function downgrade(rating: Rating): Rating {
+  if (rating === "good") return "ok";
+  if (rating === "ok") return "bad";
+  return "bad";
+}
+
 // --- Scoring Functions ---
 
 export function scoreBG(event: CalendarEvent): BGScore | null {
@@ -84,23 +169,36 @@ export function scoreBG(event: CalendarEvent): BGScore | null {
   if (!glucose || glucose.length < 2) return null;
 
   const startBG = glucose[0].value;
-  const lastBG = glucose[glucose.length - 1].value;
   const minBG = Math.min(...glucose.map((p) => p.value));
   const hypo = glucose.some((p) => p.value < BG_HYPO);
+  const worstRate = computeWorstRate(glucose);
+  const lbgi = computeLBGI(glucose);
 
-  const durationMin = glucose[glucose.length - 1].time - glucose[0].time;
-  const dropRate = durationMin > 0 ? (lastBG - startBG) / durationMin : 0;
-
+  // Nadir-based rating (primary signal)
   let rating: Rating;
-  if (hypo || dropRate < -0.2) {
+  if (minBG < NADIR_BAD) {
     rating = "bad";
-  } else if (dropRate < -0.1) {
+  } else if (minBG < NADIR_OK) {
     rating = "ok";
   } else {
     rating = "good";
   }
 
-  return { rating, startBG, minBG, hypo, dropRate };
+  // Rate modifier (secondary signal, can only downgrade)
+  if (worstRate < RATE_CRASHING) {
+    // Crashing: always downgrade 1 step
+    rating = downgrade(rating);
+  } else if (worstRate < RATE_DROPPING) {
+    // Dropping: downgrade if landing zone is also concerning
+    if (minBG < NADIR_OK) {
+      rating = downgrade(rating);
+    } else {
+      // High landing + moderate rate: downgrade good→ok only
+      if (rating === "good") rating = "ok";
+    }
+  }
+
+  return { rating, startBG, minBG, hypo, worstRate, lbgi };
 }
 
 export function scoreHRZone(event: CalendarEvent): HRZoneScore | null {

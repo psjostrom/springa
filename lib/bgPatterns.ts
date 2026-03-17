@@ -173,7 +173,7 @@ export function buildEnrichedRunTable(
       trainingLoad: event.load ?? null,
       startBG: bg.startBG,
       minBG: bg.minBG,
-      dropRatePerMin: Math.round(bg.dropRate * 1000) / 1000,
+      dropRatePerMin: Math.round(bg.worstRate * 1000) / 1000,
       hypo: bg.hypo,
       bgScore: bg.rating,
       entrySlope,

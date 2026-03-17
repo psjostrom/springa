@@ -30,7 +30,8 @@ function makeReportCard(overrides: Partial<ReportCard> = {}): ReportCard {
       startBG: 10.2,
       minBG: 8.5,
       hypo: false,
-      dropRate: -0.285,
+      worstRate: -0.285,
+      lbgi: 0,
     },
     hrZone: {
       rating: "good",
@@ -116,7 +117,7 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(user).toContain("Start BG: 10.2 mmol/L");
     expect(user).toContain("Min BG: 8.5 mmol/L");
-    expect(user).toContain("Drop rate: -0.285 mmol/L per min");
+    expect(user).toContain("Worst drop rate: -0.285 mmol/L per min");
     expect(user).toContain("Hypo during run: No");
   });
 
@@ -186,7 +187,8 @@ describe("buildRunAnalysisPrompt", () => {
         startBG: 9.0,
         minBG: 3.2,
         hypo: true,
-        dropRate: -1.25,
+        worstRate: -1.25,
+        lbgi: 20,
       },
     });
 
