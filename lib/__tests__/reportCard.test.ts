@@ -6,6 +6,9 @@ import {
   scoreRecovery,
   buildReportCard,
   parseExpectedRepTime,
+  kovatchevLowRisk,
+  computeLBGI,
+  computeWorstRate,
 } from "../reportCard";
 import type { CalendarEvent } from "../types";
 import type { RunBGContext, PreRunContext, PostRunContext } from "../runBGContext";
@@ -24,9 +27,109 @@ function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   };
 }
 
-function glucoseStream(values: number[], intervalSec = 300) {
-  return values.map((value, i) => ({ time: i * intervalSec / 60, value }));
+function glucoseStream(values: number[], intervalMin = 5) {
+  return values.map((value, i) => ({ time: i * intervalMin, value }));
 }
+
+// --- Kovatchev Risk Function ---
+
+describe("kovatchevLowRisk", () => {
+  it("returns 0 for glucose well above 6.25 mmol/L", () => {
+    expect(kovatchevLowRisk(10.0)).toBe(0);
+    expect(kovatchevLowRisk(8.0)).toBe(0);
+  });
+
+  it("returns increasing risk as glucose approaches hypo", () => {
+    const risk6 = kovatchevLowRisk(6.0);
+    const risk5 = kovatchevLowRisk(5.0);
+    const risk4 = kovatchevLowRisk(4.0);
+    const risk3 = kovatchevLowRisk(3.5);
+
+    expect(risk5).toBeGreaterThan(risk6);
+    expect(risk4).toBeGreaterThan(risk5);
+    expect(risk3).toBeGreaterThan(risk4);
+  });
+
+  it("returns high risk at clinical hypo (3.9 mmol/L)", () => {
+    expect(kovatchevLowRisk(3.9)).toBeGreaterThan(5);
+  });
+
+  it("returns very high risk at severe hypo (3.0 mmol/L)", () => {
+    expect(kovatchevLowRisk(3.0)).toBeGreaterThan(15);
+  });
+
+  it("handles edge case of 0 or negative", () => {
+    expect(kovatchevLowRisk(0)).toBe(0);
+    expect(kovatchevLowRisk(-1)).toBe(0);
+  });
+});
+
+describe("computeLBGI", () => {
+  it("returns 0 for empty array", () => {
+    expect(computeLBGI([])).toBe(0);
+  });
+
+  it("returns 0 for readings all above 7 mmol/L", () => {
+    const glucose = glucoseStream([10, 9.5, 9, 8.5, 8]);
+    expect(computeLBGI(glucose)).toBe(0);
+  });
+
+  it("returns higher LBGI when readings dip near hypo", () => {
+    const safe = glucoseStream([8, 7.5, 7, 7.5, 8]);
+    const danger = glucoseStream([8, 6, 4.5, 5, 6]);
+    expect(computeLBGI(danger)).toBeGreaterThan(computeLBGI(safe));
+  });
+});
+
+// --- Worst Rate ---
+
+describe("computeWorstRate", () => {
+  it("returns 0 for fewer than 2 points", () => {
+    expect(computeWorstRate([])).toBe(0);
+    expect(computeWorstRate([{ time: 0, value: 10 }])).toBe(0);
+  });
+
+  it("finds steepest drop in a 5-min window", () => {
+    // Gentle start, then crash
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 5, value: 9.5 },  // -0.1/min
+      { time: 10, value: 8.0 }, // -0.3/min (steepest)
+      { time: 15, value: 7.5 }, // -0.1/min
+      { time: 20, value: 7.5 }, // flat
+    ];
+    expect(computeWorstRate(glucose)).toBeCloseTo(-0.3, 1);
+  });
+
+  it("returns 0 when glucose only rises", () => {
+    const glucose = glucoseStream([6, 7, 8, 9, 10]);
+    expect(computeWorstRate(glucose)).toBeGreaterThanOrEqual(0);
+  });
+
+  it("falls back to overall rate for very short traces", () => {
+    // 2 points only 1 min apart (below 3-min window)
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 1, value: 8 },
+    ];
+    const rate = computeWorstRate(glucose);
+    expect(rate).toBeCloseTo(-2.0, 1);
+  });
+
+  it("works with per-minute readings (Libre 3)", () => {
+    // Accelerating drop — worst 3-min window is steeper than full 5-min average
+    const glucose = [
+      { time: 0, value: 10 },
+      { time: 1, value: 9.8 },
+      { time: 2, value: 9.5 },
+      { time: 3, value: 9.0 },
+      { time: 4, value: 8.3 },
+      { time: 5, value: 7.5 },
+    ];
+    // Steepest 3-min window: time 2→5 = (7.5-9.5)/3 = -0.667
+    expect(computeWorstRate(glucose)).toBeCloseTo(-0.667, 1);
+  });
+});
 
 // --- BG Scoring ---
 
@@ -42,8 +145,8 @@ describe("scoreBG", () => {
     expect(scoreBG(event)).toBeNull();
   });
 
-  it("rates good when BG is stable", () => {
-    // 10.0 → 9.5 over 25 min (6 points, 5 min apart) = -0.5 / 25 = -0.02/min
+  it("rates good when BG is stable and above 6", () => {
+    // 10.0 → 9.5 over 25 min, gentle drift
     const event = makeEvent({
       glucose: glucoseStream([10.0, 9.9, 9.8, 9.7, 9.6, 9.5]),
     });
@@ -52,6 +155,7 @@ describe("scoreBG", () => {
     expect(result.startBG).toBe(10.0);
     expect(result.minBG).toBe(9.5);
     expect(result.hypo).toBe(false);
+    expect(result.lbgi).toBe(0);
   });
 
   it("rates good when BG rises", () => {
@@ -60,31 +164,70 @@ describe("scoreBG", () => {
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("good");
-    expect(result.dropRate).toBeGreaterThan(0);
+    expect(result.worstRate).toBeGreaterThanOrEqual(0);
   });
 
-  it("rates ok when drop rate is between -0.1 and -0.2", () => {
-    // Drop 3.0 over 20 min (5 points, 5 min apart = 20 min)
-    // rate = -3.0 / 20 = -0.15/min
+  it("rates good for slow drift 14→8 over long run (Per's 'I am fine with that')", () => {
+    // -6 mmol over 60 min = -0.1/min per window (just below dropping threshold)
     const event = makeEvent({
-      glucose: glucoseStream([10.0, 9.25, 8.5, 7.75, 7.0]),
+      glucose: glucoseStream([14, 13.5, 13, 12.5, 12, 11.5, 11, 10.5, 10, 9.5, 9, 8.5, 8]),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("good");
+    expect(result.minBG).toBe(8);
+  });
+
+  it("rates ok when steep drop from high to high (16→12 fast)", () => {
+    // -4 mmol over 10 min = -0.4/min (crashing), but nadir is safe
+    const event = makeEvent({
+      glucose: glucoseStream([16, 14, 12], 5),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("ok");
-    expect(result.dropRate).toBeCloseTo(-0.15);
+    expect(result.minBG).toBe(12);
   });
 
-  it("rates bad when drop rate exceeds -1.0", () => {
-    // Drop 5.0 over 20 min = -0.25/min
+  it("rates ok when dropping rate at safe levels (good→ok only)", () => {
+    // -0.12/min (dropping) but nadir 8.8 (safe) → only downgrades good→ok
     const event = makeEvent({
-      glucose: glucoseStream([12.0, 10.75, 9.5, 8.25, 7.0]),
+      glucose: glucoseStream([9.4, 8.8], 5),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("ok");
+    expect(result.minBG).toBe(8.8);
+  });
+
+  it("rates ok when nadir is below 6 but rate is mild", () => {
+    // Slow drift to 5.5 — below comfort zone but not crashing
+    const event = makeEvent({
+      glucose: glucoseStream([8, 7.5, 7, 6.5, 6, 5.5]),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("ok");
+    expect(result.minBG).toBe(5.5);
+  });
+
+  it("rates bad when fast crash to low zone (9→5 fast)", () => {
+    // -4 over 20 min = -0.2/min (crashing) + nadir in ok zone → bad
+    const event = makeEvent({
+      glucose: glucoseStream([9, 8, 7, 6, 5]),
     });
     const result = scoreBG(event)!;
     expect(result.rating).toBe("bad");
+    expect(result.minBG).toBe(5);
+  });
+
+  it("rates bad when minBG is hypo-adjacent (< 4.5)", () => {
+    // Nadir below 4.5 = bad regardless of rate
+    const event = makeEvent({
+      glucose: glucoseStream([8, 7, 6, 5, 4.3]),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("bad");
+    expect(result.minBG).toBe(4.3);
   });
 
   it("rates bad on hypo even with mild drop rate", () => {
-    // Barely any drop but hits 3.8
     const event = makeEvent({
       glucose: glucoseStream([4.0, 3.9, 3.8, 3.9, 4.0]),
     });
@@ -94,8 +237,28 @@ describe("scoreBG", () => {
     expect(result.minBG).toBe(3.8);
   });
 
+  it("rates bad for crash-and-recover (10→4→9) — the original bug", () => {
+    // Endpoint-to-endpoint would say -0.02/min = "good"
+    // New scoring: minBG 4.0 < 4.5 = bad
+    const event = makeEvent({
+      glucose: glucoseStream([10, 8, 6, 4, 5, 7, 9]),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("bad");
+    expect(result.minBG).toBe(4);
+    expect(result.lbgi).toBeGreaterThan(0);
+  });
+
+  it("rates bad for dropping rate + low nadir combo", () => {
+    // -0.12/min (dropping, not crashing) + minBG 5.4 (below 6) → ok downgraded to bad
+    const event = makeEvent({
+      glucose: glucoseStream([6, 5.4], 5),
+    });
+    const result = scoreBG(event)!;
+    expect(result.rating).toBe("bad");
+  });
+
   it("detects hypo at exactly 3.9 as false", () => {
-    // 3.9 is NOT hypo (< 3.9 is hypo)
     const event = makeEvent({
       glucose: glucoseStream([5.0, 4.5, 4.0, 3.9, 4.0]),
     });
@@ -103,28 +266,35 @@ describe("scoreBG", () => {
     expect(result.hypo).toBe(false);
   });
 
-  it("calculates dropRate correctly with non-standard intervals", () => {
-    // 2 points, 10 min apart, drop of 2.0 → -2.0 / 10 = -0.2/min
+  it("includes LBGI in the score", () => {
     const event = makeEvent({
-      glucose: [
-        { time: 0, value: 10.0 },
-        { time: 10, value: 8.0 },
-      ],
+      glucose: glucoseStream([10, 9.5, 9, 8.5, 8]),
     });
     const result = scoreBG(event)!;
-    expect(result.dropRate).toBeCloseTo(-0.2);
-    expect(result.rating).toBe("ok"); // exactly -0.2 is boundary — "bad" requires < -0.2
+    expect(result.lbgi).toBe(0); // all readings above ~6.25
   });
 
-  it("handles zero-duration edge case", () => {
-    const event = makeEvent({
-      glucose: [
-        { time: 0, value: 10.0 },
-        { time: 0, value: 9.0 },
-      ],
-    });
-    const result = scoreBG(event)!;
-    expect(result.dropRate).toBe(0);
+  it("LBGI increases with low readings", () => {
+    const safe = makeEvent({ glucose: glucoseStream([10, 9, 8, 7, 7]) });
+    const danger = makeEvent({ glucose: glucoseStream([8, 6, 4, 5, 6]) });
+    expect(scoreBG(danger)!.lbgi).toBeGreaterThan(scoreBG(safe)!.lbgi);
+  });
+
+  it("14→10 different from 9→5 at same rate", () => {
+    // Both drop 4 mmol over 20 min = -0.2/min
+    const high = makeEvent({ glucose: glucoseStream([14, 13, 12, 11, 10]) });
+    const low = makeEvent({ glucose: glucoseStream([9, 8, 7, 6, 5]) });
+
+    const highScore = scoreBG(high)!;
+    const lowScore = scoreBG(low)!;
+
+    // High→high with crashing rate: ok (rate downgrades good→ok)
+    expect(highScore.rating).toBe("ok");
+    // Low→lower with crashing rate: bad (rate downgrades ok→bad)
+    expect(lowScore.rating).toBe("bad");
+
+    // LBGI should be much higher for the low run
+    expect(lowScore.lbgi).toBeGreaterThan(highScore.lbgi);
   });
 });
 

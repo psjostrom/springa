@@ -106,7 +106,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push("## Blood Glucose (in-run)");
     lines.push(`Start BG: ${bg.startBG.toFixed(1)} mmol/L`);
     lines.push(`Min BG: ${bg.minBG.toFixed(1)} mmol/L`);
-    lines.push(`Drop rate: ${bg.dropRate.toFixed(3)} mmol/L per min`);
+    lines.push(`Worst drop rate: ${bg.worstRate.toFixed(3)} mmol/L per min`);
     lines.push(`Hypo during run: ${bg.hypo ? "YES" : "No"}`);
     lines.push(`Rating: ${ratingLabel(bg.rating)}`);
   }

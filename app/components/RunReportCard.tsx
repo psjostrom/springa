@@ -129,7 +129,8 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
     const bg = report.bg;
     let bgLabel: string;
     if (bg.hypo) bgLabel = "Hypo";
-    else if (bg.dropRate < -1.0) bgLabel = "Dropping";
+    else if (bg.worstRate < -0.17) bgLabel = "Crashing";
+    else if (bg.worstRate < -0.11) bgLabel = "Dropping";
     else bgLabel = "Stable";
     cards.push(
       <BGCard
@@ -147,10 +148,11 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
           lines: [
             { label: "Start BG", value: `${bg.startBG.toFixed(1)} mmol/L` },
             { label: "Min BG", value: `${bg.minBG.toFixed(1)} mmol/L` },
-            { label: "Drop rate", value: `${bg.dropRate.toFixed(3)} /min` },
+            { label: "Worst rate", value: `${bg.worstRate.toFixed(3)} /min` },
+            { label: "Low BG risk", value: bg.lbgi.toFixed(1) },
             { label: "Hypo", value: bg.hypo ? "Yes" : "No" },
           ],
-          description: "BG response during the run. Stable (drop < 0.1/min) is good. Hypo (< 3.9) or fast drop (> 0.2/min) flags a problem.",
+          description: "BG response during the run. Scored by lowest BG (below 6 = too close) and steepest drop rate. Low BG risk shows how risky the run was for going low — higher = more hypo risk.",
         }}
       />
     );
