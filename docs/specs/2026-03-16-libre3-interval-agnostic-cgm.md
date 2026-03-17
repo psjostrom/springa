@@ -189,7 +189,7 @@ mDeltaMgdl = rawDelta / (dtMs.toFloat() / 60000.0f);
 
 **Direction thresholds** (`Conversions.mc:66-72`):
 
-Update to per-minute scale: [±3.5, ±2.0, ±1.0] mg/dL per minute.
+Update to per-minute scale: [±3.0, ±2.0, ±1.1] mg/dL per minute (EASD/ISPAD 2020).
 
 **Stale thresholds** (`Conversions.mc:31,89`):
 ```monkeyc
