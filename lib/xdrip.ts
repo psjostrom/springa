@@ -90,13 +90,15 @@ export function parseNightscoutEntries(body: unknown): XdripReading[] {
 // Recomputes direction using 3-point averaged sgv values ~5 min apart to reduce
 // per-minute noise. Thresholds in mg/dL per minute (SuperStable/xDrip+ values ÷ 5).
 
+// EASD/ISPAD 2020 CGM arrow thresholds (Moser et al., Diabetologia 2020).
+// ±0.06 mmol/L/min (±1.1 mg/dL/min) flat, ±0.11 (±2.0) 45°, ±0.17 (±3.0) single/double.
 function directionFromDelta(deltaMgdlPerMin: number): string {
-  if (deltaMgdlPerMin <= -3.5) return "DoubleDown";
+  if (deltaMgdlPerMin <= -3.0) return "DoubleDown";
   if (deltaMgdlPerMin <= -2.0) return "SingleDown";
-  if (deltaMgdlPerMin <= -1.0) return "FortyFiveDown";
-  if (deltaMgdlPerMin <= 1.0) return "Flat";
+  if (deltaMgdlPerMin <= -1.1) return "FortyFiveDown";
+  if (deltaMgdlPerMin <= 1.1) return "Flat";
   if (deltaMgdlPerMin <= 2.0) return "FortyFiveUp";
-  if (deltaMgdlPerMin <= 3.5) return "SingleUp";
+  if (deltaMgdlPerMin <= 3.0) return "SingleUp";
   return "DoubleUp";
 }
 
