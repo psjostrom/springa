@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     return NextResponse.json([], { status: 200 });
   }
 
+  // table is hardcoded to two safe values — never user-controlled
   const source = url.searchParams.get("source") ?? "xdrip";
   const table = source === "strimma" ? "strimma_readings" : "xdrip_readings";
 

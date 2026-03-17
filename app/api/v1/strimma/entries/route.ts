@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     return unauthorized();
   }
 
+  // Get the single user's email for DB operations
   const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
   const email = result.rows[0]?.email as string;
   if (!email) {
@@ -25,11 +26,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, count: 0 });
   }
 
+  // Determine which monthly shards are affected
   const affectedMonths = [...new Set(newReadings.map((r) => monthKey(r.ts)))];
+
+  // Read existing data for affected shards only
   const existing = await getStrimmaReadings(email, affectedMonths);
 
+  // Snapshot existing directions so we can diff after recompute
   const existingDir = new Map(existing.map((r) => [r.ts, r.direction]));
 
+  // Deduplicate by timestamp — existing readings win (first in merged array)
   const merged = [...existing, ...newReadings];
   const seen = new Set<number>();
   const deduped = merged.filter((r) => {
@@ -38,9 +44,16 @@ export async function POST(req: Request) {
     return true;
   });
 
+  // Sort chronologically for direction computation
   deduped.sort((a, b) => a.ts - b.ts);
+
+  // Recompute direction from sgv values — Strimma sends correct directions
+  // but we recompute server-side as a safety net (belt and suspenders).
+  // Any disagreement between Strimma's direction and Springa's recomputation
+  // is a bug to investigate.
   recomputeDirections(deduped);
 
+  // Only write readings that are new or whose direction changed
   const toWrite = deduped.filter((r) => {
     const prev = existingDir.get(r.ts);
     return prev === undefined || prev !== r.direction;
