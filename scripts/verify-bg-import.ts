@@ -1,7 +1,7 @@
 /**
- * Verify xDrip import data integrity
+ * Verify BG import data integrity
  *
- * Usage: npx tsx scripts/verify-xdrip-import.ts <email>
+ * Usage: npx tsx scripts/verify-bg-import.ts <email>
  */
 
 import { db } from "../lib/db";
@@ -18,7 +18,7 @@ interface Reading {
 async function main() {
   const email = process.argv[2];
   if (!email) {
-    console.error("Usage: npx tsx scripts/verify-xdrip-import.ts <email>");
+    console.error("Usage: npx tsx scripts/verify-bg-import.ts <email>");
     process.exit(1);
   }
 

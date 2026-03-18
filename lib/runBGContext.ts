@@ -9,7 +9,7 @@ import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
 export interface PreRunContext {
   entrySlope30m: number; // mmol/L per min, linear regression over 30 min before start
   entryStability: number; // std dev of mmol readings in 60 min before start
-  startBG: number; // closest xDrip reading to run start
+  startBG: number; // closest CGM reading to run start
   readingCount: number; // readings that contributed
 }
 
@@ -18,7 +18,7 @@ export interface PostRunContext {
   nadirPostRun: number; // lowest mmol/L in 2h after
   timeToStable: number | null; // min until BG stays in 4-10 for 15+ min, null if never
   postRunHypo: boolean; // any reading < 3.9 in 2h after
-  endBG: number; // closest xDrip reading to run end
+  endBG: number; // closest CGM reading to run end
   readingCount: number;
   peak30m: number; // max BG in 30m after end
   spike30m: number; // peak30m - endBG (positive = BG rose post-run)
