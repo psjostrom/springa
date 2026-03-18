@@ -189,6 +189,6 @@ export interface BestEffort {
 
 export interface PaceCurveData {
   bestEfforts: BestEffort[];
-  longestRun: { distance: number; activityId: string; activityName: string; activityDate?: string } | null;
+  longestRun: { distance: number; activityId: string; activityName: string; activityDate?: string; movingTime?: number } | null;
   curve: { distance: number; pace: number }[];  // for chart
 }

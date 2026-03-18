@@ -4,7 +4,7 @@ import type { BestEffort } from "@/lib/types";
 
 interface PacePBsProps {
   bestEfforts: BestEffort[];
-  longestRun: { distance: number; activityId: string; activityName: string; activityDate?: string } | null;
+  longestRun: { distance: number; activityId: string; activityName: string; activityDate?: string; movingTime?: number } | null;
   onActivitySelect?: (activityId: string) => void;
 }
 
@@ -73,6 +73,19 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
             <div className="text-lg font-bold text-white">
               {formatDistance(longestRun.distance)}
             </div>
+            {longestRun.movingTime && longestRun.distance > 0 && (
+              <div className="text-xs text-muted">
+                {formatPace((longestRun.movingTime / longestRun.distance) * 1000 / 60)}/km
+              </div>
+            )}
+            {longestRun.activityName && (
+              <div className="text-[10px] text-[#6b5f80] mt-1 truncate">{longestRun.activityName}</div>
+            )}
+            {longestRun.activityDate && (
+              <div className="text-[10px] text-[#6b5f80]">
+                {new Date(longestRun.activityDate).toLocaleDateString("sv-SE")}
+              </div>
+            )}
           </div>
         )}
       </div>

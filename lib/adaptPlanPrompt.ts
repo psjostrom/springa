@@ -136,12 +136,12 @@ Rules:
   if (cat === "easy" || cat === "long" || cat === "interval") {
     const catData = bgModel.categories[cat];
     const target = bgModel.targetFuelRates.find((t) => t.category === cat);
-    const hasAvgFuel = catData && catData.avgFuelRate != null;
+    const hasAvgFuel = catData?.avgFuelRate != null;
     if (hasAvgFuel || target) {
       lines.push("");
       lines.push(`## BG patterns (${cat})`);
-      if (hasAvgFuel) {
-        lines.push(`Avg fuel rate used: ${Math.round(catData!.avgFuelRate!)} g/h across ${catData!.activityCount} runs`);
+      if (catData?.avgFuelRate != null) {
+        lines.push(`Avg fuel rate used: ${Math.round(catData.avgFuelRate)} g/h across ${catData.activityCount} runs`);
       }
       if (target) {
         lines.push(

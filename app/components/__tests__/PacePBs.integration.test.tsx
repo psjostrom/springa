@@ -9,7 +9,7 @@ const bestEfforts: BestEffort[] = [
   { distance: 5000, label: "5K Best", timeSeconds: 1650, pace: 5.5, activityId: "a2" },
 ];
 
-const longestRun = { distance: 16000, activityId: "a3", activityName: "Sunday Long" };
+const longestRun = { distance: 16000, activityId: "a3", activityName: "Sunday Long", activityDate: "2026-03-15", movingTime: 6720 };
 
 describe("PacePBs", () => {
   it("renders effort cards with times", () => {
