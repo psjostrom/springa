@@ -5,9 +5,9 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { requireAuth, validateXdripSecret, AuthError } from "@/lib/apiHelpers";
+import { requireAuth, validateApiSecret, AuthError } from "@/lib/apiHelpers";
 import { auth } from "@/lib/auth";
-import { sha1 } from "@/lib/xdripDb";
+import { sha1 } from "@/lib/bgDb";
 
 describe("requireAuth", () => {
   const mockAuth = auth as unknown as MockedFunction<() => Promise<Session | null>>;
@@ -43,7 +43,7 @@ describe("requireAuth", () => {
   });
 });
 
-describe("validateXdripSecret", () => {
+describe("validateApiSecret", () => {
   const ORIGINAL = process.env.XDRIP_SECRET;
   afterEach(() => {
     if (ORIGINAL !== undefined) {
@@ -53,28 +53,28 @@ describe("validateXdripSecret", () => {
     }
   });
 
-  it("accepts pre-hashed secret (xDrip behavior)", () => {
+  it("accepts pre-hashed secret (CGM behavior)", () => {
     process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret(sha1("mysecret"))).toBe(true);
+    expect(validateApiSecret(sha1("mysecret"))).toBe(true);
   });
 
   it("accepts raw secret (SugarRun behavior)", () => {
     process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret("mysecret")).toBe(true);
+    expect(validateApiSecret("mysecret")).toBe(true);
   });
 
   it("rejects wrong secret", () => {
     process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret("wrong")).toBe(false);
+    expect(validateApiSecret("wrong")).toBe(false);
   });
 
   it("rejects null", () => {
     process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret(null)).toBe(false);
+    expect(validateApiSecret(null)).toBe(false);
   });
 
   it("rejects when XDRIP_SECRET not set", () => {
     delete process.env.XDRIP_SECRET;
-    expect(validateXdripSecret("anything")).toBe(false);
+    expect(validateApiSecret("anything")).toBe(false);
   });
 });

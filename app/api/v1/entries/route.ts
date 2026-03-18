@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { validateXdripSecret, unauthorized } from "@/lib/apiHelpers";
+import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
 import {
-  getXdripReadings,
-  saveXdripReadings,
+  getBGReadings,
+  saveBGReadings,
   monthKey,
-} from "@/lib/xdripDb";
+} from "@/lib/bgDb";
 import { db } from "@/lib/db";
-import { parseNightscoutEntries, recomputeDirections } from "@/lib/xdrip";
+import { parseNightscoutEntries, recomputeDirections } from "@/lib/cgm";
 
 export async function POST(req: Request) {
-  if (!validateXdripSecret(req.headers.get("api-secret"))) {
+  if (!validateApiSecret(req.headers.get("api-secret"))) {
     return unauthorized();
   }
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const affectedMonths = [...new Set(newReadings.map((r) => monthKey(r.ts)))];
 
   // Read existing data for affected shards only
-  const existing = await getXdripReadings(email, affectedMonths);
+  const existing = await getBGReadings(email, affectedMonths);
 
   // Snapshot existing directions so we can diff after recompute
   const existingDir = new Map(existing.map((r) => [r.ts, r.direction]));
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   });
 
   if (toWrite.length > 0) {
-    await saveXdripReadings(email, toWrite);
+    await saveBGReadings(email, toWrite);
   }
 
   return NextResponse.json({ ok: true, count: newReadings.length });

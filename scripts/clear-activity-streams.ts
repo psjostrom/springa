@@ -1,5 +1,5 @@
 /**
- * Clear activity_streams table to force rebuild with xDrip data.
+ * Clear activity_streams table to force rebuild with CGM data.
  *
  * Usage: npx tsx scripts/clear-activity-streams.ts [email]
  *

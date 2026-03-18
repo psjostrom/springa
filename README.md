@@ -14,7 +14,7 @@ Built for a Type 1 Diabetic runner targeting the EcoTrail 16km (2026-06-13). Gen
 - **Styling:** Tailwind CSS
 - **Charts:** Recharts
 - **Testing:** Vitest + React Testing Library + MSW
-- **CGM:** xDrip+ via Nightscout API (live glucose data)
+- **CGM:** Strimma via Nightscout API (live glucose data)
 - **Integration:** Intervals.icu API → Garmin Connect → Garmin Forerunner 970
 
 ## Getting Started

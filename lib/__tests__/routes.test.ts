@@ -53,14 +53,14 @@ import { server } from "./msw/server";
 import { API_BASE } from "../constants";
 
 import { SCHEMA_DDL } from "../db";
-import * as xdripDb from "../xdripDb";
+import * as bgDb from "../bgDb";
 const {
-  getXdripReadings,
+  getBGReadings,
   monthKey,
   sha1,
-} = xdripDb;
+} = bgDb;
 import { POST as entriesPOST } from "@/app/api/v1/entries/route";
-import { GET as xdripGET } from "@/app/api/xdrip/route";
+import { GET as bgGET } from "@/app/api/bg/route";
 import {
   GET as settingsGET,
   PUT as settingsPUT,
@@ -82,7 +82,7 @@ import {
 import { POST as pushSubscribePOST } from "@/app/api/push/subscribe/route";
 
 const EMAIL = "runner@example.com";
-const SECRET = "my-xdrip-secret";
+const SECRET = "my-api-secret";
 
 function reading(sgv: number, dateStr: string) {
   return { sgv, date: new Date(dateStr).getTime(), direction: "Flat" };
@@ -130,13 +130,13 @@ async function countReadings(email: string, month?: string): Promise<number> {
     const start = Date.UTC(y, mo - 1, 1);
     const end = Date.UTC(y, mo, 1);
     const result = await testDb().execute({
-      sql: "SELECT COUNT(*) as cnt FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts < ?",
+      sql: "SELECT COUNT(*) as cnt FROM bg_readings WHERE email = ? AND ts >= ? AND ts < ?",
       args: [email, start, end],
     });
     return result.rows[0].cnt as number;
   }
   const result = await testDb().execute({
-    sql: "SELECT COUNT(*) as cnt FROM xdrip_readings WHERE email = ?",
+    sql: "SELECT COUNT(*) as cnt FROM bg_readings WHERE email = ?",
     args: [email],
   });
   return result.rows[0].cnt as number;
@@ -151,7 +151,7 @@ async function seedUser() {
 }
 
 // Store original env to restore after each test
-let origXdripSecret: string | undefined;
+let origApiSecret: string | undefined;
 let origIntervalsApiKey: string | undefined;
 
 beforeAll(async () => {
@@ -160,7 +160,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await testDb().execute("DELETE FROM user_settings");
-  await testDb().execute("DELETE FROM xdrip_readings");
+  await testDb().execute("DELETE FROM bg_readings");
   await testDb().execute("DELETE FROM activity_streams");
   await testDb().execute("DELETE FROM run_analysis");
   await testDb().execute("DELETE FROM push_subscriptions");
@@ -174,7 +174,7 @@ beforeEach(async () => {
   mockSendNotification.mockReset().mockResolvedValue({});
 
   // Save and set env vars for tests
-  origXdripSecret = process.env.XDRIP_SECRET;
+  origApiSecret = process.env.XDRIP_SECRET;
   origIntervalsApiKey = process.env.INTERVALS_API_KEY;
   process.env.XDRIP_SECRET = SECRET;
   process.env.INTERVALS_API_KEY = "test-key";
@@ -182,7 +182,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   // Restore env vars
-  if (origXdripSecret !== undefined) process.env.XDRIP_SECRET = origXdripSecret;
+  if (origApiSecret !== undefined) process.env.XDRIP_SECRET = origApiSecret;
   else process.env.XDRIP_SECRET = "";
   if (origIntervalsApiKey !== undefined) process.env.INTERVALS_API_KEY = origIntervalsApiKey;
   else process.env.INTERVALS_API_KEY = "";
@@ -191,12 +191,12 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Full pipeline: entries POST → xDrip GET
 // ---------------------------------------------------------------------------
-describe("end-to-end: entries → xDrip GET", () => {
+describe("end-to-end: entries → BG GET", () => {
   it("posts readings with valid secret, reads them back", async () => {
     authedSession();
     await seedUser();
 
-    // xDrip sends SHA1(secret) as api-secret
+    // CGM source sends SHA1(secret) as api-secret
     const hash = sha1(SECRET);
 
     // POST readings via entries route
@@ -211,8 +211,8 @@ describe("end-to-end: entries → xDrip GET", () => {
     // Verify readings stored in DB
     expect(await countReadings(EMAIL, "2026-02")).toBe(3);
 
-    // GET readings back via xDrip route
-    const getRes = await xdripGET();
+    // GET readings back via CGM route
+    const getRes = await bgGET();
     expect(getRes.status).toBe(200);
     const data = await getRes.json();
     expect(data.readings).toHaveLength(3);
@@ -287,7 +287,7 @@ describe("entries route: dedup and merge", () => {
       reading(155, "2026-02-20T10:05:00Z"), // between existing
     ]);
 
-    const readings = await getXdripReadings(EMAIL, ["2026-02"]);
+    const readings = await getBGReadings(EMAIL, ["2026-02"]);
     expect(readings).toHaveLength(3);
     expect(readings[0].ts).toBeLessThan(readings[1].ts);
     expect(readings[1].ts).toBeLessThan(readings[2].ts);
@@ -304,8 +304,8 @@ describe("entries route: dedup and merge", () => {
     await postEntries(hash, seed);
     expect(await countReadings(EMAIL, "2026-02")).toBe(100);
 
-    // Spy on saveXdripReadings for the next call
-    const spy = vi.spyOn(xdripDb, "saveXdripReadings");
+    // Spy on saveBGReadings for the next call
+    const spy = vi.spyOn(bgDb, "saveBGReadings");
 
     // Post 1 new reading
     await postEntries(hash, [
@@ -333,7 +333,7 @@ describe("entries route: dedup and merge", () => {
       reading(155, "2026-02-20T10:05:00Z"),
     ]);
 
-    const spy = vi.spyOn(xdripDb, "saveXdripReadings");
+    const spy = vi.spyOn(bgDb, "saveBGReadings");
 
     // Re-post identical readings
     await postEntries(hash, [
@@ -369,14 +369,14 @@ describe("auth rejection", () => {
     expect(res.status).toBe(401);
   });
 
-  it("xDrip GET: no session → 401", async () => {
+  it("BG GET: no session → 401", async () => {
     mockAuth.mockResolvedValue(null);
-    expect((await xdripGET()).status).toBe(401);
+    expect((await bgGET()).status).toBe(401);
   });
 
-  it("xDrip GET: session without email → 401", async () => {
+  it("BG GET: session without email → 401", async () => {
     mockAuth.mockResolvedValue({ user: {} });
-    expect((await xdripGET()).status).toBe(401);
+    expect((await bgGET()).status).toBe(401);
   });
 
   it("settings GET: no session → 401", async () => {
@@ -401,9 +401,9 @@ describe("auth rejection", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Default month range for getXdripReadings
+// Default month range for getBGReadings
 // ---------------------------------------------------------------------------
-describe("getXdripReadings default range", () => {
+describe("getBGReadings default range", () => {
   it("reads current + previous month, ignores older data", async () => {
     const now = new Date();
     const prev = new Date(now);
@@ -418,27 +418,27 @@ describe("getXdripReadings default range", () => {
       [old.getTime(), 200, 11.1],
     ] as [number, number, number][]) {
       await testDb().execute({
-        sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+        sql: "INSERT INTO bg_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
         args: [EMAIL, ts, mmol, sgv, "Flat"],
       });
     }
 
-    const readings = await getXdripReadings(EMAIL);
+    const readings = await getBGReadings(EMAIL);
     expect(readings).toHaveLength(2);
     expect(readings.every((r) => r.sgv !== 200)).toBe(true);
   });
 
   it("reads specific months when provided", async () => {
     await testDb().execute({
-      sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+      sql: "INSERT INTO bg_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
       args: [EMAIL, new Date("2025-06-15").getTime(), 8.0, 145, "Flat"],
     });
     await testDb().execute({
-      sql: "INSERT INTO xdrip_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
+      sql: "INSERT INTO bg_readings (email, ts, mmol, sgv, direction) VALUES (?, ?, ?, ?, ?)",
       args: [EMAIL, new Date("2025-07-15").getTime(), 8.3, 150, "Flat"],
     });
 
-    const readings = await getXdripReadings(EMAIL, ["2025-06"]);
+    const readings = await getBGReadings(EMAIL, ["2025-06"]);
     expect(readings).toHaveLength(1);
     expect(readings[0].sgv).toBe(145);
   });
@@ -474,7 +474,7 @@ describe("settings route", () => {
 
     const res = await settingsGET();
     const data = await res.json();
-    expect(data.xdripConnected).toBe(true);
+    expect(data.cgmConnected).toBe(true);
     expect(data.mylifeConnected).toBe(false);
   });
 
@@ -541,9 +541,9 @@ describe("edge cases", () => {
     expect(await countReadings(EMAIL)).toBe(0);
   });
 
-  it("xDrip GET with no readings returns empty + null trend", async () => {
+  it("BG GET with no readings returns empty + null trend", async () => {
     authedSession();
-    const res = await xdripGET();
+    const res = await bgGET();
     const data = await res.json();
     expect(data.readings).toHaveLength(0);
     expect(data.trend).toBeNull();

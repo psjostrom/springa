@@ -1,8 +1,8 @@
 import type { CalendarEvent, StreamData, DataPoint } from "@/lib/types";
 import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { ActivityStreamData } from "@/app/hooks/useActivityStream";
-import type { XdripReading } from "@/lib/xdrip";
-import { xdripToGlucosePoints } from "@/lib/bgAlignment";
+import type { BGReading } from "@/lib/cgm";
+import { bgToGlucosePoints } from "@/lib/bgAlignment";
 
 /** Merge cached activity data (HR, pace, cadence, altitude, glucose) into calendar events. */
 export function enrichEvents(
@@ -38,18 +38,18 @@ export function enrichEvents(
 export function mergeStreamData(
   event: CalendarEvent,
   freshStream: ActivityStreamData,
-  xdripReadings: XdripReading[],
+  bgReadings: BGReading[],
 ): CalendarEvent {
   const mergedStreamData: StreamData = {
     ...event.streamData,
     ...freshStream.streamData,
   };
   let glucose: DataPoint[] | undefined = event.glucose;
-  if (!glucose && mergedStreamData.heartrate?.length && xdripReadings.length > 0) {
+  if (!glucose && mergedStreamData.heartrate?.length && bgReadings.length > 0) {
     const runStartMs = event.date.getTime();
     const lastMin = mergedStreamData.heartrate[mergedStreamData.heartrate.length - 1].time;
     const runEndMs = runStartMs + lastMin * 60 * 1000;
-    const reconstructed = xdripToGlucosePoints(xdripReadings, runStartMs, runEndMs);
+    const reconstructed = bgToGlucosePoints(bgReadings, runStartMs, runEndMs);
     if (reconstructed.length >= 2) glucose = reconstructed;
   }
   return {

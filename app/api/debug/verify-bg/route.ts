@@ -13,7 +13,7 @@ export async function GET() {
 
   // Get summary stats
   const countResult = await db().execute({
-    sql: "SELECT COUNT(*) as total FROM xdrip_readings WHERE email = ?",
+    sql: "SELECT COUNT(*) as total FROM bg_readings WHERE email = ?",
     args: [email],
   });
   const total = (countResult.rows[0] as unknown as { total: number }).total;
@@ -23,7 +23,7 @@ export async function GET() {
     sql: `SELECT
             MIN(ts) as oldest,
             MAX(ts) as newest
-          FROM xdrip_readings WHERE email = ?`,
+          FROM bg_readings WHERE email = ?`,
     args: [email],
   });
   const range = rangeResult.rows[0] as unknown as { oldest: number; newest: number };
@@ -32,7 +32,7 @@ export async function GET() {
   // Early Feb (should be from Glooko import)
   const earlyFebResult = await db().execute({
     sql: `SELECT ts, mmol, sgv, direction
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ? AND ts >= ? AND ts < ?
           ORDER BY ts
           LIMIT 10`,
@@ -43,10 +43,10 @@ export async function GET() {
     ],
   });
 
-  // Late Feb (should have both Glooko and real xDrip)
+  // Late Feb (should have both Glooko and real CGM)
   const lateFebResult = await db().execute({
     sql: `SELECT ts, mmol, sgv, direction
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ? AND ts >= ? AND ts < ?
           ORDER BY ts
           LIMIT 10`,
@@ -60,7 +60,7 @@ export async function GET() {
   // Check for duplicate timestamps (shouldn't exist due to primary key)
   const dupResult = await db().execute({
     sql: `SELECT ts, COUNT(*) as cnt
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ?
           GROUP BY ts
           HAVING cnt > 1
@@ -68,10 +68,10 @@ export async function GET() {
     args: [email],
   });
 
-  // Check direction values - Glooko imports have "Flat", real xDrip has computed directions
+  // Check direction values - Glooko imports have "Flat", real CGM has computed directions
   const directionStats = await db().execute({
     sql: `SELECT direction, COUNT(*) as cnt
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ?
           GROUP BY direction
           ORDER BY cnt DESC`,
@@ -81,7 +81,7 @@ export async function GET() {
   // Check for any readings with suspicious values
   const suspiciousResult = await db().execute({
     sql: `SELECT ts, mmol, sgv
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ? AND (mmol < 2 OR mmol > 25 OR sgv < 36 OR sgv > 450)
           LIMIT 10`,
     args: [email],
@@ -92,7 +92,7 @@ export async function GET() {
   const runSampleResult = await db().execute({
     sql: `SELECT ts, mmol, sgv, direction,
             datetime(ts/1000, 'unixepoch', 'localtime') as local_time
-          FROM xdrip_readings
+          FROM bg_readings
           WHERE email = ? AND ts >= ? AND ts < ?
           ORDER BY ts`,
     args: [

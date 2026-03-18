@@ -26,13 +26,13 @@ async function main() {
 
   // 1. Total count and date range
   const countResult = await db().execute({
-    sql: "SELECT COUNT(*) as total FROM xdrip_readings WHERE email = ?",
+    sql: "SELECT COUNT(*) as total FROM bg_readings WHERE email = ?",
     args: [email],
   });
   const total = (countResult.rows[0] as unknown as { total: number }).total;
 
   const rangeResult = await db().execute({
-    sql: `SELECT MIN(ts) as oldest, MAX(ts) as newest FROM xdrip_readings WHERE email = ?`,
+    sql: `SELECT MIN(ts) as oldest, MAX(ts) as newest FROM bg_readings WHERE email = ?`,
     args: [email],
   });
   const range = rangeResult.rows[0] as unknown as { oldest: number; newest: number };
@@ -44,7 +44,7 @@ async function main() {
   // 2. Direction distribution - key indicator of data source
   console.log("\n--- Direction Distribution ---");
   const dirResult = await db().execute({
-    sql: `SELECT direction, COUNT(*) as cnt FROM xdrip_readings WHERE email = ? GROUP BY direction ORDER BY cnt DESC`,
+    sql: `SELECT direction, COUNT(*) as cnt FROM bg_readings WHERE email = ? GROUP BY direction ORDER BY cnt DESC`,
     args: [email],
   });
   for (const row of dirResult.rows) {
@@ -52,7 +52,7 @@ async function main() {
     const pct = ((r.cnt / total) * 100).toFixed(1);
     console.log(`  ${r.direction || "(null)"}: ${r.cnt} (${pct}%)`);
   }
-  console.log("\n  Note: 'Flat' = Glooko import, computed directions (DoubleUp, Up, etc) = real xDrip");
+  console.log("\n  Note: 'Flat' = Glooko import, computed directions (DoubleUp, Up, etc) = real CGM");
 
   // 3. Check specific timestamps from CSV to verify import
   console.log("\n--- Timestamp Verification ---");
@@ -72,7 +72,7 @@ async function main() {
     const ts = localDate.getTime();
 
     const result = await db().execute({
-      sql: `SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts = ?`,
+      sql: `SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts = ?`,
       args: [email, ts],
     });
 
@@ -88,34 +88,34 @@ async function main() {
     }
   }
 
-  // 4. Check for real xDrip data (should have computed directions, not "Flat")
+  // 4. Check for real CGM data (should have computed directions, not "Flat")
   console.log("\n--- Real xDrip Data Check ---");
-  const xdripRealResult = await db().execute({
-    sql: `SELECT ts, mmol, direction FROM xdrip_readings
+  const bgRealResult = await db().execute({
+    sql: `SELECT ts, mmol, direction FROM bg_readings
           WHERE email = ? AND direction != 'Flat'
           ORDER BY ts DESC LIMIT 10`,
     args: [email],
   });
 
-  if (xdripRealResult.rows.length === 0) {
-    console.log("  ⚠️ No real xDrip data found (all entries have 'Flat' direction)");
+  if (bgRealResult.rows.length === 0) {
+    console.log("  ⚠️ No real CGM data found (all entries have 'Flat' direction)");
   } else {
-    console.log("  Found real xDrip entries (with computed directions):");
-    for (const row of xdripRealResult.rows) {
+    console.log("  Found real CGM entries (with computed directions):");
+    for (const row of bgRealResult.rows) {
       const r = row as unknown as Reading;
       console.log(`    ${new Date(r.ts).toLocaleString("sv-SE")} - ${r.mmol} mmol/L - ${r.direction}`);
     }
   }
 
   // 5. Check overlap period - are there entries with different directions for similar timestamps?
-  console.log("\n--- Overlap Analysis (Feb 19-20, when xDrip went live) ---");
+  console.log("\n--- Overlap Analysis (Feb 19-20, when CGM went live) ---");
 
-  // Feb 19 is when real xDrip started
+  // Feb 19 is when real CGM started
   const overlapStart = new Date("2026-02-19T00:00:00").getTime();
   const overlapEnd = new Date("2026-02-21T00:00:00").getTime();
 
   const overlapResult = await db().execute({
-    sql: `SELECT ts, mmol, direction FROM xdrip_readings
+    sql: `SELECT ts, mmol, direction FROM bg_readings
           WHERE email = ? AND ts >= ? AND ts < ?
           ORDER BY ts LIMIT 50`,
     args: [email, overlapStart, overlapEnd],
@@ -131,15 +131,15 @@ async function main() {
   if (flatCount > 0 && computedCount > 0) {
     console.log("  ✅ Both sources present - no overwriting occurred");
   } else if (computedCount > 0) {
-    console.log("  ✅ Real xDrip data preserved");
+    console.log("  ✅ Real CGM data preserved");
   } else {
     console.log("  ⚠️ Only Glooko data found - xDrip may have been overwritten or not present");
   }
 
-  // 6. Sample from pre-xDrip period (should all be Flat)
-  console.log("\n--- Pre-xDrip Period (Feb 10, should be all Glooko) ---");
-  const preXdripResult = await db().execute({
-    sql: `SELECT ts, mmol, direction FROM xdrip_readings
+  // 6. Sample from pre-CGM period (should all be Flat)
+  console.log("\n--- Pre-CGM Period (Feb 10, should be all Glooko) ---");
+  const preBGResult = await db().execute({
+    sql: `SELECT ts, mmol, direction FROM bg_readings
           WHERE email = ? AND ts >= ? AND ts < ?
           ORDER BY ts LIMIT 10`,
     args: [
@@ -149,18 +149,18 @@ async function main() {
     ],
   });
 
-  for (const row of preXdripResult.rows) {
+  for (const row of preBGResult.rows) {
     const r = row as unknown as Reading;
     console.log(`  ${new Date(r.ts).toLocaleString("sv-SE")} - ${r.mmol} mmol/L - ${r.direction}`);
   }
 
-  const allFlat = (preXdripResult.rows as unknown as Reading[]).every(r => r.direction === "Flat");
-  console.log(allFlat ? "  ✅ All entries from Glooko import" : "  ⚠️ Mixed sources in pre-xDrip period");
+  const allFlat = (preBGResult.rows as unknown as Reading[]).every(r => r.direction === "Flat");
+  console.log(allFlat ? "  ✅ All entries from Glooko import" : "  ⚠️ Mixed sources in pre-CGM period");
 
   // 7. Check for duplicate timestamps (shouldn't exist due to primary key)
   console.log("\n--- Duplicate Check ---");
   const dupResult = await db().execute({
-    sql: `SELECT ts, COUNT(*) as cnt FROM xdrip_readings
+    sql: `SELECT ts, COUNT(*) as cnt FROM bg_readings
           WHERE email = ? GROUP BY ts HAVING cnt > 1 LIMIT 5`,
     args: [email],
   });

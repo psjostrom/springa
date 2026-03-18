@@ -1,4 +1,4 @@
-import type { XdripReading } from "./xdrip";
+import type { BGReading } from "./cgm";
 import type { DataPoint } from "./types";
 import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 
@@ -8,12 +8,12 @@ import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
  * - After last reading → returns last reading value
  * - Between readings → linear interpolation
  *
- * @param readings - xDrip readings sorted by timestamp
+ * @param readings - CGM readings sorted by timestamp
  * @param targetMs - target timestamp in milliseconds
  * @returns interpolated BG in mmol/L, or null if no readings available
  */
 export function interpolateBG(
-  readings: XdripReading[],
+  readings: BGReading[],
   targetMs: number,
 ): number | null {
   if (readings.length === 0) return null;
@@ -51,19 +51,19 @@ export interface AlignedRunData {
 }
 
 /**
- * Align HR stream data with xDrip readings using linear interpolation.
+ * Align HR stream data with CGM readings using linear interpolation.
  *
  * For each HR data point (indexed by relative minutes from run start),
  * computes the interpolated BG value at that timestamp.
  *
  * @param hrPoints - HR data points with time in relative minutes from run start
- * @param readings - xDrip readings with absolute timestamps (must be sorted by ts)
+ * @param readings - CGM readings with absolute timestamps (must be sorted by ts)
  * @param runStartMs - run start time in milliseconds
  * @returns aligned HR and glucose arrays
  */
-export function alignHRWithXdrip(
+export function alignHRWithBG(
   hrPoints: DataPoint[],
-  readings: XdripReading[],
+  readings: BGReading[],
   runStartMs: number,
 ): AlignedRunData | null {
   if (readings.length === 0 || hrPoints.length === 0) {
@@ -91,16 +91,16 @@ export function alignHRWithXdrip(
 }
 
 /**
- * Convert xDrip readings to relative-minute DataPoints for a run.
+ * Convert CGM readings to relative-minute DataPoints for a run.
  * Uses linear interpolation to create minute-by-minute values.
  *
- * @param readings - xDrip readings with absolute timestamps (must be sorted by ts)
+ * @param readings - CGM readings with absolute timestamps (must be sorted by ts)
  * @param runStartMs - run start time in milliseconds
  * @param runEndMs - run end time in milliseconds
  * @returns glucose DataPoints with time in relative minutes
  */
-export function xdripToGlucosePoints(
-  readings: XdripReading[],
+export function bgToGlucosePoints(
+  readings: BGReading[],
   runStartMs: number,
   runEndMs: number,
 ): DataPoint[] {
@@ -121,18 +121,18 @@ export function xdripToGlucosePoints(
 }
 
 /**
- * Enrich CachedActivity array with glucose data from xDrip readings.
+ * Enrich CachedActivity array with glucose data from CGM readings.
  * For each activity with HR and runStartMs, aligns glucose via interpolation.
  */
 export function enrichWithGlucose(
   activities: CachedActivity[],
-  readings: XdripReading[],
+  readings: BGReading[],
 ): EnrichedActivity[] {
   return activities.map((act) => {
     if (act.hr.length === 0 || !act.runStartMs || readings.length === 0) {
       return act;
     }
-    const aligned = alignHRWithXdrip(act.hr, readings, act.runStartMs);
+    const aligned = alignHRWithBG(act.hr, readings, act.runStartMs);
     if (!aligned) return act;
     return { ...act, glucose: aligned.glucose, hr: aligned.hr };
   });

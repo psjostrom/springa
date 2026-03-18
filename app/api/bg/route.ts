@@ -1,6 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { getXdripReadings } from "@/lib/xdripDb";
-import { computeTrend, trendArrow, slopeToArrow } from "@/lib/xdrip";
+import { getBGReadings } from "@/lib/bgDb";
+import { computeTrend, trendArrow, slopeToArrow } from "@/lib/cgm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
     throw e;
   }
 
-  const readings = await getXdripReadings(email);
+  const readings = await getBGReadings(email);
   if (readings.length === 0) {
     return NextResponse.json({ readings: [], trend: null });
   }

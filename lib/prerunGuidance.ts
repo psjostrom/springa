@@ -1,13 +1,13 @@
 import type { IntervalsEvent } from "./types";
-import type { XdripReading } from "./xdrip";
+import type { BGReading } from "./cgm";
 import type { BGResponseModel } from "./bgModel";
-import { computeTrend } from "./xdrip";
+import { computeTrend } from "./cgm";
 import { getWorkoutCategory } from "./constants";
 import { assessReadiness, formatGuidancePush } from "./prerun";
 
 interface PrerunGuidanceInput {
   event: IntervalsEvent;
-  readings: XdripReading[];
+  readings: BGReading[];
   bgModel: BGResponseModel;
   currentTsb: number | null;
   currentIob: number | null;

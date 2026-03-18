@@ -58,7 +58,7 @@ dropRate: number;        // mmol/L per min
 - `lib/coachContext.ts` — rate unit in coach prompt
 - `lib/bgSimulation.ts` — `STEP_MIN`, `EXTRAPOLATION_FACTOR`, rate scaling
 
-### 2. xDrip ingestion (`lib/xdrip.ts`)
+### 2. xDrip ingestion (`lib/cgm.ts`)
 
 **Delta normalization** (line 117):
 ```typescript
@@ -270,7 +270,7 @@ var count = (minutes == 1) ? 90 : 18;
 
 ### Phase 1: Springa ingestion layer (can ship alone)
 
-1. Update `xdrip.ts` — delta normalization and direction thresholds to per-minute
+1. Update `cgm.ts` — delta normalization and direction thresholds to per-minute
 2. Update `bgObservations.ts` — drop the `* 5` multiplier
 3. Update all type comments to say "per min"
 4. Update tests

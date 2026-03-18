@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { XdripReading } from "@/lib/xdrip";
+import type { BGReading } from "@/lib/cgm";
 
 interface CurrentBGData {
   currentBG: number | null;
@@ -9,7 +9,7 @@ interface CurrentBGData {
   trendSlope: number | null;
   lastUpdate: Date | null;
   loading: boolean;
-  readings: XdripReading[];
+  readings: BGReading[];
 }
 
 const POLL_INTERVAL = 60_000;
@@ -36,7 +36,7 @@ function createBGStore() {
 
   async function poll() {
     try {
-      const res = await fetch("/api/xdrip");
+      const res = await fetch("/api/bg");
       if (!res.ok) {
         set({ ...data, loading: false });
         return;
@@ -44,10 +44,10 @@ function createBGStore() {
       const json = (await res.json()) as {
         current?: { mmol: number; arrow?: string; ts: number };
         trend?: { arrow?: string; slope?: number };
-        readings?: XdripReading[];
+        readings?: BGReading[];
       };
 
-      const readings: XdripReading[] = json.readings ?? [];
+      const readings: BGReading[] = json.readings ?? [];
 
       if (!json.current) {
         set({ currentBG: null, trend: null, trendSlope: null, lastUpdate: null, loading: false, readings });

@@ -35,12 +35,12 @@ Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Ta
 - `lib/postRunSpike.ts` — post-run spike extraction for model feedback
 - `lib/bgSimulation.ts` — forward BG simulation engine
 - `lib/bgPatterns.ts` — cross-run BG pattern analysis (AI-driven)
-- `lib/runBGContext.ts` — pre/post-run BG context from xDrip readings
+- `lib/runBGContext.ts` — pre/post-run BG context from CGM readings
 
 **T1D management:**
 - `lib/prerun.ts` — pre-run readiness assessment and push notifications
 - `lib/insulinContext.ts` — IOB modeling (Fiasp exponential decay)
-- `lib/xdrip.ts` — xDrip+ data ingestion and direction recomputation
+- `lib/cgm.ts` — CGM data ingestion (from Strimma) and direction recomputation
 - `lib/reportCard.ts` — post-run scoring (BG + HR compliance)
 
 **Infrastructure:**
@@ -106,8 +106,10 @@ Scoring strip in `EventModal` rating each completed run. Logic in `lib/reportCar
 - **HR Zone Compliance:** % time in target zone by category (easy→Z2, interval→Z4).
 - Additional context scores (entry trend, recovery) when BG context data is available.
 
-## xDrip+ Companion Mode Bug
+## CGM Data Pipeline
 
-xDrip+ in **companion mode** returns stale/wrong `direction` and `delta` fields (31% mismatch rate). Root cause: [NightscoutFoundation/xDrip#3787](https://github.com/NightscoutFoundation/xDrip/issues/3787).
+**Source:** Strimma (Android CGM app) pushes to `/api/v1/entries` using standard Nightscout JSON format. xDrip+ has been retired — Strimma is the sole data source (validated equivalent coverage and accuracy in 14h side-by-side testing).
 
-**Fix:** `recomputeDirections()` in `lib/xdrip.ts` recomputes direction using 3-point averaged sgv values ~5 min apart on ingestion. The xDrip+ `direction` field is never stored as-is. Garmin side: SugarRun and SugarWave also compute delta and direction from sgv values on-device.
+**Direction recomputation:** `recomputeDirections()` in `lib/cgm.ts` recomputes direction server-side using 3-point averaged sgv values ~5 min apart. This catches any stale direction fields from companion mode. Garmin side: SugarRun and SugarWave also compute delta and direction from sgv values on-device.
+
+**Single table:** All readings live in `bg_readings`.

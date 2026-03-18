@@ -1,4 +1,4 @@
-import type { XdripReading } from "./xdrip";
+import type { BGReading } from "./cgm";
 import type { CalendarEvent } from "./types";
 import type { WorkoutCategory } from "./types";
 import { linearRegression } from "./math";
@@ -46,10 +46,10 @@ const MIN_READINGS = 2;
 
 /** Binary search for readings in [startMs, endMs). Returns slice of readings in window. */
 export function findReadingsInWindow(
-  readings: XdripReading[],
+  readings: BGReading[],
   startMs: number,
   endMs: number,
-): XdripReading[] {
+): BGReading[] {
   if (readings.length === 0) return [];
 
   // Binary search for first reading >= startMs
@@ -76,7 +76,7 @@ export function findReadingsInWindow(
 }
 
 /** Linear regression returning mmol/L per minute. Null if < 2 readings. */
-export function computeSlope(readings: XdripReading[]): number | null {
+export function computeSlope(readings: BGReading[]): number | null {
   if (readings.length < MIN_READINGS) return null;
 
   const t0 = readings[0].ts;
@@ -90,7 +90,7 @@ export function computeSlope(readings: XdripReading[]): number | null {
 }
 
 /** Standard deviation of mmol values. Returns 0 for single value. */
-export function computeStdDev(readings: XdripReading[]): number {
+export function computeStdDev(readings: BGReading[]): number {
   if (readings.length <= 1) return 0;
 
   const values = readings.map((r) => r.mmol);
@@ -102,10 +102,10 @@ export function computeStdDev(readings: XdripReading[]): number {
 
 /** Nearest reading within maxGapMs of targetMs. Returns null if none close enough. */
 export function closestReading(
-  readings: XdripReading[],
+  readings: BGReading[],
   targetMs: number,
   maxGapMs: number = MAX_GAP_MS,
-): XdripReading | null {
+): BGReading | null {
   if (readings.length === 0) return null;
 
   // Binary search for insertion point
@@ -118,7 +118,7 @@ export function closestReading(
   }
 
   // Check candidates at lo and lo-1
-  let best: XdripReading | null = null;
+  let best: BGReading | null = null;
   let bestDist = Infinity;
 
   for (const idx of [lo - 1, lo]) {
@@ -135,9 +135,9 @@ export function closestReading(
   return null;
 }
 
-/** Extract pre-run context from xDrip readings. */
+/** Extract pre-run context from CGM readings. */
 export function computePreRunContext(
-  readings: XdripReading[],
+  readings: BGReading[],
   runStartMs: number,
 ): PreRunContext | null {
   // Slope: 30 min window before start
@@ -170,9 +170,9 @@ export function computePreRunContext(
   };
 }
 
-/** Extract post-run context from xDrip readings. */
+/** Extract post-run context from CGM readings. */
 export function computePostRunContext(
-  readings: XdripReading[],
+  readings: BGReading[],
   runEndMs: number,
 ): PostRunContext | null {
   const postReadings = findReadingsInWindow(
@@ -228,7 +228,7 @@ export function computePostRunContext(
 
 /** Find minutes after runEnd until BG stays in 4-10 mmol/L for 15+ consecutive minutes. */
 function computeTimeToStable(
-  postReadings: XdripReading[],
+  postReadings: BGReading[],
   runEndMs: number,
 ): number | null {
   if (postReadings.length === 0) return null;
@@ -255,7 +255,7 @@ function computeTimeToStable(
 /** Build full RunBGContext for one completed activity. */
 export function buildRunBGContext(
   event: CalendarEvent,
-  readings: XdripReading[],
+  readings: BGReading[],
 ): RunBGContext | null {
   if (event.type !== "completed") return null;
   if (!event.duration) return null;
@@ -291,7 +291,7 @@ export function buildRunBGContext(
 /** Build RunBGContext map for all completed activities. */
 export function buildRunBGContexts(
   events: CalendarEvent[],
-  readings: XdripReading[],
+  readings: BGReading[],
 ): Map<string, RunBGContext> {
   const map = new Map<string, RunBGContext>();
   if (readings.length === 0) return map;

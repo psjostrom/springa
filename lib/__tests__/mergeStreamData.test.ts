@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CalendarEvent, DataPoint } from "../types";
 import type { ActivityStreamData } from "@/app/hooks/useActivityStream";
-import type { XdripReading } from "../xdrip";
+import type { BGReading } from "../cgm";
 import { mergeStreamData } from "../enrichEvents";
 
 const RUN_START = new Date("2026-03-08T10:00:00Z");
@@ -39,7 +39,7 @@ function makeFreshStream(overrides?: Partial<ActivityStreamData>): ActivityStrea
   };
 }
 
-function makeReadings(startMs: number, count: number, baseMmol: number): XdripReading[] {
+function makeReadings(startMs: number, count: number, baseMmol: number): BGReading[] {
   // One reading every 5 minutes
   return Array.from({ length: count }, (_, i) => ({
     ts: startMs + i * 5 * 60 * 1000,
@@ -83,7 +83,7 @@ describe("mergeStreamData", () => {
     expect(result.glucose).toBe(existingGlucose);
   });
 
-  it("reconstructs glucose from xDrip readings when not present on event", () => {
+  it("reconstructs glucose from CGM readings when not present on event", () => {
     const readings = makeReadings(RUN_START.getTime(), 10, 7.0);
 
     const result = mergeStreamData(baseEvent, makeFreshStream(), readings);
@@ -103,7 +103,7 @@ describe("mergeStreamData", () => {
     expect(result.glucose).toBeUndefined();
   });
 
-  it("does not reconstruct glucose when no xDrip readings available", () => {
+  it("does not reconstruct glucose when no CGM readings available", () => {
     const result = mergeStreamData(baseEvent, makeFreshStream(), []);
 
     expect(result.glucose).toBeUndefined();

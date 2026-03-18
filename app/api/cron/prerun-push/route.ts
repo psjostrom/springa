@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
-import { getRecentXdripReadings } from "@/lib/xdripDb";
+import { getRecentBGReadings } from "@/lib/bgDb";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { buildBGModelFromCached } from "@/lib/bgModel";
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
       });
 
       // Fetch readings and build BG model once per user (shared across events)
-      const readings = await getRecentXdripReadings(email);
+      const readings = await getRecentBGReadings(email);
       const cached = await getActivityStreams(email);
       const enriched = await enrichActivitiesWithGlucose(email, cached);
       const bgModel = buildBGModelFromCached(enriched);

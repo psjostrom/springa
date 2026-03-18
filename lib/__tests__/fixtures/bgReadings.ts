@@ -1,10 +1,10 @@
-import type { XdripReading } from "../../xdrip";
+import type { BGReading } from "../../cgm";
 
-/** Generate XdripReading[] at 1-min intervals from a starting timestamp. */
+/** Generate BGReading[] at 1-min intervals from a starting timestamp. */
 export function makeReadings(
   startMs: number,
   mmolValues: number[],
-): XdripReading[] {
+): BGReading[] {
   return mmolValues.map((mmol, i) => ({
     sgv: Math.round(mmol * 18.018),
     mmol,
@@ -34,28 +34,28 @@ function interpolate(start: number, end: number, count: number): number[] {
 // --- Pre-built scenarios ---
 
 /** 2h of readings steady around 10 mmol/L (±0.2 noise) */
-export function stableAt10(startMs: number): XdripReading[] {
+export function stableAt10(startMs: number): BGReading[] {
   const values = Array.from({ length: 24 }, () => noisy(10, 0.2));
   return makeReadings(startMs, values);
 }
 
 /** 2h of readings dropping from 12 to 7 */
-export function droppingFrom12(startMs: number): XdripReading[] {
+export function droppingFrom12(startMs: number): BGReading[] {
   return makeReadings(startMs, interpolate(12, 7, 24));
 }
 
 /** 2h of readings crashing from 10 to 3.5 (hypo) */
-export function crashingFrom10(startMs: number): XdripReading[] {
+export function crashingFrom10(startMs: number): BGReading[] {
   return makeReadings(startMs, interpolate(10, 3.5, 24));
 }
 
 /** 2h of readings rising from 6 to 11 */
-export function risingFrom6(startMs: number): XdripReading[] {
+export function risingFrom6(startMs: number): BGReading[] {
   return makeReadings(startMs, interpolate(6, 11, 24));
 }
 
 /** 2h of readings bouncing 6-13 randomly */
-export function volatile(startMs: number): XdripReading[] {
+export function volatile(startMs: number): BGReading[] {
   const values = [
     8, 12, 6, 13, 7, 11, 6.5, 12.5, 7.5, 10, 6, 13, 8, 11, 7, 12, 6, 13, 9,
     10, 7.5, 12, 6.5, 11,
@@ -64,7 +64,7 @@ export function volatile(startMs: number): XdripReading[] {
 }
 
 /** Only 3 readings in 2h (sensor warmup gaps) */
-export function sparse(startMs: number): XdripReading[] {
+export function sparse(startMs: number): BGReading[] {
   return [
     { sgv: 180, mmol: 10.0, ts: startMs, direction: "Flat" },
     {
@@ -83,7 +83,7 @@ export function sparse(startMs: number): XdripReading[] {
 }
 
 /** No readings */
-export function empty(): XdripReading[] {
+export function empty(): BGReading[] {
   return [];
 }
 

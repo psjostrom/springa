@@ -31,7 +31,7 @@ export async function GET() {
     }
   }
 
-  settings.xdripConnected = !!process.env.XDRIP_SECRET;
+  settings.cgmConnected = !!process.env.XDRIP_SECRET;
   settings.mylifeConnected = !!process.env.MYLIFE_EMAIL;
 
   return NextResponse.json(settings);

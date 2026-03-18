@@ -3,8 +3,8 @@ import {
   parseNightscoutEntries,
   computeTrend,
   trendArrow,
-  type XdripReading,
-} from "../xdrip";
+  type BGReading,
+} from "../cgm";
 
 // --- trendArrow ---
 
@@ -125,7 +125,7 @@ describe("computeTrend", () => {
     values: number[],
     intervalMin = 5,
     startTs = 1708300000000,
-  ): XdripReading[] {
+  ): BGReading[] {
     return values.map((mmol, i) => ({
       sgv: Math.round(mmol * 18.018),
       mmol,
@@ -169,7 +169,7 @@ describe("computeTrend", () => {
   it("only uses last 30 minutes of readings", () => {
     // Old readings (60+ min ago) should be excluded
     const now = Date.now();
-    const readings: XdripReading[] = [
+    const readings: BGReading[] = [
       // Old: 60 min ago, BG was 15 (should be ignored)
       { sgv: 270, mmol: 15.0, ts: now - 60 * 60000, direction: "NONE" },
       { sgv: 252, mmol: 14.0, ts: now - 55 * 60000, direction: "NONE" },

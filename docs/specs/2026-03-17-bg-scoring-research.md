@@ -63,7 +63,7 @@ LBGI = mean of all rl(BG) values
 
 **In mg/dL per minute:** multiply thresholds by 18 (so -0.11 mmol/L/min ≈ -2 mg/dL/min).
 
-**Relevance to delta/arrows:** These ARE the standard arrow thresholds. If Springa computes its own direction from sgv values (which it does — `recomputeDirections()` in `lib/xdrip.ts`), these thresholds should be used for the arrow classification. They're what Dexcom G6/G7 and Libre 3 use internally.
+**Relevance to delta/arrows:** These ARE the standard arrow thresholds. If Springa computes its own direction from sgv values (which it does — `recomputeDirections()` in `lib/cgm.ts`), these thresholds should be used for the arrow classification. They're what Dexcom G6/G7 and Libre 3 use internally.
 
 **Important note on sensor lag during exercise:** CGM readings lag actual blood glucose by 10–24 minutes during exercise (interstitial fluid delay). Clinical guidance is to act earlier (at higher glucose levels) during exercise because of this lag. The arrow might show "slowly falling" when blood glucose is already dropping faster.
 
@@ -163,7 +163,7 @@ The EASD thresholds table above is the validated standard for CGM trend arrows. 
 
 1. **Use the EASD thresholds** (-0.06, -0.11, -0.17 mmol/L/min) for arrow classification — they're what Dexcom and Libre use.
 
-2. **`recomputeDirections()` in `lib/xdrip.ts`** already recomputes direction from sgv values (because xDrip+ companion mode returns stale direction/delta fields). Check whether its thresholds match the EASD standard.
+2. **`recomputeDirections()` in `lib/cgm.ts`** already recomputes direction from sgv values (because xDrip+ companion mode returns stale direction/delta fields). Check whether its thresholds match the EASD standard.
 
 3. **Sensor lag matters for arrows** — CGM lags blood glucose by 10-24 min during exercise. An arrow showing "slowly falling" might understate the actual rate. Clinical guidance: act earlier during exercise.
 

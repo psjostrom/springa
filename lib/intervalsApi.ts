@@ -86,7 +86,7 @@ export async function fetchStreams(
   apiKey: string,
 ): Promise<IntervalsStream[]> {
   const auth = authHeader(apiKey);
-  // No longer fetching glucose streams - glucose comes from xDrip
+  // No longer fetching glucose streams - glucose comes from CGM
   const keys = [
     "time",
     "heartrate",
@@ -198,7 +198,7 @@ export async function fetchActivityDetails(
     if (timeData.length > 0) {
       const streamData: StreamData = {};
 
-      // Glucose comes from xDrip via activity_streams, not from streams
+      // Glucose comes from CGM via activity_streams, not from streams
 
       if (hrData.length > 0) {
         streamData.heartrate = timeData.map((t, idx) => ({

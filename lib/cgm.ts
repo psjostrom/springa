@@ -6,7 +6,7 @@
 // mismatch rate across 550 readings. BG can be rising while direction still
 // says "FortyFiveDown". See: github.com/NightscoutFoundation/xDrip/issues/3787
 //
-// We NEVER trust the direction field from xDrip+. On ingestion, we recompute
+// We NEVER trust the direction field from CGM+. On ingestion, we recompute
 // direction from 3-point averaged sgv values ~5 min apart via
 // recomputeDirections(). The Garmin apps (SugarRun, SugarWave) do the same
 // computation on-device.
@@ -14,11 +14,11 @@
 import { MGDL_TO_MMOL } from "./constants";
 import { linearRegression } from "./math";
 
-export interface XdripReading {
+export interface BGReading {
   sgv: number; // mg/dL (raw from Nightscout)
   mmol: number; // converted to mmol/L
   ts: number; // timestamp ms
-  direction: string; // recomputed from sgv — NOT from xDrip+ API
+  direction: string; // recomputed from sgv — NOT from CGM+ API
 }
 
 // --- Nightscout direction → arrow ---
@@ -55,9 +55,9 @@ function isValidEntry(
   return typeof obj.sgv === "number" && obj.sgv > 0;
 }
 
-export function parseNightscoutEntries(body: unknown): XdripReading[] {
+export function parseNightscoutEntries(body: unknown): BGReading[] {
   const arr = Array.isArray(body) ? body : [body];
-  const readings: XdripReading[] = [];
+  const readings: BGReading[] = [];
 
   for (const entry of arr) {
     if (!isValidEntry(entry)) continue;
@@ -100,7 +100,7 @@ function directionFromDelta(deltaMgdlPerMin: number): string {
   return "DoubleUp";
 }
 
-export function recomputeDirections(readings: XdripReading[]): void {
+export function recomputeDirections(readings: BGReading[]): void {
   const WINDOW_MS = 5 * 60 * 1000;
 
   // Average sgv of readings[idx-1..idx+1] (clamped to array bounds)
@@ -142,7 +142,7 @@ export function recomputeDirections(readings: XdripReading[]): void {
 // --- Trend computation from stored readings ---
 
 export function computeTrend(
-  readings: XdripReading[],
+  readings: BGReading[],
 ): { slope: number; direction: string } | null {
   if (readings.length < 2) return null;
 

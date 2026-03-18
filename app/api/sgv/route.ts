@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { validateXdripSecret } from "@/lib/apiHelpers";
+import { validateApiSecret } from "@/lib/apiHelpers";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/sgv — xDrip-compatible sgv.json endpoint serving from Turso.
+ * GET /api/sgv — Nightscout-compatible sgv.json endpoint serving from Turso.
  *
  * Designed for Garmin CIQ apps (SugarRun, SugarWave, SuperStable) that
  * can't reliably reach xDrip's local web server via the GCM BLE proxy.
@@ -11,10 +11,10 @@ import { db } from "@/lib/db";
  * Query params:
  *   count — number of readings (default 24, max 360)
  *
- * Auth: api-secret header (same as xDrip routes).
+ * Auth: api-secret header (same as CGM routes).
  */
 export async function GET(req: Request) {
-  if (!validateXdripSecret(req.headers.get("api-secret"))) {
+  if (!validateApiSecret(req.headers.get("api-secret"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   }
 
   const readings = await db().execute({
-    sql: `SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? ORDER BY ts DESC LIMIT ?`,
+    sql: `SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? ORDER BY ts DESC LIMIT ?`,
     args: [email, count],
   });
 
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     direction: row.direction as string,
   }));
 
-  // 3-point averaged sgv (same smoothing as recomputeDirections in lib/xdrip.ts)
+  // 3-point averaged sgv (same smoothing as recomputeDirections in lib/cgm.ts)
   const avgSgv = (idx: number) => {
     const lo = Math.max(0, idx - 1);
     const hi = Math.min(rows.length - 1, idx + 1);

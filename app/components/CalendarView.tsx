@@ -90,12 +90,12 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   // Lazy-load stream data via SWR when modal opens for a completed workout
   const selectedActivityId = selectedEvent?.type === "completed" ? selectedEvent.activityId : null;
   const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null, apiKey);
-  const xdripReadings = useAtomValue(readingsAtom);
+  const bgReadings = useAtomValue(readingsAtom);
 
   // Combine event + fresh stream data for modal (join at render time, not merged into state)
   const enrichedSelectedEvent = useMemo(
-    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, xdripReadings) : selectedEvent,
-    [selectedEvent, streamData, xdripReadings],
+    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, bgReadings) : selectedEvent,
+    [selectedEvent, streamData, bgReadings],
   );
 
   // Generate calendar grid
