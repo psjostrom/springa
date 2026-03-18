@@ -79,15 +79,6 @@ CREATE TABLE IF NOT EXISTS prerun_push_log (
   PRIMARY KEY (email, event_date)
 );
 
-CREATE TABLE IF NOT EXISTS strimma_readings (
-  email     TEXT NOT NULL,
-  ts        INTEGER NOT NULL,
-  mmol      REAL NOT NULL,
-  sgv       INTEGER NOT NULL,
-  direction TEXT NOT NULL,
-  PRIMARY KEY (email, ts)
-);
-
 CREATE TABLE IF NOT EXISTS bg_patterns (
   email              TEXT PRIMARY KEY,
   latest_activity_id TEXT NOT NULL,

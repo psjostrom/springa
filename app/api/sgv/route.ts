@@ -33,12 +33,8 @@ export async function GET(req: Request) {
     return NextResponse.json([], { status: 200 });
   }
 
-  // table is hardcoded to two safe values — never user-controlled
-  const source = url.searchParams.get("source") ?? "xdrip";
-  const table = source === "strimma" ? "strimma_readings" : "xdrip_readings";
-
   const readings = await db().execute({
-    sql: `SELECT ts, mmol, sgv, direction FROM ${table} WHERE email = ? ORDER BY ts DESC LIMIT ?`,
+    sql: `SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? ORDER BY ts DESC LIMIT ?`,
     args: [email, count],
   });
 
