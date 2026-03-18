@@ -249,12 +249,12 @@ export function IntelScreen() {
     selectedEvent?.activityId ?? null,
     apiKey
   );
-  const xdripReadings = useAtomValue(readingsAtom);
+  const bgReadings = useAtomValue(readingsAtom);
 
   // Enrich selected event with stream data
   const enrichedSelectedEvent = useMemo(
-    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, xdripReadings) : selectedEvent,
-    [selectedEvent, streamData, xdripReadings],
+    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, bgReadings) : selectedEvent,
+    [selectedEvent, streamData, bgReadings],
   );
 
   const handleCloseModal = () => {

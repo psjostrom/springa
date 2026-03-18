@@ -6,7 +6,7 @@ import type { BGResponseModel } from "@/lib/bgModel";
 import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { WellnessEntry } from "@/lib/intervalsApi";
-import type { XdripReading } from "@/lib/xdrip";
+import type { BGReading } from "@/lib/cgm";
 import type { WidgetLayout } from "@/lib/widgetRegistry";
 import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
@@ -61,13 +61,13 @@ export const patchCalendarEventAtom = atom(
   },
 );
 
-// ─── Current BG (xDrip) ─────────────────────────────────────
+// ─── Current BG (CGM) ─────────────────────────────────────
 
 export const currentBGAtom = atom<number | null>(null);
 export const trendAtom = atom<string | null>(null);
 export const trendSlopeAtom = atom<number | null>(null);
 export const lastBGUpdateAtom = atom<Date | null>(null);
-export const readingsAtom = atom<XdripReading[]>([]);
+export const readingsAtom = atom<BGReading[]>([]);
 
 // ─── Run Data / BG Model ────────────────────────────────────
 

@@ -11,7 +11,7 @@ import {
 } from "../runBGContext";
 import { makeReadings } from "./fixtures/bgReadings";
 import type { CalendarEvent } from "../types";
-import type { XdripReading } from "../xdrip";
+import type { BGReading } from "../cgm";
 
 // --- Helpers ---
 
@@ -234,7 +234,7 @@ describe("computePreRunContext", () => {
   });
 
   it("sparse data: only 2 readings in 30-min window → still computes slope", () => {
-    const readings: XdripReading[] = [
+    const readings: BGReading[] = [
       { sgv: 180, mmol: 10.0, ts: T0 - 20 * 60 * 1000, direction: "Flat" },
       { sgv: 162, mmol: 9.0, ts: T0 - 5 * 60 * 1000, direction: "Flat" },
     ];
@@ -328,7 +328,7 @@ describe("computePostRunContext", () => {
   });
 
   it("endBG uses closest reading to run end", () => {
-    const readings: XdripReading[] = [
+    const readings: BGReading[] = [
       { sgv: 162, mmol: 9.0, ts: runEndMs - 2 * 60 * 1000, direction: "Flat" },
       { sgv: 144, mmol: 8.0, ts: runEndMs + 1 * 60 * 1000, direction: "Flat" },
       { sgv: 126, mmol: 7.0, ts: runEndMs + 6 * 60 * 1000, direction: "Flat" },
@@ -342,7 +342,7 @@ describe("computePostRunContext", () => {
 // --- buildRunBGContext ---
 
 describe("buildRunBGContext", () => {
-  it("completed event with full xDrip coverage → pre and post populated", () => {
+  it("completed event with full CGM coverage → pre and post populated", () => {
     const preReadings = makeReadings(T0 - 30 * 60 * 1000, Array.from({ length: 31 }, () => 10));
     const duringReadings = makeReadings(T0, [9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5]);
     const postReadings = makeReadings(T0 + 40 * 60 * 1000, [5.5, 5, 5.5, 6, 6.5, 7, 7.5, 8]);
@@ -402,7 +402,7 @@ describe("buildRunBGContext", () => {
 // --- buildRunBGContexts ---
 
 describe("buildRunBGContexts", () => {
-  it("multiple activities with overlapping xDrip coverage → each gets correct context", () => {
+  it("multiple activities with overlapping CGM coverage → each gets correct context", () => {
     const event1Start = T0;
     const event2Start = T0 + 4 * 60 * 60 * 1000; // 4h later
 
@@ -427,7 +427,7 @@ describe("buildRunBGContexts", () => {
     expect(map.get("a2")).toBeDefined();
   });
 
-  it("activity outside xDrip date range → context has null pre/post, doesn't throw", () => {
+  it("activity outside CGM date range → context has null pre/post, doesn't throw", () => {
     const events: CalendarEvent[] = [
       makeEvent({
         activityId: "old",

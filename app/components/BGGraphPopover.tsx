@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { trendArrow } from "@/lib/xdrip";
+import { trendArrow } from "@/lib/cgm";
 import { bgColor } from "./CurrentBGPill";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom, currentTsbAtom, currentIobAtom } from "../atoms";

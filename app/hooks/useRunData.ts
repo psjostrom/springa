@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { buildBGModelFromCached } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
-import type { XdripReading } from "@/lib/xdrip";
+import type { BGReading } from "@/lib/cgm";
 import { buildRunBGContexts } from "@/lib/runBGContext";
 import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { useStreamCache } from "./useStreamCache";
@@ -12,7 +12,7 @@ export function useRunData(
   apiKey: string,
   enabled: boolean,
   sharedEvents: CalendarEvent[],
-  xdripReadings?: XdripReading[],
+  bgReadings?: BGReading[],
 ) {
   // 1. Filter and sort completed runs — cache all of them.
   //    BG model and pace calibration apply their own time windows downstream.
@@ -33,10 +33,10 @@ export function useRunData(
   // 2. Stream cache (async infrastructure)
   const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
 
-  // 2.5. Reconstruct glucose from xDrip readings
+  // 2.5. Reconstruct glucose from CGM readings
   const glucoseEnriched = useMemo(
-    () => enrichWithGlucose(cached, xdripReadings ?? []),
-    [cached, xdripReadings],
+    () => enrichWithGlucose(cached, bgReadings ?? []),
+    [cached, bgReadings],
   );
 
   // 3. Activity name map
@@ -45,13 +45,13 @@ export function useRunData(
     [completedRuns],
   );
 
-  // 4. RunBGContexts from xDrip readings
+  // 4. RunBGContexts from CGM readings
   const runBGContexts = useMemo(
     () =>
-      xdripReadings && xdripReadings.length > 0 && completedRuns.length > 0
-        ? buildRunBGContexts(completedRuns, xdripReadings)
+      bgReadings && bgReadings.length > 0 && completedRuns.length > 0
+        ? buildRunBGContexts(completedRuns, bgReadings)
         : new Map<string, never>(),
-    [completedRuns, xdripReadings],
+    [completedRuns, bgReadings],
   );
 
   // 5. Enrich cached activities with RunBGContext (immutable)

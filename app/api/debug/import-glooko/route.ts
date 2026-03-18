@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       const chunk = unique.slice(i, i + BATCH_SIZE);
       await db().batch(
         chunk.map((r) => ({
-          sql: `INSERT OR IGNORE INTO xdrip_readings (email, ts, mmol, sgv, direction)
+          sql: `INSERT OR IGNORE INTO bg_readings (email, ts, mmol, sgv, direction)
                 VALUES (?, ?, ?, ?, ?)`,
           args: [email, r.ts, r.mmol, r.sgv, r.direction],
         })),

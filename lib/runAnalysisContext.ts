@@ -70,7 +70,7 @@ export async function buildRunAnalysisContext(
       : Promise.resolve([]),
   ]);
 
-  // Enrich history rows with glucose from xdrip_readings
+  // Enrich history rows with glucose from bg_readings
   const rows = await enrichActivitiesWithGlucose(email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history

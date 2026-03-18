@@ -1,10 +1,10 @@
-import { getXdripReadingsForRange } from "./xdripDb";
+import { getBGReadingsForRange } from "./bgDb";
 import { enrichWithGlucose } from "./bgAlignment";
 import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 
 /**
- * Enrich cached activities with glucose data from xdrip_readings (server-side).
- * Fetches xDrip readings for the full date range of activities and aligns.
+ * Enrich cached activities with glucose data from bg_readings (server-side).
+ * Fetches CGM readings for the full date range of activities and aligns.
  */
 export async function enrichActivitiesWithGlucose(
   email: string,
@@ -29,6 +29,6 @@ export async function enrichActivitiesWithGlucose(
       }),
   );
 
-  const readings = await getXdripReadingsForRange(email, minMs, maxMs);
+  const readings = await getBGReadingsForRange(email, minMs, maxMs);
   return enrichWithGlucose(activities, readings);
 }

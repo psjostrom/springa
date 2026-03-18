@@ -3,7 +3,7 @@ import type { CalendarEvent, WorkoutCategory } from "./types";
 import { summarizeBGModel } from "./bgModel";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
-import type { XdripReading } from "./xdrip";
+import type { BGReading } from "./cgm";
 import type { RunBGContext } from "./runBGContext";
 import type { PaceTable } from "./types";
 import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
@@ -24,7 +24,7 @@ interface CoachContext {
   trendSlope?: number | null;
   trendArrow?: string | null;
   lastUpdate?: Date | null;
-  readings?: XdripReading[];
+  readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
 }
 

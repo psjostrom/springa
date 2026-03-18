@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { interpolateBG, alignHRWithXdrip, xdripToGlucosePoints, enrichWithGlucose } from "../bgAlignment";
-import type { XdripReading } from "../xdrip";
+import { interpolateBG, alignHRWithBG, bgToGlucosePoints, enrichWithGlucose } from "../bgAlignment";
+import type { BGReading } from "../cgm";
 import type { DataPoint } from "../types";
 import type { CachedActivity } from "../activityStreamsDb";
 
-function makeReading(ts: number, mmol: number): XdripReading {
+function makeReading(ts: number, mmol: number): BGReading {
   return { ts, mmol, sgv: Math.round(mmol * 18), direction: "Flat" };
 }
 
@@ -59,17 +59,17 @@ describe("interpolateBG", () => {
   });
 });
 
-describe("alignHRWithXdrip", () => {
+describe("alignHRWithBG", () => {
   const runStartMs = 1000000; // arbitrary start time
 
   it("returns null for empty readings", () => {
     const hrPoints: DataPoint[] = [{ time: 0, value: 120 }];
-    expect(alignHRWithXdrip(hrPoints, [], runStartMs)).toBeNull();
+    expect(alignHRWithBG(hrPoints, [], runStartMs)).toBeNull();
   });
 
   it("returns null for empty HR points", () => {
     const readings = [makeReading(runStartMs, 10.0)];
-    expect(alignHRWithXdrip([], readings, runStartMs)).toBeNull();
+    expect(alignHRWithBG([], readings, runStartMs)).toBeNull();
   });
 
   it("aligns HR with interpolated BG", () => {
@@ -88,7 +88,7 @@ describe("alignHRWithXdrip", () => {
       { time: 5, value: 150 },
     ];
 
-    const result = alignHRWithXdrip(hrPoints, readings, runStartMs);
+    const result = alignHRWithBG(hrPoints, readings, runStartMs);
 
     expect(result).not.toBeNull();
     expect(result!.hr).toHaveLength(6);
@@ -110,18 +110,18 @@ describe("alignHRWithXdrip", () => {
       { time: 5, value: 150 },
     ];
 
-    const result = alignHRWithXdrip(hrPoints, readings, runStartMs);
+    const result = alignHRWithBG(hrPoints, readings, runStartMs);
 
     expect(result!.hr[0]).toEqual({ time: 0, value: 110 });
     expect(result!.hr[1]).toEqual({ time: 5, value: 150 });
   });
 });
 
-describe("xdripToGlucosePoints", () => {
+describe("bgToGlucosePoints", () => {
   const runStartMs = 0;
 
   it("returns empty for empty readings", () => {
-    expect(xdripToGlucosePoints([], runStartMs, 600000)).toEqual([]);
+    expect(bgToGlucosePoints([], runStartMs, 600000)).toEqual([]);
   });
 
   it("creates minute-by-minute points with interpolation", () => {
@@ -132,7 +132,7 @@ describe("xdripToGlucosePoints", () => {
     ];
     const runEndMs = 600000; // 10 min
 
-    const points = xdripToGlucosePoints(readings, runStartMs, runEndMs);
+    const points = bgToGlucosePoints(readings, runStartMs, runEndMs);
 
     expect(points).toHaveLength(11); // 0 to 10 inclusive
     expect(points[0]).toEqual({ time: 0, value: 10.0 });
@@ -145,7 +145,7 @@ describe("xdripToGlucosePoints", () => {
 });
 
 describe("enrichWithGlucose", () => {
-  it("aligns glucose from xDrip readings for activities without glucose", () => {
+  it("aligns glucose from CGM readings for activities without glucose", () => {
     const activities: CachedActivity[] = [{
       activityId: "a1",
       category: "easy",
@@ -158,7 +158,7 @@ describe("enrichWithGlucose", () => {
       runStartMs: 1000000,
     }];
 
-    const readings: XdripReading[] = [
+    const readings: BGReading[] = [
       { ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" },
       { ts: 1060000, mmol: 7.5, sgv: 135, direction: "Flat" },
       { ts: 1120000, mmol: 7.0, sgv: 126, direction: "Flat" },

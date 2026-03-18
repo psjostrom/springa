@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Analyze post-run BG recovery patterns from real data.
- * Computes recovery context directly from xDrip readings.
+ * Computes recovery context directly from CGM readings.
  * Usage: npx tsx scripts/analyze-recovery.ts
  */
 import { readFileSync } from "fs";
@@ -14,7 +14,7 @@ for (const line of readFileSync(envPath, "utf-8").split("\n")) {
 }
 
 import { getActivityStreams } from "../lib/activityStreamsDb";
-import { getXdripReadingsForRange } from "../lib/xdripDb";
+import { getBGReadingsForRange } from "../lib/bgDb";
 import {
   findReadingsInWindow,
   closestReading,
@@ -70,8 +70,8 @@ async function main() {
     const runDurationMin = hrStream[hrStream.length - 1].time - hrStream[0].time;
     const runEndMs = runStartMs + runDurationMin * 60 * 1000;
 
-    // Fetch xDrip readings: 30 min before start to 2.5h after end
-    const readings = await getXdripReadingsForRange(
+    // Fetch CGM readings: 30 min before start to 2.5h after end
+    const readings = await getBGReadingsForRange(
       EMAIL,
       runStartMs - 30 * 60 * 1000,
       runEndMs + 150 * 60 * 1000,

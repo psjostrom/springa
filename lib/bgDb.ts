@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { db } from "./db";
-import type { XdripReading } from "./xdrip";
+import type { BGReading } from "./cgm";
 
 export function sha1(input: string): string {
   return createHash("sha1").update(input).digest("hex");
@@ -15,10 +15,10 @@ export function monthKey(tsMs: number): string {
 }
 
 /** Read readings for specific months. Defaults to current + previous month. */
-export async function getXdripReadings(
+export async function getBGReadings(
   email: string,
   months?: string[],
-): Promise<XdripReading[]> {
+): Promise<BGReading[]> {
   if (!months) {
     const now = Date.now();
     const cur = monthKey(now);
@@ -37,7 +37,7 @@ export async function getXdripReadings(
   const maxTs = Math.max(...ranges.map((r) => r.end));
 
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts < ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts < ? ORDER BY ts",
     args: [email, minTs, maxTs],
   });
 
@@ -50,9 +50,9 @@ export async function getXdripReadings(
 }
 
 /** Save readings. Uses INSERT OR REPLACE for dedup by (email, ts). */
-export async function saveXdripReadings(
+export async function saveBGReadings(
   email: string,
-  readings: XdripReading[],
+  readings: BGReading[],
 ): Promise<void> {
   if (readings.length === 0) return;
 
@@ -61,7 +61,7 @@ export async function saveXdripReadings(
     const chunk = readings.slice(i, i + BATCH_SIZE);
     await db().batch(
       chunk.map((r) => ({
-        sql: `INSERT OR REPLACE INTO xdrip_readings (email, ts, mmol, sgv, direction)
+        sql: `INSERT OR REPLACE INTO bg_readings (email, ts, mmol, sgv, direction)
               VALUES (?, ?, ?, ?, ?)`,
         args: [email, r.ts, r.mmol, r.sgv, r.direction],
       })),
@@ -70,14 +70,14 @@ export async function saveXdripReadings(
   }
 }
 
-/** Fetch only recent xDrip readings (default: last 30 minutes). */
-export async function getRecentXdripReadings(
+/** Fetch only recent CGM readings (default: last 30 minutes). */
+export async function getRecentBGReadings(
   email: string,
   withinMs: number = 30 * 60 * 1000,
-): Promise<XdripReading[]> {
+): Promise<BGReading[]> {
   const cutoff = Date.now() - withinMs;
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? ORDER BY ts",
     args: [email, cutoff],
   });
   return result.rows.map((row) => ({
@@ -91,16 +91,16 @@ export async function getRecentXdripReadings(
 /** Padding before/after run window to enable interpolation at boundaries. */
 const RUN_WINDOW_PADDING_MS = 10 * 60 * 1000; // 10 minutes
 
-/** Fetch xDrip readings for a timestamp range with 10-min padding on each side. */
-export async function getXdripReadingsForRange(
+/** Fetch CGM readings for a timestamp range with 10-min padding on each side. */
+export async function getBGReadingsForRange(
   email: string,
   startMs: number,
   endMs: number,
-): Promise<XdripReading[]> {
+): Promise<BGReading[]> {
   const paddedStart = startMs - RUN_WINDOW_PADDING_MS;
   const paddedEnd = endMs + RUN_WINDOW_PADDING_MS;
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
     args: [email, paddedStart, paddedEnd],
   });
   return result.rows.map((row) => ({
@@ -111,17 +111,17 @@ export async function getXdripReadingsForRange(
   }));
 }
 
-/** Fetch xDrip readings for a run window, with padding for interpolation. */
-export async function getXdripReadingsForRun(
+/** Fetch CGM readings for a run window, with padding for interpolation. */
+export async function getBGReadingsForRun(
   email: string,
   runStartMs: number,
   runEndMs: number,
-): Promise<XdripReading[]> {
+): Promise<BGReading[]> {
   const paddedStart = runStartMs - RUN_WINDOW_PADDING_MS;
   const paddedEnd = runEndMs + RUN_WINDOW_PADDING_MS;
 
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM xdrip_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
     args: [email, paddedStart, paddedEnd],
   });
 

@@ -229,7 +229,7 @@ Target fuel rates computed from BG model regression/extrapolation. Auto-applied 
 
 xDrip+ pushes glucose data via Nightscout protocol (`/api/v1/entries`). Readings persisted indefinitely for post-run analysis. Direction recomputed from adjacent sgv values — fixes xDrip+ companion mode's 31% stale-direction error rate. Current BG pill in header with trend arrow + slope. Readings fed to Coach AI and pre-run overlay.
 
-**Implementation:** `lib/xdrip.ts`, `app/api/v1/entries/route.ts`, `CurrentBGPill.tsx`, `BGGraphPopover.tsx`.
+**Implementation:** `lib/cgm.ts`, `app/api/v1/entries/route.ts`, `CurrentBGPill.tsx`, `BGGraphPopover.tsx`.
 
 ### Post-Run Report Card
 

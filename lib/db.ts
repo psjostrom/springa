@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   warmth_preference  INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS xdrip_readings (
+CREATE TABLE IF NOT EXISTS bg_readings (
   email     TEXT NOT NULL,
   ts        INTEGER NOT NULL,
   mmol      REAL NOT NULL,

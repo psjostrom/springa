@@ -70,8 +70,8 @@ export const handlers = [
     return HttpResponse.json({ patterns: "Test patterns.", latestActivityId: "a123" });
   }),
 
-  // GET xdrip BG readings (useCurrentBG polls this on mount)
-  http.get("/api/xdrip", () => {
+  // GET BG readings (useCurrentBG polls this on mount)
+  http.get("/api/bg", () => {
     return HttpResponse.json({ readings: [], trend: null });
   }),
 

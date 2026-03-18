@@ -17,7 +17,7 @@ export interface UserSettings {
   warmthPreference?: number;
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsApiKey?: string;
-  xdripConnected?: boolean;
+  cgmConnected?: boolean;
   mylifeConnected?: boolean;
   lthr?: number;
   maxHr?: number;

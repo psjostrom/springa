@@ -5,9 +5,9 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { requireAuth, validateXdripSecret, AuthError } from "@/lib/apiHelpers";
+import { requireAuth, validateApiSecret, AuthError } from "@/lib/apiHelpers";
 import { auth } from "@/lib/auth";
-import { sha1 } from "@/lib/xdripDb";
+import { sha1 } from "@/lib/bgDb";
 
 describe("requireAuth", () => {
   const mockAuth = auth as unknown as MockedFunction<() => Promise<Session | null>>;
@@ -43,38 +43,38 @@ describe("requireAuth", () => {
   });
 });
 
-describe("validateXdripSecret", () => {
-  const ORIGINAL = process.env.XDRIP_SECRET;
+describe("validateApiSecret", () => {
+  const ORIGINAL = process.env.CGM_SECRET;
   afterEach(() => {
     if (ORIGINAL !== undefined) {
-      process.env.XDRIP_SECRET = ORIGINAL;
+      process.env.CGM_SECRET = ORIGINAL;
     } else {
-      delete process.env.XDRIP_SECRET;
+      delete process.env.CGM_SECRET;
     }
   });
 
-  it("accepts pre-hashed secret (xDrip behavior)", () => {
-    process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret(sha1("mysecret"))).toBe(true);
+  it("accepts pre-hashed secret (CGM behavior)", () => {
+    process.env.CGM_SECRET = "mysecret";
+    expect(validateApiSecret(sha1("mysecret"))).toBe(true);
   });
 
   it("accepts raw secret (SugarRun behavior)", () => {
-    process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret("mysecret")).toBe(true);
+    process.env.CGM_SECRET = "mysecret";
+    expect(validateApiSecret("mysecret")).toBe(true);
   });
 
   it("rejects wrong secret", () => {
-    process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret("wrong")).toBe(false);
+    process.env.CGM_SECRET = "mysecret";
+    expect(validateApiSecret("wrong")).toBe(false);
   });
 
   it("rejects null", () => {
-    process.env.XDRIP_SECRET = "mysecret";
-    expect(validateXdripSecret(null)).toBe(false);
+    process.env.CGM_SECRET = "mysecret";
+    expect(validateApiSecret(null)).toBe(false);
   });
 
-  it("rejects when XDRIP_SECRET not set", () => {
-    delete process.env.XDRIP_SECRET;
-    expect(validateXdripSecret("anything")).toBe(false);
+  it("rejects when CGM_SECRET not set", () => {
+    delete process.env.CGM_SECRET;
+    expect(validateApiSecret("anything")).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Import Glooko CGM export CSVs into xdrip_readings table.
+ * Import Glooko CGM export CSVs into bg_readings table.
  *
  * Usage: npx tsx scripts/import-glooko-cgm.ts <email> <csv_file> [csv_file2...]
  *
@@ -83,7 +83,7 @@ async function importReadings(email: string, readings: GlookoReading[]): Promise
     const chunk = unique.slice(i, i + BATCH_SIZE);
     await db().batch(
       chunk.map((r) => ({
-        sql: `INSERT OR IGNORE INTO xdrip_readings (email, ts, mmol, sgv, direction)
+        sql: `INSERT OR IGNORE INTO bg_readings (email, ts, mmol, sgv, direction)
               VALUES (?, ?, ?, ?, ?)`,
         args: [email, r.ts, r.mmol, r.sgv, r.direction],
       })),

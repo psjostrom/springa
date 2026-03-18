@@ -9,7 +9,7 @@ import {
 import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import type { CalendarEvent } from "@/lib/types";
 import { buildRunBGContexts } from "@/lib/runBGContext";
-import { getXdripReadings, monthKey } from "@/lib/xdripDb";
+import { getBGReadings, monthKey } from "@/lib/bgDb";
 import { format } from "date-fns";
 
 export interface BGPatternInput {
@@ -44,7 +44,7 @@ export async function buildBGPatternContext(
     Math.max(...timestamps.map((t, i) => t + durations[i])) +
     2 * 60 * 60 * 1000;
 
-  // Compute which months we need for xDrip
+  // Compute which months we need for CGM
   const neededMonths = new Set<string>();
   let cursor = earliestMs;
   while (cursor < latestMs) {
@@ -56,10 +56,10 @@ export async function buildBGPatternContext(
   }
   neededMonths.add(monthKey(latestMs));
 
-  // Start MyLife fetch in parallel (doesn't depend on wellness or xDrip)
+  // Start MyLife fetch in parallel (doesn't depend on wellness or CGM)
   const mylifeDataP = getMyLifeData();
 
-  // Fetch wellness and xDrip readings (parallel with MyLife)
+  // Fetch wellness and CGM readings (parallel with MyLife)
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
   if (intervalsApiKey && completedDates.length > 0) {
     const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
@@ -70,10 +70,10 @@ export async function buildBGPatternContext(
   // Convert wellness data to fitness points (CTL/ATL/TSB from Intervals.icu)
   const fitnessData = wellnessToFitnessData(wellness);
 
-  const xdripReadings = await getXdripReadings(email, [...neededMonths]);
+  const bgReadings = await getBGReadings(email, [...neededMonths]);
 
-  // Build RunBGContexts from the full xDrip dataset
-  const bgContextMap = buildRunBGContexts(completedEvents, xdripReadings);
+  // Build RunBGContexts from the full CGM dataset
+  const bgContextMap = buildRunBGContexts(completedEvents, bgReadings);
   const bgContexts: Record<
     string,
     import("@/lib/runBGContext").RunBGContext

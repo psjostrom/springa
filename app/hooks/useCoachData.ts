@@ -4,7 +4,7 @@ import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { buildSystemPrompt } from "@/lib/coachContext";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
-import type { XdripReading } from "@/lib/xdrip";
+import type { BGReading } from "@/lib/cgm";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { PaceTable } from "@/lib/types";
 import type { WellnessEntry } from "@/lib/intervalsApi";
@@ -23,7 +23,7 @@ interface UseCoachDataOptions {
   trendSlope?: number | null;
   trendArrow?: string | null;
   lastUpdate?: Date | null;
-  readings?: XdripReading[];
+  readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
 }
 

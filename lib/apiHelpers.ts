@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "./auth";
-import { sha1 } from "./xdripDb";
+import { sha1 } from "./bgDb";
 import { signIn as mylifeSignIn, fetchMyLifeData, clearSession as clearMyLifeSession } from "./mylife";
 import type { MyLifeData } from "./mylife";
 
@@ -19,16 +19,16 @@ export async function requireAuth(): Promise<string> {
 }
 
 /**
- * Validate xDrip API secret header. Returns true if valid.
+ * Validate API secret header. Returns true if valid.
  *
- * Accepts both pre-hashed (xDrip sends SHA1) and raw (SugarRun sends plaintext).
+ * Accepts both pre-hashed (CGM source sends SHA1) and raw (SugarRun sends plaintext).
  * This is an intentional unification — the original routes handled these separately,
  * but accepting both forms is strictly more permissive and harmless.
  */
-export function validateXdripSecret(apiSecret: string | null): boolean {
-  if (!apiSecret || !process.env.XDRIP_SECRET) return false;
-  return apiSecret === sha1(process.env.XDRIP_SECRET)
-    || apiSecret === process.env.XDRIP_SECRET;
+export function validateApiSecret(apiSecret: string | null): boolean {
+  if (!apiSecret || !process.env.CGM_SECRET) return false;
+  return apiSecret === sha1(process.env.CGM_SECRET)
+    || apiSecret === process.env.CGM_SECRET;
 }
 
 /** Fetch MyLife data, returning null on failure or missing credentials. */

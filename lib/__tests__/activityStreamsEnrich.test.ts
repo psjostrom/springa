@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { enrichActivitiesWithGlucose } from "../activityStreamsEnrich";
 import type { CachedActivity } from "../activityStreamsDb";
 
-const mockGetXdripReadingsForRange = vi.fn();
-vi.mock("../xdripDb", () => ({
-  getXdripReadingsForRange: (...args: unknown[]) => mockGetXdripReadingsForRange(...args),
+const mockGetBGReadingsForRange = vi.fn();
+vi.mock("../bgDb", () => ({
+  getBGReadingsForRange: (...args: unknown[]) => mockGetBGReadingsForRange(...args),
 }));
 
 function makeActivity(overrides: Partial<CachedActivity> = {}): CachedActivity {
@@ -26,14 +26,14 @@ describe("enrichActivitiesWithGlucose", () => {
   it("returns empty array for empty activities", async () => {
     const result = await enrichActivitiesWithGlucose("test@test.com", []);
     expect(result).toHaveLength(0);
-    expect(mockGetXdripReadingsForRange).not.toHaveBeenCalled();
+    expect(mockGetBGReadingsForRange).not.toHaveBeenCalled();
   });
 
   it("returns activities with empty glucose when no runStartMs", async () => {
     const acts = [makeActivity({ runStartMs: undefined })];
     const result = await enrichActivitiesWithGlucose("test@test.com", acts);
     expect(result[0].glucose).toBeUndefined();
-    expect(mockGetXdripReadingsForRange).not.toHaveBeenCalled();
+    expect(mockGetBGReadingsForRange).not.toHaveBeenCalled();
   });
 
   it("fetches range based on activity timestamps and enriches", async () => {
@@ -46,15 +46,15 @@ describe("enrichActivitiesWithGlucose", () => {
       }),
     ];
 
-    // Return xDrip readings that cover the run window
-    mockGetXdripReadingsForRange.mockResolvedValue([
+    // Return CGM readings that cover the run window
+    mockGetBGReadingsForRange.mockResolvedValue([
       { ts: startMs, mmol: 10.0, sgv: 180, direction: "Flat" },
       { ts: startMs + 5 * 60 * 1000, mmol: 9.5, sgv: 171, direction: "Flat" },
       { ts: startMs + 30 * 60 * 1000, mmol: 8.0, sgv: 144, direction: "Flat" },
     ]);
 
     const result = await enrichActivitiesWithGlucose("test@test.com", acts);
-    expect(mockGetXdripReadingsForRange).toHaveBeenCalledOnce();
+    expect(mockGetBGReadingsForRange).toHaveBeenCalledOnce();
     expect(result[0].glucose!.length).toBeGreaterThan(0);
   });
 
@@ -65,12 +65,12 @@ describe("enrichActivitiesWithGlucose", () => {
       makeActivity({ activityId: "a2", runStartMs: undefined, hr: [{ time: 0, value: 120 }] }),
     ];
 
-    mockGetXdripReadingsForRange.mockResolvedValue([]);
+    mockGetBGReadingsForRange.mockResolvedValue([]);
 
     await enrichActivitiesWithGlucose("test@test.com", acts);
 
     // maxMs should be based on a1's startMs, not a2's undefined → 0 fallback
-    const [, callMinMs, callMaxMs] = mockGetXdripReadingsForRange.mock.calls[0];
+    const [, callMinMs, callMaxMs] = mockGetBGReadingsForRange.mock.calls[0];
     expect(callMinMs).toBeGreaterThan(1_000_000_000_000);
     expect(callMaxMs).toBeGreaterThan(1_000_000_000_000);
   });

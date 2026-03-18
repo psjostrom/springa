@@ -122,7 +122,7 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push(`Rating: ${ratingLabel(et.rating)}`);
   }
   if (runBGContext?.pre) {
-    lines.push(`Start BG (xDrip): ${runBGContext.pre.startBG.toFixed(1)} mmol/L`);
+    lines.push(`Start BG (CGM): ${runBGContext.pre.startBG.toFixed(1)} mmol/L`);
   }
 
   // Insulin & meal context (from MyLife Cloud)

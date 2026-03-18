@@ -20,7 +20,7 @@ export interface CachedActivity {
   runStartMs?: number;
 }
 
-/** CachedActivity after glucose enrichment from xDrip readings. */
+/** CachedActivity after glucose enrichment from CGM readings. */
 export type EnrichedActivity = CachedActivity & { glucose?: DataPoint[] };
 
 export async function getActivityStreams(

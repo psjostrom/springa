@@ -156,7 +156,7 @@ export interface CalendarEvent {
   cadence?: number;
   zoneTimes?: HRZoneData;
   streamData?: StreamData;
-  glucose?: DataPoint[]; // from xDrip CGM readings, not from Intervals streams
+  glucose?: DataPoint[]; // from CGM readings, not from Intervals streams
   fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
   totalCarbs?: number | null; // planned total carbs
   carbsIngested?: number | null; // actual carbs consumed (from activity)

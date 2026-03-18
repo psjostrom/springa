@@ -1,5 +1,5 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { getXdripReadingsForRun } from "@/lib/xdripDb";
+import { getBGReadingsForRun } from "@/lib/bgDb";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const readings = await getXdripReadingsForRun(email, start, end);
+  const readings = await getBGReadingsForRun(email, start, end);
 
   return NextResponse.json({ readings });
 }
