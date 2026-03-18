@@ -44,37 +44,37 @@ describe("requireAuth", () => {
 });
 
 describe("validateApiSecret", () => {
-  const ORIGINAL = process.env.XDRIP_SECRET;
+  const ORIGINAL = process.env.CGM_SECRET;
   afterEach(() => {
     if (ORIGINAL !== undefined) {
-      process.env.XDRIP_SECRET = ORIGINAL;
+      process.env.CGM_SECRET = ORIGINAL;
     } else {
-      delete process.env.XDRIP_SECRET;
+      delete process.env.CGM_SECRET;
     }
   });
 
   it("accepts pre-hashed secret (CGM behavior)", () => {
-    process.env.XDRIP_SECRET = "mysecret";
+    process.env.CGM_SECRET = "mysecret";
     expect(validateApiSecret(sha1("mysecret"))).toBe(true);
   });
 
   it("accepts raw secret (SugarRun behavior)", () => {
-    process.env.XDRIP_SECRET = "mysecret";
+    process.env.CGM_SECRET = "mysecret";
     expect(validateApiSecret("mysecret")).toBe(true);
   });
 
   it("rejects wrong secret", () => {
-    process.env.XDRIP_SECRET = "mysecret";
+    process.env.CGM_SECRET = "mysecret";
     expect(validateApiSecret("wrong")).toBe(false);
   });
 
   it("rejects null", () => {
-    process.env.XDRIP_SECRET = "mysecret";
+    process.env.CGM_SECRET = "mysecret";
     expect(validateApiSecret(null)).toBe(false);
   });
 
-  it("rejects when XDRIP_SECRET not set", () => {
-    delete process.env.XDRIP_SECRET;
+  it("rejects when CGM_SECRET not set", () => {
+    delete process.env.CGM_SECRET;
     expect(validateApiSecret("anything")).toBe(false);
   });
 });

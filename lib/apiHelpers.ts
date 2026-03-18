@@ -26,9 +26,9 @@ export async function requireAuth(): Promise<string> {
  * but accepting both forms is strictly more permissive and harmless.
  */
 export function validateApiSecret(apiSecret: string | null): boolean {
-  if (!apiSecret || !process.env.XDRIP_SECRET) return false;
-  return apiSecret === sha1(process.env.XDRIP_SECRET)
-    || apiSecret === process.env.XDRIP_SECRET;
+  if (!apiSecret || !process.env.CGM_SECRET) return false;
+  return apiSecret === sha1(process.env.CGM_SECRET)
+    || apiSecret === process.env.CGM_SECRET;
 }
 
 /** Fetch MyLife data, returning null on failure or missing credentials. */

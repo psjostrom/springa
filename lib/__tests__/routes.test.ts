@@ -174,16 +174,16 @@ beforeEach(async () => {
   mockSendNotification.mockReset().mockResolvedValue({});
 
   // Save and set env vars for tests
-  origApiSecret = process.env.XDRIP_SECRET;
+  origApiSecret = process.env.CGM_SECRET;
   origIntervalsApiKey = process.env.INTERVALS_API_KEY;
-  process.env.XDRIP_SECRET = SECRET;
+  process.env.CGM_SECRET = SECRET;
   process.env.INTERVALS_API_KEY = "test-key";
 });
 
 afterEach(() => {
   // Restore env vars
-  if (origApiSecret !== undefined) process.env.XDRIP_SECRET = origApiSecret;
-  else process.env.XDRIP_SECRET = "";
+  if (origApiSecret !== undefined) process.env.CGM_SECRET = origApiSecret;
+  else process.env.CGM_SECRET = "";
   if (origIntervalsApiKey !== undefined) process.env.INTERVALS_API_KEY = origIntervalsApiKey;
   else process.env.INTERVALS_API_KEY = "";
 });
