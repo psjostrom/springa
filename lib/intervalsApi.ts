@@ -682,6 +682,7 @@ export async function fetchPaceCurves(apiKey: string, curveId = "all"): Promise<
           activityId: id,
           activityName: activity.name,
           activityDate: activity.start_date_local,
+          movingTime: activity.moving_time,
         };
       }
     }
