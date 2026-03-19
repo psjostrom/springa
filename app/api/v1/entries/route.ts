@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
 import {
   getBGReadings,
@@ -8,14 +8,60 @@ import {
 import { db } from "@/lib/db";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/cgm";
 
+async function getEmail(): Promise<string | null> {
+  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
+  const email = result.rows[0]?.email;
+  return typeof email === "string" ? email : null;
+}
+
+export async function GET(req: NextRequest) {
+  if (!validateApiSecret(req.headers.get("api-secret"))) {
+    return unauthorized();
+  }
+
+  const email = await getEmail();
+  if (!email) {
+    return NextResponse.json({ error: "No user configured" }, { status: 401 });
+  }
+
+  const params = req.nextUrl.searchParams;
+  const since = Number(params.get("find[date][$gt]") ?? "0");
+  const count = Math.min(Number(params.get("count") ?? "2016"), 10000);
+
+  // Determine which monthly shards to read
+  const now = Date.now();
+  const startTs = since > 0 ? since : now - 30 * 24 * 60 * 60 * 1000;
+  const months = new Set<string>();
+  let cursor = startTs;
+  while (cursor <= now) {
+    months.add(monthKey(cursor));
+    cursor += 28 * 24 * 60 * 60 * 1000;
+  }
+  months.add(monthKey(now));
+
+  const readings = await getBGReadings(email, [...months]);
+  const filtered = readings
+    .filter((r) => r.ts > since)
+    .slice(0, count);
+
+  const entries = filtered.map((r) => ({
+    sgv: r.sgv,
+    date: r.ts,
+    dateString: new Date(r.ts).toISOString(),
+    direction: r.direction,
+    type: "sgv" as const,
+    device: "Springa",
+  }));
+
+  return NextResponse.json(entries);
+}
+
 export async function POST(req: Request) {
   if (!validateApiSecret(req.headers.get("api-secret"))) {
     return unauthorized();
   }
 
-  // Get the single user's email for DB operations
-  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
-  const email = result.rows[0]?.email as string;
+  const email = await getEmail();
   if (!email) {
     return NextResponse.json({ error: "No user configured" }, { status: 401 });
   }
