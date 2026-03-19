@@ -3,11 +3,13 @@ import type { MyLifeEvent } from "./mylife";
 import type { Treatment } from "./treatmentsDb";
 
 /**
- * Generate a stable, deterministic ID from event properties.
- * Uses SHA-256 truncated to 24 hex chars (same length as MongoDB ObjectId).
+ * Derive a treatment ID from the MyLife event.
+ * Prefers the hidden GUID from the Telerik grid (stable across value edits).
+ * Falls back to a SHA-256 hash of event properties if no GUID available.
  */
-function stableId(timestamp: string, type: string, value: number): string {
-  const input = `${timestamp}|${type}|${value}`;
+function treatmentId(event: MyLifeEvent): string {
+  if (event.id) return event.id;
+  const input = `${event.timestamp}|${event.type}|${event.value}`;
   return createHash("sha256").update(input).digest("hex").slice(0, 24);
 }
 
@@ -83,7 +85,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
           ? "Meal Bolus"
           : "Correction Bolus";
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: eventType,
           insulin: event.value,
@@ -98,7 +100,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
 
       case "Carbohydrates": {
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: "Carb Correction",
           insulin: null,
@@ -113,7 +115,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
 
       case "Hypo Carbohydrates": {
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: "Carb Correction",
           insulin: null,
@@ -130,7 +132,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
         const basalIdx = basalEvents.indexOf(event);
         const dur = basalDuration(event, basalEvents, basalIdx);
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: "Temp Basal",
           insulin: null,
@@ -145,7 +147,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
 
       case "Boost": {
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: "Temporary Target",
           insulin: null,
@@ -160,7 +162,7 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
 
       case "Ease-off": {
         treatments.push({
-          id: stableId(event.timestamp, event.type, event.value),
+          id: treatmentId(event),
           created_at: event.timestamp,
           event_type: "Temporary Target",
           insulin: null,

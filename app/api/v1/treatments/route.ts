@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { validateApiSecret, unauthorized, getMyLifeData } from "@/lib/apiHelpers";
 import { db } from "@/lib/db";
-import { saveTreatments, getTreatments } from "@/lib/treatmentsDb";
+import { saveTreatments, getTreatments, getLastTreatmentTs } from "@/lib/treatmentsDb";
 import { mapMyLifeToTreatments, treatmentToNightscout } from "@/lib/mylifeToNightscout";
 
-/** In-memory tracker for last sync time per email. */
-const lastSyncTime = new Map<string, number>();
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * GET /api/v1/treatments — Nightscout-compatible treatments endpoint.
  *
- * Lazy sync: if last mylife sync was >5 min ago, fetches fresh data
- * from mylife Cloud, converts to NS format, upserts to DB, then serves.
+ * Lazy sync: if the most recent treatment in the DB is older than 5 min,
+ * fetches fresh data from mylife Cloud, converts to NS format, upserts to DB.
+ * Uses DB-backed timestamp (not in-memory) so it survives serverless cold starts.
  *
  * Query params (Nightscout-compatible):
  *   count — max results (default 10, max 500)
@@ -35,16 +34,17 @@ export async function GET(req: Request) {
     return NextResponse.json([], { status: 200 });
   }
 
-  // Lazy sync: fetch from mylife Cloud if stale
-  const lastSync = lastSyncTime.get(email) ?? 0;
-  if (Date.now() - lastSync > SYNC_INTERVAL_MS) {
+  // Lazy sync: fetch from mylife Cloud if stale.
+  // Uses DB-backed timestamp so it survives serverless cold starts.
+  const lastTs = await getLastTreatmentTs(email);
+  const isStale = !lastTs || Date.now() - lastTs > SYNC_INTERVAL_MS;
+  if (isStale) {
     try {
       const data = await getMyLifeData();
       if (data && data.events.length > 0) {
         const treatments = mapMyLifeToTreatments(data.events);
         await saveTreatments(email, treatments);
       }
-      lastSyncTime.set(email, Date.now());
     } catch (err) {
       console.error("[treatments] mylife sync failed:", err);
       // Serve stale data rather than failing
@@ -73,11 +73,11 @@ export async function GET(req: Request) {
   });
 }
 
-/** Parse a timestamp that could be ISO 8601 or ms epoch. */
-function parseTimestamp(raw: string): number {
+/** Parse a timestamp that could be ISO 8601 or ms epoch. Returns undefined if unparseable. */
+function parseTimestamp(raw: string): number | undefined {
   const asNum = Number(raw);
   if (!isNaN(asNum) && asNum > 1e12) return asNum; // ms epoch
   const asDate = new Date(raw).getTime();
   if (!isNaN(asDate)) return asDate;
-  return 0;
+  return undefined; // invalid input → no filter (not epoch 0)
 }

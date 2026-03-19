@@ -108,10 +108,22 @@ describe("mapMyLifeToTreatments", () => {
     expect(treatments[0].entered_by).toContain("Ease-off");
   });
 
-  it("generates stable deterministic IDs", () => {
-    const events = [bolus("2026-03-19T08:42:00+01:00", 5.0)];
-    const first = mapMyLifeToTreatments(events);
-    const second = mapMyLifeToTreatments(events);
+  it("uses mylife GUID as treatment ID when available", () => {
+    const event = bolus("2026-03-19T08:42:00+01:00", 5.0);
+    const treatments = mapMyLifeToTreatments([event]);
+    expect(treatments[0].id).toBe(event.id); // UUID from mylife
+  });
+
+  it("falls back to hash ID when mylife GUID is empty", () => {
+    const event: MyLifeEvent = {
+      timestamp: "2026-03-19T08:42:00+01:00",
+      type: "Bolus",
+      value: 5.0,
+      unit: "U",
+      id: "", // empty GUID
+    };
+    const first = mapMyLifeToTreatments([event]);
+    const second = mapMyLifeToTreatments([event]);
     expect(first[0].id).toBe(second[0].id);
     expect(first[0].id).toHaveLength(24);
   });
