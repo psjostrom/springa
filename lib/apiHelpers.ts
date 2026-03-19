@@ -47,6 +47,14 @@ export async function getMyLifeData(tz?: string): Promise<MyLifeData | null> {
   }
 }
 
+/** Get the single configured user's email, or null if not set. */
+export async function getEmail(): Promise<string | null> {
+  const { db } = await import("./db");
+  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
+  const email = result.rows[0]?.email;
+  return typeof email === "string" ? email : null;
+}
+
 /** Standard 401 response for auth failures. */
 export function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

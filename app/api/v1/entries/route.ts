@@ -1,20 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
+import { NextResponse } from "next/server";
+import { validateApiSecret, unauthorized, getEmail } from "@/lib/apiHelpers";
 import {
   getBGReadings,
   saveBGReadings,
   monthKey,
 } from "@/lib/bgDb";
-import { db } from "@/lib/db";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/cgm";
 
-async function getEmail(): Promise<string | null> {
-  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
-  const email = result.rows[0]?.email;
-  return typeof email === "string" ? email : null;
-}
-
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   if (!validateApiSecret(req.headers.get("api-secret"))) {
     return unauthorized();
   }
@@ -24,7 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No user configured" }, { status: 401 });
   }
 
-  const params = req.nextUrl.searchParams;
+  const params = new URL(req.url).searchParams;
   const since = Number(params.get("find[date][$gt]") ?? "0");
   const count = Math.min(Number(params.get("count") ?? "2016"), 10000);
 

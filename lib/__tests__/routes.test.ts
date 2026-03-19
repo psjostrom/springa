@@ -59,7 +59,7 @@ const {
   monthKey,
   sha1,
 } = bgDb;
-import { POST as entriesPOST } from "@/app/api/v1/entries/route";
+import { GET as entriesGET, POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as bgGET } from "@/app/api/bg/route";
 import {
   GET as settingsGET,
@@ -101,6 +101,14 @@ function postEntries(apiSecret: string, body: unknown) {
       method: "POST",
       headers: { "api-secret": apiSecret, "content-type": "application/json" },
       body: JSON.stringify(body),
+    }),
+  );
+}
+
+function getEntries(apiSecret: string, params = "") {
+  return entriesGET(
+    new Request(`http://localhost/api/v1/entries${params ? `?${params}` : ""}`, {
+      headers: { "api-secret": apiSecret },
     }),
   );
 }
@@ -992,6 +1000,113 @@ describe("prerun-carbs route", () => {
     expect((await getPrerunCarbs("evt-123")).status).toBe(401);
     expect((await postPrerunCarbs({ eventId: "evt-123", carbsG: 30 })).status).toBe(401);
     expect((await deletePrerunCarbs("evt-123")).status).toBe(401);
+  });
+});
+
+// --- GET /api/v1/entries ---
+
+describe("GET /api/v1/entries", () => {
+  it("rejects missing api-secret", async () => {
+    const res = await getEntries("");
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects wrong api-secret", async () => {
+    const res = await getEntries("wrong-secret");
+    expect(res.status).toBe(401);
+  });
+
+  it("accepts plaintext api-secret", async () => {
+    await seedUser();
+    const res = await getEntries(SECRET);
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts SHA-1 hashed api-secret", async () => {
+    await seedUser();
+    const res = await getEntries(sha1(SECRET));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 401 when no user configured", async () => {
+    const res = await getEntries(SECRET);
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("No user configured");
+  });
+
+  it("returns empty array when no readings exist", async () => {
+    await seedUser();
+    const res = await getEntries(SECRET);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns entries in Nightscout format", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+    const ts = new Date("2026-02-20T10:00:00Z").getTime();
+
+    await postEntries(hash, [reading(145, "2026-02-20T10:00:00Z")]);
+
+    const res = await getEntries(SECRET, `find[date][$gt]=0&count=100`);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({
+      sgv: 145,
+      date: ts,
+      direction: expect.any(String),
+      type: "sgv",
+      device: "Springa",
+    });
+    expect(body[0].dateString).toBe(new Date(ts).toISOString());
+  });
+
+  it("filters by find[date][$gt]", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    await postEntries(hash, [
+      reading(140, "2026-02-20T10:00:00Z"),
+      reading(150, "2026-02-20T10:05:00Z"),
+      reading(160, "2026-02-20T10:10:00Z"),
+    ]);
+
+    const cutoff = new Date("2026-02-20T10:04:00Z").getTime();
+    const res = await getEntries(SECRET, `find[date][$gt]=${cutoff}&count=100`);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    expect(body[0].sgv).toBe(150);
+    expect(body[1].sgv).toBe(160);
+  });
+
+  it("respects count param", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    await postEntries(hash, [
+      reading(140, "2026-02-20T10:00:00Z"),
+      reading(150, "2026-02-20T10:05:00Z"),
+      reading(160, "2026-02-20T10:10:00Z"),
+    ]);
+
+    const res = await getEntries(SECRET, `find[date][$gt]=0&count=2`);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+  });
+
+  it("defaults to last 30 days when no since param", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    // Recent reading (within 30 days)
+    const recent = new Date();
+    recent.setDate(recent.getDate() - 1);
+    await postEntries(hash, [reading(150, recent.toISOString())]);
+
+    const res = await getEntries(SECRET);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
   });
 });
 
