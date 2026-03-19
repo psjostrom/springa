@@ -40,6 +40,13 @@ vi.mock("@/lib/intervalsHelpers", () => ({
   fetchRunContext: (...args: unknown[]) => mockFetchRunContext(...args),
 }));
 
+// Mock next/server's after() — runs the callback synchronously in tests
+// since there's no Next.js request scope available.
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: (fn: () => Promise<void>) => { fn().catch(() => {}); } };
+});
+
 const mockSendNotification = vi.fn().mockResolvedValue({});
 vi.mock("web-push", () => ({
   default: {
