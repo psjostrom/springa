@@ -59,7 +59,7 @@ const {
   monthKey,
   sha1,
 } = bgDb;
-import { POST as entriesPOST } from "@/app/api/v1/entries/route";
+import { GET as entriesGET, POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as bgGET } from "@/app/api/bg/route";
 import {
   GET as settingsGET,
@@ -74,6 +74,9 @@ import {
   GET as feedbackGET,
   POST as feedbackPOST,
 } from "@/app/api/run-feedback/route";
+import { GET as treatmentsGET } from "@/app/api/v1/treatments/route";
+import { saveTreatments } from "@/lib/treatmentsDb";
+import type { Treatment } from "@/lib/treatmentsDb";
 import {
   GET as prerunCarbsGET,
   POST as prerunCarbsPOST,
@@ -98,6 +101,14 @@ function postEntries(apiSecret: string, body: unknown) {
       method: "POST",
       headers: { "api-secret": apiSecret, "content-type": "application/json" },
       body: JSON.stringify(body),
+    }),
+  );
+}
+
+function getEntries(apiSecret: string, params = "") {
+  return entriesGET(
+    new Request(`http://localhost/api/v1/entries${params ? `?${params}` : ""}`, {
+      headers: { "api-secret": apiSecret },
     }),
   );
 }
@@ -989,5 +1000,258 @@ describe("prerun-carbs route", () => {
     expect((await getPrerunCarbs("evt-123")).status).toBe(401);
     expect((await postPrerunCarbs({ eventId: "evt-123", carbsG: 30 })).status).toBe(401);
     expect((await deletePrerunCarbs("evt-123")).status).toBe(401);
+  });
+});
+
+// --- GET /api/v1/entries ---
+
+describe("GET /api/v1/entries", () => {
+  it("rejects missing api-secret", async () => {
+    const res = await getEntries("");
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects wrong api-secret", async () => {
+    const res = await getEntries("wrong-secret");
+    expect(res.status).toBe(401);
+  });
+
+  it("accepts plaintext api-secret", async () => {
+    await seedUser();
+    const res = await getEntries(SECRET);
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts SHA-1 hashed api-secret", async () => {
+    await seedUser();
+    const res = await getEntries(sha1(SECRET));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 401 when no user configured", async () => {
+    const res = await getEntries(SECRET);
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("No user configured");
+  });
+
+  it("returns empty array when no readings exist", async () => {
+    await seedUser();
+    const res = await getEntries(SECRET);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns entries in Nightscout format", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+    const ts = new Date("2026-02-20T10:00:00Z").getTime();
+
+    await postEntries(hash, [reading(145, "2026-02-20T10:00:00Z")]);
+
+    const res = await getEntries(SECRET, `find[date][$gt]=0&count=100`);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({
+      sgv: 145,
+      date: ts,
+      direction: expect.any(String),
+      type: "sgv",
+      device: "Springa",
+    });
+    expect(body[0].dateString).toBe(new Date(ts).toISOString());
+  });
+
+  it("filters by find[date][$gt]", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    await postEntries(hash, [
+      reading(140, "2026-02-20T10:00:00Z"),
+      reading(150, "2026-02-20T10:05:00Z"),
+      reading(160, "2026-02-20T10:10:00Z"),
+    ]);
+
+    const cutoff = new Date("2026-02-20T10:04:00Z").getTime();
+    const res = await getEntries(SECRET, `find[date][$gt]=${cutoff}&count=100`);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    expect(body[0].sgv).toBe(150);
+    expect(body[1].sgv).toBe(160);
+  });
+
+  it("respects count param", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    await postEntries(hash, [
+      reading(140, "2026-02-20T10:00:00Z"),
+      reading(150, "2026-02-20T10:05:00Z"),
+      reading(160, "2026-02-20T10:10:00Z"),
+    ]);
+
+    const res = await getEntries(SECRET, `find[date][$gt]=0&count=2`);
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+  });
+
+  it("defaults to last 30 days when no since param", async () => {
+    await seedUser();
+    const hash = sha1(SECRET);
+
+    // Recent reading (within 30 days)
+    const recent = new Date();
+    recent.setDate(recent.getDate() - 1);
+    await postEntries(hash, [reading(150, recent.toISOString())]);
+
+    const res = await getEntries(SECRET);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+  });
+});
+
+// --- GET /api/v1/treatments ---
+
+function getTreatmentsReq(apiSecret: string, params = "") {
+  return treatmentsGET(
+    new Request(`http://localhost/api/v1/treatments${params ? `?${params}` : ""}`, {
+      headers: { "api-secret": apiSecret },
+    }),
+  );
+}
+
+function makeTreatment(overrides: Partial<Treatment> & { id: string; ts: number }): Treatment {
+  return {
+    created_at: new Date(overrides.ts).toISOString(),
+    event_type: "Correction Bolus",
+    insulin: null,
+    carbs: null,
+    basal_rate: null,
+    duration: null,
+    entered_by: "test",
+    ...overrides,
+  };
+}
+
+describe("GET /api/v1/treatments", () => {
+  beforeEach(async () => {
+    origApiSecret = process.env.CGM_SECRET;
+    process.env.CGM_SECRET = SECRET;
+    await seedUser();
+    // Clear treatments table
+    await testDb().execute({ sql: "DELETE FROM treatments", args: [] });
+  });
+
+  afterEach(() => {
+    process.env.CGM_SECRET = origApiSecret;
+  });
+
+  it("rejects missing api-secret", async () => {
+    const res = await getTreatmentsReq("");
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects wrong api-secret", async () => {
+    const res = await getTreatmentsReq("wrong-secret");
+    expect(res.status).toBe(401);
+  });
+
+  it("accepts plaintext api-secret", async () => {
+    const res = await getTreatmentsReq(SECRET);
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts SHA-1 hashed api-secret", async () => {
+    const res = await getTreatmentsReq(sha1(SECRET));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns empty array when no treatments exist", async () => {
+    const res = await getTreatmentsReq(SECRET);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("returns treatments in NS format", async () => {
+    const now = Date.now();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "t1", ts: now, insulin: 5.0, event_type: "Meal Bolus" }),
+    ]);
+
+    const res = await getTreatmentsReq(SECRET);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]._id).toBe("t1");
+    expect(body[0].eventType).toBe("Meal Bolus");
+    expect(body[0].insulin).toBe(5.0);
+    expect(body[0].enteredBy).toBe("test");
+  });
+
+  it("respects count param", async () => {
+    const now = Date.now();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "t1", ts: now - 3000, insulin: 1.0 }),
+      makeTreatment({ id: "t2", ts: now - 2000, insulin: 2.0 }),
+      makeTreatment({ id: "t3", ts: now - 1000, insulin: 3.0 }),
+    ]);
+
+    const res = await getTreatmentsReq(SECRET, "count=2");
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    // Newest first
+    expect(body[0]._id).toBe("t3");
+    expect(body[1]._id).toBe("t2");
+  });
+
+  it("filters by find[created_at][$gte]", async () => {
+    const base = new Date("2026-03-19T10:00:00Z").getTime();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "old", ts: base - 60000, insulin: 1.0 }),
+      makeTreatment({ id: "new", ts: base + 60000, insulin: 2.0 }),
+    ]);
+
+    const res = await getTreatmentsReq(SECRET, `count=100&find[created_at][$gte]=${base}`);
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]._id).toBe("new");
+  });
+
+  it("filters by find[eventType]", async () => {
+    const now = Date.now();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "bolus", ts: now - 2000, event_type: "Correction Bolus", insulin: 3.0 }),
+      makeTreatment({ id: "carbs", ts: now - 1000, event_type: "Carb Correction", carbs: 15.0 }),
+    ]);
+
+    const res = await getTreatmentsReq(SECRET, "count=100&find[eventType]=Carb+Correction");
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]._id).toBe("carbs");
+  });
+
+  it("ignores invalid timestamp in find param", async () => {
+    const now = Date.now();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "t1", ts: now, insulin: 5.0 }),
+    ]);
+
+    // Invalid $gte should be ignored (no filter), not return epoch 0 results
+    const res = await getTreatmentsReq(SECRET, "count=100&find[created_at][$gte]=garbage");
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+  });
+
+  it("omits null fields from NS response", async () => {
+    const now = Date.now();
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "t1", ts: now, event_type: "Carb Correction", carbs: 30.0 }),
+    ]);
+
+    const res = await getTreatmentsReq(SECRET);
+    const body = await res.json();
+    expect(body[0]).not.toHaveProperty("insulin");
+    expect(body[0]).not.toHaveProperty("absolute");
+    expect(body[0]).not.toHaveProperty("duration");
+    expect(body[0].carbs).toBe(30.0);
   });
 });

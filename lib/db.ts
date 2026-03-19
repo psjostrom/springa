@@ -93,5 +93,21 @@ CREATE TABLE IF NOT EXISTS prerun_carbs (
   created_at     INTEGER NOT NULL,
   PRIMARY KEY (email, event_id)
 );
+
+CREATE TABLE IF NOT EXISTS treatments (
+  email          TEXT NOT NULL,
+  id             TEXT NOT NULL,
+  created_at     TEXT NOT NULL,
+  event_type     TEXT NOT NULL,
+  insulin        REAL,
+  carbs          REAL,
+  basal_rate     REAL,
+  duration       INTEGER,
+  entered_by     TEXT,
+  ts             INTEGER NOT NULL,
+  PRIMARY KEY (email, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_treatments_ts ON treatments(email, ts);
 `;
 

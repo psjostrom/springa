@@ -21,7 +21,7 @@ import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { SettingsModal } from "./components/SettingsModal";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
-import { Settings } from "lucide-react";
+import { Settings, Sun, Moon } from "lucide-react";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -87,13 +87,27 @@ function HomeContent() {
     });
   };
 
+  // Theme toggle
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("springa-theme");
+      return stored === "light" ? "light" : "dark";
+    }
+    return "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem("springa-theme", theme);
+  }, [theme]);
+
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
   if (settingsLoading) return splashFallback;
 
   return (
-    <div className="h-screen bg-bg flex flex-col text-white font-sans overflow-hidden">
+    <div className="h-screen bg-bg flex flex-col text-text font-sans overflow-hidden">
       <div className="bg-surface border-b border-border flex-shrink-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
@@ -109,6 +123,13 @@ function HomeContent() {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           <div className="flex items-center gap-2">
             <CurrentBGPill onClick={bgGraph.open} />
+            <button
+              onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); }}
+              className="p-2 rounded-lg text-muted hover:text-brand hover:bg-border transition"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
             <button
               onClick={() => { setShowSettings(true); }}
               className="p-2 rounded-lg text-muted hover:text-brand hover:bg-border transition"
