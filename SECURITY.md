@@ -9,7 +9,7 @@ Springa processes continuous glucose monitor (CGM) readings, insulin-on-board es
 - **Hosting:** Vercel (serverless, no persistent server)
 - **Database:** Turso (libsql), encrypted at rest
 - **Auth:** NextAuth with Google OAuth, restricted to a single-email allowlist
-- **CGM ingestion:** `/api/v1/entries` endpoint authenticated with `CGM_SECRET` (shared secret with Strimma, the CGM companion app)
+- **CGM ingestion:** `/api/v1/entries` endpoint authenticated with `CGM_SECRET`. Accepts both SHA1-hashed (Strimma, Android CGM app) and plaintext (SugarRun, Garmin watch datafield) forms of the secret.
 - **Scheduled tasks:** Vercel Cron Jobs authenticated with `CRON_SECRET`
 
 ## Credential Storage
