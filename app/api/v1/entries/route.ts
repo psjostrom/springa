@@ -35,6 +35,7 @@ export async function GET(req: Request) {
   const readings = await getBGReadings(email, [...months]);
   const filtered = readings
     .filter((r) => r.ts > since)
+    .sort((a, b) => a.ts - b.ts)
     .slice(0, count);
 
   const entries = filtered.map((r) => ({
