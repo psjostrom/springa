@@ -118,7 +118,7 @@ export function KmSplitsSection({
             style={{ gridTemplateColumns: gridCols }}
           >
             <span className="text-muted tabular-nums">{split.km}</span>
-            <span className="text-white font-semibold tabular-nums">
+            <span className="text-text font-semibold tabular-nums">
               {formatPace(split.paceMinPerKm)}
             </span>
             <div className="w-full min-w-0">

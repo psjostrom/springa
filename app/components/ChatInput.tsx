@@ -47,7 +47,7 @@ export function ChatInput({ value, onChange, onSubmit, isLoading }: ChatInputPro
         placeholder="Ask your coach..."
         rows={1}
         disabled={isLoading}
-        className="flex-1 resize-none bg-bg border border-border rounded-xl px-3 py-2 text-sm text-white placeholder-muted/50 focus:outline-none focus:border-brand/50 disabled:opacity-50"
+        className="flex-1 resize-none bg-surface-alt border border-border rounded-xl px-3 py-2 text-sm text-text placeholder-muted/50 focus:outline-none focus:border-brand/50 disabled:opacity-50"
       />
       <button
         onClick={onSubmit}

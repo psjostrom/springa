@@ -38,7 +38,7 @@ function StepRow({ step }: { step: WorkoutStep }) {
           {step.label}
         </span>
       )}
-      <span className="font-mono text-base font-semibold text-white w-12 shrink-0">
+      <span className="font-mono text-base font-semibold text-text w-12 shrink-0">
         {step.duration}
       </span>
       <span
@@ -56,7 +56,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   return (
     <div className="mb-3 last:mb-0">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-sm font-bold text-white">
+        <span className="text-sm font-bold text-text">
           {section.name}
         </span>
         {section.repeats && (
@@ -81,7 +81,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
     return (
-      <div className="bg-border rounded-lg p-3 sm:p-4">
+      <div className="bg-surface-alt rounded-lg p-3 sm:p-4">
         <div className="text-sm whitespace-pre-wrap text-muted">{description}</div>
       </div>
     );
@@ -148,7 +148,7 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
                 const entry = getPaceForZone(paceTable ?? FALLBACK_PACE_TABLE, zone);
                 return (
                   <span key={zone} className="text-sm text-muted">
-                    <span className="font-semibold text-white">{getZoneLabel(zone)}</span>{" "}
+                    <span className="font-semibold text-text">{getZoneLabel(zone)}</span>{" "}
                     ~{formatPace(entry.avgPace)}/km
                     {entry.avgHr ? ` (${entry.avgHr} bpm)` : ""}
                   </span>
@@ -161,12 +161,12 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
 
       {/* Notes */}
       {notes && (
-        <div className="bg-border px-3 py-2.5 border-t border-border text-sm text-muted leading-relaxed">
+        <div className="bg-surface-alt px-3 py-2.5 border-t border-border text-sm text-muted leading-relaxed">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
               p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-              strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+              strong: ({ children }) => <strong className="font-bold text-text">{children}</strong>,
               em: ({ children }) => <em className="text-muted">{children}</em>,
             }}
           >

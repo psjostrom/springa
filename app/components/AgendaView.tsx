@@ -44,7 +44,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
         <div className="text-sm text-muted uppercase">
           {format(event.date, "EEE", { locale: enGB })}
         </div>
-        <div className="text-2xl sm:text-3xl font-bold text-white">
+        <div className="text-2xl sm:text-3xl font-bold text-text">
           {format(event.date, "d", { locale: enGB })}
         </div>
         <div className="text-sm text-muted">
@@ -62,12 +62,12 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
             <h3
               className={`font-semibold truncate px-2 py-0.5 rounded text-sm border ${
                 isMissed
-                  ? "bg-tint-error text-white border-error/30 sm:bg-transparent sm:text-error sm:border-transparent sm:px-0 sm:py-0 line-through"
+                  ? "bg-tint-error text-text border-error/30 sm:bg-transparent sm:text-error sm:border-transparent sm:px-0 sm:py-0 line-through"
                   : event.type === "completed"
-                    ? "bg-tint-success text-white border-success/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                    ? "bg-tint-success text-text border-success/30 sm:bg-transparent sm:text-text sm:border-transparent sm:px-0 sm:py-0"
                     : event.type === "race"
-                      ? "bg-tint-error text-white border-error/30 sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
-                      : "bg-border text-white border-border sm:bg-transparent sm:text-white sm:border-transparent sm:px-0 sm:py-0"
+                      ? "bg-tint-error text-text border-error/30 sm:bg-transparent sm:text-text sm:border-transparent sm:px-0 sm:py-0"
+                      : "bg-surface-alt text-text border-border sm:bg-transparent sm:text-text sm:border-transparent sm:px-0 sm:py-0"
               }`}
             >
               {event.name}
@@ -76,12 +76,12 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
           <span
             className={`px-2 py-0.5 rounded text-sm font-medium flex-shrink-0 ${
               isMissed
-                ? "hidden sm:inline-block bg-tint-error text-white"
+                ? "hidden sm:inline-block bg-tint-error text-text"
                 : event.type === "completed"
-                  ? "hidden sm:inline-block bg-tint-success text-white"
+                  ? "hidden sm:inline-block bg-tint-success text-text"
                   : event.type === "race"
-                    ? "hidden sm:inline-block bg-tint-error text-white"
-                    : "hidden sm:inline-block bg-border text-muted"
+                    ? "hidden sm:inline-block bg-tint-error text-text"
+                    : "hidden sm:inline-block bg-surface-alt text-muted"
             }`}
           >
             {isMissed
@@ -98,20 +98,20 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
           <>
             <div className="flex flex-wrap gap-x-3 text-sm text-muted mb-2">
               {event.duration != null && (
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-text">
                   {formatDuration(event.duration)}
                 </span>
               )}
               {event.distance && (
                 <span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-text">
                     {(event.distance / 1000).toFixed(2)} km
                   </span>
                 </span>
               )}
               {event.pace && (
                 <span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-text">
                     {formatPace(event.pace)}
                   </span>{" "}
                   /km
@@ -119,7 +119,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
               )}
               {event.avgHr && (
                 <span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-text">
                     {event.avgHr}
                   </span>{" "}
                   bpm
@@ -162,7 +162,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-white bg-border border border-border rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-text bg-surface-alt border border-border rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
@@ -179,7 +179,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                   totalCarbs != null ? `${totalCarbs}g total` : null,
                 ].filter(Boolean);
                 return (
-                  <div className="text-sm font-medium text-white bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
+                  <div className="text-sm font-medium text-text bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
                     {parts.join(" · ")}
                   </div>
                 );
@@ -228,7 +228,7 @@ export function AgendaView({
       <div className="space-y-2">
         <button
           onClick={() => { setView("upcoming"); }}
-          className="flex items-center gap-1.5 py-2 text-sm text-muted hover:text-white transition"
+          className="flex items-center gap-1.5 py-2 text-sm text-muted hover:text-text transition"
         >
           <ChevronLeft size={16} />
           Back to upcoming
@@ -253,7 +253,7 @@ export function AgendaView({
       {hasEarlier && (
         <button
           onClick={() => { setView("history"); }}
-          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-muted hover:text-white transition"
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-muted hover:text-text transition"
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}

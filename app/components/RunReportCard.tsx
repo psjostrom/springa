@@ -28,14 +28,14 @@ function BGPopover({ content, onClose }: { content: PopoverContent; onClose: () 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-surface rounded-xl border border-border p-4 w-72 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-white">{content.title}</span>
-          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-white text-sm">✕</button>
+          <span className="text-sm font-semibold text-text">{content.title}</span>
+          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-text text-sm">✕</button>
         </div>
         <div className="space-y-1.5 text-sm mb-3">
           {content.lines.map((line) => (
             <div key={line.label} className="flex justify-between">
               <span className="text-muted">{line.label}</span>
-              <span className="text-white">{line.value}</span>
+              <span className="text-text">{line.value}</span>
             </div>
           ))}
         </div>
@@ -67,7 +67,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
       <button
         type="button"
         onClick={() => { setShowPopover(true); }}
-        className="bg-border rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
+        className="bg-surface-alt rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
@@ -76,7 +76,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
             {judgmentLabel}
           </span>
         </div>
-        <div className="text-lg font-bold text-white">
+        <div className="text-lg font-bold text-text">
           {value} <span className="text-sm text-muted font-normal">{unit}</span>
         </div>
         <div className="h-1 bg-surface rounded-full overflow-hidden">
@@ -93,7 +93,7 @@ function BGCard({ icon: Icon, iconColor, label, value, unit, judgmentLabel, judg
 
 function SkeletonCard({ label }: { label: string }) {
   return (
-    <div className="bg-border rounded-lg p-3 space-y-1.5">
+    <div className="bg-surface-alt rounded-lg p-3 space-y-1.5">
       <div className="text-xs text-muted uppercase tracking-wider font-semibold">{label}</div>
       <div className="skeleton h-6 w-24" />
       <div className="skeleton h-1 w-full rounded-full" />

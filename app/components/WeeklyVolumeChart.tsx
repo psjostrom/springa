@@ -27,7 +27,7 @@ export function WeeklyVolumeChart({ data }: WeeklyVolumeChartProps) {
 
 	return (
 		<section className="bg-surface p-6 rounded-xl shadow-sm border border-border">
-			<h2 className="text-lg font-bold mb-6 text-white">
+			<h2 className="text-lg font-bold mb-6 text-text">
 				Weekly Volume (Estimated Minutes)
 			</h2>
 			<div className="h-64 w-full min-h-0">

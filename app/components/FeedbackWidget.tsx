@@ -14,13 +14,13 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
       <div className="flex items-center gap-2">
         <button
           onClick={() => { setRating("good"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-border ring-1 ring-brand" : "hover:bg-border"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "good" ? "bg-surface-alt ring-1 ring-brand" : "hover:bg-surface-alt"}`}
         >
           {"\ud83d\udc4d"}
         </button>
         <button
           onClick={() => { setRating("bad"); }}
-          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-border ring-1 ring-brand" : "hover:bg-border"}`}
+          className={`text-xl px-2 py-1 rounded transition ${rating === "bad" ? "bg-surface-alt ring-1 ring-brand" : "hover:bg-surface-alt"}`}
         >
           {"\ud83d\udc4e"}
         </button>
@@ -30,7 +30,7 @@ function FeedbackForm({ onSave, isSaving }: { onSave: (rating: string, comment: 
         onChange={(e) => { setComment(e.target.value); }}
         placeholder="Optional comment..."
         rows={2}
-        className="w-full border border-border bg-bg text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+        className="w-full border border-border bg-surface-alt text-text rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
       />
       <button
         onClick={() => { if (rating) onSave(rating, comment); }}
@@ -75,7 +75,7 @@ export function FeedbackWidget({ event }: WidgetProps) {
   return (
     <div className="px-3 py-2.5">
       {hasRating ? (
-        <div className="flex items-center gap-2 text-sm text-white">
+        <div className="flex items-center gap-2 text-sm text-text">
           <span className="text-lg">{event.rating === "good" ? "\ud83d\udc4d" : "\ud83d\udc4e"}</span>
           {event.feedbackComment && <span className="text-muted">{event.feedbackComment}</span>}
         </div>

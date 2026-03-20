@@ -167,7 +167,7 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
               <div className="flex-1 text-right">
                 <span
                   className={`text-sm tabular-nums ${
-                    entry.calibrated ? "font-bold text-white" : "text-muted"
+                    entry.calibrated ? "font-bold text-text" : "text-muted"
                   }`}
                 >
                   {formatPace(entry.pace)}

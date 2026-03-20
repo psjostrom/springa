@@ -187,7 +187,7 @@ function FeedbackContent() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center p-4 pt-12">
-      <h1 className="text-2xl font-bold text-white mb-6">How was the run?</h1>
+      <h1 className="text-2xl font-bold text-text mb-6">How was the run?</h1>
 
       {/* Run summary */}
       {feedback && (
@@ -195,19 +195,19 @@ function FeedbackContent() {
           {feedback.distance != null && (
             <div className="bg-surface border border-border rounded-xl px-4 py-3 text-center">
               <p className="text-xs text-muted uppercase tracking-wider font-semibold">Distance</p>
-              <p className="text-lg font-bold text-white">{formatDistance(feedback.distance)}</p>
+              <p className="text-lg font-bold text-text">{formatDistance(feedback.distance)}</p>
             </div>
           )}
           {feedback.duration != null && (
             <div className="bg-surface border border-border rounded-xl px-4 py-3 text-center">
               <p className="text-xs text-muted uppercase tracking-wider font-semibold">Time</p>
-              <p className="text-lg font-bold text-white">{formatDuration(feedback.duration)}</p>
+              <p className="text-lg font-bold text-text">{formatDuration(feedback.duration)}</p>
             </div>
           )}
           {feedback.avgHr != null && (
             <div className="bg-surface border border-border rounded-xl px-4 py-3 text-center">
               <p className="text-xs text-muted uppercase tracking-wider font-semibold">Avg HR</p>
-              <p className="text-lg font-bold text-white">{Math.round(feedback.avgHr)}</p>
+              <p className="text-lg font-bold text-text">{Math.round(feedback.avgHr)}</p>
             </div>
           )}
         </div>
@@ -274,7 +274,7 @@ function FeedbackContent() {
               value={formState.carbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, carbsG: e.target.value })); }}
               placeholder={formState.prescribedCarbsG != null ? `${formState.prescribedCarbsG} (prescribed)` : "e.g. 40"}
-              className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-white placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm"
+              className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm"
             />
           </div>
 
@@ -287,7 +287,7 @@ function FeedbackContent() {
               value={formState.preRunCarbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, preRunCarbsG: e.target.value })); }}
               placeholder="e.g. 25"
-              className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-white placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm"
+              className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm"
             />
           </div>
 
@@ -297,7 +297,7 @@ function FeedbackContent() {
             onChange={(e) => { setFormState((s) => ({ ...s, comment: e.target.value })); }}
             placeholder="Comment (optional)"
             rows={3}
-            className="w-full max-w-sm px-4 py-3 bg-surface border border-border rounded-xl text-white placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm mb-4 resize-none"
+            className="w-full max-w-sm px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm mb-4 resize-none"
           />
 
           {/* Submit */}
@@ -325,7 +325,7 @@ function FeedbackContent() {
               });
             }}
             disabled={submitting}
-            className="w-full max-w-sm py-2 mt-2 text-sm text-muted hover:text-white transition disabled:opacity-40"
+            className="w-full max-w-sm py-2 mt-2 text-sm text-muted hover:text-text transition disabled:opacity-40"
           >
             Skip
           </button>

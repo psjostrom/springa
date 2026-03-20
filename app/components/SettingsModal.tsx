@@ -82,10 +82,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     >
       <div className="bg-surface rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-border shadow-lg shadow-brand/10">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-bold text-white">Settings</h2>
+          <h2 className="text-lg font-bold text-text">Settings</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-border transition"
+            className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition"
           >
             <X size={18} />
           </button>
@@ -115,7 +115,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               type="date"
               value={raceDate}
               onChange={(e) => { setRaceDate(e.target.value); }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+              className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
             />
           </div>
 
@@ -131,7 +131,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   type="text"
                   value={raceName}
                   onChange={(e) => { setRaceName(e.target.value); }}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                   placeholder="e.g. EcoTrail"
                 />
               </div>
@@ -143,7 +143,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   max={100}
                   value={raceDist}
                   onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                   placeholder="16"
                 />
               </div>
@@ -156,7 +156,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={totalWeeks}
                     onChange={(e) => { setTotalWeeks(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                     placeholder="18"
                   />
                   <p className="text-[10px] text-muted mt-1">
@@ -171,7 +171,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     max={30}
                     value={startKm}
                     onChange={(e) => { setStartKm(e.target.value === "" ? "" : Number(e.target.value)); }}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-white bg-bg focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
                     placeholder="8"
                   />
                 </div>
@@ -196,7 +196,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     disabled={baseDisabled}
                     onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
                     className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                      baseDisabled ? "bg-border opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-brand" : "bg-border"
+                      baseDisabled ? "bg-border opacity-40 cursor-not-allowed" : includeBasePhase ? "bg-brand" : "bg-surface-alt"
                     }`}
                   >
                     <span
@@ -237,7 +237,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                     "bg-warning border-warning",
                     "bg-border-subtle border-border-subtle",
                     "bg-chart-secondary border-chart-secondary",
-                    "bg-border border-chart-secondary",
+                    "bg-surface-alt border-chart-secondary",
                   ];
                   const isSelected = warmthPreference === val;
                   return (
@@ -259,7 +259,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               <button
                 type="button"
                 onClick={() => { setWarmthPreference(0); }}
-                className="mt-2 text-xs text-muted hover:text-white transition"
+                className="mt-2 text-xs text-muted hover:text-text transition"
               >
                 Reset to neutral
               </button>

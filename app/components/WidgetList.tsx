@@ -67,24 +67,24 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-        isDragging ? "bg-border z-10 shadow-lg" : "bg-surface"
+        isDragging ? "bg-surface-alt z-10 shadow-lg" : "bg-surface"
       } ${isHidden ? "opacity-50" : ""}`}
     >
       <button
         type="button"
-        className="touch-none text-muted hover:text-white cursor-grab active:cursor-grabbing"
+        className="touch-none text-muted hover:text-text cursor-grab active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="w-4 h-4" />
       </button>
-      <span className={`flex-1 text-sm ${isHidden ? "line-through text-muted" : "text-white"}`}>
+      <span className={`flex-1 text-sm ${isHidden ? "line-through text-muted" : "text-text"}`}>
         {labelMap.get(id) ?? id}
       </span>
       <button
         type="button"
         onClick={onToggle}
-        className="text-muted hover:text-white transition-colors"
+        className="text-muted hover:text-text transition-colors"
         aria-label={isHidden ? `Show ${labelMap.get(id)}` : `Hide ${labelMap.get(id)}`}
       >
         {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -176,7 +176,7 @@ export function WidgetList({
       <button
         type="button"
         onClick={() => { setEditing(true); }}
-        className="absolute -top-8 right-0 text-muted hover:text-white transition-colors p-1"
+        className="absolute -top-8 right-0 text-muted hover:text-text transition-colors p-1"
         aria-label="Edit widget layout"
       >
         <Pencil className="w-3.5 h-3.5" />

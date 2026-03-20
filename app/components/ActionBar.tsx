@@ -19,7 +19,7 @@ export function ActionBar({
 		return (
 			<div className={`${POSITION} bg-surface border border-border border-l-[3px] border-l-brand rounded-lg flex items-center justify-between p-4`}>
 					<div>
-						<h3 className="font-bold text-white text-sm md:text-base">
+						<h3 className="font-bold text-text text-sm md:text-base">
 							Syncing to Intervals.icu...
 						</h3>
 						<p className="text-sm text-muted">
@@ -82,7 +82,7 @@ export function ActionBar({
 	return (
 		<div className={`${POSITION} flex items-center justify-between bg-surface p-4 rounded-lg border border-border shadow-xl shadow-brand/10 backdrop-blur-sm`}>
 			<div>
-				<h3 className="font-bold text-white text-sm md:text-base">
+				<h3 className="font-bold text-text text-sm md:text-base">
 					Ready to sync?
 				</h3>
 				<p className="text-sm text-muted">

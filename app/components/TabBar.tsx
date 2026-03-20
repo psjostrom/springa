@@ -23,7 +23,7 @@ export function TabBar<T extends string>({ tabs, activeTab, onTabChange }: TabBa
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === tab.id
               ? "text-brand border-b-2 border-brand"
-              : "text-muted hover:text-white"
+              : "text-muted hover:text-text"
           }`}
         >
           {tab.label}

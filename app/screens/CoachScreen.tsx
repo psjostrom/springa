@@ -113,7 +113,7 @@ export function CoachScreen() {
 
           {showWelcome && (
             <div className="pt-8 pb-4">
-              <h2 className="text-lg font-bold text-white mb-1">AI Coach</h2>
+              <h2 className="text-lg font-bold text-text mb-1">AI Coach</h2>
               <p className="text-sm text-muted mb-6">
                 Ask about training, fueling, BG management, or upcoming
                 workouts.
@@ -123,7 +123,7 @@ export function CoachScreen() {
                   <button
                     key={s}
                     onClick={() => { handleSend(s); }}
-                    className="text-sm px-3 py-1.5 rounded-full border border-border bg-surface text-muted hover:border-brand/50 hover:text-white transition-colors"
+                    className="text-sm px-3 py-1.5 rounded-full border border-border bg-surface text-muted hover:border-brand/50 hover:text-text transition-colors"
                   >
                     {s}
                   </button>
@@ -133,7 +133,7 @@ export function CoachScreen() {
           )}
 
           {error && (
-            <div className="bg-tint-error border border-error/30 rounded-xl px-4 py-3 text-sm text-white">
+            <div className="bg-tint-error border border-error/30 rounded-xl px-4 py-3 text-sm text-text">
               Failed to get response. Check your API key and try again.
             </div>
           )}

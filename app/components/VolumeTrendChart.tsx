@@ -142,13 +142,13 @@ export function VolumeTrendChart({
                   const d = (payload[0] as { payload: WeekData }).payload;
                   const weekNum = parseInt(d.week.replace("W", ""), 10);
                   return (
-                    <div className="rounded-lg border border-border bg-surface text-white shadow-lg text-xs px-3 py-2">
+                    <div className="rounded-lg border border-border bg-surface text-text shadow-lg text-xs px-3 py-2">
                       <div className="font-medium mb-1">Week {weekNum}</div>
                       <div className="text-muted">Planned : {d.planned} km</div>
                       {d.plannedOptional > 0 && (
                         <div className="text-muted">Optional : {d.plannedOptional} km</div>
                       )}
-                      <div className="text-white">Total : {d.plannedTotal} km</div>
+                      <div className="text-text">Total : {d.plannedTotal} km</div>
                       {d.completed > 0 && (
                         <>
                           <div className="border-t border-border my-1.5" />

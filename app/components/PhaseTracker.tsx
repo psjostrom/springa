@@ -95,7 +95,7 @@ function PhasePopover({
 
 				{/* Current phase */}
 				<div className="mb-3">
-					<div className="text-sm font-bold text-white mb-1">
+					<div className="text-sm font-bold text-text mb-1">
 						{currentPhase.displayName}
 						{recovery && <span className="text-xs font-normal text-warning ml-2">Recovery Week</span>}
 					</div>
@@ -183,7 +183,7 @@ export function PhaseTracker({
 			)}
 			<div
 				onClick={handleClick}
-				className="bg-surface text-white p-4 rounded-lg border border-border cursor-pointer active:bg-border transition-colors"
+				className="bg-surface text-text p-4 rounded-lg border border-border cursor-pointer active:bg-border transition-colors"
 			>
 				<div className="flex justify-between text-sm mb-1">
 					<span className="font-bold">{phaseName}</span>
@@ -191,7 +191,7 @@ export function PhaseTracker({
 						Week {currentWeek} of {totalWeeks}
 					</span>
 				</div>
-				<div className="w-full bg-border rounded-full h-2">
+				<div className="w-full bg-surface-alt rounded-full h-2">
 					<div
 						className="bg-brand h-2 rounded-full transition-all duration-500"
 						style={{ width: `${progress}%` }}

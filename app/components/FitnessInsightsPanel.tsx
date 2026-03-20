@@ -14,31 +14,31 @@ const FORM_ZONE_STYLES: Record<
 > = {
   "high-risk": {
     bg: "bg-tint-error",
-    text: "text-white",
+    text: "text-text",
     border: "border-error/30",
     icon: AlertTriangle,
   },
   optimal: {
     bg: "bg-tint-success",
-    text: "text-white",
+    text: "text-text",
     border: "border-success/30",
     icon: Zap,
   },
   grey: {
-    bg: "bg-border",
+    bg: "bg-surface-alt",
     text: "text-muted",
     border: "border-muted/30",
     icon: Minus,
   },
   fresh: {
-    bg: "bg-bg",
+    bg: "bg-surface-alt",
     text: "text-chart-primary",
     border: "border-chart-primary/30",
     icon: Heart,
   },
   transition: {
     bg: "bg-tint-warning",
-    text: "text-white",
+    text: "text-text",
     border: "border-warning/30",
     icon: Activity,
   },
@@ -203,7 +203,7 @@ function MetricPopover({
           <div className="mt-1.5 pt-1.5 border-t border-border space-y-0.5">
             {info.scale.map((s) => (
               <div key={s.range} className="flex gap-1.5 text-xs">
-                <span className="text-white font-bold shrink-0 whitespace-nowrap">{s.range}</span>
+                <span className="text-text font-bold shrink-0 whitespace-nowrap">{s.range}</span>
                 <span className="text-muted">{s.label}</span>
               </div>
             ))}
@@ -240,11 +240,11 @@ function StatCard({
 }) {
   return (
     <div
-      className={`bg-bg rounded-lg p-3 border border-border ${onClick ? "cursor-pointer active:bg-border transition-colors" : ""}`}
+      className={`bg-surface-alt rounded-lg p-3 border border-border ${onClick ? "cursor-pointer active:bg-border transition-colors" : ""}`}
       onClick={onClick}
     >
       <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">{label}</div>
-      <div className={`text-xl font-bold ${color ?? "text-white"}`}>{value}</div>
+      <div className={`text-xl font-bold ${color ?? "text-text"}`}>{value}</div>
       {sub && <div className="text-sm text-muted mt-0.5">{sub}</div>}
     </div>
   );
@@ -333,7 +333,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           onClick={(e) => { handleTap("atl", e); }}
         />
         <div
-          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
+          className="bg-surface-alt rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("trend", e); }}
         >
           <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Fitness Trend</div>
@@ -349,7 +349,7 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           </div>
         </div>
         <div
-          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
+          className="bg-surface-alt rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("ramp", e); }}
         >
           <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Ramp Rate</div>
@@ -366,19 +366,19 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
       {/* Ramp Warning */}
       {rampWarning && (
         <div className="bg-tint-warning border border-warning/30 rounded-lg px-4 py-2 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-white flex-shrink-0" />
-          <span className="text-sm text-white">{rampWarning}</span>
+          <AlertTriangle className="w-4 h-4 text-text flex-shrink-0" />
+          <span className="text-sm text-text">{rampWarning}</span>
         </div>
       )}
 
       {/* Activity Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div
-          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
+          className="bg-surface-alt rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("load7", e); }}
         >
           <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Last 7 days</div>
-          <div className="text-lg font-bold text-white">
+          <div className="text-lg font-bold text-text">
             {insights.totalActivities7d}{" "}
             <span className="text-sm font-normal text-muted">
               {insights.totalActivities7d === 1 ? "run" : "runs"}
@@ -389,11 +389,11 @@ export function FitnessInsightsPanel({ insights }: FitnessInsightsPanelProps) {
           </div>
         </div>
         <div
-          className="bg-bg rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
+          className="bg-surface-alt rounded-lg p-3 border border-border cursor-pointer active:bg-border transition-colors"
           onClick={(e) => { handleTap("load28", e); }}
         >
           <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">Last 28 days</div>
-          <div className="text-lg font-bold text-white">
+          <div className="text-lg font-bold text-text">
             {insights.totalActivities28d}{" "}
             <span className="text-sm font-normal text-muted">runs</span>
           </div>

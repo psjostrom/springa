@@ -332,7 +332,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`bg-bg rounded-lg p-3 border border-border ${onClick ? "cursor-pointer active:bg-border transition-colors" : ""}`}
+      className={`bg-surface-alt rounded-lg p-3 border border-border ${onClick ? "cursor-pointer active:bg-border transition-colors" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-1.5 mb-1">
@@ -362,13 +362,13 @@ function ReadinessBanner({
   let state: { bg: string; border: string; text: string; label: string };
 
   if (readiness >= 70) {
-    state = { bg: "bg-tint-success", border: "border-success/30", text: "text-white", label: "Ready to train" };
+    state = { bg: "bg-tint-success", border: "border-success/30", text: "text-text", label: "Ready to train" };
   } else if (readiness >= 50) {
-    state = { bg: "bg-tint-success", border: "border-success/30", text: "text-white", label: "Good to go" };
+    state = { bg: "bg-tint-success", border: "border-success/30", text: "text-text", label: "Good to go" };
   } else if (readiness >= 30) {
-    state = { bg: "bg-tint-warning", border: "border-warning/30", text: "text-white", label: "Monitor recovery" };
+    state = { bg: "bg-tint-warning", border: "border-warning/30", text: "text-text", label: "Monitor recovery" };
   } else {
-    state = { bg: "bg-tint-error", border: "border-error/30", text: "text-white", label: "Recovery day" };
+    state = { bg: "bg-tint-error", border: "border-error/30", text: "text-text", label: "Recovery day" };
   }
 
   return (
@@ -393,15 +393,15 @@ function TSBGauge({ tsb, onClick }: { tsb: number; onClick?: (e: React.MouseEven
 
   let zone: { label: string; color: string; bg: string };
   if (tsb < -20) {
-    zone = { label: "Fatigued", color: "text-white", bg: "bg-tint-error" };
+    zone = { label: "Fatigued", color: "text-text", bg: "bg-tint-error" };
   } else if (tsb < -10) {
-    zone = { label: "Loading", color: "text-white", bg: "bg-tint-warning" };
+    zone = { label: "Loading", color: "text-text", bg: "bg-tint-warning" };
   } else if (tsb < 5) {
-    zone = { label: "Neutral", color: "text-muted", bg: "bg-border" };
+    zone = { label: "Neutral", color: "text-muted", bg: "bg-surface-alt" };
   } else if (tsb < 15) {
-    zone = { label: "Fresh", color: "text-white", bg: "bg-tint-success" };
+    zone = { label: "Fresh", color: "text-text", bg: "bg-tint-success" };
   } else {
-    zone = { label: "Peaked", color: "text-white", bg: "bg-tint-success" };
+    zone = { label: "Peaked", color: "text-text", bg: "bg-tint-success" };
   }
 
   return (
@@ -519,7 +519,7 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
   const hasMetrics = data.hrv != null || data.restingHR != null || data.sleep != null;
 
   return (
-    <div className="space-y-3">
+    <div className="bg-surface rounded-xl border border-border p-4 space-y-3">
       {popover && (
         <ReadinessDetailPopover
           {...popover}
@@ -581,9 +581,9 @@ export function ReadinessPanel({ entries }: ReadinessPanelProps) {
       )}
 
       {data.readiness == null && !hasMetrics && data.tsb == null && (
-        <div className="bg-surface rounded-xl border border-border p-6 text-center text-muted">
+        <p className="p-2 text-center text-muted">
           No wellness data for today
-        </div>
+        </p>
       )}
     </div>
   );
