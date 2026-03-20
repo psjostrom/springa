@@ -68,7 +68,7 @@ export function RouteMap({ latlng, className }: RouteMapProps) {
 
   if (!mapboxToken) {
     return (
-      <div className={`bg-border rounded-lg flex items-center justify-center text-muted text-sm ${className}`}>
+      <div className={`bg-surface-alt rounded-lg flex items-center justify-center text-muted text-sm ${className}`}>
         Map unavailable (no API key)
       </div>
     );

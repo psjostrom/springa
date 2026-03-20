@@ -44,21 +44,21 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
         {bestEfforts.map((effort) => (
           <div
             key={effort.label}
-            className={`bg-border rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
+            className={`bg-surface-alt rounded-lg p-3 ${effort.activityId && onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
             onClick={() => { if (effort.activityId) onActivitySelect?.(effort.activityId); }}
           >
             <div className="text-xs text-muted uppercase tracking-wider font-semibold">{effort.label}</div>
-            <div className="text-lg font-bold text-white">
+            <div className="text-lg font-bold text-text">
               {formatTime(effort.timeSeconds)}
             </div>
             <div className="text-xs text-muted">
               {formatPace(effort.pace)}/km
             </div>
             {effort.activityName && (
-              <div className="text-[10px] text-[#6b5f80] mt-1 truncate">{effort.activityName}</div>
+              <div className="text-[10px] text-muted/70 mt-1 truncate">{effort.activityName}</div>
             )}
             {effort.activityDate && (
-              <div className="text-[10px] text-[#6b5f80]">
+              <div className="text-[10px] text-muted/70">
                 {new Date(effort.activityDate).toLocaleDateString("sv-SE")}
               </div>
             )}
@@ -66,11 +66,11 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
         ))}
         {longestRun && (
           <div
-            className={`bg-border rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
+            className={`bg-surface-alt rounded-lg p-3 ${onActivitySelect ? "cursor-pointer active:bg-border transition-colors" : ""}`}
             onClick={() => { onActivitySelect?.(longestRun.activityId); }}
           >
             <div className="text-xs text-muted uppercase tracking-wider font-semibold">Longest Run</div>
-            <div className="text-lg font-bold text-white">
+            <div className="text-lg font-bold text-text">
               {formatDistance(longestRun.distance)}
             </div>
             {longestRun.movingTime && longestRun.distance > 0 && (
@@ -79,10 +79,10 @@ export function PacePBs({ bestEfforts, longestRun, onActivitySelect }: PacePBsPr
               </div>
             )}
             {longestRun.activityName && (
-              <div className="text-[10px] text-[#6b5f80] mt-1 truncate">{longestRun.activityName}</div>
+              <div className="text-[10px] text-muted/70 mt-1 truncate">{longestRun.activityName}</div>
             )}
             {longestRun.activityDate && (
-              <div className="text-[10px] text-[#6b5f80]">
+              <div className="text-[10px] text-muted/70">
                 {new Date(longestRun.activityDate).toLocaleDateString("sv-SE")}
               </div>
             )}

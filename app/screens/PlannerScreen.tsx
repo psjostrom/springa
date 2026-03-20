@@ -274,7 +274,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           <div className={`relative overflow-hidden bg-surface border border-border ${isAdapting ? "border-l-[3px] border-l-brand" : ""} rounded-xl p-4 md:p-5`}>
             <div className="relative space-y-4">
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-white" : "text-muted"}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider ${isAdapting ? "text-text" : "text-muted"}`}>
                   {isAdapting ? "Adapting..." : "Adapt Upcoming"}
                 </span>
                 <button
@@ -302,7 +302,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                   {adaptedEvents.map((event) => (
                     <div key={event.original.id} className="bg-bg border border-border rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-white">{event.name}</span>
+                        <span className="text-sm font-medium text-text">{event.name}</span>
                         <span className="text-xs text-muted">{event.date}</span>
                         {event.changes.map((change, j) => {
                           const isLowConfidence = change.type === "fuel" && change.confidence === "low";
@@ -341,7 +341,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
                             remarkPlugins={[remarkGfm]}
                             components={{
                               p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-                              strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                              strong: ({ children }) => <strong className="font-bold text-text">{children}</strong>,
                               em: ({ children }) => <em className="text-muted">{children}</em>,
                             }}
                           >

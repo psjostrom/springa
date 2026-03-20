@@ -42,7 +42,7 @@ export function PreRunReadiness({
   const color = bgColor(currentBG);
 
   return (
-    <div className="mb-4 rounded-xl bg-bg border border-border overflow-hidden">
+    <div className="mb-4 rounded-xl bg-surface border border-border overflow-hidden">
       {/* Header row */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -84,7 +84,7 @@ export function PreRunReadiness({
         <div className="mx-3 mb-2 px-3 py-2 rounded-lg bg-surface border border-border">
           <div className="text-xs text-muted font-semibold mb-0.5 uppercase tracking-wider">Assessment</div>
           {guidance.reasons.map((r, i) => (
-            <div key={i} className="text-sm text-white/90">{r}</div>
+            <div key={i} className="text-sm text-text/90">{r}</div>
           ))}
         </div>
       )}
@@ -94,7 +94,7 @@ export function PreRunReadiness({
         <div className="mx-3 mb-2 px-3 py-2 rounded-lg bg-surface border border-border">
           <div className="text-xs text-muted font-semibold mb-0.5 uppercase tracking-wider">Recommendation</div>
           {guidance.suggestions.map((s, i) => (
-            <div key={i} className="text-sm text-white/90">{s}</div>
+            <div key={i} className="text-sm text-text/90">{s}</div>
           ))}
         </div>
       )}

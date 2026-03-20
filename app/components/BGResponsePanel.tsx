@@ -35,9 +35,9 @@ function rateColor(rate: number): string {
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {
-    low: "bg-border text-muted",
-    medium: "bg-tint-warning text-white",
-    high: "bg-tint-success text-white",
+    low: "bg-surface-alt text-muted",
+    medium: "bg-tint-warning text-text",
+    high: "bg-tint-success text-text",
   };
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded ${styles[confidence]}`}>
@@ -133,7 +133,7 @@ function CategoryCard({
       {/* Expandable activity breakdown */}
       <button
         onClick={() => { setExpanded(!expanded); }}
-        className="flex items-center gap-1 mt-2 text-xs text-muted hover:text-white transition-colors w-full"
+        className="flex items-center gap-1 mt-2 text-xs text-muted hover:text-text transition-colors w-full"
       >
         <ChevronDown
           className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -168,16 +168,16 @@ function CategoryCard({
 function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
   return (
     <div className="flex items-start gap-2 bg-tint-error rounded-lg border border-error/20 p-3">
-      <AlertTriangle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
+      <AlertTriangle className="w-4 h-4 text-text flex-shrink-0 mt-0.5" />
       <div className="text-sm">
-        <span className="text-white font-medium">
+        <span className="text-text font-medium">
           {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
         <span className="text-muted">
           BG dropping {Math.abs(suggestion.avgDropRate).toFixed(2)} mmol/L/min{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
 
         </span>{" "}
-        <span className="text-white font-medium">
+        <span className="text-text font-medium">
           Try +{suggestion.suggestedIncrease} g/h.
         </span>
       </div>

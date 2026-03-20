@@ -23,17 +23,17 @@ function VolumePopover({ actualKm, targetKm, completedRuns, totalRuns, onClose }
         onClick={(e) => { e.stopPropagation(); }}
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-white">Weekly Volume</span>
-          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-white text-sm">✕</button>
+          <span className="text-sm font-semibold text-text">Weekly Volume</span>
+          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-text text-sm">✕</button>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted">Completed</span>
-            <span className="text-white">{Math.round(actualKm * 10) / 10} km</span>
+            <span className="text-text">{Math.round(actualKm * 10) / 10} km</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted">Target</span>
-            <span className="text-white">{Math.round(targetKm * 10) / 10} km</span>
+            <span className="text-text">{Math.round(targetKm * 10) / 10} km</span>
           </div>
           {remaining > 0 && (
             <div className="flex justify-between">
@@ -43,7 +43,7 @@ function VolumePopover({ actualKm, targetKm, completedRuns, totalRuns, onClose }
           )}
           <div className="flex justify-between">
             <span className="text-muted">Runs completed</span>
-            <span className="text-white">{completedRuns} of {totalRuns}</span>
+            <span className="text-text">{completedRuns} of {totalRuns}</span>
           </div>
           {runsLeft > 0 && (
             <div className="flex justify-between">
@@ -71,11 +71,11 @@ export function VolumeCompact({ actualKm, targetKm, completedRuns, totalRuns }: 
         className="w-full text-left bg-surface rounded-xl border border-border p-4 transition-colors active:bg-border"
       >
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-xl font-bold text-white">{Math.round(actualKm)} km</span>
+          <span className="text-xl font-bold text-text">{Math.round(actualKm)} km</span>
           <span className="text-sm text-muted">{Math.round(targetKm)} km target</span>
         </div>
         <div
-          className="h-2 bg-surface rounded-full overflow-hidden mb-1.5"
+          className="h-2 bg-surface-alt rounded-full overflow-hidden mb-1.5"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}

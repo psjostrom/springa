@@ -169,8 +169,8 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                 onClick={() => { setTimeWindow(tw); }}
                 className={`px-2 py-1 text-xs rounded transition-colors ${
                   timeWindow.label === tw.label
-                    ? "bg-border text-white"
-                    : "text-muted hover:text-white"
+                    ? "bg-surface-alt text-text"
+                    : "text-muted hover:text-text"
                 }`}
               >
                 {tw.label}
@@ -189,7 +189,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
                 <div className="text-muted font-medium">
                   {formatDistance(hoverPoint.distance)}
                 </div>
-                <div className="text-white font-bold">
+                <div className="text-text font-bold">
                   {formatPace(hoverPoint.pace)}/km
                 </div>
               </div>

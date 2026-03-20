@@ -29,7 +29,7 @@ export function ClothingRecommendation({ recommendation }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {(weather.isRain || weather.isSnow) && (
-        <span className="text-xs px-1.5 py-0.5 rounded bg-tint-warning text-white border border-warning/30 font-medium">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-tint-warning text-text border border-warning/30 font-medium">
           {weather.isSnow ? "Snow" : "Rain"} {weather.precipitation.toFixed(1)} mm/h
         </span>
       )}
@@ -37,7 +37,7 @@ export function ClothingRecommendation({ recommendation }: Props) {
         {items.map((item) => (
           <span
             key={item}
-            className="text-xs px-1.5 py-0.5 rounded bg-border text-muted border border-border"
+            className="text-xs px-1.5 py-0.5 rounded bg-surface-alt text-muted border border-border"
           >
             {item}
           </span>

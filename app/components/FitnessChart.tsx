@@ -146,8 +146,8 @@ export function FitnessChart({ data }: FitnessChartProps) {
               aria-label={`Toggle ${cfg.label}`}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                 active
-                  ? "bg-border text-white border border-border"
-                  : "bg-bg text-muted hover:bg-border border border-transparent"
+                  ? "bg-surface-alt text-text border border-border"
+                  : "bg-surface-alt text-muted hover:bg-border border border-transparent"
               }`}
             >
               <div
@@ -171,7 +171,7 @@ export function FitnessChart({ data }: FitnessChartProps) {
               <div key={line} className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: LINE_CONFIGS[line].color }} />
                 <span className="text-muted">{LINE_CONFIGS[line].label}</span>
-                <span className="font-bold text-white ml-auto">{hoverData[line]}</span>
+                <span className="font-bold text-text ml-auto">{hoverData[line]}</span>
               </div>
             ))}
           </div>

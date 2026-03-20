@@ -131,7 +131,7 @@ function WidgetEditBar({
   onToggle: (key: WidgetKey) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 bg-border rounded-lg px-3 py-1.5 mb-1">
+    <div className="flex items-center gap-2 bg-surface-alt rounded-lg px-3 py-1.5 mb-1">
       <span className="text-xs font-semibold uppercase text-muted flex-1 truncate">
         {label}
       </span>
@@ -505,7 +505,7 @@ export function IntelScreen() {
                     {isFirst && (
                       <button
                         onClick={() => { setEditMode(!editMode); }}
-                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-border/80 text-muted hover:text-brand hover:bg-border"
+                        className="absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition bg-surface-alt text-muted hover:text-brand hover:bg-border"
                         aria-label={editMode ? "Done editing" : "Edit layout"}
                       >
                         {editMode ? <Check size={14} /> : <Pencil size={14} />}

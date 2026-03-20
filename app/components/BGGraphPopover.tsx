@@ -78,7 +78,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-bg rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up px-4 py-8 text-center"
+        className="bg-surface rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up px-4 py-8 text-center"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         <p className="text-muted text-sm">No BG data available</p>
@@ -198,7 +198,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
       onClick={onClose}
     >
       <div
-        className="bg-bg rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up"
+        className="bg-surface rounded-t-2xl sm:rounded-xl w-full sm:max-w-md shadow-xl shadow-glucose/10 border-t sm:border border-surface animate-slide-up"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         {/* Header */}
@@ -235,8 +235,8 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
                     onClick={() => { setScrubIdx(null); setWindowIdx(i); setShowWindowPicker(false); void updateSettings({ bgChartWindow: w }); }}
                     className={`text-xs font-medium px-2.5 py-1 rounded transition ${
                       i === windowIdx
-                        ? "bg-border text-glucose"
-                        : "text-muted hover:text-white"
+                        ? "bg-surface-alt text-glucose"
+                        : "text-muted hover:text-text"
                     }`}
                   >
                     {w}h

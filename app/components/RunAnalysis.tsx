@@ -93,7 +93,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
           <button
             onClick={() => { void trigger({ activityId, event, runBGContext, bgModel, regenerate: true }).catch(() => { /* Error state handled by useSWRMutation */ }); }}
             disabled={isMutating}
-            className="p-1 text-muted hover:text-white transition-colors disabled:opacity-50"
+            className="p-1 text-muted hover:text-text transition-colors disabled:opacity-50"
             aria-label="Regenerate analysis"
           >
             {isMutating ? (

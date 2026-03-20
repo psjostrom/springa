@@ -73,8 +73,8 @@ function StatPopover({ info, onClose }: { info: PopoverContent; onClose: () => v
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-surface rounded-xl border border-border p-4 w-64 shadow-xl" onClick={(e) => { e.stopPropagation(); }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-white">{info.title}</span>
-          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-white text-sm">✕</button>
+          <span className="text-sm font-semibold text-text">{info.title}</span>
+          <button onClick={onClose} aria-label="Close" className="text-muted hover:text-text text-sm">✕</button>
         </div>
         <p className="text-sm text-muted leading-relaxed">{info.description}</p>
       </div>
@@ -103,7 +103,7 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
       <button
         type="button"
         onClick={() => { setShowPopover(true); }}
-        className="bg-border rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
+        className="bg-surface-alt rounded-lg p-3 space-y-1.5 text-left transition-colors active:bg-border"
       >
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: iconColor }} />
@@ -114,7 +114,7 @@ function StatCard({ id, icon: Icon, iconColor, label, value, unit, judgment }: S
             </span>
           )}
         </div>
-        <div className="text-lg font-bold text-white">
+        <div className="text-lg font-bold text-text">
           {value} <span className="text-sm text-muted font-normal">{unit}</span>
         </div>
         <div className="h-1 bg-surface rounded-full overflow-hidden">

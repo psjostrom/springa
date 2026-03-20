@@ -222,11 +222,11 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               onClick={() => {
                 if (viewMode === "week") { navigateWeek("prev"); } else { navigateMonth("prev"); }
               }}
-              className="p-2 hover:bg-border rounded-lg transition text-muted"
+              className="p-2 hover:bg-surface-alt rounded-lg transition text-muted"
             >
               <ChevronLeft size={20} />
             </button>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-2xl font-bold text-text">
               {viewMode === "week" ? (
                 <>
                   {format(weekDays[0], "d MMM", { locale: enGB })} -{" "}
@@ -240,7 +240,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               onClick={() => {
                 if (viewMode === "week") { navigateWeek("next"); } else { navigateMonth("next"); }
               }}
-              className="p-2 hover:bg-border rounded-lg transition text-muted"
+              className="p-2 hover:bg-surface-alt rounded-lg transition text-muted"
             >
               <ChevronRight size={20} />
             </button>
@@ -254,7 +254,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 viewMode === mode
                   ? "bg-brand text-white shadow-lg shadow-brand/20"
-                  : "bg-border text-muted hover:bg-border-subtle hover:text-white"
+                  : "bg-surface-alt text-muted hover:bg-border-subtle hover:text-text"
               }`}
             >
               {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -278,9 +278,9 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
         )}
 
         {dragError && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-white text-sm flex items-center justify-between">
+          <div className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-text text-sm flex items-center justify-between">
             <span>{dragError}</span>
-            <button onClick={clearDragError} className="text-muted hover:text-white ml-2">✕</button>
+            <button onClick={clearDragError} className="text-muted hover:text-text ml-2">✕</button>
           </div>
         )}
 
@@ -290,7 +290,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-border p-2 text-center text-sm font-semibold text-muted"
+                  className="bg-surface-alt p-2 text-center text-sm font-semibold text-muted"
                 >
                   {day}
                 </div>
@@ -310,7 +310,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <div
                   key={day}
-                  className="bg-border p-2 text-center text-sm font-semibold text-muted"
+                  className="bg-surface-alt p-2 text-center text-sm font-semibold text-muted"
                 >
                   {day}
                 </div>

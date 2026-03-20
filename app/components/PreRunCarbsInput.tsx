@@ -73,7 +73,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
 
   if (!loaded) {
     return (
-      <div className="mb-4 px-4 py-3 rounded-lg bg-border">
+      <div className="mb-4 px-4 py-3 rounded-lg bg-surface-alt">
         <div className="skeleton h-5 w-32" />
       </div>
     );
@@ -82,7 +82,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
   const displayValue = carbsG != null ? `${carbsG}g` : null;
 
   return (
-    <div className="mb-4 px-4 py-3 rounded-lg bg-border">
+    <div className="mb-4 px-4 py-3 rounded-lg bg-surface-alt">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted">Pre-run carbs</div>
         {isEditing ? (
@@ -93,7 +93,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
               value={editG}
               onChange={(e) => { setEditG(e.target.value); }}
               placeholder="g"
-              className="w-16 border border-border bg-bg text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-16 border border-border bg-surface-alt text-text rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
@@ -111,7 +111,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
             <button
               onClick={() => { setIsEditing(false); }}
               disabled={isSaving}
-              className="px-2 py-1 text-xs bg-border hover:bg-border text-muted rounded transition"
+              className="px-2 py-1 text-xs bg-surface-alt hover:bg-border text-muted rounded transition"
             >
               Cancel
             </button>
@@ -119,7 +119,7 @@ export function PreRunCarbsInput({ eventId }: PreRunCarbsInputProps) {
         ) : (
           <button
             onClick={startEdit}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-brand transition"
+            className="flex items-center gap-1.5 text-sm font-semibold text-text hover:text-brand transition"
           >
             {displayValue ?? "Add"}
             <Pencil className="w-3 h-3 text-muted" />

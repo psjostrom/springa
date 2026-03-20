@@ -254,8 +254,8 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
               aria-label={`Toggle ${config.label}`}
               className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 ${
                 isSelected
-                  ? "bg-border text-white border border-border"
-                  : "bg-bg text-muted hover:bg-border border border-transparent"
+                  ? "bg-surface-alt text-text border border-border"
+                  : "bg-surface-alt text-muted hover:bg-border border border-transparent"
               }`}
             >
               <div

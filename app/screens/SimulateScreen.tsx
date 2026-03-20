@@ -53,7 +53,7 @@ export function SimulateScreen() {
   return (
     <div className="h-full overflow-y-auto pb-16 md:pb-4">
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <h2 className="text-lg font-semibold text-white">BG Simulation</h2>
+        <h2 className="text-lg font-semibold text-text">BG Simulation</h2>
 
         {/* Category selector */}
         <div className="flex gap-2">
@@ -63,7 +63,7 @@ export function SimulateScreen() {
               onClick={() => { setCategory(key); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 category === key
-                  ? "text-white shadow-lg"
+                  ? "text-text shadow-lg"
                   : "text-muted bg-surface hover:bg-border"
               }`}
               style={
@@ -92,7 +92,7 @@ export function SimulateScreen() {
               onChange={(e) => { setDurationMin(Number(e.target.value)); }}
               className="w-full accent-brand"
             />
-            <span className="text-sm text-white">{durationMin} min</span>
+            <span className="text-sm text-text">{durationMin} min</span>
           </label>
 
           <label className="space-y-1">
@@ -108,7 +108,7 @@ export function SimulateScreen() {
               onChange={(e) => { setStartBG(Number(e.target.value)); }}
               className="w-full accent-brand"
             />
-            <span className="text-sm text-white">{startBG.toFixed(1)} mmol/L</span>
+            <span className="text-sm text-text">{startBG.toFixed(1)} mmol/L</span>
           </label>
 
           <label className="space-y-1">
@@ -126,13 +126,13 @@ export function SimulateScreen() {
               className="w-full accent-brand disabled:opacity-30"
             />
             <div className="flex items-center gap-2">
-              <span className="text-sm text-white">{fuelKnown ? `${fuelRate} g/h` : "Unknown"}</span>
+              <span className="text-sm text-text">{fuelKnown ? `${fuelRate} g/h` : "Unknown"}</span>
               <button
                 onClick={() => { setFuelKnown(!fuelKnown); }}
                 className={`text-xs px-1.5 py-0.5 rounded transition ${
                   fuelKnown
-                    ? "bg-tint-success text-white"
-                    : "bg-tint-warning text-white"
+                    ? "bg-tint-success text-text"
+                    : "bg-tint-warning text-text"
                 }`}
               >
                 {fuelKnown ? "known" : "unknown"}
@@ -147,9 +147,9 @@ export function SimulateScreen() {
             {/* Reliability gate */}
             {!result.reliable && (
               <div className="bg-tint-warning border border-warning/30 rounded-lg p-3 flex items-start gap-2">
-                <AlertTriangle size={18} className="text-white flex-shrink-0 mt-0.5" />
+                <AlertTriangle size={18} className="text-text flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="text-white font-medium">Prediction not yet reliable</p>
+                  <p className="text-text font-medium">Prediction not yet reliable</p>
                   <ul className="text-muted mt-1 space-y-0.5">
                     {result.warnings.map((w, i) => (
                       <li key={i}>• {w}</li>
@@ -166,13 +166,13 @@ export function SimulateScreen() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-surface rounded-lg p-2">
                 <div className="text-xs text-muted uppercase tracking-wider font-semibold">End BG</div>
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-text">
                   {result.curve[result.curve.length - 1].bg.toFixed(1)}
                 </div>
               </div>
               <div className="bg-surface rounded-lg p-2">
                 <div className="text-xs text-muted uppercase tracking-wider font-semibold">Min BG</div>
-                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-error" : "text-white"}`}>
+                <div className={`text-lg font-semibold ${result.minBG < 3.9 ? "text-error" : "text-text"}`}>
                   {result.minBG.toFixed(1)}
                 </div>
               </div>

@@ -48,7 +48,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
               min="0"
               value={editState.value}
               onChange={(e) => { setEditState({ kind: "editing", value: e.target.value }); }}
-              className="w-16 border border-border bg-bg text-white rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-16 border border-border bg-surface-alt text-text rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") void saveCarbs();
@@ -79,7 +79,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
             onClick={() => {
               setEditState({ kind: "editing", value: String(displayCarbs ?? 0) });
             }}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white hover:text-brand transition"
+            className="flex items-center gap-1.5 text-sm font-semibold text-text hover:text-brand transition"
           >
             {displayCarbs ?? "—"}g
             {event.carbsIngested == null && (
