@@ -1083,8 +1083,8 @@ describe("GET /api/v1/entries", () => {
     const res = await getEntries(SECRET, `find[date][$gt]=${cutoff}&count=100`);
     const body = await res.json();
     expect(body).toHaveLength(2);
-    expect(body[0].sgv).toBe(150);
-    expect(body[1].sgv).toBe(160);
+    expect(body[0].sgv).toBe(160);
+    expect(body[1].sgv).toBe(150);
   });
 
   it("respects count param", async () => {
