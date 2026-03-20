@@ -87,7 +87,7 @@ export function BGCompact({ categories }: BGCompactProps) {
   if (categories.length === 0) return null;
 
   return (
-    <>
+    <div className="bg-surface rounded-xl border border-border p-4 space-y-3">
       <div className="grid grid-cols-3 gap-2">
         {categories.map((cat) => (
           <button
@@ -121,6 +121,6 @@ export function BGCompact({ categories }: BGCompactProps) {
       {selectedCat && (
         <CategoryPopover cat={selectedCat} onClose={() => { setSelectedCat(null); }} />
       )}
-    </>
+    </div>
   );
 }
