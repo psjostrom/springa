@@ -8,6 +8,8 @@ Personal/medical data (runner profile, physiological metrics, T1D management, eq
 
 Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Tailwind · Vercel
 
+**Production URL:** `www.springa.run`
+
 **Commands:** `npm run dev` · `npm test` (`vitest run`) · `npm run lint` (`eslint`) · `npm run build`
 
 ## Accessibility

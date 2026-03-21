@@ -19,18 +19,15 @@ export async function requireAuth(): Promise<string> {
 }
 
 /**
- * Validate API secret. Returns true if valid.
+ * Validate Nightscout api-secret header. Returns true if valid.
  *
- * Accepts:
- *   1. api-secret header (pre-hashed SHA1 or raw plaintext)
- *   2. ?token= query param (Nightscout-compatible)
+ * Accepts pre-hashed SHA1 or raw plaintext — matches how xDrip+, Loop,
+ * Spike, and Strimma authenticate with a Nightscout server.
  */
-export function validateApiSecret(apiSecret: string | null, tokenParam?: string | null): boolean {
-  if (!process.env.CGM_SECRET) return false;
-  const candidates = [apiSecret, tokenParam].filter(Boolean) as string[];
-  if (candidates.length === 0) return false;
+export function validateApiSecret(apiSecret: string | null): boolean {
+  if (!process.env.CGM_SECRET || !apiSecret) return false;
   const hashed = sha1(process.env.CGM_SECRET);
-  return candidates.some(c => c === hashed || c === process.env.CGM_SECRET);
+  return apiSecret === hashed || apiSecret === process.env.CGM_SECRET;
 }
 
 /** Fetch MyLife data, returning null on failure or missing credentials. */

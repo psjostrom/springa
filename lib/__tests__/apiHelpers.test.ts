@@ -77,29 +77,4 @@ describe("validateApiSecret", () => {
     delete process.env.CGM_SECRET;
     expect(validateApiSecret("anything")).toBe(false);
   });
-
-  it("accepts valid token param when header is null", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, "mysecret")).toBe(true);
-  });
-
-  it("accepts pre-hashed token param", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, sha1("mysecret"))).toBe(true);
-  });
-
-  it("rejects wrong token param", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, "wrong")).toBe(false);
-  });
-
-  it("accepts when header wrong but token valid", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret("wrong", "mysecret")).toBe(true);
-  });
-
-  it("rejects when both header and token are null", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, null)).toBe(false);
-  });
 });
