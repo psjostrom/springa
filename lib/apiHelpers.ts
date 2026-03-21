@@ -19,20 +19,21 @@ export async function requireAuth(): Promise<string> {
 }
 
 /**
- * Validate API secret. Returns true if valid.
+ * Validate API secret from a Request. Nightscout-compatible.
  *
  * Accepts:
  *   1. api-secret header (pre-hashed SHA1 or raw plaintext)
  *   2. ?token= query param (Nightscout-compatible)
  */
-export function validateApiSecret(apiSecret: string | null, tokenParam?: string | null): boolean {
+export function validateRequest(req: Request): boolean {
   if (!process.env.CGM_SECRET) return false;
-  const candidates = [apiSecret, tokenParam].filter(Boolean) as string[];
+  const header = req.headers.get("api-secret");
+  const token = new URL(req.url).searchParams.get("token");
+  const candidates = [header, token].filter(Boolean) as string[];
   if (candidates.length === 0) return false;
   const hashed = sha1(process.env.CGM_SECRET);
   return candidates.some(c => c === hashed || c === process.env.CGM_SECRET);
 }
-
 /** Fetch MyLife data, returning null on failure or missing credentials. */
 export async function getMyLifeData(tz?: string): Promise<MyLifeData | null> {
   const email = process.env.MYLIFE_EMAIL;

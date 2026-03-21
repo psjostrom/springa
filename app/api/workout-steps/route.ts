@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
+import { validateRequest, unauthorized } from "@/lib/apiHelpers";
 import { API_BASE } from "@/lib/constants";
 import { authHeader } from "@/lib/intervalsApi";
 import { resolveTimezone, todayInTimezone } from "@/lib/intervalsHelpers";
 import { extractStepTotals } from "@/lib/descriptionParser";
 
 export async function GET(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
+  if (!validateRequest(req)) {
     return unauthorized();
   }
 

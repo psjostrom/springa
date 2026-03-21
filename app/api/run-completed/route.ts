@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
+import { validateRequest, unauthorized } from "@/lib/apiHelpers";
 import { db } from "@/lib/db";
 import { sendPushToUser } from "@/lib/push";
 
 export async function POST(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
+  if (!validateRequest(req)) {
     return unauthorized();
   }
 

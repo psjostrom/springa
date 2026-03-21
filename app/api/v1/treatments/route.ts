@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized, getEmail, getMyLifeData } from "@/lib/apiHelpers";
+import { validateRequest, unauthorized, getEmail, getMyLifeData } from "@/lib/apiHelpers";
 import { saveTreatments, getTreatments, getLastTreatmentTs } from "@/lib/treatmentsDb";
 import { mapMyLifeToTreatments, treatmentToNightscout } from "@/lib/mylifeToNightscout";
 
@@ -62,7 +62,7 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  *   find[eventType] — filter by event type
  */
 export async function GET(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
+  if (!validateRequest(req)) {
     return unauthorized();
   }
 

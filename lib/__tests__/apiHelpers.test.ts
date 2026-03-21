@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { requireAuth, validateApiSecret, AuthError } from "@/lib/apiHelpers";
+import { requireAuth, validateRequest, AuthError } from "@/lib/apiHelpers";
 import { auth } from "@/lib/auth";
 import { sha1 } from "@/lib/bgDb";
 
@@ -43,7 +43,7 @@ describe("requireAuth", () => {
   });
 });
 
-describe("validateApiSecret", () => {
+describe("validateRequest", () => {
   const ORIGINAL = process.env.CGM_SECRET;
   afterEach(() => {
     if (ORIGINAL !== undefined) {
@@ -53,53 +53,57 @@ describe("validateApiSecret", () => {
     }
   });
 
-  it("accepts pre-hashed secret (CGM behavior)", () => {
+  it("accepts api-secret header", () => {
     process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(sha1("mysecret"))).toBe(true);
+    const req = new Request("http://x/api/sgv", { headers: { "api-secret": "mysecret" } });
+    expect(validateRequest(req)).toBe(true);
   });
 
-  it("accepts raw secret (SugarRun behavior)", () => {
+  it("accepts ?token= query param", () => {
     process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret("mysecret")).toBe(true);
+    const req = new Request("http://x/api/sgv?token=mysecret");
+    expect(validateRequest(req)).toBe(true);
   });
 
-  it("rejects wrong secret", () => {
+  it("accepts hashed token param", () => {
     process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret("wrong")).toBe(false);
+    const req = new Request("http://x/api/sgv?token=" + sha1("mysecret"));
+    expect(validateRequest(req)).toBe(true);
   });
 
-  it("rejects null", () => {
+  it("rejects no auth", () => {
     process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null)).toBe(false);
+    const req = new Request("http://x/api/sgv");
+    expect(validateRequest(req)).toBe(false);
+  });
+
+  it("rejects wrong token", () => {
+    process.env.CGM_SECRET = "mysecret";
+    const req = new Request("http://x/api/sgv?token=wrong");
+    expect(validateRequest(req)).toBe(false);
+  });
+
+  it("accepts pre-hashed header (CGM behavior)", () => {
+    process.env.CGM_SECRET = "mysecret";
+    const req = new Request("http://x/api/sgv", { headers: { "api-secret": sha1("mysecret") } });
+    expect(validateRequest(req)).toBe(true);
+  });
+
+  it("rejects wrong header", () => {
+    process.env.CGM_SECRET = "mysecret";
+    const req = new Request("http://x/api/sgv", { headers: { "api-secret": "wrong" } });
+    expect(validateRequest(req)).toBe(false);
   });
 
   it("rejects when CGM_SECRET not set", () => {
     delete process.env.CGM_SECRET;
-    expect(validateApiSecret("anything")).toBe(false);
+    const req = new Request("http://x/api/sgv?token=anything");
+    expect(validateRequest(req)).toBe(false);
   });
 
-  it("accepts valid token param when header is null", () => {
+  it("accepts token when header is wrong", () => {
     process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, "mysecret")).toBe(true);
-  });
-
-  it("accepts pre-hashed token param", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, sha1("mysecret"))).toBe(true);
-  });
-
-  it("rejects wrong token param", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, "wrong")).toBe(false);
-  });
-
-  it("accepts when header wrong but token valid", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret("wrong", "mysecret")).toBe(true);
-  });
-
-  it("rejects when both header and token are null", () => {
-    process.env.CGM_SECRET = "mysecret";
-    expect(validateApiSecret(null, null)).toBe(false);
+    const req = new Request("http://x/api/sgv?token=mysecret", { headers: { "api-secret": "wrong" } });
+    expect(validateRequest(req)).toBe(true);
   });
 });

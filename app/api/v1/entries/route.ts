@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized, getEmail } from "@/lib/apiHelpers";
+import { validateRequest, unauthorized, getEmail } from "@/lib/apiHelpers";
 import {
   getBGReadings,
   saveBGReadings,
@@ -8,8 +8,7 @@ import {
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/cgm";
 
 export async function GET(req: Request) {
-  const token = new URL(req.url).searchParams.get("token");
-  if (!validateApiSecret(req.headers.get("api-secret"), token)) {
+  if (!validateRequest(req)) {
     return unauthorized();
   }
 
@@ -52,8 +51,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const token = new URL(req.url).searchParams.get("token");
-  if (!validateApiSecret(req.headers.get("api-secret"), token)) {
+  if (!validateRequest(req)) {
     return unauthorized();
   }
 
