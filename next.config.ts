@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         source: "/api/v1/:path.json",
         destination: "/api/v1/:path",
       },
+      // Nightscout /api/v1/entries/sgv.json → /api/sgv
+      {
+        source: "/api/v1/entries/sgv.json",
+        destination: "/api/sgv",
+      },
     ];
   },
 };
