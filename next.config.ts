@@ -4,15 +4,16 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   rewrites() {
     return [
-      // Nightscout API uses .json suffix (e.g. /api/v1/entries.json)
-      {
-        source: "/api/v1/:path.json",
-        destination: "/api/v1/:path",
-      },
+      // Specific rewrites before generic wildcard (first match wins)
       // Nightscout /api/v1/entries/sgv.json → /api/sgv
       {
         source: "/api/v1/entries/sgv.json",
         destination: "/api/sgv",
+      },
+      // Nightscout API uses .json suffix (e.g. /api/v1/entries.json)
+      {
+        source: "/api/v1/:path.json",
+        destination: "/api/v1/:path",
       },
     ];
   },
