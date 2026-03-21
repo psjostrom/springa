@@ -19,16 +19,18 @@ export async function requireAuth(): Promise<string> {
 }
 
 /**
- * Validate API secret header. Returns true if valid.
+ * Validate API secret. Returns true if valid.
  *
- * Accepts both pre-hashed (CGM source sends SHA1) and raw (SugarRun sends plaintext).
- * This is an intentional unification — the original routes handled these separately,
- * but accepting both forms is strictly more permissive and harmless.
+ * Accepts:
+ *   1. api-secret header (pre-hashed SHA1 or raw plaintext)
+ *   2. ?token= query param (Nightscout-compatible)
  */
-export function validateApiSecret(apiSecret: string | null): boolean {
-  if (!apiSecret || !process.env.CGM_SECRET) return false;
-  return apiSecret === sha1(process.env.CGM_SECRET)
-    || apiSecret === process.env.CGM_SECRET;
+export function validateApiSecret(apiSecret: string | null, tokenParam?: string | null): boolean {
+  if (!process.env.CGM_SECRET) return false;
+  const candidates = [apiSecret, tokenParam].filter(Boolean) as string[];
+  if (candidates.length === 0) return false;
+  const hashed = sha1(process.env.CGM_SECRET);
+  return candidates.some(c => c === hashed || c === process.env.CGM_SECRET);
 }
 
 /** Fetch MyLife data, returning null on failure or missing credentials. */

@@ -14,7 +14,8 @@ import { db } from "@/lib/db";
  * Auth: api-secret header (same as CGM routes).
  */
 export async function GET(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
+  const token = new URL(req.url).searchParams.get("token");
+  if (!validateApiSecret(req.headers.get("api-secret"), token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
