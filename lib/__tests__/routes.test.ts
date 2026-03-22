@@ -224,7 +224,7 @@ describe("end-to-end: entries → BG GET", () => {
       reading(160, "2026-02-20T10:10:00Z"),
     ]);
     expect(res.status).toBe(200);
-    expect((await res.json()).count).toBe(3);
+    expect((await res.json()).received).toBe(3);
 
     // Verify readings stored in DB
     expect(await countReadings(EMAIL, "2026-02")).toBe(3);

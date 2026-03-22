@@ -161,5 +161,9 @@ export async function POST(req: Request) {
     await saveBGReadings(email, toWrite);
   }
 
-  return NextResponse.json({ ok: true, count: newReadings.length });
+  return NextResponse.json({
+    ok: true,
+    received: newReadings.length,
+    written: toWrite.length,
+  });
 }
