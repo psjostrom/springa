@@ -19,6 +19,7 @@ export interface BGReading {
   mmol: number; // converted to mmol/L
   ts: number; // timestamp ms
   direction: string; // recomputed from sgv — NOT from CGM+ API
+  delta: number; // smoothed SGV change in mg/dL over ~5 min window
 }
 
 // --- Nightscout direction → arrow ---
@@ -49,7 +50,7 @@ export function slopeToArrow(slopePerMin: number): string {
 
 function isValidEntry(
   e: unknown,
-): e is { sgv: number; date?: number; dateString?: string; direction?: string } {
+): e is { sgv: number; date?: number; dateString?: string; direction?: string; delta?: number } {
   if (typeof e !== "object" || e === null) return false;
   const obj = e as Record<string, unknown>;
   return typeof obj.sgv === "number" && obj.sgv > 0;
@@ -78,6 +79,7 @@ export function parseNightscoutEntries(body: unknown): BGReading[] {
       mmol: Math.round((entry.sgv / MGDL_TO_MMOL) * 10) / 10,
       ts,
       direction: entry.direction ?? "NONE",
+      delta: typeof entry.delta === "number" ? entry.delta : 0,
     });
   }
 
@@ -128,14 +130,16 @@ export function recomputeDirections(readings: BGReading[]): void {
 
     if (pastIdx === null || curr.ts - readings[pastIdx].ts > 600000) {
       readings[i].direction = "NONE";
+      readings[i].delta = 0;
       continue;
     }
 
     const dtMin = (curr.ts - readings[pastIdx].ts) / 60000;
-    if (dtMin <= 0) { readings[i].direction = "NONE"; continue; }
+    if (dtMin <= 0) { readings[i].direction = "NONE"; readings[i].delta = 0; continue; }
 
     const deltaPerMin = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
     readings[i].direction = directionFromDelta(deltaPerMin);
+    readings[i].delta = Math.round((avgSgv(i) - avgSgv(pastIdx)) * 1000) / 1000;
   }
 }
 

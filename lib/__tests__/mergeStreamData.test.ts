@@ -46,6 +46,7 @@ function makeReadings(startMs: number, count: number, baseMmol: number): BGReadi
     sgv: Math.round((baseMmol + i * 0.2) * 18),
     mmol: baseMmol + i * 0.2,
     direction: "Flat" as const,
+    delta: 0,
   }));
 }
 

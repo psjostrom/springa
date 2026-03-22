@@ -131,6 +131,7 @@ describe("computeTrend", () => {
       mmol,
       ts: startTs + i * intervalMin * 60 * 1000,
       direction: "NONE",
+      delta: 0,
     }));
   }
 
@@ -171,15 +172,15 @@ describe("computeTrend", () => {
     const now = Date.now();
     const readings: BGReading[] = [
       // Old: 60 min ago, BG was 15 (should be ignored)
-      { sgv: 270, mmol: 15.0, ts: now - 60 * 60000, direction: "NONE" },
-      { sgv: 252, mmol: 14.0, ts: now - 55 * 60000, direction: "NONE" },
+      { sgv: 270, mmol: 15.0, ts: now - 60 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 252, mmol: 14.0, ts: now - 55 * 60000, direction: "NONE", delta: 0 },
       // Recent: last 25 min, stable at ~8.0
-      { sgv: 144, mmol: 8.0, ts: now - 25 * 60000, direction: "NONE" },
-      { sgv: 144, mmol: 8.0, ts: now - 20 * 60000, direction: "NONE" },
-      { sgv: 145, mmol: 8.1, ts: now - 15 * 60000, direction: "NONE" },
-      { sgv: 144, mmol: 8.0, ts: now - 10 * 60000, direction: "NONE" },
-      { sgv: 143, mmol: 7.9, ts: now - 5 * 60000, direction: "NONE" },
-      { sgv: 144, mmol: 8.0, ts: now, direction: "NONE" },
+      { sgv: 144, mmol: 8.0, ts: now - 25 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 144, mmol: 8.0, ts: now - 20 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 145, mmol: 8.1, ts: now - 15 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 144, mmol: 8.0, ts: now - 10 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 143, mmol: 7.9, ts: now - 5 * 60000, direction: "NONE", delta: 0 },
+      { sgv: 144, mmol: 8.0, ts: now, direction: "NONE", delta: 0 },
     ];
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();

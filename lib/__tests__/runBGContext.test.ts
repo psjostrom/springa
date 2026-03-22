@@ -235,8 +235,8 @@ describe("computePreRunContext", () => {
 
   it("sparse data: only 2 readings in 30-min window → still computes slope", () => {
     const readings: BGReading[] = [
-      { sgv: 180, mmol: 10.0, ts: T0 - 20 * 60 * 1000, direction: "Flat" },
-      { sgv: 162, mmol: 9.0, ts: T0 - 5 * 60 * 1000, direction: "Flat" },
+      { sgv: 180, mmol: 10.0, ts: T0 - 20 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 162, mmol: 9.0, ts: T0 - 5 * 60 * 1000, direction: "Flat", delta: 0 },
     ];
     const ctx = computePreRunContext(readings, T0);
     expect(ctx).not.toBeNull();
@@ -329,10 +329,10 @@ describe("computePostRunContext", () => {
 
   it("endBG uses closest reading to run end", () => {
     const readings: BGReading[] = [
-      { sgv: 162, mmol: 9.0, ts: runEndMs - 2 * 60 * 1000, direction: "Flat" },
-      { sgv: 144, mmol: 8.0, ts: runEndMs + 1 * 60 * 1000, direction: "Flat" },
-      { sgv: 126, mmol: 7.0, ts: runEndMs + 6 * 60 * 1000, direction: "Flat" },
-      { sgv: 108, mmol: 6.0, ts: runEndMs + 11 * 60 * 1000, direction: "Flat" },
+      { sgv: 162, mmol: 9.0, ts: runEndMs - 2 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 144, mmol: 8.0, ts: runEndMs + 1 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 126, mmol: 7.0, ts: runEndMs + 6 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 108, mmol: 6.0, ts: runEndMs + 11 * 60 * 1000, direction: "Flat", delta: 0 },
     ];
     const ctx = computePostRunContext(readings, runEndMs)!;
     expect(ctx.endBG).toBe(8.0); // closest to runEnd

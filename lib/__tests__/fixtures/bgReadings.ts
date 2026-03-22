@@ -10,6 +10,7 @@ export function makeReadings(
     mmol,
     ts: startMs + i * 1 * 60 * 1000, // 1-min intervals
     direction: "Flat",
+    delta: 0,
   }));
 }
 
@@ -66,18 +67,20 @@ export function volatile(startMs: number): BGReading[] {
 /** Only 3 readings in 2h (sensor warmup gaps) */
 export function sparse(startMs: number): BGReading[] {
   return [
-    { sgv: 180, mmol: 10.0, ts: startMs, direction: "Flat" },
+    { sgv: 180, mmol: 10.0, ts: startMs, direction: "Flat", delta: 0 },
     {
       sgv: 162,
       mmol: 9.0,
       ts: startMs + 60 * 60 * 1000,
       direction: "Flat",
+      delta: 0,
     },
     {
       sgv: 144,
       mmol: 8.0,
       ts: startMs + 2 * 60 * 60 * 1000,
       direction: "Flat",
+      delta: 0,
     },
   ];
 }

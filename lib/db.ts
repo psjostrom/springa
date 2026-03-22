@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS bg_readings (
   mmol      REAL NOT NULL,
   sgv       INTEGER NOT NULL,
   direction TEXT NOT NULL,
+  delta     REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (email, ts)
 );
 

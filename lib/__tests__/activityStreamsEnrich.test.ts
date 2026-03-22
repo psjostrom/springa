@@ -48,9 +48,9 @@ describe("enrichActivitiesWithGlucose", () => {
 
     // Return CGM readings that cover the run window
     mockGetBGReadingsForRange.mockResolvedValue([
-      { ts: startMs, mmol: 10.0, sgv: 180, direction: "Flat" },
-      { ts: startMs + 5 * 60 * 1000, mmol: 9.5, sgv: 171, direction: "Flat" },
-      { ts: startMs + 30 * 60 * 1000, mmol: 8.0, sgv: 144, direction: "Flat" },
+      { ts: startMs, mmol: 10.0, sgv: 180, direction: "Flat", delta: 0 },
+      { ts: startMs + 5 * 60 * 1000, mmol: 9.5, sgv: 171, direction: "Flat", delta: 0 },
+      { ts: startMs + 30 * 60 * 1000, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
     ]);
 
     const result = await enrichActivitiesWithGlucose("test@test.com", acts);

@@ -88,53 +88,20 @@ export async function GET(req: Request) {
   args.push(count);
 
   const readings = await db().execute({
-    sql: `SELECT ts, mmol, sgv, direction FROM bg_readings WHERE ${conditions.join(" AND ")} ORDER BY ts DESC LIMIT ?`,
+    sql: `SELECT ts, mmol, sgv, direction, delta FROM bg_readings WHERE ${conditions.join(" AND ")} ORDER BY ts DESC LIMIT ?`,
     args,
   });
 
-  const rows = readings.rows.map((row) => ({
-    ts: Number(row.ts),
+  const entries = readings.rows.map((row) => ({
     sgv: Number(row.sgv),
-    mmol: Number(row.mmol),
+    date: Number(row.ts),
+    dateString: new Date(Number(row.ts)).toISOString(),
+    delta: Number(row.delta),
     direction: row.direction as string,
+    type: "sgv" as const,
+    device: "Springa",
   }));
 
-  // Compute smoothed delta (3-point average, 5-min window)
-  const avgSgv = (idx: number) => {
-    const lo = Math.max(0, idx - 1);
-    const hi = Math.min(rows.length - 1, idx + 1);
-    let sum = 0, n = 0;
-    for (let j = lo; j <= hi; j++) { sum += rows[j].sgv; n++; }
-    return sum / n;
-  };
-
-  const DELTA_WINDOW_MS = 5 * 60 * 1000;
-
-  const entries = rows.map((row, i) => {
-    let delta = 0;
-    const targetTs = row.ts - DELTA_WINDOW_MS;
-    let pastIdx: number | null = null;
-    for (let j = i + 1; j < rows.length; j++) {
-      if (rows[j].ts <= targetTs) {
-        const prev = j - 1 > i ? j - 1 : null;
-        pastIdx = prev != null && Math.abs(rows[prev].ts - targetTs) < Math.abs(rows[j].ts - targetTs) ? prev : j;
-        break;
-      }
-    }
-    if (pastIdx != null && row.ts - rows[pastIdx].ts <= 600_000) {
-      delta = avgSgv(i) - avgSgv(pastIdx);
-    }
-
-    return {
-      sgv: row.sgv,
-      date: row.ts,
-      dateString: new Date(row.ts).toISOString(),
-      delta: Math.round(delta * 1000) / 1000,
-      direction: row.direction,
-      type: "sgv" as const,
-      device: "Springa",
-    };
-  });
 
   return NextResponse.json(entries, {
     headers: { "Cache-Control": "no-cache, no-store" },
@@ -163,8 +130,8 @@ export async function POST(req: Request) {
   // Read existing data for affected shards only
   const existing = await getBGReadings(email, affectedMonths);
 
-  // Snapshot existing directions so we can diff after recompute
-  const existingDir = new Map(existing.map((r) => [r.ts, r.direction]));
+  // Snapshot existing state so we can diff after recompute
+  const existingState = new Map(existing.map((r) => [r.ts, { direction: r.direction, delta: r.delta }]));
 
   const merged = [...existing, ...newReadings];
 
@@ -179,14 +146,15 @@ export async function POST(req: Request) {
   // Sort chronologically
   deduped.sort((a, b) => a.ts - b.ts);
 
-  // Recompute direction from sgv values — xDrip+ companion mode
+  // Recompute direction and delta from sgv values — xDrip+ companion mode
   // returns stale/wrong direction fields (issue #3787)
   recomputeDirections(deduped);
 
-  // Only write readings that are new or whose direction changed
+  // Only write readings that are new or whose direction/delta changed
   const toWrite = deduped.filter((r) => {
-    const prev = existingDir.get(r.ts);
-    return prev === undefined || prev !== r.direction;
+    const prev = existingState.get(r.ts);
+    if (!prev) return true;
+    return prev.direction !== r.direction || prev.delta !== r.delta;
   });
 
   if (toWrite.length > 0) {

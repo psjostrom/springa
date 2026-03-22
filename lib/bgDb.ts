@@ -37,7 +37,7 @@ export async function getBGReadings(
   const maxTs = Math.max(...ranges.map((r) => r.end));
 
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts < ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction, delta FROM bg_readings WHERE email = ? AND ts >= ? AND ts < ? ORDER BY ts",
     args: [email, minTs, maxTs],
   });
 
@@ -46,6 +46,7 @@ export async function getBGReadings(
     mmol: row.mmol as number,
     sgv: row.sgv as number,
     direction: row.direction as string,
+    delta: row.delta as number,
   }));
 }
 
@@ -61,9 +62,9 @@ export async function saveBGReadings(
     const chunk = readings.slice(i, i + BATCH_SIZE);
     await db().batch(
       chunk.map((r) => ({
-        sql: `INSERT OR REPLACE INTO bg_readings (email, ts, mmol, sgv, direction)
-              VALUES (?, ?, ?, ?, ?)`,
-        args: [email, r.ts, r.mmol, r.sgv, r.direction],
+        sql: `INSERT OR REPLACE INTO bg_readings (email, ts, mmol, sgv, direction, delta)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [email, r.ts, r.mmol, r.sgv, r.direction, r.delta],
       })),
       "write",
     );
@@ -77,7 +78,7 @@ export async function getRecentBGReadings(
 ): Promise<BGReading[]> {
   const cutoff = Date.now() - withinMs;
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction, delta FROM bg_readings WHERE email = ? AND ts >= ? ORDER BY ts",
     args: [email, cutoff],
   });
   return result.rows.map((row) => ({
@@ -85,6 +86,7 @@ export async function getRecentBGReadings(
     mmol: row.mmol as number,
     sgv: row.sgv as number,
     direction: row.direction as string,
+    delta: row.delta as number,
   }));
 }
 
@@ -100,7 +102,7 @@ export async function getBGReadingsForRange(
   const paddedStart = startMs - RUN_WINDOW_PADDING_MS;
   const paddedEnd = endMs + RUN_WINDOW_PADDING_MS;
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction, delta FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
     args: [email, paddedStart, paddedEnd],
   });
   return result.rows.map((row) => ({
@@ -108,6 +110,7 @@ export async function getBGReadingsForRange(
     mmol: row.mmol as number,
     sgv: row.sgv as number,
     direction: row.direction as string,
+    delta: row.delta as number,
   }));
 }
 
@@ -121,7 +124,7 @@ export async function getBGReadingsForRun(
   const paddedEnd = runEndMs + RUN_WINDOW_PADDING_MS;
 
   const result = await db().execute({
-    sql: "SELECT ts, mmol, sgv, direction FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+    sql: "SELECT ts, mmol, sgv, direction, delta FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts",
     args: [email, paddedStart, paddedEnd],
   });
 
@@ -130,5 +133,6 @@ export async function getBGReadingsForRun(
     mmol: row.mmol as number,
     sgv: row.sgv as number,
     direction: row.direction as string,
+    delta: row.delta as number,
   }));
 }

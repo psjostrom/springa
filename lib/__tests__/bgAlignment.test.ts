@@ -5,7 +5,7 @@ import type { DataPoint } from "../types";
 import type { CachedActivity } from "../activityStreamsDb";
 
 function makeReading(ts: number, mmol: number): BGReading {
-  return { ts, mmol, sgv: Math.round(mmol * 18), direction: "Flat" };
+  return { ts, mmol, sgv: Math.round(mmol * 18), direction: "Flat", delta: 0 };
 }
 
 describe("interpolateBG", () => {
@@ -159,9 +159,9 @@ describe("enrichWithGlucose", () => {
     }];
 
     const readings: BGReading[] = [
-      { ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" },
-      { ts: 1060000, mmol: 7.5, sgv: 135, direction: "Flat" },
-      { ts: 1120000, mmol: 7.0, sgv: 126, direction: "Flat" },
+      { ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+      { ts: 1060000, mmol: 7.5, sgv: 135, direction: "Flat", delta: 0 },
+      { ts: 1120000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
     ];
 
     const result = enrichWithGlucose(activities, readings);
@@ -178,7 +178,7 @@ describe("enrichWithGlucose", () => {
       hr: [{ time: 0, value: 120 }],
     }];
 
-    const result = enrichWithGlucose(activities, [{ ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat" }]);
+    const result = enrichWithGlucose(activities, [{ ts: 1000000, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 }]);
     expect(result[0].glucose).toBeUndefined();
   });
 
