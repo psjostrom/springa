@@ -38,7 +38,7 @@ async function migrate() {
     "ALTER TABLE user_settings ADD COLUMN run_days TEXT",
     "ALTER TABLE user_settings ADD COLUMN mylife_email TEXT",
     "ALTER TABLE user_settings ADD COLUMN mylife_password TEXT",
-    "ALTER TABLE user_settings ADD COLUMN cgm_secret TEXT",
+    "ALTER TABLE user_settings ADD COLUMN nightscout_secret TEXT",
     "ALTER TABLE user_settings ADD COLUMN onboarding_complete INTEGER NOT NULL DEFAULT 0",
   ];
 
@@ -52,11 +52,11 @@ async function migrate() {
   }
 
   // Create index
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_cgm_secret ON user_settings(cgm_secret)");
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret)");
 
-  // 2. Generate new CGM secret
-  const newCgmSecret = randomBytes(32).toString("hex");
-  const cgmHash = hashSecret(newCgmSecret);
+  // 2. Generate new Nightscout secret
+  const newNsSecret = randomBytes(32).toString("hex");
+  const nsHash = hashSecret(newNsSecret);
 
   // 3. Encrypt credentials
   const intervalsKey = process.env.INTERVALS_API_KEY;
@@ -76,13 +76,13 @@ async function migrate() {
       intervals_api_key = ?,
       mylife_email = ?,
       mylife_password = ?,
-      cgm_secret = ?
+      nightscout_secret = ?
     WHERE email = ?`,
-    args: [encIntervalsKey, mylifeEmail ?? null, encMylifePassword, cgmHash, email],
+    args: [encIntervalsKey, mylifeEmail ?? null, encMylifePassword, nsHash, email],
   });
 
   console.log("Migration complete.");
-  console.log(`New CGM secret (configure in Strimma): ${newCgmSecret}`);
+  console.log(`New Nightscout secret (configure in Strimma): ${newNsSecret}`);
   console.log("Remove these env vars: INTERVALS_API_KEY, MYLIFE_EMAIL, MYLIFE_PASSWORD, CGM_SECRET, TIMEZONE");
 }
 

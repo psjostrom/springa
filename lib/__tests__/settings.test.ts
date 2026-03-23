@@ -25,7 +25,7 @@ const MULTI_USER_DEFAULTS = {
   sugarMode: false,
   timezone: "Europe/Stockholm",
   onboardingComplete: false,
-  cgmConnected: false,
+  nightscoutConnected: false,
   mylifeConnected: false,
 };
 

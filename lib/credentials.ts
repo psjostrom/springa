@@ -51,14 +51,14 @@ export interface UserCredentials {
   intervalsApiKey: string | null;
   mylifeEmail: string | null;
   mylifePassword: string | null;
-  cgmSecret: string | null; // the hash, not the plaintext
+  nightscoutSecret: string | null; // the hash, not the plaintext
   timezone: string;
 }
 
 /** Fetch and decrypt per-user credentials from DB. */
 export async function getUserCredentials(email: string): Promise<UserCredentials | null> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, mylife_email, mylife_password, cgm_secret, timezone FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, mylife_email, mylife_password, nightscout_secret, timezone FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return null;
@@ -69,7 +69,7 @@ export async function getUserCredentials(email: string): Promise<UserCredentials
     intervalsApiKey: row.intervals_api_key ? decrypt(row.intervals_api_key as string, encKey) : null,
     mylifeEmail: row.mylife_email as string | null,
     mylifePassword: row.mylife_password ? decrypt(row.mylife_password as string, encKey) : null,
-    cgmSecret: row.cgm_secret as string | null,
+    nightscoutSecret: row.nightscout_secret as string | null,
     timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
   };
 }
@@ -81,7 +81,7 @@ export async function updateCredentials(
     intervalsApiKey?: string | null;
     mylifeEmail?: string | null;
     mylifePassword?: string | null;
-    cgmSecretHash?: string | null;
+    nightscoutSecretHash?: string | null;
     timezone?: string;
   },
 ): Promise<void> {
@@ -101,9 +101,9 @@ export async function updateCredentials(
     sets.push("mylife_password = ?");
     args.push(updates.mylifePassword ? encrypt(updates.mylifePassword, encKey) : null);
   }
-  if ("cgmSecretHash" in updates) {
-    sets.push("cgm_secret = ?");
-    args.push(updates.cgmSecretHash ?? null);
+  if ("nightscoutSecretHash" in updates) {
+    sets.push("nightscout_secret = ?");
+    args.push(updates.nightscoutSecretHash ?? null);
   }
   if ("timezone" in updates) {
     sets.push("timezone = ?");
@@ -129,7 +129,7 @@ export async function validateApiSecretFromDB(
   const hashed = hashSecret(apiSecret);
 
   const result = await db().execute({
-    sql: "SELECT email FROM user_settings WHERE cgm_secret = ?",
+    sql: "SELECT email FROM user_settings WHERE nightscout_secret = ?",
     args: [hashed],
   });
 

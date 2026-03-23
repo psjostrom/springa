@@ -144,7 +144,7 @@ describe("validateApiSecretFromDB", () => {
     await holder.db.execute("DELETE FROM user_settings");
     const hashed = hashSecret("valid-secret");
     await holder.db.execute({
-      sql: "INSERT INTO user_settings (email, cgm_secret) VALUES (?, ?)",
+      sql: "INSERT INTO user_settings (email, nightscout_secret) VALUES (?, ?)",
       args: [EMAIL, hashed],
     });
   });

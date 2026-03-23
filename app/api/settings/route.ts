@@ -4,7 +4,7 @@ import {
   saveUserSettings,
   type UserSettings,
 } from "@/lib/settings";
-import { getUserCredentials, updateCredentials } from "@/lib/credentials";
+import { getUserCredentials, updateCredentials, hashSecret } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
@@ -48,6 +48,7 @@ export async function PUT(req: Request) {
     intervalsApiKey?: string | null;
     mylifeEmail?: string | null;
     mylifePassword?: string | null;
+    nightscoutSecret?: string | null;
     timezone?: string;
   };
 
@@ -73,6 +74,7 @@ export async function PUT(req: Request) {
   if ("intervalsApiKey" in body) credUpdates.intervalsApiKey = body.intervalsApiKey;
   if ("mylifeEmail" in body) credUpdates.mylifeEmail = body.mylifeEmail;
   if ("mylifePassword" in body) credUpdates.mylifePassword = body.mylifePassword;
+  if ("nightscoutSecret" in body) credUpdates.nightscoutSecretHash = body.nightscoutSecret ? hashSecret(body.nightscoutSecret) : null;
   if ("timezone" in body) credUpdates.timezone = body.timezone;
 
   if (Object.keys(credUpdates).length > 0) {
