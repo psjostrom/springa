@@ -58,13 +58,13 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.include_base_phase != null) settings.includeBasePhase = (row.include_base_phase as number) === 1;
   if (row.warmth_preference != null) settings.warmthPreference = row.warmth_preference as number;
 
-  // Multi-user fields
-  settings.approved = (row.approved as number) === 1;
-  settings.sugarMode = (row.sugar_mode as number) === 1;
+  // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
+  settings.approved = (row.approved as number | null ?? 0) === 1;
+  settings.sugarMode = (row.sugar_mode as number | null ?? 0) === 1;
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
   if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
-  settings.onboardingComplete = (row.onboarding_complete as number) === 1;
+  settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
 
   // Derived boolean flags (actual credentials decrypted separately via getUserCredentials)
   settings.cgmConnected = !!row.cgm_secret;

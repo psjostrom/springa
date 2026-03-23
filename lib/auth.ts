@@ -19,7 +19,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         args: [user.email],
       });
       if (result.rows.length === 0) return false;
-      return (result.rows[0].approved as number) === 1;
+      return (result.rows[0].approved as number | null ?? 0) === 1;
     },
   },
 });
