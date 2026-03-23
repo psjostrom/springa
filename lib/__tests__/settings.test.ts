@@ -19,6 +19,16 @@ import { getUserSettings, saveUserSettings } from "../settings";
 
 const testDb = () => holder.db;
 
+// Multi-user defaults returned for any existing row
+const MULTI_USER_DEFAULTS = {
+  approved: false,
+  sugarMode: false,
+  timezone: "Europe/Stockholm",
+  onboardingComplete: false,
+  cgmConnected: false,
+  mylifeConnected: false,
+};
+
 beforeAll(async () => {
   await testDb().executeMultiple(SCHEMA_DDL);
 });
@@ -40,8 +50,9 @@ describe("getUserSettings", () => {
     });
 
     const result = await getUserSettings("user@example.com");
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       raceDate: "2026-06-13",
+      ...MULTI_USER_DEFAULTS,
     });
   });
 
@@ -52,7 +63,7 @@ describe("getUserSettings", () => {
     });
 
     const result = await getUserSettings("user@example.com");
-    expect(result).toEqual({ raceName: "EcoTrail" });
+    expect(result).toMatchObject({ raceName: "EcoTrail" });
     expect(result).not.toHaveProperty("raceDate");
   });
 });
@@ -63,7 +74,7 @@ describe("saveUserSettings", () => {
     await saveUserSettings("user@example.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("user@example.com");
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       raceDate: "2026-06-13",
       raceName: "EcoTrail",
     });
@@ -73,7 +84,7 @@ describe("saveUserSettings", () => {
     await saveUserSettings("new@user.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("new@user.com");
-    expect(result).toEqual({ raceName: "EcoTrail" });
+    expect(result).toMatchObject({ raceName: "EcoTrail" });
   });
 
   it("overwrites existing key values", async () => {
@@ -84,7 +95,7 @@ describe("saveUserSettings", () => {
     await saveUserSettings("user@example.com", { raceName: "EcoTrail" });
 
     const result = await getUserSettings("user@example.com");
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       raceDate: "2026-06-13",
       raceName: "EcoTrail",
     });

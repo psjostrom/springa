@@ -1,5 +1,7 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import {
+
   fetchActivityById,
   fetchActivitiesByDateRange,
   updateActivityFeedback,
@@ -106,10 +108,11 @@ export async function GET(req: Request) {
     throw e;
   }
 
-  const apiKey = process.env.INTERVALS_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "No API key" }, { status: 400 });
+  const creds = await getUserCredentials(email);
+  if (!creds?.intervalsApiKey) {
+    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
   }
+  const apiKey = creds.intervalsApiKey;
 
   const { searchParams } = new URL(req.url);
   const activityIdParam = searchParams.get("activityId");
@@ -171,10 +174,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing activityId or rating" }, { status: 400 });
   }
 
-  const apiKey = process.env.INTERVALS_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "No API key" }, { status: 400 });
+  const email = await requireAuth();
+  const creds = await getUserCredentials(email);
+  if (!creds?.intervalsApiKey) {
+    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
   }
+  const apiKey = creds.intervalsApiKey;
 
   // Write Rating + FeedbackComment to Intervals.icu
   await updateActivityFeedback(apiKey, activityId, rating, comment);

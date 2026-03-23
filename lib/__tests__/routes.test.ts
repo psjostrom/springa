@@ -1,11 +1,13 @@
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import type { Client } from "@libsql/client";
 
+const TEST_ENC_KEY = "a".repeat(64);
 const { holder } = vi.hoisted(() => {
   process.env.TURSO_DATABASE_URL = "file::memory:";
   process.env.TURSO_AUTH_TOKEN = "dummy";
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "dummy";
   process.env.VAPID_PRIVATE_KEY = "dummy";
+  process.env.CREDENTIALS_ENCRYPTION_KEY = "a".repeat(64);
   return { holder: { db: null as unknown as Client } };
 });
 
@@ -60,11 +62,11 @@ import { server } from "./msw/server";
 import { API_BASE } from "../constants";
 
 import { SCHEMA_DDL } from "../db";
+import { hashSecret, encrypt } from "../credentials";
 import * as bgDb from "../bgDb";
 const {
   getBGReadings,
   monthKey,
-  sha1,
 } = bgDb;
 import { GET as entriesGET, POST as entriesPOST } from "@/app/api/v1/entries/route";
 import { GET as bgGET } from "@/app/api/bg/route";
@@ -160,17 +162,15 @@ async function countReadings(email: string, month?: string): Promise<number> {
   return result.rows[0].cnt as number;
 }
 
-/** Seed a user_settings row for the test user. */
+/** Seed a user_settings row for the test user with credentials in DB. */
 async function seedUser() {
+  const cgmHash = hashSecret(SECRET);
+  const encApiKey = encrypt("test-key", TEST_ENC_KEY);
   await testDb().execute({
-    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
-    args: [EMAIL],
+    sql: "INSERT OR IGNORE INTO user_settings (email, approved, cgm_secret, intervals_api_key) VALUES (?, 1, ?, ?)",
+    args: [EMAIL, cgmHash, encApiKey],
   });
 }
-
-// Store original env to restore after each test
-let origApiSecret: string | undefined;
-let origIntervalsApiKey: string | undefined;
 
 beforeAll(async () => {
   await testDb().executeMultiple(SCHEMA_DDL);
@@ -190,20 +190,6 @@ beforeEach(async () => {
   mockUpdateActivityCarbs.mockReset().mockResolvedValue(undefined);
   mockUpdateActivityPreRunCarbs.mockReset().mockResolvedValue(undefined);
   mockSendNotification.mockReset().mockResolvedValue({});
-
-  // Save and set env vars for tests
-  origApiSecret = process.env.CGM_SECRET;
-  origIntervalsApiKey = process.env.INTERVALS_API_KEY;
-  process.env.CGM_SECRET = SECRET;
-  process.env.INTERVALS_API_KEY = "test-key";
-});
-
-afterEach(() => {
-  // Restore env vars
-  if (origApiSecret !== undefined) process.env.CGM_SECRET = origApiSecret;
-  else process.env.CGM_SECRET = "";
-  if (origIntervalsApiKey !== undefined) process.env.INTERVALS_API_KEY = origIntervalsApiKey;
-  else process.env.INTERVALS_API_KEY = "";
 });
 
 // ---------------------------------------------------------------------------
@@ -215,7 +201,7 @@ describe("end-to-end: entries → BG GET", () => {
     await seedUser();
 
     // CGM source sends SHA1(secret) as api-secret
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     // POST readings via entries route
     const res = await postEntries(hash, [
@@ -245,7 +231,7 @@ describe("end-to-end: entries → BG GET", () => {
 describe("entries route: cross-month storage", () => {
   it("stores readings from different months correctly", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     const res = await postEntries(hash, [
       reading(140, "2026-01-31T23:50:00Z"),
@@ -261,7 +247,7 @@ describe("entries route: cross-month storage", () => {
 
   it("handles year rollover (Dec → Jan)", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(140, "2025-12-31T23:55:00Z"),
@@ -279,7 +265,7 @@ describe("entries route: cross-month storage", () => {
 describe("entries route: dedup and merge", () => {
   it("deduplicates readings with identical timestamps", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(145, "2026-02-20T10:00:00Z"),
@@ -295,7 +281,7 @@ describe("entries route: dedup and merge", () => {
 
   it("merges new readings with existing and sorts chronologically", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(145, "2026-02-20T10:00:00Z"),
@@ -313,7 +299,7 @@ describe("entries route: dedup and merge", () => {
 
   it("only writes new/changed readings, not the full shard", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     // Seed 100 readings (5-min intervals)
     const seed = Array.from({ length: 100 }, (_, i) =>
@@ -344,7 +330,7 @@ describe("entries route: dedup and merge", () => {
 
   it("writes nothing when all readings are duplicates", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(145, "2026-02-20T10:00:00Z"),
@@ -486,7 +472,7 @@ describe("settings route", () => {
     expect(data.intervalsApiKey).toBe("test-key");
   });
 
-  it("GET returns connected booleans from env vars", async () => {
+  it("GET returns connected booleans from DB", async () => {
     authedSession();
     await seedUser();
 
@@ -496,16 +482,15 @@ describe("settings route", () => {
     expect(data.mylifeConnected).toBe(false);
   });
 
-  it("PUT ignores credential fields", async () => {
+  it("PUT accepts credential fields and stores them in DB", async () => {
     authedSession();
+    await seedUser();
 
-    // Attempt to set credential fields — should be silently ignored
-    await putSettings({ raceDate: "2026-06-13", intervalsApiKey: "hacked" });
+    await putSettings({ raceDate: "2026-06-13", intervalsApiKey: "new-key" });
 
     const res = await settingsGET();
     const data = await res.json();
-    // API key comes from env, not the PUT body
-    expect(data.intervalsApiKey).toBe("test-key");
+    expect(data.intervalsApiKey).toBe("new-key");
     expect(data.raceDate).toBe("2026-06-13");
   });
 });
@@ -550,7 +535,7 @@ describe("bg-cache route", () => {
 describe("edge cases", () => {
   it("entries POST with empty array returns count 0, no readings written", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     const res = await postEntries(hash, []);
     expect(res.status).toBe(200);
@@ -727,6 +712,7 @@ function postFeedback(body: unknown) {
 describe("run-feedback route", () => {
   it("GET returns activity data from Intervals.icu", async () => {
     authedSession();
+    await seedUser();
     mockFetchActivityById.mockResolvedValue({
       id: "i123",
       start_date: "2026-02-20T10:00:00Z",
@@ -750,6 +736,7 @@ describe("run-feedback route", () => {
 
   it("GET without activityId finds latest unrated run", async () => {
     authedSession();
+    await seedUser();
     mockFetchActivitiesByDateRange.mockResolvedValue([
       { id: "i100", start_date: "2026-03-01T08:00:00Z", type: "Run", Rating: "good", name: "Old" },
       { id: "i200", start_date: "2026-03-01T14:00:00Z", type: "Run", Rating: "", name: "Latest", distance: 6000, moving_time: 3000, average_hr: 130 },
@@ -763,6 +750,7 @@ describe("run-feedback route", () => {
 
   it("GET without activityId returns 404 with retry when no unrated run", async () => {
     authedSession();
+    await seedUser();
     mockFetchActivitiesByDateRange.mockResolvedValue([]);
 
     const res = await feedbackGET(new Request("http://localhost/api/run-feedback"));
@@ -773,6 +761,7 @@ describe("run-feedback route", () => {
 
   it("GET returns 404 when activity not found", async () => {
     authedSession();
+    await seedUser();
     mockFetchActivityById.mockResolvedValue(null);
 
     const res = await getFeedbackByActivity("i999");
@@ -781,6 +770,7 @@ describe("run-feedback route", () => {
 
   it("POST writes feedback to Intervals.icu", async () => {
     authedSession();
+    await seedUser();
 
     const res = await postFeedback({ activityId: "i123", rating: "good", comment: "Felt great" });
     expect(res.status).toBe(200);
@@ -801,6 +791,7 @@ describe("run-feedback route", () => {
 
   it("GET returns pre-run carbs from Turso when activity has paired_event_id", async () => {
     authedSession();
+    await seedUser();
 
     // Seed pre-run carbs for event 456
     await testDb().execute({
@@ -824,6 +815,7 @@ describe("run-feedback route", () => {
 
   it("GET finds pre-run carbs via matched event when paired_event_id is null", async () => {
     authedSession();
+    await seedUser();
 
     // Seed pre-run carbs for event 789
     await testDb().execute({
@@ -857,6 +849,7 @@ describe("run-feedback route", () => {
 
   it("GET computes prescribedCarbsG from planned duration, not actual", async () => {
     authedSession();
+    await seedUser();
 
     // Activity ran for 44 min (2640s), but the plan says 41m
     mockFetchActivityById.mockResolvedValue({
@@ -886,6 +879,7 @@ describe("run-feedback route", () => {
 
   it("GET prefers activity PreRunCarbsG over Turso fallback", async () => {
     authedSession();
+    await seedUser();
 
     // Seed pre-run carbs for event 456
     await testDb().execute({
@@ -1029,17 +1023,16 @@ describe("GET /api/v1/entries", () => {
     expect(res.status).toBe(200);
   });
 
-  it("accepts SHA-1 hashed api-secret", async () => {
+  it("rejects SHA-1 hashed secret (only raw secret accepted)", async () => {
     await seedUser();
+    const { sha1 } = await import("../bgDb");
     const res = await getEntries(sha1(SECRET));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
   it("returns 401 when no user configured", async () => {
     const res = await getEntries(SECRET);
     expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toBe("No user configured");
   });
 
   it("returns empty array when no readings exist", async () => {
@@ -1051,7 +1044,7 @@ describe("GET /api/v1/entries", () => {
 
   it("returns entries in Nightscout format", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
     const ts = new Date("2026-02-20T10:00:00Z").getTime();
 
     await postEntries(hash, [reading(145, "2026-02-20T10:00:00Z")]);
@@ -1071,7 +1064,7 @@ describe("GET /api/v1/entries", () => {
 
   it("filters by find[date][$gt]", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(140, "2026-02-20T10:00:00Z"),
@@ -1089,7 +1082,7 @@ describe("GET /api/v1/entries", () => {
 
   it("respects count param", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     await postEntries(hash, [
       reading(140, "2026-02-20T10:00:00Z"),
@@ -1104,7 +1097,7 @@ describe("GET /api/v1/entries", () => {
 
   it("defaults to last 30 days when no since param", async () => {
     await seedUser();
-    const hash = sha1(SECRET);
+    const hash = SECRET;
 
     // Recent reading (within 30 days)
     const recent = new Date();
@@ -1142,15 +1135,8 @@ function makeTreatment(overrides: Partial<Treatment> & { id: string; ts: number 
 
 describe("GET /api/v1/treatments", () => {
   beforeEach(async () => {
-    origApiSecret = process.env.CGM_SECRET;
-    process.env.CGM_SECRET = SECRET;
     await seedUser();
-    // Clear treatments table
     await testDb().execute({ sql: "DELETE FROM treatments", args: [] });
-  });
-
-  afterEach(() => {
-    process.env.CGM_SECRET = origApiSecret;
   });
 
   it("rejects missing api-secret", async () => {
@@ -1168,9 +1154,10 @@ describe("GET /api/v1/treatments", () => {
     expect(res.status).toBe(200);
   });
 
-  it("accepts SHA-1 hashed api-secret", async () => {
+  it("rejects SHA-1 hashed secret (only raw secret accepted)", async () => {
+    const { sha1 } = await import("../bgDb");
     const res = await getTreatmentsReq(sha1(SECRET));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
   it("returns empty array when no treatments exist", async () => {

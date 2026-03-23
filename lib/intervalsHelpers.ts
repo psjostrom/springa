@@ -105,7 +105,7 @@ export function localToUtcMs(localDateStr: string, tz: string): number {
   return new Date(localDateStr + offset).getTime();
 }
 
-/** Resolve timezone from env var. */
-export function resolveTimezone(): string {
-  return process.env.TIMEZONE ?? "Europe/Stockholm";
+/** Resolve timezone from user setting. */
+export function resolveTimezone(userTimezone?: string): string {
+  return userTimezone ?? "Europe/Stockholm";
 }

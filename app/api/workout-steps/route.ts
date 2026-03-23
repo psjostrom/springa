@@ -1,26 +1,26 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
+import { unauthorized } from "@/lib/apiHelpers";
+import { validateApiSecretFromDB, getUserCredentials } from "@/lib/credentials";
 import { API_BASE } from "@/lib/constants";
 import { authHeader } from "@/lib/intervalsApi";
 import { resolveTimezone, todayInTimezone } from "@/lib/intervalsHelpers";
 import { extractStepTotals } from "@/lib/descriptionParser";
 
 export async function GET(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
-    return unauthorized();
-  }
+  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
+  if (!email) return unauthorized();
 
-  const intervalsKey = process.env.INTERVALS_API_KEY;
-  if (!intervalsKey) {
+  const creds = await getUserCredentials(email);
+  if (!creds?.intervalsApiKey) {
     return NextResponse.json({ error: "No API key configured" }, { status: 500 });
   }
 
-  const tz = resolveTimezone();
+  const tz = resolveTimezone(creds.timezone);
   const today = todayInTimezone(tz);
 
   const res = await fetch(
     `${API_BASE}/athlete/0/events?oldest=${today}T00:00:00&newest=${today}T23:59:59&category=WORKOUT`,
-    { headers: { Authorization: authHeader(intervalsKey) } },
+    { headers: { Authorization: authHeader(creds.intervalsApiKey) } },
   );
 
   if (!res.ok) {

@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import { buildBGPatternPrompt } from "@/lib/bgPatterns";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
@@ -50,6 +51,14 @@ export async function POST(req: Request) {
     );
   }
 
+  const creds = await getUserCredentials(email);
+  if (!creds?.intervalsApiKey) {
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
+    );
+  }
+
   const body = (await req.json()) as RequestBody;
   const { events } = body;
 
@@ -65,7 +74,7 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const context = await buildBGPatternContext({ email, events });
+  const context = await buildBGPatternContext({ email, events, intervalsApiKey: creds.intervalsApiKey });
 
   if (context.enrichedRuns.length < 5) {
     return NextResponse.json(
