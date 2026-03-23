@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import { getRunAnalysis, saveRunAnalysis } from "@/lib/runAnalysisDb";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { buildRunAnalysisContext } from "@/lib/runAnalysisContext";
@@ -33,6 +34,14 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "ANTHROPIC_API_KEY not configured." },
       { status: 500 },
+    );
+  }
+
+  const creds = await getUserCredentials(email);
+  if (!creds?.intervalsApiKey) {
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
     );
   }
 
@@ -70,6 +79,7 @@ export async function POST(req: Request) {
     email,
     event,
     runStartMs: event.date.getTime(),
+    intervalsApiKey: creds.intervalsApiKey,
     runBGContext,
     reportCard,
     bgModelSummary,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized, getEmail } from "@/lib/apiHelpers";
+import { unauthorized } from "@/lib/apiHelpers";
+import { validateApiSecretFromDB } from "@/lib/credentials";
 import {
   getBGReadings,
   saveBGReadings,
@@ -22,14 +23,8 @@ import { db } from "@/lib/db";
  *   find[sgv][$lte]    — SGV <= value
  */
 export async function GET(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
-    return unauthorized();
-  }
-
-  const email = await getEmail();
-  if (!email) {
-    return NextResponse.json({ error: "No user configured" }, { status: 401 });
-  }
+  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
+  if (!email) return unauthorized();
 
   const params = new URL(req.url).searchParams;
   const count = Math.min(
@@ -109,14 +104,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
-    return unauthorized();
-  }
-
-  const email = await getEmail();
-  if (!email) {
-    return NextResponse.json({ error: "No user configured" }, { status: 401 });
-  }
+  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
+  if (!email) return unauthorized();
 
   const body: unknown = await req.json();
   const newReadings = parseNightscoutEntries(body);

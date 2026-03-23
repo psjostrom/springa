@@ -4,6 +4,7 @@ import {
   saveUserSettings,
   type UserSettings,
 } from "@/lib/settings";
+import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
@@ -18,11 +19,11 @@ export async function GET() {
 
   const settings = await getUserSettings(email);
 
-  const apiKey = process.env.INTERVALS_API_KEY;
-  if (apiKey) {
-    settings.intervalsApiKey = apiKey;
+  const creds = await getUserCredentials(email);
+  if (creds?.intervalsApiKey) {
+    settings.intervalsApiKey = creds.intervalsApiKey;
     try {
-      const profile = await fetchAthleteProfile(apiKey);
+      const profile = await fetchAthleteProfile(creds.intervalsApiKey);
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
@@ -30,9 +31,6 @@ export async function GET() {
       console.warn("[settings] Failed to fetch athlete profile:", err);
     }
   }
-
-  settings.cgmConnected = !!process.env.CGM_SECRET;
-  settings.mylifeConnected = !!process.env.MYLIFE_EMAIL;
 
   return NextResponse.json(settings);
 }
@@ -46,14 +44,18 @@ export async function PUT(req: Request) {
     throw e;
   }
 
-  const body = (await req.json()) as Partial<UserSettings>;
+  const body = (await req.json()) as Partial<UserSettings> & {
+    intervalsApiKey?: string | null;
+    mylifeEmail?: string | null;
+    mylifePassword?: string | null;
+    timezone?: string;
+  };
 
-  // Only accept race config + widget fields — credentials are env vars now
+  // Settings fields (COALESCE pattern via saveUserSettings)
   const allowed: Partial<UserSettings> = {};
   if (body.raceDate !== undefined) allowed.raceDate = body.raceDate;
   if (body.raceName !== undefined) allowed.raceName = body.raceName;
   if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
-
   if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;
   if (body.startKm !== undefined) allowed.startKm = body.startKm;
   if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;
@@ -64,6 +66,17 @@ export async function PUT(req: Request) {
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);
+  }
+
+  // Credential fields (explicit SET via updateCredentials)
+  const credUpdates: Parameters<typeof updateCredentials>[1] = {};
+  if ("intervalsApiKey" in body) credUpdates.intervalsApiKey = body.intervalsApiKey;
+  if ("mylifeEmail" in body) credUpdates.mylifeEmail = body.mylifeEmail;
+  if ("mylifePassword" in body) credUpdates.mylifePassword = body.mylifePassword;
+  if ("timezone" in body) credUpdates.timezone = body.timezone;
+
+  if (Object.keys(credUpdates).length > 0) {
+    await updateCredentials(email, credUpdates);
   }
 
   return NextResponse.json({ ok: true });

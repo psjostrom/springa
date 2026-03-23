@@ -11,6 +11,7 @@ import { API_BASE } from "@/lib/constants";
 import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getMyLifeData } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import type { IntervalsEvent } from "@/lib/types";
 
@@ -33,41 +34,45 @@ export async function GET(req: Request) {
   let sent = 0;
   let skipped = 0;
 
-  const apiKey = process.env.INTERVALS_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "No API key configured" }, { status: 500 });
-  }
-
-  const timezone = resolveTimezone();
-
-  // Fetch TSB and IOB once — shared across all users/events
-  const today = new Date();
-  const oldest = new Date(today);
-  oldest.setDate(oldest.getDate() - 42);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-  let currentTsb: number | null = null;
-  try {
-    const wellness = await fetchWellnessData(apiKey, fmt(oldest), fmt(today));
-    const fitness = wellnessToFitnessData(wellness);
-    currentTsb = fitness.length > 0 ? fitness[fitness.length - 1].tsb : null;
-  } catch (err) {
-    console.error("[prerun-push] Failed to fetch wellness/TSB:", err);
-  }
-
-  let currentIob: number | null = null;
-  try {
-    const data = await getMyLifeData();
-    if (data) {
-      const ctx = buildInsulinContext(data, now);
-      currentIob = ctx?.actionableIOB ?? null;
-    }
-  } catch (err) {
-    console.error("[prerun-push] Failed to fetch MyLife/IOB:", err);
-  }
-
   for (const email of emails) {
     try {
+      const creds = await getUserCredentials(email);
+      if (!creds?.intervalsApiKey) {
+        skipped++;
+        continue;
+      }
+      const apiKey = creds.intervalsApiKey;
+      const timezone = resolveTimezone(creds.timezone);
+
+      // Per-user TSB
+      const today = new Date();
+      const oldest = new Date(today);
+      oldest.setDate(oldest.getDate() - 42);
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+      let currentTsb: number | null = null;
+      try {
+        const wellness = await fetchWellnessData(apiKey, fmt(oldest), fmt(today));
+        const fitness = wellnessToFitnessData(wellness);
+        currentTsb = fitness.length > 0 ? fitness[fitness.length - 1].tsb : null;
+      } catch (err) {
+        console.error(`[prerun-push] Failed to fetch wellness/TSB for ${email}:`, err);
+      }
+
+      // Per-user IOB
+      let currentIob: number | null = null;
+      if (creds.mylifeEmail && creds.mylifePassword) {
+        try {
+          const data = await getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone);
+          if (data) {
+            const ctx = buildInsulinContext(data, now);
+            currentIob = ctx?.actionableIOB ?? null;
+          }
+        } catch (err) {
+          console.error(`[prerun-push] Failed to fetch MyLife/IOB for ${email}:`, err);
+        }
+      }
+
       // Compute "today" in the user's timezone (DST-safe)
       const todayLocal = todayInTimezone(timezone);
 

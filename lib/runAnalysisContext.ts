@@ -1,4 +1,5 @@
 import { getMyLifeData } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import { getRecentAnalyzedRuns, buildRunHistory } from "@/lib/runAnalysisDb";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
@@ -18,6 +19,7 @@ interface BuildRunAnalysisContextInput {
   email: string;
   event: CalendarEvent;
   runStartMs: number;
+  intervalsApiKey: string;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
@@ -42,13 +44,15 @@ interface RunAnalysisContextResult {
 export async function buildRunAnalysisContext(
   input: BuildRunAnalysisContextInput,
 ): Promise<RunAnalysisContextResult> {
-  const { email, event, runStartMs, runBGContext, reportCard, bgModelSummary } = input;
-  const intervalsApiKey = process.env.INTERVALS_API_KEY;
+  const { email, event, runStartMs, intervalsApiKey, runBGContext, reportCard, bgModelSummary } = input;
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 
   // Start MyLife fetch in parallel (doesn't depend on rows/feedback/profile)
-  const insulinContextP = getMyLifeData()
+  const creds = await getUserCredentials(email);
+  const insulinContextP = (creds?.mylifeEmail && creds.mylifePassword
+    ? getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone)
+    : Promise.resolve(null))
     .then((data) => {
       if (!data) return null;
       console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
@@ -61,13 +65,9 @@ export async function buildRunAnalysisContext(
 
   const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(email),
-    intervalsApiKey
-      ? fetchAthleteProfile(intervalsApiKey)
-      : Promise.resolve({} as { lthr?: number; maxHr?: number; hrZones?: number[] }),
+    fetchAthleteProfile(intervalsApiKey),
     getBGPatterns(email),
-    intervalsApiKey
-      ? fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd"))
-      : Promise.resolve([]),
+    fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
   ]);
 
   // Enrich history rows with glucose from bg_readings
@@ -75,20 +75,18 @@ export async function buildRunAnalysisContext(
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();
-  if (intervalsApiKey) {
-    const rowDates = rows.map((r) => r.activityDate).filter((d): d is string => !!d);
-    const oldest = rowDates.length > 0
-      ? rowDates.reduce((a, b) => (a < b ? a : b))
-      : format(subDays(new Date(), 90), "yyyy-MM-dd");
-    const today = format(new Date(), "yyyy-MM-dd");
-    try {
-      const allActivities = await fetchActivitiesByDateRange(intervalsApiKey, oldest, today);
-      for (const a of allActivities) {
-        activityMap.set(a.id, a);
-      }
-    } catch (err) {
-      console.warn("[run-analysis] Failed to fetch activity metadata:", err);
+  const rowDates = rows.map((r) => r.activityDate).filter((d): d is string => !!d);
+  const oldest = rowDates.length > 0
+    ? rowDates.reduce((a, b) => (a < b ? a : b))
+    : format(subDays(new Date(), 90), "yyyy-MM-dd");
+  const today = format(new Date(), "yyyy-MM-dd");
+  try {
+    const allActivities = await fetchActivitiesByDateRange(intervalsApiKey, oldest, today);
+    for (const a of allActivities) {
+      activityMap.set(a.id, a);
     }
+  } catch (err) {
+    console.warn("[run-analysis] Failed to fetch activity metadata:", err);
   }
 
   // Fitness data from Intervals.icu wellness (authoritative CTL/ATL/TSB)

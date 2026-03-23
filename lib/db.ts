@@ -27,7 +27,17 @@ CREATE TABLE IF NOT EXISTS user_settings (
   hidden_widgets   TEXT,
   bg_chart_window  INTEGER,
   include_base_phase INTEGER,
-  warmth_preference  INTEGER
+  warmth_preference  INTEGER,
+  approved           INTEGER NOT NULL DEFAULT 0,
+  sugar_mode         INTEGER NOT NULL DEFAULT 0,
+  display_name       TEXT,
+  timezone           TEXT DEFAULT 'Europe/Stockholm',
+  intervals_api_key  TEXT,
+  run_days           TEXT,
+  mylife_email       TEXT,
+  mylife_password    TEXT,
+  cgm_secret         TEXT,
+  onboarding_complete INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS bg_readings (
@@ -110,5 +120,7 @@ CREATE TABLE IF NOT EXISTS treatments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_treatments_ts ON treatments(email, ts);
+
+CREATE INDEX IF NOT EXISTS idx_cgm_secret ON user_settings(cgm_secret);
 `;
 

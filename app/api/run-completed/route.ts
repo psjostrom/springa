@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
-import { validateApiSecret, unauthorized } from "@/lib/apiHelpers";
-import { db } from "@/lib/db";
+import { unauthorized } from "@/lib/apiHelpers";
+import { validateApiSecretFromDB } from "@/lib/credentials";
 import { sendPushToUser } from "@/lib/push";
 
 export async function POST(req: Request) {
-  if (!validateApiSecret(req.headers.get("api-secret"))) {
-    return unauthorized();
-  }
-
-  const result = await db().execute({ sql: "SELECT email FROM user_settings LIMIT 1", args: [] });
-  const email = result.rows[0]?.email as string;
+  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
   if (!email) return unauthorized();
 
   try { await req.json(); } catch { /* tolerate missing/malformed body */ }

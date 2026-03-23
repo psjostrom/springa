@@ -1,4 +1,5 @@
 import { getMyLifeData } from "@/lib/apiHelpers";
+import { getUserCredentials } from "@/lib/credentials";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import {
@@ -15,6 +16,7 @@ import { format } from "date-fns";
 export interface BGPatternInput {
   email: string;
   events: CalendarEvent[]; // events with dates already restored
+  intervalsApiKey: string;
 }
 
 export interface BGPatternContext {
@@ -27,8 +29,7 @@ export interface BGPatternContext {
 export async function buildBGPatternContext(
   input: BGPatternInput,
 ): Promise<BGPatternContext> {
-  const { email, events } = input;
-  const intervalsApiKey = process.env.INTERVALS_API_KEY;
+  const { email, events, intervalsApiKey } = input;
 
   const completedEvents = events.filter((e) => e.type === "completed");
 
@@ -57,7 +58,10 @@ export async function buildBGPatternContext(
   neededMonths.add(monthKey(latestMs));
 
   // Start MyLife fetch in parallel (doesn't depend on wellness or CGM)
-  const mylifeDataP = getMyLifeData();
+  const creds = await getUserCredentials(email);
+  const mylifeDataP = creds?.mylifeEmail && creds.mylifePassword
+    ? getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone)
+    : Promise.resolve(null);
 
   // Fetch wellness and CGM readings (parallel with MyLife)
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];

@@ -15,6 +15,15 @@ export interface UserSettings {
   includeBasePhase?: boolean;
   /** Personal warmth preference: -2 (run very warm) to +2 (run very cold). Default 0. */
   warmthPreference?: number;
+
+  // Multi-user fields
+  approved?: boolean;
+  sugarMode?: boolean;
+  displayName?: string;
+  timezone?: string;
+  runDays?: number[];
+  onboardingComplete?: boolean;
+
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsApiKey?: string;
   cgmConnected?: boolean;
@@ -28,7 +37,11 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: "SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference FROM user_settings WHERE email = ?",
+    sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
+                 bg_chart_window, include_base_phase, warmth_preference,
+                 approved, sugar_mode, display_name, timezone, run_days, onboarding_complete,
+                 intervals_api_key, mylife_email, cgm_secret
+          FROM user_settings WHERE email = ?`,
     args: [email],
   });
   if (result.rows.length === 0) return {};
@@ -44,6 +57,19 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.bg_chart_window != null) settings.bgChartWindow = row.bg_chart_window as number;
   if (row.include_base_phase != null) settings.includeBasePhase = (row.include_base_phase as number) === 1;
   if (row.warmth_preference != null) settings.warmthPreference = row.warmth_preference as number;
+
+  // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
+  settings.approved = (row.approved as number | null ?? 0) === 1;
+  settings.sugarMode = (row.sugar_mode as number | null ?? 0) === 1;
+  if (row.display_name) settings.displayName = row.display_name as string;
+  settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
+  if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
+  settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
+
+  // Derived boolean flags (actual credentials decrypted separately via getUserCredentials)
+  settings.cgmConnected = !!row.cgm_secret;
+  settings.mylifeConnected = !!row.mylife_email;
+
   return settings;
 }
 
