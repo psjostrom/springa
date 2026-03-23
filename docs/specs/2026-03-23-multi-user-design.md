@@ -59,7 +59,7 @@ signIn callback:
 - `intervals_api_key` (TEXT) -- user's Intervals.icu API key
 - `mylife_email` (TEXT) -- MyLife credentials (Sugar mode only)
 - `mylife_password` (TEXT) -- encrypted
-- `cgm_secret` (TEXT) -- per-user Nightscout API secret (hashed)
+- `nightscout_secret` (TEXT) -- per-user Nightscout API secret (SHA-1 hash)
 - `run_days` (TEXT) -- JSON array of weekday numbers the user can run, e.g. [1,3,5,0] for Mon/Wed/Fri/Sun
 - `onboarding_complete` (INTEGER, default 0) -- setup wizard finished
 
@@ -158,7 +158,7 @@ Valid state: user enables Sugar mode but hasn't configured a CGM secret yet. BG 
 | `INTERVALS_API_KEY` | env var | `user_settings.intervals_api_key` | AES-256-GCM (full account access) |
 | `MYLIFE_EMAIL` | env var | `user_settings.mylife_email` | Plaintext |
 | `MYLIFE_PASSWORD` | env var | `user_settings.mylife_password` | AES-256-GCM (env var encryption key) |
-| `CGM_SECRET` | env var | `user_settings.cgm_secret` | SHA-256 hash (write-only) |
+| `CGM_SECRET` | env var | `user_settings.nightscout_secret` | SHA-1 hash (Nightscout-compatible, write-only) |
 | `TIMEZONE` | env var | `user_settings.timezone` | Plaintext |
 | `ANTHROPIC_API_KEY` | env var | env var (shared) | N/A |
 
@@ -166,7 +166,7 @@ Valid state: user enables Sugar mode but hasn't configured a CGM secret yet. BG 
 
 Add `CREDENTIALS_ENCRYPTION_KEY` env var (32-byte random key). Used for AES-256-GCM encryption of sensitive credentials (MyLife password, Intervals.icu API key). Storage format: `base64(iv + ciphertext + authTag)` in a single TEXT column. The IV (12 bytes) is generated fresh per encryption.
 
-Encrypt: Intervals.icu API key (grants full read/write to training data), MyLife password. Store as hash: CGM secret (SHA-256, write-only).
+Encrypt: Intervals.icu API key (grants full read/write to training data), MyLife password. Store as hash: Nightscout secret (SHA-1, write-only, NS-compatible).
 
 ### Intervals.icu Athlete ID
 
@@ -188,11 +188,11 @@ Per-user credentials live in the DB. Period. No fallback to env vars, no dual re
 
 ### Changes
 
-**Hash algorithm migration:** Current code uses SHA-1. New code uses SHA-256. Since only one user exists today, migration is: generate a new secret, hash with SHA-256, store in DB, reconfigure Strimma with the new secret. No dual-algorithm support needed.
+**Hash algorithm:** SHA-1 (Nightscout protocol standard). NS clients send SHA-1(secret) in the api-secret header. Storing SHA-1 in the DB allows direct lookup. The server accepts both raw plaintext and SHA-1 prehashed secrets for full NS compatibility.
 
 **Per-user secrets:**
-1. During provisioning or setup wizard, generate a random CGM secret
-2. Hash with SHA-256, store hash in `user_settings.cgm_secret`
+1. During provisioning or setup wizard, generate a random Nightscout secret
+2. Hash with SHA-1, store hash in `user_settings.nightscout_secret`
 3. Display plaintext secret to user once (for configuring Strimma/xDrip+)
 
 **Lookup by secret:**
@@ -201,10 +201,11 @@ Replace `validateApiSecret()` + `getEmail()` with:
 
 ```
 1. Receive api-secret header
-2. Hash it with SHA-256
-3. SELECT email FROM user_settings WHERE cgm_secret = ?
+2. Hash it with SHA-1
+3. SELECT email FROM user_settings WHERE nightscout_secret = ?
 4. If found -> authenticated, email identified
-5. If not found -> 401
+5. If no match, try the raw value directly (client may have sent SHA-1 prehashed)
+6. If still not found -> 401
 ```
 
 **Affected routes:**
@@ -325,7 +326,7 @@ ALTER TABLE user_settings ADD COLUMN intervals_api_key TEXT;
 ALTER TABLE user_settings ADD COLUMN run_days TEXT;
 ALTER TABLE user_settings ADD COLUMN mylife_email TEXT;
 ALTER TABLE user_settings ADD COLUMN mylife_password TEXT;
-ALTER TABLE user_settings ADD COLUMN cgm_secret TEXT;
+ALTER TABLE user_settings ADD COLUMN nightscout_secret TEXT;
 ALTER TABLE user_settings ADD COLUMN onboarding_complete INTEGER NOT NULL DEFAULT 0;
 ```
 
@@ -342,7 +343,7 @@ SET approved = 1,
     intervals_api_key = encrypt(<current env var value>),
     mylife_email = <current env var value>,
     mylife_password = encrypt(<current env var value>),
-    cgm_secret = sha256(<new generated secret>)
+    nightscout_secret = sha1(<new generated secret>)
 WHERE email = 'persinternetpost@gmail.com';
 -- Then reconfigure Strimma with the new CGM secret
 ```
@@ -352,10 +353,10 @@ Existing user's credentials migrated from env vars to DB in the same step (see S
 ### Index Additions
 
 ```sql
-CREATE INDEX idx_cgm_secret ON user_settings(cgm_secret);
+CREATE INDEX idx_nightscout_secret ON user_settings(nightscout_secret);
 ```
 
-The `cgm_secret` lookup needs to be fast for every CGM POST.
+The `nightscout_secret` lookup needs to be fast for every CGM POST.
 
 ---
 
@@ -482,4 +483,4 @@ npx tsx scripts/provision-user.ts --gen-cgm-secret user@example.com
 ### Phase 7: Verification & Polish
 1. Remove deprecated `getEmail()` function (should already be dead code after Phase 4)
 2. Grep for any remaining `process.env.INTERVALS_API_KEY` / `MYLIFE_*` / `CGM_SECRET` references
-3. Update existing user's CGM secret from SHA-1 to SHA-256 (reconfigure Strimma)
+3. Verify existing user's Nightscout secret works with NS-compatible auth
