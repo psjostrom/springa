@@ -44,10 +44,10 @@ describe("encrypt/decrypt", () => {
 });
 
 describe("hashSecret", () => {
-  it("returns consistent SHA-256 hex", () => {
+  it("returns consistent SHA-1 hex", () => {
     const hash = hashSecret("my-secret");
     expect(hash).toBe(hashSecret("my-secret"));
-    expect(hash).toHaveLength(64);
+    expect(hash).toHaveLength(40);
   });
 
   it("differs for different inputs", () => {
@@ -149,8 +149,13 @@ describe("validateApiSecretFromDB", () => {
     });
   });
 
-  it("returns email for matching secret", async () => {
+  it("returns email for raw plaintext secret", async () => {
     expect(await validateApiSecretFromDB("valid-secret")).toBe(EMAIL);
+  });
+
+  it("returns email for SHA-1 prehashed secret (NS protocol)", async () => {
+    const sha1 = hashSecret("valid-secret");
+    expect(await validateApiSecretFromDB(sha1)).toBe(EMAIL);
   });
 
   it("returns null for unknown secret", async () => {
