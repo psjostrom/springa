@@ -1023,11 +1023,11 @@ describe("GET /api/v1/entries", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects SHA-1 hashed secret (only raw secret accepted)", async () => {
+  it("accepts SHA-1 prehashed secret (NS protocol)", async () => {
     await seedUser();
     const { sha1 } = await import("../bgDb");
     const res = await getEntries(sha1(SECRET));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
   it("returns 401 when no user configured", async () => {
@@ -1154,10 +1154,10 @@ describe("GET /api/v1/treatments", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects SHA-1 hashed secret (only raw secret accepted)", async () => {
+  it("accepts SHA-1 prehashed secret (NS protocol)", async () => {
     const { sha1 } = await import("../bgDb");
     const res = await getTreatmentsReq(sha1(SECRET));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
   it("returns empty array when no treatments exist", async () => {
