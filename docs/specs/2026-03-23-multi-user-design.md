@@ -18,7 +18,7 @@ iPhone + old Apple Watch. Wants to start running. No Garmin, no prior Intervals.
 | Activity data source | Intervals.icu (required) | Springa depends on Intervals.icu for activity data, training load, pace curves, wellness. Replacing it means rebuilding an analytics engine. |
 | Apple Watch support | Health Sync app ($5) or Intervals.icu Companion v3 (when released) | Apple Health -> Intervals.icu bridge. Zero Springa development needed. |
 | Workout storage | Intervals.icu (keep current) | Not worth migrating to Turso for launch. Intervals.icu is the source of truth for workouts and activities. |
-| AI model | Gemini 2.5 Flash (default), Sonnet available for coaching chat | 10-12x cheaper than Sonnet. Good enough for BG analysis, workout adaptation, pattern extraction. |
+| AI model | Keep Sonnet | Works well, cost is ~$10/month at 10 users. Not worth switching models and re-validating all prompts to save $9. |
 | CGM ingestion | Per-user secrets in DB | Strimma/xDrip+/any NS client configured with per-user secret. Lookup by secret hash identifies user. |
 | Nightscout compliance | 100% NS-compatible APIs | Standing rule. All CGM/BG/treatment endpoints follow the Nightscout spec. |
 
@@ -282,44 +282,7 @@ All authenticated routes already use `requireAuth()` -> `email` -> email-scoped 
 
 ---
 
-## 7. AI Model Configuration
-
-### Default Model
-
-Switch from Anthropic Sonnet to Gemini 2.5 Flash via Vercel AI Gateway:
-
-```typescript
-model: 'google/gemini-2.5-flash-preview-05-20'
-```
-
-### Cost Estimate
-
-| Users | Interactions/month | Gemini 2.5 Flash cost | Sonnet cost |
-|-------|-------------------|----------------------|-------------|
-| 1 | 40 | ~$0.10 | ~$2.50 |
-| 10 | 400 | ~$1.00 | ~$10.00 |
-| 100 | 4,000 | ~$10.00 | ~$100.00 |
-
-### Configuration
-
-Keep model string in a constant so it's easy to swap:
-```typescript
-export const DEFAULT_AI_MODEL = 'google/gemini-2.5-flash-preview-05-20';
-```
-
-No per-user model configuration needed for launch.
-
-### Provider Migration
-
-Current AI routes (`chat`, `bg-patterns`, `run-analysis`, `adapt-plan`) use `@ai-sdk/anthropic` with `createAnthropic()`. Switching to Gemini requires:
-1. Install `@ai-sdk/google` (or use Vercel AI Gateway with plain model strings)
-2. Replace `createAnthropic({ apiKey })` with gateway model string
-3. Add `GOOGLE_API_KEY` env var (or configure Vercel AI Gateway OIDC)
-4. Test all system prompts work with Gemini's behavior (tool calling, structured output)
-
----
-
-## 8. Onboarding Flow for Target User
+## 7. Onboarding Flow for Target User
 
 ### "Johan, iPhone + Apple Watch, wants to start running, no diabetes"
 
@@ -347,7 +310,7 @@ Current AI routes (`chat`, `bg-patterns`, `run-analysis`, `adapt-plan`) use `@ai
 
 ---
 
-## 9. Database Schema Changes
+## 8. Database Schema Changes
 
 All changes are additive. No existing columns modified or removed.
 
@@ -396,7 +359,7 @@ The `cgm_secret` lookup needs to be fast for every CGM POST.
 
 ---
 
-## 10. Infrastructure
+## 9. Infrastructure
 
 ### Turso Free Tier
 
@@ -412,8 +375,6 @@ No changes. Same deployment, same plan.
 ### New Environment Variables
 
 - `CREDENTIALS_ENCRYPTION_KEY` -- 32-byte key for AES-256-GCM (MyLife password + Intervals.icu API key encryption)
-- `GOOGLE_API_KEY` -- Google AI API key for Gemini 2.5 Flash (or use Vercel AI Gateway OIDC instead)
-
 ### Existing Env Vars (unchanged)
 
 `ANTHROPIC_API_KEY`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
@@ -424,7 +385,7 @@ No changes. Same deployment, same plan.
 
 ---
 
-## 11. Provisioning Script
+## 10. Provisioning Script
 
 `scripts/provision-user.ts` -- CLI tool for admin to approve users and set up credentials.
 
@@ -457,13 +418,12 @@ npx tsx scripts/provision-user.ts --gen-cgm-secret user@example.com
 
 ---
 
-## 12. Out of Scope (for launch)
+## 11. Out of Scope (for launch)
 
 - Workout storage migration to Turso (Intervals.icu stays as source of truth)
 - Custom iOS bridge app (Health Sync / Companion v3 handles Apple Watch)
 - Admin dashboard UI (provisioning via script is fine for 100 users)
 - Billing / payments
-- Per-user AI model selection
 - Garmin Connect direct API integration
 - Self-serve signup (admin approval required)
 - Email notifications (push notifications only)
@@ -471,7 +431,7 @@ npx tsx scripts/provision-user.ts --gen-cgm-secret user@example.com
 
 ---
 
-## 13. Implementation Order
+## 12. Implementation Order
 
 ### Phase 1: Schema & Auth
 1. Add new columns to `user_settings`
@@ -510,13 +470,7 @@ npx tsx scripts/provision-user.ts --gen-cgm-secret user@example.com
 4. CGM secret generation display
 5. Onboarding complete flag
 
-### Phase 6: AI Model Switch
-1. Add Vercel AI Gateway configuration
-2. Switch default model to Gemini 2.5 Flash
-3. Test all AI features (chat, adapt-plan, BG patterns, run analysis)
-4. Verify quality is acceptable
-
-### Phase 7: Testing & Hardening
+### Phase 6: Testing & Hardening
 1. Multi-user integration tests (concurrent users, data isolation)
 2. Verify no cross-user data leaks in all queries
 3. Test onboarding flow end-to-end
@@ -525,7 +479,7 @@ npx tsx scripts/provision-user.ts --gen-cgm-secret user@example.com
 6. Security review: credential storage, secret hashing
 7. Mobile responsiveness of setup wizard and pending page
 
-### Phase 8: Verification & Polish
+### Phase 7: Verification & Polish
 1. Remove deprecated `getEmail()` function (should already be dead code after Phase 4)
 2. Grep for any remaining `process.env.INTERVALS_API_KEY` / `MYLIFE_*` / `CGM_SECRET` references
 3. Update existing user's CGM secret from SHA-1 to SHA-256 (reconfigure Strimma)
