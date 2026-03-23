@@ -167,7 +167,7 @@ async function seedUser() {
   const cgmHash = hashSecret(SECRET);
   const encApiKey = encrypt("test-key", TEST_ENC_KEY);
   await testDb().execute({
-    sql: "INSERT OR IGNORE INTO user_settings (email, approved, cgm_secret, intervals_api_key) VALUES (?, 1, ?, ?)",
+    sql: "INSERT OR IGNORE INTO user_settings (email, approved, nightscout_secret, intervals_api_key) VALUES (?, 1, ?, ?)",
     args: [EMAIL, cgmHash, encApiKey],
   });
 }
@@ -478,7 +478,7 @@ describe("settings route", () => {
 
     const res = await settingsGET();
     const data = await res.json();
-    expect(data.cgmConnected).toBe(true);
+    expect(data.nightscoutConnected).toBe(true);
     expect(data.mylifeConnected).toBe(false);
   });
 

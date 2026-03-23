@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   run_days           TEXT,
   mylife_email       TEXT,
   mylife_password    TEXT,
-  cgm_secret         TEXT,
+  nightscout_secret  TEXT,
   onboarding_complete INTEGER NOT NULL DEFAULT 0
 );
 
@@ -121,6 +121,6 @@ CREATE TABLE IF NOT EXISTS treatments (
 
 CREATE INDEX IF NOT EXISTS idx_treatments_ts ON treatments(email, ts);
 
-CREATE INDEX IF NOT EXISTS idx_cgm_secret ON user_settings(cgm_secret);
+CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret);
 `;
 
