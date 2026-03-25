@@ -84,6 +84,7 @@ import {
   POST as feedbackPOST,
 } from "@/app/api/run-feedback/route";
 import { GET as treatmentsGET } from "@/app/api/v1/treatments/route";
+import { GET as statusGET } from "@/app/api/v1/status/route";
 import { saveTreatments } from "@/lib/treatmentsDb";
 import type { Treatment } from "@/lib/treatmentsDb";
 import {
@@ -1107,6 +1108,28 @@ describe("GET /api/v1/entries", () => {
     const res = await getEntries(SECRET);
     const body = await res.json();
     expect(body).toHaveLength(1);
+  });
+});
+
+// --- GET /api/v1/status ---
+
+describe("GET /api/v1/status", () => {
+  it("returns 200 with NS-compatible status fields", async () => {
+    const res = statusGET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("ok");
+    expect(body.name).toBe("Springa");
+    expect(body.version).toBe("0.1.0");
+    expect(body.apiEnabled).toBe(true);
+    expect(typeof body.serverTime).toBe("string");
+    expect(typeof body.serverTimeEpoch).toBe("number");
+    expect(body.settings.units).toBe("mmol");
+  });
+
+  it("requires no authentication", () => {
+    const res = statusGET();
+    expect(res.status).toBe(200);
   });
 });
 
