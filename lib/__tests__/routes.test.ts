@@ -1128,7 +1128,6 @@ describe("GET /api/v1/status", () => {
   });
 
   it("requires no authentication", () => {
-    mockAuth.mockResolvedValue(null);
     const res = statusGET();
     expect(res.status).toBe(200);
   });
