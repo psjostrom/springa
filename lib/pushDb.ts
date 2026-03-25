@@ -10,11 +10,18 @@ export async function savePushSubscription(
   email: string,
   sub: PushSubscriptionRecord,
 ): Promise<void> {
-  await db().execute({
-    sql: `INSERT OR REPLACE INTO push_subscriptions (email, endpoint, p256dh, auth, created_at)
-          VALUES (?, ?, ?, ?, ?)`,
-    args: [email, sub.endpoint, sub.p256dh, sub.auth, Date.now()],
-  });
+  const d = db();
+  await d.batch([
+    {
+      sql: "DELETE FROM push_subscriptions WHERE email = ? AND endpoint != ?",
+      args: [email, sub.endpoint],
+    },
+    {
+      sql: `INSERT OR REPLACE INTO push_subscriptions (email, endpoint, p256dh, auth, created_at)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [email, sub.endpoint, sub.p256dh, sub.auth, Date.now()],
+    },
+  ]);
 }
 
 export async function getPushSubscriptions(
