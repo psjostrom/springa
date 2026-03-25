@@ -23,8 +23,13 @@ import { db } from "@/lib/db";
  *   find[sgv][$lte]    — SGV <= value
  */
 export async function GET(req: Request) {
-  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
-  if (!email) return unauthorized();
+  const apiSecret = req.headers.get("api-secret");
+  const email = await validateApiSecretFromDB(apiSecret);
+  if (!email) {
+    const prefix = apiSecret ? apiSecret.slice(0, 8) + "…" : "(empty)";
+    console.warn(`[entries] GET auth failed — api-secret prefix: ${prefix}`);
+    return unauthorized();
+  }
 
   const params = new URL(req.url).searchParams;
   const count = Math.min(
@@ -104,8 +109,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
-  if (!email) return unauthorized();
+  const postSecret = req.headers.get("api-secret");
+  const email = await validateApiSecretFromDB(postSecret);
+  if (!email) {
+    const prefix = postSecret ? postSecret.slice(0, 8) + "…" : "(empty)";
+    console.warn(`[entries] POST auth failed — api-secret prefix: ${prefix}`);
+    return unauthorized();
+  }
 
   const body: unknown = await req.json();
   const newReadings = parseNightscoutEntries(body);
