@@ -29,21 +29,21 @@ Springa already uses NextAuth with Google OAuth (`lib/auth.ts`). Extend it to re
 
 ### Changes to Google provider config
 
-- Add scope: `https://www.googleapis.com/auth/calendar.events`
+- Add scope: `https://www.googleapis.com/auth/calendar` (full scope — required to create the "Springa" calendar, not just events)
 - Add `access_type: "offline"` to get a refresh token
-- Add `prompt: "consent"` to force re-consent on next sign-in (required to get refresh token for existing users)
+- Dynamic `prompt: "consent"`: only set when the user has no valid `google_refresh_token` in the DB. This forces re-consent to obtain a refresh token. Once stored, subsequent sign-ins skip the consent screen.
 
 ### Token storage
 
-- New column on `user_settings`: `google_refresh_token TEXT`
-- Populated in the NextAuth `signIn` callback when the `account.refresh_token` is present
+- New column on `user_settings`: `google_refresh_token TEXT` (AES-256-GCM encrypted, same pattern as `intervals_api_key` and `mylife_password` in `lib/credentials.ts`)
+- Populated in the NextAuth `signIn` callback via `{ user, account }` — store `account.refresh_token` when present (Google only sends it on consent, not on regular sign-ins)
 - Refresh tokens are long-lived (valid until revoked)
 
 ### Token exchange
 
 - `getGoogleAccessToken(refreshToken)` exchanges refresh token for a short-lived access token via `https://oauth2.googleapis.com/token`
 - Called before each Google Calendar operation — no caching needed, operations are infrequent
-- If token exchange fails (revoked, expired), log the error and skip calendar sync silently
+- If token exchange fails (revoked, expired), log the error, clear the stored refresh token from the DB, and skip calendar sync silently. The cleared token triggers `prompt: "consent"` on the next sign-in, obtaining a fresh refresh token automatically.
 
 ---
 
@@ -54,7 +54,7 @@ Springa already uses NextAuth with Google OAuth (`lib/auth.ts`). Extend it to re
 On first sync, create a calendar named "Springa" via Google Calendar API:
 ```
 POST https://www.googleapis.com/calendar/v3/calendars
-{ "summary": "Springa" }
+{ "summary": "Springa", "timeZone": "<user timezone from user_settings>" }
 ```
 
 Store the returned calendar ID in `user_settings.google_calendar_id TEXT`.
@@ -76,13 +76,16 @@ Every Intervals.icu write path gets a parallel Google Calendar write:
 | User action | Intervals.icu call | Google Calendar call |
 |-------------|-------------------|---------------------|
 | Upload full plan | `uploadToIntervals()` — bulk delete future + bulk create | `clearFutureGoogleEvents()` + `syncEventsToGoogle()` |
-| Adapt sync | `updateEvent()` per adapted event | `updateGoogleEvent()` per event |
-| Manual edit/move | `updateEvent()` | `updateGoogleEvent()` |
-| Manual delete | `deleteEvent()` | `deleteGoogleEvent()` |
+| Adapt sync | `updateEvent()` per adapted event | `findGoogleEvent()` + `updateGoogleEvent()` per event |
+| Manual edit/move | `updateEvent()` | `findGoogleEvent()` + `updateGoogleEvent()` |
+| Manual delete | `deleteEvent()` | `findGoogleEvent()` + `deleteGoogleEvent()` |
+| Drag-drop move | `updateEvent()` | `findGoogleEvent()` + `updateGoogleEvent()` |
 
 ### Caller responsibility
 
-The Google Calendar calls live alongside the Intervals.icu calls at the call site (PlannerScreen, EventModal, etc.), not inside `intervalsApi.ts`. This keeps `intervalsApi.ts` focused on Intervals.icu.
+The Google Calendar calls live alongside the Intervals.icu calls at the call site (PlannerScreen, EventModal, CalendarView, useDragDrop). This keeps `intervalsApi.ts` focused on Intervals.icu.
+
+Each call site resolves the Google Calendar context **once** at the top of the operation, then passes `{ accessToken, calendarId }` to individual calls. This avoids redundant DB queries when updating multiple events (e.g., adapt sync updates N events but queries the DB only once).
 
 ---
 
@@ -90,22 +93,24 @@ The Google Calendar calls live alongside the Intervals.icu calls at the call sit
 
 ### Matching strategy
 
-Springa owns the entire "Springa" calendar — no other app writes to it.
+Springa owns the entire "Springa" calendar — no other app writes to it. Workout names include the week number (e.g., "W01 Bonus Easy", "W05 Long eco16"), making name+date unique within a plan.
 
 - **Bulk upload:** Clear all future events on the Springa calendar, then create new ones. No individual matching needed.
-- **Manual edit/move:** Find the Google Calendar event by searching for `summary` (name) + `start.dateTime` (date) on the Springa calendar. These are unique within the calendar since each workout has a unique name+date combination. Update the matching event.
+- **Manual edit/move:** Find the Google Calendar event by searching for `summary` (name) + `start.dateTime` (date) on the Springa calendar. Update the matching event. For moves, lookup uses the **old** name + **old** date, then patches the new date.
 - **Manual delete:** Same lookup by name + date, then delete.
-- **Adapt sync:** Same as manual edit — each adapted event has a name and date.
+- **Adapt sync:** Each adapted event has `original.name` and `original.date` from the `CalendarEvent` — use these for the lookup.
 
-This avoids the complexity of cross-referencing Intervals.icu event IDs with Google Calendar event IDs. If the lookup finds no match (e.g. event was manually deleted from Google Calendar), skip silently.
+If the lookup finds no match (e.g., event was manually deleted from Google Calendar), skip silently.
 
 ### Event content
 
 | Google Calendar field | Source |
 |----------------------|--------|
 | `summary` | `WorkoutEvent.name` (e.g. "Sun Long eco16") |
-| `start.dateTime` | `WorkoutEvent.start_date_local` |
-| `end.dateTime` | `start_date_local` + estimated duration from `estimateWorkoutDuration()` |
+| `start.dateTime` | `WorkoutEvent.start_date_local` (with timezone) |
+| `start.timeZone` | User's timezone from `user_settings.timezone` |
+| `end.dateTime` | `start_date_local` + estimated duration (with timezone) |
+| `end.timeZone` | User's timezone from `user_settings.timezone` |
 | `description` | Formatted text (see below) |
 
 ### Description format
@@ -137,17 +142,23 @@ Cooldown 2km 60%-70% LTHR (102-119 bpm)
 getGoogleAccessToken(refreshToken: string): Promise<string>
   — POST to oauth2.googleapis.com/token, returns access_token
 
-ensureSpringaCalendar(accessToken: string, storedCalendarId?: string): Promise<string>
-  — GET calendar by stored ID, create if missing, return calendar ID
+ensureSpringaCalendar(accessToken: string, storedCalendarId: string | null, timezone: string): Promise<string>
+  — GET calendar by stored ID, create if missing (with timezone), return calendar ID
+  — Does NOT write to the DB. Returns the calendar ID; the caller
+    (getGoogleCalendarContext) writes it to user_settings if it changed.
 
-syncEventsToGoogle(accessToken: string, calendarId: string, events: WorkoutEvent[]): Promise<void>
-  — Create Google Calendar events from WorkoutEvents
+syncEventsToGoogle(accessToken: string, calendarId: string, events: WorkoutEvent[], timezone: string): Promise<void>
+  — Create Google Calendar events sequentially from WorkoutEvents
+  — Sequential creation avoids Google Calendar API rate limits (~600 req/min).
+    A typical plan has ~100 events; sequential takes a few seconds. Batch API
+    can be added later if this becomes a bottleneck.
 
 clearFutureGoogleEvents(accessToken: string, calendarId: string): Promise<void>
   — List events from now onward on the Springa calendar, delete all
+  — Assumes <2500 future events (a plan has ~150 max). No pagination needed.
 
 findGoogleEvent(accessToken: string, calendarId: string, name: string, date: string): Promise<string | null>
-  — Search by summary + date, return Google Calendar event ID or null
+  — Search by summary + date on the Springa calendar, return Google Calendar event ID or null
 
 updateGoogleEvent(accessToken: string, calendarId: string, googleEventId: string, updates: EventUpdates): Promise<void>
   — PATCH a Google Calendar event by its ID
@@ -161,13 +172,24 @@ formatEventDescription(event: WorkoutEvent, hrZones?: number[], lthr?: number): 
 
 ### Helper: token + calendar resolution
 
-A convenience function that resolves refresh token → access token → calendar ID in one call, used by all sync points:
+A convenience function that resolves refresh token → access token → calendar ID in one call. Called **once per user action** (not per event):
 
 ```
 getGoogleCalendarContext(userEmail: string): Promise<{ accessToken: string; calendarId: string } | null>
 ```
 
-Returns `null` if the user has no refresh token (hasn't re-consented yet) — caller skips sync silently.
+Steps:
+1. Read `google_refresh_token` and `google_calendar_id` from `user_settings`
+2. If no refresh token → return `null` (caller skips sync)
+3. Decrypt refresh token, exchange for access token via `getGoogleAccessToken()`
+4. If token exchange fails (401) → clear `google_refresh_token` from DB, return `null`
+5. Call `ensureSpringaCalendar(accessToken, storedCalendarId, timezone)` to verify/create calendar
+6. If calendar ID changed (new creation) → write new ID to `user_settings.google_calendar_id`
+7. Return `{ accessToken, calendarId }`
+
+### Adapt sync: data availability
+
+The adapt sync path (`buildSyncPayload`) currently returns `{ eventId, description, fuelRate }`. To support Google Calendar updates, the call site needs access to the original event's `name` and `date` for the `findGoogleEvent` lookup. The `AdaptedEvent` already carries `original: CalendarEvent` with `.name` and `.date` — the PlannerScreen sync handler uses both the `SyncPayloadItem` (for Intervals.icu) and the `AdaptedEvent` (for Google Calendar lookup) side by side. No changes to `buildSyncPayload` needed.
 
 ---
 
@@ -177,8 +199,8 @@ Returns `null` if the user has no refresh token (hasn't re-consented yet) — ca
 
 | Column | Type | Default | Purpose |
 |--------|------|---------|---------|
-| `google_refresh_token` | TEXT | NULL | Google OAuth refresh token |
-| `google_calendar_id` | TEXT | NULL | ID of the auto-created "Springa" calendar |
+| `google_refresh_token` | TEXT | NULL | Google OAuth refresh token (AES-256-GCM encrypted via `lib/credentials.ts`) |
+| `google_calendar_id` | TEXT | NULL | ID of the auto-created "Springa" calendar (plaintext — not sensitive) |
 
 ---
 
@@ -189,7 +211,8 @@ Google Calendar sync is best-effort. A failure must never block the Intervals.ic
 - All Google Calendar calls wrapped in try/catch
 - Errors logged to console
 - UI shows a non-blocking toast: "Calendar sync failed — workouts saved to Intervals.icu"
-- Token revocation (401/403) clears the stored refresh token — user will need to re-sign-in to re-authorize
+- Token revocation (401/403): clear `google_refresh_token` from DB → next sign-in triggers `prompt: "consent"` → fresh token obtained automatically
+- Calendar deleted (404 from events API): `ensureSpringaCalendar` recreates, updates stored ID
 
 ---
 
@@ -218,3 +241,4 @@ User generates/adapts/edits plan
 - Calendar color/name customization (user can change these in Google Calendar directly)
 - Recurring events (each workout is a standalone event)
 - Event reminders/notifications (Strimma handles notifications via AlarmManager)
+- Batch API for bulk event creation (sequential is sufficient for ~100 events)
