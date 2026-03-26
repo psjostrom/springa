@@ -5,6 +5,7 @@ import {
   syncEventsToGoogle,
   clearFutureGoogleEvents,
   findGoogleEvent,
+  getGoogleEventTimes,
   updateGoogleEvent,
   deleteGoogleEvent,
   formatEventDescription,
@@ -45,7 +46,7 @@ describe("syncEventsToGoogle", () => {
     capturedGoogleCalendarEvents.length = 0;
   });
 
-  it("creates events with correct fields", async () => {
+  it("creates events with correct fields and returns counts", async () => {
     const events: WorkoutEvent[] = [
       {
         start_date_local: new Date("2026-04-01T12:00:00"),
@@ -56,7 +57,8 @@ describe("syncEventsToGoogle", () => {
         fuelRate: 45,
       },
     ];
-    await syncEventsToGoogle("mock-access-token", "cal-id", events, "Europe/Stockholm");
+    const result = await syncEventsToGoogle("mock-access-token", "cal-id", events, "Europe/Stockholm");
+    expect(result).toEqual({ succeeded: 1, failed: 0 });
     expect(capturedGoogleCalendarEvents).toHaveLength(1);
     const created = capturedGoogleCalendarEvents[0] as Record<string, unknown>;
     expect(created.summary).toBe("W01 Easy eco16");
@@ -73,6 +75,13 @@ describe("clearFutureGoogleEvents", () => {
   it("deletes all listed events", async () => {
     await clearFutureGoogleEvents("mock-access-token", "cal-id");
     expect(capturedGoogleDeletedEventIds).toEqual(["gcal-event-1", "gcal-event-2"]);
+  });
+});
+
+describe("getGoogleEventTimes", () => {
+  it("returns start and end times for existing event", async () => {
+    const times = await getGoogleEventTimes("mock-access-token", "cal-id", "gcal-event-1");
+    expect(times).toEqual({ start: "2026-04-01T12:00:00", end: "2026-04-01T13:00:00" });
   });
 });
 

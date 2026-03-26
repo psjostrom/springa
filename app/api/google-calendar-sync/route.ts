@@ -5,9 +5,11 @@ import {
   clearFutureGoogleEvents,
   syncEventsToGoogle,
   findGoogleEvent,
+  getGoogleEventTimes,
   updateGoogleEvent,
   deleteGoogleEvent,
 } from "@/lib/googleCalendar";
+import { format } from "date-fns";
 import type { WorkoutEvent } from "@/lib/types";
 
 interface SyncRequest {
@@ -52,7 +54,17 @@ export async function POST(req: Request) {
         if (body.updates.name) updates.summary = body.updates.name;
         if (body.updates.description) updates.description = body.updates.description;
         if (body.updates.date) {
-          updates.start = { dateTime: body.updates.date, timeZone: ctx.timezone };
+          // Preserve event duration: fetch existing event to compute new end time
+          const times = await getGoogleEventTimes(ctx.accessToken, ctx.calendarId, googleEventId);
+          const newStart = new Date(body.updates.date);
+          if (times) {
+            const durationMs = new Date(times.end).getTime() - new Date(times.start).getTime();
+            const newEnd = new Date(newStart.getTime() + durationMs);
+            updates.start = { dateTime: body.updates.date, timeZone: ctx.timezone };
+            updates.end = { dateTime: format(newEnd, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: ctx.timezone };
+          } else {
+            updates.start = { dateTime: body.updates.date, timeZone: ctx.timezone };
+          }
         }
         await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
       }

@@ -38,13 +38,25 @@ export function hashSecret(secret: string): string {
   return createHash("sha1").update(secret).digest("hex");
 }
 
-/** Get the encryption key from env, or throw. */
+/** Get the encryption key from env, or throw.
+ *  Validated on first use (cold start), not at import time — Vercel functions
+ *  surface this as a 500 on the first request if misconfigured. */
 export function getEncryptionKey(): string {
   const key = process.env.CREDENTIALS_ENCRYPTION_KEY;
   if (key?.length !== 64) {
     throw new Error("CREDENTIALS_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)");
   }
   return key;
+}
+
+/** Decrypt with graceful fallback — returns null on failure instead of crashing the request. */
+function tryDecrypt(encoded: string, hexKey: string, email: string, field: string): string | null {
+  try {
+    return decrypt(encoded, hexKey);
+  } catch (err) {
+    console.error(`Failed to decrypt ${field} for ${email}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 // --- DB functions ---
@@ -74,9 +86,9 @@ export async function getUserCredentials(email: string): Promise<UserCredentials
   const encKey = getEncryptionKey();
 
   return {
-    intervalsApiKey: row.intervals_api_key ? decrypt(row.intervals_api_key as string, encKey) : null,
+    intervalsApiKey: row.intervals_api_key ? tryDecrypt(row.intervals_api_key as string, encKey, email, "intervals_api_key") : null,
     mylifeEmail: row.mylife_email as string | null,
-    mylifePassword: row.mylife_password ? decrypt(row.mylife_password as string, encKey) : null,
+    mylifePassword: row.mylife_password ? tryDecrypt(row.mylife_password as string, encKey, email, "mylife_password") : null,
     nightscoutSecret: row.nightscout_secret as string | null,
     timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
   };
@@ -167,7 +179,7 @@ export async function getGoogleCalendarCredentials(email: string): Promise<Googl
   const encKey = getEncryptionKey();
 
   return {
-    refreshToken: row.google_refresh_token ? decrypt(row.google_refresh_token as string, encKey) : null,
+    refreshToken: row.google_refresh_token ? tryDecrypt(row.google_refresh_token as string, encKey, email, "google_refresh_token") : null,
     calendarId: row.google_calendar_id as string | null,
     timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
   };

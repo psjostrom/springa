@@ -66,7 +66,9 @@ export async function syncEventsToGoogle(
   calendarId: string,
   events: WorkoutEvent[],
   timezone: string,
-): Promise<void> {
+): Promise<{ succeeded: number; failed: number }> {
+  let succeeded = 0;
+  let failed = 0;
   for (const event of events) {
     const durationMin = estimateWorkoutDuration(event.description)?.minutes
       ?? getEstimatedDuration(event);
@@ -85,10 +87,14 @@ export async function syncEventsToGoogle(
       headers: authHeaders(accessToken),
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
+    if (res.ok) {
+      succeeded++;
+    } else {
+      failed++;
       console.warn(`Failed to create Google Calendar event "${event.name}": ${res.status}`);
     }
   }
+  return { succeeded, failed };
 }
 
 /** Delete all future events on the Springa calendar. */
@@ -112,6 +118,22 @@ export async function clearFutureGoogleEvents(
   }
 }
 
+/** Fetch a Google Calendar event's start and end times by ID. Returns null if not found. */
+export async function getGoogleEventTimes(
+  accessToken: string,
+  calendarId: string,
+  eventId: string,
+): Promise<{ start: string; end: string } | null> {
+  const res = await fetch(
+    `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { headers: authHeaders(accessToken) },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as { start?: { dateTime?: string }; end?: { dateTime?: string } };
+  if (!data.start?.dateTime || !data.end?.dateTime) return null;
+  return { start: data.start.dateTime, end: data.end.dateTime };
+}
+
 /** Find a Google Calendar event by summary (name) and date. Returns the event ID or null. */
 export async function findGoogleEvent(
   accessToken: string,
@@ -119,8 +141,10 @@ export async function findGoogleEvent(
   name: string,
   date: string,
 ): Promise<string | null> {
-  const dayStart = `${date}T00:00:00Z`;
-  const dayEnd = `${date}T23:59:59Z`;
+  // Pad search window ±24h to handle timezone offsets — name match ensures precision
+  const midday = new Date(`${date}T12:00:00Z`);
+  const dayStart = new Date(midday.getTime() - 24 * 3600_000).toISOString();
+  const dayEnd = new Date(midday.getTime() + 24 * 3600_000).toISOString();
   const res = await fetch(
     `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?q=${encodeURIComponent(name)}&timeMin=${encodeURIComponent(dayStart)}&timeMax=${encodeURIComponent(dayEnd)}&singleEvents=true`,
     { headers: authHeaders(accessToken) },
@@ -215,9 +239,14 @@ export async function getGoogleCalendarContext(
   let accessToken: string;
   try {
     accessToken = await getGoogleAccessToken(creds.refreshToken);
-  } catch {
-    // Token revoked or expired — clear it so next sign-in re-prompts consent
-    await updateGoogleRefreshToken(email, null);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("invalid_grant") || msg.includes("401")) {
+      // Token revoked — clear it so next sign-in re-prompts consent
+      await updateGoogleRefreshToken(email, null);
+    } else {
+      console.error("Google token exchange failed (transient):", msg);
+    }
     return null;
   }
 

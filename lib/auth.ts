@@ -12,6 +12,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         params: {
           scope: "openid email profile https://www.googleapis.com/auth/calendar",
           access_type: "offline",
+          // Always prompt consent to guarantee a refresh token on every sign-in.
+          // Simpler than conditional consent (spec mentions dynamic, but not worth the complexity).
           prompt: "consent",
         },
       },

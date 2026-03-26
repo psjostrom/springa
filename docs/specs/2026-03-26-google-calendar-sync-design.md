@@ -31,7 +31,7 @@ Springa already uses NextAuth with Google OAuth (`lib/auth.ts`). Extend it to re
 
 - Add scope: `https://www.googleapis.com/auth/calendar` (full scope — required to create the "Springa" calendar, not just events)
 - Add `access_type: "offline"` to get a refresh token
-- Dynamic `prompt: "consent"`: only set when the user has no valid `google_refresh_token` in the DB. This forces re-consent to obtain a refresh token. Once stored, subsequent sign-ins skip the consent screen.
+- Always set `prompt: "consent"` to guarantee a fresh refresh token on every sign-in. Simpler than conditional consent and ensures the token is always current.
 
 ### Token storage
 
