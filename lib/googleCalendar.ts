@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import type { WorkoutEvent } from "./types";
-import { estimateWorkoutDuration, getEstimatedDuration } from "./workoutMath";
+import { estimateWorkoutDuration } from "./workoutMath";
 import {
   getGoogleCalendarCredentials,
   updateGoogleRefreshToken,
@@ -63,23 +63,22 @@ export async function ensureSpringaCalendar(
   return data.id;
 }
 
-/** Create Google Calendar events from WorkoutEvents. Sequential to avoid rate limits. */
+/** Create Google Calendar events from pre-formatted SyncEvents. Sequential to avoid rate limits. */
 export async function syncEventsToGoogle(
   accessToken: string,
   calendarId: string,
-  events: WorkoutEvent[],
+  events: SyncEvent[],
   timezone: string,
 ): Promise<void> {
   for (const event of events) {
-    const durationMin = estimateWorkoutDuration(event.description)?.minutes
-      ?? getEstimatedDuration(event);
-    const startDate = event.start_date_local;
+    const durationMin = estimateWorkoutDuration(event.description)?.minutes ?? 45;
+    const startDate = new Date(event.startLocal);
     const endDate = new Date(startDate.getTime() + durationMin * 60_000);
 
     const body = {
       summary: event.name,
-      description: formatEventDescription(event),
-      start: { dateTime: format(startDate, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: timezone },
+      description: formatSyncEventDescription(event),
+      start: { dateTime: event.startLocal, timeZone: timezone },
       end: { dateTime: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: timezone },
     };
 
@@ -243,11 +242,47 @@ export async function getGoogleCalendarContext(
   return { accessToken, calendarId, timezone: creds.timezone };
 }
 
+/** Build description for a SyncEvent (no hrZones available in sync path). */
+function formatSyncEventDescription(event: SyncEvent): string {
+  const lines: string[] = [];
+  if (event.fuelRate != null) {
+    lines.push(`Fuel: ${Math.round(event.fuelRate)} g/h`);
+  }
+  if (lines.length > 0 && event.description) {
+    lines.push("");
+  }
+  if (event.description) {
+    lines.push(event.description);
+  }
+  return lines.join("\n");
+}
+
+/** Pre-formatted event for the sync API route. Dates are local time strings, not Date objects. */
+export interface SyncEvent {
+  name: string;
+  description: string;
+  startLocal: string; // "yyyy-MM-dd'T'HH:mm:ss" in user's local timezone
+  fuelRate?: number;
+  distance?: number;
+}
+
+/** Convert WorkoutEvents to SyncEvents with pre-formatted local time strings.
+ *  Must be called on the CLIENT where Date objects are in the user's local timezone. */
+export function toSyncEvents(events: WorkoutEvent[]): SyncEvent[] {
+  return events.map((e) => ({
+    name: e.name,
+    description: e.description,
+    startLocal: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+    fuelRate: e.fuelRate,
+    distance: e.distance,
+  }));
+}
+
 /** Client-side helper: fire-and-forget Google Calendar sync via API route. */
 export async function syncToGoogleCalendar(
   action: "bulk-sync" | "update" | "delete",
   payload: {
-    events?: WorkoutEvent[];
+    events?: SyncEvent[];
     eventName?: string;
     eventDate?: string;
     updates?: { name?: string; date?: string; description?: string };

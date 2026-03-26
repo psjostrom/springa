@@ -8,11 +8,11 @@ import {
   updateGoogleEvent,
   deleteGoogleEvent,
 } from "@/lib/googleCalendar";
-import type { WorkoutEvent } from "@/lib/types";
+import type { SyncEvent } from "@/lib/googleCalendar";
 
 interface SyncRequest {
   action: "bulk-sync" | "update" | "delete";
-  events?: WorkoutEvent[];
+  events?: SyncEvent[];
   eventName?: string;
   eventDate?: string;
   updates?: {
@@ -36,13 +36,9 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "bulk-sync" && body.events) {
-      const events = body.events.map((e) => ({
-        ...e,
-        start_date_local: new Date(e.start_date_local),
-      }));
       await clearFutureGoogleEvents(ctx.accessToken, ctx.calendarId);
-      await syncEventsToGoogle(ctx.accessToken, ctx.calendarId, events, ctx.timezone);
-      return NextResponse.json({ synced: true, count: events.length });
+      await syncEventsToGoogle(ctx.accessToken, ctx.calendarId, body.events, ctx.timezone);
+      return NextResponse.json({ synced: true, count: body.events.length });
     }
 
     if (body.action === "update" && body.eventName && body.eventDate) {

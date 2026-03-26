@@ -9,6 +9,7 @@ import {
   deleteGoogleEvent,
   formatEventDescription,
 } from "../googleCalendar";
+import type { SyncEvent } from "../googleCalendar";
 import type { WorkoutEvent } from "../types";
 import { capturedGoogleCalendarEvents, capturedGoogleDeletedEventIds } from "./msw/handlers";
 
@@ -46,13 +47,11 @@ describe("syncEventsToGoogle", () => {
   });
 
   it("creates events with correct fields", async () => {
-    const events: WorkoutEvent[] = [
+    const events: SyncEvent[] = [
       {
-        start_date_local: new Date("2026-04-01T12:00:00"),
+        startLocal: "2026-04-01T12:00:00",
         name: "W01 Easy eco16",
         description: "Warmup 10m 60%-70% LTHR\nMain 30m 70%-80% LTHR\nCooldown 15m 60%-70% LTHR",
-        external_id: "easy-1",
-        type: "Run",
         fuelRate: 45,
       },
     ];
