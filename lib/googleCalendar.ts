@@ -26,7 +26,10 @@ export async function getGoogleAccessToken(refreshToken: string): Promise<string
     const text = await res.text();
     throw new Error(`Google token exchange failed: ${res.status} ${text}`);
   }
-  const data = (await res.json()) as { access_token: string };
+  const data = (await res.json()) as { access_token?: string };
+  if (!data.access_token) {
+    throw new Error("Google token response missing access_token");
+  }
   return data.access_token;
 }
 
@@ -66,9 +69,7 @@ export async function syncEventsToGoogle(
   calendarId: string,
   events: WorkoutEvent[],
   timezone: string,
-): Promise<{ succeeded: number; failed: number }> {
-  let succeeded = 0;
-  let failed = 0;
+): Promise<void> {
   for (const event of events) {
     const durationMin = estimateWorkoutDuration(event.description)?.minutes
       ?? getEstimatedDuration(event);
@@ -87,14 +88,10 @@ export async function syncEventsToGoogle(
       headers: authHeaders(accessToken),
       body: JSON.stringify(body),
     });
-    if (res.ok) {
-      succeeded++;
-    } else {
-      failed++;
+    if (!res.ok) {
       console.warn(`Failed to create Google Calendar event "${event.name}": ${res.status}`);
     }
   }
-  return { succeeded, failed };
 }
 
 /** Delete all future events on the Springa calendar. */
@@ -107,7 +104,10 @@ export async function clearFutureGoogleEvents(
     `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(now)}&maxResults=2500&singleEvents=true`,
     { headers: authHeaders(accessToken) },
   );
-  if (!res.ok) return;
+  if (!res.ok) {
+    console.warn(`Failed to list Google Calendar events for deletion: ${res.status}`);
+    return;
+  }
 
   const data = (await res.json()) as { items?: { id: string }[] };
   for (const item of data.items ?? []) {
@@ -116,22 +116,6 @@ export async function clearFutureGoogleEvents(
       { method: "DELETE", headers: authHeaders(accessToken) },
     );
   }
-}
-
-/** Fetch a Google Calendar event's start and end times by ID. Returns null if not found. */
-export async function getGoogleEventTimes(
-  accessToken: string,
-  calendarId: string,
-  eventId: string,
-): Promise<{ start: string; end: string } | null> {
-  const res = await fetch(
-    `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
-    { headers: authHeaders(accessToken) },
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as { start?: { dateTime?: string }; end?: { dateTime?: string } };
-  if (!data.start?.dateTime || !data.end?.dateTime) return null;
-  return { start: data.start.dateTime, end: data.end.dateTime };
 }
 
 /** Find a Google Calendar event by summary (name) and date. Returns the event ID or null. */
@@ -241,12 +225,11 @@ export async function getGoogleCalendarContext(
     accessToken = await getGoogleAccessToken(creds.refreshToken);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("invalid_grant") || msg.includes("401")) {
+    if (msg.includes("invalid_grant")) {
       // Token revoked — clear it so next sign-in re-prompts consent
       await updateGoogleRefreshToken(email, null);
-    } else {
-      console.error("Google token exchange failed (transient):", msg);
     }
+    console.error("Google token exchange failed:", msg);
     return null;
   }
 

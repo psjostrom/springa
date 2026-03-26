@@ -8,7 +8,6 @@ export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
-export let capturedGoogleSyncPayloads: unknown[] = [];
 
 export function resetCaptures() {
   capturedUploadPayload = [];
@@ -16,7 +15,6 @@ export function resetCaptures() {
   capturedDeleteEventIds = [];
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
-  capturedGoogleSyncPayloads = [];
 }
 
 export const handlers = [
@@ -91,10 +89,8 @@ export const handlers = [
     return HttpResponse.json({ ok: true });
   }),
 
-  // Google Calendar sync API route (fire-and-forget, captures payloads for assertions)
-  http.post("/api/google-calendar-sync", async ({ request }) => {
-    const body = await request.json();
-    capturedGoogleSyncPayloads.push(body);
+  // Google Calendar sync API route (fire-and-forget)
+  http.post("/api/google-calendar-sync", () => {
     return HttpResponse.json({ synced: true });
   }),
 
@@ -118,16 +114,6 @@ export const handlers = [
   // Google Calendar — create calendar
   http.post("https://www.googleapis.com/calendar/v3/calendars", () => {
     return HttpResponse.json({ id: "new-cal-id", summary: "Springa" });
-  }),
-
-  // Google Calendar — get single event (for getGoogleEventTimes)
-  http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
-    return HttpResponse.json({
-      id: "gcal-event-1",
-      summary: "W01 Easy",
-      start: { dateTime: "2026-04-01T12:00:00" },
-      end: { dateTime: "2026-04-01T13:00:00" },
-    });
   }),
 
   // Google Calendar — list events
