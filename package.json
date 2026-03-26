@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:query": "node --env-file=.env.local -e"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",

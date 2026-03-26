@@ -16,6 +16,7 @@ vi.mock("@libsql/client", async (importOriginal) => {
 
 import { encrypt, decrypt, hashSecret } from "../credentials";
 import { getUserCredentials, updateCredentials, validateApiSecretFromDB } from "../credentials";
+import { getGoogleCalendarCredentials, updateGoogleRefreshToken, updateGoogleCalendarId } from "../credentials";
 import { SCHEMA_DDL } from "../db";
 
 const TEST_KEY = "a".repeat(64);
@@ -164,5 +165,47 @@ describe("validateApiSecretFromDB", () => {
 
   it("returns null for null input", async () => {
     expect(await validateApiSecretFromDB(null)).toBeNull();
+  });
+});
+
+describe("Google Calendar credentials", () => {
+  beforeEach(async () => {
+    await holder.db.executeMultiple(SCHEMA_DDL);
+    await holder.db.execute({
+      sql: "INSERT OR REPLACE INTO user_settings (email, approved) VALUES (?, 1)",
+      args: [EMAIL],
+    });
+  });
+
+  it("returns null refreshToken when not set", async () => {
+    const creds = await getGoogleCalendarCredentials(EMAIL);
+    expect(creds).not.toBeNull();
+    expect(creds!.refreshToken).toBeNull();
+    expect(creds!.calendarId).toBeNull();
+    expect(creds!.timezone).toBe("Europe/Stockholm");
+  });
+
+  it("round-trips encrypted refresh token", async () => {
+    await updateGoogleRefreshToken(EMAIL, "1//refresh-token-abc");
+    const creds = await getGoogleCalendarCredentials(EMAIL);
+    expect(creds!.refreshToken).toBe("1//refresh-token-abc");
+  });
+
+  it("clears refresh token when null", async () => {
+    await updateGoogleRefreshToken(EMAIL, "1//token");
+    await updateGoogleRefreshToken(EMAIL, null);
+    const creds = await getGoogleCalendarCredentials(EMAIL);
+    expect(creds!.refreshToken).toBeNull();
+  });
+
+  it("stores and retrieves calendar ID", async () => {
+    await updateGoogleCalendarId(EMAIL, "cal-id-xyz");
+    const creds = await getGoogleCalendarCredentials(EMAIL);
+    expect(creds!.calendarId).toBe("cal-id-xyz");
+  });
+
+  it("returns null for unknown email", async () => {
+    const creds = await getGoogleCalendarCredentials("nobody@example.com");
+    expect(creds).toBeNull();
   });
 });

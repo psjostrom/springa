@@ -6,6 +6,7 @@ import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent } from "@/lib/intervalsApi";
+import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
@@ -156,6 +157,13 @@ export function EventModal({
         ? editDate + ":00"
         : editDate + "T12:00:00";
       await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
+
+      // Best-effort Google Calendar sync
+      void syncToGoogleCalendar("update", {
+        eventName: selectedEvent.name,
+        eventDate: format(selectedEvent.date, "yyyy-MM-dd"),
+        updates: { date: newDateLocal },
+      });
 
       const newDate = new Date(newDateLocal);
       onDateSaved(selectedEvent.id, newDate);

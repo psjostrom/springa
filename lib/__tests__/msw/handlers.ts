@@ -6,11 +6,15 @@ import { sampleActivities, sampleEvents, sampleStreams } from "./fixtures";
 export let capturedUploadPayload: unknown[] = [];
 export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
+export let capturedGoogleCalendarEvents: unknown[] = [];
+export let capturedGoogleDeletedEventIds: string[] = [];
 
 export function resetCaptures() {
   capturedUploadPayload = [];
   capturedPutPayload = null;
   capturedDeleteEventIds = [];
+  capturedGoogleCalendarEvents = [];
+  capturedGoogleDeletedEventIds = [];
 }
 
 export const handlers = [
@@ -83,5 +87,67 @@ export const handlers = [
   // DELETE pre-run carbs (cleanup after Intervals.icu write)
   http.delete("/api/prerun-carbs", () => {
     return HttpResponse.json({ ok: true });
+  }),
+
+  // Google Calendar sync API route (fire-and-forget)
+  http.post("/api/google-calendar-sync", () => {
+    return HttpResponse.json({ synced: true });
+  }),
+
+  // Google OAuth token exchange
+  http.post("https://oauth2.googleapis.com/token", () => {
+    return HttpResponse.json({
+      access_token: "mock-access-token",
+      expires_in: 3600,
+      token_type: "Bearer",
+    });
+  }),
+
+  // Google Calendar — get calendar (verify it exists)
+  http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId", ({ params }) => {
+    if (params.calendarId === "existing-cal-id") {
+      return HttpResponse.json({ id: "existing-cal-id", summary: "Springa" });
+    }
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  // Google Calendar — create calendar
+  http.post("https://www.googleapis.com/calendar/v3/calendars", () => {
+    return HttpResponse.json({ id: "new-cal-id", summary: "Springa" });
+  }),
+
+  // Google Calendar — list events
+  http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", ({ request }) => {
+    const url = new URL(request.url);
+    const q = url.searchParams.get("q");
+    if (q) {
+      return HttpResponse.json({
+        items: [{ id: "gcal-event-1", summary: q, start: { dateTime: "2026-04-01T12:00:00+02:00" } }],
+      });
+    }
+    return HttpResponse.json({
+      items: [
+        { id: "gcal-event-1", summary: "W01 Easy", start: { dateTime: "2026-04-01T12:00:00+02:00" } },
+        { id: "gcal-event-2", summary: "W01 Long", start: { dateTime: "2026-04-06T09:00:00+02:00" } },
+      ],
+    });
+  }),
+
+  // Google Calendar — create event
+  http.post("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    capturedGoogleCalendarEvents.push(body);
+    return HttpResponse.json({ id: `gcal-${capturedGoogleCalendarEvents.length}`, ...body });
+  }),
+
+  // Google Calendar — update event
+  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
+    return HttpResponse.json({ id: "gcal-event-1", summary: "Updated" });
+  }),
+
+  // Google Calendar — delete event
+  http.delete("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", ({ params }) => {
+    capturedGoogleDeletedEventIds.push(params.eventId as string);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
