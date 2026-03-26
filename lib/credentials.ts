@@ -57,6 +57,12 @@ export interface UserCredentials {
   timezone: string;
 }
 
+export interface GoogleCalendarCredentials {
+  refreshToken: string | null;
+  calendarId: string | null;
+  timezone: string;
+}
+
 /** Fetch and decrypt per-user credentials from DB. */
 export async function getUserCredentials(email: string): Promise<UserCredentials | null> {
   const result = await db().execute({
@@ -148,4 +154,38 @@ export async function validateApiSecretFromDB(
 
   if (result.rows.length === 0) return null;
   return result.rows[0].email as string;
+}
+
+/** Fetch Google Calendar credentials for a user. */
+export async function getGoogleCalendarCredentials(email: string): Promise<GoogleCalendarCredentials | null> {
+  const result = await db().execute({
+    sql: "SELECT google_refresh_token, google_calendar_id, timezone FROM user_settings WHERE email = ?",
+    args: [email],
+  });
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  const encKey = getEncryptionKey();
+
+  return {
+    refreshToken: row.google_refresh_token ? decrypt(row.google_refresh_token as string, encKey) : null,
+    calendarId: row.google_calendar_id as string | null,
+    timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
+  };
+}
+
+/** Store encrypted Google refresh token. Pass null to clear. */
+export async function updateGoogleRefreshToken(email: string, refreshToken: string | null): Promise<void> {
+  const encKey = getEncryptionKey();
+  await db().execute({
+    sql: "UPDATE user_settings SET google_refresh_token = ? WHERE email = ?",
+    args: [refreshToken ? encrypt(refreshToken, encKey) : null, email],
+  });
+}
+
+/** Store Google Calendar ID. */
+export async function updateGoogleCalendarId(email: string, calendarId: string): Promise<void> {
+  await db().execute({
+    sql: "UPDATE user_settings SET google_calendar_id = ? WHERE email = ?",
+    args: [calendarId, email],
+  });
 }
