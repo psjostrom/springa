@@ -23,6 +23,7 @@ import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { deleteEvent, deleteActivity } from "@/lib/intervalsApi";
+import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId } from "@/lib/format";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
@@ -143,6 +144,15 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
   // Handle delete from modal (planned events or completed activities)
   const handleDeleteEvent = async (eventId: string) => {
+    // Best-effort Google Calendar sync
+    const eventToDelete = events.find((e) => e.id === eventId);
+    if (eventToDelete) {
+      void syncToGoogleCalendar("delete", {
+        eventName: eventToDelete.name,
+        eventDate: format(eventToDelete.date, "yyyy-MM-dd"),
+      });
+    }
+
     if (eventId.startsWith("activity-")) {
       const activityId = eventId.replace("activity-", "");
       await deleteActivity(apiKey, activityId);

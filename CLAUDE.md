@@ -12,6 +12,11 @@ Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Ta
 
 **Commands:** `npm run dev` · `npm test` (`vitest run`) · `npm run lint` (`eslint`) · `npm run build`
 
+**Database queries from shell:** NEVER use raw `node -e` with `process.env.TURSO_*` — `.env.local` isn't loaded. Use `npm run db:query` instead:
+```sh
+npm run db:query -- "const{db}=require('./lib/db');db().execute('SELECT count(*) FROM bg_readings').then(r=>console.log(r.rows))"
+```
+
 ## Accessibility
 
 All text must meet **WCAG AA** contrast (4.5:1 normal text, 3:1 large text) against its background in both dark and light mode. Primary and muted text should target **AAA** (7:1). Never use a semantic color (brand, success, warning, error, glucose) as text on a light background without verifying contrast. The light mode token values in `globals.css` are tuned to meet these thresholds — don't lighten them.

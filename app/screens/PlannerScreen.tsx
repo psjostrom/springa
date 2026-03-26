@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useEffectEvent, useRef } from "react";
+import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -8,6 +9,7 @@ import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
+import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
@@ -86,6 +88,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     try {
       const count = await uploadToIntervals(apiKey, planEvents);
       setStatusMsg(`Uploaded ${count} workouts.`);
+      // Best-effort Google Calendar sync
+      void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
     } catch (e) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -212,6 +216,18 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           }),
         ),
       );
+
+      // Best-effort Google Calendar sync for adapted events
+      for (const adapted of adaptedEvents) {
+        if (!adapted.original.id.startsWith("event-")) continue;
+        const eventDate = format(adapted.original.date, "yyyy-MM-dd");
+        void syncToGoogleCalendar("update", {
+          eventName: adapted.original.name,
+          eventDate,
+          updates: { description: adapted.description },
+        });
+      }
+
       setAdaptStatus(`Synced ${payload.length} workouts to Intervals.icu`);
       setSyncDone(true);
       calendarReload();

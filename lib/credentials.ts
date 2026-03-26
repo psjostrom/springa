@@ -38,13 +38,25 @@ export function hashSecret(secret: string): string {
   return createHash("sha1").update(secret).digest("hex");
 }
 
-/** Get the encryption key from env, or throw. */
+/** Get the encryption key from env, or throw.
+ *  Validated on first use (cold start), not at import time — Vercel functions
+ *  surface this as a 500 on the first request if misconfigured. */
 export function getEncryptionKey(): string {
   const key = process.env.CREDENTIALS_ENCRYPTION_KEY;
   if (key?.length !== 64) {
     throw new Error("CREDENTIALS_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)");
   }
   return key;
+}
+
+/** Decrypt with graceful fallback — returns null on failure instead of crashing the request. */
+function tryDecrypt(encoded: string, hexKey: string, email: string, field: string): string | null {
+  try {
+    return decrypt(encoded, hexKey);
+  } catch (err) {
+    console.error(`Failed to decrypt ${field} for ${email}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 // --- DB functions ---
@@ -54,6 +66,12 @@ export interface UserCredentials {
   mylifeEmail: string | null;
   mylifePassword: string | null;
   nightscoutSecret: string | null; // the hash, not the plaintext
+  timezone: string;
+}
+
+export interface GoogleCalendarCredentials {
+  refreshToken: string | null;
+  calendarId: string | null;
   timezone: string;
 }
 
@@ -68,9 +86,9 @@ export async function getUserCredentials(email: string): Promise<UserCredentials
   const encKey = getEncryptionKey();
 
   return {
-    intervalsApiKey: row.intervals_api_key ? decrypt(row.intervals_api_key as string, encKey) : null,
+    intervalsApiKey: row.intervals_api_key ? tryDecrypt(row.intervals_api_key as string, encKey, email, "intervals_api_key") : null,
     mylifeEmail: row.mylife_email as string | null,
-    mylifePassword: row.mylife_password ? decrypt(row.mylife_password as string, encKey) : null,
+    mylifePassword: row.mylife_password ? tryDecrypt(row.mylife_password as string, encKey, email, "mylife_password") : null,
     nightscoutSecret: row.nightscout_secret as string | null,
     timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
   };
@@ -148,4 +166,38 @@ export async function validateApiSecretFromDB(
 
   if (result.rows.length === 0) return null;
   return result.rows[0].email as string;
+}
+
+/** Fetch Google Calendar credentials for a user. */
+export async function getGoogleCalendarCredentials(email: string): Promise<GoogleCalendarCredentials | null> {
+  const result = await db().execute({
+    sql: "SELECT google_refresh_token, google_calendar_id, timezone FROM user_settings WHERE email = ?",
+    args: [email],
+  });
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  const encKey = getEncryptionKey();
+
+  return {
+    refreshToken: row.google_refresh_token ? tryDecrypt(row.google_refresh_token as string, encKey, email, "google_refresh_token") : null,
+    calendarId: row.google_calendar_id as string | null,
+    timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
+  };
+}
+
+/** Store encrypted Google refresh token. Pass null to clear. */
+export async function updateGoogleRefreshToken(email: string, refreshToken: string | null): Promise<void> {
+  const encKey = getEncryptionKey();
+  await db().execute({
+    sql: "UPDATE user_settings SET google_refresh_token = ? WHERE email = ?",
+    args: [refreshToken ? encrypt(refreshToken, encKey) : null, email],
+  });
+}
+
+/** Store Google Calendar ID. */
+export async function updateGoogleCalendarId(email: string, calendarId: string): Promise<void> {
+  await db().execute({
+    sql: "UPDATE user_settings SET google_calendar_id = ? WHERE email = ?",
+    args: [calendarId, email],
+  });
 }
