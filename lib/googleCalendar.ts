@@ -1,6 +1,11 @@
 import { format } from "date-fns";
 import type { WorkoutEvent } from "./types";
 import { estimateWorkoutDuration, getEstimatedDuration } from "./workoutMath";
+import {
+  getGoogleCalendarCredentials,
+  updateGoogleRefreshToken,
+  updateGoogleCalendarId,
+} from "./credentials";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CALENDAR_API = "https://www.googleapis.com/calendar/v3";
@@ -198,6 +203,32 @@ export function formatEventDescription(
   }
 
   return lines.join("\n");
+}
+
+/** Resolve refresh token → access token → calendar ID. Call once per user action. */
+export async function getGoogleCalendarContext(
+  email: string,
+): Promise<{ accessToken: string; calendarId: string; timezone: string } | null> {
+  const creds = await getGoogleCalendarCredentials(email);
+  if (!creds?.refreshToken) return null;
+
+  let accessToken: string;
+  try {
+    accessToken = await getGoogleAccessToken(creds.refreshToken);
+  } catch {
+    // Token revoked or expired — clear it so next sign-in re-prompts consent
+    await updateGoogleRefreshToken(email, null);
+    return null;
+  }
+
+  const calendarId = await ensureSpringaCalendar(accessToken, creds.calendarId, creds.timezone);
+
+  // Persist calendar ID if it changed (first creation or recreation after deletion)
+  if (calendarId !== creds.calendarId) {
+    await updateGoogleCalendarId(email, calendarId);
+  }
+
+  return { accessToken, calendarId, timezone: creds.timezone };
 }
 
 /** Client-side helper: fire-and-forget Google Calendar sync via API route. */
