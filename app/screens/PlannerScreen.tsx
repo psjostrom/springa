@@ -8,6 +8,7 @@ import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
+import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
@@ -86,6 +87,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     try {
       const count = await uploadToIntervals(apiKey, planEvents);
       setStatusMsg(`Uploaded ${count} workouts.`);
+      // Best-effort Google Calendar sync
+      void syncToGoogleCalendar("bulk-sync", { events: planEvents });
     } catch (e) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }

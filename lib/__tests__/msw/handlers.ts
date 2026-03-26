@@ -89,6 +89,11 @@ export const handlers = [
     return HttpResponse.json({ ok: true });
   }),
 
+  // Google Calendar sync API route (fire-and-forget, always succeeds in tests)
+  http.post("/api/google-calendar-sync", () => {
+    return HttpResponse.json({ synced: true });
+  }),
+
   // Google OAuth token exchange
   http.post("https://oauth2.googleapis.com/token", () => {
     return HttpResponse.json({
