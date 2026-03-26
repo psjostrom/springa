@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   mylife_email       TEXT,
   mylife_password    TEXT,
   nightscout_secret  TEXT,
+  google_refresh_token TEXT,
+  google_calendar_id   TEXT,
   onboarding_complete INTEGER NOT NULL DEFAULT 0
 );
 
