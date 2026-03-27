@@ -454,6 +454,53 @@ export async function uploadToIntervals(
   }
 }
 
+// --- SINGLE EVENT CREATE ---
+
+async function createSingleEvent(
+  apiKey: string,
+  workout: WorkoutEvent,
+): Promise<number> {
+  const auth = authHeader(apiKey);
+  const payload = [{
+    category: "WORKOUT",
+    start_date_local: format(workout.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+    name: workout.name,
+    description: workout.description,
+    external_id: workout.external_id,
+    type: workout.type,
+    ...(workout.fuelRate != null && { carbs_per_hour: Math.round(workout.fuelRate) }),
+  }];
+
+  const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
+    method: "POST",
+    headers: { Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create event: ${res.status} ${errorText}`);
+  }
+  const created = (await res.json()) as { id: number }[];
+  return created[0].id;
+}
+
+export async function replaceWorkoutOnDate(
+  apiKey: string,
+  existingEventId: number | undefined,
+  workout: WorkoutEvent,
+): Promise<number> {
+  // Create first — if this fails, nothing is lost
+  const newId = await createSingleEvent(apiKey, workout);
+  if (existingEventId != null) {
+    try {
+      await deleteEvent(apiKey, existingEventId);
+    } catch {
+      // Old event remains as duplicate — recoverable. Better than losing it.
+    }
+  }
+  return newId;
+}
+
 // --- WELLNESS ---
 
 export interface WellnessEntry {

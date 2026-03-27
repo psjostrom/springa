@@ -28,6 +28,7 @@ import { parseEventId } from "@/lib/format";
 import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
+import { WorkoutGenerator } from "./WorkoutGenerator";
 import { useDragDrop } from "../hooks/useDragDrop";
 import { useWeather } from "../hooks/useWeather";
 import { ErrorCard } from "./ErrorCard";
@@ -58,6 +59,26 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   const [viewMode, setViewMode] = useState<CalendarViewMode>(() =>
     typeof window !== "undefined" && window.innerWidth < 768 ? "agenda" : "month"
   );
+
+  const [generateDate, setGenerateDate] = useState<Date | null>(null);
+  const [isClosingGenerate, setIsClosingGenerate] = useState(false);
+
+  const closeGenerateModal = () => {
+    setIsClosingGenerate(true);
+    if (typeof window !== "undefined" && window.innerWidth >= 640) {
+      setGenerateDate(null);
+      setIsClosingGenerate(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!generateDate) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeGenerateModal();
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => { window.removeEventListener("keydown", handleEscape); };
+  }, [generateDate]);
 
   // Modal URL state — reads/writes ?workout= param with proper history handling
   const modal = useModalURL("workout");
@@ -200,6 +221,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   // Stable drop handler that prevents default then delegates
   const handleDropEvent = (_e: React.DragEvent, day: Date) => { void handleDrop(day); };
 
+  const handleGenerateWorkout = (date: Date) => { setGenerateDate(date); };
+
   const renderDayCell = (day: Date, idx: number, minHeight: string, showMonthOpacity: boolean) => (
     <DayCell
       key={idx}
@@ -219,6 +242,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       hrZones={hrZones}
       lthr={lthr}
       onEventClick={openWorkoutModal}
+      onGenerateWorkout={handleGenerateWorkout}
     />
   );
 
@@ -341,6 +365,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
             <AgendaView
               events={agendaEvents}
               onSelectEvent={openWorkoutModal}
+              onGenerateWorkout={handleGenerateWorkout}
               paceTable={paceTable}
               hrZones={hrZones}
               lthr={lthr}
@@ -366,6 +391,32 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           lthr={lthr}
           clothing={clothingMap.get(enrichedSelectedEvent.id)}
         />
+      )}
+
+      {/* Generate Workout Modal */}
+      {generateDate && (
+        <div
+          className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosingGenerate ? "bg-black/0" : "bg-black/70"}`}
+          onClick={closeGenerateModal}
+        >
+          <div
+            className={`bg-surface rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-md shadow-xl shadow-brand/10 border-t sm:border border-border ${isClosingGenerate ? "animate-slide-down" : "animate-slide-up"}`}
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
+            onAnimationEnd={(e) => { if (isClosingGenerate && e.animationName === "slide-down") { setGenerateDate(null); setIsClosingGenerate(false); } }}
+          >
+            <div className="mb-3">
+              <h3 className="text-lg font-bold text-text">Generate workout</h3>
+              <div className="text-sm text-muted">
+                {format(generateDate, "EEEE d MMMM yyyy", { locale: enGB })}
+              </div>
+            </div>
+            <WorkoutGenerator
+              date={generateDate}
+              onGenerated={() => { setGenerateDate(null); setIsClosingGenerate(false); }}
+              onCancel={closeGenerateModal}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

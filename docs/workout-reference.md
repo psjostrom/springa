@@ -79,18 +79,17 @@ Practice goal race pace in a structured session. Used closer to race day.
 - **HR:** Z3
 - **Progression:** Increase rep duration or reduce recovery
 
-### Club Run (Thursday Alternative)
+### Club Run (On-Demand Only)
 
-Trail running club session. When a club run is scheduled, both the speed session and club run appear on Thursday. Start whichever one you choose to do on the watch — the one you complete gets paired correctly via the eco16 suffix.
+Trail running club session. Not part of the weekly plan — generate on-demand via the workout generator when attending club.
 
 - **Time:** 18:30 (club meeting time)
 - **Duration:** 60 min
 - **Pace:** Variable — let the club workout dictate (easy, intervals, hills, etc.)
 - **HR:** No fixed target — intensity varies week to week
-- **Fuel:** Variable — estimate based on expected intensity (~60g/h if easy, ~30g/h if hard)
+- **Fuel:** Uses interval fuel rate from plan context
 - **T1D:** Pump off, fuel based on expected workout type
-- **Skipped on:** Recovery weeks, taper, race week (same as speed sessions)
-- **excludeFromPlan:** true — not counted in weekly planned volume (mutually exclusive with speed session)
+
 
 ### Long Run Variants (Sunday)
 
