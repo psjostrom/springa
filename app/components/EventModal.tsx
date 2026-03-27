@@ -18,6 +18,7 @@ import { PreRunReadiness } from "./PreRunReadiness";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
 import { ClothingRecommendation } from "./ClothingRecommendation";
 import { WidgetTabs } from "./WidgetTabs";
+import { WorkoutGenerator } from "./WorkoutGenerator";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 
 // --- Modal state machine ---
@@ -27,7 +28,8 @@ type EditMode =
   | { kind: "editing-date"; editDate: string }
   | { kind: "saving-date"; editDate: string }
   | { kind: "confirming-delete" }
-  | { kind: "deleting" };
+  | { kind: "deleting" }
+  | { kind: "replacing" };
 
 interface ModalState {
   editMode: EditMode;
@@ -44,6 +46,7 @@ type ModalAction =
   | { type: "CONFIRM_DELETE" }
   | { type: "DELETE" }
   | { type: "DELETE_FAILED"; error: string }
+  | { type: "START_REPLACE" }
   | { type: "CANCEL" }
   | { type: "RESET" }
   | { type: "START_CLOSING" };
@@ -71,6 +74,8 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       return { ...state, editMode: { kind: "deleting" } };
     case "DELETE_FAILED":
       return { ...state, editMode: { kind: "confirming-delete" }, error: action.error };
+    case "START_REPLACE":
+      return { ...state, editMode: { kind: "replacing" }, error: null };
     case "CANCEL":
       return { ...state, editMode: { kind: "idle" }, error: null };
     case "RESET":
@@ -218,12 +223,20 @@ export function EventModal({
             {editMode.kind === "idle" && (
               <>
                 {selectedEvent.type === "planned" && (
-                  <button
-                    onClick={() => { dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") }); }}
-                    className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"
-                  >
-                    Edit
-                  </button>
+                  <>
+                    <button
+                      onClick={() => { dispatch({ type: "START_REPLACE" }); }}
+                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      onClick={() => { dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") }); }}
+                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"
+                    >
+                      Edit
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
@@ -290,7 +303,17 @@ export function EventModal({
           </div>
         )}
 
-        {showReadiness && (
+        {editMode.kind === "replacing" && (
+          <WorkoutGenerator
+            date={selectedEvent.date}
+            existingEventId={parseEventId(selectedEvent.id)}
+            existingEventName={selectedEvent.name}
+            onGenerated={handleClose}
+            onCancel={() => { dispatch({ type: "CANCEL" }); }}
+          />
+        )}
+
+        {editMode.kind !== "replacing" && showReadiness && (
           <PreRunReadiness
             currentBG={currentBG}
             trendSlope={trendSlope}
@@ -302,18 +325,18 @@ export function EventModal({
           />
         )}
 
-        {!selectedEvent.activityId && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && !selectedEvent.activityId && selectedEvent.type === "planned" && (
           <PreRunCarbsInput eventId={selectedEvent.id} />
         )}
 
-        {clothing && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && clothing && selectedEvent.type === "planned" && (
           <div className="mb-4 px-3 py-2.5 rounded-lg bg-surface-alt border border-border">
             <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1.5">What to wear</div>
             <ClothingRecommendation recommendation={clothing} />
           </div>
         )}
 
-        {selectedEvent.description && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && selectedEvent.description && selectedEvent.type === "planned" && (
           <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr}>
             <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
           </WorkoutCard>

@@ -127,6 +127,7 @@ vi.mock("lucide-react", () => {
     MessageSquare: icon("MessageSquare"),
     BarChart3: icon("BarChart3"),
     Clock: icon("Clock"),
+    Plus: icon("Plus"),
   };
 });
 

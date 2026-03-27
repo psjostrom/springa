@@ -36,7 +36,7 @@ export const handlers = [
   // POST bulk upload
   http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
     capturedUploadPayload = (await request.json()) as unknown[];
-    return HttpResponse.json(capturedUploadPayload);
+    return HttpResponse.json(capturedUploadPayload.map((_, i) => ({ id: 1000 + i })));
   }),
 
   // PUT update single event

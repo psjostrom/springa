@@ -5,6 +5,7 @@ import {
   uploadToIntervals,
   fetchActivityDetails,
   updateActivityCarbs,
+  replaceWorkoutOnDate,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -776,5 +777,90 @@ describe("fetchPaceCurves", () => {
     const result = await fetchPaceCurves("test-key");
 
     expect(result).toBeNull();
+  });
+});
+
+describe("replaceWorkoutOnDate", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const workout: WorkoutEvent = {
+    start_date_local: new Date("2026-04-01T12:00:00"),
+    name: "W05 Easy",
+    description: "Warmup\n- 10m",
+    external_id: "ondemand-2026-04-01",
+    type: "Run",
+    fuelRate: 48,
+  };
+
+  it("creates new event without deleting when no existing ID", async () => {
+    const calls: { method: string; url: string }[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
+      calls.push({ method: opts?.method ?? "GET", url });
+      if (opts?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 2001 }]) });
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const newId = await replaceWorkoutOnDate("test-key", undefined, workout);
+    expect(newId).toBe(2001);
+    expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(0);
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(1);
+  });
+
+  it("creates first then deletes old event", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") { calls.push("create"); return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 2002 }]) }); }
+      if (opts?.method === "DELETE") { calls.push("delete"); return Promise.resolve({ ok: true }); }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const newId = await replaceWorkoutOnDate("test-key", 500, workout);
+    expect(newId).toBe(2002);
+    expect(calls).toEqual(["create", "delete"]);
+  });
+
+  it("includes carbs_per_hour in create payload", async () => {
+    let capturedBody: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") {
+        capturedBody = JSON.parse(opts.body as string);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 2003 }]) });
+      }
+      if (opts?.method === "DELETE") return Promise.resolve({ ok: true });
+      return Promise.resolve({ ok: false });
+    }));
+
+    await replaceWorkoutOnDate("test-key", undefined, workout);
+    expect((capturedBody[0] as Record<string, unknown>).carbs_per_hour).toBe(48);
+  });
+
+  it("throws when create fails (old event preserved)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") {
+        return Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("Server error") });
+      }
+      return Promise.resolve({ ok: true });
+    }));
+
+    await expect(replaceWorkoutOnDate("test-key", 500, workout)).rejects.toThrow("Failed to create event");
+  });
+
+  it("succeeds even when delete fails after create", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      if (opts?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 2004 }]) });
+      }
+      if (opts?.method === "DELETE") {
+        return Promise.reject(new Error("Delete failed"));
+      }
+      return Promise.resolve({ ok: false });
+    }));
+
+    const newId = await replaceWorkoutOnDate("test-key", 500, workout);
+    expect(newId).toBe(2004);
   });
 });

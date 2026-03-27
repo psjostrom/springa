@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan } from "../workoutGenerators";
+import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase } from "../workoutGenerators";
+import type { OnDemandCategory } from "../workoutGenerators";
 import { getDay } from "date-fns";
+import { getWeekIdx } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 
 describe("generatePlan", () => {
@@ -65,43 +67,28 @@ describe("generatePlan", () => {
     expect(raceDay).toBeDefined();
   });
 
-  it("skips speed sessions during base phase when enabled", () => {
-    // 12-week plan with base: base 1-2, build starts week 3
-    function generateWithBase() {
-      return generatePlan(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], true);
+  it("generates club run on Thursday every week", () => {
+    const plan = generateFull();
+    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
+    expect(clubRuns.length).toBeGreaterThan(0);
+    for (const run of clubRuns) {
+      expect(run.name).toContain("Club Run");
+      expect(getDay(run.start_date_local)).toBe(4); // Thursday
+      expect(run.start_date_local.getHours()).toBe(18);
+      expect(run.start_date_local.getMinutes()).toBe(30);
     }
-    const plan = generateWithBase();
-    const w1Speed = plan.find((e) => e.external_id === "speed-1");
-    const w2Speed = plan.find((e) => e.external_id === "speed-2");
-    if (w1Speed) expect(w1Speed.name).toContain("Easy");
-    if (w2Speed) expect(w2Speed.name).toContain("Easy");
-    // Week 3 should have a real speed session (first build week)
-    const w3Speed = plan.find((e) => e.external_id === "speed-3");
-    expect(w3Speed).toBeDefined();
-    expect(w3Speed!.name).not.toContain("Easy");
   });
 
-  it("has speed sessions from week 1 when base phase is disabled", () => {
+  it("does not generate speed/quality sessions in the plan", () => {
     const plan = generateFull();
-    const w1Speed = plan.find((e) => e.external_id === "speed-1");
-    expect(w1Speed).toBeDefined();
-    expect(w1Speed!.name).not.toContain("Easy");
-  });
-
-  it("skips speed sessions on recovery weeks", () => {
-    // 12-week plan without base: build 1-7, recovery at build index 3 = week 4
-    const plan = generateFull();
-    const w4Speed = plan.find((e) => e.external_id === "speed-4");
-    if (w4Speed) {
-      expect(w4Speed.name).toContain("Easy");
-    }
+    const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));
+    expect(speedSessions).toHaveLength(0);
   });
 
   it("has proper workout description format with HR zones", () => {
     const plan = generate();
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
-      // Club runs have no HR targets — workout varies week to week
       if (event.name.includes("Club Run")) continue;
       expect(event.description).toContain("LTHR");
       expect(event.description).toContain("bpm");
@@ -123,7 +110,6 @@ describe("generatePlan", () => {
     const plan = generateFull();
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
-      // Club runs have no structured steps — just a duration marker
       if (event.name.includes("Club Run")) continue;
       const stepLines = event.description.split("\n").filter((l: string) => l.startsWith("- "));
       expect(stepLines.length).toBeGreaterThan(0);
@@ -131,47 +117,6 @@ describe("generatePlan", () => {
         expect(line).toMatch(/intensity=(warmup|active|rest|cooldown)$/);
       }
     }
-  });
-
-  it("maps intensity tags correctly for hills workout", () => {
-    const plan = generateFull();
-    const hills = plan.find((e) => e.name.includes("Hills"));
-    expect(hills).toBeDefined();
-    const steps = hills!.description.split("\n").filter((l: string) => l.startsWith("- "));
-    // Warmup → warmup, Uphill → active, Downhill → recovery, Cooldown → cooldown
-    expect(steps[0]).toContain("intensity=warmup");
-    expect(steps[1]).toContain("intensity=active");
-    expect(steps[2]).toContain("intensity=rest");
-    expect(steps[steps.length - 1]).toContain("intensity=cooldown");
-  });
-
-  it("maps intensity tags correctly for short intervals workout", () => {
-    const plan = generateFull();
-    const intervals = plan.find((e) => e.name.includes("Short Intervals"));
-    expect(intervals).toBeDefined();
-    const steps = intervals!.description.split("\n").filter((l: string) => l.startsWith("- "));
-    // Warmup → warmup, Fast → active, Walk → recovery, Cooldown → cooldown
-    expect(steps[0]).toContain("intensity=warmup");
-    expect(steps[1]).toContain("intensity=active");
-    expect(steps[2]).toContain("intensity=rest");
-    expect(steps[steps.length - 1]).toContain("intensity=cooldown");
-  });
-
-  it("rotates speed session types", () => {
-    const plan = generate();
-    const speedSessions = plan
-      .filter((e) => e.external_id.includes("speed-") && !e.name.includes("Easy"))
-      .map((e) => e.name);
-
-    const types = new Set<string>();
-    for (const name of speedSessions) {
-      if (name.includes("Short Intervals")) types.add("short");
-      if (name.includes("Hills")) types.add("hills");
-      if (name.includes("Long Intervals")) types.add("long");
-      if (name.includes("Distance Intervals")) types.add("distance");
-      if (name.includes("Race Pace Intervals")) types.add("racepace");
-    }
-    expect(types.size).toBeGreaterThan(1);
   });
 
   it("all events have type 'Run'", () => {
@@ -187,12 +132,11 @@ describe("generatePlan", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("all events have start_date_local with clean time (12:00 or 18:30 for club)", () => {
+  it("all events have clean time (12:00 for runs, 18:30 for club)", () => {
     const plan = generate();
     for (const event of plan) {
       const date = event.start_date_local;
-      const isClubRun = event.name.toLowerCase().includes("club");
-      if (isClubRun) {
+      if (event.name.includes("Club Run")) {
         expect(date.getHours()).toBe(18);
         expect(date.getMinutes()).toBe(30);
       } else {
@@ -228,11 +172,11 @@ describe("generatePlan", () => {
     }
   });
 
-  it("assigns speed sessions to Thursday (day 4)", () => {
+  it("assigns club runs to Thursday (day 4)", () => {
     const plan = generateFull();
-    const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));
-    expect(speedSessions.length).toBeGreaterThan(0);
-    for (const event of speedSessions) {
+    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
+    expect(clubRuns.length).toBeGreaterThan(0);
+    for (const event of clubRuns) {
       expect(getDay(event.start_date_local)).toBe(4);
     }
   });
@@ -420,17 +364,19 @@ describe("generatePlan", () => {
     }
   });
 
-  it("interval cooldown remains 5m (no taper)", () => {
-    const plan = generateFull();
-    const intervals = plan.filter(
-      (e) => e.external_id.includes("speed-") && !e.name.includes("Easy"),
-    );
-    expect(intervals.length).toBeGreaterThan(0);
-    for (const run of intervals) {
-      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
-      expect(cdMatch).not.toBeNull();
-      expect(parseInt(cdMatch![1], 10)).toBe(5);
-    }
+  it("on-demand quality sessions have 5m cooldown", () => {
+    // Quality is on-demand only — generate one and check cooldown
+    const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
+    const buildThursday = new Date(ctx.planStartMonday);
+    buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3); // week 5
+    const event = generateSingleWorkout("quality", buildThursday, null, {
+      raceDate: "2027-06-12", raceDist: 16, totalWeeks: 12,
+      startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES],
+    });
+    expect(event).not.toBeNull();
+    const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(event!.description);
+    expect(cdMatch).not.toBeNull();
+    expect(parseInt(cdMatch![1], 10)).toBe(5);
   });
 
   it("easy run total duration is preserved after taper restructure", () => {
@@ -449,6 +395,148 @@ describe("generatePlan", () => {
       // and <= 70 (longest: 10m WU + 45m main + 15m CD)
       expect(totalMin).toBeGreaterThanOrEqual(30);
       expect(totalMin).toBeLessThanOrEqual(70);
+    }
+  });
+});
+
+describe("generateSingleWorkout", () => {
+  const settings = {
+    raceDate: "2027-06-12",
+    raceDist: 16,
+    totalWeeks: 12,
+    startKm: 8,
+    lthr: TEST_LTHR,
+    hrZones: [...TEST_HR_ZONES],
+  };
+
+  // Pick a Thursday in a build week (week 5)
+  const ctx = buildContext(null, settings.raceDate, settings.raceDist, settings.totalWeeks, settings.startKm, settings.lthr, settings.hrZones, false);
+  const buildThursday = new Date(ctx.planStartMonday);
+  buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3); // week 5, Thursday
+
+  it("returns a workout for each category", () => {
+    const categories: OnDemandCategory[] = ["easy", "quality", "long", "club"];
+    for (const cat of categories) {
+      const event = generateSingleWorkout(cat, buildThursday, null, settings);
+      expect(event).not.toBeNull();
+      expect(event!.type).toBe("Run");
+      expect(event!.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("overrides the date to the requested date", () => {
+    const event = generateSingleWorkout("easy", buildThursday, null, settings);
+    expect(event).not.toBeNull();
+    expect(event!.start_date_local.getFullYear()).toBe(buildThursday.getFullYear());
+    expect(event!.start_date_local.getMonth()).toBe(buildThursday.getMonth());
+    expect(event!.start_date_local.getDate()).toBe(buildThursday.getDate());
+  });
+
+  it("sets external_id to ondemand-YYYY-MM-DD", () => {
+    const event = generateSingleWorkout("easy", buildThursday, null, settings);
+    expect(event).not.toBeNull();
+    expect(event!.external_id).toMatch(/^ondemand-\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("returns null for dates outside plan window", () => {
+    const farPast = new Date("2020-01-01");
+    const event = generateSingleWorkout("easy", farPast, null, settings);
+    expect(event).toBeNull();
+  });
+
+  it("club category always returns Thursday at 18:30 regardless of input date", () => {
+    // Generate from a Tuesday — should still land on Thursday
+    const tuesday = new Date(buildThursday);
+    tuesday.setDate(tuesday.getDate() - 2);
+    const event = generateSingleWorkout("club", tuesday, null, settings);
+    expect(event).not.toBeNull();
+    expect(event!.start_date_local.getDay()).toBe(4); // Thursday
+    expect(event!.start_date_local.getHours()).toBe(18);
+    expect(event!.start_date_local.getMinutes()).toBe(30);
+  });
+
+  it("club category works during recovery weeks (no phase guard)", () => {
+    // Find a recovery week
+    for (let w = 0; w < settings.totalWeeks; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (wp.isRecovery) {
+        const recoveryDate = new Date(ctx.planStartMonday);
+        recoveryDate.setDate(recoveryDate.getDate() + w * 7 + 3);
+        const event = generateSingleWorkout("club", recoveryDate, null, settings);
+        expect(event).not.toBeNull();
+        expect(event!.name).toContain("Club Run");
+        return;
+      }
+    }
+  });
+
+  it("quality category downgrades to easy during recovery week", () => {
+    for (let w = 0; w < settings.totalWeeks; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (wp.isRecovery) {
+        const recoveryThursday = new Date(ctx.planStartMonday);
+        recoveryThursday.setDate(recoveryThursday.getDate() + w * 7 + 3);
+        const event = generateSingleWorkout("quality", recoveryThursday, null, settings);
+        expect(event).not.toBeNull();
+        expect(event!.name).toContain("Easy");
+        return;
+      }
+    }
+  });
+
+  it("quality category downgrades to easy during base phase", () => {
+    const baseSettings = { ...settings, includeBasePhase: true };
+    const baseCtx = buildContext(null, baseSettings.raceDate, baseSettings.raceDist, baseSettings.totalWeeks, baseSettings.startKm, baseSettings.lthr, baseSettings.hrZones, true);
+    const week1Thursday = new Date(baseCtx.planStartMonday);
+    week1Thursday.setDate(week1Thursday.getDate() + 3);
+    const wp = getWeekPhase(baseCtx, 0);
+    if (wp.isBase) {
+      const event = generateSingleWorkout("quality", week1Thursday, null, baseSettings);
+      expect(event).not.toBeNull();
+      expect(event!.name).toContain("Easy");
+    }
+  });
+});
+
+describe("suggestCategory", () => {
+  const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
+
+  it("suggests long on Sunday", () => {
+    // Find a Sunday in a build week
+    const sunday = new Date(ctx.planStartMonday);
+    sunday.setDate(sunday.getDate() + 4 * 7 + 6); // week 5, Sunday
+    const weekIdx = getWeekIdx(sunday, ctx.planStartMonday);
+    const wp = getWeekPhase(ctx, weekIdx);
+    expect(suggestCategory(sunday, wp)).toBe("long");
+  });
+
+  it("suggests quality on Thursday", () => {
+    const thursday = new Date(ctx.planStartMonday);
+    thursday.setDate(thursday.getDate() + 4 * 7 + 3); // week 5, Thursday
+    const weekIdx = getWeekIdx(thursday, ctx.planStartMonday);
+    const wp = getWeekPhase(ctx, weekIdx);
+    expect(suggestCategory(thursday, wp)).toBe("quality");
+  });
+
+  it("suggests easy on other days", () => {
+    const tuesday = new Date(ctx.planStartMonday);
+    tuesday.setDate(tuesday.getDate() + 4 * 7 + 1); // week 5, Tuesday
+    const weekIdx = getWeekIdx(tuesday, ctx.planStartMonday);
+    const wp = getWeekPhase(ctx, weekIdx);
+    expect(suggestCategory(tuesday, wp)).toBe("easy");
+  });
+
+  it("suggests easy during recovery week regardless of day", () => {
+    // Recovery weeks are every 4th week in build phase
+    // Find a recovery week Thursday
+    for (let w = 0; w < 12; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (wp.isRecovery) {
+        const thursday = new Date(ctx.planStartMonday);
+        thursday.setDate(thursday.getDate() + w * 7 + 3);
+        expect(suggestCategory(thursday, wp)).toBe("easy");
+        break;
+      }
     }
   });
 });

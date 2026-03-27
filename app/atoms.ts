@@ -10,6 +10,7 @@ import type { BGReading } from "@/lib/cgm";
 import type { WidgetLayout } from "@/lib/widgetRegistry";
 import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
+import { recalcTotalCarbs } from "@/lib/workoutMath";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import type { InsulinContext } from "@/lib/insulinContext";
 import type { PhaseInfo } from "./hooks/usePhaseInfo";
@@ -107,9 +108,11 @@ export const currentIobAtom = atom<number | null>((get) => {
   return get(insulinContextAtom)?.actionableIOB ?? null;
 });
 
-export const enrichedEventsAtom = atom((get) =>
-  enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom)),
-);
+export const enrichedEventsAtom = atom((get) => {
+  const events = enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom));
+  const paceTable = get(paceTableAtom);
+  return recalcTotalCarbs(events, paceTable);
+});
 
 export const phaseInfoAtom = atom<PhaseInfo>({ name: "Build Phase", week: 0, progress: 0 });
 
