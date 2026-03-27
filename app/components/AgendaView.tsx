@@ -4,7 +4,7 @@ import { enGB } from "date-fns/locale";
 import { ChevronLeft, History } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { formatPace, formatDuration } from "@/lib/format";
-import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateWorkoutCarbs } from "@/lib/workoutMath";
+import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 import { HRMiniChart } from "./HRMiniChart";
@@ -170,13 +170,9 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
               {(() => {
                 const fuelRate = event.fuelRate;
                 if (fuelRate == null) return null;
-                const est = estimateWorkoutDuration(event.description, paceTable);
-                const totalCarbs = (est != null)
-                  ? calculateWorkoutCarbs(est.minutes, fuelRate)
-                  : event.totalCarbs;
                 const parts = [
                   `${fuelRate}g/h`,
-                  totalCarbs != null ? `${totalCarbs}g total` : null,
+                  event.totalCarbs != null ? `${event.totalCarbs}g total` : null,
                 ].filter(Boolean);
                 return (
                   <div className="text-sm font-medium text-text bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
