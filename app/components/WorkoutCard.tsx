@@ -9,7 +9,7 @@ import {
 } from "@/lib/descriptionParser";
 import type { WorkoutSection, WorkoutStep } from "@/lib/descriptionParser";
 import { getPaceForZone, getZoneLabel, formatPace } from "@/lib/format";
-import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, calculateWorkoutCarbs } from "@/lib/workoutMath";
+import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
 
 interface WorkoutCardProps {
   description: string;
@@ -74,8 +74,7 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote, totalCarbs: propTotalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR }: WorkoutCardProps) {
-  const fuelRate = propFuelRate;
+export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR }: WorkoutCardProps) {
   const sections = hrZones?.length === 5 ? parseWorkoutStructure(description, lthr, hrZones) : [];
 
   // Fall back to raw text if parsing fails
@@ -89,11 +88,6 @@ export function WorkoutCard({ description, fuelRate: propFuelRate, fuelRateNote,
 
   const estDuration = estimateWorkoutDuration(description, paceTable);
   const estDistance = estimateWorkoutDescriptionDistance(description, paceTable);
-
-  // Recompute totalCarbs from calibrated duration when possible
-  const totalCarbs = (fuelRate != null && estDuration != null)
-    ? calculateWorkoutCarbs(estDuration.minutes, fuelRate)
-    : propTotalCarbs;
   const zones = hrZones?.length === 5 ? parseWorkoutZones(description, lthr, hrZones) : [];
   const notes = extractNotes(description);
 
