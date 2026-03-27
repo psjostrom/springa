@@ -63,8 +63,6 @@ export function VolumeTrendChart({
     if (hrZones?.length !== 5) return { weeks, currentWeekIdx };
     const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, includeBasePhase ?? false);
     for (const pe of planEvents) {
-      // Skip events excluded from plan (e.g., club run as alternative to speed session)
-      if (pe.excludeFromPlan) continue;
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
       const km = estimatePlanEventDistance(pe, paceTable);

@@ -290,7 +290,7 @@ describe("reconstructExternalId", () => {
   });
 
   it("parses club run by keyword", () => {
-    expect(reconstructExternalId("W05 Club Run")).toBe("interval-5");
+    expect(reconstructExternalId("W05 Club Run")).toBe("club-5");
   });
 
   it("handles legacy day-based names", () => {

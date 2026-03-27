@@ -7,14 +7,6 @@ export interface WorkoutEvent {
   type: "Run";
   fuelRate?: number; // g/h (carbs per hour)
   distance?: number; // km (first-class; generators populate this for long runs)
-  /**
-   * Exclude from planned volume calculations.
-   * Event is still synced to Intervals.icu and appears in the calendar,
-   * but VolumeTrendChart won't count it toward weekly planned km.
-   * Used for mutually exclusive alternatives (e.g., club run as alternative
-   * to speed session — only one will be completed, so only count the primary).
-   */
-  excludeFromPlan?: boolean;
 }
 
 export interface AnalysisResult {

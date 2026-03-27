@@ -6,6 +6,7 @@ import {
   isBefore,
   isSameDay,
   set,
+  format,
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import type { BGResponseModel } from "./bgModel";
@@ -13,11 +14,14 @@ import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constan
 import { formatStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getCurrentFuelRate } from "./fuelRate";
 import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
+import { getWeekIdx } from "./workoutMath";
 
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 
+export type OnDemandCategory = "easy" | "quality" | "long" | "club";
+
 /** Per-week phase flags, computed once per week in the orchestrator. */
-interface WeekPhase {
+export interface WeekPhase {
   weekNum: number;
   b: PhaseBoundaries;
   isBase: boolean;
@@ -27,7 +31,7 @@ interface WeekPhase {
   isRecovery: boolean;
 }
 
-function getWeekPhase(ctx: PlanContext, weekIdx: number): WeekPhase {
+export function getWeekPhase(ctx: PlanContext, weekIdx: number): WeekPhase {
   const weekNum = weekIdx + 1;
   const b = ctx.boundaries;
   return {
@@ -276,37 +280,6 @@ const generateBonusRun = (
   };
 };
 
-const generateClubRun = (
-  ctx: PlanContext,
-  weekStart: Date,
-  wp: WeekPhase,
-): WorkoutEvent | null => {
-  const date = addDays(weekStart, 3); // Thursday
-  if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
-    return null;
-  if (isSameDay(date, ctx.raceDate)) return null;
-
-  // Skip club run on base, recovery, race test, taper, and race week
-  if (wp.isRaceWeek || wp.isTaper || wp.isRecovery || wp.isRaceTest || wp.isBase) return null;
-
-  const description = [
-    "Trail running club session — workout varies week to week.",
-    "",
-    "- 60m",
-    "",
-  ].join("\n");
-
-  return {
-    start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
-    description,
-    external_id: `interval-${wp.weekNum}`,
-    type: "Run",
-    fuelRate: ctx.fuelInterval,
-    excludeFromPlan: true, // Don't count in planned volume — alternative to speed session
-  };
-};
-
 const generateLongRun = (
   ctx: PlanContext,
   weekIdx: number,
@@ -412,7 +385,7 @@ const generateLongRun = (
 
 // --- MAIN ORCHESTRATOR ---
 
-function buildContext(
+export function buildContext(
   bgModel: BGResponseModel | null,
   raceDateStr: string,
   raceDist: number,
@@ -442,12 +415,36 @@ function buildContext(
   };
 }
 
+const generatePlanClubRun = (
+  ctx: PlanContext,
+  weekStart: Date,
+  wp: WeekPhase,
+): WorkoutEvent | null => {
+  const date = addDays(weekStart, 3); // Thursday
+  if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
+    return null;
+  if (isSameDay(date, ctx.raceDate)) return null;
+
+  return {
+    start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
+    description: [
+      "Trail running club session — workout varies week to week.",
+      "",
+      "- 60m",
+      "",
+    ].join("\n"),
+    external_id: `club-${wp.weekNum}`,
+    type: "Run",
+    fuelRate: ctx.fuelInterval,
+  };
+};
+
 function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date): WorkoutEvent[] {
   const wp = getWeekPhase(ctx, weekIdx);
   return [
     generateEasyRun(ctx, weekIdx, weekStart, wp),
-    generateQualityRun(ctx, weekIdx, weekStart, wp),
-    generateClubRun(ctx, weekStart, wp),
+    generatePlanClubRun(ctx, weekStart, wp),
     generateBonusRun(ctx, weekStart, wp),
     generateLongRun(ctx, weekIdx, weekStart, wp),
   ].filter((e): e is WorkoutEvent => e !== null);
@@ -488,4 +485,99 @@ export function generateFullPlan(
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);
   });
+}
+
+// --- ON-DEMAND GENERATION ---
+
+/** Suggest a workout category based on the day of week and training phase. */
+export function suggestCategory(
+  date: Date,
+  wp: WeekPhase,
+): OnDemandCategory {
+  if (wp.isRecovery || wp.isTaper || wp.isBase || wp.isRaceTest) return "easy";
+  const dayOfWeek = date.getDay(); // 0=Sun ... 6=Sat
+  if (dayOfWeek === 0) return "long";
+  if (dayOfWeek === 4) return "quality";
+  return "easy";
+}
+
+/** Generate a single workout for a given date and category, using the same
+ *  plan context and phase logic as the full plan generator. */
+export function generateSingleWorkout(
+  category: OnDemandCategory,
+  date: Date,
+  bgModel: BGResponseModel | null,
+  settings: {
+    raceDate: string;
+    raceDist: number;
+    totalWeeks: number;
+    startKm: number;
+    lthr: number;
+    hrZones: number[];
+    includeBasePhase?: boolean;
+  },
+): WorkoutEvent | null {
+  const ctx = buildContext(
+    bgModel,
+    settings.raceDate,
+    settings.raceDist,
+    settings.totalWeeks,
+    settings.startKm,
+    settings.lthr,
+    settings.hrZones,
+    settings.includeBasePhase ?? false,
+  );
+
+  const weekIdx = getWeekIdx(date, ctx.planStartMonday);
+  if (weekIdx < 0 || weekIdx >= ctx.totalWeeks) return null;
+
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const wp = getWeekPhase(ctx, weekIdx);
+
+  let event: WorkoutEvent | null;
+
+  switch (category) {
+    case "easy":
+      event = generateEasyRun(ctx, weekIdx, weekStart, wp);
+      break;
+    case "quality":
+      event = generateQualityRun(ctx, weekIdx, weekStart, wp);
+      break;
+    case "long":
+      event = generateLongRun(ctx, weekIdx, weekStart, wp);
+      break;
+    case "club": {
+      // Club always meets Thursday at 18:30 — bypass phase guards and keep Thursday date
+      const thursday = addDays(weekStart, 3);
+      const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
+      event = {
+        start_date_local: set(thursday, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
+        name: `${prefixName} Club Run`,
+        description: [
+          "Trail running club session — workout varies week to week.",
+          "",
+          "- 60m",
+          "",
+        ].join("\n"),
+        external_id: `ondemand-${format(thursday, "yyyy-MM-dd")}`,
+        type: "Run",
+        fuelRate: ctx.fuelInterval,
+      };
+      return event;
+    }
+  }
+
+  if (!event) return null;
+
+  // Override the date — generators hardcode day-of-week offsets, but on-demand
+  // targets the specific requested date
+  event.start_date_local = set(date, {
+    hours: event.start_date_local.getHours(),
+    minutes: event.start_date_local.getMinutes(),
+    seconds: 0,
+    milliseconds: 0,
+  });
+  event.external_id = `ondemand-${format(date, "yyyy-MM-dd")}`;
+
+  return event;
 }

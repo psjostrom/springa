@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { ChevronLeft, History } from "lucide-react";
+import { ChevronLeft, History, Plus } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { formatPace, formatDuration } from "@/lib/format";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
@@ -14,6 +14,7 @@ import { ClothingRecommendation } from "./ClothingRecommendation";
 interface AgendaViewProps {
   events: CalendarEvent[];
   onSelectEvent: (event: CalendarEvent) => void;
+  onGenerateWorkout?: (date: Date) => void;
   paceTable?: PaceTable;
   hrZones?: number[];
   lthr?: number;
@@ -196,6 +197,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
 export function AgendaView({
   events,
   onSelectEvent,
+  onGenerateWorkout,
   paceTable,
   hrZones,
   lthr,
@@ -244,6 +246,9 @@ export function AgendaView({
     );
   }
 
+  const today = new Date();
+  const todayHasEvent = events.some((e) => isSameDay(e.date, today));
+
   return (
     <div className="space-y-1 sm:space-y-2">
       {hasEarlier && (
@@ -253,6 +258,15 @@ export function AgendaView({
         >
           <History size={16} />
           {earlierEvents.length} earlier {earlierEvents.length === 1 ? "workout" : "workouts"}
+        </button>
+      )}
+      {!todayHasEvent && onGenerateWorkout && (
+        <button
+          onClick={() => { onGenerateWorkout(today); }}
+          className="w-full flex items-center gap-2 p-3 rounded-lg border border-dashed border-border hover:border-brand hover:bg-tint-brand cursor-pointer transition text-muted hover:text-text"
+        >
+          <Plus size={16} />
+          <span className="text-sm">Generate workout for today</span>
         </button>
       )}
       {upcomingEvents.map((event) => (

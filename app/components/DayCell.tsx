@@ -1,5 +1,5 @@
 import React from "react";
-import { format, isSameMonth, isToday } from "date-fns";
+import { format, isSameMonth, isToday, isBefore, startOfDay } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
 import { getEventStyle, getEventIcon } from "@/lib/eventStyles";
 import { HRMiniChart } from "./HRMiniChart";
@@ -20,6 +20,7 @@ interface DayCellProps {
   onDragStart: (e: React.DragEvent, event: CalendarEvent) => void;
   onDragEnd: () => void;
   onEventClick: (event: CalendarEvent) => void;
+  onGenerateWorkout?: (date: Date) => void;
   hrZones?: number[];
   lthr?: number;
 }
@@ -39,6 +40,7 @@ export function DayCell({
   onDragStart,
   onDragEnd,
   onEventClick,
+  onGenerateWorkout,
   hrZones,
   lthr,
 }: DayCellProps) {
@@ -53,7 +55,7 @@ export function DayCell({
       onDragEnter={() => { onDragEnter(dateKey); }}
       onDragLeave={onDragLeave}
       onDrop={(e) => { e.preventDefault(); onDrop(e, day); }}
-      className={`bg-surface p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
+      className={`group bg-surface p-1 sm:p-2 ${minHeight} overflow-hidden transition-colors ${
         !isCurrentMonth ? "opacity-40" : ""
       } ${isTodayDate && !isDropTarget ? "ring-2 ring-brand ring-inset" : ""} ${
         isDropTarget ? "ring-2 ring-brand ring-inset bg-border" : ""
@@ -69,6 +71,15 @@ export function DayCell({
         </div>
 
         <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
+          {dayEvents.length === 0 && onGenerateWorkout && !isBefore(day, startOfDay(new Date())) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onGenerateWorkout(day); }}
+              className="text-muted hover:text-brand text-lg transition opacity-0 group-hover:opacity-100"
+              aria-label="Generate workout"
+            >
+              +
+            </button>
+          )}
           {dayEvents.map((event) => (
             <button
               key={event.id}
