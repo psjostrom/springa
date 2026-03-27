@@ -78,7 +78,7 @@ function getSpeedSessionType(
   // Taper weeks get race-pace intervals to stay sharp
   if (wp.isTaper) return "race-pace-intervals";
 
-  // Count how many speed sessions came before this week (for rotation)
+  // Count how many quality sessions came before this week (for rotation)
   let speedCount = 0;
   for (let i = wp.b.buildStart; i < wp.weekNum; i++) {
     const idx = i - wp.b.buildStart;
@@ -415,6 +415,22 @@ export function buildContext(
   };
 }
 
+function buildClubRunEvent(date: Date, wp: WeekPhase, fuelRate: number, externalId: string): WorkoutEvent {
+  return {
+    start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
+    description: [
+      "Trail running club session — workout varies week to week.",
+      "",
+      "- 60m",
+      "",
+    ].join("\n"),
+    external_id: externalId,
+    type: "Run",
+    fuelRate,
+  };
+}
+
 const generatePlanClubRun = (
   ctx: PlanContext,
   weekStart: Date,
@@ -425,19 +441,7 @@ const generatePlanClubRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  return {
-    start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
-    description: [
-      "Trail running club session — workout varies week to week.",
-      "",
-      "- 60m",
-      "",
-    ].join("\n"),
-    external_id: `club-${wp.weekNum}`,
-    type: "Run",
-    fuelRate: ctx.fuelInterval,
-  };
+  return buildClubRunEvent(date, wp, ctx.fuelInterval, `club-${wp.weekNum}`);
 };
 
 function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date): WorkoutEvent[] {
@@ -549,21 +553,7 @@ export function generateSingleWorkout(
     case "club": {
       // Club always meets Thursday at 18:30 — bypass phase guards and keep Thursday date
       const thursday = addDays(weekStart, 3);
-      const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
-      event = {
-        start_date_local: set(thursday, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
-        name: `${prefixName} Club Run`,
-        description: [
-          "Trail running club session — workout varies week to week.",
-          "",
-          "- 60m",
-          "",
-        ].join("\n"),
-        external_id: `ondemand-${format(thursday, "yyyy-MM-dd")}`,
-        type: "Run",
-        fuelRate: ctx.fuelInterval,
-      };
-      return event;
+      return buildClubRunEvent(thursday, wp, ctx.fuelInterval, `ondemand-${format(thursday, "yyyy-MM-dd")}`);
     }
   }
 

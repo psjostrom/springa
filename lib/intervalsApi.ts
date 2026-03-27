@@ -489,10 +489,16 @@ export async function replaceWorkoutOnDate(
   existingEventId: number | undefined,
   workout: WorkoutEvent,
 ): Promise<number> {
+  // Create first — if this fails, nothing is lost
+  const newId = await createSingleEvent(apiKey, workout);
   if (existingEventId != null) {
-    await deleteEvent(apiKey, existingEventId);
+    try {
+      await deleteEvent(apiKey, existingEventId);
+    } catch {
+      // Old event remains as duplicate — recoverable. Better than losing it.
+    }
   }
-  return createSingleEvent(apiKey, workout);
+  return newId;
 }
 
 // --- WELLNESS ---

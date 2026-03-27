@@ -61,6 +61,24 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
   );
 
   const [generateDate, setGenerateDate] = useState<Date | null>(null);
+  const [isClosingGenerate, setIsClosingGenerate] = useState(false);
+
+  const closeGenerateModal = () => {
+    setIsClosingGenerate(true);
+    if (typeof window !== "undefined" && window.innerWidth >= 640) {
+      setGenerateDate(null);
+      setIsClosingGenerate(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!generateDate) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeGenerateModal();
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => { window.removeEventListener("keydown", handleEscape); };
+  }, [generateDate]);
 
   // Modal URL state — reads/writes ?workout= param with proper history handling
   const modal = useModalURL("workout");
@@ -378,12 +396,13 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
       {/* Generate Workout Modal */}
       {generateDate && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
-          onClick={() => { setGenerateDate(null); }}
+          className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosingGenerate ? "bg-black/0" : "bg-black/70"}`}
+          onClick={closeGenerateModal}
         >
           <div
-            className="bg-surface rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-md shadow-xl shadow-brand/10 border-t sm:border border-border animate-slide-up"
+            className={`bg-surface rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-md shadow-xl shadow-brand/10 border-t sm:border border-border ${isClosingGenerate ? "animate-slide-down" : "animate-slide-up"}`}
             onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
+            onAnimationEnd={(e) => { if (isClosingGenerate && e.animationName === "slide-down") { setGenerateDate(null); setIsClosingGenerate(false); } }}
           >
             <div className="mb-3">
               <h3 className="text-lg font-bold text-text">Generate workout</h3>
@@ -393,8 +412,8 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
             </div>
             <WorkoutGenerator
               date={generateDate}
-              onGenerated={() => { setGenerateDate(null); }}
-              onCancel={() => { setGenerateDate(null); }}
+              onGenerated={() => { setGenerateDate(null); setIsClosingGenerate(false); }}
+              onCancel={closeGenerateModal}
             />
           </div>
         </div>

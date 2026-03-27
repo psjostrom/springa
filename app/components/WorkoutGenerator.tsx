@@ -20,7 +20,7 @@ interface WorkoutGeneratorProps {
 }
 
 type GeneratorState =
-  | { step: "picking" }
+  | { step: "picking"; error?: string }
   | { step: "previewing"; workout: WorkoutEvent; category: OnDemandCategory }
   | { step: "syncing"; workout: WorkoutEvent; category: OnDemandCategory }
   | { step: "error"; message: string; workout: WorkoutEvent; category: OnDemandCategory };
@@ -75,7 +75,7 @@ export function WorkoutGenerator({
   const handlePickCategory = (category: OnDemandCategory) => {
     const workout = generateSingleWorkout(category, date, bgModel, planSettings);
     if (!workout) {
-      setState({ step: "picking" });
+      setState({ step: "picking", error: "Date is outside the training plan." });
       return;
     }
     setState({ step: "previewing", workout, category });
@@ -103,6 +103,11 @@ export function WorkoutGenerator({
         {existingEventName && (
           <div className="text-sm text-muted">
             Replacing <span className="font-medium text-text">{existingEventName}</span>
+          </div>
+        )}
+        {state.error && (
+          <div className="px-3 py-2 rounded-lg bg-tint-error text-text text-sm">
+            {state.error}
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">

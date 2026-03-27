@@ -73,7 +73,7 @@ export function DayCell({
         <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
           {dayEvents.length === 0 && onGenerateWorkout && !isBefore(day, startOfDay(new Date())) && (
             <button
-              onClick={(e) => { e.stopPropagation(); onGenerateWorkout(day); }}
+              onClick={() => { onGenerateWorkout(day); }}
               className="text-muted hover:text-brand text-lg transition opacity-0 group-hover:opacity-100"
               aria-label="Generate workout"
             >

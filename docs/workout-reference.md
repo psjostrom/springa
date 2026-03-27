@@ -89,7 +89,7 @@ Trail running club session. Not part of the weekly plan — generate on-demand v
 - **HR:** No fixed target — intensity varies week to week
 - **Fuel:** Uses interval fuel rate from plan context
 - **T1D:** Pump off, fuel based on expected workout type
-- **Skipped on:** Recovery weeks, taper, race week (same as speed sessions)
+
 
 ### Long Run Variants (Sunday)
 

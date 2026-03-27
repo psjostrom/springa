@@ -469,6 +469,33 @@ describe("generateSingleWorkout", () => {
       }
     }
   });
+
+  it("quality category downgrades to easy during recovery week", () => {
+    for (let w = 0; w < settings.totalWeeks; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (wp.isRecovery) {
+        const recoveryThursday = new Date(ctx.planStartMonday);
+        recoveryThursday.setDate(recoveryThursday.getDate() + w * 7 + 3);
+        const event = generateSingleWorkout("quality", recoveryThursday, null, settings);
+        expect(event).not.toBeNull();
+        expect(event!.name).toContain("Easy");
+        return;
+      }
+    }
+  });
+
+  it("quality category downgrades to easy during base phase", () => {
+    const baseSettings = { ...settings, includeBasePhase: true };
+    const baseCtx = buildContext(null, baseSettings.raceDate, baseSettings.raceDist, baseSettings.totalWeeks, baseSettings.startKm, baseSettings.lthr, baseSettings.hrZones, true);
+    const week1Thursday = new Date(baseCtx.planStartMonday);
+    week1Thursday.setDate(week1Thursday.getDate() + 3);
+    const wp = getWeekPhase(baseCtx, 0);
+    if (wp.isBase) {
+      const event = generateSingleWorkout("quality", week1Thursday, null, baseSettings);
+      expect(event).not.toBeNull();
+      expect(event!.name).toContain("Easy");
+    }
+  });
 });
 
 describe("suggestCategory", () => {
