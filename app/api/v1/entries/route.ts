@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { unauthorized } from "@/lib/apiHelpers";
 import { validateApiSecretFromDB } from "@/lib/credentials";
 import {
-  getBGReadings,
+  getBGReadingsForRange,
   saveBGReadings,
-  monthKey,
 } from "@/lib/bgDb";
 import { parseNightscoutEntries, recomputeDirections } from "@/lib/cgm";
 import { db } from "@/lib/db";
@@ -123,11 +122,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, count: 0 });
   }
 
-  // Determine which monthly shards are affected
-  const affectedMonths = [...new Set(newReadings.map((r) => monthKey(r.ts)))];
-
-  // Read existing data for affected shards only
-  const existing = await getBGReadings(email, affectedMonths);
+  // Read a narrow window around the incoming readings — just enough for
+  // duplicate detection and direction recomputation (needs ~10 min of context).
+  const minTs = Math.min(...newReadings.map((r) => r.ts));
+  const maxTs = Math.max(...newReadings.map((r) => r.ts));
+  const CONTEXT_MS = 15 * 60 * 1000; // 15 min padding
+  const existing = await getBGReadingsForRange(email, minTs - CONTEXT_MS, maxTs + CONTEXT_MS);
 
   // Snapshot existing state so we can diff after recompute
   const existingState = new Map(existing.map((r) => [r.ts, { direction: r.direction, delta: r.delta }]));
