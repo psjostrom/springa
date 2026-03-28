@@ -75,7 +75,7 @@ export async function getTreatments(
     args.push(opts.eventType);
   }
 
-  const limit = Math.min(Math.max(opts.count ?? 10, 1), 500);
+  const limit = Math.min(Math.max(opts.count ?? 10, 1), 10_000);
   args.push(limit);
 
   const result = await db().execute({
