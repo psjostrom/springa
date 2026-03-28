@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const count = Math.min(
     Math.max(parseInt(url.searchParams.get("count") ?? "10", 10) || 10, 1),
-    500,
+    10_000,
   );
 
   const gteRaw = url.searchParams.get("find[created_at][$gte]");
