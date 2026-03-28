@@ -14,7 +14,7 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  * background sync from mylife Cloud if the data is stale (>5 min old).
  *
  * Query params (Nightscout-compatible):
- *   count — max results (default 10, max 500)
+ *   count — max results (default 10, max 10000)
  *   find[created_at][$gte] — ISO 8601 or ms timestamp, lower bound
  *   find[created_at][$lte] — ISO 8601 or ms timestamp, upper bound
  *   find[eventType] — filter by event type
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const count = Math.min(
     Math.max(parseInt(url.searchParams.get("count") ?? "10", 10) || 10, 1),
-    500,
+    10_000,
   );
 
   const gteRaw = url.searchParams.get("find[created_at][$gte]");
