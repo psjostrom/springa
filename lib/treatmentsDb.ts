@@ -100,12 +100,29 @@ export async function getTreatments(
   }));
 }
 
-/** Get the most recent treatment timestamp for a user (ms epoch), or null if none. */
-export async function getLastTreatmentTs(email: string): Promise<number | null> {
+/** Get the last mylife sync timestamp (ms epoch), or null if never synced. */
+export async function getTreatmentsSyncedAt(email: string): Promise<number | null> {
   const result = await db().execute({
-    sql: "SELECT MAX(ts) as max_ts FROM treatments WHERE email = ?",
+    sql: "SELECT treatments_synced_at FROM user_settings WHERE email = ?",
     args: [email],
   });
-  const val = result.rows[0]?.max_ts;
+  const val = result.rows[0]?.treatments_synced_at;
   return val != null ? (val as number) : null;
+}
+
+/** Update the last mylife sync timestamp. */
+export async function setTreatmentsSyncedAt(email: string, ts: number): Promise<void> {
+  await db().execute({
+    sql: "UPDATE user_settings SET treatments_synced_at = ? WHERE email = ?",
+    args: [ts, email],
+  });
+}
+
+/** Get existing treatment IDs for a user within a time window (for change detection). */
+export async function getTreatmentIds(email: string, since: number): Promise<Set<string>> {
+  const result = await db().execute({
+    sql: "SELECT id FROM treatments WHERE email = ? AND ts >= ?",
+    args: [email, since],
+  });
+  return new Set(result.rows.map((r) => r.id as string));
 }

@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   nightscout_secret  TEXT,
   google_refresh_token TEXT,
   google_calendar_id   TEXT, -- cached to avoid a list+filter API call per sync; re-discovered if missing
-  onboarding_complete INTEGER NOT NULL DEFAULT 0
+  onboarding_complete INTEGER NOT NULL DEFAULT 0,
+  treatments_synced_at INTEGER -- ms epoch of last mylife sync; prevents redundant scrapes
 );
 
 CREATE TABLE IF NOT EXISTS bg_readings (
