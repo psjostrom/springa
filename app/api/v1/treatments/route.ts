@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { unauthorized, getMyLifeData } from "@/lib/apiHelpers";
 import { validateApiSecretFromDB, getUserCredentials } from "@/lib/credentials";
-import { saveTreatments, getTreatments, getLastTreatmentTs } from "@/lib/treatmentsDb";
+import { saveTreatments, getTreatments, getTreatmentsSyncedAt, setTreatmentsSyncedAt, getTreatmentIds } from "@/lib/treatmentsDb";
 import { mapMyLifeToTreatments, treatmentToNightscout } from "@/lib/mylifeToNightscout";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -11,7 +11,9 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
  * GET /api/v1/treatments — Nightscout-compatible treatments endpoint.
  *
  * Returns treatment data from the local DB immediately, then triggers a
- * background sync from mylife Cloud if the data is stale (>5 min old).
+ * background sync from mylife Cloud if the last sync was >5 min ago.
+ * Uses treatments_synced_at (not treatment data age) to prevent redundant
+ * scrapes — mylife data updates ~every 2h, so most syncs find nothing new.
  *
  * Query params (Nightscout-compatible):
  *   count — max results (default 10, max 10000)
@@ -23,10 +25,11 @@ export async function GET(req: Request) {
   const email = await validateApiSecretFromDB(req.headers.get("api-secret"));
   if (!email) return unauthorized();
 
-  // Check staleness and schedule background sync if needed.
-  const lastTs = await getLastTreatmentTs(email);
-  const isStale = !lastTs || Date.now() - lastTs > SYNC_INTERVAL_MS;
-  if (isStale) {
+  // Check when we last successfully synced from mylife (not when data was last written).
+  // Timestamp is only set after a successful scrape, so failed syncs retry immediately.
+  const syncedAt = await getTreatmentsSyncedAt(email);
+  const needsSync = !syncedAt || Date.now() - syncedAt > SYNC_INTERVAL_MS;
+  if (needsSync) {
     after(async () => {
       try {
         const creds = await getUserCredentials(email);
@@ -34,8 +37,17 @@ export async function GET(req: Request) {
           const data = await getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone);
           if (data && data.events.length > 0) {
             const treatments = mapMyLifeToTreatments(data.events);
-            await saveTreatments(email, treatments);
+            // Short-circuit: skip DB writes if all treatment IDs already exist.
+            // mylife data is append-only — existing IDs are never updated.
+            const LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — covers mylife logbook window
+            const existingIds = await getTreatmentIds(email, Date.now() - LOOKBACK_MS);
+            const newTreatments = treatments.filter((t) => !existingIds.has(t.id));
+            if (newTreatments.length > 0) {
+              await saveTreatments(email, newTreatments);
+            }
           }
+          // Only mark sync complete on success — failed syncs retry on next request
+          await setTreatmentsSyncedAt(email, Date.now());
         }
       } catch (err) {
         console.error("[treatments] background sync failed:", err);

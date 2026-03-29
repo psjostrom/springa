@@ -85,7 +85,7 @@ import {
 } from "@/app/api/run-feedback/route";
 import { GET as treatmentsGET } from "@/app/api/v1/treatments/route";
 import { GET as statusGET } from "@/app/api/v1/status/route";
-import { saveTreatments } from "@/lib/treatmentsDb";
+import { saveTreatments, getTreatmentIds, getTreatmentsSyncedAt, setTreatmentsSyncedAt } from "@/lib/treatmentsDb";
 import type { Treatment } from "@/lib/treatmentsDb";
 import {
   GET as prerunCarbsGET,
@@ -1270,5 +1270,41 @@ describe("GET /api/v1/treatments", () => {
     expect(body[0]).not.toHaveProperty("absolute");
     expect(body[0]).not.toHaveProperty("duration");
     expect(body[0].carbs).toBe(30.0);
+  });
+});
+
+// --- treatments sync helpers ---
+
+describe("treatments sync helpers", () => {
+  beforeEach(async () => {
+    await seedUser();
+    await testDb().execute({ sql: "DELETE FROM treatments", args: [] });
+  });
+
+  it("getTreatmentIds returns IDs within the time window", async () => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+    await saveTreatments(EMAIL, [
+      makeTreatment({ id: "old", ts: now - 40 * DAY, insulin: 1.0 }),
+      makeTreatment({ id: "recent", ts: now - 2 * DAY, insulin: 2.0 }),
+      makeTreatment({ id: "today", ts: now, insulin: 3.0 }),
+    ]);
+
+    const ids = await getTreatmentIds(EMAIL, now - 30 * DAY);
+    expect(ids.has("recent")).toBe(true);
+    expect(ids.has("today")).toBe(true);
+    expect(ids.has("old")).toBe(false);
+  });
+
+  it("getTreatmentsSyncedAt returns null when never synced", async () => {
+    const ts = await getTreatmentsSyncedAt(EMAIL);
+    expect(ts).toBeNull();
+  });
+
+  it("setTreatmentsSyncedAt stores and retrieves the timestamp", async () => {
+    const now = Date.now();
+    await setTreatmentsSyncedAt(EMAIL, now);
+    const ts = await getTreatmentsSyncedAt(EMAIL);
+    expect(ts).toBe(now);
   });
 });

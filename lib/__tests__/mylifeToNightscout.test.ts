@@ -74,22 +74,12 @@ describe("mapMyLifeToTreatments", () => {
     expect(treatments[0].entered_by).toContain("Hypo treatment");
   });
 
-  it("maps Basal rate to Temp Basal with duration to next entry", () => {
+  it("skips Basal rate events (CamAPS loop micro-doses)", () => {
     const treatments = mapMyLifeToTreatments([
       basalRate("2026-03-19T08:00:00+01:00", 0.8),
       basalRate("2026-03-19T08:10:00+01:00", 1.2),
     ]);
-    const first = treatments.find((t) => t.basal_rate === 0.8);
-    expect(first!.event_type).toBe("Temp Basal");
-    expect(first!.duration).toBe(10); // 10 min until next entry
-    expect(first!.basal_rate).toBe(0.8);
-  });
-
-  it("caps last basal entry duration at 120 min", () => {
-    const treatments = mapMyLifeToTreatments([
-      basalRate("2026-03-19T08:00:00+01:00", 0.8),
-    ]);
-    expect(treatments[0].duration).toBe(120);
+    expect(treatments).toHaveLength(0);
   });
 
   it("maps Boost to Temporary Target with duration in minutes", () => {
@@ -150,12 +140,12 @@ describe("mapMyLifeToTreatments", () => {
       easeOff("2026-03-19T12:00:00+01:00", 3),
       hypoCarbs("2026-03-19T15:00:00+01:00", 15),
     ]);
-    expect(treatments).toHaveLength(6);
+    expect(treatments).toHaveLength(5); // basal rate is skipped
 
     const types = treatments.map((t) => t.event_type);
     expect(types).toContain("Meal Bolus"); // bolus near carbs
     expect(types).toContain("Carb Correction");
-    expect(types).toContain("Temp Basal");
+    expect(types).not.toContain("Temp Basal"); // skipped
     expect(types).toContain("Temporary Target");
   });
 
@@ -181,11 +171,21 @@ describe("treatmentToNightscout", () => {
     expect(ns).not.toHaveProperty("duration");
   });
 
-  it("converts a Temp Basal to NS format with absolute field", () => {
-    const treatments = mapMyLifeToTreatments([
-      basalRate("2026-03-19T08:00:00+01:00", 0.8),
-    ]);
-    const ns = treatmentToNightscout(treatments[0]);
+  it("converts a Temp Basal row to NS format with absolute field", () => {
+    // Temp Basal rows may still exist in DB from before basal filtering was added.
+    // treatmentToNightscout must still handle them correctly.
+    const treatment = {
+      id: "legacy-basal",
+      created_at: "2026-03-19T08:00:00+01:00",
+      event_type: "Temp Basal",
+      insulin: null,
+      carbs: null,
+      basal_rate: 0.8,
+      duration: 120,
+      entered_by: "mylife/CamAPS",
+      ts: new Date("2026-03-19T08:00:00+01:00").getTime(),
+    };
+    const ns = treatmentToNightscout(treatment);
     expect(ns.eventType).toBe("Temp Basal");
     expect(ns.absolute).toBe(0.8);
     expect(ns.duration).toBe(120);
