@@ -12,9 +12,9 @@ Next.js 16 (App Router) · TypeScript · Vitest · Turso (libsql) · Jotai · Ta
 
 **Commands:** `npm run dev` · `npm test` (`vitest run`) · `npm run lint` (`eslint`) · `npm run build`
 
-**Database queries from shell:** NEVER use raw `node -e` with `process.env.TURSO_*` — `.env.local` isn't loaded. Use `npm run db:query` instead:
+**Database queries from shell:** NEVER use raw `node -e` with `process.env.TURSO_*` — `.env.local` isn't loaded. Use `npm run db:query` instead. Note: `lib/db.ts` is ESM/TypeScript and can't be `require()`'d — use `@libsql/client` directly:
 ```sh
-npm run db:query -- "const{db}=require('./lib/db');db().execute('SELECT count(*) FROM bg_readings').then(r=>console.log(r.rows))"
+npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute('SELECT count(*) FROM bg_readings').then(r=>console.log(r.rows))"
 ```
 
 ## Accessibility
