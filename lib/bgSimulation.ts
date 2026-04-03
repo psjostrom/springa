@@ -150,11 +150,10 @@ function computeBucketStdDev(
 function getFuelSensitivity(
   category: WorkoutCategory,
   bgModel: BGResponseModel,
-): number | null {
+): number {
   const target = bgModel.targetFuelRates.find((t) => t.category === category);
-  if (!target) return null;
 
-  if (target.method === "regression") {
+  if (target?.method === "regression") {
     // Reconstruct the regression slope from qualified observation groups
     const catObs = bgModel.observations.filter(
       (o) => o.category === category && o.fuelRate != null,
@@ -197,7 +196,6 @@ function fuelCorrection(
   if (plannedFuelGH === null) return 0;
 
   const sensitivity = getFuelSensitivity(category, bgModel);
-  if (sensitivity === null) return 0;
 
   const catData = bgModel.categories[category];
   const avgFuel = catData?.avgFuelRate;

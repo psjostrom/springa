@@ -201,20 +201,27 @@ describe("end-to-end: entries → BG GET", () => {
     authedSession();
     await seedUser();
 
+    // Use current-month timestamps so getBGReadings (which queries current month) finds them
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const mo = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const base = `${y}-${mo}-15T10`;
+    const monthKey = `${y}-${mo}`;
+
     // CGM source sends SHA1(secret) as api-secret
     const hash = SECRET;
 
     // POST readings via entries route
     const res = await postEntries(hash, [
-      reading(145, "2026-02-20T10:00:00Z"),
-      reading(155, "2026-02-20T10:05:00Z"),
-      reading(160, "2026-02-20T10:10:00Z"),
+      reading(145, `${base}:00:00Z`),
+      reading(155, `${base}:05:00Z`),
+      reading(160, `${base}:10:00Z`),
     ]);
     expect(res.status).toBe(200);
     expect((await res.json()).received).toBe(3);
 
     // Verify readings stored in DB
-    expect(await countReadings(EMAIL, "2026-02")).toBe(3);
+    expect(await countReadings(EMAIL, monthKey)).toBe(3);
 
     // GET readings back via CGM route
     const getRes = await bgGET();
