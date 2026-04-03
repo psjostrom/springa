@@ -41,39 +41,19 @@ function isMealBolus(bolus: MyLifeEvent, allEvents: MyLifeEvent[]): boolean {
 }
 
 /**
- * Compute duration for a basal rate entry: time until the next basal rate event,
- * capped at 120 minutes (if no subsequent event exists).
- */
-function basalDuration(
-  event: MyLifeEvent,
-  allBasal: MyLifeEvent[],
-  idx: number,
-): number {
-  if (idx + 1 < allBasal.length) {
-    const nextMs = toMs(allBasal[idx + 1].timestamp);
-    const thisMs = toMs(event.timestamp);
-    return Math.round((nextMs - thisMs) / 60000);
-  }
-  return 120; // cap at 2h if no subsequent entry
-}
-
-/**
  * Map MyLifeEvent[] to Nightscout-compatible Treatment[].
  *
  * Mapping:
  * - Bolus → "Meal Bolus" (if carb event within 15min) or "Correction Bolus"
  * - Carbohydrates → "Carb Correction"
  * - Hypo Carbohydrates → "Carb Correction" (entered_by notes hypo)
- * - Basal rate → "Temp Basal" with absolute=rate, duration=time to next
  * - Boost → "Temporary Target" with notes "CamAPS Boost"
  * - Ease-off → "Temporary Target" with notes "CamAPS Ease-off"
+ *
+ * Basal rate events are skipped — CamAPS loop micro-doses generate ~200+/day
+ * and no consumer uses them (IOB uses bolus insulin only).
  */
 export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
-  // Sort basal events chronologically for duration computation
-  const basalEvents = events
-    .filter((e) => e.type === "Basal rate")
-    .sort((a, b) => toMs(a.timestamp) - toMs(b.timestamp));
-
   const treatments: Treatment[] = [];
 
   for (const event of events) {
@@ -123,23 +103,6 @@ export function mapMyLifeToTreatments(events: MyLifeEvent[]): Treatment[] {
           basal_rate: null,
           duration: null,
           entered_by: "mylife/CamAPS (Hypo treatment)",
-          ts,
-        });
-        break;
-      }
-
-      case "Basal rate": {
-        const basalIdx = basalEvents.indexOf(event);
-        const dur = basalDuration(event, basalEvents, basalIdx);
-        treatments.push({
-          id: treatmentId(event),
-          created_at: event.timestamp,
-          event_type: "Temp Basal",
-          insulin: null,
-          carbs: null,
-          basal_rate: event.value,
-          duration: dur,
-          entered_by: "mylife/CamAPS",
           ts,
         });
         break;
