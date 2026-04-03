@@ -15,14 +15,15 @@ const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
   { key: "interval", label: "Interval", color: "#fb923c" },
 ];
 
+const FUEL_STEP = 4;
+const snapToStep = (v: number) => Math.round(v / FUEL_STEP) * FUEL_STEP;
+
 export function SimulateScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const [category, setCategory] = useState<WorkoutCategory>("easy");
   const [durationMin, setDurationMin] = useState(45);
   const [startBG, setStartBG] = useState(9.0);
-  const FUEL_STEP = 4;
-  const snapToStep = (v: number) => Math.round(v / FUEL_STEP) * FUEL_STEP;
   const [fuelOverride, setFuelOverride] = useState<number | null>(null);
   const modelFuelRate = snapToStep(getCurrentFuelRate(category, bgModel));
   const fuelRate = fuelOverride ?? modelFuelRate;

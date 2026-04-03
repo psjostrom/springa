@@ -63,9 +63,13 @@ vi.mock("recharts", () => {
     Bar: createMock("Bar"),
     XAxis: createMock("XAxis"),
     YAxis: createMock("YAxis"),
-    Tooltip: createMock("Tooltip"),
-    Cell: createMock("Cell"),
+    AreaChart: createMock("AreaChart"),
+    Area: createMock("Area"),
     ReferenceLine: createMock("ReferenceLine"),
+    ReferenceArea: createMock("ReferenceArea"),
+    Tooltip: createMock("Tooltip"),
+    Label: createMock("Label"),
+    Cell: createMock("Cell"),
   };
 });
 
@@ -128,6 +132,7 @@ vi.mock("lucide-react", () => {
     BarChart3: icon("BarChart3"),
     Clock: icon("Clock"),
     Plus: icon("Plus"),
+    Timer: icon("Timer"),
   };
 });
 
