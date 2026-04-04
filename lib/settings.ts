@@ -77,8 +77,8 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference, sugar_mode)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             race_date = COALESCE(excluded.race_date, race_date),
             race_name = COALESCE(excluded.race_name, race_name),
@@ -89,7 +89,8 @@ export async function saveUserSettings(
             hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets),
             bg_chart_window = COALESCE(excluded.bg_chart_window, bg_chart_window),
             include_base_phase = COALESCE(excluded.include_base_phase, include_base_phase),
-            warmth_preference = COALESCE(excluded.warmth_preference, warmth_preference)`,
+            warmth_preference = COALESCE(excluded.warmth_preference, warmth_preference),
+            sugar_mode = COALESCE(excluded.sugar_mode, sugar_mode)`,
     args: [
       email,
       partial.raceDate ?? null,
@@ -102,6 +103,7 @@ export async function saveUserSettings(
       partial.bgChartWindow ?? null,
       partial.includeBasePhase !== undefined ? (partial.includeBasePhase ? 1 : 0) : null,
       partial.warmthPreference ?? null,
+      partial.sugarMode !== undefined ? (partial.sugarMode ? 1 : 0) : null,
     ],
   });
 }

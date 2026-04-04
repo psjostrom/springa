@@ -89,6 +89,7 @@ export async function PUT(req: Request) {
   if (body.bgChartWindow !== undefined) allowed.bgChartWindow = body.bgChartWindow;
   if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
   if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
+  if (body.sugarMode !== undefined) allowed.sugarMode = body.sugarMode;
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);
