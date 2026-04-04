@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import useSWR from "swr";
-import { enrichedEventsAtom } from "../atoms";
+import { enrichedEventsAtom, sugarModeAtom } from "../atoms";
 import type {
   ModalWidgetId,
   ModalTabId,
@@ -50,6 +50,7 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
       event={p.event}
       isLoadingStreamData={p.isLoadingStreamData}
       runBGContext={p.runBGContext}
+      sugarMode={p.sugarMode}
     />
   ),
   "stats": (p) => <StatsWidget {...p} />,
@@ -138,6 +139,7 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
         runBGContext={p.runBGContext}
         bgModel={p.bgModel}
         isLoadingStreamData={p.isLoadingStreamData}
+        sugarMode={p.sugarMode}
       />
     ) : null,
   "feedback": (p) => p.event.activityId ? <FeedbackWidget {...p} /> : null,
@@ -168,13 +170,17 @@ export function WidgetTabs({ widgetProps }: WidgetTabsProps) {
   // Subscribe to the atom so widget patches (carbs, feedback, etc.) are reflected
   // immediately without waiting for the parent to re-derive the event from the atom.
   const enrichedEvents = useAtomValue(enrichedEventsAtom);
+  const sugarMode = useAtomValue(sugarModeAtom);
   const liveEvent = useMemo(
     () => enrichedEvents.find((e) => e.id === widgetProps.event.id),
     [enrichedEvents, widgetProps.event.id],
   );
-  const effectiveProps: WidgetProps = liveEvent
-    ? { ...widgetProps, event: { ...liveEvent, streamData: widgetProps.event.streamData ?? liveEvent.streamData } }
-    : widgetProps;
+  const effectiveProps: WidgetProps = {
+    ...(liveEvent
+      ? { ...widgetProps, event: { ...liveEvent, streamData: widgetProps.event.streamData ?? liveEvent.streamData } }
+      : widgetProps),
+    sugarMode,
+  };
 
   const [activeTab, setActiveTab] = useState<ModalTabId>("overview");
   const [layout, setLayout] = useState<ModalTabLayout>(() =>

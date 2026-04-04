@@ -26,6 +26,7 @@ export const settingsAtom = atom<UserSettings | null>(null);
 export const settingsLoadingAtom = atom(true);
 
 export const apiKeyAtom = atom((get) => get(settingsAtom)?.intervalsApiKey ?? "");
+export const sugarModeAtom = atom((get) => get(settingsAtom)?.sugarMode ?? false);
 
 export const updateSettingsAtom = atom(
   null,

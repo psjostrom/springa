@@ -1,6 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useAtomValue } from "jotai";
+import { sugarModeAtom } from "../atoms";
 import type { BGReading } from "@/lib/cgm";
 
 interface CurrentBGData {
@@ -19,7 +21,7 @@ const EMPTY: CurrentBGData = {
   trend: null,
   trendSlope: null,
   lastUpdate: null,
-  loading: true,
+  loading: false,
   readings: [],
 };
 
@@ -28,6 +30,7 @@ function createBGStore() {
   const listeners = new Set<() => void>();
   let interval: ReturnType<typeof setInterval> | undefined;
   let refs = 0;
+  let enabled = true;
 
   function set(next: CurrentBGData) {
     data = next;
@@ -35,6 +38,11 @@ function createBGStore() {
   }
 
   async function poll() {
+    if (!enabled) {
+      set({ ...EMPTY, loading: false });
+      return;
+    }
+
     try {
       const res = await fetch("/api/bg");
       if (!res.ok) {
@@ -68,11 +76,20 @@ function createBGStore() {
   }
 
   return {
+    setEnabled: (value: boolean) => {
+      enabled = value;
+      if (!enabled && interval) {
+        set({ ...EMPTY, loading: false });
+      } else if (enabled && refs > 0 && !interval) {
+        void poll();
+        interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
+      }
+    },
     subscribe: (cb: () => void) => {
       listeners.add(cb);
       // Start polling when first subscriber arrives
       refs++;
-      if (refs === 1) {
+      if (refs === 1 && enabled) {
         void poll();
         interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
       }
@@ -93,5 +110,10 @@ function createBGStore() {
 const store = createBGStore();
 
 export function useCurrentBG(): CurrentBGData {
+  const sugarMode = useAtomValue(sugarModeAtom);
+
+  // Update store based on sugar mode
+  store.setEnabled(sugarMode);
+
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY);
 }

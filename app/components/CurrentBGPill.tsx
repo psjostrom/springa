@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAtomValue } from "jotai";
-import { currentBGAtom, trendAtom, lastBGUpdateAtom } from "../atoms";
+import { currentBGAtom, trendAtom, lastBGUpdateAtom, sugarModeAtom } from "../atoms";
 
 export function bgColor(mmol: number): string {
   if (mmol < 3.5 || mmol > 14.0) return "var(--color-error)";
@@ -22,6 +22,7 @@ interface CurrentBGPillProps {
 }
 
 export function CurrentBGPill({ onClick }: CurrentBGPillProps) {
+  const sugarMode = useAtomValue(sugarModeAtom);
   const currentBG = useAtomValue(currentBGAtom);
   const trend = useAtomValue(trendAtom);
   const lastUpdate = useAtomValue(lastBGUpdateAtom);
@@ -32,6 +33,7 @@ export function CurrentBGPill({ onClick }: CurrentBGPillProps) {
     return () => { clearInterval(id); };
   }, []);
 
+  if (!sugarMode) return null;
   if (currentBG == null || lastUpdate == null) return null;
 
   // Don't show stale data (>15 min old)

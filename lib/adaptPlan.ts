@@ -31,7 +31,7 @@ export interface AdaptedEvent {
 
 export interface AdaptationInput {
   upcomingEvents: CalendarEvent[];
-  bgModel: BGResponseModel;
+  bgModel: BGResponseModel | null;
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
   lthr: number;
@@ -68,7 +68,7 @@ export function assembleDescription(
 export function adaptFuelRate(
   current: number | null,
   category: WorkoutCategory | "race" | "other",
-  bgModel: BGResponseModel,
+  bgModel: BGResponseModel | null,
 ): { rate: number | null; change: AdaptationChange | null } {
   if (category === "race" || category === "other") {
     return { rate: current, change: null };

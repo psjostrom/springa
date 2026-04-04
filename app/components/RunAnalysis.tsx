@@ -15,6 +15,7 @@ interface RunAnalysisProps {
   runBGContext?: RunBGContext | null;
   bgModel?: BGResponseModel | null;
   isLoadingStreamData?: boolean;
+  sugarMode?: boolean;
 }
 
 interface AnalysisRequest {
@@ -23,11 +24,12 @@ interface AnalysisRequest {
   runBGContext: RunBGContext | null | undefined;
   bgModel: BGResponseModel | null | undefined;
   regenerate: boolean;
+  sugarMode?: boolean;
 }
 
 async function fetchAnalysisApi(request: AnalysisRequest): Promise<string> {
-  const { activityId, event, runBGContext, bgModel, regenerate } = request;
-  const reportCard = buildReportCard(event, runBGContext);
+  const { activityId, event, runBGContext, bgModel, regenerate, sugarMode } = request;
+  const reportCard = buildReportCard(event, runBGContext, sugarMode);
 
   const res = await fetch("/api/run-analysis", {
     method: "POST",
@@ -51,14 +53,14 @@ async function fetchAnalysisApi(request: AnalysisRequest): Promise<string> {
   return data.analysis;
 }
 
-export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData }: RunAnalysisProps) {
+export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData, sugarMode }: RunAnalysisProps) {
   const activityId = event.activityId;
   const swrKey = activityId && !isLoadingStreamData ? ["run-analysis", activityId] as const : null;
 
   // Initial fetch — returns cached analysis or generates new one
   const { data: analysis, error, isLoading } = useSWR<string, Error>(
     swrKey,
-    ([, id]: readonly [string, string]) => fetchAnalysisApi({ activityId: id, event, runBGContext, bgModel, regenerate: false }),
+    ([, id]: readonly [string, string]) => fetchAnalysisApi({ activityId: id, event, runBGContext, bgModel, regenerate: false, sugarMode }),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -91,7 +93,7 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
         </div>
         {analysis && !isLoading && activityId && (
           <button
-            onClick={() => { void trigger({ activityId, event, runBGContext, bgModel, regenerate: true }).catch(() => { /* Error state handled by useSWRMutation */ }); }}
+            onClick={() => { void trigger({ activityId, event, runBGContext, bgModel, regenerate: true, sugarMode }).catch(() => { /* Error state handled by useSWRMutation */ }); }}
             disabled={isMutating}
             className="p-1 text-muted hover:text-text transition-colors disabled:opacity-50"
             aria-label="Regenerate analysis"

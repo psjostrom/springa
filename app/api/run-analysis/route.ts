@@ -75,16 +75,20 @@ export async function POST(req: Request) {
     }
   }
 
+  // Check sugar mode — exclude BG data from prompt when off
+  const { getUserSettings } = await import("@/lib/settings");
+  const settings = await getUserSettings(email);
+
   const promptParams = await buildRunAnalysisContext({
     email,
     event,
     runStartMs: event.date.getTime(),
     intervalsApiKey: creds.intervalsApiKey,
-    runBGContext,
-    reportCard,
-    bgModelSummary,
-    nightscoutUrl: creds.nightscoutUrl ?? undefined,
-    nightscoutSecret: creds.nightscoutSecret ?? undefined,
+    runBGContext: settings.sugarMode ? runBGContext : undefined,
+    reportCard: settings.sugarMode ? reportCard : undefined,
+    bgModelSummary: settings.sugarMode ? bgModelSummary : undefined,
+    nightscoutUrl: settings.sugarMode ? (creds.nightscoutUrl ?? undefined) : undefined,
+    nightscoutSecret: settings.sugarMode ? (creds.nightscoutSecret ?? undefined) : undefined,
   });
 
   const { system, user } = buildRunAnalysisPrompt(promptParams);

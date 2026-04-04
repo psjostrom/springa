@@ -107,12 +107,13 @@ interface RunReportCardProps {
   event: CalendarEvent;
   isLoadingStreamData?: boolean;
   runBGContext?: RunBGContext | null;
+  sugarMode?: boolean;
 }
 
-export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunReportCardProps) {
+export function RunReportCard({ event, isLoadingStreamData, runBGContext, sugarMode }: RunReportCardProps) {
   if (event.type !== "completed") return null;
 
-  const report = buildReportCard(event, runBGContext);
+  const report = buildReportCard(event, runBGContext, sugarMode);
   const streamLoading = isLoadingStreamData && !event.streamData;
 
   // Nothing to show and not loading

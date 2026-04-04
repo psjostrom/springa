@@ -1,5 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
+import { getUserSettings } from "@/lib/settings";
 import { fetchBGFromNS } from "@/lib/nightscout";
 import { computeTrend, trendArrow, slopeToArrow } from "@/lib/cgm";
 import { NextResponse } from "next/server";
@@ -11,6 +12,11 @@ export async function GET() {
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
+  }
+
+  const settings = await getUserSettings(email);
+  if (!settings.sugarMode) {
+    return NextResponse.json({ readings: [], trend: null });
   }
 
   const creds = await getUserCredentials(email);

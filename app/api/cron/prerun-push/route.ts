@@ -82,27 +82,35 @@ export async function GET(req: Request) {
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
 
-      // Fetch readings from Nightscout
-      if (!creds.nightscoutUrl || !creds.nightscoutSecret) {
-        skipped++;
-        continue;
-      }
+      // Check sugar mode — skip BG readiness checks when off
+      const { getUserSettings } = await import("@/lib/settings");
+      const settings = await getUserSettings(email);
 
-      let readings;
-      try {
-        readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
-          since: now - 30 * 60 * 1000, // last 30 min
-          count: 20,
-        });
-      } catch (err) {
-        console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}:`, err);
-        skipped++;
-        continue;
-      }
+      let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
+      let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;
 
-      const cached = await getActivityStreams(email);
-      const enriched = await enrichActivitiesWithGlucose(email, cached);
-      const bgModel = buildBGModelFromCached(enriched);
+      if (settings.sugarMode) {
+        // Fetch readings from Nightscout
+        if (!creds.nightscoutUrl || !creds.nightscoutSecret) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+            since: now - 30 * 60 * 1000, // last 30 min
+            count: 20,
+          });
+        } catch (err) {
+          console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}:`, err);
+          skipped++;
+          continue;
+        }
+
+        const cached = await getActivityStreams(email);
+        const enriched = await enrichActivitiesWithGlucose(email, cached);
+        bgModel = buildBGModelFromCached(enriched);
+      }
 
       for (const event of upcoming) {
         const eventDateStr = event.start_date_local.slice(0, 10);

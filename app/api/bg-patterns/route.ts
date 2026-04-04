@@ -59,6 +59,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Skip BG pattern analysis when sugar mode is off
+  const { getUserSettings } = await import("@/lib/settings");
+  const settings = await getUserSettings(email);
+  if (!settings.sugarMode) {
+    return NextResponse.json(
+      { error: "BG pattern analysis requires Sugar mode" },
+      { status: 400 },
+    );
+  }
+
   const body = (await req.json()) as RequestBody;
   const { events } = body;
 
