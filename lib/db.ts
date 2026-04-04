@@ -34,24 +34,11 @@ CREATE TABLE IF NOT EXISTS user_settings (
   timezone           TEXT DEFAULT 'Europe/Stockholm',
   intervals_api_key  TEXT,
   run_days           TEXT,
-  mylife_email       TEXT,
-  mylife_password    TEXT,
   nightscout_url     TEXT,
   nightscout_secret  TEXT,
   google_refresh_token TEXT,
   google_calendar_id   TEXT, -- cached to avoid a list+filter API call per sync; re-discovered if missing
-  onboarding_complete INTEGER NOT NULL DEFAULT 0,
-  treatments_synced_at INTEGER -- ms epoch of last mylife sync; prevents redundant scrapes
-);
-
-CREATE TABLE IF NOT EXISTS bg_readings (
-  email     TEXT NOT NULL,
-  ts        INTEGER NOT NULL,
-  mmol      REAL NOT NULL,
-  sgv       INTEGER NOT NULL,
-  direction TEXT NOT NULL,
-  delta     REAL NOT NULL DEFAULT 0,
-  PRIMARY KEY (email, ts)
+  onboarding_complete INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (
@@ -108,22 +95,6 @@ CREATE TABLE IF NOT EXISTS prerun_carbs (
   created_at     INTEGER NOT NULL,
   PRIMARY KEY (email, event_id)
 );
-
-CREATE TABLE IF NOT EXISTS treatments (
-  email          TEXT NOT NULL,
-  id             TEXT NOT NULL,
-  created_at     TEXT NOT NULL,
-  event_type     TEXT NOT NULL,
-  insulin        REAL,
-  carbs          REAL,
-  basal_rate     REAL,
-  duration       INTEGER,
-  entered_by     TEXT,
-  ts             INTEGER NOT NULL,
-  PRIMARY KEY (email, id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_treatments_ts ON treatments(email, ts);
 
 CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret);
 `;

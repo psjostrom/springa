@@ -1,4 +1,3 @@
-import { getMyLifeData } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { getRecentAnalyzedRuns, buildRunHistory } from "@/lib/runAnalysisDb";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
@@ -6,16 +5,13 @@ import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { nonEmpty } from "@/lib/format";
-import { buildInsulinContext } from "@/lib/insulinContext";
 import { format, subDays } from "date-fns";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { fetchBGFromNS } from "@/lib/nightscout";
-import { getBGReadingsForRange } from "@/lib/bgDb";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
 import type { RunHistoryEntry } from "@/lib/runAnalysisDb";
-import type { InsulinContext } from "@/lib/insulinContext";
 import type { FitnessInsights } from "@/lib/fitness";
 
 interface BuildRunAnalysisContextInput {
@@ -34,7 +30,6 @@ interface RunAnalysisContextResult {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
-  insulinContext?: InsulinContext | null;
   history?: RunHistoryEntry[];
   historyFeedback?: Map<string, { rating?: string; comment?: string; carbsG?: number }>;
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
@@ -53,21 +48,6 @@ export async function buildRunAnalysisContext(
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 
-  // Start MyLife fetch in parallel (doesn't depend on rows/feedback/profile)
-  const creds = await getUserCredentials(email);
-  const insulinContextP = (creds?.mylifeEmail && creds.mylifePassword
-    ? getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone)
-    : Promise.resolve(null))
-    .then((data) => {
-      if (!data) return null;
-      console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
-      return buildInsulinContext(data, runStartMs);
-    })
-    .catch((err: unknown) => {
-      console.error("[RunAnalysis] MyLife fetch failed:", err);
-      return null;
-    });
-
   const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(email),
     fetchAthleteProfile(intervalsApiKey),
@@ -75,45 +55,8 @@ export async function buildRunAnalysisContext(
     fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
   ]);
 
-  // Enrich history rows with glucose from Nightscout (if configured) or local cache as fallback
-  let rows;
-  if (nightscoutUrl && nightscoutSecret && rawRows.length > 0) {
-    // Compute time range for BG fetch
-    const startMsValues = rawRows
-      .map((a) => a.runStartMs)
-      .filter((ms): ms is number => ms != null);
-
-    if (startMsValues.length > 0) {
-      const minMs = Math.min(...startMsValues);
-      const maxMs = Math.max(
-        ...rawRows
-          .flatMap((a) => {
-            if (a.runStartMs == null) return [];
-            const dur = a.hr.length > 0 ? a.hr[a.hr.length - 1].time * 60 * 1000 : 0;
-            return [a.runStartMs + dur];
-          }),
-      );
-
-      try {
-        const bgReadings = await fetchBGFromNS(nightscoutUrl, nightscoutSecret, {
-          since: minMs,
-          until: maxMs,
-          count: 10000,
-        });
-        rows = enrichWithGlucose(rawRows, bgReadings);
-      } catch (err) {
-        console.warn("[RunAnalysis] Failed to fetch BG from Nightscout, falling back to local cache:", err);
-        // Fall back to local DB
-        const localReadings = await getBGReadingsForRange(email, minMs, maxMs);
-        rows = enrichWithGlucose(rawRows, localReadings);
-      }
-    } else {
-      rows = rawRows;
-    }
-  } else {
-    // No NS configured, use local cache
-    rows = await enrichActivitiesWithGlucose(email, rawRows);
-  }
+  // Enrich history rows with glucose from Nightscout
+  const rows = await enrichActivitiesWithGlucose(email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();
@@ -153,9 +96,6 @@ export async function buildRunAnalysisContext(
     }
   }
 
-  const insulinContext = await insulinContextP;
-  console.log(`[RunAnalysis] Insulin context: ${insulinContext ? "built" : "null (no boluses in window or no credentials)"}`);
-
   // Current run feedback from CalendarEvent custom fields
   const athleteFeedback = (event.rating || event.feedbackComment)
     ? { rating: event.rating ?? undefined, comment: event.feedbackComment ?? undefined, carbsG: event.carbsIngested ?? undefined }
@@ -165,7 +105,6 @@ export async function buildRunAnalysisContext(
     event,
     runBGContext,
     reportCard,
-    insulinContext,
     history,
     historyFeedback: historyFeedbackMap,
     athleteFeedback,
