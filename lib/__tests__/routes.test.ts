@@ -165,11 +165,11 @@ async function countReadings(email: string, month?: string): Promise<number> {
 
 /** Seed a user_settings row for the test user with credentials in DB. */
 async function seedUser() {
-  const cgmHash = hashSecret(SECRET);
+  const encSecret = encrypt(SECRET, TEST_ENC_KEY);
   const encApiKey = encrypt("test-key", TEST_ENC_KEY);
   await testDb().execute({
-    sql: "INSERT OR IGNORE INTO user_settings (email, approved, nightscout_secret, intervals_api_key) VALUES (?, 1, ?, ?)",
-    args: [EMAIL, cgmHash, encApiKey],
+    sql: "INSERT OR IGNORE INTO user_settings (email, approved, nightscout_url, nightscout_secret, intervals_api_key) VALUES (?, 1, ?, ?, ?)",
+    args: [EMAIL, "https://test.nightscout.example", encSecret, encApiKey],
   });
 }
 

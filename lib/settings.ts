@@ -26,6 +26,7 @@ export interface UserSettings {
 
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsApiKey?: string;
+  nightscoutUrl?: string;
   nightscoutConnected?: boolean;
   mylifeConnected?: boolean;
   lthr?: number;
@@ -40,7 +41,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
     sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
                  approved, sugar_mode, display_name, timezone, run_days, onboarding_complete,
-                 intervals_api_key, mylife_email, nightscout_secret
+                 intervals_api_key, mylife_email, nightscout_url, nightscout_secret
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -67,7 +68,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
 
   // Derived boolean flags (actual credentials decrypted separately via getUserCredentials)
-  settings.nightscoutConnected = !!row.nightscout_secret;
+  settings.nightscoutConnected = !!(row.nightscout_url && row.nightscout_secret);
   settings.mylifeConnected = !!row.mylife_email;
 
   return settings;

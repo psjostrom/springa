@@ -4,8 +4,9 @@ import {
   saveUserSettings,
   type UserSettings,
 } from "@/lib/settings";
-import { getUserCredentials, updateCredentials, hashSecret } from "@/lib/credentials";
+import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
+import { validateNSConnection } from "@/lib/nightscout";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -32,6 +33,10 @@ export async function GET() {
     }
   }
 
+  if (creds?.nightscoutUrl) {
+    settings.nightscoutUrl = creds.nightscoutUrl;
+  }
+
   return NextResponse.json(settings);
 }
 
@@ -48,9 +53,31 @@ export async function PUT(req: Request) {
     intervalsApiKey?: string | null;
     mylifeEmail?: string | null;
     mylifePassword?: string | null;
+    nightscoutUrl?: string | null;
     nightscoutSecret?: string | null;
     timezone?: string;
   };
+
+  // Validate Nightscout connection if URL or secret provided
+  if (body.nightscoutUrl || body.nightscoutSecret) {
+    const nsUrl = body.nightscoutUrl;
+    const nsSecret = body.nightscoutSecret;
+
+    if (!nsUrl || !nsSecret) {
+      return NextResponse.json(
+        { error: "Both nightscoutUrl and nightscoutSecret are required" },
+        { status: 400 }
+      );
+    }
+
+    const validation = await validateNSConnection(nsUrl);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || "Failed to connect to Nightscout server" },
+        { status: 400 }
+      );
+    }
+  }
 
   // Settings fields (COALESCE pattern via saveUserSettings)
   const allowed: Partial<UserSettings> = {};
@@ -74,7 +101,8 @@ export async function PUT(req: Request) {
   if ("intervalsApiKey" in body) credUpdates.intervalsApiKey = body.intervalsApiKey;
   if ("mylifeEmail" in body) credUpdates.mylifeEmail = body.mylifeEmail;
   if ("mylifePassword" in body) credUpdates.mylifePassword = body.mylifePassword;
-  if ("nightscoutSecret" in body) credUpdates.nightscoutSecretHash = body.nightscoutSecret ? hashSecret(body.nightscoutSecret) : null;
+  if ("nightscoutUrl" in body) credUpdates.nightscoutUrl = body.nightscoutUrl;
+  if ("nightscoutSecret" in body) credUpdates.nightscoutSecret = body.nightscoutSecret;
   if ("timezone" in body) credUpdates.timezone = body.timezone;
 
   if (Object.keys(credUpdates).length > 0) {
