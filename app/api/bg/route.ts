@@ -28,6 +28,10 @@ export async function GET() {
     return NextResponse.json({ readings: [], trend: null });
   }
 
+  // NS returns readings sorted ts DESC (newest first).
+  // computeTrend and the client expect ts ASC (oldest first).
+  readings.sort((a, b) => a.ts - b.ts);
+
   const trend = computeTrend(readings);
   const latest = readings[readings.length - 1];
 
