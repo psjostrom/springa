@@ -111,6 +111,13 @@ function HomeContent() {
     }
   }, [settingsLoading, settings, router]);
 
+  // Redirect non-onboarded users to setup
+  useEffect(() => {
+    if (!settingsLoading && settings && settings.onboardingComplete === false) {
+      router.push("/setup");
+    }
+  }, [settingsLoading, settings, router]);
+
   if (settingsLoading) return splashFallback;
 
   return (

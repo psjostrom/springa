@@ -54,7 +54,28 @@ export async function PUT(req: Request) {
     nightscoutUrl?: string | null;
     nightscoutSecret?: string | null;
     timezone?: string;
+    displayName?: string;
+    runDays?: number[];
+    onboardingComplete?: boolean;
   };
+
+  // Validate Intervals.icu API key if provided
+  if (body.intervalsApiKey) {
+    try {
+      const profile = await fetchAthleteProfile(body.intervalsApiKey);
+      if (!profile || Object.keys(profile).length === 0) {
+        return NextResponse.json(
+          { error: "Invalid Intervals.icu API key" },
+          { status: 400 }
+        );
+      }
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Failed to validate Intervals.icu API key" },
+        { status: 400 }
+      );
+    }
+  }
 
   // Validate Nightscout connection if URL or secret provided
   if (body.nightscoutUrl || body.nightscoutSecret) {
@@ -90,6 +111,9 @@ export async function PUT(req: Request) {
   if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
   if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
   if (body.sugarMode !== undefined) allowed.sugarMode = body.sugarMode;
+  if (body.displayName !== undefined) allowed.displayName = body.displayName;
+  if (body.runDays !== undefined) allowed.runDays = body.runDays;
+  if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);

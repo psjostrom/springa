@@ -77,8 +77,8 @@ export async function saveUserSettings(
   partial: Partial<UserSettings>,
 ): Promise<void> {
   await db().execute({
-    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference, sugar_mode)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference, sugar_mode, display_name, run_days, onboarding_complete)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             race_date = COALESCE(excluded.race_date, race_date),
             race_name = COALESCE(excluded.race_name, race_name),
@@ -90,7 +90,10 @@ export async function saveUserSettings(
             bg_chart_window = COALESCE(excluded.bg_chart_window, bg_chart_window),
             include_base_phase = COALESCE(excluded.include_base_phase, include_base_phase),
             warmth_preference = COALESCE(excluded.warmth_preference, warmth_preference),
-            sugar_mode = COALESCE(excluded.sugar_mode, sugar_mode)`,
+            sugar_mode = COALESCE(excluded.sugar_mode, sugar_mode),
+            display_name = COALESCE(excluded.display_name, display_name),
+            run_days = COALESCE(excluded.run_days, run_days),
+            onboarding_complete = COALESCE(excluded.onboarding_complete, onboarding_complete)`,
     args: [
       email,
       partial.raceDate ?? null,
@@ -104,6 +107,9 @@ export async function saveUserSettings(
       partial.includeBasePhase !== undefined ? (partial.includeBasePhase ? 1 : 0) : null,
       partial.warmthPreference ?? null,
       partial.sugarMode !== undefined ? (partial.sugarMode ? 1 : 0) : null,
+      partial.displayName ?? null,
+      partial.runDays ? JSON.stringify(partial.runDays) : null,
+      partial.onboardingComplete !== undefined ? (partial.onboardingComplete ? 1 : 0) : null,
     ],
   });
 }
