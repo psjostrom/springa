@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   run_days           TEXT,
   mylife_email       TEXT,
   mylife_password    TEXT,
+  nightscout_url     TEXT,
   nightscout_secret  TEXT,
   google_refresh_token TEXT,
   google_calendar_id   TEXT, -- cached to avoid a list+filter API call per sync; re-discovered if missing
