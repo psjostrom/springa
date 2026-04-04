@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
 import { sugarModeAtom } from "../atoms";
 import type { BGReading } from "@/lib/cgm";
@@ -112,8 +112,11 @@ const store = createBGStore();
 export function useCurrentBG(): CurrentBGData {
   const sugarMode = useAtomValue(sugarModeAtom);
 
-  // Update store based on sugar mode
-  store.setEnabled(sugarMode);
+  // Update store based on sugar mode — must be in useEffect to avoid
+  // mutating external store during render (causes infinite re-render loop)
+  useEffect(() => {
+    store.setEnabled(sugarMode);
+  }, [sugarMode]);
 
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY);
 }
