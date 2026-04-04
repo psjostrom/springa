@@ -74,7 +74,13 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const context = await buildBGPatternContext({ email, events, intervalsApiKey: creds.intervalsApiKey });
+  const context = await buildBGPatternContext({
+    email,
+    events,
+    intervalsApiKey: creds.intervalsApiKey,
+    nightscoutUrl: creds.nightscoutUrl ?? undefined,
+    nightscoutSecret: creds.nightscoutSecret ?? undefined,
+  });
 
   if (context.enrichedRuns.length < 5) {
     return NextResponse.json(

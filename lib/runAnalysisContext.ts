@@ -4,10 +4,13 @@ import { getRecentAnalyzedRuns, buildRunHistory } from "@/lib/runAnalysisDb";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
+import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { nonEmpty } from "@/lib/format";
 import { buildInsulinContext } from "@/lib/insulinContext";
 import { format, subDays } from "date-fns";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
+import { fetchBGFromNS } from "@/lib/nightscout";
+import { getBGReadingsForRange } from "@/lib/bgDb";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
@@ -23,6 +26,8 @@ interface BuildRunAnalysisContextInput {
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
+  nightscoutUrl?: string;
+  nightscoutSecret?: string;
 }
 
 interface RunAnalysisContextResult {
@@ -44,7 +49,7 @@ interface RunAnalysisContextResult {
 export async function buildRunAnalysisContext(
   input: BuildRunAnalysisContextInput,
 ): Promise<RunAnalysisContextResult> {
-  const { email, event, runStartMs, intervalsApiKey, runBGContext, reportCard, bgModelSummary } = input;
+  const { email, event, runStartMs, intervalsApiKey, runBGContext, reportCard, bgModelSummary, nightscoutUrl, nightscoutSecret } = input;
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 
@@ -70,8 +75,45 @@ export async function buildRunAnalysisContext(
     fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
   ]);
 
-  // Enrich history rows with glucose from bg_readings
-  const rows = await enrichActivitiesWithGlucose(email, rawRows);
+  // Enrich history rows with glucose from Nightscout (if configured) or local cache as fallback
+  let rows;
+  if (nightscoutUrl && nightscoutSecret && rawRows.length > 0) {
+    // Compute time range for BG fetch
+    const startMsValues = rawRows
+      .map((a) => a.runStartMs)
+      .filter((ms): ms is number => ms != null);
+
+    if (startMsValues.length > 0) {
+      const minMs = Math.min(...startMsValues);
+      const maxMs = Math.max(
+        ...rawRows
+          .flatMap((a) => {
+            if (a.runStartMs == null) return [];
+            const dur = a.hr.length > 0 ? a.hr[a.hr.length - 1].time * 60 * 1000 : 0;
+            return [a.runStartMs + dur];
+          }),
+      );
+
+      try {
+        const bgReadings = await fetchBGFromNS(nightscoutUrl, nightscoutSecret, {
+          since: minMs,
+          until: maxMs,
+          count: 10000,
+        });
+        rows = enrichWithGlucose(rawRows, bgReadings);
+      } catch (err) {
+        console.warn("[RunAnalysis] Failed to fetch BG from Nightscout, falling back to local cache:", err);
+        // Fall back to local DB
+        const localReadings = await getBGReadingsForRange(email, minMs, maxMs);
+        rows = enrichWithGlucose(rawRows, localReadings);
+      }
+    } else {
+      rows = rawRows;
+    }
+  } else {
+    // No NS configured, use local cache
+    rows = await enrichActivitiesWithGlucose(email, rawRows);
+  }
 
   // Batch-fetch activity metadata from Intervals.icu for run history
   const activityMap = new Map<string, IntervalsActivity>();

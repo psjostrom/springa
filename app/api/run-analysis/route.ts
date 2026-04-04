@@ -83,6 +83,8 @@ export async function POST(req: Request) {
     runBGContext,
     reportCard,
     bgModelSummary,
+    nightscoutUrl: creds.nightscoutUrl ?? undefined,
+    nightscoutSecret: creds.nightscoutSecret ?? undefined,
   });
 
   const { system, user } = buildRunAnalysisPrompt(promptParams);
