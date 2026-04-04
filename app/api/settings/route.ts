@@ -77,19 +77,9 @@ export async function PUT(req: Request) {
     }
   }
 
-  // Validate Nightscout connection if URL or secret provided
-  if (body.nightscoutUrl || body.nightscoutSecret) {
-    const nsUrl = body.nightscoutUrl;
-    const nsSecret = body.nightscoutSecret;
-
-    if (!nsUrl || !nsSecret) {
-      return NextResponse.json(
-        { error: "Both nightscoutUrl and nightscoutSecret are required" },
-        { status: 400 }
-      );
-    }
-
-    const validation = await validateNSConnection(nsUrl);
+  // Validate Nightscout connection only when URL is being set/changed
+  if (body.nightscoutUrl) {
+    const validation = await validateNSConnection(body.nightscoutUrl);
     if (!validation.valid) {
       return NextResponse.json(
         { error: validation.error || "Failed to connect to Nightscout server" },
