@@ -78,9 +78,12 @@ function createBGStore() {
   return {
     setEnabled: (value: boolean) => {
       enabled = value;
-      if (!enabled && interval) {
+      if (!enabled) {
+        if (interval) { clearInterval(interval); interval = undefined; }
         set({ ...EMPTY, loading: false });
-      } else if (enabled && refs > 0 && !interval) {
+      } else if (refs > 0) {
+        // Re-enable: poll immediately and restart interval
+        if (interval) { clearInterval(interval); }
         void poll();
         interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
       }
