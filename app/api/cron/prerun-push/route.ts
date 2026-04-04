@@ -13,6 +13,7 @@ import { wellnessToFitnessData } from "@/lib/fitness";
 import { getMyLifeData } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { buildInsulinContext } from "@/lib/insulinContext";
+import { fetchBGFromNS } from "@/lib/nightscout";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -96,7 +97,21 @@ export async function GET(req: Request) {
       });
 
       // Fetch readings and build BG model once per user (shared across events)
-      const readings = await getRecentBGReadings(email);
+      let readings;
+      if (creds.nightscoutUrl && creds.nightscoutSecret) {
+        try {
+          readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+            since: now - 30 * 60 * 1000, // last 30 min
+            count: 20,
+          });
+        } catch (err) {
+          console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}, falling back to local cache:`, err);
+          readings = await getRecentBGReadings(email);
+        }
+      } else {
+        readings = await getRecentBGReadings(email);
+      }
+
       const cached = await getActivityStreams(email);
       const enriched = await enrichActivitiesWithGlucose(email, cached);
       const bgModel = buildBGModelFromCached(enriched);

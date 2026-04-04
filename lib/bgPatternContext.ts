@@ -11,12 +11,15 @@ import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import type { CalendarEvent } from "@/lib/types";
 import { buildRunBGContexts } from "@/lib/runBGContext";
 import { getBGReadings, monthKey } from "@/lib/bgDb";
+import { fetchBGFromNS } from "@/lib/nightscout";
 import { format } from "date-fns";
 
 export interface BGPatternInput {
   email: string;
   events: CalendarEvent[]; // events with dates already restored
   intervalsApiKey: string;
+  nightscoutUrl?: string;
+  nightscoutSecret?: string;
 }
 
 export interface BGPatternContext {
@@ -29,7 +32,7 @@ export interface BGPatternContext {
 export async function buildBGPatternContext(
   input: BGPatternInput,
 ): Promise<BGPatternContext> {
-  const { email, events, intervalsApiKey } = input;
+  const { email, events, intervalsApiKey, nightscoutUrl, nightscoutSecret } = input;
 
   const completedEvents = events.filter((e) => e.type === "completed");
 
@@ -45,7 +48,7 @@ export async function buildBGPatternContext(
     Math.max(...timestamps.map((t, i) => t + durations[i])) +
     2 * 60 * 60 * 1000;
 
-  // Compute which months we need for CGM
+  // Compute which months we need for CGM (for local fallback)
   const neededMonths = new Set<string>();
   let cursor = earliestMs;
   while (cursor < latestMs) {
@@ -74,7 +77,22 @@ export async function buildBGPatternContext(
   // Convert wellness data to fitness points (CTL/ATL/TSB from Intervals.icu)
   const fitnessData = wellnessToFitnessData(wellness);
 
-  const bgReadings = await getBGReadings(email, [...neededMonths]);
+  // Fetch BG readings from Nightscout if configured, otherwise fall back to local cache
+  let bgReadings;
+  if (nightscoutUrl && nightscoutSecret) {
+    try {
+      bgReadings = await fetchBGFromNS(nightscoutUrl, nightscoutSecret, {
+        since: earliestMs,
+        until: latestMs,
+        count: 10000,
+      });
+    } catch (err) {
+      console.warn("[BGPatterns] Failed to fetch BG from Nightscout, falling back to local cache:", err);
+      bgReadings = await getBGReadings(email, [...neededMonths]);
+    }
+  } else {
+    bgReadings = await getBGReadings(email, [...neededMonths]);
+  }
 
   // Build RunBGContexts from the full CGM dataset
   const bgContextMap = buildRunBGContexts(completedEvents, bgReadings);
