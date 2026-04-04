@@ -106,10 +106,10 @@ export async function saveUserSettings(
       partial.bgChartWindow ?? null,
       partial.includeBasePhase !== undefined ? (partial.includeBasePhase ? 1 : 0) : null,
       partial.warmthPreference ?? null,
-      partial.sugarMode !== undefined ? (partial.sugarMode ? 1 : 0) : null,
+      partial.sugarMode !== undefined ? (partial.sugarMode ? 1 : 0) : 0,
       partial.displayName ?? null,
       partial.runDays ? JSON.stringify(partial.runDays) : null,
-      partial.onboardingComplete !== undefined ? (partial.onboardingComplete ? 1 : 0) : null,
+      partial.onboardingComplete !== undefined ? (partial.onboardingComplete ? 1 : 0) : 0,
     ],
   });
 }
