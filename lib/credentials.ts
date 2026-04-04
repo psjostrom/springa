@@ -63,8 +63,6 @@ function tryDecrypt(encoded: string, hexKey: string, email: string, field: strin
 
 export interface UserCredentials {
   intervalsApiKey: string | null;
-  mylifeEmail: string | null;
-  mylifePassword: string | null;
   nightscoutUrl: string | null;
   nightscoutSecret: string | null; // encrypted secret for outgoing auth
   timezone: string;
@@ -79,7 +77,7 @@ export interface GoogleCalendarCredentials {
 /** Fetch and decrypt per-user credentials from DB. */
 export async function getUserCredentials(email: string): Promise<UserCredentials | null> {
   const result = await db().execute({
-    sql: "SELECT intervals_api_key, mylife_email, mylife_password, nightscout_url, nightscout_secret, timezone FROM user_settings WHERE email = ?",
+    sql: "SELECT intervals_api_key, nightscout_url, nightscout_secret, timezone FROM user_settings WHERE email = ?",
     args: [email],
   });
   if (result.rows.length === 0) return null;
@@ -88,8 +86,6 @@ export async function getUserCredentials(email: string): Promise<UserCredentials
 
   return {
     intervalsApiKey: row.intervals_api_key ? tryDecrypt(row.intervals_api_key as string, encKey, email, "intervals_api_key") : null,
-    mylifeEmail: row.mylife_email as string | null,
-    mylifePassword: row.mylife_password ? tryDecrypt(row.mylife_password as string, encKey, email, "mylife_password") : null,
     nightscoutUrl: row.nightscout_url as string | null,
     nightscoutSecret: row.nightscout_secret ? tryDecrypt(row.nightscout_secret as string, encKey, email, "nightscout_secret") : null,
     timezone: (row.timezone as string | null) ?? "Europe/Stockholm",
@@ -101,8 +97,6 @@ export async function updateCredentials(
   email: string,
   updates: {
     intervalsApiKey?: string | null;
-    mylifeEmail?: string | null;
-    mylifePassword?: string | null;
     nightscoutUrl?: string | null;
     nightscoutSecret?: string | null;
     timezone?: string;
@@ -115,14 +109,6 @@ export async function updateCredentials(
   if ("intervalsApiKey" in updates) {
     sets.push("intervals_api_key = ?");
     args.push(updates.intervalsApiKey ? encrypt(updates.intervalsApiKey, encKey) : null);
-  }
-  if ("mylifeEmail" in updates) {
-    sets.push("mylife_email = ?");
-    args.push(updates.mylifeEmail ?? null);
-  }
-  if ("mylifePassword" in updates) {
-    sets.push("mylife_password = ?");
-    args.push(updates.mylifePassword ? encrypt(updates.mylifePassword, encKey) : null);
   }
   if ("nightscoutUrl" in updates) {
     sets.push("nightscout_url = ?");

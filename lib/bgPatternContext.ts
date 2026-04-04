@@ -1,4 +1,3 @@
-import { getMyLifeData } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData } from "@/lib/fitness";
@@ -7,10 +6,8 @@ import {
   formatRunTable,
   type EnrichedRun,
 } from "@/lib/bgPatterns";
-import { buildInsulinContext, type InsulinContext } from "@/lib/insulinContext";
 import type { CalendarEvent } from "@/lib/types";
 import { buildRunBGContexts } from "@/lib/runBGContext";
-import { getBGReadings, monthKey } from "@/lib/bgDb";
 import { fetchBGFromNS } from "@/lib/nightscout";
 import { format } from "date-fns";
 
@@ -48,25 +45,9 @@ export async function buildBGPatternContext(
     Math.max(...timestamps.map((t, i) => t + durations[i])) +
     2 * 60 * 60 * 1000;
 
-  // Compute which months we need for CGM (for local fallback)
-  const neededMonths = new Set<string>();
-  let cursor = earliestMs;
-  while (cursor < latestMs) {
-    neededMonths.add(monthKey(cursor));
-    // Jump to next month
-    const d = new Date(cursor);
-    d.setUTCMonth(d.getUTCMonth() + 1, 1);
-    cursor = d.getTime();
-  }
-  neededMonths.add(monthKey(latestMs));
-
-  // Start MyLife fetch in parallel (doesn't depend on wellness or CGM)
   const creds = await getUserCredentials(email);
-  const mylifeDataP = creds?.mylifeEmail && creds.mylifePassword
-    ? getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone)
-    : Promise.resolve(null);
 
-  // Fetch wellness and CGM readings (parallel with MyLife)
+  // Fetch wellness and CGM readings
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
   if (intervalsApiKey && completedDates.length > 0) {
     const oldest = completedDates.reduce((a, b) => (a < b ? a : b));
@@ -77,8 +58,8 @@ export async function buildBGPatternContext(
   // Convert wellness data to fitness points (CTL/ATL/TSB from Intervals.icu)
   const fitnessData = wellnessToFitnessData(wellness);
 
-  // Fetch BG readings from Nightscout if configured, otherwise fall back to local cache
-  let bgReadings;
+  // Fetch BG readings from Nightscout
+  let bgReadings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
   if (nightscoutUrl && nightscoutSecret) {
     try {
       bgReadings = await fetchBGFromNS(nightscoutUrl, nightscoutSecret, {
@@ -87,11 +68,9 @@ export async function buildBGPatternContext(
         count: 10000,
       });
     } catch (err) {
-      console.warn("[BGPatterns] Failed to fetch BG from Nightscout, falling back to local cache:", err);
-      bgReadings = await getBGReadings(email, [...neededMonths]);
+      console.warn("[BGPatterns] Failed to fetch BG from Nightscout:", err);
+      bgReadings = [];
     }
-  } else {
-    bgReadings = await getBGReadings(email, [...neededMonths]);
   }
 
   // Build RunBGContexts from the full CGM dataset
@@ -104,18 +83,8 @@ export async function buildBGPatternContext(
     bgContexts[key] = value;
   }
 
-  // Build insulin contexts from MyLife data
-  const insulinContexts: Record<string, InsulinContext> = {};
-  const mylifeData = await mylifeDataP;
-  if (mylifeData) {
-    for (const event of completedEvents) {
-      if (!event.activityId) continue;
-      const ctx = buildInsulinContext(mylifeData, event.date.getTime());
-      if (ctx) {
-        insulinContexts[event.activityId] = ctx;
-      }
-    }
-  }
+  // Insulin contexts no longer available (MyLife removed)
+  const insulinContexts: Record<string, never> = {};
 
   // Build enriched run table
   const enrichedRuns = buildEnrichedRunTable(

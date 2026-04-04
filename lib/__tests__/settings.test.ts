@@ -26,7 +26,6 @@ const MULTI_USER_DEFAULTS = {
   timezone: "Europe/Stockholm",
   onboardingComplete: false,
   nightscoutConnected: false,
-  mylifeConnected: false,
 };
 
 beforeAll(async () => {

@@ -51,8 +51,6 @@ export async function PUT(req: Request) {
 
   const body = (await req.json()) as Partial<UserSettings> & {
     intervalsApiKey?: string | null;
-    mylifeEmail?: string | null;
-    mylifePassword?: string | null;
     nightscoutUrl?: string | null;
     nightscoutSecret?: string | null;
     timezone?: string;
@@ -99,8 +97,6 @@ export async function PUT(req: Request) {
   // Credential fields (explicit SET via updateCredentials)
   const credUpdates: Parameters<typeof updateCredentials>[1] = {};
   if ("intervalsApiKey" in body) credUpdates.intervalsApiKey = body.intervalsApiKey;
-  if ("mylifeEmail" in body) credUpdates.mylifeEmail = body.mylifeEmail;
-  if ("mylifePassword" in body) credUpdates.mylifePassword = body.mylifePassword;
   if ("nightscoutUrl" in body) credUpdates.nightscoutUrl = body.nightscoutUrl;
   if ("nightscoutSecret" in body) credUpdates.nightscoutSecret = body.nightscoutSecret;
   if ("timezone" in body) credUpdates.timezone = body.timezone;
