@@ -24,18 +24,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
-      const result = await db().execute({
-        sql: "SELECT approved FROM user_settings WHERE email = ?",
+      // Upsert: create user row if it doesn't exist (race-safe)
+      await db().execute({
+        sql: "INSERT OR IGNORE INTO user_settings (email, approved) VALUES (?, 0)",
         args: [user.email],
       });
-
-      // If user doesn't exist, create a new row with approved = 0
-      if (result.rows.length === 0) {
-        await db().execute({
-          sql: "INSERT INTO user_settings (email, approved) VALUES (?, 0)",
-          args: [user.email],
-        });
-      }
 
       // Allow sign-in regardless of approval status
       // Unapproved users will be redirected to /pending client-side

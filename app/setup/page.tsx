@@ -47,11 +47,12 @@ export default function SetupPage() {
 
   const handleComplete = async () => {
     // Mark onboarding complete
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ onboardingComplete: true }),
     });
+    if (!res.ok) return;
     router.push("/");
   };
 

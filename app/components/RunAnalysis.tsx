@@ -4,18 +4,19 @@ import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useAtomValue } from "jotai";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { summarizeBGModel } from "@/lib/bgModel";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { buildReportCard } from "@/lib/reportCard";
+import { sugarModeAtom } from "../atoms";
 
 interface RunAnalysisProps {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   bgModel?: BGResponseModel | null;
   isLoadingStreamData?: boolean;
-  sugarMode?: boolean;
 }
 
 interface AnalysisRequest {
@@ -53,7 +54,8 @@ async function fetchAnalysisApi(request: AnalysisRequest): Promise<string> {
   return data.analysis;
 }
 
-export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData, sugarMode }: RunAnalysisProps) {
+export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData }: RunAnalysisProps) {
+  const sugarMode = useAtomValue(sugarModeAtom);
   const activityId = event.activityId;
   const swrKey = activityId && !isLoadingStreamData ? ["run-analysis", activityId] as const : null;
 

@@ -6,7 +6,7 @@ import {
 } from "@/lib/settings";
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
-import { validateNSConnection } from "@/lib/nightscout";
+import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -79,12 +79,25 @@ export async function PUT(req: Request) {
 
   // Validate Nightscout connection only when URL is being set/changed
   if (body.nightscoutUrl) {
-    const validation = await validateNSConnection(body.nightscoutUrl);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error || "Failed to connect to Nightscout server" },
-        { status: 400 }
-      );
+    if (body.nightscoutSecret) {
+      // When both URL and secret are provided, test with an authenticated fetch
+      try {
+        await fetchBGFromNS(body.nightscoutUrl, body.nightscoutSecret, { count: 1 });
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "Failed to connect to Nightscout server" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // URL-only change: validate with the public status endpoint
+      const validation = await validateNSConnection(body.nightscoutUrl);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: validation.error || "Failed to connect to Nightscout server" },
+          { status: 400 }
+        );
+      }
     }
   }
 

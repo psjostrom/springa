@@ -11,6 +11,7 @@ import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsH
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchBGFromNS } from "@/lib/nightscout";
+import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -83,28 +84,23 @@ export async function GET(req: Request) {
       });
 
       // Check sugar mode — skip BG readiness checks when off
-      const { getUserSettings } = await import("@/lib/settings");
       const settings = await getUserSettings(email);
 
       let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
       let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;
 
       if (settings.sugarMode) {
-        // Fetch readings from Nightscout
-        if (!creds.nightscoutUrl || !creds.nightscoutSecret) {
-          skipped++;
-          continue;
-        }
-
-        try {
-          readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
-            since: now - 30 * 60 * 1000, // last 30 min
-            count: 20,
-          });
-        } catch (err) {
-          console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}:`, err);
-          skipped++;
-          continue;
+        // Fetch readings from Nightscout — on failure, fall through with empty readings
+        // so non-BG parts (TSB, timing) still work
+        if (creds.nightscoutUrl && creds.nightscoutSecret) {
+          try {
+            readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+              since: now - 30 * 60 * 1000, // last 30 min
+              count: 20,
+            });
+          } catch (err) {
+            console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}:`, err);
+          }
         }
 
         const cached = await getActivityStreams(email);

@@ -30,7 +30,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
     if (!displayName.trim()) return;
 
     // Save to backend
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,6 +38,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
         timezone,
       }),
     });
+    if (!res.ok) return;
 
     onNext(displayName.trim(), timezone);
   };

@@ -35,11 +35,12 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
     if (maxHr) zones.maxHr = Number(maxHr);
 
     // Save to backend (HR zones are computed from LTHR by Intervals.icu)
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(zones),
     });
+    if (!res.ok) return;
 
     onNext(zones);
   };

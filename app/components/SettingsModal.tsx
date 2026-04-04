@@ -51,8 +51,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     setConnectionError("");
 
     try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
+      const res = await fetch("/api/settings/validate-ns", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nightscoutUrl: nightscoutUrl.trim(),
@@ -60,8 +60,8 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
         }),
       });
 
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { valid: boolean; error?: string };
+      if (!res.ok || !data.valid) {
         setConnectionError(data.error || "Connection failed");
         setNightscoutConnected(false);
       } else {
@@ -251,6 +251,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <button
                     type="button"
                     role="switch"
+                    aria-label="Include base phase"
                     aria-checked={includeBasePhase && !baseDisabled}
                     disabled={baseDisabled}
                     onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
@@ -331,6 +332,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               <button
                 type="button"
                 role="switch"
+                aria-label="Manage diabetes"
                 aria-checked={sugarMode}
                 onClick={() => { setSugarMode(!sugarMode); }}
                 className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${

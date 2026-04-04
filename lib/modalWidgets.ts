@@ -15,7 +15,6 @@ export interface WidgetProps {
   hrZones?: number[];
   lthr?: number;
   apiKey: string;
-  sugarMode?: boolean;
 }
 
 export type ModalWidgetId =

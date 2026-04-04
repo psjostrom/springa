@@ -1,6 +1,6 @@
 ---
 name: db-query
-description: Query the Turso database. Use when needing to inspect bg_readings, credentials, settings, treatments, or any table data. Also use when diagnosing data issues or verifying database state.
+description: Query the Turso database. Use when needing to inspect user_settings, credentials, activity_streams, or any table data. Also use when diagnosing data issues or verifying database state.
 user-invocable: false
 ---
 
@@ -21,35 +21,28 @@ npm run db:query -- "const{createClient}=require('@libsql/client');const db=crea
 | Table | Primary Key | Purpose |
 |-------|------------|---------|
 | `user_settings` | `email` | User config, credentials, race info, preferences |
-| `bg_readings` | `(email, ts)` | CGM glucose readings from Strimma |
 | `activity_streams` | `(email, activity_id)` | HR/pace/BG timeseries per run |
 | `run_analysis` | `(email, activity_id)` | AI-generated run analysis text |
 | `push_subscriptions` | `(email, endpoint)` | Web push notification subscriptions |
 | `prerun_push_log` | `(email, event_date)` | Tracks sent pre-run notifications |
 | `bg_patterns` | `email` | AI-generated cross-run BG pattern analysis |
 | `prerun_carbs` | `(email, event_id)` | Pre-run carb intake per workout |
-| `treatments` | `(email, id)` | Insulin/carb treatments from MyLife (Nightscout format) |
 
 ## Common Queries
-
-**Count BG readings:**
-```bash
-npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute('SELECT count(*) as n FROM bg_readings').then(r=>console.log(r.rows))"
-```
-
-**Recent BG readings:**
-```bash
-npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute('SELECT * FROM bg_readings ORDER BY ts DESC LIMIT 5').then(r=>console.log(r.rows))"
-```
 
 **List users:**
 ```bash
 npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute('SELECT email, display_name, sugar_mode, onboarding_complete FROM user_settings').then(r=>console.log(r.rows))"
 ```
 
+**Count activity streams:**
+```bash
+npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute('SELECT count(*) as n FROM activity_streams').then(r=>console.log(r.rows))"
+```
+
 **Parameterized query (use ? placeholders):**
 ```bash
-npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute({sql:'SELECT count(*) as n FROM bg_readings WHERE email=?',args:['user@example.com']}).then(r=>console.log(r.rows))"
+npm run db:query -- "const{createClient}=require('@libsql/client');const db=createClient({url:process.env.TURSO_DATABASE_URL,authToken:process.env.TURSO_AUTH_TOKEN});db.execute({sql:'SELECT count(*) as n FROM activity_streams WHERE email=?',args:['user@example.com']}).then(r=>console.log(r.rows))"
 ```
 
 ## Key Columns
@@ -59,14 +52,6 @@ npm run db:query -- "const{createClient}=require('@libsql/client');const db=crea
 - `nightscout_secret` — SHA-256 hashed CGM secret (indexed)
 - `sugar_mode` — T1D features enabled (0/1)
 - `google_refresh_token`, `google_calendar_id` — Google Calendar sync
-- `treatments_synced_at` — ms epoch of last MyLife treatment sync
-
-**bg_readings** — CGM data:
-- `ts` — Unix epoch ms
-- `mmol` — glucose in mmol/L
-- `sgv` — glucose in mg/dL
-- `direction` — trend arrow (Flat, FortyFiveUp, etc.)
-- `delta` — rate of change
 
 **activity_streams** — run timeseries:
 - `hr`, `pace`, `cadence`, `altitude` — JSON arrays

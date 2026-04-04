@@ -33,11 +33,12 @@ export function ScheduleStep({ runDays: initialDays, onNext, onBack }: ScheduleS
     if (runDays.length === 0) return;
 
     // Save to backend
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ runDays }),
     });
+    if (!res.ok) return;
 
     onNext(runDays);
   };

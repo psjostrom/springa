@@ -82,21 +82,13 @@ describe("SettingsModal totalWeeks validation", () => {
 
   it("base phase toggle is disabled when totalWeeks is below 11", () => {
     renderModal({ totalWeeks: 10 });
-    const switches = screen.getAllByRole("switch");
-    const basePhaseSwitch = switches.find(s => s.getAttribute("aria-label")?.includes("base") || s.closest("label")?.textContent?.includes("Base"));
-    // Fall back to the first switch that's disabled if we can't find by label
-    const target = basePhaseSwitch ?? switches.find(s => (s as HTMLButtonElement).disabled);
-    expect(target).toBeDisabled();
+    expect(screen.getByRole("switch", { name: /base phase/i })).toBeDisabled();
     expect(screen.getByText(/Requires at least 11 weeks/)).toBeInTheDocument();
   });
 
   it("base phase toggle is enabled when totalWeeks is 11 or more", () => {
     renderModal({ totalWeeks: 12 });
-    const switches = screen.getAllByRole("switch");
-    // The base phase switch should be enabled; find the one near "Base phase" text
-    const basePhaseSwitch = switches.find(s => s.getAttribute("aria-label")?.includes("base") || s.closest("label")?.textContent?.includes("Base"));
-    const target = basePhaseSwitch ?? switches[0];
-    expect(target).toBeEnabled();
+    expect(screen.getByRole("switch", { name: /base phase/i })).toBeEnabled();
   });
 
   it("forces includeBasePhase off when totalWeeks drops below 11", async () => {

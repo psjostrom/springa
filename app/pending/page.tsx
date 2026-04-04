@@ -1,8 +1,21 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function PendingPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  if (status !== "authenticated") return null;
+
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">

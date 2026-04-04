@@ -11,6 +11,7 @@ import type { FitnessInsights } from "@/lib/fitness";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
+import { getUserSettings } from "@/lib/settings";
 
 interface RequestBody {
   upcomingEvents: CalendarEvent[];
@@ -63,7 +64,6 @@ export async function POST(req: Request) {
   }
 
   // Check sugar mode — skip fuel adaptations when off
-  const { getUserSettings } = await import("@/lib/settings");
   const settings = await getUserSettings(email);
 
   const patterns = settings.sugarMode ? await getBGPatterns(email) : null;

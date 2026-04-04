@@ -29,11 +29,12 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
     if (raceDist) goal.raceDist = Number(raceDist);
 
     // Save to backend
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(goal),
     });
+    if (!res.ok) return;
 
     onNext(goal);
   };

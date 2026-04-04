@@ -104,16 +104,12 @@ function HomeContent() {
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
-  // Redirect unapproved users to pending page
+  // Redirect: unapproved → /pending (highest priority), not onboarded → /setup
   useEffect(() => {
-    if (!settingsLoading && settings && settings.approved === false) {
+    if (settingsLoading || !settings) return;
+    if (settings.approved === false) {
       router.push("/pending");
-    }
-  }, [settingsLoading, settings, router]);
-
-  // Redirect non-onboarded users to setup
-  useEffect(() => {
-    if (!settingsLoading && settings && settings.onboardingComplete === false) {
+    } else if (settings.onboardingComplete === false) {
       router.push("/setup");
     }
   }, [settingsLoading, settings, router]);

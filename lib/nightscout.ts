@@ -3,7 +3,8 @@ import type { BGReading } from "./cgm";
 
 /** Normalize a NS URL: add https:// if missing, strip trailing slash. */
 export function normalizeNSUrl(raw: string): string {
-  let url = raw.trim().replace(/\/+$/, "");
+  let url = raw.trim();
+  while (url.endsWith("/")) url = url.slice(0, -1);
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = `https://${url}`;
   }

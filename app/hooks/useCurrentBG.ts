@@ -55,6 +55,9 @@ function createBGStore() {
         readings?: BGReading[];
       };
 
+      // Guard: if disabled while fetch was in-flight, discard the result
+      if (!enabled) return;
+
       const readings: BGReading[] = json.readings ?? [];
 
       if (!json.current) {
@@ -121,5 +124,11 @@ export function useCurrentBG(): CurrentBGData {
     store.setEnabled(sugarMode);
   }, [sugarMode]);
 
+  // This pattern works correctly because:
+  // 1. `store.subscribe` and `store.getSnapshot` are stable references (module-level singleton)
+  // 2. When disabled, setEnabled() calls set() which notifies listeners synchronously,
+  //    and getSnapshot() returns the reset EMPTY object
+  // 3. The EMPTY constant's identity is preserved across renders (module-level),
+  //    so useSyncExternalStore won't trigger unnecessary re-renders when disabled
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY);
 }
