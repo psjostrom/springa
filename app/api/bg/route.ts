@@ -1,5 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { getBGReadings } from "@/lib/bgDb";
+import { getUserCredentials } from "@/lib/credentials";
+import { fetchBGFromNS } from "@/lib/nightscout";
 import { computeTrend, trendArrow, slopeToArrow } from "@/lib/cgm";
 import { NextResponse } from "next/server";
 
@@ -12,7 +13,17 @@ export async function GET() {
     throw e;
   }
 
-  const readings = await getBGReadings(email);
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds?.nightscoutSecret) {
+    return NextResponse.json({ readings: [], trend: null });
+  }
+
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+    since,
+    count: 500,
+  });
+
   if (readings.length === 0) {
     return NextResponse.json({ readings: [], trend: null });
   }
