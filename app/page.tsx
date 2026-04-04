@@ -104,6 +104,13 @@ function HomeContent() {
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
+  // Redirect unapproved users to pending page
+  useEffect(() => {
+    if (!settingsLoading && settings && settings.approved === false) {
+      router.push("/pending");
+    }
+  }, [settingsLoading, settings, router]);
+
   if (settingsLoading) return splashFallback;
 
   return (

@@ -28,8 +28,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         sql: "SELECT approved FROM user_settings WHERE email = ?",
         args: [user.email],
       });
-      if (result.rows.length === 0) return false;
-      if ((result.rows[0].approved as number | null ?? 0) !== 1) return false;
+
+      // If user doesn't exist, create a new row with approved = 0
+      if (result.rows.length === 0) {
+        await db().execute({
+          sql: "INSERT INTO user_settings (email, approved) VALUES (?, 0)",
+          args: [user.email],
+        });
+      }
+
+      // Allow sign-in regardless of approval status
+      // Unapproved users will be redirected to /pending client-side
 
       // Store refresh token when Google provides one (on consent).
       // Wrapped in try/catch: safe to deploy before migration adds the column.
