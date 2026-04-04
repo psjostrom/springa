@@ -1,6 +1,15 @@
 import { MGDL_TO_MMOL } from "./constants";
 import type { BGReading } from "./cgm";
 
+/** Normalize a NS URL: add https:// if missing, strip trailing slash. */
+export function normalizeNSUrl(raw: string): string {
+  let url = raw.trim().replace(/\/+$/, "");
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+  return url;
+}
+
 /**
  * Generic fetch from any Nightscout-compatible server.
  * Sends api-secret header for authentication.
@@ -11,7 +20,7 @@ export async function fetchFromNS<T>(
   path: string,
   params?: Record<string, string>,
 ): Promise<T> {
-  const url = new URL(path, nsUrl);
+  const url = new URL(path, normalizeNSUrl(nsUrl));
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
@@ -39,7 +48,7 @@ export async function validateNSConnection(
   nsUrl: string,
 ): Promise<{ valid: boolean; name?: string; error?: string }> {
   try {
-    const url = new URL("/api/v1/status.json", nsUrl);
+    const url = new URL("/api/v1/status.json", normalizeNSUrl(nsUrl));
     const response = await fetch(url.toString());
 
     if (!response.ok) {
