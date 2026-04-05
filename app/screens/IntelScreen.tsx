@@ -419,6 +419,16 @@ export function IntelScreen() {
   // Widgets that live on Overview only — excluded from the Deep Dive widget loop
   const OVERVIEW_ONLY = new Set<WidgetKey>(["readiness", "phase-tracker"]);
 
+const INTEL_GHOST_SVG = (
+  <svg width="100%" height="160" viewBox="0 0 400 160" className="text-muted">
+    <polyline points="20,120 60,100 100,110 140,80 180,90 220,60 260,70 300,40 340,50 380,30" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <rect x="20" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="100" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="180" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="260" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+  </svg>
+);
+
   const firstVisibleKey = editMode
     ? widgetLayout.widgetOrder.find((k) => !OVERVIEW_ONLY.has(k))
     : widgetLayout.widgetOrder.find(
@@ -432,13 +442,7 @@ export function IntelScreen() {
 
         {activeTab === "overview" && !hasCompletedRuns && !eventsLoading && (
           <EmptyState message="Complete your first run to unlock training insights">
-            <svg width="100%" height="160" viewBox="0 0 400 160" className="text-muted">
-              <polyline points="20,120 60,100 100,110 140,80 180,90 220,60 260,70 300,40 340,50 380,30" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <rect x="20" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="100" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="180" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="260" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-            </svg>
+            {INTEL_GHOST_SVG}
           </EmptyState>
         )}
 
@@ -488,13 +492,7 @@ export function IntelScreen() {
 
         {activeTab === "deep-dive" && !hasCompletedRuns && !eventsLoading && (
           <EmptyState message="Complete your first run to unlock training insights">
-            <svg width="100%" height="160" viewBox="0 0 400 160" className="text-muted">
-              <polyline points="20,120 60,100 100,110 140,80 180,90 220,60 260,70 300,40 340,50 380,30" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <rect x="20" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="100" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="180" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="260" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-            </svg>
+            {INTEL_GHOST_SVG}
           </EmptyState>
         )}
 
@@ -575,13 +573,7 @@ export function IntelScreen() {
 
         {activeTab === "analysis" && !hasCompletedRuns && !eventsLoading && (
           <EmptyState message="Complete your first run to unlock training insights">
-            <svg width="100%" height="160" viewBox="0 0 400 160" className="text-muted">
-              <polyline points="20,120 60,100 100,110 140,80 180,90 220,60 260,70 300,40 340,50 380,30" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <rect x="20" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="100" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="180" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-              <rect x="260" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
-            </svg>
+            {INTEL_GHOST_SVG}
           </EmptyState>
         )}
 

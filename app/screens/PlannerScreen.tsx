@@ -63,8 +63,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setPlanEvents(generatedPlan);
       setGeneratedPlan([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount
-  }, []);
+  }, [generatedPlan, setGeneratedPlan]);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
