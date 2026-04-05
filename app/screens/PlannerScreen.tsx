@@ -28,7 +28,7 @@ import {
   wellnessEntriesAtom,
   runBGContextsAtom,
   calendarReloadAtom,
-  sugarModeAtom,
+  diabetesModeAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -39,7 +39,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const apiKey = useAtomValue(apiKeyAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const settings = useAtomValue(settingsAtom);
-  const sugarMode = useAtomValue(sugarModeAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
   const paceTable = useAtomValue(paceTableAtom);
   const calendarEvents = useAtomValue(enrichedEventsAtom);
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
@@ -74,7 +74,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, sugarMode);
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));

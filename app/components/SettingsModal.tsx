@@ -21,7 +21,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
   const [warmthPreference, setWarmthPreference] = useState(settings.warmthPreference ?? 0);
-  const [sugarMode, setSugarMode] = useState(settings.sugarMode ?? false);
+  const [diabetesMode, setSugarMode] = useState(settings.diabetesMode ?? false);
   const [nightscoutUrl, setNightscoutUrl] = useState(settings.nightscoutUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState("");
   const [nightscoutConnected, setNightscoutConnected] = useState(settings.nightscoutConnected ?? false);
@@ -113,12 +113,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (warmthPreference !== (settings.warmthPreference ?? 0)) {
       updates.warmthPreference = warmthPreference;
     }
-    if (sugarMode !== (settings.sugarMode ?? false)) {
-      updates.sugarMode = sugarMode;
+    if (diabetesMode !== (settings.diabetesMode ?? false)) {
+      updates.diabetesMode = diabetesMode;
     }
 
     // Nightscout credentials (only send if changed)
-    if (sugarMode) {
+    if (diabetesMode) {
       if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
         updates.nightscoutUrl = nightscoutUrl.trim();
       }
@@ -333,15 +333,15 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 type="button"
                 role="switch"
                 aria-label="Manage diabetes"
-                aria-checked={sugarMode}
-                onClick={() => { setSugarMode(!sugarMode); }}
+                aria-checked={diabetesMode}
+                onClick={() => { setSugarMode(!diabetesMode); }}
                 className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                  sugarMode ? "bg-brand" : "bg-surface-alt"
+                  diabetesMode ? "bg-brand" : "bg-surface-alt"
                 }`}
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    sugarMode ? "translate-x-4" : "translate-x-0"
+                    diabetesMode ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </button>
@@ -355,7 +355,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               </div>
             </div>
 
-            {sugarMode && (
+            {diabetesMode && (
               <div className="mt-4 space-y-3">
                 <div>
                   <label className="block text-xs text-muted mb-1">Nightscout URL</label>
