@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 
-interface SugarModeStepProps {
-  sugarMode: boolean;
+interface DiabetesStepProps {
+  diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
-  onNext: (data: { sugarMode: boolean; nightscoutUrl?: string; nightscoutSecret?: string }) => void;
+  onNext: (data: { diabetesMode: boolean; nightscoutUrl?: string; nightscoutSecret?: string }) => void;
   onBack: () => void;
 }
 
-export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUrl, nightscoutSecret: initialSecret, onNext, onBack }: SugarModeStepProps) {
-  const [sugarMode, setSugarMode] = useState(initialMode);
+export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initialUrl, nightscoutSecret: initialSecret, onNext, onBack }: DiabetesStepProps) {
+  const [diabetesMode, setSugarMode] = useState(initialMode);
   const [nightscoutUrl, setNightscoutUrl] = useState(initialUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState(initialSecret ?? "");
   const [validating, setValidating] = useState(false);
@@ -34,7 +34,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
         body: JSON.stringify({
           nightscoutUrl: nightscoutUrl.trim(),
           nightscoutSecret: nightscoutSecret.trim(),
-          sugarMode: true,
+          diabetesMode: true,
         }),
       });
 
@@ -55,14 +55,14 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
   };
 
   const handleNext = async () => {
-    if (!sugarMode) {
-      // Save sugarMode = false
+    if (!diabetesMode) {
+      // Save diabetesMode = false
       await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sugarMode: false }),
+        body: JSON.stringify({ diabetesMode: false }),
       });
-      onNext({ sugarMode: false });
+      onNext({ diabetesMode: false });
       return;
     }
 
@@ -72,7 +72,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
     }
 
     onNext({
-      sugarMode: true,
+      diabetesMode: true,
       nightscoutUrl: nightscoutUrl.trim(),
       nightscoutSecret: nightscoutSecret.trim(),
     });
@@ -80,9 +80,9 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
 
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
-      <h2 className="text-2xl font-bold text-text mb-2">Diabetes Management</h2>
+      <h2 className="text-2xl font-bold text-text mb-2">Do you manage diabetes while running?</h2>
       <p className="text-muted mb-6">
-        Do you manage type 1 diabetes? Enable sugar mode for CGM sync and BG tracking.
+        Springa can track your blood glucose, optimize fuel rates, and help you run without lows or spikes.
       </p>
 
       <div className="space-y-4">
@@ -90,7 +90,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
           <button
             onClick={() => { setSugarMode(true); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
-              sugarMode
+              diabetesMode
                 ? "border-brand bg-brand/10 text-brand"
                 : "border-border text-muted hover:border-brand hover:text-brand"
             }`}
@@ -100,7 +100,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
           <button
             onClick={() => { setSugarMode(false); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
-              !sugarMode
+              !diabetesMode
                 ? "border-brand bg-brand/10 text-brand"
                 : "border-border text-muted hover:border-brand hover:text-brand"
             }`}
@@ -109,7 +109,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
           </button>
         </div>
 
-        {sugarMode && (
+        {diabetesMode && (
           <div className="space-y-3 mt-6">
             <div>
               <label className="block text-sm font-semibold text-muted mb-2">
@@ -173,7 +173,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
           onClick={() => { void handleNext(); }}
           className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
         >
-          {sugarMode ? "Next" : "Skip"}
+          {diabetesMode ? "Next" : "Skip"}
         </button>
       </div>
     </div>
