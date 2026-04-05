@@ -5,6 +5,7 @@ interface ActionBarProps {
 	isUploading: boolean;
 	statusMsg: string;
 	onUpload: () => void;
+	onViewCalendar?: () => void;
 }
 
 const POSITION = "fixed bottom-14 left-4 right-4 md:bottom-4 md:static z-50";
@@ -14,6 +15,7 @@ export function ActionBar({
 	isUploading,
 	statusMsg,
 	onUpload,
+	onViewCalendar,
 }: ActionBarProps) {
 	if (isUploading) {
 		return (
@@ -75,6 +77,14 @@ export function ActionBar({
 							</p>
 						</div>
 					</div>
+					{onViewCalendar && (
+						<button
+							onClick={onViewCalendar}
+							className="flex items-center gap-1 text-brand px-4 py-2 rounded-md font-bold text-sm hover:bg-brand/10 transition"
+						>
+							View in Calendar <span aria-hidden="true">&rarr;</span>
+						</button>
+					)}
 			</div>
 		);
 	}

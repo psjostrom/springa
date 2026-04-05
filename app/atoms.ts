@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
-import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
+import type { CalendarEvent, PaceTable, PaceCurveData, WorkoutEvent } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -23,6 +23,9 @@ import {
 
 export const settingsAtom = atom<UserSettings | null>(null);
 export const settingsLoadingAtom = atom(true);
+
+/** Pre-generated plan from wizard completion. Consumed once by PlannerScreen, then cleared. */
+export const generatedPlanAtom = atom<WorkoutEvent[]>([]);
 
 export const apiKeyAtom = atom((get) => get(settingsAtom)?.intervalsApiKey ?? "");
 export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);
@@ -189,3 +192,6 @@ export const updateWidgetLayoutAtom = atom(
     );
   },
 );
+
+/** Cross-component tab switch request. Set by PlannerScreen, consumed by page.tsx. */
+export const switchTabAtom = atom<string | null>(null);

@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSetAtom } from "jotai";
+import { generatedPlanAtom } from "../atoms";
+import { generatePlan } from "@/lib/workoutGenerators";
+import { DEFAULT_LTHR } from "@/lib/constants";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { ScheduleStep } from "./ScheduleStep";
@@ -20,6 +24,8 @@ interface WizardData {
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
+  totalWeeks?: number;
+  startKm?: number;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -30,7 +36,9 @@ interface WizardData {
 
 export default function SetupPage() {
   const router = useRouter();
+  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
   const [step, setStep] = useState<Step>(1);
+  const [generating, setGenerating] = useState(false);
   const [data, setData] = useState<WizardData>({
     displayName: "",
     timezone: "Europe/Stockholm",
@@ -44,14 +52,41 @@ export default function SetupPage() {
   };
 
   const handleComplete = async () => {
-    // Mark onboarding complete
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ onboardingComplete: true }),
-    });
-    if (!res.ok) return;
-    router.push("/");
+    try {
+      const hrZones = data.hrZones;
+      if (hrZones?.length === 5) {
+        setGenerating(true);
+        // Yield to event loop so React can render the spinner before sync generatePlan blocks
+        await new Promise((resolve) => { setTimeout(resolve, 0); });
+        const events = generatePlan(
+          null,
+          data.raceDate ?? "2026-06-13",
+          data.raceDist ?? 16,
+          data.totalWeeks ?? 18,
+          data.startKm ?? 8,
+          data.lthr ?? DEFAULT_LTHR,
+          hrZones,
+          false,
+          data.diabetesMode,
+        );
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setGeneratedPlan(events.filter((e) => e.start_date_local >= today));
+      }
+
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onboardingComplete: true }),
+      });
+      if (!res.ok) {
+        setGenerating(false);
+        return;
+      }
+      router.push("/?tab=planner");
+    } catch {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -140,6 +175,7 @@ export default function SetupPage() {
         {step === 7 && (
           <DoneStep
             onComplete={handleComplete}
+            generating={generating}
           />
         )}
 
