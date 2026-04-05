@@ -11,6 +11,7 @@ import {
   settingsLoadingAtom,
   updateSettingsAtom,
   switchTabAtom,
+  diabetesModeAtom,
 } from "./atoms";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -51,6 +52,7 @@ function HomeContent() {
   const updateSettings = useSetAtom(updateSettingsAtom);
   const switchTab = useAtomValue(switchTabAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,6 +101,13 @@ function HomeContent() {
     }
   }, [switchTab, setSwitchTab, handleTabChange]);
 
+  // Redirect from Simulate tab when diabetes mode is disabled
+  useEffect(() => {
+    if (!diabetesMode && activeTab === "simulate") {
+      handleTabChange("calendar");
+    }
+  }, [diabetesMode, activeTab, handleTabChange]);
+
   // Theme toggle
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window !== "undefined") {
@@ -128,6 +137,8 @@ function HomeContent() {
 
   if (settingsLoading) return splashFallback;
 
+  const hideTabs: Tab[] = diabetesMode ? [] : ["simulate"];
+
   return (
     <div className="h-screen bg-bg flex flex-col text-text font-sans overflow-hidden">
       <div className="bg-surface border-b border-border flex-shrink-0 z-30 shadow-sm">
@@ -142,7 +153,7 @@ function HomeContent() {
             </svg>
             springa
           </button>
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} hideTabs={hideTabs} />
           <div className="flex items-center gap-2">
             <CurrentBGPill onClick={bgGraph.open} />
             <button
@@ -176,9 +187,11 @@ function HomeContent() {
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
           <CoachScreen />
         </div>
-        <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
-          <SimulateScreen />
-        </div>
+        {diabetesMode && (
+          <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
+            <SimulateScreen />
+          </div>
+        )}
       </div>
 
       <UnratedRunBanner />
