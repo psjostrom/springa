@@ -29,6 +29,7 @@ import {
   runBGContextsAtom,
   calendarReloadAtom,
   diabetesModeAtom,
+  generatedPlanAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -45,6 +46,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
+  const generatedPlan = useAtomValue(generatedPlanAtom);
+  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -52,6 +55,14 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const totalWeeks = settings?.totalWeeks ?? 18;
   const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
+
+  useEffect(() => {
+    if (generatedPlan.length > 0) {
+      setPlanEvents(generatedPlan);
+      setGeneratedPlan([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount
+  }, []);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
