@@ -452,6 +452,7 @@ Add imports and update `handleComplete`:
 import { useSetAtom } from "jotai";
 import { generatedPlanAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
+import { DEFAULT_LTHR } from "@/lib/constants";
 
 // Inside SetupPage component:
 const setGeneratedPlan = useSetAtom(generatedPlanAtom);
@@ -468,7 +469,7 @@ const handleComplete = async () => {
       data.raceDist ?? 16,
       data.totalWeeks ?? 18,
       data.startKm ?? 8,
-      data.lthr ?? 160,
+      data.lthr ?? DEFAULT_LTHR,
       hrZones,
       false, // includeBasePhase
       data.diabetesMode,
@@ -508,12 +509,13 @@ const generatedPlan = useAtomValue(generatedPlanAtom);
 const setGeneratedPlan = useSetAtom(generatedPlanAtom);
 
 // On mount, consume the pre-generated plan (once)
+// eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount
 useEffect(() => {
   if (generatedPlan.length > 0) {
     setPlanEvents(generatedPlan);
     setGeneratedPlan([]); // clear after consuming
   }
-}, []); // intentionally empty deps — run once on mount
+}, []);
 ```
 
 - [ ] **Step 5: Run tests and lint**
@@ -607,10 +609,10 @@ useEffect(() => {
 
 - [ ] **Step 3: Update PlannerScreen**
 
-Pass `onViewCalendar` to ActionBar. Fix `handleUpload` to call `calendarReload()`:
+Pass `onViewCalendar` to ActionBar. Fix `handleUpload` to call `calendarReload()` (already in scope — `const calendarReload = useSetAtom(calendarReloadAtom)` exists at line 47 of PlannerScreen):
 
 ```tsx
-// In handleUpload, after successful upload:
+// In handleUpload, after successful upload (after the Google Calendar sync line):
 calendarReload();
 
 // In the ActionBar render:
@@ -1080,7 +1082,7 @@ useEffect(() => {
   if (!diabetesMode && activeTab === "simulate") {
     handleTabChange("calendar");
   }
-}, [diabetesMode, activeTab]);
+}, [diabetesMode, activeTab, handleTabChange]);
 
 <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} hideTabs={hideTabs} />
 ```
@@ -1155,6 +1157,7 @@ Start dev server and verify:
 4. Coach shows context-appropriate suggestions
 5. Simulate tab hidden when diabetes mode off
 6. Fuel rates hidden when diabetes mode off
+7. BG widgets in Intel don't appear for non-diabetes users (existing gating via `useRunData` skipBG + `widgetRenderMap` null returns — verify no regression)
 
 - [ ] **Step 6: Create PR**
 
