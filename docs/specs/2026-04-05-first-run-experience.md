@@ -41,6 +41,8 @@ Generation is client-side (pure function, no API call). The wizard's local state
 
 **Tab selection mechanism:** The redirect uses `/?tab=planner`. The home page's `parseTab` already reads the `tab` query param and sets `activeTab` accordingly. The `generatedPlanAtom` is populated before navigation so PlannerScreen has data immediately — no race condition (both pages share the same Jotai Provider in the root layout).
 
+**Page refresh:** Jotai atoms don't persist across page refreshes. If the user refreshes `/?tab=planner`, the `generatedPlanAtom` is empty. PlannerScreen already handles this (shows Generate button when `planEvents` is empty), so no crash — just the normal "generate a plan" flow.
+
 ## 2. Upload Complete → Calendar Link
 
 After successful upload, the status message becomes a link-button:
@@ -66,7 +68,7 @@ A reusable `EmptyState` component wraps a faint ghost visual with an overlaid me
 | Location | Ghost preview | Message |
 |----------|--------------|---------|
 | Intel tab (combined) | Faint chart lines + metric cards | "Complete your first run to unlock training insights" |
-| Calendar (no events) | Faint monthly grid with placeholder blocks | "Generate a training plan to fill your calendar" |
+| Calendar (no events, loading complete) | Faint monthly grid with placeholder blocks | "Generate a training plan to fill your calendar" |
 | Simulate (diabetes, no BG model) | Faint BG curve line | "Complete a few runs with CGM data to unlock BG simulation" |
 
 **What does NOT get a ghost state:**
@@ -104,9 +106,13 @@ If the user skipped the race goal in the wizard, race-specific suggestions are e
 
 **Coach welcome text:** The subtitle adapts based on diabetes mode:
 - Diabetes: "Ask about training, fueling, BG management, or upcoming workouts."
-- Non-diabetes: "Ask about training, recovery, or upcoming workouts."
+- Non-diabetes: "Ask about training, fueling, recovery, or upcoming workouts."
+
+(Non-diabetes runners also fuel on long runs — only "BG management" is diabetes-specific.)
 
 ## 5. Rename sugarMode → diabetesMode
+
+**Shipped as a separate PR** before the functional changes. Pure mechanical find-replace + migration, no behavioral changes. This keeps the functional PR's diff clean and reviewable.
 
 Mechanical rename across the entire codebase:
 
@@ -132,7 +138,7 @@ Mechanical rename across the entire codebase:
 
 Non-diabetes users never see:
 - Fuel rate display on Planner
-- Simulate tab in navigation
+- Simulate tab in navigation (if user toggles diabetes mode off while on Simulate tab, redirect to Calendar)
 - BG widgets in Intel (BG Compact, BG Analysis, BG Patterns)
 - BG-related Coach suggestions
 - CurrentBGPill in header
