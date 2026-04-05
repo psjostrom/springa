@@ -18,7 +18,7 @@ export interface UserSettings {
 
   // Multi-user fields
   approved?: boolean;
-  sugarMode?: boolean;
+  diabetesMode?: boolean;
   displayName?: string;
   timezone?: string;
   runDays?: number[];
@@ -39,7 +39,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
     sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
-                 approved, sugar_mode, display_name, timezone, run_days, onboarding_complete,
+                 approved, diabetes_mode, display_name, timezone, run_days, onboarding_complete,
                  intervals_api_key, nightscout_url, nightscout_secret
           FROM user_settings WHERE email = ?`,
     args: [email],
@@ -60,7 +60,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
 
   // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
   settings.approved = (row.approved as number | null ?? 0) === 1;
-  settings.sugarMode = (row.sugar_mode as number | null ?? 0) === 1;
+  settings.diabetesMode = (row.diabetes_mode as number | null ?? 0) === 1;
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
   if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
@@ -76,7 +76,7 @@ export async function saveUserSettings(
   email: string,
   partial: Partial<UserSettings>,
 ): Promise<void> {
-  // Step 1: Ensure user row exists (sugar_mode and onboarding_complete use DEFAULT 0)
+  // Step 1: Ensure user row exists (diabetes_mode and onboarding_complete use DEFAULT 0)
   await db().execute({
     sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
     args: [email],
@@ -96,7 +96,7 @@ export async function saveUserSettings(
   if (partial.bgChartWindow !== undefined) { sets.push("bg_chart_window = ?"); args.push(partial.bgChartWindow ?? null); }
   if (partial.includeBasePhase !== undefined) { sets.push("include_base_phase = ?"); args.push(partial.includeBasePhase ? 1 : 0); }
   if (partial.warmthPreference !== undefined) { sets.push("warmth_preference = ?"); args.push(partial.warmthPreference); }
-  if (partial.sugarMode !== undefined) { sets.push("sugar_mode = ?"); args.push(partial.sugarMode ? 1 : 0); }
+  if (partial.diabetesMode !== undefined) { sets.push("diabetes_mode = ?"); args.push(partial.diabetesMode ? 1 : 0); }
   if (partial.displayName !== undefined) { sets.push("display_name = ?"); args.push(partial.displayName ?? null); }
   if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(JSON.stringify(partial.runDays)); }
   if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
