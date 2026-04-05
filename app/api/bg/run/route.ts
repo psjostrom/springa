@@ -1,7 +1,12 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { getBGReadingsForRun } from "@/lib/bgDb";
+import { getUserCredentials } from "@/lib/credentials";
+import { fetchBGFromNS } from "@/lib/nightscout";
 import { NextResponse } from "next/server";
 
+/**
+ * GET /api/bg/run — Fetch BG readings for a run window from Nightscout.
+ * Query params: start (ms), end (ms)
+ */
 export async function GET(request: Request) {
   let email: string;
   try {
@@ -32,7 +37,22 @@ export async function GET(request: Request) {
     );
   }
 
-  const readings = await getBGReadingsForRun(email, start, end);
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) {
+    return NextResponse.json({ readings: [] });
+  }
 
-  return NextResponse.json({ readings });
+  try {
+    // Add 10-min padding for interpolation at boundaries
+    const PADDING_MS = 10 * 60 * 1000;
+    const readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+      since: start - PADDING_MS,
+      until: end + PADDING_MS,
+    });
+
+    return NextResponse.json({ readings });
+  } catch (err) {
+    console.error("[bg/run] Failed to fetch from Nightscout:", err);
+    return NextResponse.json({ readings: [] });
+  }
 }

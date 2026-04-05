@@ -24,12 +24,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
-      const result = await db().execute({
-        sql: "SELECT approved FROM user_settings WHERE email = ?",
+      // Upsert: create user row if it doesn't exist (race-safe)
+      await db().execute({
+        sql: "INSERT OR IGNORE INTO user_settings (email, approved) VALUES (?, 0)",
         args: [user.email],
       });
-      if (result.rows.length === 0) return false;
-      if ((result.rows[0].approved as number | null ?? 0) !== 1) return false;
+
+      // Allow sign-in regardless of approval status
+      // Unapproved users will be redirected to /pending client-side
 
       // Store refresh token when Google provides one (on consent).
       // Wrapped in try/catch: safe to deploy before migration adds the column.

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getPrerunPushUsers, hasPrerunPushSent, markPrerunPushSent } from "@/lib/pushDb";
-import { getRecentBGReadings } from "@/lib/bgDb";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { buildBGModelFromCached } from "@/lib/bgModel";
@@ -10,9 +9,9 @@ import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
 import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
 import { wellnessToFitnessData } from "@/lib/fitness";
-import { getMyLifeData } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { buildInsulinContext } from "@/lib/insulinContext";
+import { fetchBGFromNS } from "@/lib/nightscout";
+import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -59,19 +58,8 @@ export async function GET(req: Request) {
         console.error(`[prerun-push] Failed to fetch wellness/TSB for ${email}:`, err);
       }
 
-      // Per-user IOB
-      let currentIob: number | null = null;
-      if (creds.mylifeEmail && creds.mylifePassword) {
-        try {
-          const data = await getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone);
-          if (data) {
-            const ctx = buildInsulinContext(data, now);
-            currentIob = ctx?.actionableIOB ?? null;
-          }
-        } catch (err) {
-          console.error(`[prerun-push] Failed to fetch MyLife/IOB for ${email}:`, err);
-        }
-      }
+      // IOB no longer available (MyLife scraper removed)
+      const currentIob: number | null = null;
 
       // Compute "today" in the user's timezone (DST-safe)
       const todayLocal = todayInTimezone(timezone);
@@ -95,11 +83,30 @@ export async function GET(req: Request) {
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
 
-      // Fetch readings and build BG model once per user (shared across events)
-      const readings = await getRecentBGReadings(email);
-      const cached = await getActivityStreams(email);
-      const enriched = await enrichActivitiesWithGlucose(email, cached);
-      const bgModel = buildBGModelFromCached(enriched);
+      // Check sugar mode — skip BG readiness checks when off
+      const settings = await getUserSettings(email);
+
+      let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
+      let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;
+
+      if (settings.sugarMode) {
+        // Fetch readings from Nightscout — on failure, fall through with empty readings
+        // so non-BG parts (TSB, timing) still work
+        if (creds.nightscoutUrl && creds.nightscoutSecret) {
+          try {
+            readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+              since: now - 30 * 60 * 1000, // last 30 min
+              count: 20,
+            });
+          } catch (err) {
+            console.warn(`[prerun-push] Failed to fetch BG from Nightscout for ${email}:`, err);
+          }
+        }
+
+        const cached = await getActivityStreams(email);
+        const enriched = await enrichActivitiesWithGlucose(email, cached);
+        bgModel = buildBGModelFromCached(enriched);
+      }
 
       for (const event of upcoming) {
         const eventDateStr = event.start_date_local.slice(0, 10);

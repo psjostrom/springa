@@ -1,9 +1,10 @@
-import { getBGReadingsForRange } from "./bgDb";
+import { getUserCredentials } from "./credentials";
+import { fetchBGFromNS } from "./nightscout";
 import { enrichWithGlucose } from "./bgAlignment";
 import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 
 /**
- * Enrich cached activities with glucose data from bg_readings (server-side).
+ * Enrich cached activities with glucose data from Nightscout (server-side).
  * Fetches CGM readings for the full date range of activities and aligns.
  */
 export async function enrichActivitiesWithGlucose(
@@ -29,6 +30,24 @@ export async function enrichActivitiesWithGlucose(
       }),
   );
 
-  const readings = await getBGReadingsForRange(email, minMs, maxMs);
-  return enrichWithGlucose(activities, readings);
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) {
+    // No Nightscout configured — return activities without glucose enrichment
+    return activities;
+  }
+
+  try {
+    // Add padding for interpolation at boundaries
+    const PADDING_MS = 10 * 60 * 1000;
+    const readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+      since: minMs - PADDING_MS,
+      until: maxMs + PADDING_MS,
+    });
+
+    return enrichWithGlucose(activities, readings);
+  } catch (err) {
+    console.error("[activityStreamsEnrich] Failed to fetch from Nightscout:", err);
+    // Return activities without glucose enrichment on error
+    return activities;
+  }
 }

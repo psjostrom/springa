@@ -1,6 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { useAtomValue } from "jotai";
+import { sugarModeAtom } from "../atoms";
 import type { BGReading } from "@/lib/cgm";
 
 interface CurrentBGData {
@@ -19,7 +21,7 @@ const EMPTY: CurrentBGData = {
   trend: null,
   trendSlope: null,
   lastUpdate: null,
-  loading: true,
+  loading: false,
   readings: [],
 };
 
@@ -28,6 +30,7 @@ function createBGStore() {
   const listeners = new Set<() => void>();
   let interval: ReturnType<typeof setInterval> | undefined;
   let refs = 0;
+  let enabled = true;
 
   function set(next: CurrentBGData) {
     data = next;
@@ -35,6 +38,11 @@ function createBGStore() {
   }
 
   async function poll() {
+    if (!enabled) {
+      set({ ...EMPTY, loading: false });
+      return;
+    }
+
     try {
       const res = await fetch("/api/bg");
       if (!res.ok) {
@@ -68,11 +76,23 @@ function createBGStore() {
   }
 
   return {
+    setEnabled: (value: boolean) => {
+      enabled = value;
+      if (!enabled) {
+        if (interval) { clearInterval(interval); interval = undefined; }
+        set({ ...EMPTY, loading: false });
+      } else if (refs > 0) {
+        // Re-enable: poll immediately and restart interval
+        if (interval) { clearInterval(interval); }
+        void poll();
+        interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
+      }
+    },
     subscribe: (cb: () => void) => {
       listeners.add(cb);
       // Start polling when first subscriber arrives
       refs++;
-      if (refs === 1) {
+      if (refs === 1 && enabled) {
         void poll();
         interval = setInterval(() => { void poll(); }, POLL_INTERVAL);
       }
@@ -93,5 +113,19 @@ function createBGStore() {
 const store = createBGStore();
 
 export function useCurrentBG(): CurrentBGData {
+  const sugarMode = useAtomValue(sugarModeAtom);
+
+  // Update store based on sugar mode — must be in useEffect to avoid
+  // mutating external store during render (causes infinite re-render loop)
+  useEffect(() => {
+    store.setEnabled(sugarMode);
+  }, [sugarMode]);
+
+  // This pattern works correctly because:
+  // 1. `store.subscribe` and `store.getSnapshot` are stable references (module-level singleton)
+  // 2. When disabled, setEnabled() calls set() which notifies listeners synchronously,
+  //    and getSnapshot() returns the reset EMPTY object
+  // 3. The EMPTY constant's identity is preserved across renders (module-level),
+  //    so useSyncExternalStore won't trigger unnecessary re-renders when disabled
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => EMPTY);
 }

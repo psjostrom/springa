@@ -1,18 +1,14 @@
-import { getMyLifeData } from "@/lib/apiHelpers";
-import { getUserCredentials } from "@/lib/credentials";
 import { getRecentAnalyzedRuns, buildRunHistory } from "@/lib/runAnalysisDb";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { nonEmpty } from "@/lib/format";
-import { buildInsulinContext } from "@/lib/insulinContext";
 import { format, subDays } from "date-fns";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
 import type { RunHistoryEntry } from "@/lib/runAnalysisDb";
-import type { InsulinContext } from "@/lib/insulinContext";
 import type { FitnessInsights } from "@/lib/fitness";
 
 interface BuildRunAnalysisContextInput {
@@ -23,13 +19,14 @@ interface BuildRunAnalysisContextInput {
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
+  nightscoutUrl?: string;
+  nightscoutSecret?: string;
 }
 
 interface RunAnalysisContextResult {
   event: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
-  insulinContext?: InsulinContext | null;
   history?: RunHistoryEntry[];
   historyFeedback?: Map<string, { rating?: string; comment?: string; carbsG?: number }>;
   athleteFeedback?: { rating?: string; comment?: string; carbsG?: number } | null;
@@ -44,24 +41,9 @@ interface RunAnalysisContextResult {
 export async function buildRunAnalysisContext(
   input: BuildRunAnalysisContextInput,
 ): Promise<RunAnalysisContextResult> {
-  const { email, event, runStartMs, intervalsApiKey, runBGContext, reportCard, bgModelSummary } = input;
+  const { email, event, intervalsApiKey, runBGContext, reportCard, bgModelSummary } = input;
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
-
-  // Start MyLife fetch in parallel (doesn't depend on rows/feedback/profile)
-  const creds = await getUserCredentials(email);
-  const insulinContextP = (creds?.mylifeEmail && creds.mylifePassword
-    ? getMyLifeData(creds.mylifeEmail, creds.mylifePassword, creds.timezone)
-    : Promise.resolve(null))
-    .then((data) => {
-      if (!data) return null;
-      console.log(`[RunAnalysis] MyLife data fetched: ${data.events.length} events`);
-      return buildInsulinContext(data, runStartMs);
-    })
-    .catch((err: unknown) => {
-      console.error("[RunAnalysis] MyLife fetch failed:", err);
-      return null;
-    });
 
   const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
     getRecentAnalyzedRuns(email),
@@ -70,7 +52,7 @@ export async function buildRunAnalysisContext(
     fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
   ]);
 
-  // Enrich history rows with glucose from bg_readings
+  // Enrich history rows with glucose from Nightscout
   const rows = await enrichActivitiesWithGlucose(email, rawRows);
 
   // Batch-fetch activity metadata from Intervals.icu for run history
@@ -111,9 +93,6 @@ export async function buildRunAnalysisContext(
     }
   }
 
-  const insulinContext = await insulinContextP;
-  console.log(`[RunAnalysis] Insulin context: ${insulinContext ? "built" : "null (no boluses in window or no credentials)"}`);
-
   // Current run feedback from CalendarEvent custom fields
   const athleteFeedback = (event.rating || event.feedbackComment)
     ? { rating: event.rating ?? undefined, comment: event.feedbackComment ?? undefined, carbsG: event.carbsIngested ?? undefined }
@@ -123,7 +102,6 @@ export async function buildRunAnalysisContext(
     event,
     runBGContext,
     reportCard,
-    insulinContext,
     history,
     historyFeedback: historyFeedbackMap,
     athleteFeedback,

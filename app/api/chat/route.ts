@@ -28,7 +28,11 @@ export async function POST(req: Request) {
   };
   const { messages, context } = body;
 
-  const patterns = await getBGPatterns(email);
+  // Check sugar mode — exclude BG patterns from coach context when off
+  const { getUserSettings } = await import("@/lib/settings");
+  const settings = await getUserSettings(email);
+
+  const patterns = settings.sugarMode ? await getBGPatterns(email) : null;
 
   let systemPrompt = context ?? "";
   if (patterns?.patternsText) {
