@@ -107,7 +107,7 @@ export async function PUT(req: Request) {
   if (body.bgChartWindow !== undefined) allowed.bgChartWindow = body.bgChartWindow;
   if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
   if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
-  if (body.sugarMode !== undefined) allowed.sugarMode = body.sugarMode;
+  if (body.diabetesMode !== undefined) allowed.diabetesMode = body.diabetesMode;
   if (body.displayName !== undefined) allowed.displayName = body.displayName;
   if (body.runDays !== undefined) allowed.runDays = body.runDays;
   if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;

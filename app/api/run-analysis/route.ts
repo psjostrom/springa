@@ -84,11 +84,11 @@ export async function POST(req: Request) {
     event,
     runStartMs: event.date.getTime(),
     intervalsApiKey: creds.intervalsApiKey,
-    runBGContext: settings.sugarMode ? runBGContext : undefined,
-    reportCard: settings.sugarMode ? reportCard : undefined,
-    bgModelSummary: settings.sugarMode ? bgModelSummary : undefined,
-    nightscoutUrl: settings.sugarMode ? (creds.nightscoutUrl ?? undefined) : undefined,
-    nightscoutSecret: settings.sugarMode ? (creds.nightscoutSecret ?? undefined) : undefined,
+    runBGContext: settings.diabetesMode ? runBGContext : undefined,
+    reportCard: settings.diabetesMode ? reportCard : undefined,
+    bgModelSummary: settings.diabetesMode ? bgModelSummary : undefined,
+    nightscoutUrl: settings.diabetesMode ? (creds.nightscoutUrl ?? undefined) : undefined,
+    nightscoutSecret: settings.diabetesMode ? (creds.nightscoutSecret ?? undefined) : undefined,
   });
 
   const { system, user } = buildRunAnalysisPrompt(promptParams);

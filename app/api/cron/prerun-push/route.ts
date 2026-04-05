@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
       let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;
 
-      if (settings.sugarMode) {
+      if (settings.diabetesMode) {
         // Fetch readings from Nightscout — on failure, fall through with empty readings
         // so non-BG parts (TSB, timing) still work
         if (creds.nightscoutUrl && creds.nightscoutSecret) {
