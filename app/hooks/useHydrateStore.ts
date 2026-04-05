@@ -100,7 +100,7 @@ export function useHydrateStore() {
 
   // ─── Run Data / BG Model ──────────────────────────────
   const settings = useAtomValue(settingsAtom);
-  const runData = useRunData(apiKey, true, cal.events, bg.readings, settings?.sugarMode);
+  const runData = useRunData(apiKey, true, cal.events, bg.readings, settings?.diabetesMode);
   const setBgModel = useSetAtom(bgModelAtom);
   const setBgModelLoading = useSetAtom(bgModelLoadingAtom);
   const setBgModelProgress = useSetAtom(bgModelProgressAtom);

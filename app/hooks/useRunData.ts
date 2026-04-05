@@ -13,7 +13,7 @@ export function useRunData(
   enabled: boolean,
   sharedEvents: CalendarEvent[],
   bgReadings?: BGReading[],
-  sugarMode?: boolean,
+  diabetesMode?: boolean,
 ) {
   // 1. Filter and sort completed runs — cache all of them.
   //    BG model and pace calibration apply their own time windows downstream.
@@ -35,7 +35,7 @@ export function useRunData(
   const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
 
   // If sugar mode is off, skip all BG-related enrichment
-  const skipBG = sugarMode === false;
+  const skipBG = diabetesMode === false;
 
   // 2.5. Reconstruct glucose from CGM readings (skip when sugar mode off)
   const glucoseEnriched = useMemo(

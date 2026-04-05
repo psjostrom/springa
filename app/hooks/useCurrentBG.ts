@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
-import { sugarModeAtom } from "../atoms";
+import { diabetesModeAtom } from "../atoms";
 import type { BGReading } from "@/lib/cgm";
 
 interface CurrentBGData {
@@ -113,13 +113,13 @@ function createBGStore() {
 const store = createBGStore();
 
 export function useCurrentBG(): CurrentBGData {
-  const sugarMode = useAtomValue(sugarModeAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
 
   // Update store based on sugar mode — must be in useEffect to avoid
   // mutating external store during render (causes infinite re-render loop)
   useEffect(() => {
-    store.setEnabled(sugarMode);
-  }, [sugarMode]);
+    store.setEnabled(diabetesMode);
+  }, [diabetesMode]);
 
   // This pattern works correctly because:
   // 1. `store.subscribe` and `store.getSnapshot` are stable references (module-level singleton)
