@@ -15,7 +15,7 @@ export async function GET() {
   }
 
   const settings = await getUserSettings(email);
-  if (!settings.sugarMode) {
+  if (!settings.diabetesMode) {
     return NextResponse.json({ readings: [], trend: null });
   }
 

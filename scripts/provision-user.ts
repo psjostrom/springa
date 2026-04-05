@@ -4,7 +4,7 @@
  * Usage:
  *   npx tsx scripts/provision-user.ts --approve user@example.com
  *   npx tsx scripts/provision-user.ts --email user@example.com --name "Johan" --approve
- *   npx tsx scripts/provision-user.ts --email user@example.com --approve --sugar-mode \
+ *   npx tsx scripts/provision-user.ts --email user@example.com --approve --diabetes-mode \
  *     --ns-url "https://scout.springa.run" --ns-secret "my-secret" \
  *     --intervals-key "abc123"
  *
@@ -42,8 +42,8 @@ function parseArgs() {
         opts.email = args[i + 1];
         i++;
       }
-    } else if (arg === "--sugar-mode") {
-      opts.sugarMode = true;
+    } else if (arg === "--diabetes-mode") {
+      opts.diabetesMode = true;
     } else if (arg === "--email" && i + 1 < args.length) {
       opts.email = args[++i];
     } else if (arg === "--name" && i + 1 < args.length) {
@@ -79,7 +79,7 @@ async function provision() {
 
   // Check if user exists
   const existing = await db.execute({
-    sql: "SELECT email, approved, sugar_mode, display_name FROM user_settings WHERE email = ?",
+    sql: "SELECT email, approved, diabetes_mode, display_name FROM user_settings WHERE email = ?",
     args: [email],
   });
 
@@ -87,12 +87,12 @@ async function provision() {
     // Create new user
     console.log(`Creating new user: ${email}`);
     await db.execute({
-      sql: `INSERT INTO user_settings (email, approved, sugar_mode, display_name, timezone, onboarding_complete)
+      sql: `INSERT INTO user_settings (email, approved, diabetes_mode, display_name, timezone, onboarding_complete)
             VALUES (?, ?, ?, ?, ?, 0)`,
       args: [
         email,
         opts.approve ? 1 : 0,
-        opts.sugarMode ? 1 : 0,
+        opts.diabetesMode ? 1 : 0,
         (opts.name as string) ?? null,
         (opts.timezone as string) ?? "Europe/Stockholm",
       ],
@@ -109,9 +109,9 @@ async function provision() {
     sets.push("approved = 1");
     console.log("  → Approved");
   }
-  if (opts.sugarMode) {
-    sets.push("sugar_mode = 1");
-    console.log("  → Sugar mode enabled");
+  if (opts.diabetesMode) {
+    sets.push("diabetes_mode = 1");
+    console.log("  → Diabetes mode enabled");
   }
   if (opts.name) {
     sets.push("display_name = ?");
@@ -149,7 +149,7 @@ async function provision() {
 
   // Show final state
   const result = await db.execute({
-    sql: "SELECT email, approved, sugar_mode, display_name, timezone, nightscout_url, onboarding_complete FROM user_settings WHERE email = ?",
+    sql: "SELECT email, approved, diabetes_mode, display_name, timezone, nightscout_url, onboarding_complete FROM user_settings WHERE email = ?",
     args: [email],
   });
 
@@ -158,7 +158,7 @@ async function provision() {
     console.log("\nProvisioned user:");
     console.log(`  Email:      ${row.email}`);
     console.log(`  Approved:   ${row.approved === 1 ? "yes" : "no"}`);
-    console.log(`  Sugar mode: ${row.sugar_mode === 1 ? "yes" : "no"}`);
+    console.log(`  Diabetes mode: ${row.diabetes_mode === 1 ? "yes" : "no"}`);
     console.log(`  Name:       ${row.display_name ?? "(not set)"}`);
     console.log(`  Timezone:   ${row.timezone ?? "Europe/Stockholm"}`);
     console.log(`  NS URL:     ${row.nightscout_url ?? "(not set)"}`);

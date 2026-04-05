@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   // Check sugar mode — skip fuel adaptations when off
   const settings = await getUserSettings(email);
 
-  const patterns = settings.sugarMode ? await getBGPatterns(email) : null;
+  const patterns = settings.diabetesMode ? await getBGPatterns(email) : null;
 
   // Build feedback map from CalendarEvent custom fields
   const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();
@@ -85,9 +85,9 @@ export async function POST(req: Request) {
   // When sugar mode is off, pass null bgModel to skip fuel adaptations
   const adapted = applyAdaptations({
     upcomingEvents,
-    bgModel: settings.sugarMode ? bgModel : null,
+    bgModel: settings.diabetesMode ? bgModel : null,
     insights,
-    runBGContexts: settings.sugarMode ? runBGContexts : {},
+    runBGContexts: settings.diabetesMode ? runBGContexts : {},
     lthr,
     hrZones,
   });

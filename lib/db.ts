@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   include_base_phase INTEGER,
   warmth_preference  INTEGER,
   approved           INTEGER NOT NULL DEFAULT 0,
-  sugar_mode         INTEGER NOT NULL DEFAULT 0,
+  diabetes_mode      INTEGER NOT NULL DEFAULT 0,
   display_name       TEXT,
   timezone           TEXT DEFAULT 'Europe/Stockholm',
   intervals_api_key  TEXT,

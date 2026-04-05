@@ -394,13 +394,13 @@ export function buildContext(
   lthr: number,
   hrZones: number[],
   includeBasePhase: boolean,
-  sugarMode?: boolean,
+  diabetesMode?: boolean,
 ): PlanContext {
   const raceDate = parseISO(raceDateStr);
   return {
-    fuelInterval: getCurrentFuelRate("interval", bgModel, sugarMode),
-    fuelLong: getCurrentFuelRate("long", bgModel, sugarMode),
-    fuelEasy: getCurrentFuelRate("easy", bgModel, sugarMode),
+    fuelInterval: getCurrentFuelRate("interval", bgModel, diabetesMode),
+    fuelLong: getCurrentFuelRate("long", bgModel, diabetesMode),
+    fuelEasy: getCurrentFuelRate("easy", bgModel, diabetesMode),
     raceDate,
     raceDist,
     totalWeeks,
@@ -464,9 +464,9 @@ export function generatePlan(
   lthr: number,
   hrZones: number[],
   includeBasePhase = false,
-  sugarMode?: boolean,
+  diabetesMode?: boolean,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, sugarMode);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode);
   const today = new Date();
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
@@ -485,9 +485,9 @@ export function generateFullPlan(
   lthr: number,
   hrZones: number[],
   includeBasePhase = false,
-  sugarMode?: boolean,
+  diabetesMode?: boolean,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, sugarMode);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode);
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);

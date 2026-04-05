@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const { getUserSettings } = await import("@/lib/settings");
   const settings = await getUserSettings(email);
 
-  const patterns = settings.sugarMode ? await getBGPatterns(email) : null;
+  const patterns = settings.diabetesMode ? await getBGPatterns(email) : null;
 
   let systemPrompt = context ?? "";
   if (patterns?.patternsText) {

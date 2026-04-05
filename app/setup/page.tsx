@@ -7,7 +7,7 @@ import { IntervalsStep } from "./IntervalsStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { GoalStep } from "./GoalStep";
 import { HRZonesStep } from "./HRZonesStep";
-import { SugarModeStep } from "./SugarModeStep";
+import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -23,7 +23,7 @@ interface WizardData {
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
-  sugarMode: boolean;
+  diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
 }
@@ -36,7 +36,7 @@ export default function SetupPage() {
     timezone: "Europe/Stockholm",
     intervalsApiKey: "",
     runDays: [],
-    sugarMode: false,
+    diabetesMode: false,
   });
 
   const updateData = (partial: Partial<WizardData>) => {
@@ -126,12 +126,12 @@ export default function SetupPage() {
           />
         )}
         {step === 6 && (
-          <SugarModeStep
-            sugarMode={data.sugarMode}
+          <DiabetesStep
+            diabetesMode={data.diabetesMode}
             nightscoutUrl={data.nightscoutUrl}
             nightscoutSecret={data.nightscoutSecret}
-            onNext={(sugarData) => {
-              updateData(sugarData);
+            onNext={(diabetesData) => {
+              updateData(diabetesData);
               setStep(7);
             }}
             onBack={() => { setStep(5); }}
