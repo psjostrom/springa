@@ -192,3 +192,6 @@ export const updateWidgetLayoutAtom = atom(
     );
   },
 );
+
+/** Cross-component tab switch request. Set by PlannerScreen, consumed by page.tsx. */
+export const switchTabAtom = atom<string | null>(null);

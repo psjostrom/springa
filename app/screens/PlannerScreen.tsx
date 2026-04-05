@@ -30,6 +30,7 @@ import {
   calendarReloadAtom,
   diabetesModeAtom,
   generatedPlanAtom,
+  switchTabAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -48,6 +49,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const calendarReload = useSetAtom(calendarReloadAtom);
   const generatedPlan = useAtomValue(generatedPlanAtom);
   const setGeneratedPlan = useSetAtom(generatedPlanAtom);
+  const setSwitchTab = useSetAtom(switchTabAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -103,6 +105,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg(`Uploaded ${count} workouts.`);
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
+      calendarReload();
     } catch (e) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -293,6 +296,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               isUploading={isUploading}
               statusMsg={statusMsg}
               onUpload={() => { void handleUpload(); }}
+              onViewCalendar={() => { setSwitchTab("calendar"); }}
             />
             <WorkoutList events={planEvents} />
           </>
