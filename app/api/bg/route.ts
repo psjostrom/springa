@@ -20,7 +20,7 @@ export async function GET() {
   }
 
   const creds = await getUserCredentials(email);
-  if (!creds?.nightscoutUrl || !creds?.nightscoutSecret) {
+  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) {
     return NextResponse.json({ readings: [], trend: null });
   }
 

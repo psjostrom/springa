@@ -49,7 +49,7 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
       <div className="space-y-4">
         <div className="flex gap-3">
           <button
-            onClick={() => setHasGoal(true)}
+            onClick={() => { setHasGoal(true); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               hasGoal
                 ? "border-brand bg-brand/10 text-brand"
@@ -59,7 +59,7 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
             Yes, I have a race
           </button>
           <button
-            onClick={() => setHasGoal(false)}
+            onClick={() => { setHasGoal(false); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               !hasGoal
                 ? "border-brand bg-brand/10 text-brand"
@@ -79,7 +79,7 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
               <input
                 type="text"
                 value={raceName}
-                onChange={(e) => setRaceName(e.target.value)}
+                onChange={(e) => { setRaceName(e.target.value); }}
                 className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
                 placeholder="e.g. EcoTrail Stockholm"
               />
@@ -91,7 +91,7 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
               <input
                 type="date"
                 value={raceDate}
-                onChange={(e) => setRaceDate(e.target.value)}
+                onChange={(e) => { setRaceDate(e.target.value); }}
                 className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
             </div>
@@ -104,7 +104,7 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
                 min={5}
                 max={100}
                 value={raceDist}
-                onChange={(e) => setRaceDist(e.target.value)}
+                onChange={(e) => { setRaceDist(e.target.value); }}
                 className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
                 placeholder="16"
               />
@@ -122,14 +122,14 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
         </button>
         {hasGoal ? (
           <button
-            onClick={handleNext}
+            onClick={() => { void handleNext(); }}
             className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20"
           >
             Next
           </button>
         ) : (
           <button
-            onClick={handleNext}
+            onClick={() => { void handleNext(); }}
             className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
           >
             Skip

@@ -28,7 +28,7 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
 
       if (!res.ok) {
         const data = await res.json() as { error?: string };
-        setError(data.error || "Invalid API key");
+        setError(data.error ?? "Invalid API key");
         setValidating(false);
         return;
       }
@@ -42,7 +42,7 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
         maxHr: settings.maxHr,
         hrZones: settings.hrZones,
       });
-    } catch (err) {
+    } catch {
       setError("Network error");
       setValidating(false);
     }
@@ -112,7 +112,7 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
           Back
         </button>
         <button
-          onClick={handleNext}
+          onClick={() => { void handleNext(); }}
           disabled={!apiKey.trim() || validating}
           className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >

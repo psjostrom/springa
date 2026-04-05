@@ -34,12 +34,12 @@ export default function PendingPage() {
           </h2>
 
           <p className="text-muted">
-            Your account is awaiting approval. You'll be able to access Springa once an admin approves your account.
+            Your account is awaiting approval. You&apos;ll be able to access Springa once an admin approves your account.
           </p>
         </div>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => { void signOut({ callbackUrl: "/login" }); }}
           className="w-full px-6 py-3 bg-brand-btn hover:bg-brand-hover text-white font-medium rounded-lg transition"
         >
           Sign Out

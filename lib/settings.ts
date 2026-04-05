@@ -91,14 +91,14 @@ export async function saveUserSettings(
   if (partial.raceDist !== undefined) { sets.push("race_dist = ?"); args.push(partial.raceDist ?? null); }
   if (partial.totalWeeks !== undefined) { sets.push("total_weeks = ?"); args.push(partial.totalWeeks ?? null); }
   if (partial.startKm !== undefined) { sets.push("start_km = ?"); args.push(partial.startKm ?? null); }
-  if (partial.widgetOrder !== undefined) { sets.push("widget_order = ?"); args.push(partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null); }
-  if (partial.hiddenWidgets !== undefined) { sets.push("hidden_widgets = ?"); args.push(partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null); }
+  if (partial.widgetOrder !== undefined) { sets.push("widget_order = ?"); args.push(JSON.stringify(partial.widgetOrder)); }
+  if (partial.hiddenWidgets !== undefined) { sets.push("hidden_widgets = ?"); args.push(JSON.stringify(partial.hiddenWidgets)); }
   if (partial.bgChartWindow !== undefined) { sets.push("bg_chart_window = ?"); args.push(partial.bgChartWindow ?? null); }
   if (partial.includeBasePhase !== undefined) { sets.push("include_base_phase = ?"); args.push(partial.includeBasePhase ? 1 : 0); }
   if (partial.warmthPreference !== undefined) { sets.push("warmth_preference = ?"); args.push(partial.warmthPreference); }
   if (partial.sugarMode !== undefined) { sets.push("sugar_mode = ?"); args.push(partial.sugarMode ? 1 : 0); }
   if (partial.displayName !== undefined) { sets.push("display_name = ?"); args.push(partial.displayName ?? null); }
-  if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(partial.runDays ? JSON.stringify(partial.runDays) : null); }
+  if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(JSON.stringify(partial.runDays)); }
   if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
 
   if (sets.length > 0) {

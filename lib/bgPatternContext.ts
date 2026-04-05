@@ -1,4 +1,3 @@
-import { getUserCredentials } from "@/lib/credentials";
 import { fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import {
@@ -29,7 +28,7 @@ export interface BGPatternContext {
 export async function buildBGPatternContext(
   input: BGPatternInput,
 ): Promise<BGPatternContext> {
-  const { email, events, intervalsApiKey, nightscoutUrl, nightscoutSecret } = input;
+  const { events, intervalsApiKey, nightscoutUrl, nightscoutSecret } = input;
 
   const completedEvents = events.filter((e) => e.type === "completed");
 
@@ -44,8 +43,6 @@ export async function buildBGPatternContext(
   const latestMs =
     Math.max(...timestamps.map((t, i) => t + durations[i])) +
     2 * 60 * 60 * 1000;
-
-  const creds = await getUserCredentials(email);
 
   // Fetch wellness and CGM readings
   let wellness: Awaited<ReturnType<typeof fetchWellnessData>> = [];
@@ -67,8 +64,8 @@ export async function buildBGPatternContext(
         until: latestMs,
         count: 10000,
       });
-    } catch (err) {
-      console.warn("[BGPatterns] Failed to fetch BG from Nightscout:", err);
+    } catch {
+      console.warn("[BGPatterns] Failed to fetch BG from Nightscout");
       bgReadings = [];
     }
   }

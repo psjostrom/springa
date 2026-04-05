@@ -1,13 +1,10 @@
-import { getUserCredentials } from "@/lib/credentials";
 import { getRecentAnalyzedRuns, buildRunHistory } from "@/lib/runAnalysisDb";
 import { fetchAthleteProfile, fetchActivitiesByDateRange, fetchWellnessData } from "@/lib/intervalsApi";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
-import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { nonEmpty } from "@/lib/format";
 import { format, subDays } from "date-fns";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
-import { fetchBGFromNS } from "@/lib/nightscout";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
@@ -44,7 +41,7 @@ interface RunAnalysisContextResult {
 export async function buildRunAnalysisContext(
   input: BuildRunAnalysisContextInput,
 ): Promise<RunAnalysisContextResult> {
-  const { email, event, runStartMs, intervalsApiKey, runBGContext, reportCard, bgModelSummary, nightscoutUrl, nightscoutSecret } = input;
+  const { email, event, intervalsApiKey, runBGContext, reportCard, bgModelSummary } = input;
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 

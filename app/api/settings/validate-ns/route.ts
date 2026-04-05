@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   const validation = await validateNSConnection(body.nightscoutUrl);
   if (!validation.valid) {
     return NextResponse.json(
-      { valid: false, error: validation.error || "Failed to connect to Nightscout server" },
+      { valid: false, error: validation.error ?? "Failed to connect to Nightscout server" },
       { status: 200 },
     );
   }

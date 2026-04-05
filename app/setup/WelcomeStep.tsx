@@ -46,7 +46,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
       <h1 className="text-2xl font-bold text-text mb-2">Welcome to Springa</h1>
-      <p className="text-muted mb-6">Let's get you set up. This will take about 2 minutes.</p>
+      <p className="text-muted mb-6">Let&apos;s get you set up. This will take about 2 minutes.</p>
 
       <div className="space-y-4">
         <div>
@@ -56,7 +56,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
           <input
             type="text"
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={(e) => { setDisplayName(e.target.value); }}
             className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
             placeholder="Your name"
             autoFocus
@@ -69,7 +69,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
           </label>
           <select
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
+            onChange={(e) => { setTimezone(e.target.value); }}
             className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
           >
             {TIMEZONES.map((tz) => (
@@ -82,7 +82,7 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
       </div>
 
       <button
-        onClick={handleNext}
+        onClick={() => { void handleNext(); }}
         disabled={!displayName.trim()}
         className="w-full mt-6 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
       >

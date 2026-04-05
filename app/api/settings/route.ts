@@ -28,8 +28,8 @@ export async function GET() {
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
-    } catch (err) {
-      console.warn("[settings] Failed to fetch athlete profile:", err);
+    } catch {
+      console.warn("[settings] Failed to fetch athlete profile");
     }
   }
 
@@ -62,14 +62,8 @@ export async function PUT(req: Request) {
   // Validate Intervals.icu API key if provided
   if (body.intervalsApiKey) {
     try {
-      const profile = await fetchAthleteProfile(body.intervalsApiKey);
-      if (!profile || Object.keys(profile).length === 0) {
-        return NextResponse.json(
-          { error: "Invalid Intervals.icu API key" },
-          { status: 400 }
-        );
-      }
-    } catch (err) {
+      await fetchAthleteProfile(body.intervalsApiKey);
+    } catch {
       return NextResponse.json(
         { error: "Failed to validate Intervals.icu API key" },
         { status: 400 }
@@ -94,7 +88,7 @@ export async function PUT(req: Request) {
       const validation = await validateNSConnection(body.nightscoutUrl);
       if (!validation.valid) {
         return NextResponse.json(
-          { error: validation.error || "Failed to connect to Nightscout server" },
+          { error: validation.error ?? "Failed to connect to Nightscout server" },
           { status: 400 }
         );
       }

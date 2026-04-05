@@ -79,7 +79,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
         {hasImportedZones && (
           <div className="flex gap-3">
             <button
-              onClick={() => setUseManual(false)}
+              onClick={() => { setUseManual(false); }}
               className={`flex-1 py-2 rounded-lg border-2 font-semibold text-sm transition ${
                 !useManual
                   ? "border-brand bg-brand/10 text-brand"
@@ -89,7 +89,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
               Use imported
             </button>
             <button
-              onClick={() => setUseManual(true)}
+              onClick={() => { setUseManual(true); }}
               className={`flex-1 py-2 rounded-lg border-2 font-semibold text-sm transition ${
                 useManual
                   ? "border-brand bg-brand/10 text-brand"
@@ -112,7 +112,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
                 min={100}
                 max={220}
                 value={lthr}
-                onChange={(e) => setLthr(e.target.value)}
+                onChange={(e) => { setLthr(e.target.value); }}
                 className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
                 placeholder="e.g. 165"
               />
@@ -126,7 +126,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
                 min={100}
                 max={220}
                 value={maxHr}
-                onChange={(e) => setMaxHr(e.target.value)}
+                onChange={(e) => { setMaxHr(e.target.value); }}
                 className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
                 placeholder="e.g. 190"
               />
@@ -143,7 +143,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
           Back
         </button>
         <button
-          onClick={handleNext}
+          onClick={() => { void handleNext(); }}
           className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
         >
           {(hasImportedZones && !useManual) || (useManual && (lthr || maxHr)) ? "Next" : "Skip"}

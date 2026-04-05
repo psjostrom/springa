@@ -7,11 +7,10 @@ interface SugarModeStepProps {
   nightscoutUrl?: string;
   nightscoutSecret?: string;
   onNext: (data: { sugarMode: boolean; nightscoutUrl?: string; nightscoutSecret?: string }) => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
-export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUrl, nightscoutSecret: initialSecret, onNext, onSkip, onBack }: SugarModeStepProps) {
+export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUrl, nightscoutSecret: initialSecret, onNext, onBack }: SugarModeStepProps) {
   const [sugarMode, setSugarMode] = useState(initialMode);
   const [nightscoutUrl, setNightscoutUrl] = useState(initialUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState(initialSecret ?? "");
@@ -41,13 +40,13 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
 
       if (!res.ok) {
         const data = await res.json() as { error?: string };
-        setError(data.error || "Connection failed");
+        setError(data.error ?? "Connection failed");
         setConnected(false);
       } else {
         setConnected(true);
         setError("");
       }
-    } catch (err) {
+    } catch {
       setError("Network error");
       setConnected(false);
     } finally {
@@ -89,7 +88,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
       <div className="space-y-4">
         <div className="flex gap-3">
           <button
-            onClick={() => setSugarMode(true)}
+            onClick={() => { setSugarMode(true); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               sugarMode
                 ? "border-brand bg-brand/10 text-brand"
@@ -99,7 +98,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
             Yes
           </button>
           <button
-            onClick={() => setSugarMode(false)}
+            onClick={() => { setSugarMode(false); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               !sugarMode
                 ? "border-brand bg-brand/10 text-brand"
@@ -146,7 +145,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleValidate}
+                onClick={() => { void handleValidate(); }}
                 disabled={validating || !nightscoutUrl || !nightscoutSecret}
                 className="px-4 py-2 bg-border border border-border rounded-lg text-sm text-brand hover:bg-border transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -171,7 +170,7 @@ export function SugarModeStep({ sugarMode: initialMode, nightscoutUrl: initialUr
           Back
         </button>
         <button
-          onClick={handleNext}
+          onClick={() => { void handleNext(); }}
           className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
         >
           {sugarMode ? "Next" : "Skip"}

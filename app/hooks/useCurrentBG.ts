@@ -55,9 +55,6 @@ function createBGStore() {
         readings?: BGReading[];
       };
 
-      // Guard: if disabled while fetch was in-flight, discard the result
-      if (!enabled) return;
-
       const readings: BGReading[] = json.readings ?? [];
 
       if (!json.current) {

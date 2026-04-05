@@ -62,13 +62,13 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
 
       const data = (await res.json()) as { valid: boolean; error?: string };
       if (!res.ok || !data.valid) {
-        setConnectionError(data.error || "Connection failed");
+        setConnectionError(data.error ?? "Connection failed");
         setNightscoutConnected(false);
       } else {
         setNightscoutConnected(true);
         setConnectionError("");
       }
-    } catch (err) {
+    } catch {
       setConnectionError("Network error");
       setNightscoutConnected(false);
     } finally {

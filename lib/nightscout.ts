@@ -134,7 +134,7 @@ export async function fetchTreatmentsFromNS(
   nsUrl: string,
   apiSecret: string,
   opts: { since?: number; until?: number; count?: number; eventType?: string },
-): Promise<Array<Record<string, unknown>>> {
+): Promise<Record<string, unknown>[]> {
   const params: Record<string, string> = {};
 
   if (opts.count) {
@@ -150,7 +150,7 @@ export async function fetchTreatmentsFromNS(
     params["find[eventType]"] = opts.eventType;
   }
 
-  return fetchFromNS<Array<Record<string, unknown>>>(
+  return fetchFromNS<Record<string, unknown>[]>(
     nsUrl,
     apiSecret,
     "/api/v1/treatments.json",

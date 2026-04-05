@@ -56,7 +56,7 @@ export function ScheduleStep({ runDays: initialDays, onNext, onBack }: ScheduleS
           return (
             <button
               key={index}
-              onClick={() => toggleDay(index)}
+              onClick={() => { toggleDay(index); }}
               className={`aspect-square rounded-lg border-2 font-semibold text-sm transition ${
                 isSelected
                   ? "bg-brand border-brand text-white"
@@ -85,7 +85,7 @@ export function ScheduleStep({ runDays: initialDays, onNext, onBack }: ScheduleS
           Back
         </button>
         <button
-          onClick={handleNext}
+          onClick={() => { void handleNext(); }}
           disabled={runDays.length === 0}
           className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >

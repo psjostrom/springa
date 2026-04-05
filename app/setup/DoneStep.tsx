@@ -22,14 +22,14 @@ export function DoneStep({ onComplete }: DoneStepProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-2xl font-bold text-text mb-2">You're all set!</h2>
+        <h2 className="text-2xl font-bold text-text mb-2">You&apos;re all set!</h2>
         <p className="text-muted mb-6">
-          Your account is ready. Let's start building your training plan.
+          Your account is ready. Let&apos;s start building your training plan.
         </p>
       </div>
 
       <button
-        onClick={handleComplete}
+        onClick={() => { void handleComplete(); }}
         disabled={completing}
         className="w-full py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50"
       >

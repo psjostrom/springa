@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
@@ -30,7 +29,6 @@ interface WizardData {
 }
 
 export default function SetupPage() {
-  const { data: session } = useSession();
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [data, setData] = useState<WizardData>({
@@ -88,7 +86,7 @@ export default function SetupPage() {
               updateData({ intervalsApiKey, ...profile });
               setStep(3);
             }}
-            onBack={() => setStep(1)}
+            onBack={() => { setStep(1); }}
           />
         )}
         {step === 3 && (
@@ -98,7 +96,7 @@ export default function SetupPage() {
               updateData({ runDays });
               setStep(4);
             }}
-            onBack={() => setStep(2)}
+            onBack={() => { setStep(2); }}
           />
         )}
         {step === 4 && (
@@ -110,8 +108,8 @@ export default function SetupPage() {
               updateData(goal);
               setStep(5);
             }}
-            onSkip={() => setStep(5)}
-            onBack={() => setStep(3)}
+            onSkip={() => { setStep(5); }}
+            onBack={() => { setStep(3); }}
           />
         )}
         {step === 5 && (
@@ -123,8 +121,8 @@ export default function SetupPage() {
               updateData(zones);
               setStep(6);
             }}
-            onSkip={() => setStep(6)}
-            onBack={() => setStep(4)}
+            onSkip={() => { setStep(6); }}
+            onBack={() => { setStep(4); }}
           />
         )}
         {step === 6 && (
@@ -140,7 +138,7 @@ export default function SetupPage() {
               updateData({ sugarMode: false });
               setStep(7);
             }}
-            onBack={() => setStep(5)}
+            onBack={() => { setStep(5); }}
           />
         )}
         {step === 7 && (
