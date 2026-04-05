@@ -134,10 +134,6 @@ export default function SetupPage() {
               updateData(sugarData);
               setStep(7);
             }}
-            onSkip={() => {
-              updateData({ sugarMode: false });
-              setStep(7);
-            }}
             onBack={() => { setStep(5); }}
           />
         )}
