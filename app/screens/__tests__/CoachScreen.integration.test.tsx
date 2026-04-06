@@ -17,7 +17,8 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
-// Mock the AI chat — we're testing suggestion rendering, not the chat transport
+// Mock the AI chat — third-party SDK that requires a real chat server, can't run in jsdom
+// eslint-disable-next-line no-restricted-syntax -- third-party SDK boundary (like native code)
 vi.mock("@ai-sdk/react", () => ({
   useChat: () => ({
     messages: [],
@@ -27,11 +28,12 @@ vi.mock("@ai-sdk/react", () => ({
   }),
 }));
 
+// eslint-disable-next-line no-restricted-syntax -- third-party SDK boundary
 vi.mock("ai", () => ({
   TextStreamChatTransport: vi.fn(),
 }));
 
-// Mock the useCoachData hook to avoid data fetching
+// eslint-disable-next-line no-restricted-syntax -- depends on AI SDK mock above; context is tested via atoms
 vi.mock("../../hooks/useCoachData", () => ({
   useCoachData: () => ({ context: "", isLoading: false }),
 }));

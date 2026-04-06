@@ -1,5 +1,5 @@
 /**
- * SMHI Open Data API — point forecast (PMP3g).
+ * SMHI Open Data API — point forecast (SNOW1g).
  * Free, no API key, CORS-enabled. Returns hourly forecasts ~10 days out.
  */
 
@@ -24,24 +24,24 @@ export interface SMHIWeather {
 const LAT = 59.28;
 const LON = 18.07;
 
-const SMHI_URL = `https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2/geotype/point/lon/${LON}/lat/${LAT}/data.json`;
+const SMHI_URL = `https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${LON}/lat/${LAT}/data.json`;
 
-interface SMHIParam {
-  name: string;
-  values: number[];
+interface SMHIData {
+  air_temperature: number;
+  wind_speed: number;
+  wind_speed_of_gust: number;
+  precipitation_amount_mean: number;
+  predominant_precipitation_type_at_surface: number;
+  [key: string]: number;
 }
 
 interface SMHITimeSeries {
-  validTime: string;
-  parameters: SMHIParam[];
+  time: string;
+  data: SMHIData;
 }
 
 interface SMHIResponse {
   timeSeries: SMHITimeSeries[];
-}
-
-function getParam(params: SMHIParam[], name: string): number {
-  return params.find((p) => p.name === name)?.values[0] ?? 0;
 }
 
 /**
@@ -61,12 +61,12 @@ export function calcFeelsLike(tempC: number, windMs: number): number {
 }
 
 function parseTimeSeries(entry: SMHITimeSeries): SMHIWeather {
-  const p = entry.parameters;
-  const temp = getParam(p, "t");
-  const windSpeed = getParam(p, "ws");
-  const windGust = getParam(p, "gust");
-  const precipitation = getParam(p, "pmean");
-  const precipCategory = getParam(p, "pcat");
+  const d = entry.data;
+  const temp = d.air_temperature;
+  const windSpeed = d.wind_speed;
+  const windGust = d.wind_speed_of_gust;
+  const precipitation = d.precipitation_amount_mean;
+  const precipCategory = d.predominant_precipitation_type_at_surface;
   return {
     temp,
     windSpeed,
@@ -74,7 +74,7 @@ function parseTimeSeries(entry: SMHITimeSeries): SMHIWeather {
     precipitation,
     precipCategory,
     feelsLike: calcFeelsLike(temp, windSpeed),
-    validTime: entry.validTime,
+    validTime: entry.time,
   };
 }
 
