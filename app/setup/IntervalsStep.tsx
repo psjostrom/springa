@@ -50,9 +50,27 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
 
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
-      <h2 className="text-2xl font-bold text-text mb-2">Connect Your Watch</h2>
-      <p className="text-muted mb-6">
-        Springa syncs workouts to your Garmin watch via Intervals.icu.
+      <h2 className="text-2xl font-bold text-text mb-4">Connect to Intervals.icu</h2>
+
+      {/* Data flow diagram */}
+      <div className="flex items-center justify-center gap-3 mb-3">
+        <div className="text-center">
+          <div className="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-1 text-lg">⌚</div>
+          <span className="text-[10px] text-muted">Watch</span>
+        </div>
+        <span className="text-muted text-sm">→</span>
+        <div className="text-center">
+          <div className="w-10 h-10 bg-brand/20 rounded-lg flex items-center justify-center mx-auto mb-1 text-[10px] font-bold text-brand">ICU</div>
+          <span className="text-[10px] text-muted">Intervals</span>
+        </div>
+        <span className="text-muted text-sm">↔</span>
+        <div className="text-center">
+          <div className="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center mx-auto mb-1 text-[10px] font-bold text-brand">S</div>
+          <span className="text-[10px] text-muted">Springa</span>
+        </div>
+      </div>
+      <p className="text-muted text-xs text-center mb-6">
+        Intervals.icu stores your training data and syncs workouts to your watch. Springa reads it to build and adjust your plan.
       </p>
 
       <div className="space-y-4">
