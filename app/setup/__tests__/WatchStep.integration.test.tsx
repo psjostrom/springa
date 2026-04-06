@@ -149,6 +149,73 @@ describe("WatchStep", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
+  it("calls onNext when Next is clicked in connected state", async () => {
+    const user = userEvent.setup();
+    global.fetch = mockFetch([
+      { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
+    ]);
+
+    render(<WatchStep onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your Garmin is connected/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onBack when Back is clicked", async () => {
+    const user = userEvent.setup();
+    render(<WatchStep onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("What watch do you use?")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows upload prompt when connected but uploadWorkouts is false", async () => {
+    global.fetch = mockFetch([
+      { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: false },
+    ]);
+
+    render(<WatchStep onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your Garmin is connected/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/To get planned workouts on your watch/i)).toBeInTheDocument();
+  });
+
+  it("shows combined message when multiple platforms are syncing", async () => {
+    global.fetch = mockFetch([
+      { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
+      { platform: "polar", linked: true, syncActivities: true, uploadWorkouts: false },
+    ]);
+
+    render(<WatchStep onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your Garmin & Polar is connected/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows error banner when fetch fails", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
+
+    render(<WatchStep onNext={onNext} onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Couldn't check your connections/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("What watch do you use?")).toBeInTheDocument();
+  });
+
   it("shows sync-off warning when platform is linked but sync disabled", async () => {
     global.fetch = mockFetch([
       { platform: "garmin", linked: true, syncActivities: false, uploadWorkouts: false },

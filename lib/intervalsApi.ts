@@ -70,7 +70,7 @@ export async function fetchConnectionStatus(apiKey: string): Promise<ConnectionS
     {
       platform: "garmin",
       linked: data.icu_garmin_health === true,
-      syncActivities: data.icu_garmin_sync_activities === true,
+      syncActivities: data.icu_garmin_health === true && data.icu_garmin_sync_activities === true,
       uploadWorkouts: data.icu_garmin_upload_workouts === true,
     },
     {

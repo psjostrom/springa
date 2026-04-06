@@ -119,6 +119,22 @@ describe("fetchConnectionStatus", () => {
     expect(polar?.syncActivities).toBe(false);
   });
 
+  it("does not false-positive on Garmin sync_activities when not linked", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(athleteResponse({
+        icu_garmin_health: false,
+        icu_garmin_sync_activities: true,
+        icu_garmin_upload_workouts: true,
+      })),
+    }));
+
+    const result = await fetchConnectionStatus("test-key");
+    const garmin = result.platforms.find((p) => p.platform === "garmin");
+    expect(garmin?.linked).toBe(false);
+    expect(garmin?.syncActivities).toBe(false);
+  });
+
   it("returns empty platforms on API error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 

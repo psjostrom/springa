@@ -35,18 +35,23 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
   const [platforms, setPlatforms] = useState<PlatformConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedWatch, setSelectedWatch] = useState<WatchType>(null);
 
-  const fetchConnections = async (setLoadingFalse = false) => {
+  const fetchConnections = async (initialLoad = false) => {
     try {
       const res = await fetch("/api/intervals/connections");
-      if (!res.ok) return;
+      if (!res.ok) {
+        setFetchError(true);
+        return;
+      }
       const data = (await res.json()) as { platforms: PlatformConnection[] };
       setPlatforms(data.platforms);
+      setFetchError(false);
     } catch {
-      // Network error — user can retry with "Check again"
+      setFetchError(true);
     } finally {
-      if (setLoadingFalse) setLoading(false);
+      if (initialLoad) setLoading(false);
     }
   };
 
@@ -146,6 +151,14 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
       {/* State 2: No connection — show watch selector */}
       {!isConnected && linkedButNotSyncing.length === 0 && !stravaOnly && (
         <div className="space-y-4">
+          {fetchError && (
+            <div className="flex items-start gap-3 bg-warning/10 border border-warning/20 rounded-lg p-4">
+              <AlertTriangle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-muted">
+                Couldn&apos;t check your connections. Select your watch below and use &quot;Check again&quot; to retry.
+              </p>
+            </div>
+          )}
           <p className="text-muted text-sm">
             Springa needs your watch connected to Intervals.icu to read your runs.
           </p>
