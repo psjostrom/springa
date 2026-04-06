@@ -127,7 +127,7 @@ export async function fetchActivityById(
   activityId: string,
 ): Promise<IntervalsActivity | null> {
   try {
-    const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+    const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
       headers: { Authorization: authHeader(apiKey) },
     });
     if (!res.ok) return null;
@@ -173,7 +173,8 @@ export async function fetchStreams(
     "distance",
     "latlng",
   ].join(",");
-  const url = `${API_BASE}/activity/${activityId}/streams?keys=${keys}`;
+  const safeId = encodeURIComponent(activityId);
+  const url = `${API_BASE}/activity/${safeId}/streams?keys=${keys}`;
 
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
     try {
@@ -182,12 +183,12 @@ export async function fetchStreams(
         return (await res.json()) as IntervalsStream[];
       }
       if (res.status === 429 && attempt < RETRY_DELAYS.length) {
-        console.warn(`Rate limited on activity ${activityId}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
+        console.warn(`Rate limited on activity ${safeId}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
         await sleep(RETRY_DELAYS[attempt]);
         continue;
       }
       console.warn(
-        `Failed to fetch streams for activity ${activityId}: ${res.status} ${res.statusText}`,
+        `Failed to fetch streams for activity ${safeId}: ${res.status} ${res.statusText}`,
       );
       return [];
     } catch (e) {
@@ -195,7 +196,7 @@ export async function fetchStreams(
         await sleep(RETRY_DELAYS[attempt]);
         continue;
       }
-      console.warn(`Error fetching streams for activity ${activityId}:`, e);
+      console.warn(`Error fetching streams for activity ${safeId}:`, e);
       return [];
     }
   }
@@ -402,7 +403,7 @@ export async function pairEventWithActivity(
 ): Promise<void> {
   const auth = authHeader(apiKey);
   // Intervals.icu ignores paired_activity_id on event PUT — pairing is set via the activity side
-  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
     body: JSON.stringify({ paired_event_id: eventId }),
@@ -421,7 +422,7 @@ export async function updateEvent(
   updates: { start_date_local?: string; name?: string; description?: string; carbs_per_hour?: number },
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+  const res = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(eventId))}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
     body: JSON.stringify(updates),
@@ -439,7 +440,8 @@ export async function deleteEvent(
   eventId: number,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/athlete/0/events/${eventId}`, {
+  const safeId = encodeURIComponent(String(eventId));
+  const res = await fetch(`${API_BASE}/athlete/0/events/${safeId}`, {
     method: "DELETE",
     headers: { Authorization: auth },
   });
@@ -454,7 +456,7 @@ export async function deleteActivity(
   activityId: string,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "DELETE",
     headers: { Authorization: auth },
   });
@@ -621,7 +623,7 @@ export async function updateActivityPreRunCarbs(
   carbsG: number | null,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
     body: JSON.stringify({ PreRunCarbsG: carbsG ?? 0 }),
@@ -639,7 +641,7 @@ export async function updateActivityFeedback(
   comment?: string,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
     body: JSON.stringify({ Rating: rating, FeedbackComment: comment ?? "" }),
@@ -656,7 +658,7 @@ export async function updateActivityCarbs(
   carbsIngested: number,
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/activity/${activityId}`, {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "PUT",
     headers: { Authorization: auth, "Content-Type": "application/json" },
     body: JSON.stringify({ carbs_ingested: carbsIngested }),
@@ -744,7 +746,7 @@ export async function fetchPaceCurves(apiKey: string, curveId = "all"): Promise<
   try {
     const auth = authHeader(apiKey);
     const now = new Date().toISOString();
-    const url = `${API_BASE}/athlete/0/pace-curves?curves=${curveId}&type=Run&newest=${encodeURIComponent(now)}`;
+    const url = `${API_BASE}/athlete/0/pace-curves?curves=${encodeURIComponent(curveId)}&type=Run&newest=${encodeURIComponent(now)}`;
 
     const res = await fetch(url, { headers: { Authorization: auth } });
     if (!res.ok) return null;
