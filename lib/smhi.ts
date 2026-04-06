@@ -1,5 +1,5 @@
 /**
- * SMHI Open Data API — point forecast (PMP3g).
+ * SMHI Open Data API — point forecast (SNOW1g).
  * Free, no API key, CORS-enabled. Returns hourly forecasts ~10 days out.
  */
 

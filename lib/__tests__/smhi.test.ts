@@ -1,6 +1,91 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 import { getWeatherForTime, calcFeelsLike } from "../smhi";
 import type { SMHIWeather } from "../smhi";
+
+const SMHI_URL =
+  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/18.07/lat/59.28/data.json";
+
+function snow1gResponse(entries: { time: string; temp: number; ws: number; gust: number; pmean: number; pcat: number }[]) {
+  return {
+    createdTime: "2026-04-06T12:00:00Z",
+    referenceTime: "2026-04-06T12:00:00Z",
+    geometry: { type: "Point", coordinates: [[18.07, 59.28]] },
+    timeSeries: entries.map((e) => ({
+      time: e.time,
+      data: {
+        air_temperature: e.temp,
+        wind_speed: e.ws,
+        wind_speed_of_gust: e.gust,
+        precipitation_amount_mean: e.pmean,
+        predominant_precipitation_type_at_surface: e.pcat,
+        relative_humidity: 70,
+        air_pressure_at_mean_sea_level: 1013,
+        thunderstorm_probability: 0,
+        probability_of_frozen_precipitation: 0,
+        cloud_area_fraction: 4,
+        low_type_cloud_area_fraction: 2,
+        medium_type_cloud_area_fraction: 1,
+        high_type_cloud_area_fraction: 1,
+        cloud_base_altitude: 2000,
+        cloud_top_altitude: 3000,
+        precipitation_amount_mean_deterministic: e.pmean,
+        precipitation_amount_min: 0,
+        precipitation_amount_max: e.pmean * 2,
+        precipitation_amount_median: e.pmean,
+        probability_of_precipitation: e.pmean > 0 ? 50 : 0,
+        precipitation_frozen_part: -9,
+        symbol_code: 1,
+        visibility_in_air: 30,
+        wind_from_direction: 180,
+      },
+    })),
+  };
+}
+
+const server = setupServer();
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+describe("fetchForecast", () => {
+  it("parses snow1g API response into SMHIWeather", async () => {
+    server.use(
+      http.get(SMHI_URL, () =>
+        HttpResponse.json(
+          snow1gResponse([
+            { time: "2026-04-06T12:00:00Z", temp: 8.5, ws: 4.2, gust: 7.1, pmean: 0.5, pcat: 3 },
+            { time: "2026-04-06T13:00:00Z", temp: 9.0, ws: 3.8, gust: 6.5, pmean: 0, pcat: 0 },
+          ]),
+        ),
+      ),
+    );
+
+    // Dynamic import to bypass module-level cache from other tests
+    const { fetchForecast } = await import("../smhi");
+    const result = await fetchForecast();
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      temp: 8.5,
+      windSpeed: 4.2,
+      windGust: 7.1,
+      precipitation: 0.5,
+      precipCategory: 3,
+      validTime: "2026-04-06T12:00:00Z",
+    });
+    expect(result[0].feelsLike).toBeLessThan(8.5);
+  });
+
+  it("throws on API error", async () => {
+    server.use(http.get(SMHI_URL, () => new HttpResponse(null, { status: 500 })));
+
+    vi.resetModules();
+    const { fetchForecast } = await import("../smhi");
+    await expect(fetchForecast()).rejects.toThrow("SMHI API error: 500");
+  });
+});
 
 function entry(isoTime: string, overrides: Partial<SMHIWeather> = {}): SMHIWeather {
   return {
