@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useAtomValue } from "jotai";
 import { Droplets, Clock, Heart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import { buildReportCard } from "@/lib/reportCard";
+import { diabetesModeAtom } from "../atoms";
 
 const RATING_COLORS = {
   good: "var(--color-success)",
@@ -110,9 +112,10 @@ interface RunReportCardProps {
 }
 
 export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunReportCardProps) {
+  const diabetesMode = useAtomValue(diabetesModeAtom);
   if (event.type !== "completed") return null;
 
-  const report = buildReportCard(event, runBGContext);
+  const report = buildReportCard(event, runBGContext, diabetesMode);
   const streamLoading = isLoadingStreamData && !event.streamData;
 
   // Nothing to show and not loading

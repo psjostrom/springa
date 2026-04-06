@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
-import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
+import type { CalendarEvent, PaceTable, PaceCurveData, WorkoutEvent } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { EnrichedActivity } from "@/lib/activityStreamsDb";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -12,7 +12,6 @@ import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
 import { recalcTotalCarbs } from "@/lib/workoutMath";
 import { wellnessToFitnessData } from "@/lib/fitness";
-import type { InsulinContext } from "@/lib/insulinContext";
 import type { PhaseInfo } from "./hooks/usePhaseInfo";
 import {
   extractZoneSegments,
@@ -25,7 +24,11 @@ import {
 export const settingsAtom = atom<UserSettings | null>(null);
 export const settingsLoadingAtom = atom(true);
 
+/** Pre-generated plan from wizard completion. Consumed once by PlannerScreen, then cleared. */
+export const generatedPlanAtom = atom<WorkoutEvent[]>([]);
+
 export const apiKeyAtom = atom((get) => get(settingsAtom)?.intervalsApiKey ?? "");
+export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);
 
 export const updateSettingsAtom = atom(
   null,
@@ -82,10 +85,6 @@ export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
 export const runBGContextsAtom = atom<Map<string, RunBGContext>>(new Map());
 export const cachedActivitiesAtom = atom<EnrichedActivity[]>([]);
 
-// ─── Insulin Context ─────────────────────────────────────────
-
-export const insulinContextAtom = atom<InsulinContext | null>(null);
-
 // ─── Wellness ────────────────────────────────────────────────
 
 export const wellnessEntriesAtom = atom<WellnessEntry[]>([]);
@@ -104,9 +103,8 @@ export const currentTsbAtom = atom<number | null>((get) => {
   return data.length > 0 ? data[data.length - 1].tsb : null;
 });
 
-export const currentIobAtom = atom<number | null>((get) => {
-  return get(insulinContextAtom)?.actionableIOB ?? null;
-});
+// MyLife scraper removed — IOB is no longer available, always null
+export const currentIobAtom = atom<number | null>(null);
 
 export const enrichedEventsAtom = atom((get) => {
   const events = enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom));
@@ -194,3 +192,6 @@ export const updateWidgetLayoutAtom = atom(
     );
   },
 );
+
+/** Cross-component tab switch request. Set by PlannerScreen, consumed by page.tsx. */
+export const switchTabAtom = atom<string | null>(null);

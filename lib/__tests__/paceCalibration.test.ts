@@ -223,16 +223,21 @@ describe("buildCalibratedPaceTable", () => {
 });
 
 describe("computeZonePaceTrend", () => {
+  /** Return an ISO date string N days ago from now. */
+  function daysAgo(n: number): string {
+    return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+
   function trendSeg(zone: "easy" | "steady" | "tempo", pace: number, date: string): ZoneSegment {
     return { zone, avgPace: pace, avgHr: 140, durationMin: 5, activityId: "a1", activityDate: date };
   }
 
   it("returns negative slope when getting faster", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 7.5, "2026-01-01"),
-      trendSeg("easy", 7.3, "2026-01-10"),
-      trendSeg("easy", 7.1, "2026-01-20"),
-      trendSeg("easy", 6.9, "2026-01-30"),
+      trendSeg("easy", 7.5, daysAgo(60)),
+      trendSeg("easy", 7.3, daysAgo(45)),
+      trendSeg("easy", 7.1, daysAgo(30)),
+      trendSeg("easy", 6.9, daysAgo(15)),
     ];
 
     const trend = computeZonePaceTrend(segments, "easy");
@@ -242,10 +247,10 @@ describe("computeZonePaceTrend", () => {
 
   it("returns positive slope when getting slower", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 6.5, "2026-01-01"),
-      trendSeg("easy", 6.8, "2026-01-10"),
-      trendSeg("easy", 7.0, "2026-01-20"),
-      trendSeg("easy", 7.2, "2026-01-30"),
+      trendSeg("easy", 6.5, daysAgo(60)),
+      trendSeg("easy", 6.8, daysAgo(45)),
+      trendSeg("easy", 7.0, daysAgo(30)),
+      trendSeg("easy", 7.2, daysAgo(15)),
     ];
 
     const trend = computeZonePaceTrend(segments, "easy");
@@ -255,8 +260,8 @@ describe("computeZonePaceTrend", () => {
 
   it("returns null with fewer than 3 segments", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 7.5, "2026-01-01"),
-      trendSeg("easy", 7.3, "2026-01-15"),
+      trendSeg("easy", 7.5, daysAgo(30)),
+      trendSeg("easy", 7.3, daysAgo(15)),
     ];
 
     expect(computeZonePaceTrend(segments, "easy")).toBeNull();
@@ -264,9 +269,9 @@ describe("computeZonePaceTrend", () => {
 
   it("returns null when time span is less than 14 days", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 7.5, "2026-01-01"),
-      trendSeg("easy", 7.3, "2026-01-05"),
-      trendSeg("easy", 7.1, "2026-01-10"),
+      trendSeg("easy", 7.5, daysAgo(13)),
+      trendSeg("easy", 7.3, daysAgo(8)),
+      trendSeg("easy", 7.1, daysAgo(3)),
     ];
 
     expect(computeZonePaceTrend(segments, "easy")).toBeNull();
@@ -274,10 +279,10 @@ describe("computeZonePaceTrend", () => {
 
   it("only considers segments for the requested zone", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 7.5, "2026-01-01"),
-      trendSeg("steady", 5.5, "2026-01-10"), // different zone
-      trendSeg("easy", 7.3, "2026-01-15"),
-      trendSeg("easy", 7.1, "2026-01-25"),
+      trendSeg("easy", 7.5, daysAgo(60)),
+      trendSeg("steady", 5.5, daysAgo(45)), // different zone
+      trendSeg("easy", 7.3, daysAgo(30)),
+      trendSeg("easy", 7.1, daysAgo(15)),
     ];
 
     const trend = computeZonePaceTrend(segments, "easy");
@@ -287,9 +292,9 @@ describe("computeZonePaceTrend", () => {
 
   it("respects windowDays parameter", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("easy", 7.5, "2025-01-01"), // way outside 90 day window
-      trendSeg("easy", 7.3, "2025-01-15"),
-      trendSeg("easy", 7.1, "2025-01-25"),
+      trendSeg("easy", 7.5, daysAgo(200)),
+      trendSeg("easy", 7.3, daysAgo(180)),
+      trendSeg("easy", 7.1, daysAgo(160)),
     ];
 
     // All outside 90-day window from now → null

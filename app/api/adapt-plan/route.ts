@@ -11,6 +11,7 @@ import type { FitnessInsights } from "@/lib/fitness";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
+import { getUserSettings } from "@/lib/settings";
 
 interface RequestBody {
   upcomingEvents: CalendarEvent[];
@@ -62,7 +63,10 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const patterns = await getBGPatterns(email);
+  // Check sugar mode — skip fuel adaptations when off
+  const settings = await getUserSettings(email);
+
+  const patterns = settings.diabetesMode ? await getBGPatterns(email) : null;
 
   // Build feedback map from CalendarEvent custom fields
   const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();
@@ -78,11 +82,12 @@ export async function POST(req: Request) {
   }
 
   // 1. Apply rule-based adaptations (fuel + swap)
+  // When sugar mode is off, pass null bgModel to skip fuel adaptations
   const adapted = applyAdaptations({
     upcomingEvents,
-    bgModel,
+    bgModel: settings.diabetesMode ? bgModel : null,
     insights,
-    runBGContexts,
+    runBGContexts: settings.diabetesMode ? runBGContexts : {},
     lthr,
     hrZones,
   });

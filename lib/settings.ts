@@ -17,8 +17,7 @@ export interface UserSettings {
   warmthPreference?: number;
 
   // Multi-user fields
-  approved?: boolean;
-  sugarMode?: boolean;
+  diabetesMode?: boolean;
   displayName?: string;
   timezone?: string;
   runDays?: number[];
@@ -26,8 +25,8 @@ export interface UserSettings {
 
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsApiKey?: string;
+  nightscoutUrl?: string;
   nightscoutConnected?: boolean;
-  mylifeConnected?: boolean;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -39,8 +38,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
     sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
-                 approved, sugar_mode, display_name, timezone, run_days, onboarding_complete,
-                 intervals_api_key, mylife_email, nightscout_secret
+                 diabetes_mode, display_name, timezone, run_days, onboarding_complete,
+                 intervals_api_key, nightscout_url, nightscout_secret
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -59,16 +58,14 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.warmth_preference != null) settings.warmthPreference = row.warmth_preference as number;
 
   // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
-  settings.approved = (row.approved as number | null ?? 0) === 1;
-  settings.sugarMode = (row.sugar_mode as number | null ?? 0) === 1;
+  settings.diabetesMode = (row.diabetes_mode as number | null ?? 0) === 1;
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
   if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
   settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
 
-  // Derived boolean flags (actual credentials decrypted separately via getUserCredentials)
-  settings.nightscoutConnected = !!row.nightscout_secret;
-  settings.mylifeConnected = !!row.mylife_email;
+  // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
+  settings.nightscoutConnected = !!(row.nightscout_url && row.nightscout_secret);
 
   return settings;
 }
@@ -77,32 +74,36 @@ export async function saveUserSettings(
   email: string,
   partial: Partial<UserSettings>,
 ): Promise<void> {
+  // Step 1: Ensure user row exists (diabetes_mode and onboarding_complete use DEFAULT 0)
   await db().execute({
-    sql: `INSERT INTO user_settings (email, race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets, bg_chart_window, include_base_phase, warmth_preference)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(email) DO UPDATE SET
-            race_date = COALESCE(excluded.race_date, race_date),
-            race_name = COALESCE(excluded.race_name, race_name),
-            race_dist = COALESCE(excluded.race_dist, race_dist),
-            total_weeks = COALESCE(excluded.total_weeks, total_weeks),
-            start_km = COALESCE(excluded.start_km, start_km),
-            widget_order = COALESCE(excluded.widget_order, widget_order),
-            hidden_widgets = COALESCE(excluded.hidden_widgets, hidden_widgets),
-            bg_chart_window = COALESCE(excluded.bg_chart_window, bg_chart_window),
-            include_base_phase = COALESCE(excluded.include_base_phase, include_base_phase),
-            warmth_preference = COALESCE(excluded.warmth_preference, warmth_preference)`,
-    args: [
-      email,
-      partial.raceDate ?? null,
-      partial.raceName ?? null,
-      partial.raceDist ?? null,
-      partial.totalWeeks ?? null,
-      partial.startKm ?? null,
-      partial.widgetOrder ? JSON.stringify(partial.widgetOrder) : null,
-      partial.hiddenWidgets ? JSON.stringify(partial.hiddenWidgets) : null,
-      partial.bgChartWindow ?? null,
-      partial.includeBasePhase !== undefined ? (partial.includeBasePhase ? 1 : 0) : null,
-      partial.warmthPreference ?? null,
-    ],
+    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
+    args: [email],
   });
+
+  // Step 2: Update only the fields that were provided
+  const sets: string[] = [];
+  const args: (string | number | null)[] = [];
+
+  if (partial.raceDate !== undefined) { sets.push("race_date = ?"); args.push(partial.raceDate ?? null); }
+  if (partial.raceName !== undefined) { sets.push("race_name = ?"); args.push(partial.raceName ?? null); }
+  if (partial.raceDist !== undefined) { sets.push("race_dist = ?"); args.push(partial.raceDist ?? null); }
+  if (partial.totalWeeks !== undefined) { sets.push("total_weeks = ?"); args.push(partial.totalWeeks ?? null); }
+  if (partial.startKm !== undefined) { sets.push("start_km = ?"); args.push(partial.startKm ?? null); }
+  if (partial.widgetOrder !== undefined) { sets.push("widget_order = ?"); args.push(JSON.stringify(partial.widgetOrder)); }
+  if (partial.hiddenWidgets !== undefined) { sets.push("hidden_widgets = ?"); args.push(JSON.stringify(partial.hiddenWidgets)); }
+  if (partial.bgChartWindow !== undefined) { sets.push("bg_chart_window = ?"); args.push(partial.bgChartWindow ?? null); }
+  if (partial.includeBasePhase !== undefined) { sets.push("include_base_phase = ?"); args.push(partial.includeBasePhase ? 1 : 0); }
+  if (partial.warmthPreference !== undefined) { sets.push("warmth_preference = ?"); args.push(partial.warmthPreference); }
+  if (partial.diabetesMode !== undefined) { sets.push("diabetes_mode = ?"); args.push(partial.diabetesMode ? 1 : 0); }
+  if (partial.displayName !== undefined) { sets.push("display_name = ?"); args.push(partial.displayName ?? null); }
+  if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(JSON.stringify(partial.runDays)); }
+  if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
+
+  if (sets.length > 0) {
+    args.push(email);
+    await db().execute({
+      sql: `UPDATE user_settings SET ${sets.join(", ")} WHERE email = ?`,
+      args,
+    });
+  }
 }

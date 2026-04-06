@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { AlertTriangle, TrendingDown, Zap, Timer } from "lucide-react";
 import { simulateBG, type SimulationResult } from "@/lib/bgSimulation";
+import { getCurrentFuelRate, getFuelConfidence } from "@/lib/fuelRate";
 import type { WorkoutCategory } from "@/lib/types";
 import { BGSimChart } from "../components/BGSimChart";
+import { EmptyState } from "../components/EmptyState";
 import { bgModelAtom, bgModelLoadingAtom } from "../atoms";
 
 const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
@@ -14,14 +16,19 @@ const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
   { key: "interval", label: "Interval", color: "#fb923c" },
 ];
 
+const FUEL_STEP = 4;
+const snapToStep = (v: number) => Math.round(v / FUEL_STEP) * FUEL_STEP;
+
 export function SimulateScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const [category, setCategory] = useState<WorkoutCategory>("easy");
   const [durationMin, setDurationMin] = useState(45);
   const [startBG, setStartBG] = useState(9.0);
-  const [fuelRate, setFuelRate] = useState(60);
-  const [fuelKnown, setFuelKnown] = useState(true);
+  const [fuelOverride, setFuelOverride] = useState<number | null>(null);
+  const modelFuelRate = snapToStep(getCurrentFuelRate(category, bgModel));
+  const fuelRate = fuelOverride ?? modelFuelRate;
+  const fuelConfidence = getFuelConfidence(category, bgModel);
 
   const result: SimulationResult | null = useMemo(() => {
     if (!bgModel || bgModel.activitiesAnalyzed === 0) return null;
@@ -29,10 +36,10 @@ export function SimulateScreen() {
       startBG,
       entrySlope: null,
       segments: [{ durationMin, category }],
-      fuelRateGH: fuelKnown ? fuelRate : null,
+      fuelRateGH: fuelRate,
       bgModel,
     });
-  }, [bgModel, category, durationMin, startBG, fuelRate, fuelKnown]);
+  }, [bgModel, category, durationMin, startBG, fuelRate]);
 
   if (bgModelLoading) {
     return (
@@ -44,8 +51,14 @@ export function SimulateScreen() {
 
   if (!bgModel || bgModel.activitiesAnalyzed === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-muted px-6 text-center">
-        No BG data yet. Complete some runs with glucose data to enable simulation.
+      <div className="h-full flex items-center justify-center px-6">
+        <EmptyState message="Complete a few runs with CGM data to unlock BG simulation">
+          <svg width="100%" height="120" viewBox="0 0 300 120" className="text-muted">
+            <path d="M10,80 Q40,40 80,60 T150,50 T220,70 T290,40" stroke="currentColor" strokeWidth="2" fill="none"/>
+            <line x1="10" y1="100" x2="290" y2="100" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+            <line x1="10" y1="20" x2="10" y2="100" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+          </svg>
+        </EmptyState>
       </div>
     );
   }
@@ -60,7 +73,7 @@ export function SimulateScreen() {
           {CATEGORIES.map(({ key, label, color }) => (
             <button
               key={key}
-              onClick={() => { setCategory(key); }}
+              onClick={() => { setCategory(key); setFuelOverride(null); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 category === key
                   ? "text-text shadow-lg"
@@ -118,25 +131,23 @@ export function SimulateScreen() {
             <input
               type="range"
               min={0}
-              max={120}
-              step={4}
+              max={80}
+              step={FUEL_STEP}
               value={fuelRate}
-              onChange={(e) => { setFuelRate(Number(e.target.value)); }}
-              disabled={!fuelKnown}
-              className="w-full accent-brand disabled:opacity-30"
+              onChange={(e) => { setFuelOverride(Number(e.target.value)); }}
+              className="w-full accent-brand"
             />
             <div className="flex items-center gap-2">
-              <span className="text-sm text-text">{fuelKnown ? `${fuelRate} g/h` : "Unknown"}</span>
-              <button
-                onClick={() => { setFuelKnown(!fuelKnown); }}
-                className={`text-xs px-1.5 py-0.5 rounded transition ${
-                  fuelKnown
-                    ? "bg-tint-success text-text"
-                    : "bg-tint-warning text-text"
-                }`}
-              >
-                {fuelKnown ? "known" : "unknown"}
-              </button>
+              <span className="text-sm text-text">{fuelRate} g/h</span>
+              {fuelConfidence && (
+                <span className={`text-xs px-1.5 py-0.5 rounded ${
+                  fuelConfidence === "high" ? "bg-tint-success text-text"
+                    : fuelConfidence === "medium" ? "bg-tint-warning text-text"
+                    : "bg-surface text-muted"
+                }`}>
+                  {fuelConfidence}
+                </span>
+              )}
             </div>
           </label>
         </div>

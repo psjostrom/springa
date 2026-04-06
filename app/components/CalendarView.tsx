@@ -29,6 +29,7 @@ import { EventModal } from "./EventModal";
 import { DayCell } from "./DayCell";
 import { AgendaView } from "./AgendaView";
 import { WorkoutGenerator } from "./WorkoutGenerator";
+import { EmptyState } from "./EmptyState";
 import { useDragDrop } from "../hooks/useDragDrop";
 import { useWeather } from "../hooks/useWeather";
 import { ErrorCard } from "./ErrorCard";
@@ -311,6 +312,21 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           </div>
         )}
 
+        {!isLoadingInitial && !initialError && events.length === 0 && (
+          <EmptyState message="Generate a training plan to fill your calendar">
+            <svg width="100%" height="160" viewBox="0 0 350 160" className="text-muted">
+              {[0,1,2,3,4,5,6].map(col => (
+                <g key={col}>
+                  <rect x={col * 50 + 2} y="10" width="46" height="20" rx="3" fill="currentColor" opacity="0.15"/>
+                  {[0,1,2,3].map(row => (
+                    <rect key={row} x={col * 50 + 2} y={row * 35 + 35} width="46" height="30" rx="3" fill="currentColor" opacity={row === 1 && (col === 2 || col === 4 || col === 6) ? "0.2" : "0.08"}/>
+                  ))}
+                </g>
+              ))}
+            </svg>
+          </EmptyState>
+        )}
+
         {dragError && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-text text-sm flex items-center justify-between">
             <span>{dragError}</span>
@@ -318,7 +334,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           </div>
         )}
 
-        {!isLoadingInitial && !initialError && viewMode === "month" && (
+        {!isLoadingInitial && !initialError && events.length > 0 && viewMode === "month" && (
           <div className="calendar-grid">
             <div className="grid grid-cols-7 gap-px bg-border border border-border">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
@@ -338,7 +354,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           </div>
         )}
 
-        {!isLoadingInitial && !initialError && viewMode === "week" && (
+        {!isLoadingInitial && !initialError && events.length > 0 && viewMode === "week" && (
           <div className="calendar-grid">
             <div className="grid grid-cols-7 gap-px bg-border border border-border">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
@@ -358,7 +374,7 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           </div>
         )}
 
-        {!isLoadingInitial && !initialError && viewMode === "agenda" && (
+        {!isLoadingInitial && !initialError && events.length > 0 && viewMode === "agenda" && (
           <div
             className="flex-1 overflow-y-auto"
           >

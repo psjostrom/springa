@@ -30,8 +30,7 @@ async function migrate() {
 
   // 1. ALTER TABLE — add new columns (idempotent)
   const alters = [
-    "ALTER TABLE user_settings ADD COLUMN approved INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE user_settings ADD COLUMN sugar_mode INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE user_settings ADD COLUMN diabetes_mode INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE user_settings ADD COLUMN display_name TEXT",
     "ALTER TABLE user_settings ADD COLUMN timezone TEXT DEFAULT 'Europe/Stockholm'",
     "ALTER TABLE user_settings ADD COLUMN intervals_api_key TEXT",
@@ -69,8 +68,7 @@ async function migrate() {
   // 4. Update existing user
   await db.execute({
     sql: `UPDATE user_settings SET
-      approved = 1,
-      sugar_mode = 1,
+      diabetes_mode = 1,
       onboarding_complete = 1,
       timezone = 'Europe/Stockholm',
       intervals_api_key = ?,

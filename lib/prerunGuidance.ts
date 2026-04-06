@@ -8,7 +8,7 @@ import { assessReadiness, formatGuidancePush } from "./prerun";
 interface PrerunGuidanceInput {
   event: IntervalsEvent;
   readings: BGReading[];
-  bgModel: BGResponseModel;
+  bgModel: BGResponseModel | null;
   currentTsb: number | null;
   currentIob: number | null;
   now: number;

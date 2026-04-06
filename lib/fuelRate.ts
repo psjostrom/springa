@@ -10,11 +10,16 @@ export const DEFAULT_FUEL: Record<WorkoutCategory, number> = {
 /**
  * Single canonical resolution for fuel rate (g/h) by workout category.
  * Priority: BG model target → category average → default (60).
+ * Returns 0 when diabetesMode is explicitly false.
  */
 export function getCurrentFuelRate(
   category: WorkoutCategory,
   bgModel: BGResponseModel | null | undefined,
+  diabetesMode?: boolean,
 ): number {
+  // When diabetes mode is explicitly off, skip fuel entirely
+  if (diabetesMode === false) return 0;
+
   if (bgModel) {
     const target = bgModel.targetFuelRates.find((t) => t.category === category);
     if (target) return Math.round(target.targetFuelRate);

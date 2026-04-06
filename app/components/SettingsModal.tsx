@@ -21,6 +21,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
   const [warmthPreference, setWarmthPreference] = useState(settings.warmthPreference ?? 0);
+  const [diabetesMode, setSugarMode] = useState(settings.diabetesMode ?? false);
+  const [nightscoutUrl, setNightscoutUrl] = useState(settings.nightscoutUrl ?? "");
+  const [nightscoutSecret, setNightscoutSecret] = useState("");
+  const [nightscoutConnected, setNightscoutConnected] = useState(settings.nightscoutConnected ?? false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -35,9 +41,48 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
+  const handleTestConnection = async () => {
+    if (!nightscoutUrl || !nightscoutSecret) {
+      setConnectionError("Both URL and API secret are required");
+      return;
+    }
+
+    setTestingConnection(true);
+    setConnectionError("");
+
+    try {
+      const res = await fetch("/api/settings/validate-ns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nightscoutUrl: nightscoutUrl.trim(),
+          nightscoutSecret: nightscoutSecret.trim(),
+        }),
+      });
+
+      const data = (await res.json()) as { valid: boolean; error?: string };
+      if (!res.ok || !data.valid) {
+        setConnectionError(data.error ?? "Connection failed");
+        setNightscoutConnected(false);
+      } else {
+        setNightscoutConnected(true);
+        setConnectionError("");
+      }
+    } catch {
+      setConnectionError("Network error");
+      setNightscoutConnected(false);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    const updates: Partial<UserSettings> = {};
+    const updates: Partial<UserSettings> & {
+      nightscoutUrl?: string | null;
+      nightscoutSecret?: string | null;
+    } = {};
+
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate;
     }
@@ -68,6 +113,20 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     if (warmthPreference !== (settings.warmthPreference ?? 0)) {
       updates.warmthPreference = warmthPreference;
     }
+    if (diabetesMode !== (settings.diabetesMode ?? false)) {
+      updates.diabetesMode = diabetesMode;
+    }
+
+    // Nightscout credentials (only send if changed)
+    if (diabetesMode) {
+      if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
+        updates.nightscoutUrl = nightscoutUrl.trim();
+      }
+      if (nightscoutSecret.trim()) {
+        updates.nightscoutSecret = nightscoutSecret.trim();
+      }
+    }
+
     if (Object.keys(updates).length > 0) {
       await onSave(updates);
     }
@@ -192,6 +251,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   <button
                     type="button"
                     role="switch"
+                    aria-label="Include base phase"
                     aria-checked={includeBasePhase && !baseDisabled}
                     disabled={baseDisabled}
                     onClick={() => { if (!baseDisabled) setIncludeBasePhase(!includeBasePhase); }}
@@ -263,6 +323,77 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
               >
                 Reset to neutral
               </button>
+            )}
+          </div>
+
+          {/* Sugar Mode */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-label="Manage diabetes"
+                aria-checked={diabetesMode}
+                onClick={() => { setSugarMode(!diabetesMode); }}
+                className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                  diabetesMode ? "bg-brand" : "bg-surface-alt"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    diabetesMode ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-muted">
+                  Manage diabetes
+                </label>
+                <p className="text-xs text-muted mt-0.5 leading-relaxed">
+                  Enable CGM data sync and BG management features
+                </p>
+              </div>
+            </div>
+
+            {diabetesMode && (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">Nightscout URL</label>
+                  <input
+                    type="text"
+                    value={nightscoutUrl}
+                    onChange={(e) => { setNightscoutUrl(e.target.value); setConnectionError(""); }}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                    placeholder="https://your-site.herokuapp.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">API Secret</label>
+                  <input
+                    type="password"
+                    value={nightscoutSecret}
+                    onChange={(e) => { setNightscoutSecret(e.target.value); setConnectionError(""); }}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
+                    placeholder={nightscoutConnected ? "••••••••" : "Enter API secret"}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { void handleTestConnection(); }}
+                    disabled={testingConnection || !nightscoutUrl || !nightscoutSecret}
+                    className="px-4 py-2 bg-border border border-border rounded-lg text-sm text-brand hover:bg-border transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingConnection ? "Testing..." : "Test Connection"}
+                  </button>
+                  {nightscoutConnected && !connectionError && (
+                    <span className="text-sm text-success">✓ Connected</span>
+                  )}
+                  {connectionError && (
+                    <span className="text-sm text-error">✗ {connectionError}</span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 

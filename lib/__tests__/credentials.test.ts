@@ -72,19 +72,19 @@ describe("getUserCredentials", () => {
   it("returns decrypted credentials", async () => {
     const encKey = TEST_KEY;
     const encApiKey = encrypt("intervals-key-123", encKey);
-    const encPassword = encrypt("mylife-pass", encKey);
+    const encNsSecret = encrypt("ns-secret-456", encKey);
 
     await holder.db.execute({
-      sql: `INSERT INTO user_settings (email, intervals_api_key, mylife_email, mylife_password, timezone)
+      sql: `INSERT INTO user_settings (email, intervals_api_key, nightscout_url, nightscout_secret, timezone)
             VALUES (?, ?, ?, ?, ?)`,
-      args: [EMAIL, encApiKey, "user@mylife.com", encPassword, "Europe/London"],
+      args: [EMAIL, encApiKey, "https://ns.example.com", encNsSecret, "Europe/London"],
     });
 
     const creds = await getUserCredentials(EMAIL);
     expect(creds).not.toBeNull();
     expect(creds!.intervalsApiKey).toBe("intervals-key-123");
-    expect(creds!.mylifeEmail).toBe("user@mylife.com");
-    expect(creds!.mylifePassword).toBe("mylife-pass");
+    expect(creds!.nightscoutUrl).toBe("https://ns.example.com");
+    expect(creds!.nightscoutSecret).toBe("ns-secret-456");
     expect(creds!.timezone).toBe("Europe/London");
   });
 
@@ -96,8 +96,8 @@ describe("getUserCredentials", () => {
 
     const creds = await getUserCredentials(EMAIL);
     expect(creds!.intervalsApiKey).toBeNull();
-    expect(creds!.mylifeEmail).toBeNull();
-    expect(creds!.mylifePassword).toBeNull();
+    expect(creds!.nightscoutUrl).toBeNull();
+    expect(creds!.nightscoutSecret).toBeNull();
   });
 });
 
@@ -117,14 +117,14 @@ describe("updateCredentials", () => {
   it("encrypts and stores credentials", async () => {
     await updateCredentials(EMAIL, {
       intervalsApiKey: "new-key",
-      mylifeEmail: "new@mylife.com",
-      mylifePassword: "new-pass",
+      nightscoutUrl: "https://ns.example.com",
+      nightscoutSecret: "new-secret",
     });
 
     const creds = await getUserCredentials(EMAIL);
     expect(creds!.intervalsApiKey).toBe("new-key");
-    expect(creds!.mylifeEmail).toBe("new@mylife.com");
-    expect(creds!.mylifePassword).toBe("new-pass");
+    expect(creds!.nightscoutUrl).toBe("https://ns.example.com");
+    expect(creds!.nightscoutSecret).toBe("new-secret");
   });
 
   it("can clear a field by passing null", async () => {
@@ -172,7 +172,7 @@ describe("Google Calendar credentials", () => {
   beforeEach(async () => {
     await holder.db.executeMultiple(SCHEMA_DDL);
     await holder.db.execute({
-      sql: "INSERT OR REPLACE INTO user_settings (email, approved) VALUES (?, 1)",
+      sql: "INSERT OR REPLACE INTO user_settings (email) VALUES (?)",
       args: [EMAIL],
     });
   });

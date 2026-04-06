@@ -59,6 +59,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Skip BG pattern analysis when sugar mode is off
+  const { getUserSettings } = await import("@/lib/settings");
+  const settings = await getUserSettings(email);
+  if (!settings.diabetesMode) {
+    return NextResponse.json(
+      { error: "Diabetes mode is disabled" },
+      { status: 400 },
+    );
+  }
+
   const body = (await req.json()) as RequestBody;
   const { events } = body;
 
@@ -74,7 +84,13 @@ export async function POST(req: Request) {
     e.date = new Date(e.date);
   }
 
-  const context = await buildBGPatternContext({ email, events, intervalsApiKey: creds.intervalsApiKey });
+  const context = await buildBGPatternContext({
+    email,
+    events,
+    intervalsApiKey: creds.intervalsApiKey,
+    nightscoutUrl: creds.nightscoutUrl ?? undefined,
+    nightscoutSecret: creds.nightscoutSecret ?? undefined,
+  });
 
   if (context.enrichedRuns.length < 5) {
     return NextResponse.json(

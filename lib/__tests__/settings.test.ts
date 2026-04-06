@@ -21,12 +21,10 @@ const testDb = () => holder.db;
 
 // Multi-user defaults returned for any existing row
 const MULTI_USER_DEFAULTS = {
-  approved: false,
-  sugarMode: false,
+  diabetesMode: false,
   timezone: "Europe/Stockholm",
   onboardingComplete: false,
   nightscoutConnected: false,
-  mylifeConnected: false,
 };
 
 beforeAll(async () => {

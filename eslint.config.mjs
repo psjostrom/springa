@@ -67,6 +67,8 @@ const eslintConfig = defineConfig([
     "scripts/**",
     // Claude Code worktrees
     ".claude/**",
+    // Scout is a separate project with its own config
+    "scout/**",
   ]),
 ]);
 

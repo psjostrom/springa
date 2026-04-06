@@ -13,6 +13,7 @@ export function useRunData(
   enabled: boolean,
   sharedEvents: CalendarEvent[],
   bgReadings?: BGReading[],
+  diabetesMode?: boolean,
 ) {
   // 1. Filter and sort completed runs — cache all of them.
   //    BG model and pace calibration apply their own time windows downstream.
@@ -33,46 +34,49 @@ export function useRunData(
   // 2. Stream cache (async infrastructure)
   const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
 
-  // 2.5. Reconstruct glucose from CGM readings
+  // If sugar mode is off, skip all BG-related enrichment
+  const skipBG = diabetesMode === false;
+
+  // 2.5. Reconstruct glucose from CGM readings (skip when sugar mode off)
   const glucoseEnriched = useMemo(
-    () => enrichWithGlucose(cached, bgReadings ?? []),
-    [cached, bgReadings],
+    () => skipBG ? cached : enrichWithGlucose(cached, bgReadings ?? []),
+    [cached, bgReadings, skipBG],
   );
 
   // 3. Activity name map
   const bgActivityNames = useMemo(
-    () => new Map(completedRuns.map((e) => [e.activityId, e.name])),
-    [completedRuns],
+    () => skipBG ? new Map() : new Map(completedRuns.map((e) => [e.activityId, e.name])),
+    [completedRuns, skipBG],
   );
 
-  // 4. RunBGContexts from CGM readings
+  // 4. RunBGContexts from CGM readings (skip when sugar mode off)
   const runBGContexts = useMemo(
     () =>
-      bgReadings && bgReadings.length > 0 && completedRuns.length > 0
-        ? buildRunBGContexts(completedRuns, bgReadings)
-        : new Map<string, never>(),
-    [completedRuns, bgReadings],
+      skipBG || !bgReadings || bgReadings.length === 0 || completedRuns.length === 0
+        ? new Map<string, never>()
+        : buildRunBGContexts(completedRuns, bgReadings),
+    [completedRuns, bgReadings, skipBG],
   );
 
-  // 5. Enrich cached activities with RunBGContext (immutable)
+  // 5. Enrich cached activities with RunBGContext (skip when sugar mode off)
   const cachedActivities = useMemo(
     () =>
-      runBGContexts.size > 0
-        ? glucoseEnriched.map((c) => {
+      skipBG || runBGContexts.size === 0
+        ? glucoseEnriched
+        : glucoseEnriched.map((c) => {
             const ctx = runBGContexts.get(c.activityId);
             return ctx ? { ...c, runBGContext: ctx } : c;
-          })
-        : glucoseEnriched,
-    [glucoseEnriched, runBGContexts],
+          }),
+    [glucoseEnriched, runBGContexts, skipBG],
   );
 
-  // 6. Build BG model
+  // 6. Build BG model (skip when sugar mode off)
   const bgModel = useMemo(
     () =>
-      cachedActivities.length > 0
-        ? buildBGModelFromCached(cachedActivities)
-        : null,
-    [cachedActivities],
+      skipBG || cachedActivities.length === 0
+        ? null
+        : buildBGModelFromCached(cachedActivities),
+    [cachedActivities, skipBG],
   );
 
   return {

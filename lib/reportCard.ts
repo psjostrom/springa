@@ -305,11 +305,12 @@ export function scoreRecovery(ctx: RunBGContext | null | undefined): RecoverySco
 export function buildReportCard(
   event: CalendarEvent,
   runBGContext?: RunBGContext | null,
+  diabetesMode?: boolean,
 ): ReportCard {
   return {
-    bg: scoreBG(event),
+    bg: diabetesMode === false ? null : scoreBG(event),
     hrZone: scoreHRZone(event),
-    entryTrend: scoreEntryTrend(runBGContext),
-    recovery: scoreRecovery(runBGContext),
+    entryTrend: diabetesMode === false ? null : scoreEntryTrend(runBGContext),
+    recovery: diabetesMode === false ? null : scoreRecovery(runBGContext),
   };
 }
