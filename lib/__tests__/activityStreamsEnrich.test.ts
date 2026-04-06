@@ -1,17 +1,30 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { enrichActivitiesWithGlucose } from "../activityStreamsEnrich";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import type { Client } from "@libsql/client";
 import type { CachedActivity } from "../activityStreamsDb";
 
-const mockFetchBGFromNS = vi.fn();
-const mockGetUserCredentials = vi.fn();
+const { holder } = vi.hoisted(() => {
+  process.env.TURSO_DATABASE_URL = "file::memory:";
+  process.env.TURSO_AUTH_TOKEN = "dummy";
+  process.env.CREDENTIALS_ENCRYPTION_KEY = "a".repeat(64);
+  return { holder: { db: null as unknown as Client } };
+});
 
-vi.mock("../nightscout", () => ({
-  fetchBGFromNS: (...args: unknown[]) => mockFetchBGFromNS(...args),
-}));
+// eslint-disable-next-line no-restricted-syntax -- in-memory DB redirect, the one allowed exception
+vi.mock("@libsql/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@libsql/client")>();
+  holder.db = actual.createClient({ url: "file::memory:" });
+  return { ...actual, createClient: () => holder.db };
+});
 
-vi.mock("../credentials", () => ({
-  getUserCredentials: (...args: unknown[]) => mockGetUserCredentials(...args),
-}));
+import { enrichActivitiesWithGlucose } from "../activityStreamsEnrich";
+import { encrypt } from "../credentials";
+import { SCHEMA_DDL } from "../db";
+import { server } from "./msw/server";
+
+const ENC_KEY = "a".repeat(64);
+const EMAIL = "test@test.com";
+const NS_URL = "https://ns.example.com";
 
 function makeActivity(overrides: Partial<CachedActivity> = {}): CachedActivity {
   return {
@@ -24,29 +37,32 @@ function makeActivity(overrides: Partial<CachedActivity> = {}): CachedActivity {
   };
 }
 
+async function insertNSCredentials() {
+  await holder.db.execute({
+    sql: `INSERT INTO user_settings (email, nightscout_url, nightscout_secret, timezone)
+          VALUES (?, ?, ?, ?)`,
+    args: [EMAIL, NS_URL, encrypt("test-secret", ENC_KEY), "Europe/Stockholm"],
+  });
+}
+
 describe("enrichActivitiesWithGlucose", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Default: no Nightscout configured
-    mockGetUserCredentials.mockResolvedValue({
-      nightscoutUrl: null,
-      nightscoutSecret: null,
-      intervalsApiKey: null,
-      timezone: "Europe/Stockholm",
-    });
+  beforeAll(async () => {
+    await holder.db.executeMultiple(SCHEMA_DDL);
+  });
+
+  beforeEach(async () => {
+    await holder.db.execute("DELETE FROM user_settings");
   });
 
   it("returns empty array for empty activities", async () => {
-    const result = await enrichActivitiesWithGlucose("test@test.com", []);
+    const result = await enrichActivitiesWithGlucose(EMAIL, []);
     expect(result).toHaveLength(0);
-    expect(mockFetchBGFromNS).not.toHaveBeenCalled();
   });
 
   it("returns activities with empty glucose when no runStartMs", async () => {
     const acts = [makeActivity({ runStartMs: undefined })];
-    const result = await enrichActivitiesWithGlucose("test@test.com", acts);
+    const result = await enrichActivitiesWithGlucose(EMAIL, acts);
     expect(result[0].glucose).toBeUndefined();
-    expect(mockFetchBGFromNS).not.toHaveBeenCalled();
   });
 
   it("fetches range based on activity timestamps and enriches", async () => {
@@ -59,23 +75,19 @@ describe("enrichActivitiesWithGlucose", () => {
       }),
     ];
 
-    // Configure Nightscout credentials
-    mockGetUserCredentials.mockResolvedValue({
-      nightscoutUrl: "https://ns.example.com",
-      nightscoutSecret: "test-secret",
-      intervalsApiKey: null,
-      timezone: "Europe/Stockholm",
-    });
+    await insertNSCredentials();
 
-    // Return CGM readings that cover the run window
-    mockFetchBGFromNS.mockResolvedValue([
-      { ts: startMs, mmol: 10.0, sgv: 180, direction: "Flat", delta: 0 },
-      { ts: startMs + 5 * 60 * 1000, mmol: 9.5, sgv: 171, direction: "Flat", delta: 0 },
-      { ts: startMs + 30 * 60 * 1000, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
-    ]);
+    server.use(
+      http.get(`${NS_URL}/api/v1/entries.json`, () => {
+        return HttpResponse.json([
+          { sgv: 180, date: startMs, direction: "Flat", delta: 0 },
+          { sgv: 171, date: startMs + 5 * 60 * 1000, direction: "Flat", delta: 0 },
+          { sgv: 144, date: startMs + 30 * 60 * 1000, direction: "Flat", delta: 0 },
+        ]);
+      }),
+    );
 
-    const result = await enrichActivitiesWithGlucose("test@test.com", acts);
-    expect(mockFetchBGFromNS).toHaveBeenCalledOnce();
+    const result = await enrichActivitiesWithGlucose(EMAIL, acts);
     expect(result[0].glucose!.length).toBeGreaterThan(0);
   });
 
@@ -86,21 +98,23 @@ describe("enrichActivitiesWithGlucose", () => {
       makeActivity({ activityId: "a2", runStartMs: undefined, hr: [{ time: 0, value: 120 }] }),
     ];
 
-    // Configure Nightscout credentials
-    mockGetUserCredentials.mockResolvedValue({
-      nightscoutUrl: "https://ns.example.com",
-      nightscoutSecret: "test-secret",
-      intervalsApiKey: null,
-      timezone: "Europe/Stockholm",
-    });
+    await insertNSCredentials();
 
-    mockFetchBGFromNS.mockResolvedValue([]);
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get(`${NS_URL}/api/v1/entries.json`, ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
-    await enrichActivitiesWithGlucose("test@test.com", acts);
+    await enrichActivitiesWithGlucose(EMAIL, acts);
 
-    // maxMs should be based on a1's startMs, not a2's undefined → 0 fallback
-    const [, , opts] = mockFetchBGFromNS.mock.calls[0];
-    expect(opts.since).toBeGreaterThan(1_000_000_000_000);
-    expect(opts.until).toBeGreaterThan(1_000_000_000_000);
+    // Verify the fetch range is based on a1's startMs, not a2's undefined
+    const url = new URL(capturedUrl!);
+    const since = Number(url.searchParams.get("find[date][$gt]"));
+    const until = Number(url.searchParams.get("find[date][$lt]"));
+    expect(since).toBeGreaterThan(1_000_000_000_000);
+    expect(until).toBeGreaterThan(1_000_000_000_000);
   });
 });

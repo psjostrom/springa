@@ -29,6 +29,56 @@ All text must meet **WCAG AA** contrast (4.5:1 normal text, 3:1 large text) agai
 - **Commits:** For multi-line commit messages, write the message to a temp file and use `git commit -F /tmp/commit-msg.txt`, then delete the temp file. Never use `$()` command substitution in bash — it triggers an approval prompt.
 - **Specs:** Save design specs to `docs/specs/`, not `docs/superpowers/specs/`. Specs are project documentation, not tool artifacts.
 
+## Testing
+
+Vitest with three test projects: `unit` (`*.test.ts`), `integration` (`*.integration.test.tsx`), `flow` (`*.flow.test.ts`). All share the MSW setup at `lib/__tests__/msw/`.
+
+### Test Infrastructure
+
+- **MSW server:** `lib/__tests__/msw/server.ts` — shared MSW server instance.
+- **MSW setup:** `lib/__tests__/msw/setup.ts` — lifecycle hooks (beforeAll/afterEach/afterAll). Loaded via `vitest.config.ts` setupFiles. `onUnhandledRequest: "error"` ensures every fetch hits a handler.
+- **Default handlers:** `lib/__tests__/msw/handlers.ts` — happy-path responses for all Intervals.icu, Google Calendar, and internal API endpoints. Also exports capture arrays (`capturedUploadPayload`, `capturedPutPayload`, etc.) for asserting on request payloads.
+- **Fixtures:** `lib/__tests__/msw/fixtures.ts` — sample activities, events, and streams.
+- **Test utils:** `lib/__tests__/test-utils.tsx` — custom `render`/`renderHook` wrapping Jotai + SWR providers. Always import from here, not from `@testing-library/react` directly.
+
+### Rules (enforced by ESLint)
+
+- **No fetch mocking.** `vi.stubGlobal("fetch")` and `global.fetch = ...` are banned. Use `server.use()` for per-test response overrides.
+- **No module mocking.** `vi.mock()` is banned. Exception: `vi.mock("@libsql/client")` to redirect to in-memory SQLite.
+- **No mock assertions.** `mockResolvedValue`, `mockImplementation`, `mockReturnValue` are banned. Use MSW capture patterns or assert on outputs.
+- **`vi.fn()` without chaining is allowed** for callback spies (`onClose`, `onChange`). If the callback returns a promise and needs `.mockResolvedValue()`, add an `eslint-disable-next-line` comment explaining it's a callback spy.
+
+### Pattern: Per-Test MSW Override (local handler)
+
+```ts
+import { server } from "./msw/server";
+import { http, HttpResponse } from "msw";
+
+it("handles API error", async () => {
+  server.use(
+    http.get(`${API_BASE}/athlete/0`, () => {
+      return new HttpResponse(null, { status: 401 });
+    }),
+  );
+  // ... test code that calls the real function
+});
+```
+
+### Pattern: In-Memory DB
+
+```ts
+const { holder } = vi.hoisted(() => {
+  process.env.TURSO_DATABASE_URL = "file::memory:";
+  process.env.TURSO_AUTH_TOKEN = "dummy";
+  return { holder: { db: null as Client } };
+});
+vi.mock("@libsql/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@libsql/client")>();
+  holder.db = actual.createClient({ url: "file::memory:" });
+  return { ...actual, createClient: () => holder.db };
+});
+```
+
 ## Language
 
 - **Use plain language.** No medical/scientific jargon when a simple word exists. Say "lowest BG" not "nadir," "swing" not "amplitude," "spike" not "excursion." The runner is not a researcher — use words a runner would use mid-conversation.
