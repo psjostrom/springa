@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
+import { server } from "./msw/server";
 import { getWeatherForTime, calcFeelsLike } from "../smhi";
 import type { SMHIWeather } from "../smhi";
 
@@ -43,11 +43,6 @@ function snow1gResponse(entries: { time: string; temp: number; ws: number; gust:
     })),
   };
 }
-
-const server = setupServer();
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
 
 describe("fetchForecast", () => {
   it("parses snow1g API response into SMHIWeather", async () => {
