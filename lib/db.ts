@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS user_settings (
   bg_chart_window  INTEGER,
   include_base_phase INTEGER,
   warmth_preference  INTEGER,
-  approved           INTEGER NOT NULL DEFAULT 0,
   diabetes_mode      INTEGER NOT NULL DEFAULT 0,
   display_name       TEXT,
   timezone           TEXT DEFAULT 'Europe/Stockholm',

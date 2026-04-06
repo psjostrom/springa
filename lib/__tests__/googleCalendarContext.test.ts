@@ -28,7 +28,7 @@ describe("getGoogleCalendarContext", () => {
     await holder.db.executeMultiple(SCHEMA_DDL);
     await holder.db.execute("DELETE FROM user_settings");
     await holder.db.execute({
-      sql: "INSERT INTO user_settings (email, approved, google_refresh_token, google_calendar_id, timezone) VALUES (?, 1, ?, ?, ?)",
+      sql: "INSERT INTO user_settings (email, google_refresh_token, google_calendar_id, timezone) VALUES (?, ?, ?, ?)",
       args: [EMAIL, encrypt("1//mock-refresh", TEST_KEY), "existing-cal-id", "Europe/Stockholm"],
     });
   });

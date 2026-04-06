@@ -25,9 +25,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, account }) {
       if (!user.email) return false;
       // Upsert: create user row if it doesn't exist (race-safe)
-      // New users are auto-approved — access control is via Google OAuth test users
       await db().execute({
-        sql: "INSERT OR IGNORE INTO user_settings (email, approved) VALUES (?, 1)",
+        sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
         args: [user.email],
       });
 
