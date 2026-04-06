@@ -183,20 +183,18 @@ export async function fetchStreams(
         return (await res.json()) as IntervalsStream[];
       }
       if (res.status === 429 && attempt < RETRY_DELAYS.length) {
-        console.warn(`Rate limited on activity ${safeId}, retrying in ${RETRY_DELAYS[attempt]}ms...`);
+        console.warn("Rate limited on activity", safeId, "retrying in", RETRY_DELAYS[attempt], "ms");
         await sleep(RETRY_DELAYS[attempt]);
         continue;
       }
-      console.warn(
-        `Failed to fetch streams for activity ${safeId}: ${res.status} ${res.statusText}`,
-      );
+      console.warn("Failed to fetch streams for activity", safeId, res.status, res.statusText);
       return [];
     } catch (e) {
       if (attempt < RETRY_DELAYS.length) {
         await sleep(RETRY_DELAYS[attempt]);
         continue;
       }
-      console.warn(`Error fetching streams for activity ${safeId}:`, e);
+      console.warn("Error fetching streams for activity", safeId, e);
       return [];
     }
   }
