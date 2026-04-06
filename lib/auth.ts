@@ -26,12 +26,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!user.email) return false;
       // Upsert: create user row if it doesn't exist (race-safe)
       await db().execute({
-        sql: "INSERT OR IGNORE INTO user_settings (email, approved) VALUES (?, 0)",
+        sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
         args: [user.email],
       });
-
-      // Allow sign-in regardless of approval status
-      // Unapproved users will be redirected to /pending client-side
 
       // Store refresh token when Google provides one (on consent).
       // Wrapped in try/catch: safe to deploy before migration adds the column.

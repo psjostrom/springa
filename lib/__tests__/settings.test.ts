@@ -21,7 +21,6 @@ const testDb = () => holder.db;
 
 // Multi-user defaults returned for any existing row
 const MULTI_USER_DEFAULTS = {
-  approved: false,
   diabetesMode: false,
   timezone: "Europe/Stockholm",
   onboardingComplete: false,

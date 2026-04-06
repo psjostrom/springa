@@ -81,6 +81,35 @@ export function WelcomeStep({ displayName: initialName, timezone: initialTz, onN
         </div>
       </div>
 
+      {/* What you'll need */}
+      <div className="border-t border-border pt-4 mt-2">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">What you&apos;ll need</p>
+
+        <div className="flex gap-3 items-start mb-3">
+          <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0 text-base">⌚</div>
+          <div>
+            <p className="text-sm font-medium text-text">A GPS running watch</p>
+            <p className="text-xs text-muted">Garmin · Polar · Suunto · Coros · Wahoo · Apple Watch · Wear OS</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 items-start mb-3">
+          <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-brand">ICU</div>
+          <div>
+            <p className="text-sm font-medium text-text">A free Intervals.icu account</p>
+            <p className="text-xs text-muted">Bridges your watch data to Springa. We&apos;ll set this up next.</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 items-start">
+          <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 text-base">📈</div>
+          <div>
+            <p className="text-sm font-medium text-text">CGM + Nightscout <span className="text-xs text-muted font-normal">(optional)</span></p>
+            <p className="text-xs text-muted">Use a continuous glucose monitor? Connect it for live BG tracking during runs, smart fuel rate recommendations, and post-run glucose analysis.</p>
+          </div>
+        </div>
+      </div>
+
       <button
         onClick={() => { void handleNext(); }}
         disabled={!displayName.trim()}

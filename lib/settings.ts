@@ -17,7 +17,6 @@ export interface UserSettings {
   warmthPreference?: number;
 
   // Multi-user fields
-  approved?: boolean;
   diabetesMode?: boolean;
   displayName?: string;
   timezone?: string;
@@ -39,7 +38,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
     sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
-                 approved, diabetes_mode, display_name, timezone, run_days, onboarding_complete,
+                 diabetes_mode, display_name, timezone, run_days, onboarding_complete,
                  intervals_api_key, nightscout_url, nightscout_secret
           FROM user_settings WHERE email = ?`,
     args: [email],
@@ -59,7 +58,6 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.warmth_preference != null) settings.warmthPreference = row.warmth_preference as number;
 
   // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
-  settings.approved = (row.approved as number | null ?? 0) === 1;
   settings.diabetesMode = (row.diabetes_mode as number | null ?? 0) === 1;
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";

@@ -172,7 +172,7 @@ describe("Google Calendar credentials", () => {
   beforeEach(async () => {
     await holder.db.executeMultiple(SCHEMA_DDL);
     await holder.db.execute({
-      sql: "INSERT OR REPLACE INTO user_settings (email, approved) VALUES (?, 1)",
+      sql: "INSERT OR REPLACE INTO user_settings (email) VALUES (?)",
       args: [EMAIL],
     });
   });
