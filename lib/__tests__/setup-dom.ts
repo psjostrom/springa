@@ -138,6 +138,7 @@ vi.mock("lucide-react", () => {
     Send: icon("Send"),
     Plus: icon("Plus"),
     Timer: icon("Timer"),
+    ExternalLink: icon("ExternalLink"),
   };
 });
 
