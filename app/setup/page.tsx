@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
-import { addWeeks, format } from "date-fns";
+import { addWeeks, differenceInWeeks, format } from "date-fns";
 import { generatedPlanAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -57,8 +57,11 @@ export default function SetupPage() {
         setGenerating(true);
         // Yield to event loop so React can render the spinner before sync generatePlan blocks
         await new Promise((resolve) => { setTimeout(resolve, 0); });
-        const totalWeeks = 18;
-        const raceDate = data.raceDate ?? format(addWeeks(new Date(), totalWeeks), "yyyy-MM-dd");
+        const defaultWeeks = 18;
+        const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
+        const totalWeeks = data.raceDate
+          ? Math.max(4, differenceInWeeks(new Date(data.raceDate), new Date()))
+          : defaultWeeks;
         const events = generatePlan(
           null,
           raceDate,
