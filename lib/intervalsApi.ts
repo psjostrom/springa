@@ -21,26 +21,103 @@ export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKe
 
 // --- ATHLETE PROFILE ---
 
-export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[] }> {
+// The Intervals.icu athlete response has 100+ fields across 14 platforms.
+// Typing them all would be maintenance burden with no safety gain — we access specific fields by name.
+type AthleteRaw = Record<string, unknown>;
+
+async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null> {
   try {
     const res = await fetch(`${API_BASE}/athlete/0`, {
       headers: { Authorization: authHeader(apiKey) },
     });
-    if (!res.ok) return {};
-    const data = (await res.json()) as { sportSettings?: { types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[] };
-    // LTHR, max_hr, and hr_zones live inside sportSettings[], keyed by sport type
-    const runSettings = Array.isArray(data.sportSettings)
-      ? data.sportSettings.find((s) => s.types?.includes("Run"))
-      : null;
-    if (!runSettings) return {};
-    const result: { lthr?: number; maxHr?: number; hrZones?: number[] } = {};
-    if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
-    if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
-    if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
-    return result;
+    if (!res.ok) return null;
+    return (await res.json()) as AthleteRaw;
   } catch {
-    return {};
+    return null;
   }
+}
+
+export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[] }> {
+  const data = await fetchAthleteRaw(apiKey);
+  if (!data) return {};
+  const runSettings = Array.isArray(data.sportSettings)
+    ? (data.sportSettings as { types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[]).find((s) => s.types?.includes("Run"))
+    : null;
+  if (!runSettings) return {};
+  const result: { lthr?: number; maxHr?: number; hrZones?: number[] } = {};
+  if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
+  if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
+  if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
+  return result;
+}
+
+export interface PlatformConnection {
+  platform: "garmin" | "polar" | "suunto" | "coros" | "wahoo" | "amazfit" | "strava" | "huawei";
+  linked: boolean;
+  syncActivities: boolean;
+  uploadWorkouts: boolean;
+}
+
+export interface ConnectionStatus {
+  platforms: PlatformConnection[];
+}
+
+export async function fetchConnectionStatus(apiKey: string): Promise<ConnectionStatus> {
+  const data = await fetchAthleteRaw(apiKey);
+  if (!data) return { platforms: [] };
+
+  const platforms: PlatformConnection[] = [
+    {
+      platform: "garmin",
+      linked: data.icu_garmin_health === true,
+      syncActivities: data.icu_garmin_health === true && data.icu_garmin_sync_activities === true,
+      uploadWorkouts: data.icu_garmin_upload_workouts === true,
+    },
+    {
+      platform: "polar",
+      linked: data.polar_scope != null,
+      syncActivities: data.polar_scope != null && data.polar_sync_activities === true,
+      uploadWorkouts: false,
+    },
+    {
+      platform: "suunto",
+      linked: data.suunto_user_id != null,
+      syncActivities: data.suunto_user_id != null && data.suunto_sync_activities === true,
+      uploadWorkouts: data.suunto_upload_workouts === true,
+    },
+    {
+      platform: "coros",
+      linked: data.coros_user_id != null,
+      syncActivities: data.coros_user_id != null && data.coros_sync_activities === true,
+      uploadWorkouts: data.coros_upload_workouts === true,
+    },
+    {
+      platform: "wahoo",
+      linked: data.wahoo_user_id != null,
+      syncActivities: data.wahoo_user_id != null && data.wahoo_sync_activities === true,
+      uploadWorkouts: data.wahoo_upload_workouts === true,
+    },
+    {
+      platform: "amazfit",
+      linked: data.zepp_user_id != null,
+      syncActivities: data.zepp_user_id != null && data.zepp_sync_activities === true,
+      uploadWorkouts: data.zepp_upload_workouts === true,
+    },
+    {
+      platform: "huawei",
+      linked: data.huawei_user_id != null,
+      syncActivities: data.huawei_user_id != null && data.huawei_sync_activities === true,
+      uploadWorkouts: data.huawei_upload_workouts === true,
+    },
+    {
+      platform: "strava",
+      linked: data.strava_id != null,
+      syncActivities: data.strava_id != null && data.strava_authorized === true,
+      uploadWorkouts: false,
+    },
+  ];
+
+  return { platforms };
 }
 
 // --- ACTIVITY FETCHING ---

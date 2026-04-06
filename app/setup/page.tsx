@@ -9,13 +9,14 @@ import { generatePlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
+import { WatchStep } from "./WatchStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { GoalStep } from "./GoalStep";
 import { HRZonesStep } from "./HRZonesStep";
 import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 interface WizardData {
   displayName: string;
@@ -98,7 +99,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition-all ${
@@ -129,35 +130,28 @@ export default function SetupPage() {
           />
         )}
         {step === 3 && (
-          <ScheduleStep
-            runDays={data.runDays}
-            onNext={(runDays) => {
-              updateData({ runDays });
-              setStep(4);
-            }}
+          <WatchStep
+            onNext={() => { setStep(4); }}
             onBack={() => { setStep(2); }}
           />
         )}
         {step === 4 && (
+          <ScheduleStep
+            runDays={data.runDays}
+            onNext={(runDays) => {
+              updateData({ runDays });
+              setStep(5);
+            }}
+            onBack={() => { setStep(3); }}
+          />
+        )}
+        {step === 5 && (
           <GoalStep
             raceDate={data.raceDate}
             raceName={data.raceName}
             raceDist={data.raceDist}
             onNext={(goal) => {
               updateData(goal);
-              setStep(5);
-            }}
-            onSkip={() => { setStep(5); }}
-            onBack={() => { setStep(3); }}
-          />
-        )}
-        {step === 5 && (
-          <HRZonesStep
-            lthr={data.lthr}
-            maxHr={data.maxHr}
-            hrZones={data.hrZones}
-            onNext={(zones) => {
-              updateData(zones);
               setStep(6);
             }}
             onSkip={() => { setStep(6); }}
@@ -165,18 +159,31 @@ export default function SetupPage() {
           />
         )}
         {step === 6 && (
+          <HRZonesStep
+            lthr={data.lthr}
+            maxHr={data.maxHr}
+            hrZones={data.hrZones}
+            onNext={(zones) => {
+              updateData(zones);
+              setStep(7);
+            }}
+            onSkip={() => { setStep(7); }}
+            onBack={() => { setStep(5); }}
+          />
+        )}
+        {step === 7 && (
           <DiabetesStep
             diabetesMode={data.diabetesMode}
             nightscoutUrl={data.nightscoutUrl}
             nightscoutSecret={data.nightscoutSecret}
             onNext={(diabetesData) => {
               updateData(diabetesData);
-              setStep(7);
+              setStep(8);
             }}
-            onBack={() => { setStep(5); }}
+            onBack={() => { setStep(6); }}
           />
         )}
-        {step === 7 && (
+        {step === 8 && (
           <DoneStep
             onComplete={handleComplete}
             generating={generating}
@@ -185,7 +192,7 @@ export default function SetupPage() {
 
         {/* Step counter */}
         <p className="text-center text-xs text-muted mt-6">
-          Step {step} of 7
+          Step {step} of 8
         </p>
       </div>
     </div>
