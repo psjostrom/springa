@@ -93,7 +93,7 @@ describe("CoachScreen", () => {
     const completedEvent = { id: "e1", type: "completed", date: new Date(), name: "Easy" } as CalendarEvent;
     const bgModel: BGResponseModel = {
       activitiesAnalyzed: 5,
-      categories: {},
+      categories: { easy: null, long: null, interval: null },
       observations: [],
       bgByStartLevel: [],
       bgByEntrySlope: [],
