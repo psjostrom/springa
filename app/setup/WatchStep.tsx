@@ -37,7 +37,7 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
   const [checking, setChecking] = useState(false);
   const [selectedWatch, setSelectedWatch] = useState<WatchType>(null);
 
-  const fetchConnections = async () => {
+  const fetchConnections = async (setLoadingFalse = false) => {
     try {
       const res = await fetch("/api/intervals/connections");
       if (!res.ok) return;
@@ -45,11 +45,13 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
       setPlatforms(data.platforms);
     } catch {
       // Network error — user can retry with "Check again"
+    } finally {
+      if (setLoadingFalse) setLoading(false);
     }
   };
 
   useEffect(() => {
-    void fetchConnections().finally(() => { setLoading(false); });
+    void fetchConnections(true);
   }, []);
 
   const handleCheckAgain = async () => {
@@ -199,7 +201,7 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
               {selectedWatch && DIRECT_WATCHES.some((w) => w.key === selectedWatch) && (
                 <div className="bg-surface-alt border border-border rounded-lg p-4 space-y-3">
                   <p className="text-sm text-muted">
-                    Go to <strong className="text-text">Intervals.icu → Settings → Connections</strong> and connect your {PLATFORM_NAMES[selectedWatch] ?? selectedWatch}. Come back here when it's done.
+                    Go to <strong className="text-text">Intervals.icu → Settings → Connections</strong> and connect your {PLATFORM_NAMES[selectedWatch] ?? selectedWatch}. Come back here when it&apos;s done.
                   </p>
                   <a href="https://intervals.icu/settings" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
                     <ExternalLink size={14} />
@@ -247,7 +249,7 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
                 onClick={() => { setSelectedWatch("none"); }}
                 className="text-xs text-muted hover:text-text transition"
               >
-                I don't have a running watch
+                I don&apos;t have a running watch
               </button>
             </>
           )}
