@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, startTransition, useEffect, useState } from "react";
+import { Suspense, startTransition, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useModalURL } from "./hooks/useModalURL";
@@ -10,6 +10,8 @@ import {
   settingsAtom,
   settingsLoadingAtom,
   updateSettingsAtom,
+  switchTabAtom,
+  diabetesModeAtom,
 } from "./atoms";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -48,6 +50,9 @@ function HomeContent() {
   const settings = useAtomValue(settingsAtom);
   const settingsLoading = useAtomValue(settingsLoadingAtom);
   const updateSettings = useSetAtom(updateSettingsAtom);
+  const switchTab = useAtomValue(switchTabAtom);
+  const setSwitchTab = useSetAtom(switchTabAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -78,14 +83,30 @@ function HomeContent() {
   // BG graph popover
   const bgGraph = useModalURL("bg");
 
-  const handleTabChange = (tab: Tab) => {
+  const handleTabChange = useCallback((tab: Tab) => {
     startTransition(() => {
       setActiveTab(tab);
       const params = new URLSearchParams(window.location.search);
       params.set("tab", tab);
       router.push(`?${params.toString()}`, { scroll: false });
     });
-  };
+  }, [router]);
+
+  // Handle cross-component tab switch requests
+  useEffect(() => {
+    if (switchTab) {
+      const tab = parseTab(switchTab);
+      handleTabChange(tab);
+      setSwitchTab(null);
+    }
+  }, [switchTab, setSwitchTab, handleTabChange]);
+
+  // Redirect from Simulate tab when diabetes mode is disabled
+  useEffect(() => {
+    if (!diabetesMode && activeTab === "simulate") {
+      handleTabChange("calendar");
+    }
+  }, [diabetesMode, activeTab, handleTabChange]);
 
   // Theme toggle
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -116,6 +137,8 @@ function HomeContent() {
 
   if (settingsLoading) return splashFallback;
 
+  const hideTabs: Tab[] = diabetesMode ? [] : ["simulate"];
+
   return (
     <div className="h-screen bg-bg flex flex-col text-text font-sans overflow-hidden">
       <div className="bg-surface border-b border-border flex-shrink-0 z-30 shadow-sm">
@@ -130,7 +153,7 @@ function HomeContent() {
             </svg>
             springa
           </button>
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} hideTabs={hideTabs} />
           <div className="flex items-center gap-2">
             <CurrentBGPill onClick={bgGraph.open} />
             <button
@@ -164,9 +187,11 @@ function HomeContent() {
         <div className={activeTab === "coach" ? "h-full" : "hidden"}>
           <CoachScreen />
         </div>
-        <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
-          <SimulateScreen />
-        </div>
+        {diabetesMode && (
+          <div className={activeTab === "simulate" ? "h-full" : "hidden"}>
+            <SimulateScreen />
+          </div>
+        )}
       </div>
 
       <UnratedRunBanner />

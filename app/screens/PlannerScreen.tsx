@@ -29,6 +29,8 @@ import {
   runBGContextsAtom,
   calendarReloadAtom,
   diabetesModeAtom,
+  generatedPlanAtom,
+  switchTabAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -45,6 +47,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
+  const generatedPlan = useAtomValue(generatedPlanAtom);
+  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
+  const setSwitchTab = useSetAtom(switchTabAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -52,6 +57,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const totalWeeks = settings?.totalWeeks ?? 18;
   const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
+
+  useEffect(() => {
+    if (generatedPlan.length > 0) {
+      setPlanEvents(generatedPlan);
+      setGeneratedPlan([]);
+    }
+  }, [generatedPlan, setGeneratedPlan]);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
@@ -92,6 +104,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg(`Uploaded ${count} workouts.`);
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
+      calendarReload();
     } catch (e) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -246,25 +259,27 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         <div className="relative overflow-hidden bg-surface border border-border rounded-xl p-4 md:p-5">
           <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
           <div className="relative flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                Fuel rates <span className="text-muted">g/h</span>
-              </span>
-              <div className="grid grid-cols-3 gap-3 mt-2">
-                {(["easy", "long", "interval"] as const).map((cat) => {
-                  const rate = getCurrentFuelRate(cat, bgModel);
-                  const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
-                  return (
-                    <div key={cat} className="flex flex-col text-xs text-muted gap-1">
-                      <span className="capitalize">{cat}</span>
-                      <span className={`text-sm font-medium ${isDefault ? "text-muted" : "text-brand"}`}>
-                        {rate} g/h{isDefault ? " (default)" : ""}
-                      </span>
-                    </div>
-                  );
-                })}
+            {diabetesMode && (
+              <div className="flex-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Fuel rates <span className="text-muted">g/h</span>
+                </span>
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  {(["easy", "long", "interval"] as const).map((cat) => {
+                    const rate = getCurrentFuelRate(cat, bgModel);
+                    const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
+                    return (
+                      <div key={cat} className="flex flex-col text-xs text-muted gap-1">
+                        <span className="capitalize">{cat}</span>
+                        <span className={`text-sm font-medium ${isDefault ? "text-muted" : "text-brand"}`}>
+                          {rate} g/h{isDefault ? " (default)" : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
             <button
               onClick={handleGenerate}
               className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 shrink-0"
@@ -282,6 +297,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               isUploading={isUploading}
               statusMsg={statusMsg}
               onUpload={() => { void handleUpload(); }}
+              onViewCalendar={() => { setSwitchTab("calendar"); }}
             />
             <WorkoutList events={planEvents} />
           </>

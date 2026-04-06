@@ -44,7 +44,7 @@ describe("SimulateScreen", () => {
       ],
     });
 
-    expect(screen.getByText(/No BG data yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Complete a few runs with CGM data to unlock BG simulation/)).toBeInTheDocument();
   });
 
   it("initializes fuel rate from model target (snapped to step grid)", () => {

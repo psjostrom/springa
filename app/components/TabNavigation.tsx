@@ -6,6 +6,7 @@ type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 interface TabNavigationProps {
 	activeTab: Tab;
 	onTabChange: (tab: Tab) => void;
+	hideTabs?: Tab[];
 }
 
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
@@ -19,6 +20,7 @@ const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
 export function TabNavigation({
 	activeTab,
 	onTabChange,
+	hideTabs,
 }: TabNavigationProps) {
 	// Local optimistic state — highlights instantly on click,
 	// syncs back from parent when activeTab prop catches up.
@@ -34,11 +36,15 @@ export function TabNavigation({
 		onTabChange(key);
 	};
 
+	const visibleTabs = hideTabs?.length
+		? TABS.filter((t) => !hideTabs.includes(t.key))
+		: TABS;
+
 	return (
 		<>
 			{/* Desktop: horizontal text tabs in header */}
 			<div className="hidden md:flex gap-2 border-b border-border mb-6">
-				{TABS.map(({ key, label }) => (
+				{visibleTabs.map(({ key, label }) => (
 					<button
 						key={key}
 						onClick={() => { handleClick(key); }}
@@ -58,7 +64,7 @@ export function TabNavigation({
 
 			{/* Mobile: fixed bottom tab bar with icons */}
 			<nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border justify-around py-2" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-				{TABS.map(({ key, label, icon: Icon }) => (
+				{visibleTabs.map(({ key, label, icon: Icon }) => (
 					<button
 						key={key}
 						onClick={() => { handleClick(key); }}

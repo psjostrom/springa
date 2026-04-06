@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { useAtomValue } from "jotai";
 import { ChatMessage } from "../components/ChatMessage";
 import { ChatInput } from "../components/ChatInput";
 import { useCoachData } from "../hooks/useCoachData";
+import { getCoachSuggestions } from "@/lib/coachSuggestions";
 import {
   enrichedEventsAtom,
   wellnessEntriesAtom,
@@ -21,13 +22,8 @@ import {
   lastBGUpdateAtom,
   readingsAtom,
   runBGContextsAtom,
+  diabetesModeAtom,
 } from "../atoms";
-const SUGGESTIONS = [
-  "How's my training load looking?",
-  "Analyze my BG trends",
-  "What can we conclude about my BG before, during and after runs?",
-  "How am I progresing for the Ecotrail 16km?",
-];
 
 function getMessageText(parts: { type: string; text?: string }[]): string {
   return parts
@@ -49,6 +45,7 @@ export function CoachScreen() {
   const lastUpdate = useAtomValue(lastBGUpdateAtom);
   const readings = useAtomValue(readingsAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
   const raceDate = settings?.raceDate;
   const lthr = settings?.lthr;
   const maxHr = settings?.maxHr;
@@ -70,6 +67,21 @@ export function CoachScreen() {
     readings,
     runBGContexts,
   });
+
+  const hasRuns = events.some((e) => e.type === "completed");
+  const hasPlan = events.some((e) => e.type === "planned");
+
+  const suggestions = useMemo(
+    () => getCoachSuggestions({
+      hasPlan,
+      hasRuns,
+      hasBGData: !!bgModel?.activitiesAnalyzed,
+      hasBGModel: !!bgModel,
+      hasRace: !!settings?.raceDate,
+      diabetesMode,
+    }),
+    [hasPlan, hasRuns, bgModel, settings?.raceDate, diabetesMode],
+  );
 
   const transport = new TextStreamChatTransport({
     api: "/api/chat",
@@ -115,11 +127,12 @@ export function CoachScreen() {
             <div className="pt-8 pb-4">
               <h2 className="text-lg font-bold text-text mb-1">AI Coach</h2>
               <p className="text-sm text-muted mb-6">
-                Ask about training, fueling, BG management, or upcoming
-                workouts.
+                {diabetesMode
+                  ? "Ask about training, fueling, BG management, or upcoming workouts."
+                  : "Ask about training, fueling, recovery, or upcoming workouts."}
               </p>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => { handleSend(s); }}
