@@ -19,6 +19,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const eventId = Number(id);
+  if (!Number.isFinite(eventId)) {
+    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+  }
   const body = (await req.json()) as {
     start_date_local?: string;
     name?: string;
@@ -66,6 +69,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   const { id } = await params;
   const eventId = Number(id);
+  if (!Number.isFinite(eventId)) {
+    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+  }
 
   try {
     await deleteEvent(creds.intervalsApiKey, eventId);

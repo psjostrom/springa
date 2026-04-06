@@ -19,6 +19,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const { id } = await params;
+  if (!/^[a-zA-Z0-9_:-]+$/.test(id)) {
+    return NextResponse.json({ error: "Invalid activity ID" }, { status: 400 });
+  }
   const url = new URL(req.url);
   const streams = url.searchParams.get("streams") === "1";
 
@@ -54,6 +57,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const { id } = await params;
+  if (!/^[a-zA-Z0-9_:-]+$/.test(id)) {
+    return NextResponse.json({ error: "Invalid activity ID" }, { status: 400 });
+  }
   const body = (await req.json()) as Record<string, unknown>;
 
   try {
@@ -91,6 +97,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   const { id } = await params;
+  if (!/^[a-zA-Z0-9_:-]+$/.test(id)) {
+    return NextResponse.json({ error: "Invalid activity ID" }, { status: 400 });
+  }
 
   try {
     await deleteActivity(creds.intervalsApiKey, id);
