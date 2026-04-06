@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
+import { addWeeks, format } from "date-fns";
 import { generatedPlanAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -24,8 +25,6 @@ interface WizardData {
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
-  totalWeeks?: number;
-  startKm?: number;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -58,12 +57,14 @@ export default function SetupPage() {
         setGenerating(true);
         // Yield to event loop so React can render the spinner before sync generatePlan blocks
         await new Promise((resolve) => { setTimeout(resolve, 0); });
+        const totalWeeks = 18;
+        const raceDate = data.raceDate ?? format(addWeeks(new Date(), totalWeeks), "yyyy-MM-dd");
         const events = generatePlan(
           null,
-          data.raceDate ?? "2026-06-13",
+          raceDate,
           data.raceDist ?? 16,
-          data.totalWeeks ?? 18,
-          data.startKm ?? 8,
+          totalWeeks,
+          8,
           data.lthr ?? DEFAULT_LTHR,
           hrZones,
           false,

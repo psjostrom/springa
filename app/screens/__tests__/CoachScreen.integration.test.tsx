@@ -8,6 +8,8 @@ import {
   settingsAtom,
 } from "../../atoms";
 import type { UserSettings } from "@/lib/settings";
+import type { BGResponseModel } from "@/lib/bgModel";
+import type { CalendarEvent } from "@/lib/types";
 import "@/lib/__tests__/setup-dom";
 
 // Mock scrollIntoView (not available in jsdom)
@@ -85,5 +87,38 @@ describe("CoachScreen", () => {
     });
 
     expect(screen.getByText(/Ask about training, fueling, BG management/)).toBeInTheDocument();
+  });
+
+  it("shows BG suggestions for diabetes user with run data", () => {
+    const completedEvent = { id: "e1", type: "completed", date: new Date(), name: "Easy" } as CalendarEvent;
+    const bgModel: BGResponseModel = {
+      activitiesAnalyzed: 5,
+      categories: {},
+      observations: [],
+      bgByStartLevel: [],
+      bgByEntrySlope: [],
+      bgByTime: [],
+      targetFuelRates: [],
+    };
+
+    // Run multiple renders to account for weighted randomization
+    const allTexts = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const { unmount } = render(<CoachScreen />, {
+        atomInits: [
+          [calendarEventsAtom, [completedEvent]],
+          [cachedActivitiesAtom, []],
+          [bgModelAtom, bgModel],
+          [settingsAtom, { ...baseSettings, diabetesMode: true }],
+        ],
+      });
+      screen.getAllByRole("button").forEach((btn) => {
+        if (btn.textContent) allTexts.add(btn.textContent);
+      });
+      unmount();
+    }
+
+    const hasBGSuggestion = [...allTexts].some((t) => /BG|fuel rate/i.test(t));
+    expect(hasBGSuggestion).toBe(true);
   });
 });
