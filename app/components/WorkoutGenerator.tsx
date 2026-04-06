@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
-import { settingsAtom, apiKeyAtom, bgModelAtom, paceTableAtom, calendarReloadAtom } from "../atoms";
+import { settingsAtom, bgModelAtom, paceTableAtom, calendarReloadAtom } from "../atoms";
 import { generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, type OnDemandCategory } from "@/lib/workoutGenerators";
-import { replaceWorkoutOnDate } from "@/lib/intervalsApi";
+import { replaceWorkout } from "@/lib/intervalsClient";
 import { getWeekIdx } from "@/lib/workoutMath";
 import type { WorkoutEvent } from "@/lib/types";
 import { WorkoutCard } from "./WorkoutCard";
@@ -42,7 +42,6 @@ export function WorkoutGenerator({
   const [state, setState] = useState<GeneratorState>({ step: "picking" });
 
   const settings = useAtomValue(settingsAtom);
-  const apiKey = useAtomValue(apiKeyAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const paceTable = useAtomValue(paceTableAtom);
   const reloadCalendar = useSetAtom(calendarReloadAtom);
@@ -84,7 +83,7 @@ export function WorkoutGenerator({
   const handleSync = async (workout: WorkoutEvent, category: OnDemandCategory) => {
     setState({ step: "syncing", workout, category });
     try {
-      await replaceWorkoutOnDate(apiKey, existingEventId, workout);
+      await replaceWorkout(existingEventId, workout);
       reloadCalendar();
       onGenerated();
     } catch (err) {

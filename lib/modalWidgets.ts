@@ -14,7 +14,6 @@ export interface WidgetProps {
   paceTable?: PaceTable;
   hrZones?: number[];
   lthr?: number;
-  apiKey: string;
 }
 
 export type ModalWidgetId =

@@ -22,7 +22,7 @@ export async function GET() {
 
   const creds = await getUserCredentials(email);
   if (creds?.intervalsApiKey) {
-    settings.intervalsApiKey = creds.intervalsApiKey;
+    settings.intervalsConnected = true;
     try {
       const profile = await fetchAthleteProfile(creds.intervalsApiKey);
       if (profile.lthr) settings.lthr = profile.lthr;

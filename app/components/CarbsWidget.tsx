@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSetAtom } from "jotai";
 import { Pencil } from "lucide-react";
-import { updateActivityCarbs } from "@/lib/intervalsApi";
+import { updateActivityCarbs } from "@/lib/intervalsClient";
 import { patchCalendarEventAtom } from "../atoms";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
@@ -13,7 +13,7 @@ type EditState =
   | { kind: "saving"; value: string };
 
 /** Carbs ingested widget with inline edit. */
-export function CarbsWidget({ event, apiKey }: WidgetProps) {
+export function CarbsWidget({ event }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
   const patchEvent = useSetAtom(patchCalendarEventAtom);
 
@@ -28,7 +28,7 @@ export function CarbsWidget({ event, apiKey }: WidgetProps) {
 
     setEditState({ kind: "saving", value: editState.value });
     try {
-      await updateActivityCarbs(apiKey, actId, val);
+      await updateActivityCarbs(actId, val);
       patchEvent({ id: event.id, patch: { carbsIngested: val } });
       setEditState({ kind: "idle" });
     } catch (err) {

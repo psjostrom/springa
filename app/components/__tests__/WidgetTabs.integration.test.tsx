@@ -45,7 +45,6 @@ const completedEvent: CalendarEvent = {
 function buildProps(overrides?: Partial<WidgetProps>): WidgetProps {
   return {
     event: completedEvent,
-    apiKey: "test-key",
     isLoadingStreamData: false,
     ...overrides,
   };

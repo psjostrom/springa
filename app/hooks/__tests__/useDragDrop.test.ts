@@ -5,7 +5,6 @@ import { http, HttpResponse } from "msw";
 import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
 import type { CalendarEvent } from "@/lib/types";
-import { API_BASE } from "@/lib/constants";
 import { server } from "@/lib/__tests__/msw/server";
 import { capturedPutPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
 
@@ -38,7 +37,7 @@ describe("useDragDrop", () => {
   });
 
   it("allows dragging planned events", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -51,7 +50,7 @@ describe("useDragDrop", () => {
   });
 
   it("ignores drag on completed events", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -63,7 +62,7 @@ describe("useDragDrop", () => {
   });
 
   it("calls updateEvent and updates local state on drop", async () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     // Start drag
     const dragEvent = {
@@ -87,12 +86,12 @@ describe("useDragDrop", () => {
 
   it("sets dragError on API failure", async () => {
     server.use(
-      http.put(`${API_BASE}/athlete/0/events/:eventId`, () => {
+      http.put("/api/intervals/events/:eventId", () => {
         return new HttpResponse("server error", { status: 500 });
       }),
     );
 
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -107,12 +106,12 @@ describe("useDragDrop", () => {
 
   it("clearDragError resets the error", async () => {
     server.use(
-      http.put(`${API_BASE}/athlete/0/events/:eventId`, () => {
+      http.put("/api/intervals/events/:eventId", () => {
         return new HttpResponse("fail", { status: 500 });
       }),
     );
 
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -127,7 +126,7 @@ describe("useDragDrop", () => {
   });
 
   it("handleDragEnd resets state", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },

@@ -27,7 +27,7 @@ export const settingsLoadingAtom = atom(true);
 /** Pre-generated plan from wizard completion. Consumed once by PlannerScreen, then cleared. */
 export const generatedPlanAtom = atom<WorkoutEvent[]>([]);
 
-export const apiKeyAtom = atom((get) => get(settingsAtom)?.intervalsApiKey ?? "");
+export const intervalsConnectedAtom = atom((get) => get(settingsAtom)?.intervalsConnected ?? false);
 export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);
 
 export const updateSettingsAtom = atom(
@@ -51,8 +51,8 @@ export const calendarErrorAtom = atom<string | null>(null);
 // Write-only atom that triggers SWR revalidation for calendar data.
 // Uses SWR's global mutate with the same key as useSharedCalendarData.
 export const calendarReloadAtom = atom(null, (get) => {
-  const apiKey = get(apiKeyAtom);
-  if (apiKey) void mutate(["calendar-data", apiKey]);
+  const connected = get(intervalsConnectedAtom);
+  if (connected) void mutate("calendar-data");
 });
 
 /** Optimistically patch a single CalendarEvent by id after a widget save. */

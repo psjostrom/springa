@@ -22,7 +22,7 @@ import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
-import { deleteEvent, deleteActivity } from "@/lib/intervalsApi";
+import { deleteEvent, deleteActivity } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId } from "@/lib/format";
 import { EventModal } from "./EventModal";
@@ -36,7 +36,6 @@ import { ErrorCard } from "./ErrorCard";
 import "../calendar.css";
 
 interface CalendarViewProps {
-  apiKey: string;
   initialEvents: CalendarEvent[];
   isLoadingInitial: boolean;
   initialError: string | null;
@@ -51,7 +50,7 @@ interface CalendarViewProps {
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
-export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference }: CalendarViewProps) {
+export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference }: CalendarViewProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -108,11 +107,11 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
     handleDragEnter,
     handleDragLeave,
     handleDrop,
-  } = useDragDrop(apiKey, setEvents);
+  } = useDragDrop(setEvents);
 
   // Lazy-load stream data via SWR when modal opens for a completed workout
   const selectedActivityId = selectedEvent?.type === "completed" ? selectedEvent.activityId : null;
-  const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null, apiKey);
+  const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(selectedActivityId ?? null);
   const bgReadings = useAtomValue(readingsAtom);
 
   // Combine event + fresh stream data for modal (join at render time, not merged into state)
@@ -177,11 +176,11 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
 
     if (eventId.startsWith("activity-")) {
       const activityId = eventId.replace("activity-", "");
-      await deleteActivity(apiKey, activityId);
+      await deleteActivity(activityId);
     } else {
       const numericId = parseEventId(eventId);
       if (isNaN(numericId)) return;
-      await deleteEvent(apiKey, numericId);
+      await deleteEvent(numericId);
     }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
     closeWorkoutModal();
@@ -399,7 +398,6 @@ export function CalendarView({ apiKey, initialEvents, isLoadingInitial, initialE
           onDateSaved={handleDateSaved}
           onDelete={handleDeleteEvent}
           isLoadingStreamData={isLoadingStreamData}
-          apiKey={apiKey}
           runBGContexts={runBGContexts}
           paceTable={paceTable}
           bgModel={bgModel}

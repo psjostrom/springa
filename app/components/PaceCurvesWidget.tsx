@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useAtomValue } from "jotai";
-import { apiKeyAtom } from "../atoms";
 import { usePaceCurves } from "../hooks/usePaceCurves";
 import { PacePBs } from "./PacePBs";
 import type { PaceCurveData } from "@/lib/types";
@@ -43,8 +41,7 @@ export function PaceCurvesWidget({ data: propData, onActivitySelect }: PaceCurve
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const apiKey = useAtomValue(apiKeyAtom);
-  const { data: fetchedData, isLoading } = usePaceCurves(apiKey, timeWindow.curveId);
+  const { data: fetchedData, isLoading } = usePaceCurves(timeWindow.curveId);
 
   const data = fetchedData ?? propData;
   if (!data) {
