@@ -1,7 +1,9 @@
 "use client";
 
 import useSWR from "swr";
+import { useAtomValue } from "jotai";
 import { fetchActivityStreams } from "@/lib/intervalsClient";
+import { intervalsConnectedAtom } from "../atoms";
 import type { StreamData } from "@/lib/types";
 
 export interface ActivityStreamData {
@@ -17,8 +19,9 @@ export interface ActivityStreamData {
 export function useActivityStream(
   activityId: string | null,
 ): { data: ActivityStreamData | null; isLoading: boolean; error: Error | null } {
+  const connected = useAtomValue(intervalsConnectedAtom);
   const { data, error, isLoading } = useSWR<ActivityStreamData, Error>(
-    activityId ? ["activity-stream", activityId] : null,
+    activityId && connected ? ["activity-stream", activityId] : null,
     async ([, id]: readonly [string, string]) => {
       const details = await fetchActivityStreams(id);
       return {

@@ -333,9 +333,6 @@ export async function fetchActivityDetails(
 
 // --- CALENDAR API ---
 
-// Deduplicate concurrent identical requests
-const calendarInflight = new Map<string, Promise<CalendarEvent[]>>();
-
 export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
@@ -343,33 +340,22 @@ export async function fetchCalendarData(
 ): Promise<CalendarEvent[]> {
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
-  const cacheKey = `${apiKey}:${oldest}:${newest}`;
 
-  const inflight = calendarInflight.get(cacheKey);
-  if (inflight) return inflight;
+  const { events, autoPairs } = await fetchCalendarDataInner(apiKey, oldest, newest);
 
-  const promise = fetchCalendarDataInner(apiKey, oldest, newest).then(
-    ({ events, autoPairs }) => {
-      // Fire-and-forget: don't block calendar load on pairing.
-      // Pairing is best-effort - failures are logged but don't affect the user.
-      // Next calendar fetch will retry any failed pairs via fallback matching.
-      if (autoPairs.length > 0) console.log(`[auto-pair] ${autoPairs.length} fallback pairs to sync`);
-      for (const { eventId, activityId } of autoPairs) {
-        pairEventWithActivity(apiKey, eventId, activityId)
-          .then(() => { console.log(`[auto-pair] SUCCESS paired event ${eventId} → activity ${activityId}`); })
-          .catch((err: unknown) =>
-            { console.warn(`[auto-pair] FAILED to pair event ${eventId} → activity ${activityId}:`, err); },
-          );
-      }
-      return events;
-    },
-  );
-  calendarInflight.set(cacheKey, promise);
-  promise.then(
-    () => calendarInflight.delete(cacheKey),
-    () => calendarInflight.delete(cacheKey),
-  );
-  return promise;
+  // Fire-and-forget: don't block calendar load on pairing.
+  // Pairing is best-effort - failures are logged but don't affect the user.
+  // Next calendar fetch will retry any failed pairs via fallback matching.
+  if (autoPairs.length > 0) console.log(`[auto-pair] ${autoPairs.length} fallback pairs to sync`);
+  for (const { eventId, activityId } of autoPairs) {
+    pairEventWithActivity(apiKey, eventId, activityId)
+      .then(() => { console.log(`[auto-pair] SUCCESS paired event ${eventId} → activity ${activityId}`); })
+      .catch((err: unknown) =>
+        { console.warn(`[auto-pair] FAILED to pair event ${eventId} → activity ${activityId}:`, err); },
+      );
+  }
+
+  return events;
 }
 
 async function fetchCalendarDataInner(

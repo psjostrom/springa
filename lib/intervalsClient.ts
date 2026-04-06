@@ -13,7 +13,14 @@ import type {
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `Request failed: ${res.status}`);
+    let message = text || `Request failed: ${res.status}`;
+    try {
+      const json = JSON.parse(text) as { error?: string };
+      if (json.error) message = json.error;
+    } catch {
+      // Not JSON — use raw text as-is
+    }
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }

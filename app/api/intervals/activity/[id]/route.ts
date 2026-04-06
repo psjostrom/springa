@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchActivityById, fetchActivityDetails, deleteActivity, updateActivityCarbs, updateActivityPreRunCarbs } from "@/lib/intervalsApi";
+import { fetchActivityById, fetchActivityDetails, deleteActivity, authHeader } from "@/lib/intervalsApi";
+import { API_BASE } from "@/lib/constants";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let email: string;
@@ -56,13 +57,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const body = (await req.json()) as Record<string, unknown>;
 
   try {
-    if ("carbs_ingested" in body) {
-      await updateActivityCarbs(creds.intervalsApiKey, id, body.carbs_ingested as number);
-    } else if ("PreRunCarbsG" in body) {
-      const g = body.PreRunCarbsG as number | null;
-      await updateActivityPreRunCarbs(creds.intervalsApiKey, id, g === 0 ? null : g);
-    } else {
-      return NextResponse.json({ error: "Unknown update fields" }, { status: 400 });
+    const res = await fetch(`${API_BASE}/activity/${id}`, {
+      method: "PUT",
+      headers: { Authorization: authHeader(creds.intervalsApiKey), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Intervals.icu ${res.status}: ${text}`);
     }
     return NextResponse.json({ ok: true });
   } catch (err) {
