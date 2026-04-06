@@ -7,6 +7,7 @@ import { simulateBG, type SimulationResult } from "@/lib/bgSimulation";
 import { getCurrentFuelRate, getFuelConfidence } from "@/lib/fuelRate";
 import type { WorkoutCategory } from "@/lib/types";
 import { BGSimChart } from "../components/BGSimChart";
+import { EmptyState } from "../components/EmptyState";
 import { bgModelAtom, bgModelLoadingAtom } from "../atoms";
 
 const CATEGORIES: { key: WorkoutCategory; label: string; color: string }[] = [
@@ -50,8 +51,14 @@ export function SimulateScreen() {
 
   if (!bgModel || bgModel.activitiesAnalyzed === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-muted px-6 text-center">
-        No BG data yet. Complete some runs with glucose data to enable simulation.
+      <div className="h-full flex items-center justify-center px-6">
+        <EmptyState message="Complete a few runs with CGM data to unlock BG simulation">
+          <svg width="100%" height="120" viewBox="0 0 300 120" className="text-muted">
+            <path d="M10,80 Q40,40 80,60 T150,50 T220,70 T290,40" stroke="currentColor" strokeWidth="2" fill="none"/>
+            <line x1="10" y1="100" x2="290" y2="100" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+            <line x1="10" y1="20" x2="10" y2="100" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
+          </svg>
+        </EmptyState>
       </div>
     );
   }

@@ -69,6 +69,7 @@ import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
 import { EventModal } from "../components/EventModal";
 import { WidgetLoadingCard } from "../components/WidgetLoadingCard";
+import { EmptyState } from "../components/EmptyState";
 import { useActivityStream } from "../hooks/useActivityStream";
 import { usePaceCurves } from "../hooks/usePaceCurves";
 import { mergeStreamData } from "@/lib/enrichEvents";
@@ -170,6 +171,16 @@ const INTEL_TABS = [
 
 type IntelTabId = (typeof INTEL_TABS)[number]["id"];
 
+const INTEL_GHOST_SVG = (
+  <svg width="100%" height="160" viewBox="0 0 400 160" className="text-muted">
+    <polyline points="20,120 60,100 100,110 140,80 180,90 220,60 260,70 300,40 340,50 380,30" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <rect x="20" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="100" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="180" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+    <rect x="260" y="140" width="60" height="12" rx="3" fill="currentColor" opacity="0.3"/>
+  </svg>
+);
+
 export function IntelScreen() {
   const apiKey = useAtomValue(apiKeyAtom);
   const events = useAtomValue(enrichedEventsAtom);
@@ -204,6 +215,8 @@ export function IntelScreen() {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [fetchedEvent, setFetchedEvent] = useState<CalendarEvent | null>(null);
   const [isFetchingEvent, setIsFetchingEvent] = useState(false);
+
+  const hasCompletedRuns = events.some((e) => e.type === "completed");
 
   // Find event in local array (fetched event is handled below after effect)
   const eventFromArray = selectedActivityId
@@ -427,7 +440,13 @@ export function IntelScreen() {
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         <TabBar tabs={INTEL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {activeTab === "overview" && (
+        {activeTab === "overview" && !hasCompletedRuns && !eventsLoading && (
+          <EmptyState message="Complete your first run to unlock training insights">
+            {INTEL_GHOST_SVG}
+          </EmptyState>
+        )}
+
+        {activeTab === "overview" && (hasCompletedRuns || eventsLoading) && (
           <div className="space-y-6">
             {/* Phase Tracker */}
             <div>
@@ -471,7 +490,13 @@ export function IntelScreen() {
           </div>
         )}
 
-        {activeTab === "deep-dive" && (
+        {activeTab === "deep-dive" && !hasCompletedRuns && !eventsLoading && (
+          <EmptyState message="Complete your first run to unlock training insights">
+            {INTEL_GHOST_SVG}
+          </EmptyState>
+        )}
+
+        {activeTab === "deep-dive" && (hasCompletedRuns || eventsLoading) && (
           <>
             {/* Widget loop */}
             {widgetLayout.widgetOrder.map((key, idx) => {
@@ -546,7 +571,13 @@ export function IntelScreen() {
           </>
         )}
 
-        {activeTab === "analysis" && (
+        {activeTab === "analysis" && !hasCompletedRuns && !eventsLoading && (
+          <EmptyState message="Complete your first run to unlock training insights">
+            {INTEL_GHOST_SVG}
+          </EmptyState>
+        )}
+
+        {activeTab === "analysis" && (hasCompletedRuns || eventsLoading) && (
           <div>
             <WidgetHeading widgetKey="bg-patterns" meta={null} />
             {widgetRenderMap["bg-patterns"]?.()}
