@@ -125,12 +125,10 @@ function HomeContent() {
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
-  // Redirect: unapproved → /pending (highest priority), not onboarded → /setup
+  // Redirect: not onboarded → /setup
   useEffect(() => {
     if (settingsLoading || !settings) return;
-    if (settings.approved === false) {
-      router.push("/pending");
-    } else if (settings.onboardingComplete === false) {
+    if (settings.onboardingComplete === false) {
       router.push("/setup");
     }
   }, [settingsLoading, settings, router]);
