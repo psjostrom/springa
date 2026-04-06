@@ -1,19 +1,13 @@
 // @vitest-environment jsdom
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
 import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
 import type { CalendarEvent } from "@/lib/types";
-
-vi.mock("@/lib/intervalsApi", () => ({
-  updateEvent: vi.fn(),
-}));
-
-vi.mock("@/lib/format", () => ({
-  parseEventId: (id: string) => parseInt(id.replace("event-", ""), 10),
-}));
-
-import { updateEvent } from "@/lib/intervalsApi";
+import { API_BASE } from "@/lib/constants";
+import { server } from "@/lib/__tests__/msw/server";
+import { capturedPutPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
 
 const planned: CalendarEvent = {
   id: "event-100",
@@ -34,11 +28,11 @@ const completed: CalendarEvent = {
 };
 
 describe("useDragDrop", () => {
-  let setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
   let setEventsMock: ReturnType<typeof vi.fn>;
+  let setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetCaptures();
     setEventsMock = vi.fn();
     setEvents = setEventsMock as unknown as React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
   });
@@ -69,8 +63,6 @@ describe("useDragDrop", () => {
   });
 
   it("calls updateEvent and updates local state on drop", async () => {
-    (updateEvent as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
-
     const { result } = renderHook(() => useDragDrop("key", setEvents));
 
     // Start drag
@@ -83,7 +75,10 @@ describe("useDragDrop", () => {
     const targetDate = new Date("2026-03-12");
     await act(async () => { await result.current.handleDrop(targetDate); });
 
-    expect(updateEvent).toHaveBeenCalledWith("key", 100, expect.objectContaining({
+    // Verify the PUT was sent to the correct endpoint with the right payload
+    expect(capturedPutPayload).not.toBeNull();
+    expect(capturedPutPayload!.url).toContain("/events/100");
+    expect(capturedPutPayload!.body).toEqual(expect.objectContaining({
       start_date_local: expect.stringContaining("2026-03-12"),
     }));
     expect(setEventsMock).toHaveBeenCalled();
@@ -91,7 +86,11 @@ describe("useDragDrop", () => {
   });
 
   it("sets dragError on API failure", async () => {
-    (updateEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
+    server.use(
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () => {
+        return new HttpResponse("server error", { status: 500 });
+      }),
+    );
 
     const { result } = renderHook(() => useDragDrop("key", setEvents));
 
@@ -107,7 +106,11 @@ describe("useDragDrop", () => {
   });
 
   it("clearDragError resets the error", async () => {
-    (updateEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("fail"));
+    server.use(
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () => {
+        return new HttpResponse("fail", { status: 500 });
+      }),
+    );
 
     const { result } = renderHook(() => useDragDrop("key", setEvents));
 

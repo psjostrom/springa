@@ -1,15 +1,16 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { WatchStep } from "../WatchStep";
 import "@/lib/__tests__/setup-dom";
 import type { PlatformConnection } from "@/lib/intervalsApi";
+import { server } from "@/lib/__tests__/msw/server";
 
-function mockFetch(platforms: PlatformConnection[]) {
-  return vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ platforms }),
+function connectionHandler(platforms: PlatformConnection[]) {
+  return http.get("/api/intervals/connections", () => {
+    return HttpResponse.json({ platforms });
   });
 }
 
@@ -17,15 +18,10 @@ describe("WatchStep", () => {
   const onNext = vi.fn();
   const onBack = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    global.fetch = mockFetch([]);
-  });
-
   it("shows green state when Garmin is connected and syncing", async () => {
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
-    ]);
+    ]));
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -38,6 +34,8 @@ describe("WatchStep", () => {
   });
 
   it("shows watch selector when no connection exists", async () => {
+    server.use(connectionHandler([]));
+
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
     await waitFor(() => {
@@ -48,6 +46,7 @@ describe("WatchStep", () => {
   });
 
   it("shows Intervals.icu Settings instructions when Garmin is selected", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -63,6 +62,7 @@ describe("WatchStep", () => {
   });
 
   it("shows HealthFit instructions when Apple Watch is selected", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -77,6 +77,7 @@ describe("WatchStep", () => {
   });
 
   it("shows Health Sync instructions when Wear OS is selected", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -91,6 +92,7 @@ describe("WatchStep", () => {
   });
 
   it("shows warning when no watch is selected", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -106,9 +108,9 @@ describe("WatchStep", () => {
   });
 
   it("shows Strava-only warning with continue option", async () => {
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "strava", linked: true, syncActivities: true, uploadWorkouts: false },
-    ]);
+    ]));
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -122,13 +124,8 @@ describe("WatchStep", () => {
   });
 
   it("refetches when Check again is clicked", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
-    const firstFetch = mockFetch([]);
-    const secondFetch = mockFetch([
-      { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
-    ]);
-
-    global.fetch = firstFetch;
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
     await waitFor(() => {
@@ -139,7 +136,9 @@ describe("WatchStep", () => {
     await user.click(screen.getByRole("button", { name: "Garmin" }));
 
     // Mock successful connection on second fetch
-    global.fetch = secondFetch;
+    server.use(connectionHandler([
+      { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
+    ]));
     await user.click(screen.getByRole("button", { name: "Check again" }));
 
     await waitFor(() => {
@@ -150,11 +149,10 @@ describe("WatchStep", () => {
   });
 
   it("calls onNext when Next is clicked in connected state", async () => {
-    const user = userEvent.setup();
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
-    ]);
-
+    ]));
+    const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
     await waitFor(() => {
@@ -166,6 +164,7 @@ describe("WatchStep", () => {
   });
 
   it("calls onBack when Back is clicked", async () => {
+    server.use(connectionHandler([]));
     const user = userEvent.setup();
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -178,9 +177,9 @@ describe("WatchStep", () => {
   });
 
   it("shows upload prompt when connected but uploadWorkouts is false", async () => {
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: false },
-    ]);
+    ]));
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -192,10 +191,10 @@ describe("WatchStep", () => {
   });
 
   it("shows combined message when multiple platforms are syncing", async () => {
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "garmin", linked: true, syncActivities: true, uploadWorkouts: true },
       { platform: "polar", linked: true, syncActivities: true, uploadWorkouts: false },
-    ]);
+    ]));
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -205,7 +204,11 @@ describe("WatchStep", () => {
   });
 
   it("shows error banner when fetch fails", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
+    server.use(
+      http.get("/api/intervals/connections", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 
@@ -217,9 +220,9 @@ describe("WatchStep", () => {
   });
 
   it("shows sync-off warning when platform is linked but sync disabled", async () => {
-    global.fetch = mockFetch([
+    server.use(connectionHandler([
       { platform: "garmin", linked: true, syncActivities: false, uploadWorkouts: false },
-    ]);
+    ]));
 
     render(<WatchStep onNext={onNext} onBack={onBack} />);
 

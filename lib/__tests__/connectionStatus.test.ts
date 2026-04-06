@@ -1,9 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { describe, it, expect } from "vitest";
 import { fetchConnectionStatus } from "../intervalsApi";
-
-beforeEach(() => {
-  vi.restoreAllMocks();
-});
+import { API_BASE } from "../constants";
+import { server } from "./msw/server";
 
 function athleteResponse(overrides: Record<string, unknown> = {}) {
   return {
@@ -38,14 +37,15 @@ function athleteResponse(overrides: Record<string, unknown> = {}) {
 
 describe("fetchConnectionStatus", () => {
   it("detects Garmin connected with sync and upload", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse({
-        icu_garmin_health: true,
-        icu_garmin_sync_activities: true,
-        icu_garmin_upload_workouts: true,
-      })),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse({
+          icu_garmin_health: true,
+          icu_garmin_sync_activities: true,
+          icu_garmin_upload_workouts: true,
+        }));
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const garmin = result.platforms.find((p) => p.platform === "garmin");
@@ -58,10 +58,11 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("returns empty platforms when nothing is connected", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse()),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse());
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const linked = result.platforms.filter((p) => p.linked);
@@ -69,14 +70,15 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("does not false-positive on Strava sync_activities default", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse({
-        strava_sync_activities: true,
-        strava_id: null,
-        strava_authorized: false,
-      })),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse({
+          strava_sync_activities: true,
+          strava_id: null,
+          strava_authorized: false,
+        }));
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const strava = result.platforms.find((p) => p.platform === "strava");
@@ -85,14 +87,15 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("detects Strava connected and authorized", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse({
-        strava_id: 12345,
-        strava_authorized: true,
-        strava_sync_activities: true,
-      })),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse({
+          strava_id: 12345,
+          strava_authorized: true,
+          strava_sync_activities: true,
+        }));
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const strava = result.platforms.find((p) => p.platform === "strava");
@@ -105,13 +108,14 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("detects Polar linked but sync off", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse({
-        polar_scope: "read",
-        polar_sync_activities: false,
-      })),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse({
+          polar_scope: "read",
+          polar_sync_activities: false,
+        }));
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const polar = result.platforms.find((p) => p.platform === "polar");
@@ -120,14 +124,15 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("does not false-positive on Garmin sync_activities when not linked", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(athleteResponse({
-        icu_garmin_health: false,
-        icu_garmin_sync_activities: true,
-        icu_garmin_upload_workouts: true,
-      })),
-    }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json(athleteResponse({
+          icu_garmin_health: false,
+          icu_garmin_sync_activities: true,
+          icu_garmin_upload_workouts: true,
+        }));
+      }),
+    );
 
     const result = await fetchConnectionStatus("test-key");
     const garmin = result.platforms.find((p) => p.platform === "garmin");
@@ -136,7 +141,11 @@ describe("fetchConnectionStatus", () => {
   });
 
   it("returns empty platforms on API error", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return new HttpResponse(null, { status: 401 });
+      }),
+    );
 
     const result = await fetchConnectionStatus("bad-key");
     expect(result.platforms).toHaveLength(0);

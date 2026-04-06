@@ -8,6 +8,7 @@ export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
+export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
 
 export function resetCaptures() {
   capturedUploadPayload = [];
@@ -15,6 +16,7 @@ export function resetCaptures() {
   capturedDeleteEventIds = [];
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
+  capturedActivityPutPayloads = [];
 }
 
 export const handlers = [
@@ -54,9 +56,34 @@ export const handlers = [
     return new HttpResponse(null, { status: 200 });
   }),
 
+  // PUT activity (pair, update carbs, etc.)
+  http.put(`${API_BASE}/activity/:activityId`, async ({ params, request }) => {
+    capturedActivityPutPayloads.push({
+      activityId: params.activityId as string,
+      body: await request.json(),
+    });
+    return HttpResponse.json({ ok: true });
+  }),
+
   // GET activity streams
   http.get(`${API_BASE}/activity/:activityId/streams`, () => {
     return HttpResponse.json(sampleStreams);
+  }),
+
+  // GET athlete profile / connection status (all platforms disconnected by default)
+  http.get(`${API_BASE}/athlete/0`, () => {
+    return HttpResponse.json({
+      id: 0,
+      sportSettings: [],
+      icu_garmin_health: false,
+      icu_garmin_sync_activities: false,
+      icu_garmin_upload_workouts: false,
+    });
+  }),
+
+  // GET pace curves
+  http.get(`${API_BASE}/athlete/0/pace-curves`, () => {
+    return HttpResponse.json({ list: [], activities: {} });
   }),
 
   // POST run analysis (LLM-generated post-run analysis)
