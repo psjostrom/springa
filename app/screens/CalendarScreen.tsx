@@ -2,7 +2,6 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  apiKeyAtom,
   enrichedEventsAtom,
   calendarLoadingAtom,
   calendarErrorAtom,
@@ -15,7 +14,6 @@ import {
 import { CalendarView } from "../components/CalendarView";
 
 export function CalendarScreen() {
-  const apiKey = useAtomValue(apiKeyAtom);
   const events = useAtomValue(enrichedEventsAtom);
   const isLoading = useAtomValue(calendarLoadingAtom);
   const error = useAtomValue(calendarErrorAtom);
@@ -29,7 +27,7 @@ export function CalendarScreen() {
     <div className="h-full bg-bg flex flex-col text-text font-sans overflow-hidden">
       <main className="flex-1 bg-bg min-h-0 min-w-0">
         <div className="px-1 py-1 md:p-6 h-full flex flex-col overflow-hidden">
-          <CalendarView apiKey={apiKey} initialEvents={events} isLoadingInitial={isLoading} initialError={error} onRetryLoad={reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} warmthPreference={settings?.warmthPreference} />
+          <CalendarView initialEvents={events} isLoadingInitial={isLoading} initialError={error} onRetryLoad={reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} warmthPreference={settings?.warmthPreference} />
         </div>
       </main>
     </div>

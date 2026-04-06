@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import type { CalendarEvent } from "@/lib/types";
-import { updateEvent } from "@/lib/intervalsApi";
+import { updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId } from "@/lib/format";
 
 export function useDragDrop(
-  apiKey: string,
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>,
 ) {
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
@@ -61,7 +60,7 @@ export function useDragDrop(
 
     setDragError(null);
     try {
-      await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
+      await updateEvent(numericId, { start_date_local: newDateLocal });
 
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("update", {

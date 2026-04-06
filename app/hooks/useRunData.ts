@@ -9,7 +9,6 @@ import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { useStreamCache } from "./useStreamCache";
 
 export function useRunData(
-  apiKey: string,
   enabled: boolean,
   sharedEvents: CalendarEvent[],
   bgReadings?: BGReading[],
@@ -32,7 +31,7 @@ export function useRunData(
   );
 
   // 2. Stream cache (async infrastructure)
-  const { cached, loading, progress } = useStreamCache(apiKey, enabled, completedRuns);
+  const { cached, loading, progress } = useStreamCache(enabled, completedRuns);
 
   // If sugar mode is off, skip all BG-related enrichment
   const skipBG = diabetesMode === false;

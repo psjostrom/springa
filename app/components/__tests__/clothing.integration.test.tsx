@@ -63,7 +63,7 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -80,7 +80,7 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
       />,
     );
 
@@ -96,7 +96,7 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -116,7 +116,7 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -137,7 +137,7 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -156,7 +156,7 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -183,7 +183,7 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -201,7 +201,7 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );
@@ -224,7 +224,7 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
+
         clothing={clothing}
       />,
     );

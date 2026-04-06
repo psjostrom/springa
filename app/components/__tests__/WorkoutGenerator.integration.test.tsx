@@ -5,13 +5,12 @@ import { render, screen } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
-import { API_BASE } from "@/lib/constants";
 import { settingsAtom } from "../../atoms";
 import { WorkoutGenerator } from "../WorkoutGenerator";
 import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
 
 const settings = {
-  intervalsApiKey: "test-key",
+  intervalsConnected: true,
   raceDate: "2027-06-12",
   raceDist: 16,
   totalWeeks: 12,
@@ -77,7 +76,7 @@ describe("WorkoutGenerator", () => {
 
   it("shows error when sync fails", async () => {
     server.use(
-      http.post(`${API_BASE}/athlete/0/events/bulk`, () => {
+      http.post("/api/intervals/events/replace", () => {
         return new HttpResponse("Server error", { status: 500 });
       }),
     );
@@ -86,7 +85,7 @@ describe("WorkoutGenerator", () => {
     renderGenerator();
     await user.click(screen.getByRole("button", { name: /easy/i }));
     await user.click(screen.getByText("Sync to Intervals"));
-    expect(await screen.findByText(/failed to create event/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Server error/i)).toBeInTheDocument();
   });
 
   it("shows error when date is outside plan window", async () => {

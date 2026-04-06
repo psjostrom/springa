@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSetAtom } from "jotai";
 import { Pencil } from "lucide-react";
-import { updateActivityPreRunCarbs } from "@/lib/intervalsApi";
+import { updateActivityPreRunCarbs } from "@/lib/intervalsClient";
 import { patchCalendarEventAtom } from "../atoms";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
@@ -13,7 +13,7 @@ type EditState =
   | { kind: "saving"; g: string };
 
 /** Pre-run carbs widget with inline edit. */
-export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
+export function PreRunCarbsWidget({ event }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
   const [dbPreRun, setDbPreRun] = useState<{ eventId: string; g: number | null } | null>(null);
   const patchEvent = useSetAtom(patchCalendarEventAtom);
@@ -47,7 +47,7 @@ export function PreRunCarbsWidget({ event, apiKey }: WidgetProps) {
 
     setEditState({ kind: "saving", g: editState.g });
     try {
-      await updateActivityPreRunCarbs(apiKey, actId, g);
+      await updateActivityPreRunCarbs(actId, g);
       // Clean up Turso fallback row if this activity has a paired event
       if (event.pairedEventId) {
         void fetch(`/api/prerun-carbs?eventId=${encodeURIComponent(String(event.pairedEventId))}`, {

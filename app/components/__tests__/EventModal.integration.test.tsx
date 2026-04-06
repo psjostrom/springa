@@ -79,7 +79,6 @@ describe("EventModal race event", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -96,7 +95,6 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
         hrZones={[...TEST_HR_ZONES]}
         lthr={TEST_LTHR}
       />,
@@ -117,7 +115,6 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -141,7 +138,6 @@ describe("EventModal workout card", () => {
         onDateSaved={noop}
         onDelete={noopAsync}
         isLoadingStreamData
-        apiKey="test"
       />,
     );
 
@@ -165,7 +161,6 @@ describe("EventModal workout card", () => {
         onDateSaved={noop}
         onDelete={noopAsync}
         isLoadingStreamData={false}
-        apiKey="test"
       />,
     );
 
@@ -187,7 +182,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -211,7 +205,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -235,7 +228,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -256,7 +248,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -270,7 +261,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -284,7 +274,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -302,7 +291,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -329,7 +317,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
       { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
@@ -372,7 +359,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -395,7 +381,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -424,7 +409,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -462,7 +446,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -490,7 +473,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -511,7 +493,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -543,7 +524,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
@@ -588,7 +568,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        apiKey="test"
       />,
     );
 
