@@ -5,7 +5,7 @@ import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
 import type { CalendarEvent } from "@/lib/types";
 
-vi.mock("@/lib/intervalsApi", () => ({
+vi.mock("@/lib/intervalsClient", () => ({
   updateEvent: vi.fn(),
 }));
 
@@ -13,7 +13,7 @@ vi.mock("@/lib/format", () => ({
   parseEventId: (id: string) => parseInt(id.replace("event-", ""), 10),
 }));
 
-import { updateEvent } from "@/lib/intervalsApi";
+import { updateEvent } from "@/lib/intervalsClient";
 
 const planned: CalendarEvent = {
   id: "event-100",
@@ -44,7 +44,7 @@ describe("useDragDrop", () => {
   });
 
   it("allows dragging planned events", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -57,7 +57,7 @@ describe("useDragDrop", () => {
   });
 
   it("ignores drag on completed events", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -71,7 +71,7 @@ describe("useDragDrop", () => {
   it("calls updateEvent and updates local state on drop", async () => {
     (updateEvent as ReturnType<typeof vi.fn>).mockResolvedValueOnce(undefined);
 
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     // Start drag
     const dragEvent = {
@@ -83,7 +83,7 @@ describe("useDragDrop", () => {
     const targetDate = new Date("2026-03-12");
     await act(async () => { await result.current.handleDrop(targetDate); });
 
-    expect(updateEvent).toHaveBeenCalledWith("key", 100, expect.objectContaining({
+    expect(updateEvent).toHaveBeenCalledWith(100, expect.objectContaining({
       start_date_local: expect.stringContaining("2026-03-12"),
     }));
     expect(setEventsMock).toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe("useDragDrop", () => {
   it("sets dragError on API failure", async () => {
     (updateEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
 
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -109,7 +109,7 @@ describe("useDragDrop", () => {
   it("clearDragError resets the error", async () => {
     (updateEvent as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("fail"));
 
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },
@@ -124,7 +124,7 @@ describe("useDragDrop", () => {
   });
 
   it("handleDragEnd resets state", () => {
-    const { result } = renderHook(() => useDragDrop("key", setEvents));
+    const { result } = renderHook(() => useDragDrop(setEvents));
 
     const dragEvent = {
       dataTransfer: { effectAllowed: "", setData: vi.fn() },

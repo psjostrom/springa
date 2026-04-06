@@ -6,7 +6,6 @@ import useSWR from "swr";
 import {
   settingsAtom,
   settingsLoadingAtom,
-  apiKeyAtom,
   calendarEventsAtom,
   calendarLoadingAtom,
   calendarErrorAtom,
@@ -67,10 +66,8 @@ export function useHydrateStore() {
       });
   }, [setSettings, setSettingsLoading, setPhaseInfo]);
 
-  const apiKey = useAtomValue(apiKeyAtom);
-
   // ─── Calendar ──────────────────────────────────────────
-  const cal = useSharedCalendarData(apiKey);
+  const cal = useSharedCalendarData();
   const setCalEvents = useSetAtom(calendarEventsAtom);
   const setCalLoading = useSetAtom(calendarLoadingAtom);
   const setCalError = useSetAtom(calendarErrorAtom);
@@ -100,7 +97,7 @@ export function useHydrateStore() {
 
   // ─── Run Data / BG Model ──────────────────────────────
   const settings = useAtomValue(settingsAtom);
-  const runData = useRunData(apiKey, true, cal.events, bg.readings, settings?.diabetesMode);
+  const runData = useRunData(true, cal.events, bg.readings, settings?.diabetesMode);
   const setBgModel = useSetAtom(bgModelAtom);
   const setBgModelLoading = useSetAtom(bgModelLoadingAtom);
   const setBgModelProgress = useSetAtom(bgModelProgressAtom);
@@ -138,7 +135,7 @@ export function useHydrateStore() {
   }, [wellnessData, wellnessIsLoading, setWellnessEntries, setWellnessLoading]);
 
   // ─── Pace Curves ───────────────────────────────────────
-  const pc = usePaceCurves(apiKey);
+  const pc = usePaceCurves();
   const setPaceCurveData = useSetAtom(paceCurveDataAtom);
   const setPaceCurveLoading = useSetAtom(paceCurveLoadingAtom);
 

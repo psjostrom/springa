@@ -21,10 +21,8 @@ import type { UserSettings } from "@/lib/settings";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 import "./setup-dom";
 
-const TEST_API_KEY = "test-integration-key";
-
 const TEST_SETTINGS: UserSettings = {
-  intervalsApiKey: TEST_API_KEY,
+  intervalsConnected: true,
   raceDate: "2026-06-13",
   hrZones: [...TEST_HR_ZONES],
   lthr: TEST_LTHR,
@@ -49,7 +47,7 @@ function HydrateSettings({ children }: { children: React.ReactNode }) {
 function TestCalendarScreen() {
   useHydrateAtoms([[settingsAtom, TEST_SETTINGS]]);
 
-  const { events, isLoading, error } = useSharedCalendarData(TEST_API_KEY);
+  const { events, isLoading, error } = useSharedCalendarData();
   const setCalEvents = useSetAtom(calendarEventsAtom);
   const setCalLoading = useSetAtom(calendarLoadingAtom);
   const setCalError = useSetAtom(calendarErrorAtom);
@@ -95,13 +93,13 @@ describe("Flow 1: Planner — Generate -> Preview -> Sync -> Success", () => {
       expect(screen.getByText(/Uploaded \d+ workouts/)).toBeInTheDocument();
     });
 
-    // 7. Assert MSW captured correct POST payload
+    // 7. Assert MSW captured correct POST payload (client sends WorkoutEvent format)
     expect(capturedUploadPayload.length).toBeGreaterThan(0);
     for (const item of capturedUploadPayload as Record<string, unknown>[]) {
-      expect(item.category).toBe("WORKOUT");
-      expect(item.type).toBe("Run");
-      expect(item.carbs_per_hour).toBeDefined();
-      expect(typeof item.carbs_per_hour).toBe("number");
+      expect(item.name).toBeDefined();
+      expect(item.description).toBeDefined();
+      expect(item.fuelRate).toBeDefined();
+      expect(typeof item.fuelRate).toBe("number");
       // Descriptions should NOT contain fuel text
       expect(item.description).not.toContain("FUEL PER 10:");
     }

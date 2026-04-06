@@ -1,7 +1,9 @@
 "use client";
 
 import useSWR from "swr";
-import { fetchPaceCurves } from "@/lib/intervalsApi";
+import { useAtomValue } from "jotai";
+import { fetchPaceCurves } from "@/lib/intervalsClient";
+import { intervalsConnectedAtom } from "../atoms";
 import type { PaceCurveData } from "@/lib/types";
 
 export interface PaceCurvesHookResult {
@@ -10,10 +12,11 @@ export interface PaceCurvesHookResult {
   error: Error | null;
 }
 
-export function usePaceCurves(apiKey: string, curveId = "all"): PaceCurvesHookResult {
+export function usePaceCurves(curveId = "all"): PaceCurvesHookResult {
+  const connected = useAtomValue(intervalsConnectedAtom);
   const { data, error, isLoading } = useSWR<PaceCurveData | null, Error>(
-    apiKey ? ["pace-curves", apiKey, curveId] : null,
-    () => fetchPaceCurves(apiKey, curveId),
+    connected ? ["pace-curves", curveId] : null,
+    () => fetchPaceCurves(curveId),
     {
       revalidateOnFocus: false,
       dedupingInterval: 60_000,

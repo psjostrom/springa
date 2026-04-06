@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-  apiKeyAtom,
   enrichedEventsAtom,
   calendarLoadingAtom,
   calendarErrorAtom,
@@ -51,7 +50,7 @@ import type { CalendarEvent } from "@/lib/types";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import type { WidgetKey } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
-import { fetchActivityById } from "@/lib/intervalsApi";
+import { fetchActivity } from "@/lib/intervalsClient";
 import { activityToCalendarEvent } from "@/lib/calendarPipeline";
 import { TabBar } from "../components/TabBar";
 import { VolumeCompact } from "../components/VolumeCompact";
@@ -182,7 +181,6 @@ const INTEL_GHOST_SVG = (
 );
 
 export function IntelScreen() {
-  const apiKey = useAtomValue(apiKeyAtom);
   const events = useAtomValue(enrichedEventsAtom);
   const eventsLoading = useAtomValue(calendarLoadingAtom);
   const eventsError = useAtomValue(calendarErrorAtom);
@@ -237,7 +235,7 @@ export function IntelScreen() {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state before async fetch is valid
     setIsFetchingEvent(true);
-    void fetchActivityById(apiKey, selectedActivityId).then((activity) => {
+    void fetchActivity(selectedActivityId).then((activity) => {
       if (cancelled) return;
       if (activity) {
         setFetchedEvent(activityToCalendarEvent(activity));
@@ -245,7 +243,7 @@ export function IntelScreen() {
       setIsFetchingEvent(false);
     });
     return () => { cancelled = true; };
-  }, [selectedActivityId, events, apiKey]);
+  }, [selectedActivityId, events]);
 
   // Only use fetched event if it matches the currently selected activity
   const effectiveFetchedEvent = selectedActivityId
@@ -260,7 +258,6 @@ export function IntelScreen() {
   // Lazy-load stream data when modal opens
   const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(
     selectedEvent?.activityId ?? null,
-    apiKey
   );
   const bgReadings = useAtomValue(readingsAtom);
 
@@ -278,7 +275,7 @@ export function IntelScreen() {
 
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
-  const { data: paceCurveData } = usePaceCurves(apiKey, "all");
+  const { data: paceCurveData } = usePaceCurves("all");
 
   // Plan is deterministic — separate memo to avoid regenerating on every events change
   const planTarget = useMemo(() => {
@@ -616,7 +613,6 @@ export function IntelScreen() {
             onDateSaved={() => { /* no-op: PB modal */ }}
             onDelete={() => Promise.resolve() /* no-op: PB modal */}
             isLoadingStreamData={isLoadingStreamData}
-            apiKey={apiKey}
             runBGContexts={runBGContexts}
             paceTable={paceTable}
             bgModel={bgModel}

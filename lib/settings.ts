@@ -24,7 +24,7 @@ export interface UserSettings {
   onboardingComplete?: boolean;
 
   // Non-DB fields — populated by the settings API route, not stored in DB
-  intervalsApiKey?: string;
+  intervalsConnected?: boolean;
   nightscoutUrl?: string;
   nightscoutConnected?: boolean;
   lthr?: number;
