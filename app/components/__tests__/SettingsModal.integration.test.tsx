@@ -23,9 +23,8 @@ const validSettings: UserSettings = {
 };
 
 function renderModal(overrides: Partial<UserSettings> = {}) {
-  const onSave = vi
-    .fn<(partial: Partial<UserSettings>) => Promise<void>>()
-    .mockResolvedValue(undefined);
+  // eslint-disable-next-line no-restricted-syntax -- callback spy, not a module mock
+  const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
   const onClose = vi.fn();
   const settings = { ...validSettings, ...overrides };
   render(

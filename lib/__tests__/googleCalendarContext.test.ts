@@ -10,6 +10,7 @@ const { holder } = vi.hoisted(() => {
   return { holder: { db: null as unknown as Client } };
 });
 
+// eslint-disable-next-line no-restricted-syntax -- in-memory DB redirect, the one allowed exception
 vi.mock("@libsql/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@libsql/client")>();
   holder.db = actual.createClient({ url: "file::memory:" });
