@@ -71,7 +71,7 @@ describe("useRunData memoization", () => {
     });
 
     const { rerender } = renderHook(
-      ({ events: e }) => useRunData("api-key", true, e, undefined),
+      ({ events: e }) => useRunData(true, e, undefined),
       { initialProps: { events } },
     );
 
@@ -96,7 +96,7 @@ describe("useRunData memoization", () => {
     });
 
     const { rerender } = renderHook(
-      ({ events }) => useRunData("api-key", true, events, undefined),
+      ({ events }) => useRunData(true, events, undefined),
       { initialProps: { events: events1 } },
     );
 
@@ -128,7 +128,7 @@ describe("useRunData memoization", () => {
           loading: false,
           progress: { done: cached.length, total: 2 },
         });
-        return useRunData("api-key", true, events, undefined);
+        return useRunData(true, events, undefined);
       },
       { initialProps: { cached: cached1 } },
     );
@@ -151,7 +151,7 @@ describe("useRunData memoization", () => {
       progress: { done: 0, total: 1 },
     });
 
-    const { result } = renderHook(() => useRunData("api-key", true, events, undefined));
+    const { result } = renderHook(() => useRunData(true, events, undefined));
 
     expect(buildBGModelFromCachedMock).not.toHaveBeenCalled();
     expect(result.current.bgModel).toBeNull();
@@ -167,7 +167,7 @@ describe("useRunData memoization", () => {
     });
 
     const { result, rerender } = renderHook(
-      ({ events: e }) => useRunData("api-key", true, e, undefined),
+      ({ events: e }) => useRunData(true, e, undefined),
       { initialProps: { events } },
     );
 
@@ -189,7 +189,7 @@ describe("useRunData memoization", () => {
     });
 
     const { result, rerender } = renderHook(
-      ({ events: e }) => useRunData("api-key", true, e, undefined),
+      ({ events: e }) => useRunData(true, e, undefined),
       { initialProps: { events } },
     );
 

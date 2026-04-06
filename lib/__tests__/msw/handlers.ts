@@ -1,6 +1,56 @@
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "../../constants";
 import { sampleActivities, sampleEvents, sampleStreams } from "./fixtures";
+import type { CalendarEvent } from "../../types";
+
+/** Convert raw Intervals.icu fixtures to CalendarEvent format for proxy route mocks. */
+function fixtureCalendarEvents(): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+
+  // Activities → completed events
+  for (const a of sampleActivities) {
+    events.push({
+      id: `activity-${a.id}`,
+      date: new Date(a.start_date_local ?? a.start_date),
+      name: a.name,
+      description: a.description ?? "",
+      type: "completed",
+      activityId: a.id,
+      category: /long/i.test(a.name) ? "long" : /interval|hill|speed|tempo/i.test(a.name) ? "interval" : "easy",
+      distance: a.distance,
+      duration: a.moving_time,
+      avgHr: a.average_heartrate,
+      maxHr: a.max_heartrate,
+      pace: a.pace,
+      load: a.icu_training_load,
+      intensity: a.icu_intensity,
+      zoneTimes: a.icu_hr_zone_times ? {
+        z1: a.icu_hr_zone_times[0],
+        z2: a.icu_hr_zone_times[1],
+        z3: a.icu_hr_zone_times[2],
+        z4: a.icu_hr_zone_times[3],
+        z5: a.icu_hr_zone_times[4],
+      } : undefined,
+    });
+  }
+
+  // Planned events (without paired activity)
+  for (const e of sampleEvents) {
+    if (e.paired_activity_id) continue; // skip paired — already represented by activity
+    events.push({
+      id: `event-${e.id}`,
+      date: new Date(e.start_date_local),
+      name: e.name,
+      description: e.description,
+      type: "planned",
+      category: /long/i.test(e.name) ? "long" : /interval|hill|speed|tempo/i.test(e.name) ? "interval" : "easy",
+      fuelRate: e.carbs_per_hour,
+      duration: e.duration,
+    });
+  }
+
+  return events;
+}
 
 // Capture payloads for assertion in tests
 export let capturedUploadPayload: unknown[] = [];
@@ -18,6 +68,8 @@ export function resetCaptures() {
 }
 
 export const handlers = [
+  // --- External Intervals.icu API (used by server-side route handlers) ---
+
   // GET activities
   http.get(`${API_BASE}/athlete/0/activities`, () => {
     return HttpResponse.json(sampleActivities);
@@ -57,6 +109,58 @@ export const handlers = [
   // GET activity streams
   http.get(`${API_BASE}/activity/:activityId/streams`, () => {
     return HttpResponse.json(sampleStreams);
+  }),
+
+  // --- Proxy routes (used by client-side intervalsClient.ts) ---
+
+  // GET calendar via proxy
+  http.get("/api/intervals/calendar", () => {
+    return HttpResponse.json(fixtureCalendarEvents());
+  }),
+
+  // POST bulk upload via proxy
+  http.post("/api/intervals/events/bulk", async ({ request }) => {
+    const body = (await request.json()) as { events: unknown[] };
+    capturedUploadPayload = body.events;
+    return HttpResponse.json({ count: body.events.length });
+  }),
+
+  // PUT update single event via proxy
+  http.put("/api/intervals/events/:eventId", async ({ request }) => {
+    capturedPutPayload = {
+      url: request.url,
+      body: await request.json(),
+    };
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // DELETE single event via proxy
+  http.delete("/api/intervals/events/:eventId", ({ params }) => {
+    capturedDeleteEventIds.push(params.eventId as string);
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // GET activity streams via proxy
+  http.get("/api/intervals/activity/:activityId", ({ request }) => {
+    const url = new URL(request.url);
+    if (url.searchParams.get("streams") === "1") {
+      return HttpResponse.json({ streamData: sampleStreams, avgHr: 145, maxHr: 170 });
+    }
+    // Return a basic activity
+    const activity = sampleActivities.find((a) => a.id === url.pathname.split("/").pop());
+    return HttpResponse.json(activity ?? { id: "unknown" });
+  }),
+
+  // DELETE activity via proxy
+  http.delete("/api/intervals/activity/:activityId", () => {
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // POST replace workout via proxy
+  http.post("/api/intervals/events/replace", async ({ request }) => {
+    const body = (await request.json()) as { existingEventId?: number; workout: unknown };
+    capturedUploadPayload = [body.workout];
+    return HttpResponse.json({ newId: 9999 });
   }),
 
   // POST run analysis (LLM-generated post-run analysis)

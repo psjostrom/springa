@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { fetchActivityDetails } from "@/lib/intervalsApi";
+import { fetchActivityStreams } from "@/lib/intervalsClient";
 import type { StreamData } from "@/lib/types";
 
 export interface ActivityStreamData {
@@ -16,12 +16,11 @@ export interface ActivityStreamData {
  */
 export function useActivityStream(
   activityId: string | null,
-  apiKey: string,
 ): { data: ActivityStreamData | null; isLoading: boolean; error: Error | null } {
   const { data, error, isLoading } = useSWR<ActivityStreamData, Error>(
-    activityId && apiKey ? ["activity-stream", activityId, apiKey] : null,
-    async ([, id, key]: readonly [string, string, string]) => {
-      const details = await fetchActivityDetails(id, key);
+    activityId ? ["activity-stream", activityId] : null,
+    async ([, id]: readonly [string, string]) => {
+      const details = await fetchActivityStreams(id);
       return {
         streamData: details.streamData ?? {},
         avgHr: details.avgHr,

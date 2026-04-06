@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchStreamBatch } from "@/lib/intervalsApi";
+import { fetchStreams } from "@/lib/intervalsClient";
 import { extractHRStream, extractExtraStreams, extractRawStreams } from "@/lib/streams";
 import {
   readLocalCache,
@@ -10,13 +10,14 @@ import {
   saveBGCacheRemote,
 } from "@/lib/activityStreamsCache";
 import type { CachedActivity } from "@/lib/activityStreamsDb";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, IntervalsStream } from "@/lib/types";
 import { getWorkoutCategory } from "@/lib/constants";
 
 type CompletedRun = CalendarEvent & { activityId: string };
 
+const BATCH_SIZE = 5;
+
 export function useStreamCache(
-  apiKey: string,
   enabled: boolean,
   runs: CompletedRun[],
 ) {
@@ -36,7 +37,7 @@ export function useStreamCache(
 
   // L2: fetch remote cache, diff, fetch uncached streams, merge, save
   useEffect(() => {
-    if (!apiKey || !enabled || loadedRef.current || runs.length === 0) return;
+    if (!enabled || loadedRef.current || runs.length === 0) return;
     loadedRef.current = true;
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
@@ -66,16 +67,23 @@ export function useStreamCache(
 
           // Fetch streams for HR, pace, cadence, altitude
           const uncachedIds = uncachedRuns.map((e) => e.activityId);
-          const streamMap = await fetchStreamBatch(apiKey, uncachedIds, 3, (done, total) => {
-            if (!aborted()) setProgress({ done, total });
-          });
+          const allStreams = new Map<string, IntervalsStream[]>();
+          for (let i = 0; i < uncachedIds.length; i += BATCH_SIZE) {
+            if (aborted()) return;
+            const batch = uncachedIds.slice(i, i + BATCH_SIZE);
+            const result = await fetchStreams(batch);
+            for (const [id, streams] of Object.entries(result)) {
+              allStreams.set(id, streams);
+            }
+            if (!aborted()) setProgress({ done: Math.min(i + BATCH_SIZE, uncachedIds.length), total: uncachedIds.length });
+          }
           if (aborted()) return;
 
           // Process each run: extract streams (glucose reconstructed later in useRunData)
           for (const e of uncachedRuns) {
             if (aborted()) return;
 
-            const streams = streamMap.get(e.activityId);
+            const streams = allStreams.get(e.activityId);
             const hrPoints = streams ? extractHRStream(streams) : [];
             const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
             const rawStreams = streams ? extractRawStreams(streams) : { distance: [], time: [] };
@@ -115,7 +123,7 @@ export function useStreamCache(
     })();
 
     return () => { controller.abort(); };
-  }, [apiKey, enabled, runs]);
+  }, [enabled, runs]);
 
   return { cached, loading, progress };
 }

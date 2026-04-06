@@ -8,7 +8,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import type { WorkoutEvent } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
-import { uploadToIntervals, updateEvent } from "@/lib/intervalsApi";
+import { uploadPlan, updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
 import { generatePlan } from "@/lib/workoutGenerators";
@@ -20,7 +20,7 @@ import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import {
-  apiKeyAtom,
+  intervalsConnectedAtom,
   settingsAtom,
   bgModelAtom,
   paceTableAtom,
@@ -38,7 +38,7 @@ interface PlannerScreenProps {
 }
 
 export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
-  const apiKey = useAtomValue(apiKeyAtom);
+  const connected = useAtomValue(intervalsConnectedAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const settings = useAtomValue(settingsAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
@@ -78,8 +78,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const chartData = useWeeklyVolumeData(planEvents);
 
   const handleGenerate = () => {
-    if (!apiKey) {
-      setStatusMsg("Missing API Key");
+    if (!connected) {
+      setStatusMsg("Intervals.icu not connected");
       return;
     }
     if (settings?.hrZones?.length !== 5) {
@@ -94,13 +94,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   const handleUpload = async () => {
-    if (!apiKey) {
-      setStatusMsg("Missing API Key");
+    if (!connected) {
+      setStatusMsg("Intervals.icu not connected");
       return;
     }
     setIsUploading(true);
     try {
-      const count = await uploadToIntervals(apiKey, planEvents);
+      const count = await uploadPlan(planEvents);
       setStatusMsg(`Uploaded ${count} workouts.`);
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
@@ -203,8 +203,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   }, [autoAdapt, bgModel, hasPlannedEvents]);
 
   const handleSync = async () => {
-    if (!apiKey) {
-      setAdaptStatus("Missing API Key");
+    if (!connected) {
+      setAdaptStatus("Intervals.icu not connected");
       return;
     }
 
@@ -225,7 +225,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     try {
       await Promise.all(
         payload.map(({ eventId, description, fuelRate }) =>
-          updateEvent(apiKey, eventId, {
+          updateEvent(eventId, {
             description,
             ...(fuelRate != null && { carbs_per_hour: Math.round(fuelRate) }),
           }),

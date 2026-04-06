@@ -25,7 +25,9 @@ export async function fetchCalendar(
   const res = await fetch(
     `/api/intervals/calendar?oldest=${oldest}&newest=${newest}`,
   );
-  return jsonOrThrow(res);
+  const raw = await jsonOrThrow<CalendarEvent[]>(res);
+  // JSON serialization converts Date objects to ISO strings — parse them back
+  return raw.map((e) => ({ ...e, date: new Date(e.date) }));
 }
 
 export async function fetchActivity(
@@ -114,6 +116,36 @@ export async function deleteEvent(eventId: number): Promise<void> {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to delete event: ${res.status}`);
+  }
+}
+
+export async function updateActivityCarbs(
+  activityId: string,
+  carbsIngested: number,
+): Promise<void> {
+  const res = await fetch(`/api/intervals/activity/${activityId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ carbs_ingested: carbsIngested }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to update activity carbs: ${res.status}`);
+  }
+}
+
+export async function updateActivityPreRunCarbs(
+  activityId: string,
+  carbsG: number | null,
+): Promise<void> {
+  const res = await fetch(`/api/intervals/activity/${activityId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ PreRunCarbsG: carbsG ?? 0 }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to update pre-run carbs: ${res.status}`);
   }
 }
 

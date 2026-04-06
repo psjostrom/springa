@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
-import { updateEvent } from "@/lib/intervalsApi";
+import { updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
@@ -92,7 +92,6 @@ interface EventModalProps {
   onDelete: (eventId: string) => Promise<void>;
   /** Only relevant for completed events — shows a spinner while stream data loads. */
   isLoadingStreamData?: boolean;
-  apiKey: string;
   runBGContexts?: Map<string, RunBGContext>;
   paceTable?: PaceTable;
   bgModel?: BGResponseModel | null;
@@ -107,7 +106,6 @@ export function EventModal({
   onDateSaved,
   onDelete,
   isLoadingStreamData,
-  apiKey,
   runBGContexts,
   paceTable,
   bgModel,
@@ -161,7 +159,7 @@ export function EventModal({
       const newDateLocal = editDate.includes("T")
         ? editDate + ":00"
         : editDate + "T12:00:00";
-      await updateEvent(apiKey, numericId, { start_date_local: newDateLocal });
+      await updateEvent(numericId, { start_date_local: newDateLocal });
 
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("update", {
@@ -390,7 +388,6 @@ export function EventModal({
                 paceTable,
                 hrZones,
                 lthr,
-                apiKey,
               }}
             />
           </>
