@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
@@ -24,8 +25,8 @@ import {
 export const settingsAtom = atom<UserSettings | null>(null);
 export const settingsLoadingAtom = atom(true);
 
-/** Config snapshot at last plan generation — used to detect schedule drift. */
-export const lastGeneratedConfigAtom = atom<string | null>(null);
+/** Config snapshot at last plan generation — used to detect schedule drift. Persisted across sessions. */
+export const lastGeneratedConfigAtom = atomWithStorage<string | null>("lastGeneratedConfig", null);
 
 export const intervalsConnectedAtom = atom((get) => get(settingsAtom)?.intervalsConnected ?? false);
 export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);

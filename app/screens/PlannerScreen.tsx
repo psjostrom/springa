@@ -287,6 +287,11 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     <div className="h-full overflow-y-auto bg-bg">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-4">
         {/* Config: Summary Bar or Expanded Panel */}
+        {!settings && (
+          <div className="bg-surface-alt border border-border rounded-xl px-4 py-3 animate-pulse">
+            <div className="h-5 bg-border rounded w-2/3" />
+          </div>
+        )}
         {settings && (
           configExpanded ? (
             <PlannerConfigPanel

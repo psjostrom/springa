@@ -41,6 +41,12 @@ export function PlannerSummaryBar({ settings, hasPlan, onEdit }: PlannerSummaryB
             <span className="text-success">{weeksToGo} wks to go</span>
           </>
         )}
+        {hasPlan && weeksToGo === 0 && (
+          <>
+            <span className="text-border-subtle">&middot;</span>
+            <span className="text-brand font-bold">Race week!</span>
+          </>
+        )}
       </div>
       <button
         onClick={onEdit}
