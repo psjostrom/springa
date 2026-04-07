@@ -33,11 +33,9 @@ export function decrypt(encoded: string, hexKey: string): string {
 
 /** SHA-1 hash a secret. Returns lowercase hex string.
  *  Uses SHA-1 for Nightscout protocol compatibility — NS clients send
- *  SHA1(secret) in the api-secret header. Not used for security-sensitive
- *  operations (encryption uses AES-256-GCM above). */
+ *  SHA1(secret) in the api-secret header. */
 export function hashSecret(secret: string): string {
-  // lgtm[js/weak-cryptographic-algorithm] — Nightscout protocol requires SHA-1
-  return createHash("sha1").update(secret).digest("hex"); // nosemgrep: weak-crypto
+  return createHash("sha1").update(secret).digest("hex");
 }
 
 /** Get the encryption key from env, or throw.

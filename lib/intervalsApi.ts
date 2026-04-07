@@ -62,10 +62,9 @@ export async function updateAthleteHRZones(
   hrZones: number[],
   restingHr?: number,
 ): Promise<void> {
-  // Validate sportSettingsId is a safe integer for URL interpolation
-  if (!Number.isInteger(sportSettingsId) || sportSettingsId <= 0) return;
   // Update sport settings (hr_zones)
-  await fetch(`${API_BASE}/athlete/0/sport-settings/${sportSettingsId}`, {
+  const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
+  await fetch(settingsUrl.href, {
     method: "PUT",
     headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
     body: JSON.stringify({ hr_zones: hrZones }),
