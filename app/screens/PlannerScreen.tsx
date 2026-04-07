@@ -249,7 +249,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         });
       }
 
-      setAdaptStatus(`Synced ${payload.length} workouts to Intervals.icu`);
+      setAdaptStatus(`Synced ${payload.length} workouts`);
       setSyncDone(true);
       calendarReload();
     } catch (e) {

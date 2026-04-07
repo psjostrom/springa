@@ -134,6 +134,7 @@ function HomeContent() {
   }, [settingsLoading, settings, router]);
 
   if (settingsLoading) return splashFallback;
+  if (settings?.onboardingComplete === false) return splashFallback;
 
   const hideTabs: Tab[] = diabetesMode ? [] : ["simulate"];
 

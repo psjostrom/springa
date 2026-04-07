@@ -471,7 +471,7 @@ function buildClubRunEvent(date: Date, wp: WeekPhase, fuelRate: number, external
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
     description: [
-      "Trail running club session — workout varies week to week.",
+      "Club run — workout varies week to week.",
       "",
       "- 60m",
       "",

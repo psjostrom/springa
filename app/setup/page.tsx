@@ -102,7 +102,7 @@ export default function SetupPage() {
       }
       // Update atom so page.tsx doesn't redirect back to /setup
       setSettings((prev) => ({ ...(prev ?? {}), onboardingComplete: true }));
-      router.push("/?tab=planner");
+      router.push("/");
     } catch {
       setGenerating(false);
     }
@@ -153,8 +153,6 @@ export default function SetupPage() {
           <ScheduleStep
             runDays={data.runDays}
             longRunDay={data.longRunDay}
-            clubDay={data.clubDay}
-            clubType={data.clubType}
             onNext={(schedule) => {
               updateData(schedule);
               setStep(5);
