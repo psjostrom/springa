@@ -86,7 +86,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode);
+    const scheduling = settings.runDays ? {
+      runDays: settings.runDays,
+      longRunDay: settings.longRunDay ?? 0,
+      clubDay: settings.clubDay,
+      clubType: settings.clubType,
+    } : undefined;
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode, scheduling);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));

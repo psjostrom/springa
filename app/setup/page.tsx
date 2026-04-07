@@ -23,6 +23,9 @@ interface WizardData {
   timezone: string;
   intervalsApiKey: string;
   runDays: number[];
+  longRunDay?: number;
+  clubDay?: number;
+  clubType?: string;
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
@@ -76,6 +79,12 @@ export default function SetupPage() {
           hrZones,
           false,
           data.diabetesMode,
+          {
+            runDays: data.runDays,
+            longRunDay: data.longRunDay ?? 0,
+            clubDay: data.clubDay,
+            clubType: data.clubType,
+          },
         );
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -143,8 +152,11 @@ export default function SetupPage() {
         {step === 4 && (
           <ScheduleStep
             runDays={data.runDays}
-            onNext={(runDays) => {
-              updateData({ runDays });
+            longRunDay={data.longRunDay}
+            clubDay={data.clubDay}
+            clubType={data.clubType}
+            onNext={(schedule) => {
+              updateData(schedule);
               setStep(5);
             }}
             onBack={() => { setStep(3); }}
