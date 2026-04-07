@@ -289,6 +289,12 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </div>
         </div>
 
+        {statusMsg && planEvents.length === 0 && (
+          <div className="bg-tint-error border border-error/20 rounded-lg px-4 py-3">
+            <p className="text-sm text-text">{statusMsg}</p>
+          </div>
+        )}
+
         {planEvents.length > 0 && (
           <>
             <WeeklyVolumeChart data={chartData} />

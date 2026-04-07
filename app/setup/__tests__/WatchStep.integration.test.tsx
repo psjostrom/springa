@@ -120,7 +120,7 @@ describe("WatchStep", () => {
 
     expect(screen.getByText(/For the best experience, connect your watch directly/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continue with Strava anyway/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
   it("refetches when Check again is clicked", async () => {
