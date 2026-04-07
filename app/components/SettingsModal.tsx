@@ -14,9 +14,6 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ email, settings, onSave, onClose }: SettingsModalProps) {
-  const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
-  const [raceName, setRaceName] = useState(settings.raceName ?? "");
-  const [raceDist, setRaceDist] = useState(settings.raceDist ?? "");
   const [totalWeeks, setTotalWeeks] = useState(settings.totalWeeks ?? "");
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
@@ -83,16 +80,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       nightscoutSecret?: string | null;
     } = {};
 
-    if (raceDate !== (settings.raceDate ?? "")) {
-      updates.raceDate = raceDate;
-    }
-    if (raceName.trim() !== (settings.raceName ?? "")) {
-      updates.raceName = raceName.trim();
-    }
-    const rdVal = raceDist === "" ? undefined : Number(raceDist);
-    if (rdVal !== settings.raceDist) {
-      updates.raceDist = rdVal;
-    }
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
     if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
       setSaving(false);
@@ -165,47 +152,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
 
           <div className="border-t border-border" />
 
-          {/* Race Date */}
-          <div>
-            <label className="block text-sm font-semibold text-muted mb-1.5">
-              Race Date
-            </label>
-            <input
-              type="date"
-              value={raceDate}
-              onChange={(e) => { setRaceDate(e.target.value); }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
-            />
-          </div>
-
-          {/* Race & Plan */}
+          {/* Plan */}
           <div className="border-t border-border pt-4">
             <span className="block text-sm font-semibold text-muted mb-3">
-              Race & Plan
+              Plan
             </span>
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-muted mb-1">Race Name</label>
-                <input
-                  type="text"
-                  value={raceName}
-                  onChange={(e) => { setRaceName(e.target.value); }}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
-                  placeholder="e.g. EcoTrail"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">Distance (km)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={100}
-                  value={raceDist}
-                  onChange={(e) => { setRaceDist(e.target.value === "" ? "" : Number(e.target.value)); }}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted text-sm"
-                  placeholder="16"
-                />
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-muted mb-1">Total Weeks</label>

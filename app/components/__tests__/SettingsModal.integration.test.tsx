@@ -13,10 +13,6 @@ Object.defineProperty(globalThis, "Notification", {
 });
 
 const validSettings: UserSettings = {
-  raceDate: "2026-06-13",
-  raceName: "EcoTrail 16km",
-  raceDist: 16,
-
   totalWeeks: 18,
   startKm: 8,
   includeBasePhase: false,

@@ -1,128 +1,145 @@
 # Planner Tab Redesign
 
-**Status:** Spec ready, not started.
-**Depends on:** PR #135 (wizard fixes + scheduling) must be merged first.
-**Branch from:** main (after PR #135 merge)
+**Status:** Spec approved, ready for implementation.
+**Branch:** `feat/karvonen-zone-fallback` (builds on PR #135 scheduling infra)
 
 ## Problem
 
-The Planner tab has a prominent "Generate Plan" button that's effectively dead after the first plan sync. Schedule configuration (run days, club run) is split between the wizard and Settings with no unified place to manage it. Uploading a new plan doesn't clear old future events, causing stale events to stack.
+The Planner tab has a prominent "Generate Plan" button that's dead weight after the first sync. Schedule configuration (run days, long run day) is set in the wizard and not editable afterwards. Club run config has no home. Race goal is buried in Settings. Uploading a new plan doesn't visually communicate that old future events are replaced.
 
 ## Goal
 
-Make the Planner tab the single place for plan management: schedule, race goal, generation, and adaptation.
+Make the Planner tab the single place for plan management: schedule config, race goal, generation, and adaptation.
 
-## Current State
+## Design Decisions
 
-- **Generate Plan** button is always visible and prominent, even when a plan already exists
-- Schedule config (run days, long run day) is set in wizard, not editable afterwards
-- Club run config was removed from wizard (too complex for onboarding) — has no home yet
-- `uploadPlan()` POSTs new events without deleting old future planned events
-- Race goal (date, distance, name) lives in Settings modal only
-- `displayName` is collected in wizard but never shown to the user
+- **No greeting.** No "Hey {displayName}" — waste of vertical space on mobile.
+- **Race goal lives on Planner only.** Remove from Settings modal. One owner, one write path.
+- **Collapsed config bar.** Schedule + race goal compressed into a one-line summary. Tap Edit to expand. Config is accessible but doesn't dominate the screen.
+- **Schedule changes show a banner**, not auto-regenerate. "Schedule changed — Regenerate?" with a button. User stays in control.
+- **New compact components for Planner config.** Don't reuse wizard ScheduleStep — it has navigation chrome that doesn't apply here. Share the logic (`assignDayRoles`, settings save), build purpose-built inline UI.
 
-## Design
+## Layout
 
-### Layout (top to bottom)
+### Summary Bar (collapsed — default state)
 
-1. **Greeting** — "Hey {displayName}" or similar. Personal touch, uses the collected name.
+One-line bar at the top of the Planner tab:
 
-2. **Schedule Config** — inline-editable, saves on change:
-   - Run days (same grid as wizard)
-   - Long run day (pill picker from selected days)
-   - Club run toggle + config (see below)
+```
+4 days/wk · Long: Sun · EcoTrail 16km                    [Edit]
+```
 
-3. **Race Goal** — inline-editable:
-   - Race name (text input)
-   - Race date (date picker)
-   - Distance in km (number input)
+- When plan is active, appends green countdown: `· 9 wks to go`
+- If no race goal: omit that segment
+- If no long run day set: show "Long: auto"
+- Tapping Edit expands to the config panel
 
-4. **Generate / Regenerate** button:
-   - First time (no plan exists): "Generate Plan" with primary styling
-   - Plan exists: "Regenerate Plan" with secondary styling + confirmation
-   - **Must delete all future planned events before uploading new ones**
+### Config Panel (expanded — tap Edit)
 
-5. **Volume chart + workout preview** (existing, unchanged)
+Bordered panel replacing the summary bar. Save-on-change for each field. Contains:
 
-6. **Adapt section** (existing, unchanged)
+1. **Run Days** — 7-day toggle grid (Mon–Sun). Same interaction as wizard.
+2. **Long Run Day** — pill picker showing only selected run days. Auto-assigns speed to farthest day (circular distance). Shows hint: "Speed auto-assigned to Wed"
+3. **Club Run** — toggle "I run with a club", then:
+   - Day picker (selected run days minus long run day)
+   - Three type pills: "Long run" / "Speed work" / "Varies"
+   - If "Long run": long run day picker hides, club day becomes the long run day
+   - If "Speed work": hint "Springa skips its own speed session"
+   - If "Varies": no special behavior, Springa generates its own speed + long
+4. **Race Goal** — inline fields: name (text), distance (number + km), date (date picker)
+5. **Done** button to collapse back to summary
 
-### Club Run Config
+### Three UI States
 
-Moved from wizard to Planner. Three-option model:
+**State 1: First Visit (no plan exists)**
+- Summary bar
+- Primary "Generate Plan" button (full-width, brand color)
+- Empty state placeholder
 
-- **"It's my long run"** — club day becomes the long run day. Springa generates speed + easy on other days. The separate long run day picker hides (club day IS the long run day).
-- **"It's my speed work"** — Springa skips its own speed session on other days. Avoids double speed weeks.
-- **"It varies / I don't know"** — safe default. Springa generates its own speed + long as if club doesn't exist. If club happens to do intervals, runner can skip Springa's speed that week.
+**State 2: Plan Generated (preview, pre-upload)**
+- Summary bar
+- Weekly volume chart
+- Workout list preview (first few workouts + "N more" count)
+- ActionBar at bottom: "N workouts ready" + "Upload to Intervals.icu" button
 
-UI flow:
-1. Toggle: "I run with a club"
-2. Day picker (from selected run days, excluding long run day unless "it's my long run")
-3. Three pills: "It's my long run" / "It's my speed work" / "It varies"
+**State 3: Plan Active (post-upload)**
+- Summary bar with green countdown
+- Secondary "Regenerate Plan" button (outline style)
+- Volume chart with completed weeks in green, upcoming in brand purple
+- Schedule-changed banner (amber, only when config differs from last generation)
+- Adapt section (existing, unchanged)
 
-### Delete Before Upload
+### Schedule Changed Banner
 
-When generating/regenerating a plan:
+Appears between summary bar and regenerate button when any schedule field changes after a plan has been uploaded:
 
-1. Fetch all future planned events from Intervals.icu calendar
-2. Delete them (batch or individual DELETE calls)
-3. Upload the new plan
-4. Refresh the calendar view
+```
+[amber border] Schedule changed          [Regenerate]
+```
 
-This must happen in both:
-- Planner's Generate/Regenerate button
-- Wizard's `handleComplete` (initial plan generation)
+Triggering fields: run days, long run day, club day, club type, race date, race distance.
 
-Check `uploadToIntervals` in `lib/intervalsApi.ts` and the bulk upload route at `app/api/intervals/events/bulk/route.ts`. The Intervals.icu API supports deleting events by ID — we already have `deleteEvent` in `lib/intervalsClient.ts`.
+## Delete Before Upload
 
-### Schedule Changes Trigger Regeneration
+`uploadToIntervals()` already deletes all future WORKOUT events before uploading new ones (date range: today to 1 year out). No additional delete logic needed — the server-side function handles it.
 
-When the user changes run days, long run day, or club config, the existing plan becomes invalid. Options:
-- Auto-regenerate (aggressive)
-- Show a banner: "Schedule changed. Regenerate your plan?" with a button (recommended)
+Both callers use this:
+- Planner's Upload button → `uploadPlan()` → bulk route → `uploadToIntervals()`
+- Wizard's `handleComplete()` sets `generatedPlanAtom`, user uploads from Planner
 
-## Files to Change
+## Data Model
 
-- `app/screens/PlannerScreen.tsx` — main redesign target
-- `app/components/ActionBar.tsx` — may be simplified/merged into PlannerScreen
-- `lib/intervalsClient.ts` — add `deleteFuturePlannedEvents()` function
-- `app/api/intervals/events/bulk/route.ts` — add DELETE support or create separate route
-- `lib/intervalsApi.ts` — check if Intervals.icu has a bulk delete API
-- `lib/settings.ts` / `app/api/settings/route.ts` — already has club fields (long_run_day, club_day, club_type)
+### DB Columns (new — must be added)
 
-## Technical Context
+PR #135 added and then removed these in the same branch. They need to be re-added:
+- `long_run_day INTEGER` — day of week (0=Sun, 6=Sat)
+- `club_day INTEGER` — day of week
+- `club_type TEXT` — "long" | "speed" | "varies"
 
-### Scheduling Model (already implemented in PR #135)
+Add to `SCHEMA_DDL` in `lib/db.ts` and run ALTER TABLE on production.
+
+### UserSettings Type
+
+Add to `lib/settings.ts` interface, `getUserSettings()` read, and `saveUserSettings()` write:
+```typescript
+longRunDay?: number;
+clubDay?: number;
+clubType?: string;
+```
+
+### assignDayRoles (new — must be re-implemented)
+
+Was added in PR #135 commit `56b675b` then removed in `b4b08a3`. Re-implement in `lib/workoutGenerators.ts`:
 
 `assignDayRoles(runDays, longRunDay, clubDay?, clubType?)` returns `Map<number, DayRole>`:
 - Roles: `"long" | "speed" | "easy" | "club" | "free"`
 - Speed placed on day farthest from long run (circular distance)
-- Club with type "intervals" → Springa skips speed
+- Club with type "speed" → Springa skips its own speed session
 - 5+ days → extras become "free" runs
 
-`generatePlan()` accepts optional `scheduling` parameter:
-```ts
-scheduling?: {
-  runDays?: number[];
-  longRunDay?: number;
-  clubDay?: number;
-  clubType?: string;
-}
-```
+The original implementation and tests exist in git history (commit `56b675b`) and can be cherry-picked.
 
-### DB Columns (already added in PR #135)
-- `long_run_day INTEGER`
-- `club_day INTEGER`
-- `club_type TEXT`
+## Files to Change
 
-### Existing Callers of generatePlan/generateFullPlan
-- `PlannerScreen.tsx` — already passes scheduling from settings
-- `IntelScreen.tsx` — uses generateFullPlan, doesn't pass scheduling (fine for now)
-- `VolumeTrendChart.tsx` — uses generateFullPlan, doesn't pass scheduling (fine for now)
-- `WorkoutGenerator.tsx` — on-demand single workout generation
-- `app/setup/page.tsx` — wizard completion
+**Data model:**
+- `lib/db.ts` — add `long_run_day`, `club_day`, `club_type` columns to `SCHEMA_DDL`
+- `lib/settings.ts` — add `longRunDay`, `clubDay`, `clubType` to UserSettings type + read/write
+- `app/api/settings/route.ts` — allow new fields in PUT
+
+**Scheduling logic:**
+- `lib/workoutGenerators.ts` — re-add `assignDayRoles()` and `DayRole` type (from git history `56b675b`)
+- `lib/__tests__/workoutGenerators.test.ts` — re-add `assignDayRoles` tests
+
+**UI:**
+- `app/screens/PlannerScreen.tsx` — main redesign: summary bar, config panel, three states
+- `app/components/ActionBar.tsx` — simplify, integrate into PlannerScreen's preview state
+- `app/components/PlannerConfigPanel.tsx` — new: expanded config (run days, long run, club, race goal)
+- `app/components/PlannerSummaryBar.tsx` — new: collapsed config summary
+- `app/components/SettingsModal.tsx` — remove race goal fields (moved to Planner)
 
 ## Out of Scope
 
-- Zone model changes (separate spec)
+- Zone model changes (separate spec: `2026-04-07-zone-model-analysis.md`)
 - Pace zones
 - Workout content changes (descriptions, notes, etc.)
+- Club run in wizard (stays deferred — power-user feature for Planner only)

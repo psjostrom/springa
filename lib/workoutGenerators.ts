@@ -32,8 +32,9 @@ export function assignDayRoles(
   const roles = new Map<number, DayRole>();
   const sorted = [...runDays].sort((a, b) => a - b);
 
-  // 1. Long run
-  roles.set(longRunDay, "long");
+  // 1. Long run (fall back to last run day if longRunDay not in runDays)
+  const effectiveLongRunDay = sorted.includes(longRunDay) ? longRunDay : sorted[sorted.length - 1];
+  roles.set(effectiveLongRunDay, "long");
 
   // 2. Club run (if configured and in runDays)
   if (clubDay != null && sorted.includes(clubDay)) {
@@ -48,7 +49,7 @@ export function assignDayRoles(
     let bestDay = remaining[0];
     let bestDist = 0;
     for (const d of remaining) {
-      const dist = Math.min(Math.abs(d - longRunDay), 7 - Math.abs(d - longRunDay));
+      const dist = Math.min(Math.abs(d - effectiveLongRunDay), 7 - Math.abs(d - effectiveLongRunDay));
       if (dist > bestDist) { bestDist = dist; bestDay = d; }
     }
     roles.set(bestDay, "speed");
