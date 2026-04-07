@@ -29,7 +29,6 @@ import {
   runBGContextsAtom,
   calendarReloadAtom,
   diabetesModeAtom,
-  generatedPlanAtom,
   switchTabAtom,
 } from "../atoms";
 
@@ -47,8 +46,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
-  const generatedPlan = useAtomValue(generatedPlanAtom);
-  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
@@ -58,12 +55,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
 
-  useEffect(() => {
-    if (generatedPlan.length > 0) {
-      setPlanEvents(generatedPlan);
-      setGeneratedPlan([]);
-    }
-  }, [generatedPlan, setGeneratedPlan]);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 

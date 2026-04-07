@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { addWeeks, differenceInWeeks, format } from "date-fns";
-import { generatedPlanAtom, settingsAtom } from "../atoms";
+import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
+import { uploadPlan } from "@/lib/intervalsClient";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
@@ -41,7 +42,6 @@ interface WizardData {
 
 export default function SetupPage() {
   const router = useRouter();
-  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
   const setSettings = useSetAtom(settingsAtom);
   const [step, setStep] = useState<Step>(1);
   const [generating, setGenerating] = useState(false);
@@ -88,7 +88,8 @@ export default function SetupPage() {
         );
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        setGeneratedPlan(events.filter((e) => e.start_date_local >= today));
+        const futureEvents = events.filter((e) => e.start_date_local >= today);
+        await uploadPlan(futureEvents);
       }
 
       const res = await fetch("/api/settings", {
