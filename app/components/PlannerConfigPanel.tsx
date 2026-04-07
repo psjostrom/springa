@@ -278,7 +278,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       {/* Done */}
       <div className="flex justify-end">
         <button
-          onClick={onDone}
+          onClick={() => { handleRaceBlur(); onDone(); }}
           className="text-brand text-sm font-medium hover:underline"
         >
           Done

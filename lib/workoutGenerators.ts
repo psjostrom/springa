@@ -41,8 +41,8 @@ export function assignDayRoles(
     roles.set(clubDay, "club");
   }
 
-  // 3. Speed — needed if 3+ days AND club doesn't cover intervals
-  const clubCoversSpeed = clubDay != null && clubType === "intervals";
+  // 3. Speed — needed if 3+ days AND club doesn't cover speed
+  const clubCoversSpeed = clubDay != null && clubType === "speed";
   const remaining = sorted.filter((d) => !roles.has(d));
   if (remaining.length > 0 && sorted.length >= 3 && !clubCoversSpeed) {
     // Pick the day with maximum circular distance from long run

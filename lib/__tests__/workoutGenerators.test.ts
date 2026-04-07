@@ -34,8 +34,8 @@ describe("assignDayRoles", () => {
     expect(freeRuns.length).toBe(1);
   });
 
-  it("club replaces speed when clubType is intervals", () => {
-    const roles = assignDayRoles([2, 4, 6, 0], 0, 4, "intervals");
+  it("club replaces speed when clubType is speed", () => {
+    const roles = assignDayRoles([2, 4, 6, 0], 0, 4, "speed");
     expect(roles.get(4)).toBe("club");
     const speedDays = [...roles.entries()].filter(([, r]) => r === "speed");
     expect(speedDays.length).toBe(0);
@@ -113,7 +113,7 @@ describe("generatePlan", () => {
     const plan = generatePlan(
       null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
       false, undefined,
-      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "intervals" },
+      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed" },
     );
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
     expect(clubRuns.length).toBeGreaterThan(0);
@@ -131,7 +131,7 @@ describe("generatePlan", () => {
     expect(clubRuns.length).toBe(0);
   });
 
-  it("generates speed sessions when no club covers intervals", () => {
+  it("generates speed sessions when no club covers speed", () => {
     const plan = generateFull();
     const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));
     expect(speedSessions.length).toBeGreaterThan(0);
@@ -189,7 +189,7 @@ describe("generatePlan", () => {
     const plan = generatePlan(
       null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
       false, undefined,
-      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "intervals" },
+      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed" },
     );
     for (const event of plan) {
       const date = event.start_date_local;

@@ -46,7 +46,7 @@ export const updateSettingsAtom = atom(
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Settings save failed (${res.status})`);
-    set(settingsAtom, (prev) => ({ ...(prev ?? {}), ...partial }));
+    set(settingsAtom, (prev) => ({ ...(prev ?? {}), ...body }) as UserSettings);
   },
 );
 
