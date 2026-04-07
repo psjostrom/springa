@@ -80,7 +80,7 @@ export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initial
 
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
-      <h2 className="text-2xl font-bold text-text mb-2">Do you use a CGM with Nightscout?</h2>
+      <h2 className="text-2xl font-bold text-text mb-2">Do you use Nightscout to track your blood glucose?</h2>
       <p className="text-muted mb-6">
         If you have a continuous glucose monitor connected to Nightscout, Springa can track your BG during runs, learn your fuel needs, and help you avoid lows and spikes.
       </p>
