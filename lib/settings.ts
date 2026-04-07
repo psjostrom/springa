@@ -31,6 +31,7 @@ export interface UserSettings {
   maxHr?: number;
   hrZones?: number[];
   restingHr?: number;
+  sportSettingsId?: number;
 }
 
 // --- CRUD ---

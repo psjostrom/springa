@@ -29,6 +29,7 @@ export async function GET() {
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
       if (profile.restingHr) settings.restingHr = profile.restingHr;
+      if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
     } catch {
       console.warn("[settings] Failed to fetch athlete profile");
     }

@@ -8,12 +8,13 @@ interface HRZonesStepProps {
   maxHr?: number;
   hrZones?: number[];
   restingHr?: number;
+  sportSettingsId?: number;
   onNext: (zones: { lthr?: number; maxHr?: number; hrZones?: number[] }) => void;
   onSkip: () => void;
   onBack: () => void;
 }
 
-export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: initialZones, restingHr: initialRestingHr, onNext, onSkip, onBack }: HRZonesStepProps) {
+export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: initialZones, restingHr: initialRestingHr, sportSettingsId, onNext, onSkip, onBack }: HRZonesStepProps) {
   const has5Zones = initialZones?.length === 5;
   const hasImportedZones = has5Zones && (!!initialLthr || !!initialMaxHr);
   const needsRHR = !has5Zones && !!initialMaxHr;
@@ -22,6 +23,15 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
   const [lthr, setLthr] = useState(initialLthr?.toString() ?? "");
   const [maxHr, setMaxHr] = useState(initialMaxHr?.toString() ?? "");
   const [restingHr, setRestingHr] = useState(initialRestingHr?.toString() ?? "");
+
+  const pushZonesToIntervals = async (zones: number[], rhr: number) => {
+    if (!sportSettingsId) return;
+    await fetch("/api/intervals/hr-zones", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sportSettingsId, hrZones: zones, restingHr: rhr }),
+    });
+  };
 
   const handleNext = async () => {
     // Case 1: Use imported 5 zones as-is
@@ -36,6 +46,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
       const rhr = Number(restingHr);
       const zones = computeKarvonenZones(mhr, rhr);
       const computedLthr = initialLthr ?? Math.round((mhr - rhr) * 0.85 + rhr);
+      await pushZonesToIntervals(zones, rhr);
       onNext({ lthr: computedLthr, maxHr: mhr, hrZones: zones });
       return;
     }
@@ -46,6 +57,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
       const rhr = Number(restingHr);
       const zones = computeKarvonenZones(mhr, rhr);
       const computedLthr = lthr ? Number(lthr) : Math.round((mhr - rhr) * 0.85 + rhr);
+      await pushZonesToIntervals(zones, rhr);
       onNext({ lthr: computedLthr, maxHr: mhr, hrZones: zones });
       return;
     }
