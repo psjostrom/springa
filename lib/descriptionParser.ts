@@ -253,8 +253,9 @@ function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegmen
   const segments: WorkoutSegment[] = [];
   // Extract step lines (start with "- "), then parse each for duration + intensity
   const stepPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
-  for (const line of section.split("\n")) {
-    if (!line.startsWith("- ")) continue;
+  for (const rawLine of section.split("\n")) {
+    if (!rawLine.startsWith("- ")) continue;
+    const line = rawLine.slice(0, 100);
     const m = stepPattern.exec(line);
     if (!m) continue;
     const value = parseFloat(m[1]);
