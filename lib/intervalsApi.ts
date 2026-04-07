@@ -48,7 +48,7 @@ export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: numb
   if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
   if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
   if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
-  if (typeof data.icu_resting_hr === "number" && (data.icu_resting_hr as number) > 0) result.restingHr = data.icu_resting_hr as number;
+  if (typeof data.icu_resting_hr === "number" && data.icu_resting_hr > 0) result.restingHr = data.icu_resting_hr;
   if (typeof runSettings.id === "number") result.sportSettingsId = runSettings.id;
   return result;
 }

@@ -41,8 +41,8 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
     }
 
     // Case 2: Compute Karvonen from maxHR + RHR
-    if (!useManual && needsRHR && restingHr) {
-      const mhr = initialMaxHr!;
+    if (!useManual && needsRHR && initialMaxHr && restingHr) {
+      const mhr = initialMaxHr;
       const rhr = Number(restingHr);
       const zones = computeKarvonenZones(mhr, rhr);
       const computedLthr = initialLthr ?? Math.round((mhr - rhr) * 0.85 + rhr);
@@ -108,11 +108,9 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
                   <span className="text-text font-semibold">Max HR:</span> {initialMaxHr} bpm
                 </p>
               )}
-              {initialZones && (
-                <p className="text-muted">
-                  <span className="text-text font-semibold">Zones:</span> {initialZones.join(", ")} bpm
-                </p>
-              )}
+              <p className="text-muted">
+                <span className="text-text font-semibold">Zones:</span> {initialZones.join(", ")} bpm
+              </p>
             </div>
 
             <div className="flex gap-3">
