@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useAtomValue } from "jotai";
-import { readingsAtom } from "../atoms";
+import { useAtomValue, useSetAtom } from "jotai";
+import { readingsAtom, switchTabAtom } from "../atoms";
 import { useModalURL } from "../hooks/useModalURL";
 import { useActivityStream } from "../hooks/useActivityStream";
 import { mergeStreamData } from "@/lib/enrichEvents";
@@ -51,6 +51,7 @@ interface CalendarViewProps {
 type CalendarViewMode = "month" | "week" | "agenda";
 
 export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference }: CalendarViewProps) {
+  const setSwitchTab = useSetAtom(switchTabAtom);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -312,7 +313,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
         )}
 
         {!isLoadingInitial && !initialError && events.length === 0 && (
-          <EmptyState message="Generate a training plan to fill your calendar">
+          <EmptyState message="Generate a training plan to fill your calendar" onClick={() => { setSwitchTab("planner"); }}>
             <svg width="100%" height="160" viewBox="0 0 350 160" className="text-muted">
               {[0,1,2,3,4,5,6].map(col => (
                 <g key={col}>
