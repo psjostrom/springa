@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { addWeeks, differenceInWeeks, format } from "date-fns";
-import { generatedPlanAtom } from "../atoms";
+import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
+import { uploadPlan } from "@/lib/intervalsClient";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
@@ -23,12 +24,17 @@ interface WizardData {
   timezone: string;
   intervalsApiKey: string;
   runDays: number[];
+  longRunDay?: number;
+  clubDay?: number;
+  clubType?: string;
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
+  restingHr?: number;
+  sportSettingsId?: number;
   diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
@@ -36,7 +42,7 @@ interface WizardData {
 
 export default function SetupPage() {
   const router = useRouter();
-  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
+  const setSettings = useSetAtom(settingsAtom);
   const [step, setStep] = useState<Step>(1);
   const [generating, setGenerating] = useState(false);
   const [data, setData] = useState<WizardData>({
@@ -73,10 +79,17 @@ export default function SetupPage() {
           hrZones,
           false,
           data.diabetesMode,
+          {
+            runDays: data.runDays,
+            longRunDay: data.longRunDay ?? 0,
+            clubDay: data.clubDay,
+            clubType: data.clubType,
+          },
         );
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        setGeneratedPlan(events.filter((e) => e.start_date_local >= today));
+        const futureEvents = events.filter((e) => e.start_date_local >= today);
+        await uploadPlan(futureEvents);
       }
 
       const res = await fetch("/api/settings", {
@@ -88,7 +101,9 @@ export default function SetupPage() {
         setGenerating(false);
         return;
       }
-      router.push("/?tab=planner");
+      // Update atom so page.tsx doesn't redirect back to /setup
+      setSettings((prev) => ({ ...(prev ?? {}), onboardingComplete: true }));
+      router.push("/");
     } catch {
       setGenerating(false);
     }
@@ -138,8 +153,9 @@ export default function SetupPage() {
         {step === 4 && (
           <ScheduleStep
             runDays={data.runDays}
-            onNext={(runDays) => {
-              updateData({ runDays });
+            longRunDay={data.longRunDay}
+            onNext={(schedule) => {
+              updateData(schedule);
               setStep(5);
             }}
             onBack={() => { setStep(3); }}
@@ -163,6 +179,8 @@ export default function SetupPage() {
             lthr={data.lthr}
             maxHr={data.maxHr}
             hrZones={data.hrZones}
+            restingHr={data.restingHr}
+            sportSettingsId={data.sportSettingsId}
             onNext={(zones) => {
               updateData(zones);
               setStep(7);

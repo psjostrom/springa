@@ -22,7 +22,7 @@ export function ActionBar({
 			<div className={`${POSITION} bg-surface border border-border border-l-[3px] border-l-brand rounded-lg flex items-center justify-between p-4`}>
 					<div>
 						<h3 className="font-bold text-text text-sm md:text-base">
-							Syncing to Intervals.icu...
+							Syncing...
 						</h3>
 						<p className="text-sm text-muted">
 							{workoutCount} workouts uploading

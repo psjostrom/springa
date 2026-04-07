@@ -28,6 +28,8 @@ export async function GET() {
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.maxHr) settings.maxHr = profile.maxHr;
       if (profile.hrZones) settings.hrZones = profile.hrZones;
+      if (profile.restingHr) settings.restingHr = profile.restingHr;
+      if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
     } catch {
       console.warn("[settings] Failed to fetch athlete profile");
     }
@@ -110,6 +112,9 @@ export async function PUT(req: Request) {
   if (body.diabetesMode !== undefined) allowed.diabetesMode = body.diabetesMode;
   if (body.displayName !== undefined) allowed.displayName = body.displayName;
   if (body.runDays !== undefined) allowed.runDays = body.runDays;
+  if (body.longRunDay !== undefined) allowed.longRunDay = body.longRunDay;
+  if (body.clubDay !== undefined) allowed.clubDay = body.clubDay;
+  if (body.clubType !== undefined) allowed.clubType = body.clubType;
   if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;
 
   if (Object.keys(allowed).length > 0) {

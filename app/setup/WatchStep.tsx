@@ -289,7 +289,7 @@ export function WatchStep({ onNext, onBack }: WatchStepProps) {
         </button>
         <button
           onClick={onNext}
-          disabled={!isConnected && !stravaOnly}
+          disabled={!isConnected}
           className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next

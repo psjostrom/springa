@@ -80,9 +80,9 @@ export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initial
 
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
-      <h2 className="text-2xl font-bold text-text mb-2">Do you manage diabetes while running?</h2>
+      <h2 className="text-2xl font-bold text-text mb-2">Do you use Nightscout to track your blood glucose?</h2>
       <p className="text-muted mb-6">
-        Springa can track your blood glucose, optimize fuel rates, and help you run without lows or spikes.
+        If you have a continuous glucose monitor connected to Nightscout, Springa can track your BG during runs, learn your fuel needs, and help you avoid lows and spikes.
       </p>
 
       <div className="space-y-4">
@@ -171,9 +171,9 @@ export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initial
         </button>
         <button
           onClick={() => { void handleNext(); }}
-          className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
+          className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20"
         >
-          {diabetesMode ? "Next" : "Skip"}
+          Next
         </button>
       </div>
     </div>

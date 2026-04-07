@@ -31,7 +31,7 @@ export function DoneStep({ onComplete, generating = false }: DoneStepProps) {
           {generating ? "Building your training plan..." : "You\u2019re all set!"}
         </h2>
         <p className="text-muted mb-6">
-          {generating ? "This only takes a moment." : "Your account is ready. Let\u2019s start building your training plan."}
+          {generating ? "Generating workouts and syncing to Intervals.icu..." : "Your account is ready. Let\u2019s build your training plan."}
         </p>
       </div>
 

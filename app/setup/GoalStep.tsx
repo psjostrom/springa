@@ -130,9 +130,9 @@ export function GoalStep({ raceDate: initialDate, raceName: initialName, raceDis
         ) : (
           <button
             onClick={() => { void handleNext(); }}
-            className="flex-1 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
+            className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20"
           >
-            Skip
+            Next
           </button>
         )}
       </div>

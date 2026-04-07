@@ -251,10 +251,13 @@ function toMinutes(value: number, unit: string, avgPercent: number, table?: Pace
 /** Parse step lines within a section, returning total duration and individual segments. */
 function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
-  const stepMatches = Array.from(
-    section.matchAll(/-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/g),
-  );
-  for (const m of stepMatches) {
+  // Extract step lines (start with "- "), then parse each for duration + intensity
+  const stepPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
+  for (const rawLine of section.split("\n")) {
+    if (!rawLine.startsWith("- ")) continue;
+    const line = rawLine.slice(0, 100);
+    const m = stepPattern.exec(line);
+    if (!m) continue;
     const value = parseFloat(m[1]);
     const unit = m[2];
     const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
@@ -280,20 +283,13 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Warmup
-  const warmupMatch = /(?:^|\n)Warmup[\s\S]*?(?=\nMain set|\nStrides|\nCooldown|$)/.exec(description);
+  const warmupMatch = /(?:^|\n)Warmup\n(?:- [^\n]*\n?)*/.exec(description);
   if (warmupMatch) {
-    const wuStep = /-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:\w[\w ]*\s+)?(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/.exec(warmupMatch[0]);
-    if (wuStep) {
-      const value = parseFloat(wuStep[1]);
-      const unit = wuStep[2];
-      const avgPercent = (parseInt(wuStep[3], 10) + parseInt(wuStep[4], 10)) / 2;
-      const conv = toMinutes(value, unit, avgPercent, paceTable);
-      segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
-    }
+    segments.push(...parseSectionSegments(warmupMatch[0], paceTable));
   }
 
   // Main set (with optional repeats)
-  const mainSetSection = /\nMain set[\s\S]*?(?=\nStrides|\nCooldown|$)/.exec(description);
+  const mainSetSection = /\nMain set[^\n]*\n(?:- [^\n]*\n?)*/.exec(description);
   if (mainSetSection) {
     const repsMatch = /Main set\s+(\d+)x/.exec(mainSetSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
@@ -304,7 +300,7 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Strides (with optional repeats)
-  const stridesSection = /\nStrides\s+\d+x[\s\S]*?(?=\nCooldown|$)/.exec(description);
+  const stridesSection = /\nStrides\s+\d+x\n(?:- [^\n]*\n?)*/.exec(description);
   if (stridesSection) {
     const repsMatch = /Strides\s+(\d+)x/.exec(stridesSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
@@ -315,7 +311,7 @@ export function parseWorkoutSegments(description: string, paceTable?: PaceTable)
   }
 
   // Cooldown
-  const cooldownMatch = /\nCooldown[\s\S]*$/.exec(description);
+  const cooldownMatch = /\nCooldown\n(?:- [^\n]*\n?)*/.exec(description);
   if (cooldownMatch) {
     const cdSegs = parseSectionSegments(cooldownMatch[0], paceTable);
     segments.push(...cdSegs);

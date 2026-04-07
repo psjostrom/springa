@@ -29,7 +29,6 @@ import {
   runBGContextsAtom,
   calendarReloadAtom,
   diabetesModeAtom,
-  generatedPlanAtom,
   switchTabAtom,
 } from "../atoms";
 
@@ -47,8 +46,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
-  const generatedPlan = useAtomValue(generatedPlanAtom);
-  const setGeneratedPlan = useSetAtom(generatedPlanAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
@@ -58,12 +55,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const startKm = settings?.startKm ?? 8;
   const [planEvents, setPlanEvents] = useState<WorkoutEvent[]>([]);
 
-  useEffect(() => {
-    if (generatedPlan.length > 0) {
-      setPlanEvents(generatedPlan);
-      setGeneratedPlan([]);
-    }
-  }, [generatedPlan, setGeneratedPlan]);
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
@@ -86,7 +77,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode);
+    const scheduling = settings.runDays ? {
+      runDays: settings.runDays,
+      longRunDay: settings.longRunDay ?? 0,
+      clubDay: settings.clubDay,
+      clubType: settings.clubType,
+    } : undefined;
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode, scheduling);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= today));
@@ -243,7 +240,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         });
       }
 
-      setAdaptStatus(`Synced ${payload.length} workouts to Intervals.icu`);
+      setAdaptStatus(`Synced ${payload.length} workouts`);
       setSyncDone(true);
       calendarReload();
     } catch (e) {
@@ -288,6 +285,12 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             </button>
           </div>
         </div>
+
+        {statusMsg && planEvents.length === 0 && (
+          <div className="bg-tint-error border border-error/20 rounded-lg px-4 py-3">
+            <p className="text-sm text-text">{statusMsg}</p>
+          </div>
+        )}
 
         {planEvents.length > 0 && (
           <>

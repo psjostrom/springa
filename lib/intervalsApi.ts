@@ -37,18 +37,46 @@ async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null> {
   }
 }
 
-export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[] }> {
+export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number }> {
   const data = await fetchAthleteRaw(apiKey);
   if (!data) return {};
   const runSettings = Array.isArray(data.sportSettings)
-    ? (data.sportSettings as { types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[]).find((s) => s.types?.includes("Run"))
+    ? (data.sportSettings as { id?: number; types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[]).find((s) => s.types?.includes("Run"))
     : null;
   if (!runSettings) return {};
-  const result: { lthr?: number; maxHr?: number; hrZones?: number[] } = {};
+  const result: { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number } = {};
   if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
   if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
   if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
+  if (typeof data.icu_resting_hr === "number" && data.icu_resting_hr > 0) result.restingHr = data.icu_resting_hr;
+  if (typeof runSettings.id === "number") result.sportSettingsId = runSettings.id;
   return result;
+}
+
+/**
+ * Push HR zones and resting HR back to Intervals.icu so it remains the source of truth.
+ */
+export async function updateAthleteHRZones(
+  apiKey: string,
+  sportSettingsId: number,
+  hrZones: number[],
+  restingHr?: number,
+): Promise<void> {
+  // Update sport settings (hr_zones)
+  const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
+  await fetch(settingsUrl.href, {
+    method: "PUT",
+    headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify({ hr_zones: hrZones }),
+  });
+  // Update resting HR on athlete profile
+  if (restingHr != null) {
+    await fetch(`${API_BASE}/athlete/0`, {
+      method: "PUT",
+      headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+      body: JSON.stringify({ icu_resting_hr: restingHr }),
+    });
+  }
 }
 
 export interface PlatformConnection {

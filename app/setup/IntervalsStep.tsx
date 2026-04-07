@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 
 interface IntervalsStepProps {
-  onNext: (apiKey: string, profile: { lthr?: number; maxHr?: number; hrZones?: number[] }) => void;
+  onNext: (apiKey: string, profile: { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number }) => void;
   onBack: () => void;
 }
 
@@ -35,12 +35,14 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
 
       // Fetch the profile to get HR zones
       const settingsRes = await fetch("/api/settings");
-      const settings = await settingsRes.json() as { lthr?: number; maxHr?: number; hrZones?: number[] };
+      const settings = await settingsRes.json() as { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number };
 
       onNext(apiKey.trim(), {
         lthr: settings.lthr,
         maxHr: settings.maxHr,
         hrZones: settings.hrZones,
+        restingHr: settings.restingHr,
+        sportSettingsId: settings.sportSettingsId,
       });
     } catch {
       setError("Network error");
@@ -87,6 +89,9 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
             <ExternalLink size={14} />
             intervals.icu
           </a>
+          <p className="text-xs text-muted mt-1">
+            After signing up, follow the prompt to connect your watch — you&apos;ll need that in the next step.
+          </p>
 
           <p className="text-muted mt-4">
             <strong className="text-text">Step 2:</strong> Get your API key
