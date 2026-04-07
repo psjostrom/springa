@@ -29,6 +29,7 @@ interface WizardData {
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
+  restingHr?: number;
   diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
@@ -163,6 +164,7 @@ export default function SetupPage() {
             lthr={data.lthr}
             maxHr={data.maxHr}
             hrZones={data.hrZones}
+            restingHr={data.restingHr}
             onNext={(zones) => {
               updateData(zones);
               setStep(7);

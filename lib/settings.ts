@@ -30,6 +30,7 @@ export interface UserSettings {
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
+  restingHr?: number;
 }
 
 // --- CRUD ---

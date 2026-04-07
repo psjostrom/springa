@@ -77,8 +77,24 @@ const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
 };
 
 /**
+ * Compute 5 HR zones using the Karvonen formula.
+ * Zone = (maxHR - restingHR) × %intensity + restingHR
+ * Returns [Z1top, Z2top, Z3top, Z4top, Z5top].
+ */
+export function computeKarvonenZones(maxHr: number, restingHr: number): number[] {
+  const hrr = maxHr - restingHr;
+  return [
+    Math.round(hrr * 0.60 + restingHr), // Z1 top: 60% HRR
+    Math.round(hrr * 0.70 + restingHr), // Z2 top: 70% HRR
+    Math.round(hrr * 0.80 + restingHr), // Z3 top: 80% HRR
+    Math.round(hrr * 0.90 + restingHr), // Z4 top: 90% HRR
+    maxHr,                               // Z5 top: maxHR
+  ];
+}
+
+/**
  * Resolve zone boundaries as LTHR fractions from the Intervals.icu hrZones array.
- * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values synced from Garmin).
+ * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values from Intervals.icu).
  */
 export function resolveZoneBand(
   zone: HRZoneName,

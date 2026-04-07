@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 
 interface IntervalsStepProps {
-  onNext: (apiKey: string, profile: { lthr?: number; maxHr?: number; hrZones?: number[] }) => void;
+  onNext: (apiKey: string, profile: { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number }) => void;
   onBack: () => void;
 }
 
@@ -35,12 +35,13 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
 
       // Fetch the profile to get HR zones
       const settingsRes = await fetch("/api/settings");
-      const settings = await settingsRes.json() as { lthr?: number; maxHr?: number; hrZones?: number[] };
+      const settings = await settingsRes.json() as { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number };
 
       onNext(apiKey.trim(), {
         lthr: settings.lthr,
         maxHr: settings.maxHr,
         hrZones: settings.hrZones,
+        restingHr: settings.restingHr,
       });
     } catch {
       setError("Network error");
