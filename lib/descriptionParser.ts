@@ -252,7 +252,7 @@ function toMinutes(value: number, unit: string, avgPercent: number, table?: Pace
 function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
   // Extract step lines (start with "- "), then parse each for duration + intensity
-  const stepPattern = /(\d+\.?\d*)(s|m|km)\s+(\d+)-(\d+)%/;
+  const stepPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
   for (const line of section.split("\n")) {
     if (!line.startsWith("- ")) continue;
     const m = stepPattern.exec(line);

@@ -55,7 +55,7 @@ async function migrate() {
 
   // 2. Generate new Nightscout secret
   const newNsSecret = randomBytes(32).toString("hex");
-  const nsHash = createHash("sha1").update(newNsSecret).digest("hex");
+  const nsHash = createHash("sha256").update(newNsSecret).digest("hex");
 
   // 3. Encrypt credentials
   const intervalsKey = process.env.INTERVALS_API_KEY;
