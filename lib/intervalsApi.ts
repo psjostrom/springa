@@ -62,6 +62,8 @@ export async function updateAthleteHRZones(
   hrZones: number[],
   restingHr?: number,
 ): Promise<void> {
+  // Validate sportSettingsId is a safe integer for URL interpolation
+  if (!Number.isInteger(sportSettingsId) || sportSettingsId <= 0) return;
   // Update sport settings (hr_zones)
   await fetch(`${API_BASE}/athlete/0/sport-settings/${sportSettingsId}`, {
     method: "PUT",
