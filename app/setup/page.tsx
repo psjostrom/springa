@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetAtom } from "jotai";
 import { addWeeks, differenceInWeeks, format } from "date-fns";
-import { generatedPlanAtom } from "../atoms";
+import { generatedPlanAtom, settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import { WelcomeStep } from "./WelcomeStep";
@@ -38,6 +38,7 @@ interface WizardData {
 export default function SetupPage() {
   const router = useRouter();
   const setGeneratedPlan = useSetAtom(generatedPlanAtom);
+  const setSettings = useSetAtom(settingsAtom);
   const [step, setStep] = useState<Step>(1);
   const [generating, setGenerating] = useState(false);
   const [data, setData] = useState<WizardData>({
@@ -89,6 +90,8 @@ export default function SetupPage() {
         setGenerating(false);
         return;
       }
+      // Update atom so page.tsx doesn't redirect back to /setup
+      setSettings((prev) => ({ ...(prev ?? {}), onboardingComplete: true }));
       router.push("/?tab=planner");
     } catch {
       setGenerating(false);

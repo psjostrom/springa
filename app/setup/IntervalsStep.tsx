@@ -88,6 +88,9 @@ export function IntervalsStep({ onNext, onBack }: IntervalsStepProps) {
             <ExternalLink size={14} />
             intervals.icu
           </a>
+          <p className="text-xs text-muted mt-1">
+            After signing up, follow the prompt to connect your watch — you&apos;ll need that in the next step.
+          </p>
 
           <p className="text-muted mt-4">
             <strong className="text-text">Step 2:</strong> Get your API key
