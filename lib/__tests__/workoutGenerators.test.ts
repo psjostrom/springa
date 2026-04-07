@@ -1,9 +1,59 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase } from "../workoutGenerators";
-import type { OnDemandCategory } from "../workoutGenerators";
+import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
+import type { OnDemandCategory, DayRole } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { getWeekIdx } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
+
+describe("assignDayRoles", () => {
+  it("assigns long + easy for 2-day schedule (no speed)", () => {
+    const roles = assignDayRoles([2, 0], 0); // Tue + Sun, long on Sun
+    expect(roles.get(0)).toBe("long");
+    expect(roles.get(2)).toBe("easy");
+    expect(roles.size).toBe(2);
+  });
+
+  it("assigns long + speed + easy for 3-day schedule", () => {
+    const roles = assignDayRoles([2, 5, 0], 0); // Tue + Fri + Sun
+    expect(roles.get(0)).toBe("long");
+    expect(roles.has(2) || roles.has(5)).toBe(true);
+    const speedDay = [...roles.entries()].find(([, r]) => r === "speed");
+    expect(speedDay).toBeDefined();
+  });
+
+  it("places speed as far from long run as possible", () => {
+    const roles = assignDayRoles([1, 3, 5, 0], 0); // Mon/Wed/Fri/Sun, long=Sun
+    // Wednesday (3) or Thursday (if present) is farthest from Sunday (0)
+    // Mon=1 is distance 1 from Sun=0, Wed=3 is distance 3, Fri=5 is distance 2
+    expect(roles.get(3)).toBe("speed");
+  });
+
+  it("assigns free runs for 5+ days", () => {
+    const roles = assignDayRoles([1, 2, 3, 5, 0], 0);
+    const freeRuns = [...roles.entries()].filter(([, r]) => r === "free");
+    expect(freeRuns.length).toBe(1);
+  });
+
+  it("club replaces speed when clubType is intervals", () => {
+    const roles = assignDayRoles([2, 4, 6, 0], 0, 4, "intervals");
+    expect(roles.get(4)).toBe("club");
+    const speedDays = [...roles.entries()].filter(([, r]) => r === "speed");
+    expect(speedDays.length).toBe(0);
+  });
+
+  it("club coexists with speed when clubType is easy", () => {
+    const roles = assignDayRoles([2, 4, 6, 0], 0, 4, "easy");
+    expect(roles.get(4)).toBe("club");
+    const speedDays = [...roles.entries()].filter(([, r]) => r === "speed");
+    expect(speedDays.length).toBe(1);
+  });
+
+  it("no club run when clubDay is not set", () => {
+    const roles = assignDayRoles([2, 6, 0], 0);
+    const clubDays = [...roles.entries()].filter(([, r]) => r === "club");
+    expect(clubDays.length).toBe(0);
+  });
+});
 
 describe("generatePlan", () => {
   const defaultArgs = {
@@ -53,36 +103,38 @@ describe("generatePlan", () => {
     }
   });
 
-  it("names Saturday runs with 'Bonus'", () => {
-    const plan = generate();
-    const satRuns = plan.filter((e) => e.external_id.includes("bonus-"));
-    for (const run of satRuns) {
-      expect(run.name).toContain("Bonus");
-    }
-  });
-
   it("includes a race day event in the last week", () => {
     const plan = generate();
     const raceDay = plan.find((e) => e.name.includes("RACE DAY"));
     expect(raceDay).toBeDefined();
   });
 
-  it("generates club run on Thursday every week", () => {
-    const plan = generateFull();
+  it("generates club run when clubDay is configured", () => {
+    const plan = generatePlan(
+      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
+      false, undefined,
+      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "intervals" },
+    );
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
     expect(clubRuns.length).toBeGreaterThan(0);
     for (const run of clubRuns) {
       expect(run.name).toContain("Club Run");
-      expect(getDay(run.start_date_local)).toBe(4); // Thursday
+      expect(getDay(run.start_date_local)).toBe(4);
       expect(run.start_date_local.getHours()).toBe(18);
       expect(run.start_date_local.getMinutes()).toBe(30);
     }
   });
 
-  it("does not generate speed/quality sessions in the plan", () => {
+  it("does not generate club runs when clubDay is not configured", () => {
+    const plan = generateFull();
+    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
+    expect(clubRuns.length).toBe(0);
+  });
+
+  it("generates speed sessions when no club covers intervals", () => {
     const plan = generateFull();
     const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));
-    expect(speedSessions).toHaveLength(0);
+    expect(speedSessions.length).toBeGreaterThan(0);
   });
 
   it("has proper workout description format with HR zones", () => {
@@ -90,6 +142,7 @@ describe("generatePlan", () => {
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
       if (event.name.includes("Club Run")) continue;
+      if (event.name.includes("Free Run")) continue;
       expect(event.description).toContain("LTHR");
       expect(event.description).toContain("bpm");
     }
@@ -100,7 +153,6 @@ describe("generatePlan", () => {
     for (const event of plan) {
       expect(event.fuelRate).toBeDefined();
       expect(event.fuelRate).toBeGreaterThan(0);
-      // Descriptions should NOT contain fuel text
       expect(event.description).not.toContain("FUEL PER 10:");
       expect(event.description).not.toContain("TOTAL:");
     }
@@ -111,6 +163,7 @@ describe("generatePlan", () => {
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
       if (event.name.includes("Club Run")) continue;
+      if (event.name.includes("Free Run")) continue;
       const stepLines = event.description.split("\n").filter((l: string) => l.startsWith("- "));
       expect(stepLines.length).toBeGreaterThan(0);
       for (const line of stepLines) {
@@ -133,7 +186,11 @@ describe("generatePlan", () => {
   });
 
   it("all events have clean time (12:00 for runs, 18:30 for club)", () => {
-    const plan = generate();
+    const plan = generatePlan(
+      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
+      false, undefined,
+      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "intervals" },
+    );
     for (const event of plan) {
       const date = event.start_date_local;
       if (event.name.includes("Club Run")) {
@@ -149,12 +206,9 @@ describe("generatePlan", () => {
 
   it("does not produce duplicate dates from date mutation", () => {
     const plan = generate();
-    // Group events by day — no two events within the same generator
-    // call should share the exact same Date object reference
     for (let i = 0; i < plan.length; i++) {
       for (let j = i + 1; j < plan.length; j++) {
         if (plan[i].start_date_local === plan[j].start_date_local) {
-          // Same object reference means mutation bug
           expect(plan[i].start_date_local).not.toBe(plan[j].start_date_local);
         }
       }
@@ -163,34 +217,32 @@ describe("generatePlan", () => {
 
   // --- DAY-OF-WEEK ASSIGNMENTS ---
 
-  it("assigns easy sessions to Tuesday (day 2)", () => {
-    const plan = generateFull();
-    const easySessions = plan.filter((e) => e.external_id.includes("easy-"));
-    expect(easySessions.length).toBeGreaterThan(0);
-    for (const event of easySessions) {
-      expect(getDay(event.start_date_local)).toBe(2);
+  it("respects custom runDays scheduling", () => {
+    const plan = generatePlan(
+      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
+      false, undefined,
+      { runDays: [1, 3, 6], longRunDay: 6 }, // Mon/Wed/Sat, long=Sat
+    );
+    for (const event of plan) {
+      const day = getDay(event.start_date_local);
+      expect([1, 3, 6]).toContain(day);
     }
   });
 
-  it("assigns club runs to Thursday (day 4)", () => {
-    const plan = generateFull();
-    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
-    expect(clubRuns.length).toBeGreaterThan(0);
-    for (const event of clubRuns) {
-      expect(getDay(event.start_date_local)).toBe(4);
-    }
-  });
-
-  it("assigns bonus sessions to Saturday (day 6)", () => {
-    const plan = generateFull();
-    const bonusSessions = plan.filter((e) => e.external_id.includes("bonus-"));
-    expect(bonusSessions.length).toBeGreaterThan(0);
-    for (const event of bonusSessions) {
+  it("assigns long runs to the configured longRunDay", () => {
+    const plan = generatePlan(
+      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
+      false, undefined,
+      { runDays: [2, 5, 6], longRunDay: 6 }, // Tue/Fri/Sat, long=Sat
+    );
+    const longRuns = plan.filter((e) => e.external_id.includes("long-"));
+    expect(longRuns.length).toBeGreaterThan(0);
+    for (const event of longRuns) {
       expect(getDay(event.start_date_local)).toBe(6);
     }
   });
 
-  it("assigns long runs to Sunday (day 0)", () => {
+  it("assigns long runs to Sunday with default scheduling", () => {
     const plan = generateFull();
     const longSessions = plan.filter((e) => e.external_id.includes("long-"));
     expect(longSessions.length).toBeGreaterThan(0);
@@ -206,11 +258,8 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    // At least some should have race pace sections (sandwich or progressive)
     expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
-    // At least some should have tempo sections (progressive)
     expect(longRuns.some((lr) => lr.description.includes("92-99%"))).toBe(true);
-    // At least some should be all-easy
     expect(longRuns.some((lr) =>
       !lr.description.includes("83-92%") && !lr.description.includes("92-99%"),
     )).toBe(true);
@@ -223,12 +272,10 @@ describe("generatePlan", () => {
     );
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
-      // Main set should contain all three zones in ascending order
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
       expect(mainSet).toContain("68-83%");
       expect(mainSet).toContain("83-92%");
       expect(mainSet).toContain("92-99%");
-      // Steady comes after easy, tempo comes after steady
       const steadyIdx = mainSet.indexOf("83-92%");
       const tempoIdx = mainSet.indexOf("92-99%");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
@@ -241,14 +288,10 @@ describe("generatePlan", () => {
       (e) => e.external_id.includes("long-") && e.description.includes("83-92%"),
     );
     if (sandwichRuns.length < 2) return;
-
-    // Extract race pace km from each sandwich run
     const rpKms = sandwichRuns.map((lr) => {
       const match = /(\d+)km\s+83-92%/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
-
-    // The race pace block should not shrink over time (monotonic non-decreasing)
     for (let i = 1; i < rpKms.length; i++) {
       expect(rpKms[i]).toBeGreaterThanOrEqual(rpKms[i - 1]);
     }
@@ -259,15 +302,11 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER"),
     );
-
     const distances = longRuns.map((lr) => {
       const match = /\((\d+)km\)/.exec(lr.name);
       return match ? parseInt(match[1], 10) : 0;
     });
-
-    // First long run should start at startKm (8)
     expect(distances[0]).toBe(8);
-    // Last non-special long run distance should be greater than first
     expect(distances[distances.length - 1]).toBeGreaterThan(distances[0]);
   });
 
@@ -278,7 +317,6 @@ describe("generatePlan", () => {
     for (const run of recoveryRuns) {
       const match = /\((\d+)km\)/.exec(run.name);
       expect(match).not.toBeNull();
-      // Recovery runs reset to startKm (8)
       expect(parseInt(match![1], 10)).toBe(8);
     }
   });
@@ -286,11 +324,10 @@ describe("generatePlan", () => {
   it("reduces distance on taper weeks", () => {
     const plan = generateFull();
     const taperRuns = plan.filter((e) => e.name.includes("[TAPER]"));
-    expect(taperRuns.length).toBe(2); // 2-week taper
+    expect(taperRuns.length).toBe(2);
     for (const run of taperRuns) {
       const match = /\((\d+)km\)/.exec(run.name);
       expect(match).not.toBeNull();
-      // Taper is 50% of race distance (16 * 0.5 = 8)
       expect(parseInt(match![1], 10)).toBe(8);
     }
   });
@@ -317,7 +354,6 @@ describe("generatePlan", () => {
     for (const run of easyRuns) {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
-      // CD is 15m for most runs, 10m for very short runs (shakeout/race-test)
       const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
       expect(cdMatch).not.toBeNull();
       expect(parseInt(cdMatch![1], 10)).toBeGreaterThanOrEqual(10);
@@ -330,19 +366,6 @@ describe("generatePlan", () => {
     const strideRuns = plan.filter((e) => e.name.includes("Strides"));
     expect(strideRuns.length).toBeGreaterThan(0);
     for (const run of strideRuns) {
-      expect(run.description).toContain("Warmup");
-      expect(run.description).toContain("Cooldown");
-      const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
-      expect(cdMatch).not.toBeNull();
-      expect(parseInt(cdMatch![1], 10)).toBe(15);
-    }
-  });
-
-  it("bonus runs use WU/main/CD structure with 15m cooldown", () => {
-    const plan = generateFull();
-    const bonusRuns = plan.filter((e) => e.external_id.includes("bonus-"));
-    expect(bonusRuns.length).toBeGreaterThan(0);
-    for (const run of bonusRuns) {
       expect(run.description).toContain("Warmup");
       expect(run.description).toContain("Cooldown");
       const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(run.description);
@@ -365,10 +388,9 @@ describe("generatePlan", () => {
   });
 
   it("on-demand quality sessions have 5m cooldown", () => {
-    // Quality is on-demand only — generate one and check cooldown
     const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
     const buildThursday = new Date(ctx.planStartMonday);
-    buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3); // week 5
+    buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
     const event = generateSingleWorkout("quality", buildThursday, null, {
       raceDate: "2027-06-12", raceDist: 16, totalWeeks: 12,
       startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES],
@@ -391,10 +413,21 @@ describe("generatePlan", () => {
         const match = /(\d+)m\s/.exec(line);
         if (match) totalMin += parseInt(match[1], 10);
       }
-      // Total should be >= 30 (shortest easy: 10m WU + 10m main + 10m CD)
-      // and <= 70 (longest: 10m WU + 45m main + 15m CD)
       expect(totalMin).toBeGreaterThanOrEqual(30);
       expect(totalMin).toBeLessThanOrEqual(70);
+    }
+  });
+
+  it("generates free runs for 5+ day schedules", () => {
+    const plan = generatePlan(
+      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
+      false, undefined,
+      { runDays: [1, 2, 3, 5, 0], longRunDay: 0 },
+    );
+    const freeRuns = plan.filter((e) => e.external_id.includes("free-"));
+    expect(freeRuns.length).toBeGreaterThan(0);
+    for (const run of freeRuns) {
+      expect(run.name).toContain("Free Run");
     }
   });
 });
@@ -409,10 +442,9 @@ describe("generateSingleWorkout", () => {
     hrZones: [...TEST_HR_ZONES],
   };
 
-  // Pick a Thursday in a build week (week 5)
   const ctx = buildContext(null, settings.raceDate, settings.raceDist, settings.totalWeeks, settings.startKm, settings.lthr, settings.hrZones, false);
   const buildThursday = new Date(ctx.planStartMonday);
-  buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3); // week 5, Thursday
+  buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
 
   it("returns a workout for each category", () => {
     const categories: OnDemandCategory[] = ["easy", "quality", "long", "club"];
@@ -424,7 +456,7 @@ describe("generateSingleWorkout", () => {
     }
   });
 
-  it("overrides the date to the requested date", () => {
+  it("uses the requested date for on-demand generation", () => {
     const event = generateSingleWorkout("easy", buildThursday, null, settings);
     expect(event).not.toBeNull();
     expect(event!.start_date_local.getFullYear()).toBe(buildThursday.getFullYear());
@@ -444,19 +476,17 @@ describe("generateSingleWorkout", () => {
     expect(event).toBeNull();
   });
 
-  it("club category always returns Thursday at 18:30 regardless of input date", () => {
-    // Generate from a Tuesday — should still land on Thursday
+  it("club category uses the requested date", () => {
     const tuesday = new Date(buildThursday);
     tuesday.setDate(tuesday.getDate() - 2);
     const event = generateSingleWorkout("club", tuesday, null, settings);
     expect(event).not.toBeNull();
-    expect(event!.start_date_local.getDay()).toBe(4); // Thursday
+    expect(event!.start_date_local.getDay()).toBe(tuesday.getDay());
     expect(event!.start_date_local.getHours()).toBe(18);
     expect(event!.start_date_local.getMinutes()).toBe(30);
   });
 
   it("club category works during recovery weeks (no phase guard)", () => {
-    // Find a recovery week
     for (let w = 0; w < settings.totalWeeks; w++) {
       const wp = getWeekPhase(ctx, w);
       if (wp.isRecovery) {
@@ -501,34 +531,44 @@ describe("generateSingleWorkout", () => {
 describe("suggestCategory", () => {
   const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
 
-  it("suggests long on Sunday", () => {
-    // Find a Sunday in a build week
+  it("suggests long on Sunday (legacy fallback)", () => {
     const sunday = new Date(ctx.planStartMonday);
-    sunday.setDate(sunday.getDate() + 4 * 7 + 6); // week 5, Sunday
+    sunday.setDate(sunday.getDate() + 4 * 7 + 6);
     const weekIdx = getWeekIdx(sunday, ctx.planStartMonday);
     const wp = getWeekPhase(ctx, weekIdx);
     expect(suggestCategory(sunday, wp)).toBe("long");
   });
 
-  it("suggests quality on Thursday", () => {
+  it("suggests quality on Thursday (legacy fallback)", () => {
     const thursday = new Date(ctx.planStartMonday);
-    thursday.setDate(thursday.getDate() + 4 * 7 + 3); // week 5, Thursday
+    thursday.setDate(thursday.getDate() + 4 * 7 + 3);
     const weekIdx = getWeekIdx(thursday, ctx.planStartMonday);
     const wp = getWeekPhase(ctx, weekIdx);
     expect(suggestCategory(thursday, wp)).toBe("quality");
   });
 
-  it("suggests easy on other days", () => {
+  it("suggests easy on other days (legacy fallback)", () => {
     const tuesday = new Date(ctx.planStartMonday);
-    tuesday.setDate(tuesday.getDate() + 4 * 7 + 1); // week 5, Tuesday
+    tuesday.setDate(tuesday.getDate() + 4 * 7 + 1);
     const weekIdx = getWeekIdx(tuesday, ctx.planStartMonday);
     const wp = getWeekPhase(ctx, weekIdx);
     expect(suggestCategory(tuesday, wp)).toBe("easy");
   });
 
+  it("uses role map when provided", () => {
+    const roles = new Map<number, DayRole>([
+      [6, "long"],
+      [3, "speed"],
+      [1, "easy"],
+    ]);
+    const saturday = new Date(ctx.planStartMonday);
+    saturday.setDate(saturday.getDate() + 4 * 7 + 5); // Saturday = day 6
+    const weekIdx = getWeekIdx(saturday, ctx.planStartMonday);
+    const wp = getWeekPhase(ctx, weekIdx);
+    expect(suggestCategory(saturday, wp, roles)).toBe("long");
+  });
+
   it("suggests easy during recovery week regardless of day", () => {
-    // Recovery weeks are every 4th week in build phase
-    // Find a recovery week Thursday
     for (let w = 0; w < 12; w++) {
       const wp = getWeekPhase(ctx, w);
       if (wp.isRecovery) {

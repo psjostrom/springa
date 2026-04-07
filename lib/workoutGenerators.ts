@@ -19,6 +19,49 @@ import { getWeekIdx } from "./workoutMath";
 type ZoneName = "easy" | "steady" | "tempo" | "hard";
 
 export type OnDemandCategory = "easy" | "quality" | "long" | "club";
+export type DayRole = "long" | "speed" | "easy" | "club" | "free";
+
+/** Assign a training role to each selected run day.
+ *  Roles: long (1), speed (0-1), club (0-1), easy (fill), free (extras beyond 4). */
+export function assignDayRoles(
+  runDays: number[],
+  longRunDay: number,
+  clubDay?: number,
+  clubType?: string,
+): Map<number, DayRole> {
+  const roles = new Map<number, DayRole>();
+  const sorted = [...runDays].sort((a, b) => a - b);
+
+  // 1. Long run
+  roles.set(longRunDay, "long");
+
+  // 2. Club run (if configured and in runDays)
+  if (clubDay != null && sorted.includes(clubDay)) {
+    roles.set(clubDay, "club");
+  }
+
+  // 3. Speed — needed if 3+ days AND club doesn't cover intervals
+  const clubCoversSpeed = clubDay != null && clubType === "intervals";
+  const remaining = sorted.filter((d) => !roles.has(d));
+  if (remaining.length > 0 && sorted.length >= 3 && !clubCoversSpeed) {
+    // Pick the day with maximum circular distance from long run
+    let bestDay = remaining[0];
+    let bestDist = 0;
+    for (const d of remaining) {
+      const dist = Math.min(Math.abs(d - longRunDay), 7 - Math.abs(d - longRunDay));
+      if (dist > bestDist) { bestDist = dist; bestDay = d; }
+    }
+    roles.set(bestDay, "speed");
+  }
+
+  // 4. Fill remaining as easy (up to 4 total), then free
+  const easyAndFree = sorted.filter((d) => !roles.has(d));
+  for (const d of easyAndFree) {
+    roles.set(d, roles.size < 4 ? "easy" : "free");
+  }
+
+  return roles;
+}
 
 /** Per-week phase flags, computed once per week in the orchestrator. */
 export interface WeekPhase {
@@ -91,10 +134,9 @@ function getSpeedSessionType(
 const generateQualityRun = (
   ctx: PlanContext,
   weekIdx: number,
-  weekStart: Date,
+  date: Date,
   wp: WeekPhase,
 ): WorkoutEvent | null => {
-  const date = addDays(weekStart, 3);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
@@ -188,16 +230,16 @@ const generateQualityRun = (
 const generateEasyRun = (
   ctx: PlanContext,
   weekIdx: number,
-  weekStart: Date,
+  date: Date,
   wp: WeekPhase,
+  easyIndex = 0,
 ): WorkoutEvent | null => {
-  const date = addDays(weekStart, 1);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const withStrides = weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
+  const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
   const progress = weekIdx / ctx.totalWeeks;
@@ -234,7 +276,7 @@ const generateEasyRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
-      external_id: `easy-${wp.weekNum}`,
+      external_id: `easy-${wp.weekNum}-${date.getDay()}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -249,32 +291,29 @@ const generateEasyRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createWorkoutText(wu, [s(`${mainDuration}m`, "easy")], cd, 1, notes),
-    external_id: `easy-${wp.weekNum}`,
+    external_id: `easy-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
 };
 
-const generateBonusRun = (
+const generateFreeRun = (
   ctx: PlanContext,
-  weekStart: Date,
+  date: Date,
   wp: WeekPhase,
 ): WorkoutEvent | null => {
-  const date = addDays(weekStart, 5);
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
-  const notes = "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.";
+  const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
-  const wu = s("10m", "easy", "Warmup");
-  const cd = s("15m", "easy", "Cooldown");
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
-    name: `W${wp.weekNum.toString().padStart(2, "0")} Bonus Easy`,
-    description: createWorkoutText(wu, [s("20m", "easy")], cd, 1, notes),
-    external_id: `bonus-${wp.weekNum}`,
+    name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
+    description: createSimpleWorkoutText(s("30m", "easy"), notes),
+    external_id: `free-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -283,7 +322,7 @@ const generateBonusRun = (
 const generateLongRun = (
   ctx: PlanContext,
   weekIdx: number,
-  weekStart: Date,
+  date: Date,
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
@@ -296,7 +335,6 @@ const generateLongRun = (
       fuelRate: ctx.fuelLong,
     };
   }
-  const date = addDays(weekStart, 6);
   if (!isBefore(date, ctx.raceDate)) return null;
 
   const s = makeStep(ctx);
@@ -385,6 +423,13 @@ const generateLongRun = (
 
 // --- MAIN ORCHESTRATOR ---
 
+export interface SchedulingConfig {
+  runDays?: number[];
+  longRunDay?: number;
+  clubDay?: number;
+  clubType?: string;
+}
+
 export function buildContext(
   bgModel: BGResponseModel | null,
   raceDateStr: string,
@@ -395,6 +440,7 @@ export function buildContext(
   hrZones: number[],
   includeBasePhase: boolean,
   diabetesMode?: boolean,
+  scheduling?: SchedulingConfig,
 ): PlanContext {
   const raceDate = parseISO(raceDateStr);
   return {
@@ -413,6 +459,10 @@ export function buildContext(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(totalWeeks - 1),
     ),
+    runDays: scheduling?.runDays ?? [2, 4, 6, 0],     // Default: Tue, Thu, Sat, Sun
+    longRunDay: scheduling?.longRunDay ?? 0,            // Default: Sunday
+    clubDay: scheduling?.clubDay,
+    clubType: scheduling?.clubType,
   };
 }
 
@@ -432,27 +482,47 @@ function buildClubRunEvent(date: Date, wp: WeekPhase, fuelRate: number, external
   };
 }
 
-const generatePlanClubRun = (
-  ctx: PlanContext,
-  weekStart: Date,
-  wp: WeekPhase,
-): WorkoutEvent | null => {
-  const date = addDays(weekStart, 3); // Thursday
-  if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
-    return null;
-  if (isSameDay(date, ctx.raceDate)) return null;
 
-  return buildClubRunEvent(date, wp, ctx.fuelInterval, `club-${wp.weekNum}`);
-};
+/** Convert JS day-of-week (0=Sun..6=Sat) to offset from Monday-based weekStart. */
+function dayToOffset(dayOfWeek: number): number {
+  return dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+}
 
 function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date): WorkoutEvent[] {
   const wp = getWeekPhase(ctx, weekIdx);
-  return [
-    generateEasyRun(ctx, weekIdx, weekStart, wp),
-    generatePlanClubRun(ctx, weekStart, wp),
-    generateBonusRun(ctx, weekStart, wp),
-    generateLongRun(ctx, weekIdx, weekStart, wp),
-  ].filter((e): e is WorkoutEvent => e !== null);
+  const roles = assignDayRoles(ctx.runDays, ctx.longRunDay, ctx.clubDay, ctx.clubType);
+  const events: WorkoutEvent[] = [];
+  let easyCount = 0;
+
+  // Sort by day-of-week offset so events are in calendar order
+  const sortedRoles = [...roles.entries()].sort((a, b) => dayToOffset(a[0]) - dayToOffset(b[0]));
+
+  for (const [dayOfWeek, role] of sortedRoles) {
+    const date = addDays(weekStart, dayToOffset(dayOfWeek));
+    let event: WorkoutEvent | null = null;
+
+    switch (role) {
+      case "long":
+        event = generateLongRun(ctx, weekIdx, date, wp);
+        break;
+      case "speed":
+        event = generateQualityRun(ctx, weekIdx, date, wp);
+        break;
+      case "easy":
+        event = generateEasyRun(ctx, weekIdx, date, wp, easyCount);
+        easyCount++;
+        break;
+      case "club":
+        event = buildClubRunEvent(date, wp, ctx.fuelInterval, `club-${wp.weekNum}`);
+        break;
+      case "free":
+        event = generateFreeRun(ctx, date, wp);
+        break;
+    }
+    if (event) events.push(event);
+  }
+
+  return events;
 }
 
 export function generatePlan(
@@ -465,8 +535,9 @@ export function generatePlan(
   hrZones: number[],
   includeBasePhase = false,
   diabetesMode?: boolean,
+  scheduling?: SchedulingConfig,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling);
   const today = new Date();
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
@@ -486,8 +557,9 @@ export function generateFullPlan(
   hrZones: number[],
   includeBasePhase = false,
   diabetesMode?: boolean,
+  scheduling?: SchedulingConfig,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling);
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);
@@ -500,9 +572,18 @@ export function generateFullPlan(
 export function suggestCategory(
   date: Date,
   wp: WeekPhase,
+  roles?: Map<number, DayRole>,
 ): OnDemandCategory {
   if (wp.isRecovery || wp.isTaper || wp.isBase || wp.isRaceTest) return "easy";
-  const dayOfWeek = date.getDay(); // 0=Sun ... 6=Sat
+  if (roles) {
+    const role = roles.get(date.getDay());
+    if (role === "long") return "long";
+    if (role === "speed") return "quality";
+    if (role === "club") return "club";
+    return "easy";
+  }
+  // Legacy fallback
+  const dayOfWeek = date.getDay();
   if (dayOfWeek === 0) return "long";
   if (dayOfWeek === 4) return "quality";
   return "easy";
@@ -522,6 +603,7 @@ export function generateSingleWorkout(
     lthr: number;
     hrZones: number[];
     includeBasePhase?: boolean;
+    scheduling?: SchedulingConfig;
   },
 ): WorkoutEvent | null {
   const ctx = buildContext(
@@ -533,44 +615,33 @@ export function generateSingleWorkout(
     settings.lthr,
     settings.hrZones,
     settings.includeBasePhase ?? false,
+    undefined,
+    settings.scheduling,
   );
 
   const weekIdx = getWeekIdx(date, ctx.planStartMonday);
   if (weekIdx < 0 || weekIdx >= ctx.totalWeeks) return null;
 
-  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const wp = getWeekPhase(ctx, weekIdx);
 
   let event: WorkoutEvent | null;
 
   switch (category) {
     case "easy":
-      event = generateEasyRun(ctx, weekIdx, weekStart, wp);
+      event = generateEasyRun(ctx, weekIdx, date, wp);
       break;
     case "quality":
-      event = generateQualityRun(ctx, weekIdx, weekStart, wp);
+      event = generateQualityRun(ctx, weekIdx, date, wp);
       break;
     case "long":
-      event = generateLongRun(ctx, weekIdx, weekStart, wp);
+      event = generateLongRun(ctx, weekIdx, date, wp);
       break;
-    case "club": {
-      // Club always meets Thursday at 18:30 — bypass phase guards and keep Thursday date
-      const thursday = addDays(weekStart, 3);
-      return buildClubRunEvent(thursday, wp, ctx.fuelInterval, `ondemand-${format(thursday, "yyyy-MM-dd")}`);
-    }
+    case "club":
+      return buildClubRunEvent(date, wp, ctx.fuelInterval, `ondemand-${format(date, "yyyy-MM-dd")}`);
   }
 
   if (!event) return null;
 
-  // Override the date — generators hardcode day-of-week offsets, but on-demand
-  // targets the specific requested date
-  event.start_date_local = set(date, {
-    hours: event.start_date_local.getHours(),
-    minutes: event.start_date_local.getMinutes(),
-    seconds: 0,
-    milliseconds: 0,
-  });
   event.external_id = `ondemand-${format(date, "yyyy-MM-dd")}`;
-
   return event;
 }

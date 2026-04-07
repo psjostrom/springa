@@ -42,6 +42,10 @@ export interface PlanContext {
   planStartMonday: Date;
   includeBasePhase: boolean;
   boundaries: import("./periodization").PhaseBoundaries;
+  runDays: number[];
+  longRunDay: number;
+  clubDay?: number;
+  clubType?: string;
 }
 
 export interface IntervalsActivity {

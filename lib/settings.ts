@@ -21,6 +21,9 @@ export interface UserSettings {
   displayName?: string;
   timezone?: string;
   runDays?: number[];
+  longRunDay?: number;
+  clubDay?: number;
+  clubType?: string;
   onboardingComplete?: boolean;
 
   // Non-DB fields — populated by the settings API route, not stored in DB
@@ -40,8 +43,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
     sql: `SELECT race_date, race_name, race_dist, total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
-                 diabetes_mode, display_name, timezone, run_days, onboarding_complete,
-                 intervals_api_key, nightscout_url, nightscout_secret
+                 diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
+                 onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -64,6 +67,9 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
   if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
+  if (row.long_run_day != null) settings.longRunDay = row.long_run_day as number;
+  if (row.club_day != null) settings.clubDay = row.club_day as number;
+  if (row.club_type) settings.clubType = row.club_type as string;
   settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
@@ -99,6 +105,9 @@ export async function saveUserSettings(
   if (partial.diabetesMode !== undefined) { sets.push("diabetes_mode = ?"); args.push(partial.diabetesMode ? 1 : 0); }
   if (partial.displayName !== undefined) { sets.push("display_name = ?"); args.push(partial.displayName ?? null); }
   if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(JSON.stringify(partial.runDays)); }
+  if (partial.longRunDay !== undefined) { sets.push("long_run_day = ?"); args.push(partial.longRunDay ?? null); }
+  if (partial.clubDay !== undefined) { sets.push("club_day = ?"); args.push(partial.clubDay ?? null); }
+  if (partial.clubType !== undefined) { sets.push("club_type = ?"); args.push(partial.clubType ?? null); }
   if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
 
   if (sets.length > 0) {

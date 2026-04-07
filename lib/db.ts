@@ -37,7 +37,10 @@ CREATE TABLE IF NOT EXISTS user_settings (
   nightscout_secret  TEXT,
   google_refresh_token TEXT,
   google_calendar_id   TEXT, -- cached to avoid a list+filter API call per sync; re-discovered if missing
-  onboarding_complete INTEGER NOT NULL DEFAULT 0
+  onboarding_complete INTEGER NOT NULL DEFAULT 0,
+  long_run_day       INTEGER,
+  club_day           INTEGER,
+  club_type          TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

@@ -112,6 +112,9 @@ export async function PUT(req: Request) {
   if (body.diabetesMode !== undefined) allowed.diabetesMode = body.diabetesMode;
   if (body.displayName !== undefined) allowed.displayName = body.displayName;
   if (body.runDays !== undefined) allowed.runDays = body.runDays;
+  if (body.longRunDay !== undefined) allowed.longRunDay = body.longRunDay;
+  if (body.clubDay !== undefined) allowed.clubDay = body.clubDay;
+  if (body.clubType !== undefined) allowed.clubType = body.clubType;
   if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;
 
   if (Object.keys(allowed).length > 0) {
