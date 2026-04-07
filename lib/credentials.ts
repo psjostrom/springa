@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { db } from "./db";
 
 const ALGORITHM = "aes-256-gcm";
@@ -31,12 +31,6 @@ export function decrypt(encoded: string, hexKey: string): string {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
-/** SHA-1 hash a secret. Returns lowercase hex string.
- *  Uses SHA-1 for Nightscout protocol compatibility — NS clients send
- *  SHA1(secret) in the api-secret header. */
-export function hashSecret(secret: string): string {
-  return createHash("sha1").update(secret).digest("hex");
-}
 
 /** Get the encryption key from env, or throw.
  *  Validated on first use (cold start), not at import time — Vercel functions
@@ -132,34 +126,6 @@ export async function updateCredentials(
   });
 }
 
-/** Validate a Nightscout api-secret against per-user SHA-1 hashes in DB.
- *  Accepts both raw plaintext and SHA-1 prehashed (standard NS protocol).
- *  Returns the user's email if valid, null if not. */
-export async function validateApiSecretFromDB(
-  apiSecret: string | null,
-): Promise<string | null> {
-  if (!apiSecret) return null;
-
-  // If client sent raw secret, hash it to match DB
-  const hashed = hashSecret(apiSecret);
-
-  // Try hashed first (client sent raw secret — most common for Strimma)
-  let result = await db().execute({
-    sql: "SELECT email FROM user_settings WHERE nightscout_secret = ?",
-    args: [hashed],
-  });
-
-  // If no match, try direct (client already sent SHA-1 — standard NS behavior)
-  if (result.rows.length === 0) {
-    result = await db().execute({
-      sql: "SELECT email FROM user_settings WHERE nightscout_secret = ?",
-      args: [apiSecret],
-    });
-  }
-
-  if (result.rows.length === 0) return null;
-  return result.rows[0].email as string;
-}
 
 /** Fetch Google Calendar credentials for a user. */
 export async function getGoogleCalendarCredentials(email: string): Promise<GoogleCalendarCredentials | null> {

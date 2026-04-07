@@ -15,8 +15,8 @@ vi.mock("@libsql/client", async (importOriginal) => {
   return { ...actual, createClient: () => holder.db };
 });
 
-import { encrypt, decrypt, hashSecret } from "../credentials";
-import { getUserCredentials, updateCredentials, validateApiSecretFromDB } from "../credentials";
+import { encrypt, decrypt } from "../credentials";
+import { getUserCredentials, updateCredentials } from "../credentials";
 import { getGoogleCalendarCredentials, updateGoogleRefreshToken, updateGoogleCalendarId } from "../credentials";
 import { SCHEMA_DDL } from "../db";
 
@@ -45,17 +45,6 @@ describe("encrypt/decrypt", () => {
   });
 });
 
-describe("hashSecret", () => {
-  it("returns consistent SHA-1 hex", () => {
-    const hash = hashSecret("my-secret");
-    expect(hash).toBe(hashSecret("my-secret"));
-    expect(hash).toHaveLength(40);
-  });
-
-  it("differs for different inputs", () => {
-    expect(hashSecret("a")).not.toBe(hashSecret("b"));
-  });
-});
 
 describe("getUserCredentials", () => {
   beforeAll(async () => {
@@ -137,37 +126,6 @@ describe("updateCredentials", () => {
   });
 });
 
-describe("validateApiSecretFromDB", () => {
-  beforeAll(async () => {
-    await holder.db.executeMultiple(SCHEMA_DDL);
-  });
-
-  beforeEach(async () => {
-    await holder.db.execute("DELETE FROM user_settings");
-    const hashed = hashSecret("valid-secret");
-    await holder.db.execute({
-      sql: "INSERT INTO user_settings (email, nightscout_secret) VALUES (?, ?)",
-      args: [EMAIL, hashed],
-    });
-  });
-
-  it("returns email for raw plaintext secret", async () => {
-    expect(await validateApiSecretFromDB("valid-secret")).toBe(EMAIL);
-  });
-
-  it("returns email for SHA-1 prehashed secret (NS protocol)", async () => {
-    const sha1 = hashSecret("valid-secret");
-    expect(await validateApiSecretFromDB(sha1)).toBe(EMAIL);
-  });
-
-  it("returns null for unknown secret", async () => {
-    expect(await validateApiSecretFromDB("wrong-secret")).toBeNull();
-  });
-
-  it("returns null for null input", async () => {
-    expect(await validateApiSecretFromDB(null)).toBeNull();
-  });
-});
 
 describe("Google Calendar credentials", () => {
   beforeEach(async () => {

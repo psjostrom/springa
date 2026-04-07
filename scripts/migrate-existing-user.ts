@@ -12,8 +12,8 @@
  */
 
 import { createClient } from "@libsql/client";
-import { encrypt, hashSecret } from "../lib/credentials";
-import { randomBytes } from "crypto";
+import { encrypt } from "../lib/credentials";
+import { createHash, randomBytes } from "crypto";
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -55,7 +55,7 @@ async function migrate() {
 
   // 2. Generate new Nightscout secret
   const newNsSecret = randomBytes(32).toString("hex");
-  const nsHash = hashSecret(newNsSecret);
+  const nsHash = createHash("sha1").update(newNsSecret).digest("hex");
 
   // 3. Encrypt credentials
   const intervalsKey = process.env.INTERVALS_API_KEY;
