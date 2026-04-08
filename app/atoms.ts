@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import { mutate } from "swr";
 import type { UserSettings } from "@/lib/settings";
 import type { CalendarEvent, PaceTable, PaceCurveData } from "@/lib/types";
@@ -24,19 +25,29 @@ import {
 export const settingsAtom = atom<UserSettings | null>(null);
 export const settingsLoadingAtom = atom(true);
 
+/** Config snapshot at last plan generation — used to detect schedule drift. Persisted across sessions. */
+export const lastGeneratedConfigAtom = atomWithStorage<string | null>("lastGeneratedConfig", null);
+
 export const intervalsConnectedAtom = atom((get) => get(settingsAtom)?.intervalsConnected ?? false);
 export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);
 
 export const updateSettingsAtom = atom(
   null,
   async (_get, set, partial: Partial<UserSettings>) => {
+    // Convert undefined values to null so JSON.stringify preserves them
+    // (undefined keys are silently dropped, preventing DB clears)
+    const body: Record<string, unknown> = {};
+    for (const key of Object.keys(partial)) {
+      const val = partial[key as keyof UserSettings];
+      body[key] = val ?? null;
+    }
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(partial),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Settings save failed (${res.status})`);
-    set(settingsAtom, (prev) => ({ ...(prev ?? {}), ...partial }));
+    set(settingsAtom, (prev) => ({ ...(prev ?? {}), ...body }) as UserSettings);
   },
 );
 

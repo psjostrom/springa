@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { WorkoutEvent } from "@/lib/types";
+import type { UserSettings } from "@/lib/settings";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { uploadPlan, updateEvent } from "@/lib/intervalsClient";
@@ -16,6 +17,8 @@ import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
+import { PlannerSummaryBar } from "../components/PlannerSummaryBar";
+import { PlannerConfigPanel } from "../components/PlannerConfigPanel";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -30,6 +33,8 @@ import {
   calendarReloadAtom,
   diabetesModeAtom,
   switchTabAtom,
+  updateSettingsAtom,
+  lastGeneratedConfigAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -47,6 +52,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
+  const lastGeneratedConfig = useAtomValue(lastGeneratedConfigAtom);
+  const setLastGeneratedConfig = useSetAtom(lastGeneratedConfigAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -57,6 +65,27 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+
+  // Config panel state
+  const [configExpanded, setConfigExpanded] = useState(false);
+
+  const currentConfigKey = JSON.stringify({
+    runDays: settings?.runDays,
+    longRunDay: settings?.longRunDay,
+    clubDay: settings?.clubDay,
+    clubType: settings?.clubType,
+    raceDate: settings?.raceDate,
+    raceDist: settings?.raceDist,
+  });
+
+  const scheduleChanged = lastGeneratedConfig != null && currentConfigKey !== lastGeneratedConfig;
+
+  // hasUploadedPlan: calendar has future planned events (plan was uploaded)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const hasUploadedPlan = calendarEvents.some(
+    (e) => e.type === "planned" && e.date >= today,
+  );
 
   // Adapt state
   const [isAdapting, setIsAdapting] = useState(false);
@@ -84,10 +113,11 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: settings.clubType,
     } : undefined;
     const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode, scheduling);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setPlanEvents(events.filter((e) => e.start_date_local >= today));
+    const todayFilter = new Date();
+    todayFilter.setHours(0, 0, 0, 0);
+    setPlanEvents(events.filter((e) => e.start_date_local >= todayFilter));
     setStatusMsg("");
+    setLastGeneratedConfig(currentConfigKey);
   };
 
   const handleUpload = async () => {
@@ -106,6 +136,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
     setIsUploading(false);
+  };
+
+  const handleSettingsSave = async (partial: Partial<UserSettings>) => {
+    await updateSettings(partial);
   };
 
   // --- Adapt ---
@@ -129,10 +163,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       const insights = computeInsights(fitnessData, calendarEvents);
 
       // Filter upcoming planned (next 4) + recent completed (last 7)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayAdapt = new Date();
+      todayAdapt.setHours(0, 0, 0, 0);
       const upcoming = calendarEvents
-        .filter((e) => e.type === "planned" && e.date >= today)
+        .filter((e) => e.type === "planned" && e.date >= todayAdapt)
         .sort((a, b) => a.date.getTime() - b.date.getTime())
         .slice(0, 4);
 
@@ -251,40 +285,57 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   return (
     <div className="h-full overflow-y-auto bg-bg">
-      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-        {/* Fuel rates + Generate */}
-        <div className="relative overflow-hidden bg-surface border border-border rounded-xl p-4 md:p-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-brand/5 via-transparent to-brand/5 pointer-events-none" />
-          <div className="relative flex flex-col md:flex-row md:items-end gap-4">
-            {diabetesMode && (
-              <div className="flex-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                  Fuel rates <span className="text-muted">g/h</span>
-                </span>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  {(["easy", "long", "interval"] as const).map((cat) => {
-                    const rate = getCurrentFuelRate(cat, bgModel);
-                    const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
-                    return (
-                      <div key={cat} className="flex flex-col text-xs text-muted gap-1">
-                        <span className="capitalize">{cat}</span>
-                        <span className={`text-sm font-medium ${isDefault ? "text-muted" : "text-brand"}`}>
-                          {rate} g/h{isDefault ? " (default)" : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-4">
+        {/* Config: Summary Bar or Expanded Panel */}
+        {!settings && (
+          <div className="bg-surface-alt border border-border rounded-xl px-4 py-3 animate-pulse">
+            <div className="h-5 bg-border rounded w-2/3" />
+          </div>
+        )}
+        {settings && (
+          configExpanded ? (
+            <PlannerConfigPanel
+              key={currentConfigKey}
+              settings={settings}
+              onSave={handleSettingsSave}
+              onDone={() => { setConfigExpanded(false); }}
+            />
+          ) : (
+            <PlannerSummaryBar
+              settings={settings}
+              hasPlan={hasUploadedPlan}
+              onEdit={() => { setConfigExpanded(true); }}
+            />
+          )
+        )}
+
+        {/* Schedule Changed Banner */}
+        {scheduleChanged && hasUploadedPlan && (
+          <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-warning text-sm">Schedule changed</span>
             <button
               onClick={handleGenerate}
-              className="w-full md:w-auto md:min-w-[160px] py-2.5 px-6 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 shrink-0"
+              className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold"
+            >
+              Regenerate
+            </button>
+          </div>
+        )}
+
+        {/* State 1: No plan — show Generate button */}
+        {planEvents.length === 0 && !hasUploadedPlan && (
+          <>
+            <button
+              onClick={handleGenerate}
+              className="w-full py-3 bg-brand text-white rounded-xl font-bold text-base hover:bg-brand-hover transition shadow-lg shadow-brand/20"
             >
               Generate Plan
             </button>
-          </div>
-        </div>
+            <div className="h-32 flex flex-col items-center justify-center text-muted border border-dashed border-border rounded-xl">
+              <span className="text-sm">Generate a plan to see your workouts</span>
+            </div>
+          </>
+        )}
 
         {statusMsg && planEvents.length === 0 && (
           <div className="bg-tint-error border border-error/20 rounded-lg px-4 py-3">
@@ -292,6 +343,17 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </div>
         )}
 
+        {/* State 3: Uploaded plan exists, no local preview */}
+        {planEvents.length === 0 && hasUploadedPlan && !scheduleChanged && (
+          <button
+            onClick={handleGenerate}
+            className="w-full py-3 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"
+          >
+            Regenerate Plan
+          </button>
+        )}
+
+        {/* State 2: Plan generated (preview) */}
         {planEvents.length > 0 && (
           <>
             <WeeklyVolumeChart data={chartData} />
@@ -304,6 +366,29 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             />
             <WorkoutList events={planEvents} />
           </>
+        )}
+
+        {/* Fuel rates (diabetes mode only) */}
+        {diabetesMode && (
+          <div className="bg-surface border border-border rounded-xl p-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Fuel rates <span className="text-muted">g/h</span>
+            </span>
+            <div className="grid grid-cols-3 gap-3 mt-2">
+              {(["easy", "long", "interval"] as const).map((cat) => {
+                const rate = getCurrentFuelRate(cat, bgModel);
+                const isDefault = rate === DEFAULT_FUEL[cat] && !bgModel;
+                return (
+                  <div key={cat} className="flex flex-col text-xs text-muted gap-1">
+                    <span className="capitalize">{cat}</span>
+                    <span className={`text-sm font-medium ${isDefault ? "text-muted" : "text-brand"}`}>
+                      {rate} g/h{isDefault ? " (default)" : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Adapt Upcoming */}
