@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getPaceTable, getDefaultGoalTime, getSliderRange, DISTANCE_OPTIONS, type ExperienceLevel } from "@/lib/paceTable";
 import { formatPace, formatGoalTime } from "@/lib/format";
-import { addWeeks, format, differenceInWeeks, parseISO } from "date-fns";
+import { addWeeks, format, differenceInWeeks, parseISO, isBefore } from "date-fns";
 
 interface GoalStepProps {
   raceDate?: string;
@@ -62,9 +62,11 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
     ? getPaceTable(selectedDist, goalTimeSecs)
     : null;
 
+  const minDate = format(addWeeks(new Date(), 4), "yyyy-MM-dd");
   const weeksToGo = differenceInWeeks(parseISO(raceDate), new Date());
+  const dateTooSoon = isBefore(parseISO(raceDate), addWeeks(new Date(), 4));
 
-  const canProceed = selectedDist != null && goalTimeSecs != null;
+  const canProceed = selectedDist != null && goalTimeSecs != null && !dateTooSoon;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -206,6 +208,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
               <input
                 type="date"
                 value={raceDate}
+                min={minDate}
                 onChange={(e) => { setRaceDate(e.target.value); }}
                 className="flex-1 px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
