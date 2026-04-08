@@ -39,6 +39,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceDist, setRaceDist] = useState<number | "">(settings.raceDist ?? "");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [goalTime, setGoalTime] = useState<number | undefined>(settings.goalTime);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // When club type is "long", the club day IS the long run day
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
@@ -115,12 +116,17 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     }
     // Push threshold pace to Intervals.icu when goal time changes
     if (goalTime !== settings.goalTime && goalTime != null && typeof raceDist === "number" && raceDist > 0) {
+      setSyncError(null);
       const racePaceMinPerKm = goalTime / 60 / raceDist;
       fetch("/api/intervals/threshold-pace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ racePaceMinPerKm }),
-      }).catch(console.error);
+      }).then((res) => {
+        if (!res.ok) setSyncError("Failed to sync paces to Intervals.icu");
+      }).catch(() => {
+        setSyncError("Failed to sync paces to Intervals.icu");
+      });
     }
   };
 
@@ -310,6 +316,9 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             </div>
           )}
         </div>
+        {syncError && (
+          <p className="text-error text-xs mt-2">{syncError}</p>
+        )}
       </div>
 
       {/* Done */}

@@ -67,17 +67,30 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
   const weeksToGo = differenceInWeeks(parseISO(raceDate), new Date());
 
   const canProceed = selectedDist != null && goalTimeSecs != null;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleNext = async () => {
     if (!selectedDist || !goalTimeSecs) return;
+    setSaving(true);
+    setError(null);
     const data = { raceDist: selectedDist, goalTime: goalTimeSecs, raceDate };
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) return;
-    onNext(data);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        setError("Failed to save. Try again.");
+        return;
+      }
+      onNext(data);
+    } catch {
+      setError("Connection error. Check your internet and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -220,19 +233,24 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
         )}
       </div>
 
+      {error && (
+        <p className="text-error text-sm mt-4">{error}</p>
+      )}
+
       <div className="flex gap-3 mt-6">
         <button
           onClick={onBack}
-          className="px-6 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition"
+          disabled={saving}
+          className="px-6 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-border transition disabled:opacity-50"
         >
           Back
         </button>
         <button
           onClick={() => { void handleNext(); }}
-          disabled={!canProceed}
+          disabled={!canProceed || saving}
           className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Next
+          {saving ? "Saving..." : "Next"}
         </button>
       </div>
     </div>
