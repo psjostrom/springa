@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
-import { getSliderRange } from "@/lib/paceTable";
+import { getSliderRange, getDefaultGoalTime } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 
 interface PlannerConfigPanelProps {
@@ -40,6 +40,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [goalTime, setGoalTime] = useState<number | undefined>(settings.goalTime);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const effectiveDist = typeof raceDist === "number" ? raceDist : null;
 
   // When club type is "long", the club day IS the long run day
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
@@ -115,9 +116,9 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       saveField(updates).catch(console.error);
     }
     // Push threshold pace to Intervals.icu when goal time changes
-    if (goalTime !== settings.goalTime && goalTime != null && typeof raceDist === "number" && raceDist > 0) {
+    if (goalTime !== settings.goalTime && goalTime != null && effectiveDist && effectiveDist > 0) {
       setSyncError(null);
-      const racePaceMinPerKm = goalTime / 60 / raceDist;
+      const racePaceMinPerKm = goalTime / 60 / effectiveDist;
       fetch("/api/intervals/threshold-pace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +131,8 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     }
   };
 
-  const goalTimeSliderRange = typeof raceDist === "number" ? getSliderRange(raceDist) : null;
+  const goalTimeSliderRange = effectiveDist ? getSliderRange(effectiveDist) : null;
+  const goalTimeDisplay = goalTime ?? getDefaultGoalTime(effectiveDist ?? 21.0975, "intermediate");
 
   // Compute speed hint
   const speedHintDay = (() => {
@@ -294,20 +296,20 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             />
           </div>
           {/* Goal Time */}
-          {typeof raceDist === "number" && goalTime != null && goalTimeSliderRange && (
+          {effectiveDist && goalTimeSliderRange && (
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                Current Ability
+                {goalTime != null ? "Current Ability" : "Set Your Goal Time"}
               </div>
               <div className="text-center text-2xl font-bold text-brand mb-2">
-                {formatGoalTime(goalTime)}
+                {formatGoalTime(goalTimeDisplay)}
               </div>
               <input
                 type="range"
                 min={goalTimeSliderRange.min}
                 max={goalTimeSliderRange.max}
                 step={goalTimeSliderRange.step}
-                value={goalTime}
+                value={goalTimeDisplay}
                 onChange={(e) => { setGoalTime(Number(e.target.value)); }}
                 onMouseUp={handleRaceBlur}
                 onTouchEnd={handleRaceBlur}
