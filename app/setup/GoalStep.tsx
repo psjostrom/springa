@@ -25,7 +25,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
   const [customDist, setCustomDist] = useState(initialDist != null && !isStandardDist ? String(initialDist) : "");
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
   const [goalTimeSecs, setGoalTimeSecs] = useState<number | null>(initialGoalTime ?? null);
-  const [raceDate, setRaceDate] = useState(initialDate ?? format(addWeeks(new Date(), 16), "yyyy-MM-dd"));
+  const [raceDate, setRaceDate] = useState(initialDate ?? format(addWeeks(new Date(), 18), "yyyy-MM-dd"));
 
   const handleDist = (km: number) => {
     setSelectedDist(km);
@@ -62,9 +62,9 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
     ? getPaceTable(selectedDist, goalTimeSecs)
     : null;
 
-  const minDate = format(addWeeks(new Date(), 4), "yyyy-MM-dd");
+  const minDate = format(addWeeks(new Date(), 12), "yyyy-MM-dd");
   const weeksToGo = differenceInWeeks(parseISO(raceDate), new Date());
-  const dateTooSoon = isBefore(parseISO(raceDate), addWeeks(new Date(), 4));
+  const dateTooSoon = isBefore(parseISO(raceDate), addWeeks(new Date(), 12));
 
   const canProceed = selectedDist != null && goalTimeSecs != null && !dateTooSoon;
   const [saving, setSaving] = useState(false);
@@ -162,9 +162,12 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
         {/* Section 3: Time slider + Paces (visible when experience selected) */}
         {experience != null && goalTimeSecs != null && sliderRange && (
           <div>
-            <label className="block text-sm font-semibold text-muted mb-2">
+            <label className="block text-sm font-semibold text-muted mb-1">
               Current ability
             </label>
+            <p className="text-xs text-muted mb-3">
+              Rough ballpark — pick your best guess. You can always change it later.
+            </p>
             <p className="text-4xl font-bold text-text text-center mb-4">
               {formatGoalTime(goalTimeSecs)}
             </p>

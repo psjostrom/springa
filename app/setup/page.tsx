@@ -68,7 +68,7 @@ export default function SetupPage() {
         const defaultWeeks = 18;
         const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
         const totalWeeks = data.raceDate
-          ? Math.max(4, differenceInWeeks(new Date(data.raceDate), new Date()))
+          ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
           : defaultWeeks;
         const events = generatePlan(
           null,
