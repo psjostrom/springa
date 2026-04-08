@@ -619,6 +619,7 @@ export function IntelScreen() {
             bgModel={bgModel}
             hrZones={hrZones}
             lthr={lthr}
+            racePacePerKm={settings?.goalTime && raceDist ? settings.goalTime / 60 / raceDist : undefined}
           />
         )
       )}

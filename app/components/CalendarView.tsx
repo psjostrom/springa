@@ -45,12 +45,13 @@ interface CalendarViewProps {
   bgModel?: BGResponseModel | null;
   hrZones?: number[];
   lthr?: number;
+  racePacePerKm?: number;
   warmthPreference?: number;
 }
 
 type CalendarViewMode = "month" | "week" | "agenda";
 
-export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference }: CalendarViewProps) {
+export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference, racePacePerKm }: CalendarViewProps) {
   const setSwitchTab = useSetAtom(switchTabAtom);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -405,6 +406,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
           hrZones={hrZones}
           lthr={lthr}
           clothing={clothingMap.get(enrichedSelectedEvent.id)}
+          racePacePerKm={racePacePerKm}
         />
       )}
 

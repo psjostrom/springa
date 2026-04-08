@@ -23,11 +23,13 @@ export function CalendarScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const settings = useAtomValue(settingsAtom);
 
+  const racePacePerKm = settings?.goalTime && settings?.raceDist ? settings.goalTime / 60 / settings.raceDist : undefined;
+
   return (
     <div className="h-full bg-bg flex flex-col text-text font-sans overflow-hidden">
       <main className="flex-1 bg-bg min-h-0 min-w-0">
         <div className="px-1 py-1 md:p-6 h-full flex flex-col overflow-hidden">
-          <CalendarView initialEvents={events} isLoadingInitial={isLoading} initialError={error} onRetryLoad={reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} warmthPreference={settings?.warmthPreference} />
+          <CalendarView initialEvents={events} isLoadingInitial={isLoading} initialError={error} onRetryLoad={reload} runBGContexts={runBGContexts} paceTable={paceTable} bgModel={bgModel} hrZones={settings?.hrZones} lthr={settings?.lthr} warmthPreference={settings?.warmthPreference} racePacePerKm={racePacePerKm} />
         </div>
       </main>
     </div>
