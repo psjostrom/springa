@@ -19,6 +19,9 @@ export const TEST_LTHR = 168;
 /** Max HR. */
 export const TEST_MAX_HR = 189;
 
+/** Goal time for HM in seconds (2h20m). */
+export const TEST_GOAL_TIME = 8400;
+
 /**
  * Pre-computed zone strings for tests.
  * These match what the code generates with TEST_HR_ZONES and TEST_LTHR.
