@@ -34,15 +34,13 @@ export interface PaceTableResult {
   distanceKm: number;
 }
 
-/**
- * Distance conversion factors for VDOT-style equivalency.
- * Converts any distance to HM-equivalent time: goalTime × factor ≈ HM time
- */
-function getDistanceConversionFactor(distanceKm: number): number {
-  if (distanceKm <= 5.5) return 4.65; // 5K
-  if (distanceKm <= 11) return 2.10; // 10K
-  if (distanceKm <= 22) return 1.0; // HM
-  return 0.47; // Marathon
+/** Convert a goal time at any distance to the equivalent HM time using
+ *  the Riegel formula: T_hm = T × (21.0975 / D)^1.06.
+ *  Produces continuous values that closely match known VDOT tables
+ *  (5K→4.56×, 10K→2.24×, Marathon→0.48×). */
+function getHmEquivalentTimeSecs(distanceKm: number, goalTimeSecs: number): number {
+  if (Math.abs(distanceKm - HM_DISTANCE_KM) < 0.5) return goalTimeSecs;
+  return goalTimeSecs * Math.pow(HM_DISTANCE_KM / distanceKm, 1.06);
 }
 
 /**
@@ -58,9 +56,8 @@ function getDistanceConversionFactor(distanceKm: number): number {
 export function getPaceTable(distanceKm: number, goalTimeSecs: number): PaceTableResult {
   const racePacePerKm = goalTimeSecs / 60 / distanceKm;
 
-  // Convert to HM-equivalent time for zone calculations
-  const conversionFactor = getDistanceConversionFactor(distanceKm);
-  const hmEquivalentTimeSecs = goalTimeSecs * conversionFactor;
+  // Convert to HM-equivalent time for zone calculations (Riegel formula)
+  const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(distanceKm, goalTimeSecs);
   const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
   return {

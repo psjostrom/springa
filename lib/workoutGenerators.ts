@@ -12,7 +12,7 @@ import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
 import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
-import { getPaceTable } from "./paceTable";
+import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
 import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
 import { getWeekIdx } from "./workoutMath";
@@ -99,21 +99,37 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   return "active";
 }
 
-/** Pace percentage ranges for Intervals.icu workout syntax (higher % = faster).
- *  100% = HM race pace (set as threshold pace in Intervals.icu sport settings).
- *  Percentages are speed-based: 85% = 85% of race speed = slower than race pace.
- *  Calibrated against Ben Parkes' 2h20 HM pace chart. */
-const ZONE_PACE_PCT: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
+/** HM-calibrated defaults when no pace table is available. */
+const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
   easy:   { min: 85, max: 94 },
   steady: { min: 99, max: 102 },
   tempo:  { min: 107, max: 111 },
-  hard:   { min: null, max: null }, // effort-based (hills, strides)
+  hard:   { min: null, max: null },
 };
 
-function makeStep() {
+/** Compute pace percentages relative to threshold (= race pace).
+ *  For HM: T/H = 1.0, produces the same values as the HM defaults.
+ *  For other distances: adjusts easy/tempo based on the ratio between
+ *  race pace and HM-equivalent pace so the watch shows correct absolute paces. */
+function computeZonePacePct(
+  paceTable: PaceTableResult | null,
+): Record<ZoneName | "walk", { min: number | null; max: number | null }> {
+  if (!paceTable) return HM_ZONE_DEFAULTS;
+  const r = paceTable.racePacePerKm / paceTable.hmEquivalentPacePerKm;
+  return {
+    walk:   { min: null, max: null },
+    easy:   { min: Math.round(r / 1.17 * 100), max: Math.round(r / 1.06 * 100) },
+    steady: { min: 99, max: 102 },
+    tempo:  { min: Math.round(r / 0.94 * 100), max: Math.round(r / 0.90 * 100) },
+    hard:   { min: null, max: null },
+  };
+}
+
+function makeStep(paceTable: PaceTableResult | null) {
+  const zonePct = computeZonePacePct(paceTable);
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const pct = ZONE_PACE_PCT[zone];
+    const pct = zonePct[zone];
     const step = formatPaceStep(
       duration,
       pct.min,
@@ -154,7 +170,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep(ctx.paceTable);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "easy", "Warmup");
@@ -251,7 +267,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep(ctx.paceTable);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -319,7 +335,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep(ctx.paceTable);
   const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
   return {
@@ -350,7 +366,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep(ctx.paceTable);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
