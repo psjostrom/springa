@@ -63,7 +63,17 @@ export function VolumeTrendChart({
 
     // Planned distances from the deterministic plan generator (covers all weeks)
     if (hrZones?.length !== 5) return { weeks, currentWeekIdx };
-    const planEvents = generateFullPlan(null, raceDate, raceDist ?? 16, totalWeeks, startKm ?? 8, lthr ?? DEFAULT_LTHR, hrZones, includeBasePhase ?? false, undefined, undefined, goalTime);
+    const planEvents = generateFullPlan({
+      bgModel: null,
+      raceDateStr: raceDate,
+      raceDist: raceDist ?? 16,
+      totalWeeks,
+      startKm: startKm ?? 8,
+      lthr: lthr ?? DEFAULT_LTHR,
+      hrZones,
+      includeBasePhase: includeBasePhase ?? false,
+      goalTimeSecs: goalTime,
+    });
     for (const pe of planEvents) {
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;

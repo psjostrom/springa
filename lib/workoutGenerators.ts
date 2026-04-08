@@ -452,48 +452,46 @@ const generateLongRun = (
 
 // --- MAIN ORCHESTRATOR ---
 
-export interface SchedulingConfig {
+export interface PlanConfig {
+  bgModel: BGResponseModel | null;
+  raceDateStr: string;
+  raceDist: number;
+  totalWeeks: number;
+  startKm: number;
+  lthr: number;
+  hrZones: number[];
+  includeBasePhase?: boolean;
+  diabetesMode?: boolean;
   runDays?: number[];
   longRunDay?: number;
   clubDay?: number;
   clubType?: string;
+  goalTimeSecs?: number;
 }
 
-export function buildContext(
-  bgModel: BGResponseModel | null,
-  raceDateStr: string,
-  raceDist: number,
-  totalWeeks: number,
-  startKm: number,
-  lthr: number,
-  hrZones: number[],
-  includeBasePhase: boolean,
-  diabetesMode?: boolean,
-  scheduling?: SchedulingConfig,
-  goalTimeSecs?: number,
-): PlanContext {
-  const raceDate = parseISO(raceDateStr);
+export function buildContext(config: PlanConfig): PlanContext {
+  const raceDate = parseISO(config.raceDateStr);
   return {
-    fuelInterval: getCurrentFuelRate("interval", bgModel, diabetesMode),
-    fuelLong: getCurrentFuelRate("long", bgModel, diabetesMode),
-    fuelEasy: getCurrentFuelRate("easy", bgModel, diabetesMode),
+    fuelInterval: getCurrentFuelRate("interval", config.bgModel, config.diabetesMode),
+    fuelLong: getCurrentFuelRate("long", config.bgModel, config.diabetesMode),
+    fuelEasy: getCurrentFuelRate("easy", config.bgModel, config.diabetesMode),
     raceDate,
-    raceDist,
-    totalWeeks,
-    startKm,
-    lthr,
-    hrZones,
-    includeBasePhase,
-    boundaries: getPhaseBoundaries(totalWeeks, includeBasePhase),
+    raceDist: config.raceDist,
+    totalWeeks: config.totalWeeks,
+    startKm: config.startKm,
+    lthr: config.lthr,
+    hrZones: config.hrZones,
+    includeBasePhase: config.includeBasePhase ?? false,
+    boundaries: getPhaseBoundaries(config.totalWeeks, config.includeBasePhase ?? false),
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
-      -(totalWeeks - 1),
+      -(config.totalWeeks - 1),
     ),
-    runDays: scheduling?.runDays ?? [2, 4, 6, 0],     // Default: Tue, Thu, Sat, Sun
-    longRunDay: scheduling?.longRunDay ?? 0,            // Default: Sunday
-    clubDay: scheduling?.clubDay,
-    clubType: scheduling?.clubType,
-    paceTable: goalTimeSecs ? getPaceTable(raceDist, goalTimeSecs) : null,
+    runDays: config.runDays ?? [2, 4, 6, 0],     // Default: Tue, Thu, Sat, Sun
+    longRunDay: config.longRunDay ?? 0,            // Default: Sunday
+    clubDay: config.clubDay,
+    clubType: config.clubType,
+    paceTable: config.goalTimeSecs ? getPaceTable(config.raceDist, config.goalTimeSecs) : null,
   };
 }
 
@@ -556,22 +554,10 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
   return events;
 }
 
-export function generatePlan(
-  bgModel: BGResponseModel | null,
-  raceDateStr: string,
-  raceDist: number,
-  totalWeeks: number,
-  startKm: number,
-  lthr: number,
-  hrZones: number[],
-  includeBasePhase = false,
-  diabetesMode?: boolean,
-  scheduling?: SchedulingConfig,
-  goalTimeSecs?: number,
-): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling, goalTimeSecs);
+export function generatePlan(config: PlanConfig): WorkoutEvent[] {
+  const ctx = buildContext(config);
   const today = new Date();
-  return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
+  return Array.from({ length: config.totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     if (isBefore(addDays(weekStart, 7), today)) return [];
     return generateWeekEvents(ctx, i, weekStart);
@@ -579,21 +565,9 @@ export function generatePlan(
 }
 
 /** Generate the full plan for all weeks (no date filtering). Used for plan-vs-actual comparisons. */
-export function generateFullPlan(
-  bgModel: BGResponseModel | null,
-  raceDateStr: string,
-  raceDist: number,
-  totalWeeks: number,
-  startKm: number,
-  lthr: number,
-  hrZones: number[],
-  includeBasePhase = false,
-  diabetesMode?: boolean,
-  scheduling?: SchedulingConfig,
-  goalTimeSecs?: number,
-): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling, goalTimeSecs);
-  return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
+export function generateFullPlan(config: PlanConfig): WorkoutEvent[] {
+  const ctx = buildContext(config);
+  return Array.from({ length: config.totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);
   });
@@ -627,32 +601,9 @@ export function suggestCategory(
 export function generateSingleWorkout(
   category: OnDemandCategory,
   date: Date,
-  bgModel: BGResponseModel | null,
-  settings: {
-    raceDate: string;
-    raceDist: number;
-    totalWeeks: number;
-    startKm: number;
-    lthr: number;
-    hrZones: number[];
-    includeBasePhase?: boolean;
-    scheduling?: SchedulingConfig;
-    goalTimeSecs?: number;
-  },
+  config: PlanConfig,
 ): WorkoutEvent | null {
-  const ctx = buildContext(
-    bgModel,
-    settings.raceDate,
-    settings.raceDist,
-    settings.totalWeeks,
-    settings.startKm,
-    settings.lthr,
-    settings.hrZones,
-    settings.includeBasePhase ?? false,
-    undefined,
-    settings.scheduling,
-    settings.goalTimeSecs,
-  );
+  const ctx = buildContext(config);
 
   const weekIdx = getWeekIdx(date, ctx.planStartMonday);
   if (weekIdx < 0 || weekIdx >= ctx.totalWeeks) return null;
