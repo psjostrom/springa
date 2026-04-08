@@ -19,8 +19,8 @@ export const DISTANCE_OPTIONS = [
 ] as const;
 
 export interface PaceRange {
-  min: number; // min/km (slower end)
-  max: number; // min/km (faster end)
+  min: number; // min/km (faster end — lower value)
+  max: number; // min/km (slower end — higher value)
 }
 
 export interface PaceTableResult {

@@ -18,7 +18,7 @@ export async function PUT(req: Request) {
   }
 
   const body = (await req.json()) as { racePaceMinPerKm: number };
-  if (typeof body.racePaceMinPerKm !== "number" || body.racePaceMinPerKm <= 0) {
+  if (typeof body.racePaceMinPerKm !== "number" || body.racePaceMinPerKm <= 0 || body.racePaceMinPerKm > 15) {
     return NextResponse.json({ error: "Invalid pace value" }, { status: 400 });
   }
 

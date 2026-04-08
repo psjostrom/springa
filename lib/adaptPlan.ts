@@ -33,8 +33,6 @@ export interface AdaptationInput {
   bgModel: BGResponseModel | null;
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
-  lthr: number;
-  hrZones: number[];
 }
 
 /**

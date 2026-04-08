@@ -10,7 +10,7 @@ import { extractNotes, extractStructure } from "../descriptionParser";
 import type { FitnessInsights } from "../fitness";
 import type { CalendarEvent } from "../types";
 import type { BGResponseModel, TargetFuelResult } from "../bgModel";
-import { TEST_HR_ZONES } from "./testConstants";
+
 
 // --- Helpers ---
 
@@ -321,8 +321,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result).toHaveLength(1);
@@ -342,8 +340,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].swapped).toBe(true);
@@ -362,8 +358,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].fuelRate).toBe(36);
@@ -382,8 +376,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].externalId).toBe("speed-14");
@@ -407,8 +399,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result[0].fuelRate).toBe(45);
@@ -431,8 +421,6 @@ describe("applyAdaptations", () => {
       insights,
       runBGContexts: {},
 
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     expect(result).toHaveLength(3);
@@ -454,8 +442,6 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     const swapChange = result[0].changes.find((c) => c.type === "swap");
@@ -474,8 +460,6 @@ describe("applyAdaptations", () => {
       bgModel,
       insights,
       runBGContexts: {},
-      lthr: 168,
-      hrZones: [...TEST_HR_ZONES],
     });
 
     const fuelChange = result[0].changes.find((c) => c.type === "fuel");

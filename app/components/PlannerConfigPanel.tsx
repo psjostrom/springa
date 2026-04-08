@@ -114,7 +114,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       saveField(updates).catch(console.error);
     }
     // Push threshold pace to Intervals.icu when goal time changes
-    if (goalTime !== settings.goalTime && goalTime != null && typeof raceDist === "number") {
+    if (goalTime !== settings.goalTime && goalTime != null && typeof raceDist === "number" && raceDist > 0) {
       const racePaceMinPerKm = goalTime / 60 / raceDist;
       fetch("/api/intervals/threshold-pace", {
         method: "PUT",
@@ -123,6 +123,8 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       }).catch(console.error);
     }
   };
+
+  const goalTimeSliderRange = typeof raceDist === "number" ? getSliderRange(raceDist) : null;
 
   // Compute speed hint
   const speedHintDay = (() => {
@@ -286,30 +288,27 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             />
           </div>
           {/* Goal Time */}
-          {typeof raceDist === "number" && goalTime != null && (() => {
-            const sliderRange = getSliderRange(raceDist);
-            return (
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                  Current Ability
-                </div>
-                <div className="text-center text-2xl font-bold text-brand mb-2">
-                  {formatGoalTime(goalTime)}
-                </div>
-                <input
-                  type="range"
-                  min={sliderRange.min}
-                  max={sliderRange.max}
-                  step={sliderRange.step}
-                  value={goalTime}
-                  onChange={(e) => { setGoalTime(Number(e.target.value)); }}
-                  onMouseUp={handleRaceBlur}
-                  onTouchEnd={handleRaceBlur}
-                  className="w-full accent-brand"
-                />
+          {typeof raceDist === "number" && goalTime != null && goalTimeSliderRange && (
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                Current Ability
               </div>
-            );
-          })()}
+              <div className="text-center text-2xl font-bold text-brand mb-2">
+                {formatGoalTime(goalTime)}
+              </div>
+              <input
+                type="range"
+                min={goalTimeSliderRange.min}
+                max={goalTimeSliderRange.max}
+                step={goalTimeSliderRange.step}
+                value={goalTime}
+                onChange={(e) => { setGoalTime(Number(e.target.value)); }}
+                onMouseUp={handleRaceBlur}
+                onTouchEnd={handleRaceBlur}
+                className="w-full accent-brand"
+              />
+            </div>
+          )}
         </div>
       </div>
 

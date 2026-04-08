@@ -8,7 +8,6 @@ import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { DEFAULT_LTHR } from "@/lib/constants";
-import { getPaceTable } from "@/lib/paceTable";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { WatchStep } from "./WatchStep";
@@ -93,6 +92,16 @@ export default function SetupPage() {
         today.setHours(0, 0, 0, 0);
         const futureEvents = events.filter((e) => e.start_date_local >= today);
         await uploadPlan(futureEvents);
+      }
+
+      // Push threshold pace to Intervals.icu (fire-and-forget — don't block onboarding)
+      if (data.goalTime && data.raceDist) {
+        const racePaceMinPerKm = data.goalTime / 60 / data.raceDist;
+        fetch("/api/intervals/threshold-pace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ racePaceMinPerKm }),
+        }).catch(console.error);
       }
 
       const res = await fetch("/api/settings", {
@@ -183,7 +192,6 @@ export default function SetupPage() {
             hrZones={data.hrZones}
             restingHr={data.restingHr}
             sportSettingsId={data.sportSettingsId}
-            thresholdPaceMinPerKm={data.goalTime ? getPaceTable(data.raceDist, data.goalTime).racePacePerKm : undefined}
             onNext={(zones) => {
               updateData(zones);
               setStep(7);
