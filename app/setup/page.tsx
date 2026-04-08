@@ -28,8 +28,7 @@ interface WizardData {
   clubDay?: number;
   clubType?: string;
   raceDate?: string;
-  raceName?: string;
-  raceDist?: number;
+  raceDist: number;
   goalTime?: number;
   lthr?: number;
   maxHr?: number;
@@ -51,6 +50,7 @@ export default function SetupPage() {
     timezone: "Europe/Stockholm",
     intervalsApiKey: "",
     runDays: [],
+    raceDist: 21.0975,
     diabetesMode: false,
   });
 
@@ -73,7 +73,7 @@ export default function SetupPage() {
         const events = generatePlan(
           null,
           raceDate,
-          data.raceDist ?? 16,
+          data.raceDist,
           totalWeeks,
           8,
           data.lthr ?? DEFAULT_LTHR,
@@ -86,6 +86,7 @@ export default function SetupPage() {
             clubDay: data.clubDay,
             clubType: data.clubType,
           },
+          data.goalTime,
         );
         const today = new Date();
         today.setHours(0, 0, 0, 0);
