@@ -8,6 +8,7 @@ import {
   updateActivityCarbs,
   replaceWorkoutOnDate,
   fetchPaceCurves,
+  updateThresholdPace,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -748,5 +749,42 @@ describe("replaceWorkoutOnDate", () => {
 
     const newId = await replaceWorkoutOnDate("test-key", 500, workout);
     expect(newId).toBe(2004);
+  });
+});
+
+describe("updateThresholdPace", () => {
+  it("converts min/km to m/s correctly", async () => {
+    let capturedBody: unknown = null;
+
+    server.use(
+      http.put(`https://intervals.icu/api/v1/athlete/0/sport-settings/:sportSettingsId`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    await updateThresholdPace("test-api-key", 123, 6.0);
+
+    expect(capturedBody).toMatchObject({
+      threshold_pace: expect.closeTo(2.778, 0.001), // 1000 / (6 * 60) = 2.7777...
+    });
+  });
+
+  it("handles different pace values", async () => {
+    let capturedBody: unknown = null;
+
+    server.use(
+      http.put(`https://intervals.icu/api/v1/athlete/0/sport-settings/:sportSettingsId`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    // Test 5:00/km pace
+    await updateThresholdPace("test-api-key", 123, 5.0);
+
+    expect(capturedBody).toMatchObject({
+      threshold_pace: expect.closeTo(3.333, 0.001), // 1000 / (5 * 60) = 3.3333...
+    });
   });
 });

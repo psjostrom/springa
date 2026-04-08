@@ -99,4 +99,11 @@ describe("saveUserSettings", () => {
       raceName: "EcoTrail",
     });
   });
+
+  it("persists goalTime as number (roundtrip test)", async () => {
+    await saveUserSettings("user@example.com", { goalTime: 8400 });
+
+    const result = await getUserSettings("user@example.com");
+    expect(result.goalTime).toBe(8400);
+  });
 });
