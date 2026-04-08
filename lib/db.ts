@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   race_date      TEXT,
   race_name      TEXT,
   race_dist      REAL,
+  goal_time      INTEGER,
   total_weeks    INTEGER,
   start_km       REAL,
   widget_order     TEXT,
