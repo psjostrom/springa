@@ -23,7 +23,7 @@ export function CalendarScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const settings = useAtomValue(settingsAtom);
 
-  const racePacePerKm = settings?.goalTime && settings?.raceDist ? settings.goalTime / 60 / settings.raceDist : undefined;
+  const racePacePerKm = settings?.goalTime && settings.raceDist ? settings.goalTime / 60 / settings.raceDist : undefined;
 
   return (
     <div className="h-full bg-bg flex flex-col text-text font-sans overflow-hidden">
