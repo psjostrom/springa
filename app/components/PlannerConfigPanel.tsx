@@ -113,6 +113,15 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
+    // Push threshold pace to Intervals.icu when goal time changes
+    if (goalTime !== settings.goalTime && goalTime != null && typeof raceDist === "number") {
+      const racePaceMinPerKm = goalTime / 60 / raceDist;
+      fetch("/api/intervals/threshold-pace", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ racePaceMinPerKm }),
+      }).catch(console.error);
+    }
   };
 
   // Compute speed hint
