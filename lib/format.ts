@@ -44,6 +44,15 @@ export function parseEventId(id: string): number {
   return parseInt(id.replace("event-", ""), 10);
 }
 
+/** Format seconds as goal time display: "H:MM" for >=1h, "MM:SS" for <1h. */
+export function formatGoalTime(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 /** Convert empty string / undefined to null. Intervals.icu uses "" for unset text fields. */
 export function nonEmpty(v: string | undefined): string | null {
   if (v === undefined || v === "") return null;

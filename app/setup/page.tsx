@@ -30,6 +30,7 @@ interface WizardData {
   raceDate?: string;
   raceName?: string;
   raceDist?: number;
+  goalTime?: number;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -164,13 +165,12 @@ export default function SetupPage() {
         {step === 5 && (
           <GoalStep
             raceDate={data.raceDate}
-            raceName={data.raceName}
             raceDist={data.raceDist}
+            goalTime={data.goalTime}
             onNext={(goal) => {
               updateData(goal);
               setStep(6);
             }}
-            onSkip={() => { setStep(6); }}
             onBack={() => { setStep(4); }}
           />
         )}
