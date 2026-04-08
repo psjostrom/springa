@@ -9,12 +9,14 @@ interface HRZonesStepProps {
   hrZones?: number[];
   restingHr?: number;
   sportSettingsId?: number;
+  /** HM race pace in min/km — pushed to Intervals.icu as threshold pace for % pace workout targets. */
+  thresholdPaceMinPerKm?: number;
   onNext: (zones: { lthr?: number; maxHr?: number; hrZones?: number[] }) => void;
   onSkip: () => void;
   onBack: () => void;
 }
 
-export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: initialZones, restingHr: initialRestingHr, sportSettingsId, onNext, onSkip, onBack }: HRZonesStepProps) {
+export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: initialZones, restingHr: initialRestingHr, sportSettingsId, thresholdPaceMinPerKm, onNext, onSkip, onBack }: HRZonesStepProps) {
   const has5Zones = initialZones?.length === 5;
   const hasImportedZones = has5Zones && (!!initialLthr || !!initialMaxHr);
   const needsRHR = !has5Zones && !!initialMaxHr;
@@ -29,7 +31,7 @@ export function HRZonesStep({ lthr: initialLthr, maxHr: initialMaxHr, hrZones: i
     await fetch("/api/intervals/hr-zones", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sportSettingsId, hrZones: zones, restingHr: rhr }),
+      body: JSON.stringify({ sportSettingsId, hrZones: zones, restingHr: rhr, thresholdPaceMinPerKm }),
     });
   };
 

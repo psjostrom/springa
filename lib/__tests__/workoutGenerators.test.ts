@@ -261,10 +261,10 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    expect(longRuns.some((lr) => lr.description.includes("95-100% pace"))).toBe(true);
-    expect(longRuns.some((lr) => lr.description.includes("105-110% pace"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("99-102% pace"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("107-111% pace"))).toBe(true);
     expect(longRuns.some((lr) =>
-      !lr.description.includes("95-100% pace") && !lr.description.includes("105-110% pace"),
+      !lr.description.includes("99-102% pace") && !lr.description.includes("107-111% pace"),
     )).toBe(true);
   });
 
@@ -276,11 +276,11 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("80-88% pace");
-      expect(mainSet).toContain("95-100% pace");
-      expect(mainSet).toContain("105-110% pace");
-      const steadyIdx = mainSet.indexOf("95-100% pace");
-      const tempoIdx = mainSet.indexOf("105-110% pace");
+      expect(mainSet).toContain("85-94% pace");
+      expect(mainSet).toContain("99-102% pace");
+      expect(mainSet).toContain("107-111% pace");
+      const steadyIdx = mainSet.indexOf("99-102% pace");
+      const tempoIdx = mainSet.indexOf("107-111% pace");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
     }
   });
@@ -288,11 +288,11 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("long-") && e.description.includes("95-100% pace"),
+      (e) => e.external_id.includes("long-") && e.description.includes("99-102% pace"),
     );
     if (sandwichRuns.length < 2) return;
     const rpKms = sandwichRuns.map((lr) => {
-      const match = /(\d+)km\s+95-100% pace/.exec(lr.description);
+      const match = /(\d+)km\s+99-102% pace/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
     for (let i = 1; i < rpKms.length; i++) {

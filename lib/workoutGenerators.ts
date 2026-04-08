@@ -100,12 +100,14 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
 }
 
 /** Pace percentage ranges for Intervals.icu workout syntax (higher % = faster).
- *  100% = threshold pace as configured in Intervals.icu sport settings. */
+ *  100% = HM race pace (set as threshold pace in Intervals.icu sport settings).
+ *  Percentages are speed-based: 85% = 85% of race speed = slower than race pace.
+ *  Calibrated against Ben Parkes' 2h20 HM pace chart. */
 const ZONE_PACE_PCT: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
-  easy:   { min: 80, max: 88 },
-  steady: { min: 95, max: 100 },
-  tempo:  { min: 105, max: 110 },
+  easy:   { min: 85, max: 94 },
+  steady: { min: 99, max: 102 },
+  tempo:  { min: 107, max: 111 },
   hard:   { min: null, max: null }, // effort-based (hills, strides)
 };
 

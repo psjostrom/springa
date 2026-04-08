@@ -137,9 +137,9 @@ export function shouldSwapToEasy(
 function buildEasyStructure(duration: number | undefined): string {
   const durationMin = duration ? Math.round(duration / 60) : 40;
   const mainMin = Math.max(durationMin - 15, 20);
-  const wu = `${formatPaceStep("10m", 80, 88, "Warmup")} intensity=warmup`;
-  const main = `${formatPaceStep(`${mainMin}m`, 80, 88, "Easy")} intensity=active`;
-  const cd = `${formatPaceStep("5m", 80, 88, "Cooldown")} intensity=cooldown`;
+  const wu = `${formatPaceStep("10m", 85, 94, "Warmup")} intensity=warmup`;
+  const main = `${formatPaceStep(`${mainMin}m`, 85, 94, "Easy")} intensity=active`;
+  const cd = `${formatPaceStep("5m", 85, 94, "Cooldown")} intensity=cooldown`;
   return createWorkoutText(wu, [main], cd, 1).trim();
 }
 

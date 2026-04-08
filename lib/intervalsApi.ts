@@ -79,6 +79,25 @@ export async function updateAthleteHRZones(
   }
 }
 
+/** Update the threshold pace in Intervals.icu sport settings.
+ *  Intervals.icu stores threshold_pace in m/s internally.
+ *  This is used so that "% pace" in workout descriptions resolves to correct absolute paces.
+ *  We set threshold = HM race pace (so 100% pace ≈ race effort). */
+export async function updateThresholdPace(
+  apiKey: string,
+  sportSettingsId: number,
+  racePaceMinPerKm: number,
+): Promise<void> {
+  // Convert min/km → m/s: 1 km/min ÷ pace × 1000m/km ÷ 60s/min
+  const metersPerSecond = 1000 / (racePaceMinPerKm * 60);
+  const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
+  await fetch(settingsUrl.href, {
+    method: "PUT",
+    headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify({ threshold_pace: metersPerSecond }),
+  });
+}
+
 export interface PlatformConnection {
   platform: "garmin" | "polar" | "suunto" | "coros" | "wahoo" | "amazfit" | "strava" | "huawei";
   linked: boolean;

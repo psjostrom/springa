@@ -347,7 +347,7 @@ describe("applyAdaptations", () => {
     });
 
     expect(result[0].swapped).toBe(true);
-    expect(result[0].structure).toContain("80-88% pace");
+    expect(result[0].structure).toContain("85-94% pace");
     expect(result[0].changes.some((c) => c.type === "swap")).toBe(true);
   });
 

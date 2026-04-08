@@ -8,6 +8,7 @@ import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import { getPaceTable } from "@/lib/paceTable";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { WatchStep } from "./WatchStep";
@@ -182,6 +183,7 @@ export default function SetupPage() {
             hrZones={data.hrZones}
             restingHr={data.restingHr}
             sportSettingsId={data.sportSettingsId}
+            thresholdPaceMinPerKm={data.goalTime ? getPaceTable(data.raceDist, data.goalTime).racePacePerKm : undefined}
             onNext={(zones) => {
               updateData(zones);
               setStep(7);
