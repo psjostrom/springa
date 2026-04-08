@@ -2,6 +2,22 @@ import type { HRZoneName } from "./types";
 
 const HM_DISTANCE_KM = 21.0975;
 
+export type ExperienceLevel = "beginner" | "intermediate" | "experienced";
+
+const STANDARD_DISTANCES: { km: number; defaults: Record<ExperienceLevel, number> }[] = [
+  { km: 5, defaults: { beginner: 2100, intermediate: 1620, experienced: 1320 } },
+  { km: 10, defaults: { beginner: 4320, intermediate: 3360, experienced: 2760 } },
+  { km: 21.0975, defaults: { beginner: 9000, intermediate: 7500, experienced: 6300 } },
+  { km: 42.195, defaults: { beginner: 18900, intermediate: 15300, experienced: 12600 } },
+];
+
+export const DISTANCE_OPTIONS = [
+  { label: "5K", km: 5 },
+  { label: "10K", km: 10 },
+  { label: "Half", km: 21.0975 },
+  { label: "Marathon", km: 42.195 },
+] as const;
+
 export interface PaceRange {
   min: number; // min/km (slower end)
   max: number; // min/km (faster end)
@@ -84,4 +100,31 @@ export function getPaceRangeForZone(
     case "tempo": return table.tempo;
     case "hard": return null;
   }
+}
+
+export function getDefaultGoalTime(distanceKm: number, level: ExperienceLevel): number {
+  const exact = STANDARD_DISTANCES.find((d) => Math.abs(d.km - distanceKm) < 0.5);
+  if (exact) return exact.defaults[level];
+  let lower = STANDARD_DISTANCES[0];
+  let upper = STANDARD_DISTANCES[STANDARD_DISTANCES.length - 1];
+  for (let i = 0; i < STANDARD_DISTANCES.length - 1; i++) {
+    if (distanceKm >= STANDARD_DISTANCES[i].km && distanceKm <= STANDARD_DISTANCES[i + 1].km) {
+      lower = STANDARD_DISTANCES[i]; upper = STANDARD_DISTANCES[i + 1]; break;
+    }
+  }
+  const fraction = (distanceKm - lower.km) / (upper.km - lower.km);
+  return Math.round(lower.defaults[level] + (upper.defaults[level] - lower.defaults[level]) * fraction);
+}
+
+export function getSliderRange(distanceKm: number): { min: number; max: number; step: number } {
+  const ranges: { maxKm: number; min: number; max: number; step: number }[] = [
+    { maxKm: 5.5, min: 900, max: 2700, step: 60 },
+    { maxKm: 11, min: 2100, max: 5400, step: 60 },
+    { maxKm: 22, min: 4800, max: 11700, step: 300 },
+    { maxKm: 50, min: 9900, max: 23400, step: 300 },
+  ];
+  for (const r of ranges) {
+    if (distanceKm <= r.maxKm) return { min: r.min, max: r.max, step: r.step };
+  }
+  return ranges[ranges.length - 1];
 }

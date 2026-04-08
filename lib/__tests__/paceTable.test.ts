@@ -3,6 +3,8 @@ import {
   getPaceTable,
   estimateGoalTimeFromEasyPace,
   getPaceRangeForZone,
+  getDefaultGoalTime,
+  getSliderRange,
   type PaceTableResult,
 } from "../paceTable";
 
@@ -130,5 +132,46 @@ describe("getPaceRangeForZone", () => {
   it("returns null for hard", () => {
     const result = getPaceRangeForZone(table, "hard");
     expect(result).toBeNull();
+  });
+});
+
+describe("getDefaultGoalTime", () => {
+  it("returns beginner HM default", () => {
+    expect(getDefaultGoalTime(21.0975, "beginner")).toBe(9000);
+  });
+  it("returns intermediate HM default", () => {
+    expect(getDefaultGoalTime(21.0975, "intermediate")).toBe(7500);
+  });
+  it("returns experienced HM default", () => {
+    expect(getDefaultGoalTime(21.0975, "experienced")).toBe(6300);
+  });
+  it("returns intermediate 5K default", () => {
+    expect(getDefaultGoalTime(5, "intermediate")).toBe(1620);
+  });
+  it("returns intermediate 10K default", () => {
+    expect(getDefaultGoalTime(10, "intermediate")).toBe(3360);
+  });
+  it("returns intermediate marathon default", () => {
+    expect(getDefaultGoalTime(42.195, "intermediate")).toBe(15300);
+  });
+  it("interpolates for custom distances", () => {
+    const time = getDefaultGoalTime(16, "intermediate");
+    expect(time).toBeGreaterThan(3360);
+    expect(time).toBeLessThan(7500);
+  });
+});
+
+describe("getSliderRange", () => {
+  it("returns 5K range", () => {
+    expect(getSliderRange(5)).toEqual({ min: 900, max: 2700, step: 60 });
+  });
+  it("returns HM range", () => {
+    expect(getSliderRange(21.0975)).toEqual({ min: 4800, max: 11700, step: 300 });
+  });
+  it("returns marathon range", () => {
+    expect(getSliderRange(42.195)).toEqual({ min: 9900, max: 23400, step: 300 });
+  });
+  it("uses nearest standard range for custom distances", () => {
+    expect(getSliderRange(16)).toEqual({ min: 4800, max: 11700, step: 300 });
   });
 });
