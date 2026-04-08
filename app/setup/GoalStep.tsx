@@ -30,6 +30,8 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
   const handleDist = (km: number) => {
     setSelectedDist(km);
     setShowCustom(false);
+    // Recalculate goal time with new distance (experience is current — no closure issue
+    // because we read it directly, and React batches these setState calls in the same event)
     if (experience) {
       setGoalTimeSecs(getDefaultGoalTime(km, experience));
     }
@@ -50,6 +52,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
 
   const handleExperience = (level: ExperienceLevel) => {
     setExperience(level);
+    // Use the level arg directly (not `experience` state which is stale in this handler)
     if (selectedDist) {
       setGoalTimeSecs(getDefaultGoalTime(selectedDist, level));
     }

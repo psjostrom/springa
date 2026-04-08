@@ -84,9 +84,12 @@ export function getPaceTable(distanceKm: number, goalTimeSecs: number): PaceTabl
   };
 }
 
+/** Estimate HM goal time from an observed easy pace.
+ *  Uses 1.12x multiplier (midpoint of Ben Parkes' easy-to-race-pace ratio 1.06-1.17).
+ *  Result rounded to nearest 5 minutes for UI slider compatibility. */
 export function estimateGoalTimeFromEasyPace(easyPaceMinPerKm: number): number {
-  const racePace = easyPaceMinPerKm / 1.12;
-  const rawSecs = racePace * HM_DISTANCE_KM * 60;
+  const hmRacePace = easyPaceMinPerKm / 1.12;
+  const rawSecs = hmRacePace * HM_DISTANCE_KM * 60;
   return Math.round(rawSecs / 300) * 300;
 }
 
@@ -102,9 +105,27 @@ export function getPaceRangeForZone(
   }
 }
 
+/** Get default goal time for a distance and experience level.
+ *  Interpolates linearly for custom distances between standard distances.
+ *  Extrapolates proportionally for distances outside the standard range. */
 export function getDefaultGoalTime(distanceKm: number, level: ExperienceLevel): number {
   const exact = STANDARD_DISTANCES.find((d) => Math.abs(d.km - distanceKm) < 0.5);
   if (exact) return exact.defaults[level];
+
+  // Below minimum: scale proportionally from 5K
+  if (distanceKm < STANDARD_DISTANCES[0].km) {
+    const ratio = distanceKm / STANDARD_DISTANCES[0].km;
+    return Math.round(STANDARD_DISTANCES[0].defaults[level] * ratio);
+  }
+
+  // Above maximum: scale proportionally from marathon
+  const last = STANDARD_DISTANCES[STANDARD_DISTANCES.length - 1];
+  if (distanceKm > last.km) {
+    const ratio = distanceKm / last.km;
+    return Math.round(last.defaults[level] * ratio);
+  }
+
+  // Between standard distances: linear interpolation
   let lower = STANDARD_DISTANCES[0];
   let upper = STANDARD_DISTANCES[STANDARD_DISTANCES.length - 1];
   for (let i = 0; i < STANDARD_DISTANCES.length - 1; i++) {

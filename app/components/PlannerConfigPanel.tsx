@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
-import { getSliderRange, getDefaultGoalTime } from "@/lib/paceTable";
+import { getSliderRange } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 
 interface PlannerConfigPanelProps {
@@ -277,27 +277,30 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             />
           </div>
           {/* Goal Time */}
-          {raceDist && (
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                Current Ability
+          {typeof raceDist === "number" && goalTime != null && (() => {
+            const sliderRange = getSliderRange(raceDist);
+            return (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                  Current Ability
+                </div>
+                <div className="text-center text-2xl font-bold text-brand mb-2">
+                  {formatGoalTime(goalTime)}
+                </div>
+                <input
+                  type="range"
+                  min={sliderRange.min}
+                  max={sliderRange.max}
+                  step={sliderRange.step}
+                  value={goalTime}
+                  onChange={(e) => { setGoalTime(Number(e.target.value)); }}
+                  onMouseUp={handleRaceBlur}
+                  onTouchEnd={handleRaceBlur}
+                  className="w-full accent-brand"
+                />
               </div>
-              <div className="text-center text-2xl font-bold text-brand mb-2">
-                {formatGoalTime(goalTime ?? getDefaultGoalTime(typeof raceDist === "number" ? raceDist : 21.0975, "intermediate"))}
-              </div>
-              <input
-                type="range"
-                min={getSliderRange(typeof raceDist === "number" ? raceDist : 21.0975).min}
-                max={getSliderRange(typeof raceDist === "number" ? raceDist : 21.0975).max}
-                step={getSliderRange(typeof raceDist === "number" ? raceDist : 21.0975).step}
-                value={goalTime ?? getDefaultGoalTime(typeof raceDist === "number" ? raceDist : 21.0975, "intermediate")}
-                onChange={(e) => { setGoalTime(Number(e.target.value)); }}
-                onMouseUp={handleRaceBlur}
-                onTouchEnd={handleRaceBlur}
-                className="w-full accent-brand"
-              />
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

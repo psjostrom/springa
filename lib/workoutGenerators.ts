@@ -99,8 +99,8 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   return "active";
 }
 
-/** Pace percentage ranges for Intervals.icu (higher % = faster).
- *  Relative to threshold pace. */
+/** Pace percentage ranges for Intervals.icu workout syntax (higher % = faster).
+ *  100% = threshold pace as configured in Intervals.icu sport settings. */
 const ZONE_PACE_PCT: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
   easy:   { min: 80, max: 88 },
