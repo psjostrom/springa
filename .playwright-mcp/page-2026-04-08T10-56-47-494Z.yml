@@ -1,0 +1,7 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e4]
+    - heading "springa" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Sign in to access your training planner
+    - button "Sign in with Google" [ref=e10] [cursor=pointer]
+  - alert [ref=e11]
