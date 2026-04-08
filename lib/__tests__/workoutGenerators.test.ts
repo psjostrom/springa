@@ -421,6 +421,34 @@ describe("generatePlan", () => {
     }
   });
 
+  it("adjusts pace percentages for non-HM distances", () => {
+    // 5K race: faster race pace than HM → easy % shifts up, tempo % shifts up
+    const plan5k = generateFull({ raceDist: 5, goalTimeSecs: 1620 });
+    const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
+    expect(easy5k).toBeDefined();
+    // 5K ratio r ≈ 0.85 → easy pct ≈ 73-80%, different from HM's 85-94%
+    const easyMatch = /(\d+)-(\d+)% pace/.exec(easy5k!.description);
+    expect(easyMatch).not.toBeNull();
+    const easyMin = parseInt(easyMatch![1], 10);
+    expect(easyMin).toBeLessThan(85); // shifted down from HM default
+
+    // Marathon: slower race pace than HM → easy % shifts down
+    const planMarathon = generateFull({ raceDist: 42.195, goalTimeSecs: 15300 });
+    const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
+    expect(easyMarathon).toBeDefined();
+    const marathonMatch = /(\d+)-(\d+)% pace/.exec(easyMarathon!.description);
+    expect(marathonMatch).not.toBeNull();
+    const marathonEasyMin = parseInt(marathonMatch![1], 10);
+    expect(marathonEasyMin).toBeGreaterThan(easyMin); // marathon easy % > 5K easy %
+  });
+
+  it("falls back to HM defaults when goalTimeSecs is not set", () => {
+    const plan = generateFull({ goalTimeSecs: undefined });
+    const easyRun = plan.find((e) => e.external_id.includes("easy-"));
+    expect(easyRun).toBeDefined();
+    expect(easyRun!.description).toContain("85-94% pace");
+  });
+
   it("generates free runs for 5+ day schedules", () => {
     const plan = generatePlan(
       null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],

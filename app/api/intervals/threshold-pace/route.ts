@@ -1,6 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchAthleteProfile, updateThresholdPace } from "@/lib/intervalsApi";
+import { fetchAthleteRaw, fetchAthleteProfile, updateThresholdPace } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
 export async function PUT(req: Request) {
@@ -20,6 +20,11 @@ export async function PUT(req: Request) {
   const body = (await req.json()) as { racePaceMinPerKm: number };
   if (typeof body.racePaceMinPerKm !== "number" || body.racePaceMinPerKm <= 0 || body.racePaceMinPerKm > 15) {
     return NextResponse.json({ error: "Invalid pace value" }, { status: 400 });
+  }
+
+  const raw = await fetchAthleteRaw(creds.intervalsApiKey);
+  if (!raw) {
+    return NextResponse.json({ error: "Failed to connect to Intervals.icu" }, { status: 502 });
   }
 
   const profile = await fetchAthleteProfile(creds.intervalsApiKey);

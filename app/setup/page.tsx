@@ -94,14 +94,19 @@ export default function SetupPage() {
         await uploadPlan(futureEvents);
       }
 
-      // Push threshold pace to Intervals.icu (fire-and-forget — don't block onboarding)
+      // Push threshold pace to Intervals.icu
       if (data.goalTime && data.raceDist) {
         const racePaceMinPerKm = data.goalTime / 60 / data.raceDist;
-        fetch("/api/intervals/threshold-pace", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ racePaceMinPerKm }),
-        }).catch(console.error);
+        try {
+          const paceRes = await fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ racePaceMinPerKm }),
+          });
+          if (!paceRes.ok) console.warn("Threshold pace sync failed:", paceRes.status);
+        } catch {
+          console.warn("Threshold pace sync failed — can retry from Planner settings");
+        }
       }
 
       const res = await fetch("/api/settings", {

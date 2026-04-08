@@ -116,7 +116,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       saveField(updates).catch(console.error);
     }
     // Push threshold pace to Intervals.icu when goal time changes
-    if (goalTime !== settings.goalTime && goalTime != null && effectiveDist && effectiveDist > 0) {
+    if (goalTime !== settings.goalTime && goalTime != null && effectiveDist && effectiveDist >= 1) {
       setSyncError(null);
       const racePaceMinPerKm = goalTime / 60 / effectiveDist;
       fetch("/api/intervals/threshold-pace", {

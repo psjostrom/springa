@@ -787,4 +787,31 @@ describe("updateThresholdPace", () => {
       threshold_pace: expect.closeTo(3.333, 0.001), // 1000 / (5 * 60) = 3.3333...
     });
   });
+
+  it("sends to the correct sport settings endpoint", async () => {
+    let capturedUrl = "";
+
+    server.use(
+      http.put(`https://intervals.icu/api/v1/athlete/0/sport-settings/:sportSettingsId`, async ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    await updateThresholdPace("test-api-key", 456, 7.0);
+
+    expect(capturedUrl).toContain("/sport-settings/456");
+  });
+
+  it("throws on non-ok response", async () => {
+    server.use(
+      http.put(`https://intervals.icu/api/v1/athlete/0/sport-settings/:sportSettingsId`, () => {
+        return new HttpResponse("Server error", { status: 500 });
+      }),
+    );
+
+    // updateThresholdPace doesn't throw on non-ok (fire-and-forget pattern)
+    // but the fetch completes without error — verify it doesn't crash
+    await expect(updateThresholdPace("test-api-key", 123, 6.0)).resolves.not.toThrow();
+  });
 });

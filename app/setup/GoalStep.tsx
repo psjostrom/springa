@@ -100,7 +100,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
         We&apos;ll build your training plan around this.
       </p>
 
-      <div className="space-y-6">
+      <fieldset disabled={saving} className="space-y-6">
         {/* Section 1: Distance (always visible) */}
         <div>
           <label className="block text-sm font-semibold text-muted mb-2">
@@ -231,7 +231,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
             </div>
           </div>
         )}
-      </div>
+      </fieldset>
 
       {error && (
         <p className="text-error text-sm mt-4">{error}</p>

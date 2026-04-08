@@ -25,7 +25,7 @@ export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKe
 // Typing them all would be maintenance burden with no safety gain — we access specific fields by name.
 type AthleteRaw = Record<string, unknown>;
 
-async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null> {
+export async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null> {
   try {
     const res = await fetch(`${API_BASE}/athlete/0`, {
       headers: { Authorization: authHeader(apiKey) },
