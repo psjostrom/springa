@@ -113,21 +113,24 @@ Add goal time display/edit to the existing race goal section in PlannerConfigPan
 ## Files to change
 
 ### Wizard
-- `app/setup/GoalStep.tsx` — complete rewrite: distance picker, experience selector, time slider, date picker, pace preview
-- `app/setup/page.tsx` — update WizardData to include `goalTime`, pass to `handleComplete`, pass to `generatePlan`
+- `app/setup/GoalStep.tsx` — complete rewrite: distance picker, experience selector, time slider, date picker, pace preview. New props: `onNext(data)` only — no `onSkip` (distance is mandatory).
+- `app/setup/page.tsx` — update WizardData: add `goalTime: number`, make `raceDist: number` required (remove `?`). Remove `onSkip` prop from GoalStep. Pass `data.goalTime` to `generatePlan()`. Remove `data.raceDist ?? 16` fallback (distance is always set).
 
 ### Planner config
 - `app/components/PlannerConfigPanel.tsx` — add goal time field with slider, trigger schedule-change on edit
 
+### API
+- `app/api/settings/route.ts` — add `goalTime` to allowed fields whitelist (line ~104, alongside raceDate/raceName/raceDist)
+
 ### Supporting
 - `lib/paceTable.ts` — add `getDefaultGoalTime(distanceKm, level)` and `getSliderRange(distanceKm)` functions
 - `lib/__tests__/paceTable.test.ts` — tests for new functions
-- `app/api/settings/route.ts` — ensure `goalTime` is in the allowed fields (may already be there)
 
 ### Not changed
 - `lib/workoutGenerators.ts` — already accepts `goalTimeSecs` (done in core engine)
 - `lib/descriptionBuilder.ts` — already has `formatPaceStep` (done in core engine)
 - `lib/settings.ts` — already has `goalTime` field (done in core engine)
+- `app/components/PlannerSummaryBar.tsx` — could optionally show goal time but not required for this spec
 
 ## Pace preview computation
 
