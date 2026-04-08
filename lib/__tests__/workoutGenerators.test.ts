@@ -3,7 +3,7 @@ import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, get
 import type { OnDemandCategory, DayRole } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { getWeekIdx } from "../workoutMath";
-import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
+import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
 describe("assignDayRoles", () => {
   it("assigns long + easy for 2-day schedule (no speed)", () => {
@@ -64,6 +64,7 @@ describe("generatePlan", () => {
     startKm: 8,
     lthr: TEST_LTHR,
     hrZones: [...TEST_HR_ZONES],
+    goalTimeSecs: TEST_GOAL_TIME,
   };
 
   function generate(overrides: Partial<typeof defaultArgs> = {}) {
@@ -72,6 +73,7 @@ describe("generatePlan", () => {
       args.bgModel,
       args.raceDateStr, args.raceDist,
       args.totalWeeks, args.startKm, args.lthr, args.hrZones,
+      false, undefined, undefined, args.goalTimeSecs,
     );
   }
 
@@ -79,6 +81,7 @@ describe("generatePlan", () => {
   function generateFull(overrides: Partial<typeof defaultArgs> = {}) {
     return generate({ raceDateStr: "2027-06-12", ...overrides });
   }
+
 
   it("generates workouts for future weeks only", () => {
     const plan = generate();
@@ -137,14 +140,14 @@ describe("generatePlan", () => {
     expect(speedSessions.length).toBeGreaterThan(0);
   });
 
-  it("has proper workout description format with HR zones", () => {
+  it("has proper workout description format with pace targets", () => {
     const plan = generate();
     for (const event of plan) {
       if (event.name.includes("RACE DAY")) continue;
       if (event.name.includes("Club Run")) continue;
       if (event.name.includes("Free Run")) continue;
-      expect(event.description).toContain("LTHR");
-      expect(event.description).toContain("bpm");
+      expect(event.description).toContain("% pace");
+      expect(event.description).not.toContain("LTHR");
     }
   });
 
@@ -258,10 +261,10 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    expect(longRuns.some((lr) => lr.description.includes("83-92%"))).toBe(true);
-    expect(longRuns.some((lr) => lr.description.includes("92-99%"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("99-102% pace"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("105-109% pace"))).toBe(true);
     expect(longRuns.some((lr) =>
-      !lr.description.includes("83-92%") && !lr.description.includes("92-99%"),
+      !lr.description.includes("99-102% pace") && !lr.description.includes("105-109% pace"),
     )).toBe(true);
   });
 
@@ -273,11 +276,11 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("68-83%");
-      expect(mainSet).toContain("83-92%");
-      expect(mainSet).toContain("92-99%");
-      const steadyIdx = mainSet.indexOf("83-92%");
-      const tempoIdx = mainSet.indexOf("92-99%");
+      expect(mainSet).toContain("84-93% pace");
+      expect(mainSet).toContain("99-102% pace");
+      expect(mainSet).toContain("105-109% pace");
+      const steadyIdx = mainSet.indexOf("99-102% pace");
+      const tempoIdx = mainSet.indexOf("105-109% pace");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
     }
   });
@@ -285,11 +288,11 @@ describe("generatePlan", () => {
   it("grows race pace block distance as plan progresses", () => {
     const plan = generateFull();
     const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("long-") && e.description.includes("83-92%"),
+      (e) => e.external_id.includes("long-") && e.description.includes("99-102% pace"),
     );
     if (sandwichRuns.length < 2) return;
     const rpKms = sandwichRuns.map((lr) => {
-      const match = /(\d+)km\s+83-92%/.exec(lr.description);
+      const match = /(\d+)km\s+99-102% pace/.exec(lr.description);
       return match ? parseInt(match[1], 10) : 0;
     });
     for (let i = 1; i < rpKms.length; i++) {
@@ -416,6 +419,34 @@ describe("generatePlan", () => {
       expect(totalMin).toBeGreaterThanOrEqual(30);
       expect(totalMin).toBeLessThanOrEqual(70);
     }
+  });
+
+  it("adjusts pace percentages for non-HM distances", () => {
+    // 5K race: faster race pace than HM → easy % shifts up, tempo % shifts up
+    const plan5k = generateFull({ raceDist: 5, goalTimeSecs: 1620 });
+    const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
+    expect(easy5k).toBeDefined();
+    // 5K ratio r ≈ 0.85 → easy pct ≈ 73-80%, different from HM's 85-94%
+    const easyMatch = /(\d+)-(\d+)% pace/.exec(easy5k!.description);
+    expect(easyMatch).not.toBeNull();
+    const easyMin = parseInt(easyMatch![1], 10);
+    expect(easyMin).toBeLessThan(85); // shifted down from HM default
+
+    // Marathon: slower race pace than HM → easy % shifts down
+    const planMarathon = generateFull({ raceDist: 42.195, goalTimeSecs: 15300 });
+    const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
+    expect(easyMarathon).toBeDefined();
+    const marathonMatch = /(\d+)-(\d+)% pace/.exec(easyMarathon!.description);
+    expect(marathonMatch).not.toBeNull();
+    const marathonEasyMin = parseInt(marathonMatch![1], 10);
+    expect(marathonEasyMin).toBeGreaterThan(easyMin); // marathon easy % > 5K easy %
+  });
+
+  it("falls back to HM defaults when goalTimeSecs is not set", () => {
+    const plan = generateFull({ goalTimeSecs: undefined });
+    const easyRun = plan.find((e) => e.external_id.includes("easy-"));
+    expect(easyRun).toBeDefined();
+    expect(easyRun!.description).toContain("85-94% pace");
   });
 
   it("generates free runs for 5+ day schedules", () => {

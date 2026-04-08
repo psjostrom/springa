@@ -10,8 +10,9 @@ import {
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
 import type { BGResponseModel } from "./bgModel";
-import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
-import { formatStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
+import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
+import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
+import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
 import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
 import { getWeekIdx } from "./workoutMath";
@@ -98,16 +99,43 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   return "active";
 }
 
-/** Create zone-aware step helper that captures ctx. */
-function makeStep(ctx: PlanContext) {
-  const walkMin = 0.50;
-  const walkMax = ctx.hrZones[0] / ctx.lthr;
+/** HM-calibrated defaults when no pace table is available. */
+const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
+  walk:   { min: null, max: null },
+  easy:   { min: 85, max: 94 },
+  steady: { min: 99, max: 102 },
+  tempo:  { min: 107, max: 111 },
+  hard:   { min: null, max: null },
+};
 
+/** Compute pace percentages relative to threshold (= race pace).
+ *  For HM: T/H = 1.0, produces the same values as the HM defaults.
+ *  For other distances: adjusts easy/tempo based on the ratio between
+ *  race pace and HM-equivalent pace so the watch shows correct absolute paces. */
+function computeZonePacePct(
+  paceTable: PaceTableResult | null,
+): Record<ZoneName | "walk", { min: number | null; max: number | null }> {
+  if (!paceTable) return HM_ZONE_DEFAULTS;
+  const r = paceTable.racePacePerKm / paceTable.hmEquivalentPacePerKm;
+  return {
+    walk:   { min: null, max: null },
+    easy:   { min: Math.round(r / 1.17 * 100), max: Math.round(r / 1.06 * 100) },
+    steady: { min: 99, max: 102 },
+    tempo:  { min: Math.round(r / 0.94 * 100), max: Math.round(r / 0.90 * 100) },
+    hard:   { min: null, max: null },
+  };
+}
+
+function makeStep(paceTable: PaceTableResult | null) {
+  const zonePct = computeZonePacePct(paceTable);
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const band = zone === "walk"
-      ? { min: walkMin, max: walkMax }
-      : resolveZoneBand(zone, ctx.lthr, ctx.hrZones);
-    const step = formatStep(duration, band.min, band.max, ctx.lthr, note ?? (zone === "walk" ? "Walk" : undefined));
+    const pct = zonePct[zone];
+    const step = formatPaceStep(
+      duration,
+      pct.min,
+      pct.max,
+      note ?? (zone === "walk" ? "Walk" : undefined),
+    );
     return `${step} intensity=${garminIntensity(zone, note)}`;
   };
 }
@@ -142,7 +170,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx);
+  const s = makeStep(ctx.paceTable);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "easy", "Warmup");
@@ -239,7 +267,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx);
+  const s = makeStep(ctx.paceTable);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -307,7 +335,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx);
+  const s = makeStep(ctx.paceTable);
   const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
   return {
@@ -338,7 +366,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx);
+  const s = makeStep(ctx.paceTable);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -442,6 +470,7 @@ export function buildContext(
   includeBasePhase: boolean,
   diabetesMode?: boolean,
   scheduling?: SchedulingConfig,
+  goalTimeSecs?: number,
 ): PlanContext {
   const raceDate = parseISO(raceDateStr);
   return {
@@ -464,6 +493,7 @@ export function buildContext(
     longRunDay: scheduling?.longRunDay ?? 0,            // Default: Sunday
     clubDay: scheduling?.clubDay,
     clubType: scheduling?.clubType,
+    paceTable: goalTimeSecs ? getPaceTable(raceDist, goalTimeSecs) : null,
   };
 }
 
@@ -537,8 +567,9 @@ export function generatePlan(
   includeBasePhase = false,
   diabetesMode?: boolean,
   scheduling?: SchedulingConfig,
+  goalTimeSecs?: number,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling, goalTimeSecs);
   const today = new Date();
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
@@ -559,8 +590,9 @@ export function generateFullPlan(
   includeBasePhase = false,
   diabetesMode?: boolean,
   scheduling?: SchedulingConfig,
+  goalTimeSecs?: number,
 ): WorkoutEvent[] {
-  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling);
+  const ctx = buildContext(bgModel, raceDateStr, raceDist, totalWeeks, startKm, lthr, hrZones, includeBasePhase, diabetesMode, scheduling, goalTimeSecs);
   return Array.from({ length: totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
     return generateWeekEvents(ctx, i, weekStart);
@@ -605,6 +637,7 @@ export function generateSingleWorkout(
     hrZones: number[];
     includeBasePhase?: boolean;
     scheduling?: SchedulingConfig;
+    goalTimeSecs?: number;
   },
 ): WorkoutEvent | null {
   const ctx = buildContext(
@@ -618,6 +651,7 @@ export function generateSingleWorkout(
     settings.includeBasePhase ?? false,
     undefined,
     settings.scheduling,
+    settings.goalTimeSecs,
   );
 
   const weekIdx = getWeekIdx(date, ctx.planStartMonday);

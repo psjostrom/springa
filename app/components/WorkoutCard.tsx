@@ -21,6 +21,8 @@ interface WorkoutCardProps {
   children?: React.ReactNode;
   hrZones?: number[];
   lthr?: number;
+  /** Race pace in min/km — used to resolve % pace to actual paces in workout display. */
+  racePacePerKm?: number;
 }
 
 const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
@@ -74,8 +76,8 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR }: WorkoutCardProps) {
-  const sections = hrZones?.length === 5 ? parseWorkoutStructure(description, lthr, hrZones) : [];
+export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR, racePacePerKm }: WorkoutCardProps) {
+  const sections = parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm);
 
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {

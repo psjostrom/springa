@@ -12,6 +12,22 @@ export function formatStep(
   return note ? `${note} ${core}` : core;
 }
 
+/** Format a pace-based workout step for Intervals.icu.
+ *  minPct/maxPct are Intervals.icu pace percentages (higher = faster).
+ *  Pass null for both to create a step with no pace target (walk, effort-based). */
+export function formatPaceStep(
+  duration: string,
+  minPct: number | null,
+  maxPct: number | null,
+  note?: string,
+): string {
+  const paceTarget = minPct != null && maxPct != null
+    ? ` ${minPct}-${maxPct}% pace`
+    : "";
+  const prefix = note ? `${note} ` : "";
+  return `${prefix}${duration}${paceTarget}`;
+}
+
 /** Build a workout description from warmup, main steps, and cooldown. */
 export function createWorkoutText(
   warmup: string,

@@ -28,8 +28,8 @@ interface WizardData {
   clubDay?: number;
   clubType?: string;
   raceDate?: string;
-  raceName?: string;
-  raceDist?: number;
+  raceDist: number;
+  goalTime?: number;
   lthr?: number;
   maxHr?: number;
   hrZones?: number[];
@@ -50,6 +50,7 @@ export default function SetupPage() {
     timezone: "Europe/Stockholm",
     intervalsApiKey: "",
     runDays: [],
+    raceDist: 21.0975,
     diabetesMode: false,
   });
 
@@ -67,12 +68,12 @@ export default function SetupPage() {
         const defaultWeeks = 18;
         const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
         const totalWeeks = data.raceDate
-          ? Math.max(4, differenceInWeeks(new Date(data.raceDate), new Date()))
+          ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
           : defaultWeeks;
         const events = generatePlan(
           null,
           raceDate,
-          data.raceDist ?? 16,
+          data.raceDist,
           totalWeeks,
           8,
           data.lthr ?? DEFAULT_LTHR,
@@ -85,11 +86,27 @@ export default function SetupPage() {
             clubDay: data.clubDay,
             clubType: data.clubType,
           },
+          data.goalTime,
         );
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const futureEvents = events.filter((e) => e.start_date_local >= today);
         await uploadPlan(futureEvents);
+      }
+
+      // Push threshold pace to Intervals.icu
+      if (data.goalTime && data.raceDist) {
+        const racePaceMinPerKm = data.goalTime / 60 / data.raceDist;
+        try {
+          const paceRes = await fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ racePaceMinPerKm }),
+          });
+          if (!paceRes.ok) console.warn("Threshold pace sync failed:", paceRes.status);
+        } catch {
+          console.warn("Threshold pace sync failed — can retry from Planner settings");
+        }
       }
 
       const res = await fetch("/api/settings", {
@@ -164,13 +181,12 @@ export default function SetupPage() {
         {step === 5 && (
           <GoalStep
             raceDate={data.raceDate}
-            raceName={data.raceName}
             raceDist={data.raceDist}
+            goalTime={data.goalTime}
             onNext={(goal) => {
               updateData(goal);
               setStep(6);
             }}
-            onSkip={() => { setStep(6); }}
             onBack={() => { setStep(4); }}
           />
         )}

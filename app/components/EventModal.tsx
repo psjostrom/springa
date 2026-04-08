@@ -98,6 +98,7 @@ interface EventModalProps {
   hrZones?: number[];
   lthr?: number;
   clothing?: ClothingRec;
+  racePacePerKm?: number;
 }
 
 export function EventModal({
@@ -112,6 +113,7 @@ export function EventModal({
   hrZones,
   lthr,
   clothing,
+  racePacePerKm,
 }: EventModalProps) {
   const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
 
@@ -335,7 +337,7 @@ export function EventModal({
         )}
 
         {editMode.kind !== "replacing" && selectedEvent.description && selectedEvent.type === "planned" && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr}>
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
             <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
           </WorkoutCard>
         )}

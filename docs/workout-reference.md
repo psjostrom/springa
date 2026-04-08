@@ -16,7 +16,7 @@ The plan uses rotating workout types to keep training varied and engaging. Every
 
 Pure easy pace. Conversational. The foundation of the plan. Duration follows the Ben Parkes progression: starts at ~5k and builds to ~8k during peak weeks, then drops back for taper/race prep. Recovery weeks also use a shorter duration.
 
-- **Pace:** Easy (7:00–7:30/km)
+- **Pace:** Easy (80-88% pace)
 - **HR:** Z2
 - **T1D:** Pump off, moderate fuel
 - **Duration formula:** Total = `20 + Math.round(progress * 25) + 15` min, split as WU 10m + main + CD 15m. Main step = total − 25. Recovery/taper/race-test: 35m total (10m main). Race week shakeout: 30m total (10m main, 10m CD).
@@ -25,8 +25,8 @@ Pure easy pace. Conversational. The foundation of the plan. Duration follows the
 
 Easy run with 4–6x 20-second bursts at 95% effort, 45–60 seconds easy jog between each. Add strides in the second half of the run. Great for form, neuromuscular activation, and breaking up monotony.
 
-- **Base pace:** Easy
-- **Strides:** Hard (Z5, <5:00/km) — short enough that BG impact is minimal
+- **Base pace:** Easy (80-88% pace)
+- **Strides:** Hard effort — short enough that BG impact is minimal
 - **T1D:** Same as easy run — the strides are too short to trigger significant adrenaline response
 
 ### Speed / Quality Session Variants (Thursday)
@@ -38,7 +38,7 @@ All speed sessions follow the structure: **10m easy warmup → main set → 5m e
 High turnover, shorter reps. Good for speed and form.
 
 - **Example:** 6x 2m at interval pace, 2m walk recovery
-- **Pace:** Interval (5:05–5:20/km)
+- **Pace:** Interval (105-110% pace)
 - **HR:** Z4
 - **Progression:** Increase reps (6x → 8x) or reduce recovery
 
@@ -47,7 +47,7 @@ High turnover, shorter reps. Good for speed and form.
 Sustained harder efforts. Builds lactate tolerance.
 
 - **Example:** 4x 5m at interval pace, 2m walk recovery
-- **Pace:** Interval (5:05–5:20/km)
+- **Pace:** Interval (105-110% pace)
 - **HR:** Z4
 - **Progression:** Increase rep duration (4m → 5m → 6m) or add reps
 
@@ -56,7 +56,7 @@ Sustained harder efforts. Builds lactate tolerance.
 Measured reps for pacing practice.
 
 - **Example:** 8x 800m at interval pace, 200m walk recovery
-- **Pace:** Interval (5:05–5:20/km)
+- **Pace:** Interval (105-110% pace)
 - **HR:** Z4
 - **Progression:** Increase distance (600m → 800m → 1km) or add reps
 
@@ -65,17 +65,17 @@ Measured reps for pacing practice.
 Trail-specific strength work. Uphill hard, downhill easy.
 
 - **Example:** 6x 2m uphill at hard effort, 3m easy downhill jog recovery
-- **Pace:** Hard effort uphill (Z5) — pace is slow but effort is high
+- **Pace:** Hard effort uphill — pace is slow but effort is high
 - **HR:** Z5 on the way up, Z2 on the way down
 - **Progression:** Increase reps or hill duration
-- **Note:** Pace targets don't apply uphill — use effort/HR only
+- **Note:** Pace targets don't apply uphill — use effort only
 
 #### Race Pace Intervals
 
 Practice goal race pace in a structured session. Used closer to race day.
 
 - **Example:** 5x 5m at race pace, 2m walk recovery
-- **Pace:** Race Pace (5:35–5:45/km)
+- **Pace:** Race Pace (95-100% pace)
 - **HR:** Z3
 - **Progression:** Increase rep duration or reduce recovery
 
@@ -97,7 +97,7 @@ Trail running club session. Not part of the weekly plan — generate on-demand v
 
 The default. Build distance safely at easy pace. Used in early weeks, recovery weeks, and taper.
 
-- **Pace:** Easy (7:00–7:30/km) for the entire run
+- **Pace:** Easy (80-88% pace) for the entire run
 - **HR:** Z2
 - **T1D:** Pump off, high fuel (60 g/h)
 
@@ -143,14 +143,14 @@ The generator MUST output descriptions matching these patterns exactly. Descript
 Short, punchy efforts to build leg speed and running economy.
 
 Warmup
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Main set 6x
-- 2m 93-99% LTHR (156-167 bpm)
-- Walk 2m 0-68% LTHR (0-114 bpm)
+- 2m 105-110% pace
+- Walk 2m
 
 Cooldown
-- 5m 68-83% LTHR (115-140 bpm)
+- 5m 80-88% pace
 ```
 
 ### Example B: Hills
@@ -163,14 +163,14 @@ Cooldown
 Hill reps build strength and power that translates directly to EcoTrail's terrain.
 
 Warmup
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Main set 6x
-- Uphill 2m 100-113% LTHR (168-189 bpm)
-- Downhill 3m 68-83% LTHR (115-140 bpm)
+- Uphill 2m hard effort
+- Downhill 3m easy jog
 
 Cooldown
-- 5m 68-83% LTHR (115-140 bpm)
+- 5m 80-88% pace
 ```
 
 ### Example C: Long Run — All Easy
@@ -183,13 +183,13 @@ Cooldown
 Long run at easy pace. This is the most important run of the week.
 
 Warmup
-- 1km 68-83% LTHR (115-140 bpm)
+- 1km 80-88% pace
 
 Main set
-- 5km 68-83% LTHR (115-140 bpm)
+- 5km 80-88% pace
 
 Cooldown
-- 2km 68-83% LTHR (115-140 bpm)
+- 2km 80-88% pace
 ```
 
 Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with sandwich/progressive variants. The 2km cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change.
@@ -204,15 +204,15 @@ Note: Long runs keep the warmup/cooldown structure even when all-easy for psycho
 Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
-- 1km 68-83% LTHR (115-140 bpm)
+- 1km 80-88% pace
 
 Main set
-- 3km 68-83% LTHR (115-140 bpm)
-- 3km 84-92% LTHR (141-155 bpm)
-- 3km 68-83% LTHR (115-140 bpm)
+- 3km 80-88% pace
+- 3km 95-100% pace
+- 3km 80-88% pace
 
 Cooldown
-- 2km 68-83% LTHR (115-140 bpm)
+- 2km 80-88% pace
 ```
 
 ### Example E: Easy Run
@@ -225,13 +225,13 @@ Cooldown
 Steady easy running to build your aerobic base. This should feel comfortable and conversational the entire way. If you can't chat in full sentences, slow down. Easy days make hard days possible.
 
 Warmup
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Main set
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Cooldown
-- 15m 68-83% LTHR (115-140 bpm)
+- 15m 80-88% pace
 ```
 
 Note: Easy runs use WU/main/CD structure even though all zones are the same. The extended 15m cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change, cueing the runner to stop eating.
@@ -246,17 +246,17 @@ Note: Easy runs use WU/main/CD structure even though all zones are the same. The
 Easy run with strides at the end.
 
 Warmup
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Main set
-- 11m 68-83% LTHR (115-140 bpm)
+- 11m 80-88% pace
 
 Strides 4x
-- 20s 100-113% LTHR (168-189 bpm)
-- 1m 68-83% LTHR (115-140 bpm)
+- 20s hard effort
+- 1m easy jog
 
 Cooldown
-- 15m 68-83% LTHR (115-140 bpm)
+- 15m 80-88% pace
 ```
 
 Note: Easy + Strides keeps the warmup/cooldown structure because strides are in a different HR zone (Z5). The 15m cooldown is the fuel taper signal.
@@ -271,11 +271,11 @@ Note: Easy + Strides keeps the warmup/cooldown structure because strides are in 
 The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.
 
 Warmup
-- 10m 68-83% LTHR (115-140 bpm)
+- 10m 80-88% pace
 
 Main set
-- 20m 68-83% LTHR (115-140 bpm)
+- 20m 80-88% pace
 
 Cooldown
-- 15m 68-83% LTHR (115-140 bpm)
+- 15m 80-88% pace
 ```

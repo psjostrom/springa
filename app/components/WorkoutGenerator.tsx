@@ -160,6 +160,7 @@ export function WorkoutGenerator({
         paceTable={paceTable}
         hrZones={settings.hrZones}
         lthr={settings.lthr}
+        racePacePerKm={settings.goalTime && settings.raceDist ? settings.goalTime / 60 / settings.raceDist : undefined}
       >
         <WorkoutStructureBar
           description={workout.description}

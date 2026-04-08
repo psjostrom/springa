@@ -112,7 +112,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubDay: settings.clubDay,
       clubType: settings.clubType,
     } : undefined;
-    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode, scheduling);
+    const events = generatePlan(bgModel ?? null, raceDate, raceDist, totalWeeks, startKm, lthr, settings.hrZones, settings.includeBasePhase ?? false, diabetesMode, scheduling, settings.goalTime);
     const todayFilter = new Date();
     todayFilter.setHours(0, 0, 0, 0);
     setPlanEvents(events.filter((e) => e.start_date_local >= todayFilter));

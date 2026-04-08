@@ -88,8 +88,6 @@ export async function POST(req: Request) {
     bgModel: settings.diabetesMode ? bgModel : null,
     insights,
     runBGContexts: settings.diabetesMode ? runBGContexts : {},
-    lthr,
-    hrZones,
   });
 
   // 2. Generate AI notes in parallel (max 4)
