@@ -20,18 +20,16 @@ const EXPERIENCE_OPTIONS: { level: ExperienceLevel; label: string; desc: string 
 ];
 
 export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTime: initialGoalTime, onNext, onBack }: GoalStepProps) {
+  const isStandardDist = initialDist != null && DISTANCE_OPTIONS.some(({ km }) => km === initialDist);
   const [selectedDist, setSelectedDist] = useState<number | null>(initialDist ?? null);
-  const [customDist, setCustomDist] = useState("");
-  const [showCustom, setShowCustom] = useState(false);
+  const [customDist, setCustomDist] = useState(initialDist != null && !isStandardDist ? String(initialDist) : "");
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
   const [goalTimeSecs, setGoalTimeSecs] = useState<number | null>(initialGoalTime ?? null);
   const [raceDate, setRaceDate] = useState(initialDate ?? format(addWeeks(new Date(), 16), "yyyy-MM-dd"));
 
   const handleDist = (km: number) => {
     setSelectedDist(km);
-    setShowCustom(false);
-    // Recalculate goal time with new distance (experience is current — no closure issue
-    // because we read it directly, and React batches these setState calls in the same event)
+    setCustomDist("");
     if (experience) {
       setGoalTimeSecs(getDefaultGoalTime(km, experience));
     }
@@ -112,7 +110,7 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
                 key={km}
                 onClick={() => { handleDist(km); }}
                 className={`py-3 rounded-lg border-2 font-semibold text-sm transition ${
-                  selectedDist === km && !showCustom
+                  selectedDist === km && !customDist
                     ? "border-brand bg-brand/10 text-brand"
                     : "border-border text-muted hover:border-brand hover:text-brand"
                 }`}
@@ -121,27 +119,15 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
               </button>
             ))}
           </div>
-          {!showCustom ? (
-            <button
-              onClick={() => { setShowCustom(true); setSelectedDist(null); setExperience(null); setGoalTimeSecs(null); }}
-              className="mt-2 text-sm text-muted hover:text-brand transition"
-            >
-              Other distance
-            </button>
-          ) : (
-            <div className="mt-2">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={customDist}
-                onChange={(e) => { handleCustomDist(e.target.value); }}
-                className="w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
-                placeholder="Distance in km"
-                autoFocus
-              />
-            </div>
-          )}
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={customDist}
+            onChange={(e) => { handleCustomDist(e.target.value); }}
+            className="mt-2 w-full px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
+            placeholder="Custom distance (km)"
+          />
         </div>
 
         {/* Section 2: Experience (visible when distance selected) */}
