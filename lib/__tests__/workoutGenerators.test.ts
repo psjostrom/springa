@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
-import type { OnDemandCategory, DayRole } from "../workoutGenerators";
+import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { getWeekIdx } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
@@ -56,7 +56,7 @@ describe("assignDayRoles", () => {
 });
 
 describe("generatePlan", () => {
-  const defaultArgs = {
+  const defaultConfig: PlanConfig = {
     bgModel: null,
     raceDateStr: "2026-06-13",
     raceDist: 16,
@@ -67,18 +67,12 @@ describe("generatePlan", () => {
     goalTimeSecs: TEST_GOAL_TIME,
   };
 
-  function generate(overrides: Partial<typeof defaultArgs> = {}) {
-    const args = { ...defaultArgs, ...overrides };
-    return generatePlan(
-      args.bgModel,
-      args.raceDateStr, args.raceDist,
-      args.totalWeeks, args.startKm, args.lthr, args.hrZones,
-      false, undefined, undefined, args.goalTimeSecs,
-    );
+  function generate(overrides: Partial<PlanConfig> = {}) {
+    return generatePlan({ ...defaultConfig, ...overrides });
   }
 
   // Use a far-future race date so all 12 weeks are generated regardless of today's date
-  function generateFull(overrides: Partial<typeof defaultArgs> = {}) {
+  function generateFull(overrides: Partial<PlanConfig> = {}) {
     return generate({ raceDateStr: "2027-06-12", ...overrides });
   }
 
@@ -113,11 +107,10 @@ describe("generatePlan", () => {
   });
 
   it("generates club run when clubDay is configured", () => {
-    const plan = generatePlan(
-      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
-      false, undefined,
-      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed" },
-    );
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
+    });
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
     expect(clubRuns.length).toBeGreaterThan(0);
     for (const run of clubRuns) {
@@ -189,11 +182,10 @@ describe("generatePlan", () => {
   });
 
   it("all events have clean time (12:00 for runs, 18:30 for club)", () => {
-    const plan = generatePlan(
-      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
-      false, undefined,
-      { runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed" },
-    );
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
+    });
     for (const event of plan) {
       const date = event.start_date_local;
       if (event.name.includes("Club Run")) {
@@ -221,11 +213,10 @@ describe("generatePlan", () => {
   // --- DAY-OF-WEEK ASSIGNMENTS ---
 
   it("respects custom runDays scheduling", () => {
-    const plan = generatePlan(
-      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
-      false, undefined,
-      { runDays: [1, 3, 6], longRunDay: 6 }, // Mon/Wed/Sat, long=Sat
-    );
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [1, 3, 6], longRunDay: 6, // Mon/Wed/Sat, long=Sat
+    });
     for (const event of plan) {
       const day = getDay(event.start_date_local);
       expect([1, 3, 6]).toContain(day);
@@ -233,11 +224,10 @@ describe("generatePlan", () => {
   });
 
   it("assigns long runs to the configured longRunDay", () => {
-    const plan = generatePlan(
-      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
-      false, undefined,
-      { runDays: [2, 5, 6], longRunDay: 6 }, // Tue/Fri/Sat, long=Sat
-    );
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [2, 5, 6], longRunDay: 6, // Tue/Fri/Sat, long=Sat
+    });
     const longRuns = plan.filter((e) => e.external_id.includes("long-"));
     expect(longRuns.length).toBeGreaterThan(0);
     for (const event of longRuns) {
@@ -391,13 +381,11 @@ describe("generatePlan", () => {
   });
 
   it("on-demand quality sessions have 5m cooldown", () => {
-    const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
+    const onDemandConfig: PlanConfig = { ...defaultConfig, raceDateStr: "2027-06-12" };
+    const ctx = buildContext(onDemandConfig);
     const buildThursday = new Date(ctx.planStartMonday);
     buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
-    const event = generateSingleWorkout("quality", buildThursday, null, {
-      raceDate: "2027-06-12", raceDist: 16, totalWeeks: 12,
-      startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES],
-    });
+    const event = generateSingleWorkout("quality", buildThursday, onDemandConfig);
     expect(event).not.toBeNull();
     const cdMatch = /Cooldown\n- .*?(\d+)m/.exec(event!.description);
     expect(cdMatch).not.toBeNull();
@@ -450,11 +438,10 @@ describe("generatePlan", () => {
   });
 
   it("generates free runs for 5+ day schedules", () => {
-    const plan = generatePlan(
-      null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES],
-      false, undefined,
-      { runDays: [1, 2, 3, 5, 0], longRunDay: 0 },
-    );
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [1, 2, 3, 5, 0], longRunDay: 0,
+    });
     const freeRuns = plan.filter((e) => e.external_id.includes("free-"));
     expect(freeRuns.length).toBeGreaterThan(0);
     for (const run of freeRuns) {
@@ -464,8 +451,9 @@ describe("generatePlan", () => {
 });
 
 describe("generateSingleWorkout", () => {
-  const settings = {
-    raceDate: "2027-06-12",
+  const config: PlanConfig = {
+    bgModel: null,
+    raceDateStr: "2027-06-12",
     raceDist: 16,
     totalWeeks: 12,
     startKm: 8,
@@ -473,14 +461,14 @@ describe("generateSingleWorkout", () => {
     hrZones: [...TEST_HR_ZONES],
   };
 
-  const ctx = buildContext(null, settings.raceDate, settings.raceDist, settings.totalWeeks, settings.startKm, settings.lthr, settings.hrZones, false);
+  const ctx = buildContext(config);
   const buildThursday = new Date(ctx.planStartMonday);
   buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
 
   it("returns a workout for each category", () => {
     const categories: OnDemandCategory[] = ["easy", "quality", "long", "club"];
     for (const cat of categories) {
-      const event = generateSingleWorkout(cat, buildThursday, null, settings);
+      const event = generateSingleWorkout(cat, buildThursday, config);
       expect(event).not.toBeNull();
       expect(event!.type).toBe("Run");
       expect(event!.description.length).toBeGreaterThan(0);
@@ -488,7 +476,7 @@ describe("generateSingleWorkout", () => {
   });
 
   it("uses the requested date for on-demand generation", () => {
-    const event = generateSingleWorkout("easy", buildThursday, null, settings);
+    const event = generateSingleWorkout("easy", buildThursday, config);
     expect(event).not.toBeNull();
     expect(event!.start_date_local.getFullYear()).toBe(buildThursday.getFullYear());
     expect(event!.start_date_local.getMonth()).toBe(buildThursday.getMonth());
@@ -496,21 +484,21 @@ describe("generateSingleWorkout", () => {
   });
 
   it("sets external_id to ondemand-YYYY-MM-DD", () => {
-    const event = generateSingleWorkout("easy", buildThursday, null, settings);
+    const event = generateSingleWorkout("easy", buildThursday, config);
     expect(event).not.toBeNull();
     expect(event!.external_id).toMatch(/^ondemand-\d{4}-\d{2}-\d{2}$/);
   });
 
   it("returns null for dates outside plan window", () => {
     const farPast = new Date("2020-01-01");
-    const event = generateSingleWorkout("easy", farPast, null, settings);
+    const event = generateSingleWorkout("easy", farPast, config);
     expect(event).toBeNull();
   });
 
   it("club category uses the requested date", () => {
     const tuesday = new Date(buildThursday);
     tuesday.setDate(tuesday.getDate() - 2);
-    const event = generateSingleWorkout("club", tuesday, null, settings);
+    const event = generateSingleWorkout("club", tuesday, config);
     expect(event).not.toBeNull();
     expect(event!.start_date_local.getDay()).toBe(tuesday.getDay());
     expect(event!.start_date_local.getHours()).toBe(18);
@@ -518,12 +506,12 @@ describe("generateSingleWorkout", () => {
   });
 
   it("club category works during recovery weeks (no phase guard)", () => {
-    for (let w = 0; w < settings.totalWeeks; w++) {
+    for (let w = 0; w < config.totalWeeks; w++) {
       const wp = getWeekPhase(ctx, w);
       if (wp.isRecovery) {
         const recoveryDate = new Date(ctx.planStartMonday);
         recoveryDate.setDate(recoveryDate.getDate() + w * 7 + 3);
-        const event = generateSingleWorkout("club", recoveryDate, null, settings);
+        const event = generateSingleWorkout("club", recoveryDate, config);
         expect(event).not.toBeNull();
         expect(event!.name).toContain("Club Run");
         return;
@@ -532,12 +520,12 @@ describe("generateSingleWorkout", () => {
   });
 
   it("quality category downgrades to easy during recovery week", () => {
-    for (let w = 0; w < settings.totalWeeks; w++) {
+    for (let w = 0; w < config.totalWeeks; w++) {
       const wp = getWeekPhase(ctx, w);
       if (wp.isRecovery) {
         const recoveryThursday = new Date(ctx.planStartMonday);
         recoveryThursday.setDate(recoveryThursday.getDate() + w * 7 + 3);
-        const event = generateSingleWorkout("quality", recoveryThursday, null, settings);
+        const event = generateSingleWorkout("quality", recoveryThursday, config);
         expect(event).not.toBeNull();
         expect(event!.name).toContain("Easy");
         return;
@@ -546,13 +534,13 @@ describe("generateSingleWorkout", () => {
   });
 
   it("quality category downgrades to easy during base phase", () => {
-    const baseSettings = { ...settings, includeBasePhase: true };
-    const baseCtx = buildContext(null, baseSettings.raceDate, baseSettings.raceDist, baseSettings.totalWeeks, baseSettings.startKm, baseSettings.lthr, baseSettings.hrZones, true);
+    const baseConfig = { ...config, includeBasePhase: true };
+    const baseCtx = buildContext(baseConfig);
     const week1Thursday = new Date(baseCtx.planStartMonday);
     week1Thursday.setDate(week1Thursday.getDate() + 3);
     const wp = getWeekPhase(baseCtx, 0);
     if (wp.isBase) {
-      const event = generateSingleWorkout("quality", week1Thursday, null, baseSettings);
+      const event = generateSingleWorkout("quality", week1Thursday, baseConfig);
       expect(event).not.toBeNull();
       expect(event!.name).toContain("Easy");
     }
@@ -560,7 +548,7 @@ describe("generateSingleWorkout", () => {
 });
 
 describe("suggestCategory", () => {
-  const ctx = buildContext(null, "2027-06-12", 16, 12, 8, TEST_LTHR, [...TEST_HR_ZONES], false);
+  const ctx = buildContext({ bgModel: null, raceDateStr: "2027-06-12", raceDist: 16, totalWeeks: 12, startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES] });
 
   it("suggests long on Sunday (legacy fallback)", () => {
     const sunday = new Date(ctx.planStartMonday);
