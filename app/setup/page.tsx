@@ -70,24 +70,21 @@ export default function SetupPage() {
         const totalWeeks = data.raceDate
           ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
           : defaultWeeks;
-        const events = generatePlan(
-          null,
-          raceDate,
-          data.raceDist,
+        const events = generatePlan({
+          bgModel: null,
+          raceDateStr: raceDate,
+          raceDist: data.raceDist,
           totalWeeks,
-          8,
-          data.lthr ?? DEFAULT_LTHR,
+          startKm: 8,
+          lthr: data.lthr ?? DEFAULT_LTHR,
           hrZones,
-          false,
-          data.diabetesMode,
-          {
-            runDays: data.runDays,
-            longRunDay: data.longRunDay ?? 0,
-            clubDay: data.clubDay,
-            clubType: data.clubType,
-          },
-          data.goalTime,
-        );
+          diabetesMode: data.diabetesMode,
+          runDays: data.runDays,
+          longRunDay: data.longRunDay ?? 0,
+          clubDay: data.clubDay,
+          clubType: data.clubType,
+          goalTimeSecs: data.goalTime,
+        });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const futureEvents = events.filter((e) => e.start_date_local >= today);
