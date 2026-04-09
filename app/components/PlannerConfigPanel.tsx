@@ -175,7 +175,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Long Run Day</div>
           <div className="flex gap-1.5 flex-wrap">
-            {runDays.map((d) => (
+            {[...runDays].sort((a, b) => (a || 7) - (b || 7)).map((d) => (
               <button
                 key={d}
                 onClick={() => { handleLongRunDay(d); }}
