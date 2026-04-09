@@ -182,7 +182,7 @@ export function WorkoutGenerator({
           onClick={() => { void handleSync(workout, state.category); }}
           className="flex-1 py-2.5 text-sm font-medium bg-brand hover:bg-brand-hover text-white rounded-lg transition"
         >
-          Sync to Intervals
+          Sync Workouts
         </button>
         <button
           onClick={() => { setState({ step: "picking" }); }}
