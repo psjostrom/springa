@@ -46,7 +46,9 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
 
   // Available days for club day picker (selected run days minus long run day)
-  const clubDayOptions = runDays.filter((d) => d !== effectiveLongRunDay || clubType === "long");
+  const clubDayOptions = runDays
+    .filter((d) => d !== effectiveLongRunDay || clubType === "long")
+    .sort((a, b) => (a || 7) - (b || 7));
 
   const saveField = async (partial: Partial<UserSettings>) => {
     await onSave(partial);
