@@ -93,6 +93,21 @@ export function computeKarvonenZones(maxHr: number, restingHr: number): number[]
 }
 
 /**
+ * Compute 5 HR zones from max HR alone using Runna's model (65/81/89/97%).
+ * No resting HR needed. Produces Z2 ~30 bpm wide — usable while running.
+ * Returns [Z1top, Z2top, Z3top, Z4top, Z5top] in BPM.
+ */
+export function computeMaxHRZones(maxHr: number): number[] {
+  return [
+    Math.round(maxHr * 0.65),
+    Math.round(maxHr * 0.81),
+    Math.round(maxHr * 0.89),
+    Math.round(maxHr * 0.97),
+    maxHr,
+  ];
+}
+
+/**
  * Resolve zone boundaries as LTHR fractions from the Intervals.icu hrZones array.
  * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values from Intervals.icu).
  */
