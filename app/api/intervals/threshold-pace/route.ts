@@ -17,8 +17,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Intervals.icu not connected" }, { status: 400 });
   }
 
-  const body = (await req.json()) as { racePaceMinPerKm: number };
-  if (typeof body.racePaceMinPerKm !== "number" || body.racePaceMinPerKm <= 0 || body.racePaceMinPerKm > 15) {
+  const body = (await req.json()) as { paceMinPerKm: number };
+  if (typeof body.paceMinPerKm !== "number" || body.paceMinPerKm <= 0 || body.paceMinPerKm > 15) {
     return NextResponse.json({ error: "Invalid pace value" }, { status: 400 });
   }
 
@@ -33,7 +33,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    await updateThresholdPace(creds.intervalsApiKey, profile.sportSettingsId, body.racePaceMinPerKm);
+    await updateThresholdPace(creds.intervalsApiKey, profile.sportSettingsId, body.paceMinPerKm);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to update Intervals.icu" }, { status: 502 });
