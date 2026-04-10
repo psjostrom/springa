@@ -77,6 +77,10 @@ const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
 };
 
 /**
+ * @deprecated Use computeMaxHRZones instead. Karvonen zones are retained only for
+ * backward compatibility with existing analysis code (reportCard, bgModel).
+ * Will be removed when analysis code migrates to %maxHR zones.
+ *
  * Compute 5 HR zones using the Karvonen formula.
  * Zone = (maxHR - restingHR) × %intensity + restingHR
  * Returns [Z1top, Z2top, Z3top, Z4top, Z5top].

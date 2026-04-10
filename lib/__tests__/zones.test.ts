@@ -72,6 +72,7 @@ describe("classifyHR + ZONE_TO_NAME integration", () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-deprecated -- testing deprecated function still used by analysis code */
 describe("computeKarvonenZones", () => {
   it("computes 5 zones from maxHR and restingHR", () => {
     const zones = computeKarvonenZones(193, 61);
@@ -99,6 +100,7 @@ describe("computeKarvonenZones", () => {
     }
   });
 });
+/* eslint-enable @typescript-eslint/no-deprecated */
 
 describe("computeMaxHRZones", () => {
   it("computes 5 zones from maxHR using Runna percentages (65/81/89/97)", () => {
