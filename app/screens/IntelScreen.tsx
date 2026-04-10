@@ -292,6 +292,8 @@ export function IntelScreen() {
       lthr: lthr ?? DEFAULT_LTHR,
       hrZones,
       includeBasePhase: settings?.includeBasePhase ?? false,
+      currentAbilitySecs: settings?.currentAbilitySecs,
+      currentAbilityDist: settings?.currentAbilityDist,
       goalTimeSecs: settings?.goalTime,
     });
     let targetKm = 0;
@@ -388,6 +390,8 @@ export function IntelScreen() {
         hrZones={hrZones}
         paceTable={paceTable}
         includeBasePhase={settings?.includeBasePhase}
+        currentAbilitySecs={settings?.currentAbilitySecs}
+        currentAbilityDist={settings?.currentAbilityDist}
         goalTime={settings?.goalTime}
       />
     ),

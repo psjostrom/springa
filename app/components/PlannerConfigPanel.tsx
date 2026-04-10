@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
-import { getSliderRange, getDefaultGoalTime } from "@/lib/paceTable";
+import { getSliderRange, getDefaultGoalTime, getPaceTable } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 
 interface PlannerConfigPanelProps {
@@ -115,14 +115,14 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
-    // Push threshold pace to Intervals.icu when goal time changes
-    if (goalTime !== settings.goalTime && goalTime != null && effectiveDist && effectiveDist >= 1) {
+    // Push threshold pace to Intervals.icu from current ability
+    if (settings.currentAbilitySecs && settings.currentAbilityDist) {
+      const table = getPaceTable(settings.currentAbilityDist, settings.currentAbilitySecs);
       setSyncError(null);
-      const racePaceMinPerKm = goalTime / 60 / effectiveDist;
       fetch("/api/intervals/threshold-pace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ racePaceMinPerKm }),
+        body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
       }).then((res) => {
         if (!res.ok) setSyncError("Failed to sync paces to Intervals.icu");
       }).catch(() => {

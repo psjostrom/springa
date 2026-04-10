@@ -24,6 +24,8 @@ interface VolumeTrendChartProps {
   hrZones?: number[];
   paceTable?: PaceTable;
   includeBasePhase?: boolean;
+  currentAbilitySecs?: number;
+  currentAbilityDist?: number;
   goalTime?: number;
 }
 
@@ -46,6 +48,8 @@ export function VolumeTrendChart({
   hrZones,
   paceTable,
   includeBasePhase,
+  currentAbilitySecs,
+  currentAbilityDist,
   goalTime,
 }: VolumeTrendChartProps) {
 
@@ -72,6 +76,8 @@ export function VolumeTrendChart({
       lthr: lthr ?? DEFAULT_LTHR,
       hrZones,
       includeBasePhase: includeBasePhase ?? false,
+      currentAbilitySecs,
+      currentAbilityDist,
       goalTimeSecs: goalTime,
     });
     for (const pe of planEvents) {
