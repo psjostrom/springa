@@ -62,7 +62,7 @@ describe("WorkoutGenerator", () => {
     const user = userEvent.setup();
     renderGenerator();
     await user.click(screen.getByRole("button", { name: /easy/i }));
-    expect(screen.getByText("Sync to Intervals")).toBeInTheDocument();
+    expect(screen.getByText("Sync Workouts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe("WorkoutGenerator", () => {
     const user = userEvent.setup();
     renderGenerator();
     await user.click(screen.getByRole("button", { name: /easy/i }));
-    await user.click(screen.getByText("Sync to Intervals"));
+    await user.click(screen.getByText("Sync Workouts"));
     expect(await screen.findByText(/Server error/i)).toBeInTheDocument();
   });
 

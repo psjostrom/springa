@@ -218,7 +218,7 @@ export function RunReportCard({ event, isLoadingStreamData, runBGContext }: RunR
 
   return (
     <div className="p-2">
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(cards.length, 3)}, 1fr)` }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {cards}
       </div>
     </div>
