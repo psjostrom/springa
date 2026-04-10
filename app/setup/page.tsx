@@ -9,15 +9,17 @@ import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { DEFAULT_MAX_HR, computeMaxHRZones } from "@/lib/constants";
 import { getPaceTable } from "@/lib/paceTable";
+import type { ExperienceLevel } from "@/lib/paceTable";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { WatchStep } from "./WatchStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { GoalStep } from "./GoalStep";
+import { AbilityStep } from "./AbilityStep";
 import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 interface WizardData {
   displayName: string;
@@ -29,6 +31,7 @@ interface WizardData {
   clubType?: string;
   raceDate?: string;
   raceDist: number;
+  experience?: ExperienceLevel;
   goalTime?: number;
   maxHr?: number;
   sportSettingsId?: number;
@@ -124,15 +127,11 @@ export default function SetupPage() {
         }
       }
 
-      // Save settings including currentAbility
+      // Mark onboarding complete (currentAbility already saved by AbilityStep)
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          onboardingComplete: true,
-          currentAbilitySecs: data.currentAbilitySecs,
-          currentAbilityDist: data.currentAbilityDist,
-        }),
+        body: JSON.stringify({ onboardingComplete: true }),
       });
       if (!res.ok) {
         setGenerating(false);
@@ -151,7 +150,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition-all ${
@@ -200,36 +199,48 @@ export default function SetupPage() {
         )}
         {step === 5 && (
           <GoalStep
-            raceDate={data.raceDate}
             raceDist={data.raceDist}
-            currentAbilitySecs={data.currentAbilitySecs}
-            goalTime={data.goalTime}
+            experience={data.experience}
             onNext={(goal) => {
-              updateData({
-                raceDist: goal.raceDist,
-                raceDate: goal.raceDate,
-                currentAbilitySecs: goal.currentAbilitySecs,
-                currentAbilityDist: goal.currentAbilityDist,
-                goalTime: goal.goalTime,
-              });
+              updateData({ raceDist: goal.raceDist, experience: goal.experience });
               setStep(6);
             }}
             onBack={() => { setStep(4); }}
           />
         )}
-        {step === 6 && (
-          <DiabetesStep
-            diabetesMode={data.diabetesMode}
-            nightscoutUrl={data.nightscoutUrl}
-            nightscoutSecret={data.nightscoutSecret}
-            onNext={(diabetesData) => {
-              updateData(diabetesData);
+        {step === 6 && data.experience && (
+          <AbilityStep
+            raceDist={data.raceDist}
+            experience={data.experience}
+            raceDate={data.raceDate}
+            currentAbilitySecs={data.currentAbilitySecs}
+            currentAbilityDist={data.currentAbilityDist}
+            goalTime={data.goalTime}
+            onNext={(ability) => {
+              updateData({
+                currentAbilitySecs: ability.currentAbilitySecs,
+                currentAbilityDist: ability.currentAbilityDist,
+                goalTime: ability.goalTime,
+                raceDate: ability.raceDate,
+              });
               setStep(7);
             }}
             onBack={() => { setStep(5); }}
           />
         )}
         {step === 7 && (
+          <DiabetesStep
+            diabetesMode={data.diabetesMode}
+            nightscoutUrl={data.nightscoutUrl}
+            nightscoutSecret={data.nightscoutSecret}
+            onNext={(diabetesData) => {
+              updateData(diabetesData);
+              setStep(8);
+            }}
+            onBack={() => { setStep(6); }}
+          />
+        )}
+        {step === 8 && (
           <DoneStep
             onComplete={handleComplete}
             generating={generating}
@@ -238,7 +249,7 @@ export default function SetupPage() {
 
         {/* Step counter */}
         <p className="text-center text-xs text-muted mt-6">
-          Step {step} of 7
+          Step {step} of 8
         </p>
       </div>
     </div>

@@ -111,7 +111,7 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
 /** Compute pace percentages relative to threshold (= HM-equivalent of current ability).
  *  Easy uses a 30% floor (allows walking) with the ceiling as the real constraint.
  *  Steady uses goal race pace as % of threshold when goal differs from ability. */
-function computeZonePacePct(
+export function computeZonePacePct(
   paceTable: PaceTableResult | null,
   goalDistKm?: number,
   goalTimeSecs?: number,
@@ -492,10 +492,6 @@ export function buildContext(config: PlanConfig): PlanContext {
       config.raceDist,
       config.goalTimeSecs,
     );
-  } else if (config.goalTimeSecs) {
-    // MIGRATION: treat goalTime as ability when currentAbility is missing.
-    // Remove this branch when all users have completed the updated wizard.
-    paceTable = getPaceTable(config.raceDist, config.goalTimeSecs);
   }
 
   return {

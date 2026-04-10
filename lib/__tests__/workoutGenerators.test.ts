@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
+import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles, computeZonePacePct } from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { getWeekIdx } from "../workoutMath";
+import { getPaceTable } from "../paceTable";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
 describe("assignDayRoles", () => {
@@ -64,6 +65,8 @@ describe("generatePlan", () => {
     startKm: 8,
     lthr: TEST_LTHR,
     hrZones: [...TEST_HR_ZONES],
+    currentAbilitySecs: TEST_GOAL_TIME,
+    currentAbilityDist: 16,
     goalTimeSecs: TEST_GOAL_TIME,
   };
 
@@ -410,9 +413,10 @@ describe("generatePlan", () => {
   });
 
   it("adjusts steady zone based on goal race pace vs threshold", () => {
-    // 5K race: faster race pace than HM → steady % shifts up (goal is fast relative to threshold)
-    // Use race-pace intervals (taper week speed session) which always use steady zone
-    const plan5k = generateFull({ raceDist: 5, goalTimeSecs: 1620 });
+    // 5K race: goal pace faster than HM-equivalent → steady % shifts up
+    const plan5k = generateFull({
+      raceDist: 5, currentAbilitySecs: 1620, currentAbilityDist: 5, goalTimeSecs: 1620,
+    });
     const rp5k = plan5k.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rp5k).toBeDefined();
     const steadyMatch5k = /(\d+)-(\d+)% pace/.exec(
@@ -421,8 +425,10 @@ describe("generatePlan", () => {
     expect(steadyMatch5k).not.toBeNull();
     const steadyMin5k = parseInt(steadyMatch5k![1], 10);
 
-    // Marathon: slower race pace than HM → steady % shifts down
-    const planMarathon = generateFull({ raceDist: 42.195, goalTimeSecs: 15300 });
+    // Marathon: goal pace slower than HM-equivalent → steady % shifts down
+    const planMarathon = generateFull({
+      raceDist: 42.195, currentAbilitySecs: 15300, currentAbilityDist: 42.195, goalTimeSecs: 15300,
+    });
     const rpMarathon = planMarathon.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rpMarathon).toBeDefined();
     const steadyMatchM = /(\d+)-(\d+)% pace/.exec(
@@ -643,5 +649,45 @@ describe("suggestCategory", () => {
         break;
       }
     }
+  });
+});
+
+describe("computeZonePacePct", () => {
+  it("returns HM defaults when paceTable is null", () => {
+    const result = computeZonePacePct(null);
+    expect(result.easy).toEqual({ min: 30, max: 94 });
+    expect(result.steady).toEqual({ min: 99, max: 102 });
+    expect(result.tempo).toEqual({ min: 107, max: 111 });
+    expect(result.walk).toEqual({ min: null, max: null });
+    expect(result.hard).toEqual({ min: null, max: null });
+  });
+
+  it("returns default steady (99-102) when no goal is provided", () => {
+    const table = getPaceTable(10, 3300);
+    const result = computeZonePacePct(table);
+    expect(result.steady).toEqual({ min: 99, max: 102 });
+  });
+
+  it("shifts steady down for slower goal (trail race)", () => {
+    // 10K ability 55:00 flat, EcoTrail 16km goal 2:20:00 (8:45/km — slower than threshold)
+    const table = getPaceTable(10, 3300, 16, 8400);
+    const result = computeZonePacePct(table, 16, 8400);
+    expect(result.steady.min).toBeLessThan(99);
+    expect(result.steady.max).toBeLessThan(102);
+  });
+
+  it("shifts steady up for faster goal (5K race)", () => {
+    // 5K ability 27:00, racing 5K in 27:00 — threshold is HM-equivalent (slower)
+    const table = getPaceTable(5, 1620);
+    const result = computeZonePacePct(table, 5, 1620);
+    expect(result.steady.min).toBeGreaterThan(99);
+    expect(result.steady.max).toBeGreaterThan(102);
+  });
+
+  it("easy and tempo are fixed regardless of goal", () => {
+    const table = getPaceTable(10, 3300, 16, 8400);
+    const result = computeZonePacePct(table, 16, 8400);
+    expect(result.easy).toEqual({ min: 30, max: 94 });
+    expect(result.tempo).toEqual({ min: 106, max: 111 });
   });
 });

@@ -46,7 +46,7 @@ export interface PlanContext {
   longRunDay: number;
   clubDay?: number;
   clubType?: string;
-  /** Pace table derived from goal time. Null = effort-based mode (no pace targets). */
+  /** Pace table derived from current ability. Null = effort-based mode (no pace targets). */
   paceTable: import("./paceTable").PaceTableResult | null;
   goalTimeSecs?: number;
 }
