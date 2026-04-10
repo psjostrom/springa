@@ -91,6 +91,8 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, current
     setError(null);
     const payload = {
       raceDist: selectedDist,
+      currentAbilitySecs: abilitySecs,
+      currentAbilityDist: selectedDist,
       goalTime: goalMode === "time" ? goalTimeSecs : undefined,
       raceDate,
     };

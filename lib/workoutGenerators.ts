@@ -99,7 +99,7 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   return "active";
 }
 
-/** HM-calibrated defaults when no pace table is available. */
+/** Pace percentages when no pace table is available. Easy uses 30% floor (allows walking). */
 const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
   easy:   { min: 30, max: 94 },
@@ -493,6 +493,8 @@ export function buildContext(config: PlanConfig): PlanContext {
       config.goalTimeSecs,
     );
   } else if (config.goalTimeSecs) {
+    // MIGRATION: treat goalTime as ability when currentAbility is missing.
+    // Remove this branch when all users have completed the updated wizard.
     paceTable = getPaceTable(config.raceDist, config.goalTimeSecs);
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyHR, computeKarvonenZones, computeMaxHRZones, ZONE_COLORS, ZONE_TO_NAME } from "../constants";
+import { classifyHR, computeMaxHRZones, ZONE_COLORS, ZONE_TO_NAME } from "../constants";
 import { TEST_HR_ZONES } from "./testConstants";
 
 const hrZones = [...TEST_HR_ZONES];
@@ -72,36 +72,6 @@ describe("classifyHR + ZONE_TO_NAME integration", () => {
   });
 });
 
-/* eslint-disable @typescript-eslint/no-deprecated -- testing deprecated function still used by analysis code */
-describe("computeKarvonenZones", () => {
-  it("computes 5 zones from maxHR and restingHR", () => {
-    const zones = computeKarvonenZones(193, 61);
-    // HRR = 132
-    expect(zones).toEqual([
-      Math.round(132 * 0.60 + 61), // 140
-      Math.round(132 * 0.70 + 61), // 153
-      Math.round(132 * 0.80 + 61), // 167
-      Math.round(132 * 0.90 + 61), // 180
-      193, // maxHR
-    ]);
-  });
-
-  it("works with different inputs", () => {
-    const zones = computeKarvonenZones(180, 60);
-    expect(zones[0]).toBe(Math.round(120 * 0.60 + 60));
-    expect(zones[4]).toBe(180);
-  });
-
-  it("produces zones compatible with classifyHR", () => {
-    const zones = computeKarvonenZones(193, 61);
-    expect(zones).toHaveLength(5);
-    for (let i = 1; i < zones.length; i++) {
-      expect(zones[i]).toBeGreaterThan(zones[i - 1]);
-    }
-  });
-});
-/* eslint-enable @typescript-eslint/no-deprecated */
-
 describe("computeMaxHRZones", () => {
   it("computes 5 zones from maxHR using Runna percentages (65/81/89/97)", () => {
     const zones = computeMaxHRZones(185);
@@ -134,5 +104,14 @@ describe("computeMaxHRZones", () => {
     const z2Width = zones[1] - zones[0];
     expect(z2Width).toBeGreaterThanOrEqual(28);
     expect(z2Width).toBeLessThanOrEqual(32);
+  });
+
+  it("zones remain monotonically increasing across typical maxHR range", () => {
+    for (let maxHr = 140; maxHr <= 220; maxHr += 10) {
+      const zones = computeMaxHRZones(maxHr);
+      for (let i = 1; i < zones.length; i++) {
+        expect(zones[i]).toBeGreaterThan(zones[i - 1]);
+      }
+    }
   });
 });

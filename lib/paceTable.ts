@@ -59,6 +59,9 @@ export function getPaceTable(
   goalDistKm?: number,
   goalTimeSecs?: number,
 ): PaceTableResult {
+  if (abilityDistKm <= 0 || abilitySecs <= 0) {
+    throw new Error("Ability distance and time must be positive");
+  }
   const abilityPacePerKm = abilitySecs / 60 / abilityDistKm;
   const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
   const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;

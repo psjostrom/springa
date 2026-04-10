@@ -115,8 +115,8 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
-    // Push threshold pace to Intervals.icu from current ability
-    if (settings.currentAbilitySecs && settings.currentAbilityDist) {
+    // Push threshold pace to Intervals.icu when race config changes and ability is set
+    if (Object.keys(updates).length > 0 && settings.currentAbilitySecs && settings.currentAbilityDist) {
       const table = getPaceTable(settings.currentAbilityDist, settings.currentAbilitySecs);
       setSyncError(null);
       fetch("/api/intervals/threshold-pace", {

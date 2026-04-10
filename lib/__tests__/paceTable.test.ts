@@ -112,6 +112,16 @@ describe("getPaceTable with separate goal", () => {
     expect(result.abilitySecs).toBe(3300);
     expect(result.abilityDistKm).toBe(10);
   });
+
+  it("throws on zero or negative distance", () => {
+    expect(() => getPaceTable(0, 3300)).toThrow("positive");
+    expect(() => getPaceTable(-5, 3300)).toThrow("positive");
+  });
+
+  it("throws on zero or negative time", () => {
+    expect(() => getPaceTable(10, 0)).toThrow("positive");
+    expect(() => getPaceTable(10, -100)).toThrow("positive");
+  });
 });
 
 describe("estimateGoalTimeFromEasyPace", () => {

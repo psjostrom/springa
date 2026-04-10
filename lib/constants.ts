@@ -77,26 +77,6 @@ const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
 };
 
 /**
- * @deprecated Use computeMaxHRZones instead. Karvonen zones are retained only for
- * backward compatibility with existing analysis code (reportCard, bgModel).
- * Will be removed when analysis code migrates to %maxHR zones.
- *
- * Compute 5 HR zones using the Karvonen formula.
- * Zone = (maxHR - restingHR) × %intensity + restingHR
- * Returns [Z1top, Z2top, Z3top, Z4top, Z5top].
- */
-export function computeKarvonenZones(maxHr: number, restingHr: number): number[] {
-  const hrr = maxHr - restingHr;
-  return [
-    Math.round(hrr * 0.60 + restingHr), // Z1 top: 60% HRR
-    Math.round(hrr * 0.70 + restingHr), // Z2 top: 70% HRR
-    Math.round(hrr * 0.80 + restingHr), // Z3 top: 80% HRR
-    Math.round(hrr * 0.90 + restingHr), // Z4 top: 90% HRR
-    maxHr,                               // Z5 top: maxHR
-  ];
-}
-
-/**
  * Compute 5 HR zones from max HR alone using Runna's model (65/81/89/97%).
  * No resting HR needed. Produces Z2 ~30 bpm wide — usable while running.
  * Returns [Z1top, Z2top, Z3top, Z4top, Z5top] in BPM.
