@@ -7,17 +7,17 @@ import { addWeeks, differenceInWeeks, format } from "date-fns";
 import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
-import { DEFAULT_LTHR } from "@/lib/constants";
+import { DEFAULT_MAX_HR, computeMaxHRZones } from "@/lib/constants";
+import { getPaceTable } from "@/lib/paceTable";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { WatchStep } from "./WatchStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { GoalStep } from "./GoalStep";
-import { HRZonesStep } from "./HRZonesStep";
 import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 interface WizardData {
   displayName: string;
@@ -30,11 +30,10 @@ interface WizardData {
   raceDate?: string;
   raceDist: number;
   goalTime?: number;
-  lthr?: number;
   maxHr?: number;
-  hrZones?: number[];
-  restingHr?: number;
   sportSettingsId?: number;
+  currentAbilitySecs?: number;
+  currentAbilityDist?: number;
   diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
@@ -60,56 +59,80 @@ export default function SetupPage() {
 
   const handleComplete = async () => {
     try {
-      const hrZones = data.hrZones;
-      if (hrZones?.length === 5) {
-        setGenerating(true);
-        // Yield to event loop so React can render the spinner before sync generatePlan blocks
-        await new Promise((resolve) => { setTimeout(resolve, 0); });
-        const defaultWeeks = 18;
-        const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
-        const totalWeeks = data.raceDate
-          ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
-          : defaultWeeks;
-        const events = generatePlan({
-          bgModel: null,
-          raceDateStr: raceDate,
-          raceDist: data.raceDist,
-          totalWeeks,
-          startKm: 8,
-          lthr: data.lthr ?? DEFAULT_LTHR,
-          hrZones,
-          diabetesMode: data.diabetesMode,
-          runDays: data.runDays,
-          longRunDay: data.longRunDay ?? 0,
-          clubDay: data.clubDay,
-          clubType: data.clubType,
-          goalTimeSecs: data.goalTime,
-        });
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const futureEvents = events.filter((e) => e.start_date_local >= today);
-        await uploadPlan(futureEvents);
-      }
+      setGenerating(true);
+      // Yield to event loop so React can render the spinner before sync generatePlan blocks
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
 
-      // Push threshold pace to Intervals.icu
-      if (data.goalTime && data.raceDist) {
-        const racePaceMinPerKm = data.goalTime / 60 / data.raceDist;
+      // Compute HR zones from maxHR (Runna model: 65/81/89/97%)
+      const maxHr = data.maxHr ?? DEFAULT_MAX_HR;
+      const hrZones = computeMaxHRZones(maxHr);
+      const lthr = Math.round(maxHr * 0.89); // Z3/Z4 boundary ≈ LTHR
+
+      // Push HR zones to Intervals.icu
+      if (data.sportSettingsId) {
         try {
-          const paceRes = await fetch("/api/intervals/threshold-pace", {
+          await fetch("/api/intervals/hr-zones", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ racePaceMinPerKm }),
+            body: JSON.stringify({ sportSettingsId: data.sportSettingsId, hrZones }),
           });
-          if (!paceRes.ok) console.warn("Threshold pace sync failed:", paceRes.status);
+        } catch {
+          console.warn("HR zone sync failed — can retry from settings");
+        }
+      }
+
+      const defaultWeeks = 18;
+      const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
+      const totalWeeks = data.raceDate
+        ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
+        : defaultWeeks;
+
+      const events = generatePlan({
+        bgModel: null,
+        raceDateStr: raceDate,
+        raceDist: data.raceDist,
+        totalWeeks,
+        startKm: 8,
+        lthr,
+        hrZones,
+        diabetesMode: data.diabetesMode,
+        runDays: data.runDays,
+        longRunDay: data.longRunDay ?? 0,
+        clubDay: data.clubDay,
+        clubType: data.clubType,
+        currentAbilitySecs: data.currentAbilitySecs,
+        currentAbilityDist: data.currentAbilityDist,
+        goalTimeSecs: data.goalTime,
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureEvents = events.filter((e) => e.start_date_local >= today);
+      await uploadPlan(futureEvents);
+
+      // Push threshold pace from current ability (not goal time)
+      if (data.currentAbilitySecs && data.currentAbilityDist) {
+        const table = getPaceTable(data.currentAbilityDist, data.currentAbilitySecs);
+        try {
+          await fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
+          });
         } catch {
           console.warn("Threshold pace sync failed — can retry from Planner settings");
         }
       }
 
+      // Save settings including currentAbility
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onboardingComplete: true }),
+        body: JSON.stringify({
+          onboardingComplete: true,
+          currentAbilitySecs: data.currentAbilitySecs,
+          currentAbilityDist: data.currentAbilityDist,
+        }),
       });
       if (!res.ok) {
         setGenerating(false);
@@ -128,7 +151,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((s) => (
             <div
               key={s}
               className={`w-2 h-2 rounded-full transition-all ${
@@ -181,40 +204,30 @@ export default function SetupPage() {
             raceDist={data.raceDist}
             goalTime={data.goalTime}
             onNext={(goal) => {
-              updateData(goal);
+              // Stopgap: treat goal time as current ability until Task 9 splits them
+              updateData({
+                ...goal,
+                currentAbilitySecs: goal.goalTime,
+                currentAbilityDist: goal.raceDist,
+              });
               setStep(6);
             }}
             onBack={() => { setStep(4); }}
           />
         )}
         {step === 6 && (
-          <HRZonesStep
-            lthr={data.lthr}
-            maxHr={data.maxHr}
-            hrZones={data.hrZones}
-            restingHr={data.restingHr}
-            sportSettingsId={data.sportSettingsId}
-            onNext={(zones) => {
-              updateData(zones);
-              setStep(7);
-            }}
-            onSkip={() => { setStep(7); }}
-            onBack={() => { setStep(5); }}
-          />
-        )}
-        {step === 7 && (
           <DiabetesStep
             diabetesMode={data.diabetesMode}
             nightscoutUrl={data.nightscoutUrl}
             nightscoutSecret={data.nightscoutSecret}
             onNext={(diabetesData) => {
               updateData(diabetesData);
-              setStep(8);
+              setStep(7);
             }}
-            onBack={() => { setStep(6); }}
+            onBack={() => { setStep(5); }}
           />
         )}
-        {step === 8 && (
+        {step === 7 && (
           <DoneStep
             onComplete={handleComplete}
             generating={generating}
@@ -223,7 +236,7 @@ export default function SetupPage() {
 
         {/* Step counter */}
         <p className="text-center text-xs text-muted mt-6">
-          Step {step} of 8
+          Step {step} of 7
         </p>
       </div>
     </div>
