@@ -657,7 +657,7 @@ describe("computeZonePacePct", () => {
     const result = computeZonePacePct(null);
     expect(result.easy).toEqual({ min: 30, max: 94 });
     expect(result.steady).toEqual({ min: 99, max: 102 });
-    expect(result.tempo).toEqual({ min: 107, max: 111 });
+    expect(result.tempo).toEqual({ min: 106, max: 111 });
     expect(result.walk).toEqual({ min: null, max: null });
     expect(result.hard).toEqual({ min: null, max: null });
   });

@@ -26,6 +26,9 @@ export async function GET() {
     settings.intervalsConnected = true;
     try {
       const profile = await fetchAthleteProfile(creds.intervalsApiKey);
+      // Always compute our own 5-zone HR boundaries from maxHR (Runna model).
+      // Ignores profile.hrZones intentionally — fresh accounts have 7-zone LTHR arrays
+      // that fail length === 5 checks, and we want consistent zones across platforms.
       const maxHr = profile.maxHr ?? DEFAULT_MAX_HR;
       settings.maxHr = maxHr;
       settings.hrZones = computeMaxHRZones(maxHr);

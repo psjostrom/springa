@@ -104,7 +104,7 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
   walk:   { min: null, max: null },
   easy:   { min: 30, max: 94 },
   steady: { min: 99, max: 102 },
-  tempo:  { min: 107, max: 111 },
+  tempo:  { min: 106, max: 111 },
   hard:   { min: null, max: null },
 };
 
