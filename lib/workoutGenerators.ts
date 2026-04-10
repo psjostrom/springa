@@ -102,7 +102,7 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
 /** HM-calibrated defaults when no pace table is available. */
 const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
-  easy:   { min: 85, max: 94 },
+  easy:   { min: 30, max: 94 },
   steady: { min: 99, max: 102 },
   tempo:  { min: 107, max: 111 },
   hard:   { min: null, max: null },
@@ -119,7 +119,7 @@ function computeZonePacePct(
   const r = paceTable.racePacePerKm / paceTable.hmEquivalentPacePerKm;
   return {
     walk:   { min: null, max: null },
-    easy:   { min: Math.round(r / 1.17 * 100), max: Math.round(r / 1.06 * 100) },
+    easy:   { min: 30, max: Math.round(r / 1.06 * 100) },
     steady: { min: 99, max: 102 },
     tempo:  { min: Math.round(r / 0.94 * 100), max: Math.round(r / 0.90 * 100) },
     hard:   { min: null, max: null },

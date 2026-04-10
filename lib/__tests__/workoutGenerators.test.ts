@@ -266,7 +266,7 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("84-93% pace");
+      expect(mainSet).toContain("30-93% pace");
       expect(mainSet).toContain("99-102% pace");
       expect(mainSet).toContain("105-109% pace");
       const steadyIdx = mainSet.indexOf("99-102% pace");
@@ -410,31 +410,52 @@ describe("generatePlan", () => {
   });
 
   it("adjusts pace percentages for non-HM distances", () => {
-    // 5K race: faster race pace than HM → easy % shifts up, tempo % shifts up
+    // 5K race: faster race pace than HM → easy max % shifts down, tempo % shifts up
     const plan5k = generateFull({ raceDist: 5, goalTimeSecs: 1620 });
     const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
     expect(easy5k).toBeDefined();
-    // 5K ratio r ≈ 0.85 → easy pct ≈ 73-80%, different from HM's 85-94%
+    // 5K ratio r ≈ 0.85 → easy pct ≈ 30-80%, different from HM's 30-94%
     const easyMatch = /(\d+)-(\d+)% pace/.exec(easy5k!.description);
     expect(easyMatch).not.toBeNull();
     const easyMin = parseInt(easyMatch![1], 10);
-    expect(easyMin).toBeLessThan(85); // shifted down from HM default
+    const easyMax = parseInt(easyMatch![2], 10);
+    expect(easyMin).toBe(30); // floor stays at 30%
+    expect(easyMax).toBeLessThan(94); // ceiling shifts down from HM default
 
-    // Marathon: slower race pace than HM → easy % shifts down
+    // Marathon: slower race pace than HM → easy ceiling % shifts up
     const planMarathon = generateFull({ raceDist: 42.195, goalTimeSecs: 15300 });
     const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
     expect(easyMarathon).toBeDefined();
     const marathonMatch = /(\d+)-(\d+)% pace/.exec(easyMarathon!.description);
     expect(marathonMatch).not.toBeNull();
     const marathonEasyMin = parseInt(marathonMatch![1], 10);
-    expect(marathonEasyMin).toBeGreaterThan(easyMin); // marathon easy % > 5K easy %
+    const marathonEasyMax = parseInt(marathonMatch![2], 10);
+    expect(marathonEasyMin).toBe(30); // floor stays at 30%
+    expect(marathonEasyMax).toBeGreaterThan(easyMax); // marathon easy ceiling % > 5K easy ceiling %
   });
 
   it("falls back to HM defaults when goalTimeSecs is not set", () => {
     const plan = generateFull({ goalTimeSecs: undefined });
     const easyRun = plan.find((e) => e.external_id.includes("easy-"));
     expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("85-94% pace");
+    expect(easyRun!.description).toContain("30-94% pace");
+  });
+
+  it("easy run steps use 30% floor (ceiling concept: allows walking)", () => {
+    const events = generatePlan({
+      bgModel: null,
+      raceDateStr: "2026-08-01",
+      raceDist: 21.0975,
+      totalWeeks: 16,
+      startKm: 8,
+      lthr: 168,
+      hrZones: [120, 150, 165, 179, 189],
+      goalTimeSecs: 8400,
+    });
+    const easyRun = events.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
+    expect(easyRun).toBeDefined();
+    expect(easyRun!.description).toContain("30-");
+    expect(easyRun!.description).not.toMatch(/\b8[0-9]-\d+% pace/);
   });
 
   it("generates free runs for 5+ day schedules", () => {
