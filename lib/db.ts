@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS user_settings (
   onboarding_complete INTEGER NOT NULL DEFAULT 0,
   long_run_day       INTEGER,
   club_day           INTEGER,
-  club_type          TEXT
+  club_type          TEXT,
+  current_ability_secs INTEGER,
+  current_ability_dist REAL
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

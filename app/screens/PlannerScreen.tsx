@@ -120,6 +120,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       longRunDay: settings.longRunDay ?? 0,
       clubDay: settings.clubDay,
       clubType: settings.clubType,
+      currentAbilitySecs: settings.currentAbilitySecs,
+      currentAbilityDist: settings.currentAbilityDist,
       goalTimeSecs: settings.goalTime,
     });
     const todayFilter = new Date();

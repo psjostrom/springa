@@ -7,13 +7,15 @@ import { addWeeks, differenceInWeeks, format } from "date-fns";
 import { settingsAtom } from "../atoms";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
-import { DEFAULT_LTHR } from "@/lib/constants";
+import { DEFAULT_MAX_HR, computeMaxHRZones } from "@/lib/constants";
+import { getPaceTable } from "@/lib/paceTable";
+import type { ExperienceLevel } from "@/lib/paceTable";
 import { WelcomeStep } from "./WelcomeStep";
 import { IntervalsStep } from "./IntervalsStep";
 import { WatchStep } from "./WatchStep";
 import { ScheduleStep } from "./ScheduleStep";
 import { GoalStep } from "./GoalStep";
-import { HRZonesStep } from "./HRZonesStep";
+import { AbilityStep } from "./AbilityStep";
 import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
 
@@ -29,12 +31,12 @@ interface WizardData {
   clubType?: string;
   raceDate?: string;
   raceDist: number;
+  experience?: ExperienceLevel;
   goalTime?: number;
-  lthr?: number;
   maxHr?: number;
-  hrZones?: number[];
-  restingHr?: number;
   sportSettingsId?: number;
+  currentAbilitySecs?: number;
+  currentAbilityDist?: number;
   diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
@@ -60,52 +62,72 @@ export default function SetupPage() {
 
   const handleComplete = async () => {
     try {
-      const hrZones = data.hrZones;
-      if (hrZones?.length === 5) {
-        setGenerating(true);
-        // Yield to event loop so React can render the spinner before sync generatePlan blocks
-        await new Promise((resolve) => { setTimeout(resolve, 0); });
-        const defaultWeeks = 18;
-        const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
-        const totalWeeks = data.raceDate
-          ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
-          : defaultWeeks;
-        const events = generatePlan({
-          bgModel: null,
-          raceDateStr: raceDate,
-          raceDist: data.raceDist,
-          totalWeeks,
-          startKm: 8,
-          lthr: data.lthr ?? DEFAULT_LTHR,
-          hrZones,
-          diabetesMode: data.diabetesMode,
-          runDays: data.runDays,
-          longRunDay: data.longRunDay ?? 0,
-          clubDay: data.clubDay,
-          clubType: data.clubType,
-          goalTimeSecs: data.goalTime,
-        });
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const futureEvents = events.filter((e) => e.start_date_local >= today);
-        await uploadPlan(futureEvents);
-      }
+      setGenerating(true);
+      // Yield to event loop so React can render the spinner before sync generatePlan blocks
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
 
-      // Push threshold pace to Intervals.icu
-      if (data.goalTime && data.raceDist) {
-        const racePaceMinPerKm = data.goalTime / 60 / data.raceDist;
+      // Compute HR zones from maxHR (Runna model: 65/81/89/97%)
+      const maxHr = data.maxHr ?? DEFAULT_MAX_HR;
+      const hrZones = computeMaxHRZones(maxHr);
+      const lthr = Math.round(maxHr * 0.89); // Z3/Z4 boundary ≈ LTHR
+
+      // Push HR zones to Intervals.icu
+      if (data.sportSettingsId) {
         try {
-          const paceRes = await fetch("/api/intervals/threshold-pace", {
+          await fetch("/api/intervals/hr-zones", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ racePaceMinPerKm }),
+            body: JSON.stringify({ sportSettingsId: data.sportSettingsId, hrZones }),
           });
-          if (!paceRes.ok) console.warn("Threshold pace sync failed:", paceRes.status);
+        } catch {
+          console.warn("HR zone sync failed — can retry from settings");
+        }
+      }
+
+      const defaultWeeks = 18;
+      const raceDate = data.raceDate ?? format(addWeeks(new Date(), defaultWeeks), "yyyy-MM-dd");
+      const totalWeeks = data.raceDate
+        ? Math.max(12, differenceInWeeks(new Date(data.raceDate), new Date()))
+        : defaultWeeks;
+
+      const events = generatePlan({
+        bgModel: null,
+        raceDateStr: raceDate,
+        raceDist: data.raceDist,
+        totalWeeks,
+        startKm: 8,
+        lthr,
+        hrZones,
+        diabetesMode: data.diabetesMode,
+        runDays: data.runDays,
+        longRunDay: data.longRunDay ?? 0,
+        clubDay: data.clubDay,
+        clubType: data.clubType,
+        currentAbilitySecs: data.currentAbilitySecs,
+        currentAbilityDist: data.currentAbilityDist,
+        goalTimeSecs: data.goalTime,
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureEvents = events.filter((e) => e.start_date_local >= today);
+      await uploadPlan(futureEvents);
+
+      // Push threshold pace from current ability (not goal time)
+      if (data.currentAbilitySecs && data.currentAbilityDist) {
+        const table = getPaceTable(data.currentAbilityDist, data.currentAbilitySecs);
+        try {
+          await fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
+          });
         } catch {
           console.warn("Threshold pace sync failed — can retry from Planner settings");
         }
       }
 
+      // Mark onboarding complete (currentAbility already saved by AbilityStep)
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -177,28 +199,32 @@ export default function SetupPage() {
         )}
         {step === 5 && (
           <GoalStep
-            raceDate={data.raceDate}
             raceDist={data.raceDist}
-            goalTime={data.goalTime}
+            experience={data.experience}
             onNext={(goal) => {
-              updateData(goal);
+              updateData({ raceDist: goal.raceDist, experience: goal.experience });
               setStep(6);
             }}
             onBack={() => { setStep(4); }}
           />
         )}
-        {step === 6 && (
-          <HRZonesStep
-            lthr={data.lthr}
-            maxHr={data.maxHr}
-            hrZones={data.hrZones}
-            restingHr={data.restingHr}
-            sportSettingsId={data.sportSettingsId}
-            onNext={(zones) => {
-              updateData(zones);
+        {step === 6 && data.experience && (
+          <AbilityStep
+            raceDist={data.raceDist}
+            experience={data.experience}
+            raceDate={data.raceDate}
+            currentAbilitySecs={data.currentAbilitySecs}
+            currentAbilityDist={data.currentAbilityDist}
+            goalTime={data.goalTime}
+            onNext={(ability) => {
+              updateData({
+                currentAbilitySecs: ability.currentAbilitySecs,
+                currentAbilityDist: ability.currentAbilityDist,
+                goalTime: ability.goalTime,
+                raceDate: ability.raceDate,
+              });
               setStep(7);
             }}
-            onSkip={() => { setStep(7); }}
             onBack={() => { setStep(5); }}
           />
         )}

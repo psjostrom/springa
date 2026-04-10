@@ -99,35 +99,45 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   return "active";
 }
 
-/** HM-calibrated defaults when no pace table is available. */
+/** Pace percentages when no pace table is available. Easy uses 30% floor (allows walking). */
 const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk:   { min: null, max: null },
-  easy:   { min: 85, max: 94 },
+  easy:   { min: 30, max: 94 },
   steady: { min: 99, max: 102 },
-  tempo:  { min: 107, max: 111 },
+  tempo:  { min: 106, max: 111 },
   hard:   { min: null, max: null },
 };
 
-/** Compute pace percentages relative to threshold (= race pace).
- *  For HM: T/H = 1.0, produces the same values as the HM defaults.
- *  For other distances: adjusts easy/tempo based on the ratio between
- *  race pace and HM-equivalent pace so the watch shows correct absolute paces. */
-function computeZonePacePct(
+/** Compute pace percentages relative to threshold (= HM-equivalent of current ability).
+ *  Easy uses a 30% floor (allows walking) with the ceiling as the real constraint.
+ *  Steady uses goal race pace as % of threshold when goal differs from ability. */
+export function computeZonePacePct(
   paceTable: PaceTableResult | null,
+  goalDistKm?: number,
+  goalTimeSecs?: number,
 ): Record<ZoneName | "walk", { min: number | null; max: number | null }> {
   if (!paceTable) return HM_ZONE_DEFAULTS;
-  const r = paceTable.racePacePerKm / paceTable.hmEquivalentPacePerKm;
+
+  let steadyMin = 99, steadyMax = 102;
+  if (goalTimeSecs && goalDistKm) {
+    const goalRacePace = goalTimeSecs / 60 / goalDistKm;
+    const thresholdPace = paceTable.hmEquivalentPacePerKm;
+    const ratio = thresholdPace / goalRacePace;
+    steadyMin = Math.round(ratio * 0.98 * 100);
+    steadyMax = Math.round(ratio * 1.01 * 100);
+  }
+
   return {
     walk:   { min: null, max: null },
-    easy:   { min: Math.round(r / 1.17 * 100), max: Math.round(r / 1.06 * 100) },
-    steady: { min: 99, max: 102 },
-    tempo:  { min: Math.round(r / 0.94 * 100), max: Math.round(r / 0.90 * 100) },
+    easy:   { min: 30, max: 94 },
+    steady: { min: steadyMin, max: steadyMax },
+    tempo:  { min: 106, max: 111 },
     hard:   { min: null, max: null },
   };
 }
 
-function makeStep(paceTable: PaceTableResult | null) {
-  const zonePct = computeZonePacePct(paceTable);
+function makeStep(paceTable: PaceTableResult | null, goalDistKm?: number, goalTimeSecs?: number) {
+  const zonePct = computeZonePacePct(paceTable, goalDistKm, goalTimeSecs);
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
     const pct = zonePct[zone];
     const step = formatPaceStep(
@@ -170,7 +180,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable);
+  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "easy", "Warmup");
@@ -267,7 +277,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable);
+  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -335,7 +345,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable);
+  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
   const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
   return {
@@ -366,7 +376,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable);
+  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -467,10 +477,23 @@ export interface PlanConfig {
   clubDay?: number;
   clubType?: string;
   goalTimeSecs?: number;
+  currentAbilitySecs?: number;
+  currentAbilityDist?: number;
 }
 
 export function buildContext(config: PlanConfig): PlanContext {
   const raceDate = parseISO(config.raceDateStr);
+
+  let paceTable: PaceTableResult | null = null;
+  if (config.currentAbilitySecs && config.currentAbilityDist) {
+    paceTable = getPaceTable(
+      config.currentAbilityDist,
+      config.currentAbilitySecs,
+      config.raceDist,
+      config.goalTimeSecs,
+    );
+  }
+
   return {
     fuelInterval: getCurrentFuelRate("interval", config.bgModel, config.diabetesMode),
     fuelLong: getCurrentFuelRate("long", config.bgModel, config.diabetesMode),
@@ -491,7 +514,8 @@ export function buildContext(config: PlanConfig): PlanContext {
     longRunDay: config.longRunDay ?? 0,            // Default: Sunday
     clubDay: config.clubDay,
     clubType: config.clubType,
-    paceTable: config.goalTimeSecs ? getPaceTable(config.raceDist, config.goalTimeSecs) : null,
+    paceTable,
+    goalTimeSecs: config.goalTimeSecs,
   };
 }
 

@@ -7,6 +7,7 @@ import {
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
+import { computeMaxHRZones, DEFAULT_MAX_HR } from "@/lib/constants";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -25,9 +26,13 @@ export async function GET() {
     settings.intervalsConnected = true;
     try {
       const profile = await fetchAthleteProfile(creds.intervalsApiKey);
+      // Always compute our own 5-zone HR boundaries from maxHR (Runna model).
+      // Ignores profile.hrZones intentionally — fresh accounts have 7-zone LTHR arrays
+      // that fail length === 5 checks, and we want consistent zones across platforms.
+      const maxHr = profile.maxHr ?? DEFAULT_MAX_HR;
+      settings.maxHr = maxHr;
+      settings.hrZones = computeMaxHRZones(maxHr);
       if (profile.lthr) settings.lthr = profile.lthr;
-      if (profile.maxHr) settings.maxHr = profile.maxHr;
-      if (profile.hrZones) settings.hrZones = profile.hrZones;
       if (profile.restingHr) settings.restingHr = profile.restingHr;
       if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
     } catch {
@@ -103,6 +108,8 @@ export async function PUT(req: Request) {
   if (body.raceName !== undefined) allowed.raceName = body.raceName;
   if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
   if (body.goalTime !== undefined) allowed.goalTime = body.goalTime;
+  if (body.currentAbilitySecs !== undefined) allowed.currentAbilitySecs = body.currentAbilitySecs;
+  if (body.currentAbilityDist !== undefined) allowed.currentAbilityDist = body.currentAbilityDist;
   if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;
   if (body.startKm !== undefined) allowed.startKm = body.startKm;
   if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;

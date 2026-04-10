@@ -86,10 +86,10 @@ export async function updateAthleteHRZones(
 export async function updateThresholdPace(
   apiKey: string,
   sportSettingsId: number,
-  racePaceMinPerKm: number,
+  paceMinPerKm: number,
 ): Promise<void> {
   // Convert min/km → m/s: 1 km/min ÷ pace × 1000m/km ÷ 60s/min
-  const metersPerSecond = 1000 / (racePaceMinPerKm * 60);
+  const metersPerSecond = 1000 / (paceMinPerKm * 60);
   const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
   await fetch(settingsUrl.href, {
     method: "PUT",
