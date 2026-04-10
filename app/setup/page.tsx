@@ -202,13 +202,15 @@ export default function SetupPage() {
           <GoalStep
             raceDate={data.raceDate}
             raceDist={data.raceDist}
+            currentAbilitySecs={data.currentAbilitySecs}
             goalTime={data.goalTime}
             onNext={(goal) => {
-              // Stopgap: treat goal time as current ability until Task 9 splits them
               updateData({
-                ...goal,
-                currentAbilitySecs: goal.goalTime,
-                currentAbilityDist: goal.raceDist,
+                raceDist: goal.raceDist,
+                raceDate: goal.raceDate,
+                currentAbilitySecs: goal.currentAbilitySecs,
+                currentAbilityDist: goal.currentAbilityDist,
+                goalTime: goal.goalTime,
               });
               setStep(6);
             }}

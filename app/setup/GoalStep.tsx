@@ -8,8 +8,15 @@ import { addWeeks, format, differenceInWeeks, parseISO, isBefore } from "date-fn
 interface GoalStepProps {
   raceDate?: string;
   raceDist?: number;
+  currentAbilitySecs?: number;
   goalTime?: number;
-  onNext: (data: { raceDist: number; goalTime: number; raceDate: string }) => void;
+  onNext: (data: {
+    raceDist: number;
+    currentAbilitySecs: number;
+    currentAbilityDist: number;
+    goalTime?: number;
+    raceDate: string;
+  }) => void;
   onBack: () => void;
 }
 
@@ -19,19 +26,23 @@ const EXPERIENCE_OPTIONS: { level: ExperienceLevel; label: string; desc: string 
   { level: "experienced", label: "Experienced", desc: "Running for years with specific goals" },
 ];
 
-export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTime: initialGoalTime, onNext, onBack }: GoalStepProps) {
+export function GoalStep({ raceDate: initialDate, raceDist: initialDist, currentAbilitySecs: initialAbility, goalTime: initialGoalTime, onNext, onBack }: GoalStepProps) {
   const isStandardDist = initialDist != null && DISTANCE_OPTIONS.some(({ km }) => km === initialDist);
   const [selectedDist, setSelectedDist] = useState<number | null>(initialDist ?? null);
   const [customDist, setCustomDist] = useState(initialDist != null && !isStandardDist ? String(initialDist) : "");
   const [experience, setExperience] = useState<ExperienceLevel | null>(null);
-  const [goalTimeSecs, setGoalTimeSecs] = useState<number | null>(initialGoalTime ?? null);
+  const [abilitySecs, setAbilitySecs] = useState<number | null>(initialAbility ?? null);
+  const [goalMode, setGoalMode] = useState<"finish" | "time">(initialGoalTime != null ? "time" : "finish");
+  const [goalTimeSecs, setGoalTimeSecs] = useState<number | undefined>(initialGoalTime ?? undefined);
   const [raceDate, setRaceDate] = useState(initialDate ?? format(addWeeks(new Date(), 18), "yyyy-MM-dd"));
 
   const handleDist = (km: number) => {
     setSelectedDist(km);
     setCustomDist("");
     if (experience) {
-      setGoalTimeSecs(getDefaultGoalTime(km, experience));
+      const defaultTime = getDefaultGoalTime(km, experience);
+      setAbilitySecs(defaultTime);
+      if (goalMode === "time") setGoalTimeSecs(defaultTime);
     }
   };
 
@@ -41,7 +52,9 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
     if (km >= 1 && km <= 100) {
       setSelectedDist(km);
       if (experience) {
-        setGoalTimeSecs(getDefaultGoalTime(km, experience));
+        const defaultTime = getDefaultGoalTime(km, experience);
+        setAbilitySecs(defaultTime);
+        if (goalMode === "time") setGoalTimeSecs(defaultTime);
       }
     } else {
       setSelectedDist(null);
@@ -52,40 +65,52 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
     setExperience(level);
     // Use the level arg directly (not `experience` state which is stale in this handler)
     if (selectedDist) {
-      setGoalTimeSecs(getDefaultGoalTime(selectedDist, level));
+      const defaultTime = getDefaultGoalTime(selectedDist, level);
+      setAbilitySecs(defaultTime);
+      if (goalMode === "time") setGoalTimeSecs(defaultTime);
     }
   };
 
   const sliderRange = selectedDist ? getSliderRange(selectedDist) : null;
 
-  const pacePreview = selectedDist && goalTimeSecs
-    ? getPaceTable(selectedDist, goalTimeSecs)
+  const pacePreview = selectedDist && abilitySecs
+    ? getPaceTable(selectedDist, abilitySecs)
     : null;
 
   const minDate = format(addWeeks(new Date(), 12), "yyyy-MM-dd");
   const weeksToGo = differenceInWeeks(parseISO(raceDate), new Date());
   const dateTooSoon = isBefore(parseISO(raceDate), addWeeks(new Date(), 12));
 
-  const canProceed = selectedDist != null && goalTimeSecs != null && !dateTooSoon;
+  const canProceed = selectedDist != null && abilitySecs != null && !dateTooSoon;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleNext = async () => {
-    if (!selectedDist || !goalTimeSecs) return;
+    if (!selectedDist || !abilitySecs) return;
     setSaving(true);
     setError(null);
-    const data = { raceDist: selectedDist, goalTime: goalTimeSecs, raceDate };
+    const payload = {
+      raceDist: selectedDist,
+      goalTime: goalMode === "time" ? goalTimeSecs : undefined,
+      raceDate,
+    };
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         setError("Failed to save. Try again.");
         return;
       }
-      onNext(data);
+      onNext({
+        raceDist: selectedDist,
+        currentAbilitySecs: abilitySecs,
+        currentAbilityDist: selectedDist,
+        goalTime: goalMode === "time" ? goalTimeSecs : undefined,
+        raceDate,
+      });
     } catch {
       setError("Connection error. Check your internet and try again.");
     } finally {
@@ -159,25 +184,25 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
           </div>
         )}
 
-        {/* Section 3: Time slider + Paces (visible when experience selected) */}
-        {experience != null && goalTimeSecs != null && sliderRange && (
+        {/* Section 3: Current ability slider + Paces (visible when experience selected) */}
+        {experience != null && abilitySecs != null && sliderRange && (
           <div>
             <label className="block text-sm font-semibold text-muted mb-1">
-              Current ability
+              About how fast could you run {selectedDist} km on a flat road right now?
             </label>
             <p className="text-xs text-muted mb-3">
-              Rough ballpark — pick your best guess. You can always change it later.
+              This isn&apos;t a goal — it&apos;s where you are today. We&apos;ll build from here.
             </p>
             <p className="text-4xl font-bold text-text text-center mb-4">
-              {formatGoalTime(goalTimeSecs)}
+              {formatGoalTime(abilitySecs)}
             </p>
             <input
               type="range"
               min={sliderRange.min}
               max={sliderRange.max}
               step={sliderRange.step}
-              value={goalTimeSecs}
-              onChange={(e) => { setGoalTimeSecs(Number(e.target.value)); }}
+              value={abilitySecs}
+              onChange={(e) => { setAbilitySecs(Number(e.target.value)); }}
               className="w-full accent-brand"
             />
 
@@ -201,8 +226,59 @@ export function GoalStep({ raceDate: initialDate, raceDist: initialDist, goalTim
           </div>
         )}
 
-        {/* Section 4: Date (visible when time set) */}
-        {goalTimeSecs != null && (
+        {/* Section 4: Race goal (visible when ability set) */}
+        {abilitySecs != null && experience != null && (
+          <div>
+            <label className="block text-sm font-semibold text-muted mb-2">
+              Do you have a time goal for race day?
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => { setGoalMode("finish"); setGoalTimeSecs(undefined); }}
+                className={`py-3 rounded-lg border-2 font-semibold text-sm transition ${
+                  goalMode === "finish"
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-border text-muted hover:border-brand hover:text-brand"
+                }`}
+              >
+                Just finish
+              </button>
+              <button
+                onClick={() => { setGoalMode("time"); setGoalTimeSecs(goalTimeSecs ?? abilitySecs); }}
+                className={`py-3 rounded-lg border-2 font-semibold text-sm transition ${
+                  goalMode === "time"
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-border text-muted hover:border-brand hover:text-brand"
+                }`}
+              >
+                Set a finish time
+              </button>
+            </div>
+
+            {goalMode === "time" && goalTimeSecs != null && sliderRange && (
+              <div className="mt-4">
+                <p className="text-xs text-muted mb-2">
+                  What time are you aiming for?
+                </p>
+                <p className="text-3xl font-bold text-text text-center mb-3">
+                  {formatGoalTime(goalTimeSecs)}
+                </p>
+                <input
+                  type="range"
+                  min={sliderRange.min}
+                  max={sliderRange.max}
+                  step={sliderRange.step}
+                  value={goalTimeSecs}
+                  onChange={(e) => { setGoalTimeSecs(Number(e.target.value)); }}
+                  className="w-full accent-brand"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section 5: Date (visible when ability set) */}
+        {abilitySecs != null && (
           <div>
             <label className="block text-sm font-semibold text-muted mb-2">
               Race-ready by
