@@ -28,10 +28,10 @@ export interface PaceTableResult {
   steady: PaceRange;
   tempo: PaceRange;
   hard: number;
-  racePacePerKm: number;
-  hmEquivalentPacePerKm: number;
-  goalTimeSecs: number;
-  distanceKm: number;
+  racePacePerKm: number;          // ability pace at reference distance
+  hmEquivalentPacePerKm: number;  // HM-equivalent for zone derivation
+  abilitySecs: number;            // input ability time
+  abilityDistKm: number;          // input ability distance
 }
 
 /** Convert a goal time at any distance to the equivalent HM time using
@@ -53,31 +53,29 @@ function getHmEquivalentTimeSecs(distanceKm: number, goalTimeSecs: number): numb
  * - Tempo:    0.90-0.94× HM pace (~5K effort)
  * - Hard:     0.85× HM pace (informational, strides are effort-based)
  */
-export function getPaceTable(distanceKm: number, goalTimeSecs: number): PaceTableResult {
-  const racePacePerKm = goalTimeSecs / 60 / distanceKm;
-
-  // Convert to HM-equivalent time for zone calculations (Riegel formula)
-  const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(distanceKm, goalTimeSecs);
+export function getPaceTable(
+  abilityDistKm: number,
+  abilitySecs: number,
+  goalDistKm?: number,
+  goalTimeSecs?: number,
+): PaceTableResult {
+  const abilityPacePerKm = abilitySecs / 60 / abilityDistKm;
+  const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
   const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
+  const steadyPace = (goalTimeSecs && goalDistKm)
+    ? goalTimeSecs / 60 / goalDistKm
+    : abilityPacePerKm;
+
   return {
-    easy: {
-      min: hmEquivalentPacePerKm * 1.06,
-      max: hmEquivalentPacePerKm * 1.17
-    },
-    steady: {
-      min: racePacePerKm * 0.98,
-      max: racePacePerKm * 1.01
-    },
-    tempo: {
-      min: hmEquivalentPacePerKm * 0.90,
-      max: hmEquivalentPacePerKm * 0.94
-    },
+    easy: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
+    steady: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
+    tempo: { min: hmEquivalentPacePerKm * 0.90, max: hmEquivalentPacePerKm * 0.94 },
     hard: hmEquivalentPacePerKm * 0.85,
-    racePacePerKm,
+    racePacePerKm: abilityPacePerKm,
     hmEquivalentPacePerKm,
-    goalTimeSecs,
-    distanceKm,
+    abilitySecs,
+    abilityDistKm,
   };
 }
 
