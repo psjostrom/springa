@@ -7,6 +7,7 @@ import {
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
+import { computeMaxHRZones } from "@/lib/constants";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -25,9 +26,11 @@ export async function GET() {
     settings.intervalsConnected = true;
     try {
       const profile = await fetchAthleteProfile(creds.intervalsApiKey);
+      if (profile.maxHr) {
+        settings.maxHr = profile.maxHr;
+        settings.hrZones = computeMaxHRZones(profile.maxHr);
+      }
       if (profile.lthr) settings.lthr = profile.lthr;
-      if (profile.maxHr) settings.maxHr = profile.maxHr;
-      if (profile.hrZones) settings.hrZones = profile.hrZones;
       if (profile.restingHr) settings.restingHr = profile.restingHr;
       if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
     } catch {
