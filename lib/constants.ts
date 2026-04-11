@@ -141,3 +141,52 @@ export function getWorkoutCategory(
     return "easy";
   return "other";
 }
+
+/** Strava-derived pace zone boundaries: 77/90/100/107% of threshold speed. */
+const PACE_ZONE_PCT = [0.77, 0.90, 1.00, 1.07];
+
+/**
+ * Compute 4 pace zone boundaries from threshold pace.
+ * Returns [Z1/Z2, Z2/Z3, Z3/Z4, Z4/Z5] in min/km (descending — slower first).
+ */
+export function computePaceZones(thresholdPaceMinPerKm: number): number[] {
+  return PACE_ZONE_PCT.map((pct) => thresholdPaceMinPerKm / pct);
+}
+
+/**
+ * Classify pace into a zone key. The ONE function for pace → zone.
+ * Lower pace = faster = higher zone (inverted vs HR).
+ */
+export function classifyPace(pace: number, paceZones: number[]): ZoneKey {
+  if (pace <= paceZones[3]) return "z5";
+  if (pace <= paceZones[2]) return "z4";
+  if (pace <= paceZones[1]) return "z3";
+  if (pace <= paceZones[0]) return "z2";
+  return "z1";
+}
+
+export interface PaceZoneTimes {
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
+/**
+ * Compute time-in-zone from a pace stream.
+ * Filters zero/null values (stopped segments).
+ */
+export function computePaceZoneTimes(
+  paceStream: number[],
+  paceZones: number[],
+  sampleInterval = 1,
+): PaceZoneTimes {
+  const times: PaceZoneTimes = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+  for (const pace of paceStream) {
+    if (!pace || pace <= 0) continue;
+    const zone = classifyPace(pace, paceZones);
+    times[zone] += sampleInterval;
+  }
+  return times;
+}
