@@ -36,8 +36,8 @@ export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdown
 
         return (
           <div key={key} className="flex items-center gap-3">
-            <div className="flex items-center gap-2 w-28">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
+            <div className="flex items-center gap-2 w-28 whitespace-nowrap">
+              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
               <span className="text-sm font-medium" style={{ color }}>
                 {key.toUpperCase()} {name}
               </span>
