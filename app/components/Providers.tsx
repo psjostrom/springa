@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SessionProvider, useSession } from "next-auth/react";
+import { NotificationPrompt } from "./NotificationPrompt";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -47,16 +48,65 @@ function PushSubscriptionManager() {
   return null;
 }
 
+function UpdateBanner({ onUpdate }: { onUpdate: () => void }) {
+  return (
+    <div className="fixed top-4 left-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-lg">
+      <p className="flex-1 text-sm text-foreground">
+        A new version is available
+      </p>
+      <button
+        type="button"
+        onClick={onUpdate}
+        className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+      >
+        Update
+      </button>
+    </div>
+  );
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-    }
+    if (!("serviceWorker" in navigator)) return;
+
+    let reg: ServiceWorkerRegistration | undefined;
+    const handleUpdateFound = () => {
+      const newWorker = reg?.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener("statechange", () => {
+        if (
+          newWorker.state === "installed" &&
+          navigator.serviceWorker.controller
+        ) {
+          setWaitingWorker(newWorker);
+        }
+      });
+    };
+
+    navigator.serviceWorker.register("/sw.js").then((registration) => {
+      reg = registration;
+      registration.addEventListener("updatefound", handleUpdateFound);
+    }).catch(() => undefined);
+
+    return () => {
+      reg?.removeEventListener("updatefound", handleUpdateFound);
+    };
   }, []);
+
+  const handleUpdate = useCallback(() => {
+    if (!waitingWorker) return;
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    setWaitingWorker(null);
+    window.location.reload();
+  }, [waitingWorker]);
 
   return (
     <SessionProvider>
       <PushSubscriptionManager />
+      <NotificationPrompt />
+      {waitingWorker && <UpdateBanner onUpdate={handleUpdate} />}
       {children}
     </SessionProvider>
   );

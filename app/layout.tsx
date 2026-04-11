@@ -21,12 +21,26 @@ const sora = Sora({
 });
 
 export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
+	maximumScale: 1,
+	userScalable: false,
 	viewportFit: "cover",
+	themeColor: "#13101c",
 };
 
 export const metadata: Metadata = {
 	title: "Springa",
 	description: "Training planner and workout tracker with T1D blood glucose management, synced to Intervals.icu.",
+	icons: {
+		icon: "/icon-192.png",
+		apple: "/icon-192.png",
+	},
+	appleWebApp: {
+		capable: true,
+		statusBarStyle: "black-translucent",
+		title: "Springa",
+	},
 };
 
 export default function RootLayout({
