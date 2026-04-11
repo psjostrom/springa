@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
-import { X, LogOut, Bell } from "lucide-react";
+import { X, LogOut, Bell, ExternalLink } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { MIN_PLAN_WEEKS } from "@/lib/periodization";
 
@@ -24,6 +24,11 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [nightscoutConnected, setNightscoutConnected] = useState(settings.nightscoutConnected ?? false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState("");
+  const [intervalsApiKey, setIntervalsApiKey] = useState("");
+  const [intervalsConnected, setIntervalsConnected] = useState(settings.intervalsConnected ?? false);
+  const [intervalsValidating, setIntervalsValidating] = useState(false);
+  const [intervalsError, setIntervalsError] = useState("");
+  const [showIntervalsKeyInput, setShowIntervalsKeyInput] = useState(!settings.intervalsConnected);
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -70,6 +75,34 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
       setNightscoutConnected(false);
     } finally {
       setTestingConnection(false);
+    }
+  };
+
+  const handleUpdateIntervalsKey = async () => {
+    if (!intervalsApiKey.trim()) return;
+
+    setIntervalsValidating(true);
+    setIntervalsError("");
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intervalsApiKey: intervalsApiKey.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setIntervalsError(data.error ?? "Invalid API key");
+      } else {
+        setIntervalsConnected(true);
+        setIntervalsApiKey("");
+        setShowIntervalsKeyInput(false);
+      }
+    } catch {
+      setIntervalsError("Network error");
+    } finally {
+      setIntervalsValidating(false);
     }
   };
 
@@ -150,7 +183,69 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             </button>
           </div>
 
-          <div className="border-t border-border" />
+          {/* Intervals.icu */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-muted">Intervals.icu</span>
+              {intervalsConnected && !showIntervalsKeyInput && (
+                <span className="text-sm text-success">Connected</span>
+              )}
+            </div>
+
+            {intervalsConnected && !showIntervalsKeyInput ? (
+              <button
+                type="button"
+                onClick={() => { setShowIntervalsKeyInput(true); }}
+                className="text-sm text-muted hover:text-text transition"
+              >
+                Update API key
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={intervalsApiKey}
+                    onChange={(e) => { setIntervalsApiKey(e.target.value); setIntervalsError(""); }}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted font-mono text-sm"
+                    placeholder={intervalsConnected ? "Paste new key" : "Paste your API key"}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { void handleUpdateIntervalsKey(); }}
+                    disabled={intervalsValidating || !intervalsApiKey.trim()}
+                    className="px-4 py-2 bg-border border border-border rounded-lg text-sm text-brand hover:bg-border transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {intervalsValidating ? "Validating..." : intervalsConnected ? "Update" : "Connect"}
+                  </button>
+                  {intervalsConnected && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowIntervalsKeyInput(false); setIntervalsApiKey(""); setIntervalsError(""); }}
+                      className="text-sm text-muted hover:text-text transition"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <a
+                    href="https://intervals.icu/settings"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto flex items-center gap-1 text-xs text-muted hover:text-brand transition"
+                  >
+                    <ExternalLink size={12} />
+                    Find key
+                  </a>
+                </div>
+                {intervalsError && (
+                  <p className="text-sm text-error">✗ {intervalsError}</p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Plan */}
           <div className="border-t border-border pt-4">

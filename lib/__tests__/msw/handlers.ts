@@ -239,6 +239,18 @@ export const handlers = [
     return HttpResponse.json({ synced: true });
   }),
 
+  // PUT /api/settings (Intervals.icu key validation, Nightscout, etc.)
+  http.put("/api/settings", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    if (body.intervalsApiKey === "invalid-key") {
+      return HttpResponse.json(
+        { error: "Failed to validate Intervals.icu API key" },
+        { status: 400 },
+      );
+    }
+    return HttpResponse.json({ ok: true });
+  }),
+
   // Google OAuth token exchange
   http.post("https://oauth2.googleapis.com/token", () => {
     return HttpResponse.json({

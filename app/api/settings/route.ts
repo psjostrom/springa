@@ -5,7 +5,7 @@ import {
   type UserSettings,
 } from "@/lib/settings";
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
-import { fetchAthleteProfile } from "@/lib/intervalsApi";
+import { fetchAthleteRaw, fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
 import { computeMaxHRZones, DEFAULT_MAX_HR } from "@/lib/constants";
 import { NextResponse } from "next/server";
@@ -68,12 +68,11 @@ export async function PUT(req: Request) {
 
   // Validate Intervals.icu API key if provided
   if (body.intervalsApiKey) {
-    try {
-      await fetchAthleteProfile(body.intervalsApiKey);
-    } catch {
+    const athlete = await fetchAthleteRaw(body.intervalsApiKey);
+    if (!athlete) {
       return NextResponse.json(
         { error: "Failed to validate Intervals.icu API key" },
-        { status: 400 }
+        { status: 400 },
       );
     }
   }
