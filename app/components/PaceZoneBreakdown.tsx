@@ -8,11 +8,11 @@ interface PaceZoneBreakdownProps {
 }
 
 const ZONES: { key: ZoneKey }[] = [
-  { key: "z5" },
-  { key: "z4" },
-  { key: "z3" },
-  { key: "z2" },
   { key: "z1" },
+  { key: "z2" },
+  { key: "z3" },
+  { key: "z4" },
+  { key: "z5" },
 ];
 
 export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdownProps) {

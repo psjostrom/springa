@@ -10,11 +10,11 @@ interface HRZoneBreakdownProps {
 }
 
 const ZONES = [
-	{ key: "z5" as const, label: `Z5 ${ZONE_DISPLAY_NAMES.z5}` },
-	{ key: "z4" as const, label: `Z4 ${ZONE_DISPLAY_NAMES.z4}` },
-	{ key: "z3" as const, label: `Z3 ${ZONE_DISPLAY_NAMES.z3}` },
-	{ key: "z2" as const, label: `Z2 ${ZONE_DISPLAY_NAMES.z2}` },
 	{ key: "z1" as const, label: `Z1 ${ZONE_DISPLAY_NAMES.z1}` },
+	{ key: "z2" as const, label: `Z2 ${ZONE_DISPLAY_NAMES.z2}` },
+	{ key: "z3" as const, label: `Z3 ${ZONE_DISPLAY_NAMES.z3}` },
+	{ key: "z4" as const, label: `Z4 ${ZONE_DISPLAY_NAMES.z4}` },
+	{ key: "z5" as const, label: `Z5 ${ZONE_DISPLAY_NAMES.z5}` },
 ];
 
 export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
