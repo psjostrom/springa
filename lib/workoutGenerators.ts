@@ -101,7 +101,7 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
 const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
   walk: { min: null, max: null },
   z1:   { min: null, max: null },
-  z2:   { min: 30, max: 94 },
+  z2:   { min: 30, max: 88 },
   z3:   { min: 99, max: 102 },
   z4:   { min: 106, max: 111 },
   z5:   { min: null, max: null },
@@ -129,7 +129,7 @@ export function computeZonePacePct(
   return {
     walk: { min: null, max: null },
     z1:   { min: null, max: null },
-    z2:   { min: 30, max: 94 },
+    z2:   { min: 30, max: 88 },
     z3:   { min: steadyMin, max: steadyMax },
     z4:   { min: 106, max: 111 },
     z5:   { min: null, max: null },

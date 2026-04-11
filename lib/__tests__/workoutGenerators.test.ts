@@ -269,7 +269,7 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("30-94% pace");
+      expect(mainSet).toContain("30-88% pace");
       expect(mainSet).toContain("100-103% pace");
       expect(mainSet).toContain("106-111% pace");
       const steadyIdx = mainSet.indexOf("100-103% pace");
@@ -440,18 +440,18 @@ describe("generatePlan", () => {
     // 5K steady min should be higher than marathon steady min
     expect(steadyMin5k).toBeGreaterThan(steadyMinM);
 
-    // Easy is fixed at 30-94% regardless of distance
+    // Easy is fixed at 30-88% regardless of distance
     const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
-    expect(easy5k!.description).toContain("30-94% pace");
+    expect(easy5k!.description).toContain("30-88% pace");
     const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
-    expect(easyMarathon!.description).toContain("30-94% pace");
+    expect(easyMarathon!.description).toContain("30-88% pace");
   });
 
   it("falls back to HM defaults when goalTimeSecs is not set", () => {
     const plan = generateFull({ goalTimeSecs: undefined });
     const easyRun = plan.find((e) => e.external_id.includes("easy-"));
     expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("30-94% pace");
+    expect(easyRun!.description).toContain("30-88% pace");
   });
 
   it("derives paceTable from currentAbility, not goalTime", () => {
@@ -655,7 +655,7 @@ describe("suggestCategory", () => {
 describe("computeZonePacePct", () => {
   it("returns HM defaults when paceTable is null", () => {
     const result = computeZonePacePct(null);
-    expect(result.z2).toEqual({ min: 30, max: 94 });
+    expect(result.z2).toEqual({ min: 30, max: 88 });
     expect(result.z3).toEqual({ min: 99, max: 102 });
     expect(result.z4).toEqual({ min: 106, max: 111 });
     expect(result.walk).toEqual({ min: null, max: null });
@@ -687,7 +687,7 @@ describe("computeZonePacePct", () => {
   it("easy and tempo are fixed regardless of goal", () => {
     const table = getPaceTable(10, 3300, 16, 8400);
     const result = computeZonePacePct(table, 16, 8400);
-    expect(result.z2).toEqual({ min: 30, max: 94 });
+    expect(result.z2).toEqual({ min: 30, max: 88 });
     expect(result.z4).toEqual({ min: 106, max: 111 });
   });
 });
