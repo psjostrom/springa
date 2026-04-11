@@ -67,9 +67,9 @@ Requires a settings page that doesn't exist yet. Deferred to a follow-up PR.
 
 When goal race pace is slower than the easy ceiling, race-pace sandwich sections prescribe a pace in Z1 Recovery. Fix belongs in planner/prescription logic.
 
-### Editable zones UI / Aggregate pace zone analysis / Intervals.icu pace zone push
+### Editable zones UI / Aggregate pace zone analysis
 
-All deferred to follow-up PRs.
+Deferred to follow-up PRs. Intervals.icu pace zone push is implemented — zones are pushed alongside threshold pace via `updatePaceZones()` in `lib/intervalsApi.ts`.
 
 ---
 

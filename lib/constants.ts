@@ -143,7 +143,7 @@ export function getWorkoutCategory(
 }
 
 /** Strava-derived pace zone boundaries: 77/90/100/107% of threshold speed. */
-const PACE_ZONE_PCT = [0.77, 0.90, 1.00, 1.07];
+export const PACE_ZONE_PCT = [0.77, 0.90, 1.00, 1.07];
 
 /**
  * Compute 4 pace zone boundaries from threshold pace.

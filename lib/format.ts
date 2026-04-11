@@ -1,6 +1,9 @@
 import type { ZoneName, PaceTable, ZonePaceEntry } from "./types";
 import { FALLBACK_PACE_TABLE } from "./constants";
 
+// Prescription labels — plain language for workout cards ("Easy", "Race Pace").
+// Distinct from ZONE_DISPLAY_NAMES in constants.ts which are analysis labels
+// ("Endurance", "Tempo") shown in zone charts and settings.
 const ZONE_LABELS: Record<ZoneName, string> = {
   z1: "Recovery",
   z2: "Easy",

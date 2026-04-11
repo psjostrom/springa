@@ -9,7 +9,7 @@ import type {
   PaceCurveData,
   BestEffort,
 } from "./types";
-import { API_BASE } from "./constants";
+import { API_BASE, PACE_ZONE_PCT, ZONE_DISPLAY_NAMES, type ZoneKey } from "./constants";
 import { extractRawStreams, extractLatlng } from "./streams";
 import {
   processActivities,
@@ -99,22 +99,20 @@ export async function updateThresholdPace(
 }
 
 /** Push pace zone boundaries and names to Intervals.icu sport settings.
- *  pace_zones is an array of zone ceilings as % of threshold speed.
- *  Format matches Intervals.icu presets (e.g. Friel: [77.5, 87.7, 94.3, 100, 103.4, 111.5, 999]).
- *  Last value is 999 (sentinel for unlimited top zone).
- *  We use 5 Strava-derived zones: [77, 90, 100, 107, 999]. */
+ *  Derives from PACE_ZONE_PCT and ZONE_DISPLAY_NAMES (single source of truth).
+ *  Format: array of zone ceilings as % of threshold speed, last value 999 (sentinel). */
 export async function updatePaceZones(
   apiKey: string,
   sportSettingsId: number,
 ): Promise<void> {
+  const paceZones = [...PACE_ZONE_PCT.map((pct) => Math.round(pct * 100)), 999];
+  const zoneKeys: ZoneKey[] = ["z1", "z2", "z3", "z4", "z5"];
+  const paceZoneNames = zoneKeys.map((k) => ZONE_DISPLAY_NAMES[k]);
   const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
   await fetch(settingsUrl.href, {
     method: "PUT",
     headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      pace_zones: [77, 90, 100, 107, 999],
-      pace_zone_names: ["Recovery", "Endurance", "Tempo", "Threshold", "VO2 Max"],
-    }),
+    body: JSON.stringify({ pace_zones: paceZones, pace_zone_names: paceZoneNames }),
   });
 }
 

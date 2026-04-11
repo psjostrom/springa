@@ -17,9 +17,10 @@ const ZONES: { key: ZoneKey }[] = [
 
 export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdownProps) {
   const paceZones = computePaceZones(thresholdPace);
-  const interval = paceData.length >= 2 ? paceData[1].time - paceData[0].time : 1;
+  // Each DataPoint is one sample — timestamps are minute-rounded so we can't derive
+  // interval from adjacent times. Use count-based classification (sampleInterval=1).
   const paceStream = paceData.map((d) => d.value);
-  const zoneTimes = computePaceZoneTimes(paceStream, paceZones, interval);
+  const zoneTimes = computePaceZoneTimes(paceStream, paceZones);
 
   const total = zoneTimes.z1 + zoneTimes.z2 + zoneTimes.z3 + zoneTimes.z4 + zoneTimes.z5;
   if (total === 0) return null;

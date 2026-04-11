@@ -5,7 +5,7 @@ import { formatPace } from "./format";
 // --- PACE LOOKUP ---
 
 /** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
-/** Safe accessor for FALLBACK_PACE_TABLE entries (all four zones are always populated). */
+/** Safe accessor for FALLBACK_PACE_TABLE entries (z2-z5 populated, z1 is null). */
 function fallbackPace(zone: ZoneName): number {
   return FALLBACK_PACE_TABLE[zone]?.avgPace ?? 7.25;
 }
