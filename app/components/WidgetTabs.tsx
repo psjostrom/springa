@@ -17,10 +17,11 @@ import {
   saveModalLayout,
   toggleWidgetVisibility,
 } from "@/lib/modalWidgets";
-import { Droplets, Activity, Utensils, MessageSquare, BarChart3, type LucideIcon } from "lucide-react";
+import { Droplets, Activity, Utensils, MessageSquare, BarChart3, Gauge, type LucideIcon } from "lucide-react";
 import { RunReportCard } from "./RunReportCard";
 import { RunAnalysis } from "./RunAnalysis";
 import { HRZoneBreakdown } from "./HRZoneBreakdown";
+import { PaceZoneBreakdown } from "./PaceZoneBreakdown";
 import { WorkoutStreamGraph } from "./WorkoutStreamGraph";
 import { RouteMap } from "./RouteMap";
 import { KmSplitsSection } from "./KmSplitsSection";
@@ -119,6 +120,25 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
         </div>
       </div>
     ) : null,
+  "pace-zones": (p) =>
+    p.event.streamData?.pace && p.event.streamData.pace.length > 0 && p.racePacePerKm ? (
+      <div className="px-3 py-2.5">
+        <div className="text-sm font-semibold text-muted mb-3">Pace Zones</div>
+        <PaceZoneBreakdown
+          paceData={p.event.streamData.pace}
+          thresholdPace={p.racePacePerKm}
+        />
+      </div>
+    ) : p.isLoadingStreamData ? (
+      <div className="px-3 py-2.5">
+        <div className="text-sm font-semibold text-muted mb-3">Pace Zones</div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="skeleton h-5 w-full" />
+          ))}
+        </div>
+      </div>
+    ) : null,
   "route-map": (p) =>
     p.event.streamData?.latlng && p.event.streamData.latlng.length > 0 ? (
       <div className="px-3 py-2.5">
@@ -158,6 +178,7 @@ const SECTION_HEADINGS: Partial<Record<ModalWidgetId, React.ReactNode>> = {
   "carbs-ingested": <SectionHeading icon={Utensils} iconColor="var(--color-warning)" label="Fueling" />,
   "feedback": <SectionHeading icon={MessageSquare} iconColor="var(--color-muted)" label="Feedback" />,
   "pace-splits": <SectionHeading icon={BarChart3} iconColor="var(--color-chart-secondary)" label="Pace Splits" />,
+  "pace-zones": <SectionHeading icon={Gauge} iconColor="var(--color-chart-secondary)" label="Pace Zones" />,
 };
 
 interface WidgetTabsProps {
