@@ -67,10 +67,11 @@ describe("buildZoneBlock", () => {
 
   it("uses custom pace table when provided", () => {
     const paceTable = {
-      easy: { zone: "easy" as const, avgPace: 7.5, sampleCount: 10 },
-      steady: { zone: "steady" as const, avgPace: 6.0, sampleCount: 5 },
-      tempo: { zone: "tempo" as const, avgPace: 5.0, sampleCount: 3 },
-      hard: { zone: "hard" as const, avgPace: 4.5, sampleCount: 2 },
+      z1: null,
+      z2: { zone: "z2" as const, avgPace: 7.5, sampleCount: 10 },
+      z3: { zone: "z3" as const, avgPace: 6.0, sampleCount: 5 },
+      z4: { zone: "z4" as const, avgPace: 5.0, sampleCount: 3 },
+      z5: { zone: "z5" as const, avgPace: 4.5, sampleCount: 2 },
     };
     const block = buildZoneBlock(168, 189, paceTable, hrZones);
     expect(block).toContain("~7:30/km");

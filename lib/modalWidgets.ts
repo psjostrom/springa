@@ -14,6 +14,7 @@ export interface WidgetProps {
   paceTable?: PaceTable;
   hrZones?: number[];
   lthr?: number;
+  racePacePerKm?: number;
 }
 
 export type ModalWidgetId =
@@ -26,6 +27,7 @@ export type ModalWidgetId =
   | "prerun-carbs"
   | "stream-graph"
   | "hr-zones"
+  | "pace-zones"
   | "route-map"
   | "run-analysis"
   | "feedback";
@@ -45,6 +47,7 @@ export const COMPLETED_RUN_WIDGETS: readonly ModalWidgetDef[] = [
   { id: "prerun-carbs", label: "Pre-Run Carbs" },
   { id: "stream-graph", label: "Stream Graph" },
   { id: "hr-zones", label: "HR Zones" },
+  { id: "pace-zones", label: "Pace Zones" },
   { id: "route-map", label: "Route Map" },
   { id: "run-analysis", label: "Run Analysis" },
   { id: "feedback", label: "Feedback" },
@@ -67,7 +70,7 @@ export const DEFAULT_TABS: readonly TabConfig[] = [
   {
     id: "deep-dive",
     label: "Deep Dive",
-    widgets: ["stream-graph", "workout", "hr-zones", "route-map"],
+    widgets: ["stream-graph", "workout", "hr-zones", "pace-zones", "route-map"],
   },
   {
     id: "analysis",

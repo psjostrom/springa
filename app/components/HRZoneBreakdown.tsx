@@ -1,4 +1,5 @@
-import { ZONE_COLORS } from "@/lib/constants";
+import { ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
+import { formatZoneTime } from "@/lib/format";
 
 interface HRZoneBreakdownProps {
 	z1: number;
@@ -8,24 +9,12 @@ interface HRZoneBreakdownProps {
 	z5: number;
 }
 
-function formatTime(seconds: number): string {
-	const secs = Math.round(seconds % 60);
-	const mins = Math.floor(seconds / 60);
-	if (mins >= 60) {
-		const hours = Math.floor(mins / 60);
-		const remainingMins = mins % 60;
-		return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
-	}
-	if (mins === 0) return `${secs}s`;
-	return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
 const ZONES = [
-	{ key: "z1" as const, label: "Z1" },
-	{ key: "z2" as const, label: "Z2" },
-	{ key: "z3" as const, label: "Z3" },
-	{ key: "z4" as const, label: "Z4" },
-	{ key: "z5" as const, label: "Z5" },
+	{ key: "z1" as const, label: `Z1 ${ZONE_DISPLAY_NAMES.z1}` },
+	{ key: "z2" as const, label: `Z2 ${ZONE_DISPLAY_NAMES.z2}` },
+	{ key: "z3" as const, label: `Z3 ${ZONE_DISPLAY_NAMES.z3}` },
+	{ key: "z4" as const, label: `Z4 ${ZONE_DISPLAY_NAMES.z4}` },
+	{ key: "z5" as const, label: `Z5 ${ZONE_DISPLAY_NAMES.z5}` },
 ];
 
 export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
@@ -44,8 +33,8 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 
 				return (
 					<div key={key} className="flex items-center gap-3">
-						<div className="flex items-center gap-2 w-20">
-							<div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
+						<div className="flex items-center gap-2 w-28 whitespace-nowrap">
+							<div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
 							<span className="text-sm font-medium" style={{ color }}>{label}</span>
 						</div>
 						<div className="flex-1 bg-surface-alt rounded-full h-2 overflow-hidden">
@@ -56,7 +45,7 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 						</div>
 						<div className="flex items-center gap-2 min-w-28">
 							<span className="text-sm font-semibold text-text">
-								{formatTime(seconds)}
+								{formatZoneTime(seconds)}
 							</span>
 							<span className="text-sm text-muted">
 								{percentage.toFixed(1)}%

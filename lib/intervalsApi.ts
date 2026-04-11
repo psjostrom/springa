@@ -9,7 +9,7 @@ import type {
   PaceCurveData,
   BestEffort,
 } from "./types";
-import { API_BASE } from "./constants";
+import { API_BASE, PACE_ZONE_PCT, ZONE_DISPLAY_NAMES, type ZoneKey } from "./constants";
 import { extractRawStreams, extractLatlng } from "./streams";
 import {
   processActivities,
@@ -62,20 +62,20 @@ export async function updateAthleteHRZones(
   hrZones: number[],
   restingHr?: number,
 ): Promise<void> {
-  // Update sport settings (hr_zones)
   const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
-  await fetch(settingsUrl.href, {
+  const res = await fetch(settingsUrl.href, {
     method: "PUT",
     headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
     body: JSON.stringify({ hr_zones: hrZones }),
   });
-  // Update resting HR on athlete profile
+  if (!res.ok) throw new Error(`Failed to update HR zones: ${res.status}`);
   if (restingHr != null) {
-    await fetch(`${API_BASE}/athlete/0`, {
+    const rhRes = await fetch(`${API_BASE}/athlete/0`, {
       method: "PUT",
       headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
       body: JSON.stringify({ icu_resting_hr: restingHr }),
     });
+    if (!rhRes.ok) throw new Error(`Failed to update resting HR: ${rhRes.status}`);
   }
 }
 
@@ -91,11 +91,31 @@ export async function updateThresholdPace(
   // Convert min/km → m/s: 1 km/min ÷ pace × 1000m/km ÷ 60s/min
   const metersPerSecond = 1000 / (paceMinPerKm * 60);
   const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
-  await fetch(settingsUrl.href, {
+  const res = await fetch(settingsUrl.href, {
     method: "PUT",
     headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
     body: JSON.stringify({ threshold_pace: metersPerSecond }),
   });
+  if (!res.ok) throw new Error(`Failed to update threshold pace: ${res.status}`);
+}
+
+/** Push pace zone boundaries and names to Intervals.icu sport settings.
+ *  Derives from PACE_ZONE_PCT and ZONE_DISPLAY_NAMES (single source of truth).
+ *  Format: array of zone ceilings as % of threshold speed, last value 999 (sentinel). */
+export async function updatePaceZones(
+  apiKey: string,
+  sportSettingsId: number,
+): Promise<void> {
+  const paceZones = [...PACE_ZONE_PCT.map((pct) => Math.round(pct * 100)), 999];
+  const zoneKeys: ZoneKey[] = ["z1", "z2", "z3", "z4", "z5"];
+  const paceZoneNames = zoneKeys.map((k) => ZONE_DISPLAY_NAMES[k]);
+  const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
+  const res = await fetch(settingsUrl.href, {
+    method: "PUT",
+    headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify({ pace_zones: paceZones, pace_zone_names: paceZoneNames }),
+  });
+  if (!res.ok) throw new Error(`Failed to update pace zones: ${res.status}`);
 }
 
 export interface PlatformConnection {

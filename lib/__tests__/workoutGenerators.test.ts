@@ -269,7 +269,7 @@ describe("generatePlan", () => {
     expect(progressiveRuns.length).toBeGreaterThan(0);
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("30-94% pace");
+      expect(mainSet).toContain("30-88% pace");
       expect(mainSet).toContain("100-103% pace");
       expect(mainSet).toContain("106-111% pace");
       const steadyIdx = mainSet.indexOf("100-103% pace");
@@ -440,18 +440,18 @@ describe("generatePlan", () => {
     // 5K steady min should be higher than marathon steady min
     expect(steadyMin5k).toBeGreaterThan(steadyMinM);
 
-    // Easy is fixed at 30-94% regardless of distance
+    // Easy is fixed at 30-88% regardless of distance
     const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
-    expect(easy5k!.description).toContain("30-94% pace");
+    expect(easy5k!.description).toContain("30-88% pace");
     const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
-    expect(easyMarathon!.description).toContain("30-94% pace");
+    expect(easyMarathon!.description).toContain("30-88% pace");
   });
 
   it("falls back to HM defaults when goalTimeSecs is not set", () => {
     const plan = generateFull({ goalTimeSecs: undefined });
     const easyRun = plan.find((e) => e.external_id.includes("easy-"));
     expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("30-94% pace");
+    expect(easyRun!.description).toContain("30-88% pace");
   });
 
   it("derives paceTable from currentAbility, not goalTime", () => {
@@ -655,39 +655,39 @@ describe("suggestCategory", () => {
 describe("computeZonePacePct", () => {
   it("returns HM defaults when paceTable is null", () => {
     const result = computeZonePacePct(null);
-    expect(result.easy).toEqual({ min: 30, max: 94 });
-    expect(result.steady).toEqual({ min: 99, max: 102 });
-    expect(result.tempo).toEqual({ min: 106, max: 111 });
+    expect(result.z2).toEqual({ min: 30, max: 88 });
+    expect(result.z3).toEqual({ min: 99, max: 102 });
+    expect(result.z4).toEqual({ min: 106, max: 111 });
     expect(result.walk).toEqual({ min: null, max: null });
-    expect(result.hard).toEqual({ min: null, max: null });
+    expect(result.z5).toEqual({ min: null, max: null });
   });
 
   it("returns default steady (99-102) when no goal is provided", () => {
     const table = getPaceTable(10, 3300);
     const result = computeZonePacePct(table);
-    expect(result.steady).toEqual({ min: 99, max: 102 });
+    expect(result.z3).toEqual({ min: 99, max: 102 });
   });
 
   it("shifts steady down for slower goal (trail race)", () => {
     // 10K ability 55:00 flat, EcoTrail 16km goal 2:20:00 (8:45/km — slower than threshold)
     const table = getPaceTable(10, 3300, 16, 8400);
     const result = computeZonePacePct(table, 16, 8400);
-    expect(result.steady.min).toBeLessThan(99);
-    expect(result.steady.max).toBeLessThan(102);
+    expect(result.z3.min).toBeLessThan(99);
+    expect(result.z3.max).toBeLessThan(102);
   });
 
   it("shifts steady up for faster goal (5K race)", () => {
     // 5K ability 27:00, racing 5K in 27:00 — threshold is HM-equivalent (slower)
     const table = getPaceTable(5, 1620);
     const result = computeZonePacePct(table, 5, 1620);
-    expect(result.steady.min).toBeGreaterThan(99);
-    expect(result.steady.max).toBeGreaterThan(102);
+    expect(result.z3.min).toBeGreaterThan(99);
+    expect(result.z3.max).toBeGreaterThan(102);
   });
 
   it("easy and tempo are fixed regardless of goal", () => {
     const table = getPaceTable(10, 3300, 16, 8400);
     const result = computeZonePacePct(table, 16, 8400);
-    expect(result.easy).toEqual({ min: 30, max: 94 });
-    expect(result.tempo).toEqual({ min: 106, max: 111 });
+    expect(result.z2).toEqual({ min: 30, max: 88 });
+    expect(result.z4).toEqual({ min: 106, max: 111 });
   });
 });

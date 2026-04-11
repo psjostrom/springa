@@ -1,11 +1,11 @@
-import type { HRZoneName, DataPoint, PaceTable } from "./types";
-import { classifyHR, ZONE_TO_NAME, FALLBACK_PACE_TABLE } from "./constants";
+import type { ZoneName, DataPoint, PaceTable } from "./types";
+import { classifyHR, FALLBACK_PACE_TABLE } from "./constants";
 import { linearRegression } from "./math";
 
 // --- Types ---
 
 export interface ZoneSegment {
-  zone: HRZoneName;
+  zone: ZoneName;
   avgPace: number; // min/km
   avgHr: number;
   durationMin: number;
@@ -14,7 +14,7 @@ export interface ZoneSegment {
 }
 
 export interface ZoneSummary {
-  zone: HRZoneName;
+  zone: ZoneName;
   avgPace: number;
   avgHr: number;
   segmentCount: number;
@@ -22,20 +22,21 @@ export interface ZoneSummary {
 }
 
 export interface CalibratedPaceTable {
-  table: Record<HRZoneName, { pace: number; calibrated: boolean }>;
+  table: Record<ZoneName, { pace: number; calibrated: boolean }>;
   segments: ZoneSegment[];
-  zoneSummaries: Map<HRZoneName, ZoneSummary>;
+  zoneSummaries: Map<ZoneName, ZoneSummary>;
   hardExtrapolated: boolean;
 }
 
 // --- Constants ---
 
 /** Minimum consecutive minutes in same zone to count as a segment. */
-const MIN_SEGMENT_MINUTES: Record<HRZoneName, number> = {
-  easy: 3,
-  steady: 2,
-  tempo: 1,
-  hard: 1, // unused — hard is always extrapolated
+const MIN_SEGMENT_MINUTES: Record<ZoneName, number> = {
+  z1: 3,
+  z2: 3,
+  z3: 2,
+  z4: 1,
+  z5: 1, // unused — z5 is always extrapolated
 };
 
 /** Pace bounds (min/km) — reject outliers outside this range. */
@@ -67,11 +68,11 @@ export function extractZoneSegments(
   }
 
   // Walk HR stream, classify each minute
-  const classified: { minute: number; zone: HRZoneName; hr: number }[] = [];
+  const classified: { minute: number; zone: ZoneName; hr: number }[] = [];
   for (const h of hr) {
     const minute = Math.round(h.time);
-    const zoneKey = classifyHR(h.value, hrZones);
-    classified.push({ minute, zone: ZONE_TO_NAME[zoneKey], hr: h.value });
+    const zone = classifyHR(h.value, hrZones);
+    classified.push({ minute, zone, hr: h.value });
   }
 
   // Sort by minute
@@ -85,8 +86,8 @@ export function extractZoneSegments(
     const sameZone = i < classified.length && classified[i].zone === classified[segStart].zone;
     if (!sameZone) {
       const zone = classified[segStart].zone;
-      // Skip hard — always extrapolated
-      if (zone !== "hard") {
+      // Skip z5 — always extrapolated
+      if (zone !== "z5") {
         const segEntries = classified.slice(segStart, i);
         const durationMin = segEntries.length;
         const minDuration = MIN_SEGMENT_MINUTES[zone];
@@ -127,14 +128,14 @@ export function extractZoneSegments(
 export function buildCalibratedPaceTable(
   segments: ZoneSegment[],
 ): CalibratedPaceTable {
-  const zones: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
-  const summaries = new Map<HRZoneName, ZoneSummary>();
+  const zones: ZoneName[] = ["z1", "z2", "z3", "z4", "z5"];
+  const summaries = new Map<ZoneName, ZoneSummary>();
   const table = {} as CalibratedPaceTable["table"];
   let hardExtrapolated = false;
 
-  // Compute duration-weighted average pace per zone (excluding hard)
+  // Compute duration-weighted average pace per zone (excluding z5)
   for (const zone of zones) {
-    if (zone === "hard") continue;
+    if (zone === "z5") continue;
     const zoneSegs = segments.filter((s) => s.zone === zone);
     if (zoneSegs.length === 0) continue;
 
@@ -157,8 +158,8 @@ export function buildCalibratedPaceTable(
     });
   }
 
-  // Set calibrated paces or fallback for easy/steady/tempo
-  for (const zone of ["easy", "steady", "tempo"] as HRZoneName[]) {
+  // Set calibrated paces or fallback for z1-z4
+  for (const zone of ["z1", "z2", "z3", "z4"] as ZoneName[]) {
     const summary = summaries.get(zone);
     if (summary) {
       table[zone] = { pace: summary.avgPace, calibrated: true };
@@ -168,10 +169,10 @@ export function buildCalibratedPaceTable(
     }
   }
 
-  // Extrapolate hard via linear regression on calibrated zones
+  // Extrapolate z5 via linear regression on calibrated zones
   const regressionPoints: { x: number; y: number }[] = [];
-  // x = zone index (0=easy, 1=steady, 2=tempo), y = pace
-  const calibratedZones: HRZoneName[] = ["easy", "steady", "tempo"];
+  // x = zone index (0=z2, 1=z3, 2=z4), y = pace
+  const calibratedZones: ZoneName[] = ["z2", "z3", "z4"];
   for (let i = 0; i < calibratedZones.length; i++) {
     const summary = summaries.get(calibratedZones[i]);
     if (summary) {
@@ -181,15 +182,15 @@ export function buildCalibratedPaceTable(
 
   if (regressionPoints.length >= 2) {
     const reg = linearRegression(regressionPoints);
-    // Extrapolate to x=3 (hard)
+    // Extrapolate to x=3 (z5)
     const hardPace = reg.intercept + reg.slope * 3;
     // Clamp to reasonable range
     const clampedHard = Math.max(PACE_MIN, Math.min(PACE_MAX, hardPace));
-    table.hard = { pace: clampedHard, calibrated: true };
+    table.z5 = { pace: clampedHard, calibrated: true };
     hardExtrapolated = true;
   } else {
-    const fb = FALLBACK_PACE_TABLE.hard;
-    table.hard = { pace: fb ? fb.avgPace : 4.75, calibrated: false };
+    const fb = FALLBACK_PACE_TABLE.z5;
+    table.z5 = { pace: fb ? fb.avgPace : 4.75, calibrated: false };
   }
 
   return { table, segments, zoneSummaries: summaries, hardExtrapolated };
@@ -225,7 +226,7 @@ function filterOutliersIQR(values: number[]): Set<number> {
  */
 export function computeZonePaceTrend(
   segments: ZoneSegment[],
-  zone: HRZoneName,
+  zone: ZoneName,
   windowDays = 90,
 ): number | null {
   const zoneSegs = segments.filter((s) => s.zone === zone && s.activityDate);
@@ -270,7 +271,7 @@ export function computeZonePaceTrend(
  * Calibrated zones get real data; uncalibrated zones fall back to FALLBACK_PACE_TABLE.
  */
 export function toPaceTable(calibration: CalibratedPaceTable): PaceTable {
-  const zones: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
+  const zones: ZoneName[] = ["z1", "z2", "z3", "z4", "z5"];
   const result = {} as PaceTable;
   for (const zone of zones) {
     const entry = calibration.table[zone];

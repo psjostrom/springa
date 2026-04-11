@@ -1,6 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchAthleteRaw, fetchAthleteProfile, updateThresholdPace } from "@/lib/intervalsApi";
+import { fetchAthleteRaw, fetchAthleteProfile, updateThresholdPace, updatePaceZones } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
 export async function PUT(req: Request) {
@@ -34,8 +34,15 @@ export async function PUT(req: Request) {
 
   try {
     await updateThresholdPace(creds.intervalsApiKey, profile.sportSettingsId, body.paceMinPerKm);
-    return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ error: "Failed to update Intervals.icu" }, { status: 502 });
+    return NextResponse.json({ error: "Failed to update threshold pace" }, { status: 502 });
   }
+
+  // Best-effort: push pace zone boundaries alongside threshold pace.
+  // If this fails, threshold pace is already saved — don't fail the whole request.
+  try {
+    await updatePaceZones(creds.intervalsApiKey, profile.sportSettingsId);
+  } catch { /* pace zones are non-critical — threshold pace is the important one */ }
+
+  return NextResponse.json({ ok: true });
 }

@@ -44,7 +44,7 @@ describe("resolveModalLayout", () => {
       "report-card", "stats", "pace-splits", "next-time", "carbs-ingested", "prerun-carbs", "feedback",
     ]);
     expect(layout.overview.hidden).toEqual([]);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "route-map"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "pace-zones", "route-map"]);
     expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 
@@ -111,7 +111,7 @@ describe("resolveModalLayout", () => {
       "overview": { order: [...DEFAULT_TABS[0].widgets], hidden: [] },
     };
     const layout = resolveModalLayout(saved);
-    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "route-map"]);
+    expect(layout["deep-dive"].order).toEqual(["stream-graph", "workout", "hr-zones", "pace-zones", "route-map"]);
     expect(layout.analysis.order).toEqual(["run-analysis"]);
   });
 });

@@ -390,6 +390,7 @@ export function EventModal({
                 paceTable,
                 hrZones,
                 lthr,
+                racePacePerKm,
               }}
             />
           </>

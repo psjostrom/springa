@@ -102,16 +102,18 @@ export interface IntervalsStream {
 }
 
 // --- PACE TABLE TYPES ---
-export type HRZoneName = "easy" | "steady" | "tempo" | "hard";
+export type ZoneName = "z1" | "z2" | "z3" | "z4" | "z5";
+/** @deprecated Use ZoneName instead */
+export type HRZoneName = ZoneName;
 
 export interface ZonePaceEntry {
-  zone: HRZoneName;
+  zone: ZoneName;
   avgPace: number;
   sampleCount: number;
   avgHr?: number;
 }
 
-export type PaceTable = Record<HRZoneName, ZonePaceEntry | null>;
+export type PaceTable = Record<ZoneName, ZonePaceEntry | null>;
 
 // --- CALENDAR TYPES ---
 export interface HRZoneData {

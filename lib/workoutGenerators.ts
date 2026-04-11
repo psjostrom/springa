@@ -8,7 +8,7 @@ import {
   set,
   format,
 } from "date-fns";
-import type { WorkoutEvent, PlanContext, SpeedSessionType } from "./types";
+import type { WorkoutEvent, PlanContext, SpeedSessionType, ZoneName } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
 import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
@@ -16,8 +16,6 @@ import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
 import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
 import { getWeekIdx } from "./workoutMath";
-
-type ZoneName = "easy" | "steady" | "tempo" | "hard";
 
 export type OnDemandCategory = "easy" | "quality" | "long" | "club";
 export type DayRole = "long" | "speed" | "easy" | "club" | "free";
@@ -101,11 +99,12 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
 
 /** Pace percentages when no pace table is available. Easy uses 30% floor (allows walking). */
 const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
-  walk:   { min: null, max: null },
-  easy:   { min: 30, max: 94 },
-  steady: { min: 99, max: 102 },
-  tempo:  { min: 106, max: 111 },
-  hard:   { min: null, max: null },
+  walk: { min: null, max: null },
+  z1:   { min: null, max: null },
+  z2:   { min: 30, max: 88 },
+  z3:   { min: 99, max: 102 },
+  z4:   { min: 106, max: 111 },
+  z5:   { min: null, max: null },
 };
 
 /** Compute pace percentages relative to threshold (= HM-equivalent of current ability).
@@ -128,11 +127,12 @@ export function computeZonePacePct(
   }
 
   return {
-    walk:   { min: null, max: null },
-    easy:   { min: 30, max: 94 },
-    steady: { min: steadyMin, max: steadyMax },
-    tempo:  { min: 106, max: 111 },
-    hard:   { min: null, max: null },
+    walk: { min: null, max: null },
+    z1:   { min: null, max: null },
+    z2:   { min: 30, max: 88 },
+    z3:   { min: steadyMin, max: steadyMax },
+    z4:   { min: 106, max: 111 },
+    z5:   { min: null, max: null },
   };
 }
 
@@ -183,8 +183,8 @@ const generateQualityRun = (
   const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
-  const wu = s("10m", "easy", "Warmup");
-  const cd = s("5m", "easy", "Cooldown");
+  const wu = s("10m", "z2", "Warmup");
+  const cd = s("5m", "z2", "Cooldown");
 
   const sessionType = getSpeedSessionType(ctx, wp);
 
@@ -208,7 +208,7 @@ const generateQualityRun = (
     return {
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} ${wp.isRaceTest ? "Easy [PRE-TEST]" : "Easy"}`,
-      description: createSimpleWorkoutText(s(duration, "easy"), notes),
+      description: createSimpleWorkoutText(s(duration, "z2"), notes),
       external_id: `speed-${wp.weekNum}`,
       type: "Run",
       fuelRate: ctx.fuelEasy,
@@ -223,20 +223,20 @@ const generateQualityRun = (
   switch (sessionType) {
     case "short-intervals": {
       reps = 6 + Math.floor(progress * 2);
-      steps = [s("2m", "tempo", "Fast"), s("2m", "walk")];
+      steps = [s("2m", "z4", "Fast"), s("2m", "walk")];
       notes = "Short, punchy efforts to build leg speed and running economy. Run each rep at a strong, controlled effort — not a flat-out sprint. Focus on quick cadence and light feet. Walk the recovery — let your HR come back down fully before the next rep.";
       break;
     }
     case "hills": {
       reps = 6 + Math.floor(progress * 2);
-      steps = [s("2m", "hard", "Uphill"), s("3m", "easy", "Downhill")];
+      steps = [s("2m", "z5", "Uphill"), s("3m", "z2", "Downhill")];
       notes = "Hill reps build strength and power that translates directly to EcoTrail's terrain. Outdoors: find a steady hill with a moderate gradient. Drive your knees, lean slightly forward from the ankles, and keep a strong arm swing. Jog back down easy — the downhill IS the recovery. Treadmill: set a fixed incline (5-6%) for the entire session. Hard reps at 10-12 km/h, recovery at 4-5 km/h walk.";
       break;
     }
     case "long-intervals": {
       const workMin = 4 + Math.floor(progress * 2);
       reps = 4;
-      steps = [s(`${workMin}m`, "tempo", "Fast"), s("2m", "walk")];
+      steps = [s(`${workMin}m`, "z4", "Fast"), s("2m", "walk")];
       notes = "Longer intervals to develop your threshold and teach your body to clear lactate at pace. These should feel 'comfortably hard' — you can speak a few words but not hold a conversation. Stay relaxed in your shoulders and hands. Walk the recovery fully. Each rep should feel the same effort, not faster as you go.";
       break;
     }
@@ -244,13 +244,13 @@ const generateQualityRun = (
       const distM = 600 + Math.floor(progress * 2) * 200;
       reps = distM >= 1000 ? 6 : 8;
       const distKm = (distM / 1000).toFixed(1);
-      steps = [s(`${distKm}km`, "tempo", "Fast"), s("0.2km", "walk")];
+      steps = [s(`${distKm}km`, "z4", "Fast"), s("0.2km", "walk")];
       notes = `Track-style reps to sharpen your pace awareness. Run each ${distM}m at a consistent, controlled pace — aim to hit the same split every rep rather than going out too fast. Walk the 200m recovery. These build the specific speed and confidence you need on race day.`;
       break;
     }
     case "race-pace-intervals": {
       reps = 5;
-      steps = [s("5m", "steady", "Race Pace"), s("2m", "walk")];
+      steps = [s("5m", "z3", "Race Pace"), s("2m", "walk")];
       notes = "Race pace practice. The goal is to lock in what race effort feels like so it becomes automatic on the day. These should feel controlled and sustainable — not hard. Focus on rhythm: steady breathing, relaxed form, consistent pace. Walk the recovery. If it feels too easy, you're doing it right.";
       break;
     }
@@ -301,14 +301,14 @@ const generateEasyRun = (
   }
 
   if (withStrides) {
-    const wu = s("10m", "easy", "Warmup");
-    const cd = s("15m", "easy", "Cooldown");
+    const wu = s("10m", "z2", "Warmup");
+    const cd = s("15m", "z2", "Cooldown");
     const mainDuration = Math.max(duration - 10, 10);
     const lines = [
       notes, "",
       "Warmup", `- ${wu}`, "",
-      "Main set", `- ${s(`${mainDuration}m`, "easy", "Easy")}`, "",
-      "Strides 4x", `- ${s("20s", "hard", "Stride")}`, `- ${s("1m", "walk")}`, "",
+      "Main set", `- ${s(`${mainDuration}m`, "z2", "Easy")}`, "",
+      "Strides 4x", `- ${s("20s", "z5", "Stride")}`, `- ${s("1m", "walk")}`, "",
       "Cooldown", `- ${cd}`, "",
     ];
     return {
@@ -324,12 +324,12 @@ const generateEasyRun = (
   const totalDuration = duration + 15; // preserve original total (was single step)
   const cdDuration = Math.min(15, totalDuration - 10 - 10); // WU=10, min main=10
   const mainDuration = totalDuration - 10 - cdDuration;
-  const wu = s("10m", "easy", "Warmup");
-  const cd = s(`${cdDuration}m`, "easy", "Cooldown");
+  const wu = s("10m", "z2", "Warmup");
+  const cd = s(`${cdDuration}m`, "z2", "Cooldown");
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
-    description: createWorkoutText(wu, [s(`${mainDuration}m`, "easy")], cd, 1, notes),
+    description: createWorkoutText(wu, [s(`${mainDuration}m`, "z2")], cd, 1, notes),
     external_id: `easy-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -351,7 +351,7 @@ const generateFreeRun = (
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
-    description: createSimpleWorkoutText(s("30m", "easy"), notes),
+    description: createSimpleWorkoutText(s("30m", "z2"), notes),
     external_id: `free-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -416,8 +416,8 @@ const generateLongRun = (
   }
 
   const mainKm = Math.max(km - 3, 1); // -1km WU, -2km CD
-  const wu = s("1km", "easy", "Warmup");
-  const cd = s("2km", "easy", "Cooldown");
+  const wu = s("1km", "z2", "Warmup");
+  const cd = s("2km", "z2", "Cooldown");
 
   let mainSteps: string[];
   let notes: string;
@@ -426,16 +426,16 @@ const generateLongRun = (
     const rpBlockKm = Math.min(2 + Math.floor((weekIdx / ctx.totalWeeks) * 3), Math.floor(mainKm * 0.4));
     const easyBeforeKm = Math.floor((mainKm - rpBlockKm) / 2);
     const easyAfterKm = mainKm - rpBlockKm - easyBeforeKm;
-    mainSteps = [s(`${easyBeforeKm}km`, "easy", "Easy"), s(`${rpBlockKm}km`, "steady", "Race Pace"), s(`${easyAfterKm}km`, "easy", "Easy")];
+    mainSteps = [s(`${easyBeforeKm}km`, "z2", "Easy"), s(`${rpBlockKm}km`, "z3", "Race Pace"), s(`${easyAfterKm}km`, "z2", "Easy")];
     notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
   } else if (longRunVariant === "progressive" && mainKm >= 4) {
     const easyKm = Math.floor(mainKm * 0.5);
     const steadyKm = Math.max(Math.floor(mainKm * 0.3), 1);
     const tempoKm = mainKm - easyKm - steadyKm;
-    mainSteps = [s(`${easyKm}km`, "easy", "Easy"), s(`${steadyKm}km`, "steady", "Race Pace"), s(`${tempoKm}km`, "tempo", "Fast")];
+    mainSteps = [s(`${easyKm}km`, "z2", "Easy"), s(`${steadyKm}km`, "z3", "Race Pace"), s(`${tempoKm}km`, "z4", "Fast")];
     notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
-    mainSteps = [s(`${mainKm}km`, "easy", "Easy")];
+    mainSteps = [s(`${mainKm}km`, "z2", "Easy")];
     if (wp.isRecovery) {
       notes = "Recovery week long run — shorter distance to let your body absorb the training. Run the whole thing easy and enjoy being out there. No pace pressure today.";
     } else if (wp.isBase) {

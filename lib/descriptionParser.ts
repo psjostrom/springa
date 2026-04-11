@@ -1,42 +1,42 @@
-import type { HRZoneName, PaceTable } from "./types";
-import { FALLBACK_PACE_TABLE, classifyHR, ZONE_TO_NAME, DEFAULT_LTHR } from "./constants";
+import type { ZoneName, PaceTable } from "./types";
+import { FALLBACK_PACE_TABLE, classifyHR, DEFAULT_LTHR } from "./constants";
 import { formatPace } from "./format";
 
 // --- PACE LOOKUP ---
 
 /** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
-/** Safe accessor for FALLBACK_PACE_TABLE entries (all four zones are always populated). */
-function fallbackPace(zone: HRZoneName): number {
+/** Safe accessor for FALLBACK_PACE_TABLE entries (z2-z5 populated, z1 is null). */
+function fallbackPace(zone: ZoneName): number {
   return FALLBACK_PACE_TABLE[zone]?.avgPace ?? 7.25;
 }
 
 export function paceForIntensity(avgPercent: number, table?: PaceTable): number {
   if (table) {
-    if (avgPercent >= 95) return table.hard?.avgPace ?? fallbackPace("hard");
-    if (avgPercent >= 88) return table.tempo?.avgPace ?? fallbackPace("tempo");
-    if (avgPercent >= 80) return table.steady?.avgPace ?? fallbackPace("steady");
-    return table.easy?.avgPace ?? fallbackPace("easy");
+    if (avgPercent >= 95) return table.z5?.avgPace ?? fallbackPace("z5");
+    if (avgPercent >= 88) return table.z4?.avgPace ?? fallbackPace("z4");
+    if (avgPercent >= 80) return table.z3?.avgPace ?? fallbackPace("z3");
+    return table.z2?.avgPace ?? fallbackPace("z2");
   }
-  if (avgPercent >= 95) return fallbackPace("hard");
-  if (avgPercent >= 88) return fallbackPace("tempo");
-  if (avgPercent >= 80) return fallbackPace("steady");
-  return fallbackPace("easy");
+  if (avgPercent >= 95) return fallbackPace("z5");
+  if (avgPercent >= 88) return fallbackPace("z4");
+  if (avgPercent >= 80) return fallbackPace("z3");
+  return fallbackPace("z2");
 }
 
 // --- ZONE PARSING ---
 
 /** Convert LTHR percentage to zone name using dynamic zone boundaries. */
-function classifyIntensity(lthrPct: number, lthr: number, hrZones: number[]): HRZoneName {
+function classifyIntensity(lthrPct: number, lthr: number, hrZones: number[]): ZoneName {
   const hr = (lthrPct / 100) * lthr;
-  return ZONE_TO_NAME[classifyHR(hr, hrZones)];
+  return classifyHR(hr, hrZones);
 }
 
 /** Classify zone from Intervals.icu pace percentage (higher % = faster). */
-function classifyPacePct(avgPct: number): HRZoneName {
-  if (avgPct >= 112) return "hard";
-  if (avgPct >= 103) return "tempo";
-  if (avgPct >= 96) return "steady";
-  return "easy";
+function classifyPacePct(avgPct: number): ZoneName {
+  if (avgPct >= 112) return "z5";
+  if (avgPct >= 103) return "z4";
+  if (avgPct >= 96) return "z3";
+  return "z2";
 }
 
 /** Convert pace percentage to actual min/km given threshold (race) pace. */
@@ -48,7 +48,7 @@ function pctToMinPerKm(pct: number, racePacePerKm: number): number {
  * Parse a workout description and return all distinct HR zones used,
  * ordered from lowest to highest intensity.
  */
-export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = []): HRZoneName[] {
+export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = []): ZoneName[] {
   const isPaceFormat = description.includes("% pace");
   if (!isPaceFormat && hrZones.length !== 5) return [];
 
@@ -57,7 +57,7 @@ export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZo
   );
   if (stepMatches.length === 0) return [];
 
-  const zones = new Set<HRZoneName>();
+  const zones = new Set<ZoneName>();
   for (const m of stepMatches) {
     const minPct = parseInt(m[1], 10);
     const maxPct = parseInt(m[2], 10);
@@ -65,7 +65,7 @@ export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZo
     zones.add(isPaceFormat ? classifyPacePct(avgPct) : classifyIntensity(avgPct, lthr, hrZones));
   }
 
-  const order: HRZoneName[] = ["easy", "steady", "tempo", "hard"];
+  const order: ZoneName[] = ["z2", "z3", "z4", "z5"];
   return order.filter((z) => zones.has(z));
 }
 
@@ -114,7 +114,7 @@ export function extractStructure(description: string): string {
 export interface WorkoutStep {
   label?: string;         // "Uphill", "Downhill", or undefined
   duration: string;       // raw: "10m", "2m", "8km", "20s"
-  zone: HRZoneName;       // classified zone name
+  zone: ZoneName;         // classified zone name
   bpmRange: string;       // "112-132 bpm"
 }
 
@@ -168,7 +168,7 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
         return { label, duration, zone, bpmRange: detail };
       }
       // Effort-based step (walk, strides) — no pace target
-      const zone: HRZoneName = m[1] === "Walk" ? "easy" : "hard";
+      const zone: ZoneName = m[1] === "Walk" ? "z1" : "z5";
       return { label, duration, zone, bpmRange: "" };
     }
 

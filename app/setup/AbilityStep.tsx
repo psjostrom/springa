@@ -132,15 +132,15 @@ export function AbilityStep({ raceDist, experience, raceDate: initialDate, curre
             <p className="text-text font-semibold mb-2">Your training paces</p>
             <div className="flex justify-between text-muted">
               <span>Easy</span>
-              <span>{formatPace(pacePreview.easy.min)} &ndash; {formatPace(pacePreview.easy.max)} /km</span>
+              <span>{formatPace(pacePreview.z2.min)} &ndash; {formatPace(pacePreview.z2.max)} /km</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>Race</span>
-              <span>{formatPace(pacePreview.steady.min)} &ndash; {formatPace(pacePreview.steady.max)} /km</span>
+              <span>{formatPace(pacePreview.z3.min)} &ndash; {formatPace(pacePreview.z3.max)} /km</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>Intervals</span>
-              <span>{formatPace(pacePreview.tempo.min)} &ndash; {formatPace(pacePreview.tempo.max)} /km</span>
+              <span>{formatPace(pacePreview.z4.min)} &ndash; {formatPace(pacePreview.z4.max)} /km</span>
             </div>
           </div>
         </div>

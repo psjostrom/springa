@@ -1,4 +1,4 @@
-import type { HRZoneName, PaceTable, SpeedSessionType } from "./types";
+import type { ZoneName, PaceTable, SpeedSessionType } from "./types";
 
 // --- CONSTANTS ---
 
@@ -28,10 +28,11 @@ export const DEFAULT_WORKOUT_DURATION_MINUTES = 45;
 export const ACTIVITY_HISTORY_DAYS = 45;
 
 export const FALLBACK_PACE_TABLE: PaceTable = {
-  easy: { zone: "easy", avgPace: 7.25, sampleCount: 0 },
-  steady: { zone: "steady", avgPace: 5.67, sampleCount: 0 },
-  tempo: { zone: "tempo", avgPace: 5.21, sampleCount: 0 },
-  hard: { zone: "hard", avgPace: 4.75, sampleCount: 0 },
+  z1: null,
+  z2: { zone: "z2", avgPace: 7.25, sampleCount: 0 },
+  z3: { zone: "z3", avgPace: 5.67, sampleCount: 0 },
+  z4: { zone: "z4", avgPace: 5.21, sampleCount: 0 },
+  z5: { zone: "z5", avgPace: 4.75, sampleCount: 0 },
 };
 
 export const SPEED_ROTATION: SpeedSessionType[] = [
@@ -60,20 +61,21 @@ export const ZONE_COLORS = {
 
 export type ZoneKey = keyof typeof ZONE_COLORS;
 
-/** Map zone key to workout intensity name (for pace tables, workout descriptions). */
-export const ZONE_TO_NAME: Record<ZoneKey, HRZoneName> = {
-  z1: "easy",
-  z2: "easy",
-  z3: "steady",
-  z4: "tempo",
-  z5: "hard",
+/** Human-readable zone names for analysis/display contexts. */
+export const ZONE_DISPLAY_NAMES: Record<ZoneKey, string> = {
+  z1: "Recovery",
+  z2: "Endurance",
+  z3: "Tempo",
+  z4: "Threshold",
+  z5: "VO2 Max",
 };
 
-const HR_ZONE_INDEX: Record<HRZoneName, [number, number]> = {
-  easy: [0, 1],
-  steady: [1, 2],
-  tempo: [2, 3],
-  hard: [3, 4],
+const HR_ZONE_INDEX: Record<ZoneName, [number, number]> = {
+  z1: [0, 0],
+  z2: [0, 1],
+  z3: [1, 2],
+  z4: [2, 3],
+  z5: [3, 4],
 };
 
 /**
@@ -96,7 +98,7 @@ export function computeMaxHRZones(maxHr: number): number[] {
  * hrZones = [Z1top, Z2top, Z3top, Z4top, Z5top] (BPM values from Intervals.icu).
  */
 export function resolveZoneBand(
-  zone: HRZoneName,
+  zone: ZoneName,
   lthr: number,
   hrZones: number[],
 ): { min: number; max: number } {
@@ -138,4 +140,53 @@ export function getWorkoutCategory(
   )
     return "easy";
   return "other";
+}
+
+/** Strava-derived pace zone boundaries: 77/90/100/107% of threshold speed. */
+export const PACE_ZONE_PCT = [0.77, 0.90, 1.00, 1.07];
+
+/**
+ * Compute 4 pace zone boundaries from threshold pace.
+ * Returns [Z1/Z2, Z2/Z3, Z3/Z4, Z4/Z5] in min/km (slowest first, fastest last).
+ */
+export function computePaceZones(thresholdPaceMinPerKm: number): number[] {
+  return PACE_ZONE_PCT.map((pct) => thresholdPaceMinPerKm / pct);
+}
+
+/**
+ * Classify pace into a zone key. The ONE function for pace → zone.
+ * Lower pace = faster = higher zone (inverted vs HR).
+ */
+export function classifyPace(pace: number, paceZones: number[]): ZoneKey {
+  if (pace <= paceZones[3]) return "z5";
+  if (pace <= paceZones[2]) return "z4";
+  if (pace <= paceZones[1]) return "z3";
+  if (pace <= paceZones[0]) return "z2";
+  return "z1";
+}
+
+export interface PaceZoneTimes {
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+}
+
+/**
+ * Compute time-in-zone from a pace stream.
+ * Filters zero/null values (stopped segments).
+ */
+export function computePaceZoneTimes(
+  paceStream: number[],
+  paceZones: number[],
+  sampleInterval = 1,
+): PaceZoneTimes {
+  const times: PaceZoneTimes = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+  for (const pace of paceStream) {
+    if (!pace || pace <= 0) continue;
+    const zone = classifyPace(pace, paceZones);
+    times[zone] += sampleInterval;
+  }
+  return times;
 }

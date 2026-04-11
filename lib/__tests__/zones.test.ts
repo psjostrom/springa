@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyHR, computeMaxHRZones, ZONE_COLORS, ZONE_TO_NAME } from "../constants";
+import { classifyHR, computeMaxHRZones, ZONE_COLORS } from "../constants";
 import { TEST_HR_ZONES } from "./testConstants";
 
 const hrZones = [...TEST_HR_ZONES];
@@ -33,24 +33,6 @@ describe("classifyHR with dynamic zone boundaries", () => {
   });
 });
 
-describe("ZONE_TO_NAME mapping", () => {
-  it("z1 and z2 map to easy", () => {
-    expect(ZONE_TO_NAME.z1).toBe("easy");
-    expect(ZONE_TO_NAME.z2).toBe("easy");
-  });
-
-  it("z3 maps to steady", () => {
-    expect(ZONE_TO_NAME.z3).toBe("steady");
-  });
-
-  it("z4 maps to tempo", () => {
-    expect(ZONE_TO_NAME.z4).toBe("tempo");
-  });
-
-  it("z5 maps to hard", () => {
-    expect(ZONE_TO_NAME.z5).toBe("hard");
-  });
-});
 
 describe("ZONE_COLORS has all zones", () => {
   it("has distinct colors for each zone", () => {
@@ -62,15 +44,6 @@ describe("ZONE_COLORS has all zones", () => {
   });
 });
 
-describe("classifyHR + ZONE_TO_NAME integration", () => {
-  it("classifies HR to zone name correctly", () => {
-    expect(ZONE_TO_NAME[classifyHR(100, hrZones)]).toBe("easy");
-    expect(ZONE_TO_NAME[classifyHR(130, hrZones)]).toBe("easy");
-    expect(ZONE_TO_NAME[classifyHR(148, hrZones)]).toBe("steady");
-    expect(ZONE_TO_NAME[classifyHR(162, hrZones)]).toBe("tempo");
-    expect(ZONE_TO_NAME[classifyHR(175, hrZones)]).toBe("hard");
-  });
-});
 
 describe("computeMaxHRZones", () => {
   it("computes 5 zones from maxHR using Runna percentages (65/81/89/97)", () => {

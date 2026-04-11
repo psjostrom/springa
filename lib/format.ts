@@ -1,14 +1,18 @@
-import type { HRZoneName, PaceTable, ZonePaceEntry } from "./types";
+import type { ZoneName, PaceTable, ZonePaceEntry } from "./types";
 import { FALLBACK_PACE_TABLE } from "./constants";
 
-const ZONE_LABELS: Record<HRZoneName, string> = {
-  easy: "Easy",
-  steady: "Race Pace",
-  tempo: "Interval",
-  hard: "Hard",
+// Prescription labels — plain language for workout cards ("Easy", "Race Pace").
+// Distinct from ZONE_DISPLAY_NAMES in constants.ts which are analysis labels
+// ("Endurance", "Tempo") shown in zone charts and settings.
+const ZONE_LABELS: Record<ZoneName, string> = {
+  z1: "Recovery",
+  z2: "Easy",
+  z3: "Race Pace",
+  z4: "Interval",
+  z5: "Hard",
 };
 
-export function getZoneLabel(zone: HRZoneName): string {
+export function getZoneLabel(zone: ZoneName): string {
   return ZONE_LABELS[zone];
 }
 
@@ -31,10 +35,23 @@ export function formatDuration(seconds: number): string {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
+/** Format seconds for zone time display: "45s", "2m 15s", "1h30m". */
+export function formatZoneTime(seconds: number): string {
+  const secs = Math.round(seconds % 60);
+  const mins = Math.floor(seconds / 60);
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
+  }
+  if (mins === 0) return `${secs}s`;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 /** Returns data-driven entry or falls back to hardcoded values */
 export function getPaceForZone(
   table: PaceTable,
-  zone: HRZoneName,
+  zone: ZoneName,
 ): ZonePaceEntry {
   return table[zone] ?? FALLBACK_PACE_TABLE[zone] ?? { zone, avgPace: 7.25, sampleCount: 0 };
 }

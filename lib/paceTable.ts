@@ -1,4 +1,4 @@
-import type { HRZoneName } from "./types";
+import type { ZoneName } from "./types";
 
 const HM_DISTANCE_KM = 21.0975;
 
@@ -24,10 +24,10 @@ export interface PaceRange {
 }
 
 export interface PaceTableResult {
-  easy: PaceRange;
-  steady: PaceRange;
-  tempo: PaceRange;
-  hard: number;
+  z2: PaceRange;
+  z3: PaceRange;
+  z4: PaceRange;
+  z5: number;
   racePacePerKm: number;          // ability pace at reference distance
   hmEquivalentPacePerKm: number;  // HM-equivalent for zone derivation
   abilitySecs: number;            // input ability time
@@ -71,10 +71,10 @@ export function getPaceTable(
     : abilityPacePerKm;
 
   return {
-    easy: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
-    steady: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
-    tempo: { min: hmEquivalentPacePerKm * 0.90, max: hmEquivalentPacePerKm * 0.94 },
-    hard: hmEquivalentPacePerKm * 0.85,
+    z2: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
+    z3: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
+    z4: { min: hmEquivalentPacePerKm * 0.90, max: hmEquivalentPacePerKm * 0.94 },
+    z5: hmEquivalentPacePerKm * 0.85,
     racePacePerKm: abilityPacePerKm,
     hmEquivalentPacePerKm,
     abilitySecs,
@@ -93,13 +93,14 @@ export function estimateGoalTimeFromEasyPace(easyPaceMinPerKm: number): number {
 
 export function getPaceRangeForZone(
   table: PaceTableResult,
-  zone: HRZoneName,
+  zone: ZoneName,
 ): PaceRange | null {
   switch (zone) {
-    case "easy": return table.easy;
-    case "steady": return table.steady;
-    case "tempo": return table.tempo;
-    case "hard": return null;
+    case "z1": return null;
+    case "z2": return table.z2;
+    case "z3": return table.z3;
+    case "z4": return table.z4;
+    case "z5": return null;
   }
 }
 
