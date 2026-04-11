@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { HRZoneName, PaceTable } from "@/lib/types";
+import type { ZoneName, PaceTable } from "@/lib/types";
 import { FALLBACK_PACE_TABLE, ZONE_COLORS, DEFAULT_LTHR } from "@/lib/constants";
 import {
   extractNotes,
@@ -25,11 +25,12 @@ interface WorkoutCardProps {
   racePacePerKm?: number;
 }
 
-const ZONE_BADGE: Record<HRZoneName, { bg: string; text: string }> = {
-  easy: { bg: ZONE_COLORS.z1, text: "var(--color-bg)" },
-  steady: { bg: ZONE_COLORS.z3, text: "var(--color-bg)" },
-  tempo: { bg: ZONE_COLORS.z4, text: "var(--color-bg)" },
-  hard: { bg: ZONE_COLORS.z5, text: "var(--color-text)" },
+const ZONE_BADGE: Record<ZoneName, { bg: string; text: string }> = {
+  z1: { bg: ZONE_COLORS.z1, text: "var(--color-bg)" },
+  z2: { bg: ZONE_COLORS.z2, text: "var(--color-bg)" },
+  z3: { bg: ZONE_COLORS.z3, text: "var(--color-bg)" },
+  z4: { bg: ZONE_COLORS.z4, text: "var(--color-bg)" },
+  z5: { bg: ZONE_COLORS.z5, text: "var(--color-text)" },
 };
 
 function StepRow({ step }: { step: WorkoutStep }) {

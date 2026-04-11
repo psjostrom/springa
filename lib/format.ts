@@ -1,14 +1,15 @@
-import type { HRZoneName, PaceTable, ZonePaceEntry } from "./types";
+import type { ZoneName, PaceTable, ZonePaceEntry } from "./types";
 import { FALLBACK_PACE_TABLE } from "./constants";
 
-const ZONE_LABELS: Record<HRZoneName, string> = {
-  easy: "Easy",
-  steady: "Race Pace",
-  tempo: "Interval",
-  hard: "Hard",
+const ZONE_LABELS: Record<ZoneName, string> = {
+  z1: "Recovery",
+  z2: "Easy",
+  z3: "Race Pace",
+  z4: "Interval",
+  z5: "Hard",
 };
 
-export function getZoneLabel(zone: HRZoneName): string {
+export function getZoneLabel(zone: ZoneName): string {
   return ZONE_LABELS[zone];
 }
 
@@ -34,7 +35,7 @@ export function formatDuration(seconds: number): string {
 /** Returns data-driven entry or falls back to hardcoded values */
 export function getPaceForZone(
   table: PaceTable,
-  zone: HRZoneName,
+  zone: ZoneName,
 ): ZonePaceEntry {
   return table[zone] ?? FALLBACK_PACE_TABLE[zone] ?? { zone, avgPace: 7.25, sampleCount: 0 };
 }

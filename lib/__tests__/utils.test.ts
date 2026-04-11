@@ -41,12 +41,13 @@ describe("formatPace", () => {
 describe("getPaceForZone", () => {
   it("returns entry from table when present", () => {
     const table: PaceTable = {
-      easy: { zone: "easy", avgPace: 7.0, sampleCount: 5, avgHr: 125 },
-      steady: null,
-      tempo: null,
-      hard: null,
+      z1: null,
+      z2: { zone: "z2", avgPace: 7.0, sampleCount: 5, avgHr: 125 },
+      z3: null,
+      z4: null,
+      z5: null,
     };
-    const result = getPaceForZone(table, "easy");
+    const result = getPaceForZone(table, "z2");
     expect(result.avgPace).toBe(7.0);
     expect(result.sampleCount).toBe(5);
     expect(result.avgHr).toBe(125);
@@ -54,35 +55,37 @@ describe("getPaceForZone", () => {
 
   it("falls back to FALLBACK_PACE_TABLE when entry is null", () => {
     const table: PaceTable = {
-      easy: null,
-      steady: null,
-      tempo: null,
-      hard: null,
+      z1: null,
+      z2: null,
+      z3: null,
+      z4: null,
+      z5: null,
     };
-    const result = getPaceForZone(table, "easy");
-    expect(result.avgPace).toBe(FALLBACK_PACE_TABLE.easy!.avgPace);
+    const result = getPaceForZone(table, "z2");
+    expect(result.avgPace).toBe(FALLBACK_PACE_TABLE.z2!.avgPace);
     expect(result.sampleCount).toBe(0);
   });
 
   it("returns correct fallback for each zone", () => {
     const emptyTable: PaceTable = {
-      easy: null,
-      steady: null,
-      tempo: null,
-      hard: null,
+      z1: null,
+      z2: null,
+      z3: null,
+      z4: null,
+      z5: null,
     };
-    expect(getPaceForZone(emptyTable, "steady").avgPace).toBe(5.67);
-    expect(getPaceForZone(emptyTable, "tempo").avgPace).toBe(5.21);
-    expect(getPaceForZone(emptyTable, "hard").avgPace).toBe(4.75);
+    expect(getPaceForZone(emptyTable, "z3").avgPace).toBe(5.67);
+    expect(getPaceForZone(emptyTable, "z4").avgPace).toBe(5.21);
+    expect(getPaceForZone(emptyTable, "z5").avgPace).toBe(4.75);
   });
 });
 
 describe("getZoneLabel", () => {
   it("maps zone names to display labels", () => {
-    expect(getZoneLabel("easy")).toBe("Easy");
-    expect(getZoneLabel("steady")).toBe("Race Pace");
-    expect(getZoneLabel("tempo")).toBe("Interval");
-    expect(getZoneLabel("hard")).toBe("Hard");
+    expect(getZoneLabel("z2")).toBe("Easy");
+    expect(getZoneLabel("z3")).toBe("Race Pace");
+    expect(getZoneLabel("z4")).toBe("Interval");
+    expect(getZoneLabel("z5")).toBe("Hard");
   });
 });
 
@@ -102,7 +105,7 @@ Cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
-    expect(zones).toEqual(["easy", "tempo"]);
+    expect(zones).toEqual(["z2", "z4"]);
   });
 
   it("extracts HR zones from a hills description", () => {
@@ -120,7 +123,7 @@ Cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(99,111)=105 → hard
-    expect(zones).toEqual(["easy", "hard"]);
+    expect(zones).toEqual(["z2", "z5"]);
   });
 
   it("extracts all zones from race pace sandwich long run", () => {
@@ -139,7 +142,7 @@ Cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady
-    expect(zones).toEqual(["easy", "steady"]);
+    expect(zones).toEqual(["z2", "z3"]);
   });
 
   it("returns sorted zones low-to-high", () => {
@@ -152,8 +155,8 @@ Cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
     // midpoint(66,78)=72 → easy, midpoint(89,99)=94 → tempo
-    expect(zones[0]).toBe("easy");
-    expect(zones[1]).toBe("tempo");
+    expect(zones[0]).toBe("z2");
+    expect(zones[1]).toBe("z4");
   });
 
   it("returns empty array for descriptions without HR zones", () => {
@@ -181,13 +184,13 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");       // warmup
-    expect(structure[1].steps[0].zone).toBe("tempo");       // interval work
-    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
-    expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
+    expect(structure[0].steps[0].zone).toBe("z2");       // warmup
+    expect(structure[1].steps[0].zone).toBe("z4");       // interval work
+    expect(structure[1].steps[1].zone).toBe("z1");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("z2");        // cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "tempo"]);
+    expect(zones).toEqual(["z2", "z4"]);
   });
 
   it("Hills: warmup/downhill = Easy, uphill = Hard", () => {
@@ -204,13 +207,13 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");
-    expect(structure[1].steps[0].zone).toBe("hard");        // uphill
-    expect(structure[1].steps[1].zone).toBe("easy");        // downhill
-    expect(structure[2].steps[0].zone).toBe("easy");
+    expect(structure[0].steps[0].zone).toBe("z2");
+    expect(structure[1].steps[0].zone).toBe("z5");        // uphill
+    expect(structure[1].steps[1].zone).toBe("z2");        // downhill
+    expect(structure[2].steps[0].zone).toBe("z2");
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "hard"]);
+    expect(zones).toEqual(["z2", "z5"]);
   });
 
   it("Long Run — All Easy: every step = Easy", () => {
@@ -228,12 +231,12 @@ Cooldown
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
     for (const section of structure) {
       for (const step of section.steps) {
-        expect(step.zone).toBe("easy");
+        expect(step.zone).toBe("z2");
       }
     }
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy"]);
+    expect(zones).toEqual(["z2"]);
   });
 
   it("Long Run — Race Pace Sandwich: easy sections = Easy, race pace block = Race Pace", () => {
@@ -251,14 +254,14 @@ Cooldown
 - 1km 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");        // warmup
-    expect(structure[1].steps[0].zone).toBe("easy");        // easy before RP
-    expect(structure[1].steps[1].zone).toBe("steady");      // race pace
-    expect(structure[1].steps[2].zone).toBe("easy");        // easy after RP
-    expect(structure[2].steps[0].zone).toBe("easy");        // cooldown
+    expect(structure[0].steps[0].zone).toBe("z2");        // warmup
+    expect(structure[1].steps[0].zone).toBe("z2");        // easy before RP
+    expect(structure[1].steps[1].zone).toBe("z3");      // race pace
+    expect(structure[1].steps[2].zone).toBe("z2");        // easy after RP
+    expect(structure[2].steps[0].zone).toBe("z2");        // cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "steady"]);
+    expect(zones).toEqual(["z2", "z3"]);
   });
 
   it("Easy + Strides: main = Easy, strides = Hard, recovery = Easy", () => {
@@ -278,14 +281,14 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");        // warmup
-    expect(structure[1].steps[0].zone).toBe("easy");        // main easy
-    expect(structure[2].steps[0].zone).toBe("hard");        // stride burst
-    expect(structure[2].steps[1].zone).toBe("easy");        // stride recovery
-    expect(structure[3].steps[0].zone).toBe("easy");        // cooldown
+    expect(structure[0].steps[0].zone).toBe("z2");        // warmup
+    expect(structure[1].steps[0].zone).toBe("z2");        // main easy
+    expect(structure[2].steps[0].zone).toBe("z5");        // stride burst
+    expect(structure[2].steps[1].zone).toBe("z2");        // stride recovery
+    expect(structure[3].steps[0].zone).toBe("z2");        // cooldown
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "hard"]);
+    expect(zones).toEqual(["z2", "z5"]);
   });
 
   it("Distance Intervals: warm/cool = Easy, fast reps = Interval, walk = Easy", () => {
@@ -302,13 +305,13 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");
-    expect(structure[1].steps[0].zone).toBe("tempo");       // fast reps
-    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
-    expect(structure[2].steps[0].zone).toBe("easy");
+    expect(structure[0].steps[0].zone).toBe("z2");
+    expect(structure[1].steps[0].zone).toBe("z4");       // fast reps
+    expect(structure[1].steps[1].zone).toBe("z1");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("z2");
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "tempo"]);
+    expect(zones).toEqual(["z2", "z4"]);
   });
 
   it("Race Pace Intervals: warm/cool = Easy, reps = Race Pace, walk = Easy", () => {
@@ -325,13 +328,13 @@ Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");
-    expect(structure[1].steps[0].zone).toBe("steady");      // race pace reps
-    expect(structure[1].steps[1].zone).toBe("easy");        // walk recovery
-    expect(structure[2].steps[0].zone).toBe("easy");
+    expect(structure[0].steps[0].zone).toBe("z2");
+    expect(structure[1].steps[0].zone).toBe("z3");      // race pace reps
+    expect(structure[1].steps[1].zone).toBe("z1");        // walk recovery
+    expect(structure[2].steps[0].zone).toBe("z2");
 
     const zones = parseWorkoutZones(desc, DEFAULT_LTHR, testHrZones);
-    expect(zones).toEqual(["easy", "steady"]);
+    expect(zones).toEqual(["z2", "z3"]);
   });
 
   it("zone boundaries: 50-66% is easy (not sub-easy), 78-89% is steady (not easy or tempo)", () => {
@@ -342,8 +345,8 @@ Cooldown
 - 5m 78-89% LTHR (132-150 bpm)`;
 
     const structure = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
-    expect(structure[0].steps[0].zone).toBe("easy");
-    expect(structure[0].steps[1].zone).toBe("steady");
+    expect(structure[0].steps[0].zone).toBe("z1");
+    expect(structure[0].steps[1].zone).toBe("z3");
   });
 });
 
@@ -801,8 +804,8 @@ Cooldown
     expect(sections[1].repeats).toBe(6);
     expect(sections[1].steps).toHaveLength(2);
     // midpoint(89,99)=94 → tempo, midpoint(66,78)=72 → easy
-    expect(sections[1].steps[0].zone).toBe("tempo");
-    expect(sections[1].steps[1].zone).toBe("easy");
+    expect(sections[1].steps[0].zone).toBe("z4");
+    expect(sections[1].steps[1].zone).toBe("z2");
 
     expect(sections[2].name).toBe("Cooldown");
     expect(sections[2].steps[0].duration).toBe("5m");
@@ -866,9 +869,9 @@ Cooldown
     const mainSet = sections[1];
     expect(mainSet.steps).toHaveLength(3);
     // midpoint(66,78)=72 → easy, midpoint(78,89)=83.5 → steady, midpoint(66,78)=72 → easy
-    expect(mainSet.steps[0].zone).toBe("easy");
-    expect(mainSet.steps[1].zone).toBe("steady");
-    expect(mainSet.steps[2].zone).toBe("easy");
+    expect(mainSet.steps[0].zone).toBe("z2");
+    expect(mainSet.steps[1].zone).toBe("z3");
+    expect(mainSet.steps[2].zone).toBe("z2");
   });
 
   it("parses an easy + strides workout", () => {
@@ -913,7 +916,7 @@ Cooldown
     expect(sections[0].name).toBe("Main set");
     expect(sections[0].steps).toHaveLength(1);
     expect(sections[0].steps[0].duration).toBe("35m");
-    expect(sections[0].steps[0].zone).toBe("easy");
+    expect(sections[0].steps[0].zone).toBe("z2");
     expect(sections[0].steps[0].bpmRange).toBe("115-140 bpm");
   });
 
@@ -950,7 +953,7 @@ Cooldown
     expect(mainSet.steps).toHaveLength(2);
     expect(mainSet.steps[0].duration).toBe("0.8km");
     // midpoint(89,99)=94 → tempo
-    expect(mainSet.steps[0].zone).toBe("tempo");
+    expect(mainSet.steps[0].zone).toBe("z4");
     expect(mainSet.steps[1].duration).toBe("0.2km");
   });
 
@@ -1079,18 +1082,20 @@ Cooldown
 
 // A fast runner's calibrated pace table
 const FAST_TABLE: PaceTable = {
-  easy: { zone: "easy", avgPace: 6.0, sampleCount: 10 },
-  steady: { zone: "steady", avgPace: 5.0, sampleCount: 8 },
-  tempo: { zone: "tempo", avgPace: 4.5, sampleCount: 5 },
-  hard: { zone: "hard", avgPace: 4.0, sampleCount: 0 },
+  z1: null,
+  z2: { zone: "z2", avgPace: 6.0, sampleCount: 10 },
+  z3: { zone: "z3", avgPace: 5.0, sampleCount: 8 },
+  z4: { zone: "z4", avgPace: 4.5, sampleCount: 5 },
+  z5: { zone: "z5", avgPace: 4.0, sampleCount: 0 },
 };
 
 // A slow runner's calibrated pace table
 const SLOW_TABLE: PaceTable = {
-  easy: { zone: "easy", avgPace: 8.0, sampleCount: 10 },
-  steady: { zone: "steady", avgPace: 7.0, sampleCount: 8 },
-  tempo: { zone: "tempo", avgPace: 6.0, sampleCount: 5 },
-  hard: { zone: "hard", avgPace: 5.5, sampleCount: 0 },
+  z1: null,
+  z2: { zone: "z2", avgPace: 8.0, sampleCount: 10 },
+  z3: { zone: "z3", avgPace: 7.0, sampleCount: 8 },
+  z4: { zone: "z4", avgPace: 6.0, sampleCount: 5 },
+  z5: { zone: "z5", avgPace: 5.5, sampleCount: 0 },
 };
 
 // Workout with km-based steps — duration depends on pace
@@ -1146,7 +1151,7 @@ describe("parseWorkoutSegments with paceTable", () => {
 
     // Main set 4km at steady: fast table uses 5.0, FALLBACK uses 5.67
     expect(withTable[1].duration).toBeCloseTo(4 * 5.0, 0);
-    expect(noTable[1].duration).toBeCloseTo(4 * FALLBACK_PACE_TABLE.steady!.avgPace, 0);
+    expect(noTable[1].duration).toBeCloseTo(4 * FALLBACK_PACE_TABLE.z3!.avgPace, 0);
   });
 });
 

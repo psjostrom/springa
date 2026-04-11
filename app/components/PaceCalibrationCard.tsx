@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { HRZoneName } from "@/lib/types";
+import type { ZoneName } from "@/lib/types";
 import type { CalibratedPaceTable } from "@/lib/paceCalibration";
 import { computeZonePaceTrend } from "@/lib/paceCalibration";
 import { ZONE_COLORS } from "@/lib/constants";
@@ -11,18 +11,19 @@ interface PaceCalibrationCardProps {
   calibration: CalibratedPaceTable;
 }
 
-const ZONE_META: { zone: HRZoneName; label: string; color: string }[] = [
-  { zone: "easy", label: "Easy", color: ZONE_COLORS.z2 },
-  { zone: "steady", label: "Steady", color: ZONE_COLORS.z3 },
-  { zone: "tempo", label: "Tempo", color: ZONE_COLORS.z4 },
-  { zone: "hard", label: "Hard", color: ZONE_COLORS.z5 },
+const ZONE_META: { zone: ZoneName; label: string; color: string }[] = [
+  { zone: "z2", label: "Easy", color: ZONE_COLORS.z2 },
+  { zone: "z3", label: "Steady", color: ZONE_COLORS.z3 },
+  { zone: "z4", label: "Tempo", color: ZONE_COLORS.z4 },
+  { zone: "z5", label: "Hard", color: ZONE_COLORS.z5 },
 ];
 
-const ZONE_PURPOSE: Record<HRZoneName, string> = {
-  easy: "Aerobic base, recovery",
-  steady: "Race pace effort",
-  tempo: "Threshold, 5K effort",
-  hard: "Strides, sprints",
+const ZONE_PURPOSE: Record<ZoneName, string> = {
+  z1: "Recovery",
+  z2: "Aerobic base, recovery",
+  z3: "Race pace effort",
+  z4: "Threshold, 5K effort",
+  z5: "Strides, sprints",
 };
 
 function PaceZonesPopover({
@@ -143,8 +144,8 @@ export function PaceCalibrationCard({ calibration }: PaceCalibrationCardProps) {
         {ZONE_META.map(({ zone, label, color }) => {
           const entry = table[zone];
           const summary = zoneSummaries.get(zone);
-          const trend = zone !== "hard" ? computeZonePaceTrend(segments, zone) : null;
-          const isHardExtrapolated = zone === "hard" && hardExtrapolated;
+          const trend = zone !== "z5" ? computeZonePaceTrend(segments, zone) : null;
+          const isHardExtrapolated = zone === "z5" && hardExtrapolated;
 
           return (
             <div

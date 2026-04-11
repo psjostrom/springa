@@ -655,39 +655,39 @@ describe("suggestCategory", () => {
 describe("computeZonePacePct", () => {
   it("returns HM defaults when paceTable is null", () => {
     const result = computeZonePacePct(null);
-    expect(result.easy).toEqual({ min: 30, max: 94 });
-    expect(result.steady).toEqual({ min: 99, max: 102 });
-    expect(result.tempo).toEqual({ min: 106, max: 111 });
+    expect(result.z2).toEqual({ min: 30, max: 94 });
+    expect(result.z3).toEqual({ min: 99, max: 102 });
+    expect(result.z4).toEqual({ min: 106, max: 111 });
     expect(result.walk).toEqual({ min: null, max: null });
-    expect(result.hard).toEqual({ min: null, max: null });
+    expect(result.z5).toEqual({ min: null, max: null });
   });
 
   it("returns default steady (99-102) when no goal is provided", () => {
     const table = getPaceTable(10, 3300);
     const result = computeZonePacePct(table);
-    expect(result.steady).toEqual({ min: 99, max: 102 });
+    expect(result.z3).toEqual({ min: 99, max: 102 });
   });
 
   it("shifts steady down for slower goal (trail race)", () => {
     // 10K ability 55:00 flat, EcoTrail 16km goal 2:20:00 (8:45/km — slower than threshold)
     const table = getPaceTable(10, 3300, 16, 8400);
     const result = computeZonePacePct(table, 16, 8400);
-    expect(result.steady.min).toBeLessThan(99);
-    expect(result.steady.max).toBeLessThan(102);
+    expect(result.z3.min).toBeLessThan(99);
+    expect(result.z3.max).toBeLessThan(102);
   });
 
   it("shifts steady up for faster goal (5K race)", () => {
     // 5K ability 27:00, racing 5K in 27:00 — threshold is HM-equivalent (slower)
     const table = getPaceTable(5, 1620);
     const result = computeZonePacePct(table, 5, 1620);
-    expect(result.steady.min).toBeGreaterThan(99);
-    expect(result.steady.max).toBeGreaterThan(102);
+    expect(result.z3.min).toBeGreaterThan(99);
+    expect(result.z3.max).toBeGreaterThan(102);
   });
 
   it("easy and tempo are fixed regardless of goal", () => {
     const table = getPaceTable(10, 3300, 16, 8400);
     const result = computeZonePacePct(table, 16, 8400);
-    expect(result.easy).toEqual({ min: 30, max: 94 });
-    expect(result.tempo).toEqual({ min: 106, max: 111 });
+    expect(result.z2).toEqual({ min: 30, max: 94 });
+    expect(result.z4).toEqual({ min: 106, max: 111 });
   });
 });
