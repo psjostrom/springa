@@ -106,4 +106,15 @@ describe("saveUserSettings", () => {
     const result = await getUserSettings("user@example.com");
     expect(result.goalTime).toBe(8400);
   });
+
+  it("persists currentAbilitySecs and currentAbilityDist (roundtrip test)", async () => {
+    await saveUserSettings("user@example.com", {
+      currentAbilitySecs: 3300,
+      currentAbilityDist: 10,
+    });
+
+    const result = await getUserSettings("user@example.com");
+    expect(result.currentAbilitySecs).toBe(3300);
+    expect(result.currentAbilityDist).toBe(10);
+  });
 });
