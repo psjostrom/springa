@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SessionProvider, useSession } from "next-auth/react";
 import { NotificationPrompt } from "./NotificationPrompt";
 
@@ -48,7 +48,26 @@ function PushSubscriptionManager() {
   return null;
 }
 
+function UpdateBanner({ onUpdate }: { onUpdate: () => void }) {
+  return (
+    <div className="fixed top-4 left-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-lg">
+      <p className="flex-1 text-sm text-foreground">
+        A new version is available
+      </p>
+      <button
+        type="button"
+        onClick={onUpdate}
+        className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+      >
+        Update
+      </button>
+    </div>
+  );
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
@@ -61,21 +80,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
             newWorker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            newWorker.postMessage({ type: "SKIP_WAITING" });
+            setWaitingWorker(newWorker);
           }
         });
       });
     }).catch(() => undefined);
-
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      window.location.reload();
-    });
   }, []);
+
+  const handleUpdate = useCallback(() => {
+    if (!waitingWorker) return;
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    setWaitingWorker(null);
+    window.location.reload();
+  }, [waitingWorker]);
 
   return (
     <SessionProvider>
       <PushSubscriptionManager />
       <NotificationPrompt />
+      {waitingWorker && <UpdateBanner onUpdate={handleUpdate} />}
       {children}
     </SessionProvider>
   );
