@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ZoneName } from "@/lib/types";
 import type { CalibratedPaceTable } from "@/lib/paceCalibration";
 import { computeZonePaceTrend } from "@/lib/paceCalibration";
-import { ZONE_COLORS } from "@/lib/constants";
+import { ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
 import { formatPace } from "@/lib/format";
 
 interface PaceCalibrationCardProps {
@@ -12,14 +12,14 @@ interface PaceCalibrationCardProps {
 }
 
 const ZONE_META: { zone: ZoneName; label: string; color: string }[] = [
-  { zone: "z2", label: "Easy", color: ZONE_COLORS.z2 },
-  { zone: "z3", label: "Steady", color: ZONE_COLORS.z3 },
-  { zone: "z4", label: "Tempo", color: ZONE_COLORS.z4 },
-  { zone: "z5", label: "Hard", color: ZONE_COLORS.z5 },
+  { zone: "z2", label: ZONE_DISPLAY_NAMES.z2, color: ZONE_COLORS.z2 },
+  { zone: "z3", label: ZONE_DISPLAY_NAMES.z3, color: ZONE_COLORS.z3 },
+  { zone: "z4", label: ZONE_DISPLAY_NAMES.z4, color: ZONE_COLORS.z4 },
+  { zone: "z5", label: ZONE_DISPLAY_NAMES.z5, color: ZONE_COLORS.z5 },
 ];
 
 const ZONE_PURPOSE: Record<ZoneName, string> = {
-  z1: "Recovery",
+  z1: "Walking, recovery",
   z2: "Aerobic base, recovery",
   z3: "Race pace effort",
   z4: "Threshold, 5K effort",
