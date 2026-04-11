@@ -71,20 +71,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker.register("/sw.js").then((registration) => {
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener("statechange", () => {
-          if (
-            newWorker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            setWaitingWorker(newWorker);
-          }
-        });
+    let reg: ServiceWorkerRegistration | undefined;
+    const handleUpdateFound = () => {
+      const newWorker = reg?.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener("statechange", () => {
+        if (
+          newWorker.state === "installed" &&
+          navigator.serviceWorker.controller
+        ) {
+          setWaitingWorker(newWorker);
+        }
       });
+    };
+
+    navigator.serviceWorker.register("/sw.js").then((registration) => {
+      reg = registration;
+      registration.addEventListener("updatefound", handleUpdateFound);
     }).catch(() => undefined);
+
+    return () => {
+      reg?.removeEventListener("updatefound", handleUpdateFound);
+    };
   }, []);
 
   const handleUpdate = useCallback(() => {

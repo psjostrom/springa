@@ -43,8 +43,21 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Network-first for API GET requests
-  if (url.pathname.startsWith("/api/") && event.request.method === "GET") {
+  // Network-first caching for safe API GET routes (offline fallback only)
+  const CACHEABLE_PATHS = [
+    "/api/settings",
+    "/api/bg-cache",
+    "/api/bg-patterns",
+    "/api/wellness",
+    "/api/run-feedback",
+    "/api/prerun-carbs",
+    "/api/simulate/validate",
+  ];
+  const cacheable =
+    event.request.method === "GET" &&
+    CACHEABLE_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"));
+
+  if (cacheable) {
     event.respondWith(
       fetch(event.request)
         .then(async (response) => {
@@ -65,7 +78,17 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (!cached) return new Response(null, { status: 504, statusText: "Offline" });
+          const cachedAt = cached.headers.get("x-sw-cached-at");
+          if (cachedAt && Date.now() - Number(cachedAt) > API_MAX_AGE_MS) {
+            const cache = await caches.open(API_CACHE_NAME);
+            await cache.delete(event.request);
+            return new Response(null, { status: 504, statusText: "Offline" });
+          }
+          return cached;
+        })
     );
     return;
   }
