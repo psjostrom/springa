@@ -833,4 +833,20 @@ describe("updatePaceZones", () => {
     );
     await expect(updatePaceZones("test-api-key", 123)).rejects.toThrow("Failed to update pace zones: 500");
   });
+
+  it("threshold pace succeeds independently when pace zones would fail", async () => {
+    // The threshold-pace route uses a best-effort pattern: updateThresholdPace
+    // must resolve before updatePaceZones is called, so a pace zone failure
+    // cannot affect the already-completed threshold pace write.
+    server.use(
+      http.put(`${API_BASE}/athlete/0/sport-settings/:settingsId`, async ({ request }) => {
+        const body = await request.json() as Record<string, unknown>;
+        if (body.pace_zones) return new HttpResponse("Server error", { status: 500 });
+        return HttpResponse.json({ id: 123, ...body });
+      }),
+    );
+
+    await expect(updateThresholdPace("test-api-key", 123, 6.0)).resolves.toBeUndefined();
+    await expect(updatePaceZones("test-api-key", 123)).rejects.toThrow("Failed to update pace zones: 500");
+  });
 });
