@@ -1,4 +1,5 @@
 import { ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
+import { formatZoneTime } from "@/lib/format";
 
 interface HRZoneBreakdownProps {
 	z1: number;
@@ -6,18 +7,6 @@ interface HRZoneBreakdownProps {
 	z3: number;
 	z4: number;
 	z5: number;
-}
-
-function formatTime(seconds: number): string {
-	const secs = Math.round(seconds % 60);
-	const mins = Math.floor(seconds / 60);
-	if (mins >= 60) {
-		const hours = Math.floor(mins / 60);
-		const remainingMins = mins % 60;
-		return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
-	}
-	if (mins === 0) return `${secs}s`;
-	return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
 const ZONES = [
@@ -56,7 +45,7 @@ export function HRZoneBreakdown({ z1, z2, z3, z4, z5 }: HRZoneBreakdownProps) {
 						</div>
 						<div className="flex items-center gap-2 min-w-28">
 							<span className="text-sm font-semibold text-text">
-								{formatTime(seconds)}
+								{formatZoneTime(seconds)}
 							</span>
 							<span className="text-sm text-muted">
 								{percentage.toFixed(1)}%

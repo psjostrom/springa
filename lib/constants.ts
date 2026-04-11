@@ -147,7 +147,7 @@ const PACE_ZONE_PCT = [0.77, 0.90, 1.00, 1.07];
 
 /**
  * Compute 4 pace zone boundaries from threshold pace.
- * Returns [Z1/Z2, Z2/Z3, Z3/Z4, Z4/Z5] in min/km (descending — slower first).
+ * Returns [Z1/Z2, Z2/Z3, Z3/Z4, Z4/Z5] in min/km (slowest first, fastest last).
  */
 export function computePaceZones(thresholdPaceMinPerKm: number): number[] {
   return PACE_ZONE_PCT.map((pct) => thresholdPaceMinPerKm / pct);

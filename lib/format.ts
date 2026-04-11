@@ -32,6 +32,19 @@ export function formatDuration(seconds: number): string {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
+/** Format seconds for zone time display: "45s", "2m 15s", "1h30m". */
+export function formatZoneTime(seconds: number): string {
+  const secs = Math.round(seconds % 60);
+  const mins = Math.floor(seconds / 60);
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
+  }
+  if (mins === 0) return `${secs}s`;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 /** Returns data-driven entry or falls back to hardcoded values */
 export function getPaceForZone(
   table: PaceTable,

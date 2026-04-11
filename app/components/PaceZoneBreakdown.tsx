@@ -1,6 +1,5 @@
-"use client";
-
 import { ZONE_COLORS, ZONE_DISPLAY_NAMES, computePaceZones, computePaceZoneTimes, type ZoneKey } from "@/lib/constants";
+import { formatZoneTime } from "@/lib/format";
 import type { DataPoint } from "@/lib/types";
 
 interface PaceZoneBreakdownProps {
@@ -15,18 +14,6 @@ const ZONES: { key: ZoneKey }[] = [
   { key: "z2" },
   { key: "z1" },
 ];
-
-function formatTime(seconds: number): string {
-  const secs = Math.round(seconds % 60);
-  const mins = Math.floor(seconds / 60);
-  if (mins >= 60) {
-    const hours = Math.floor(mins / 60);
-    const remainingMins = mins % 60;
-    return remainingMins > 0 ? `${hours}h${remainingMins}m` : `${hours}h`;
-  }
-  if (mins === 0) return `${secs}s`;
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
 
 export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdownProps) {
   const paceZones = computePaceZones(thresholdPace);
@@ -62,7 +49,7 @@ export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdown
             </div>
             <div className="flex items-center gap-2 min-w-28">
               <span className="text-sm font-semibold text-text">
-                {formatTime(seconds)}
+                {formatZoneTime(seconds)}
               </span>
               <span className="text-sm text-muted">
                 {percentage.toFixed(1)}%

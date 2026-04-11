@@ -168,7 +168,7 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
         return { label, duration, zone, bpmRange: detail };
       }
       // Effort-based step (walk, strides) — no pace target
-      const zone: ZoneName = m[1] === "Walk" ? "z2" : "z5";
+      const zone: ZoneName = m[1] === "Walk" ? "z1" : "z5";
       return { label, duration, zone, bpmRange: "" };
     }
 

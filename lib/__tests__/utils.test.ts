@@ -6,7 +6,7 @@ import {
   extractStructure,
   parseWorkoutStructure,
 } from "../descriptionParser";
-import { formatPace, getPaceForZone, getZoneLabel } from "../format";
+import { formatPace, formatZoneTime, getPaceForZone, getZoneLabel } from "../format";
 import {
   getEstimatedDuration,
   estimateWorkoutDuration,
@@ -35,6 +35,32 @@ describe("formatPace", () => {
 
   it("rounds correctly", () => {
     expect(formatPace(6.71)).toBe("6:43");
+  });
+});
+
+describe("formatZoneTime", () => {
+  it("formats seconds only", () => {
+    expect(formatZoneTime(45)).toBe("45s");
+  });
+
+  it("formats minutes and seconds", () => {
+    expect(formatZoneTime(135)).toBe("2m 15s");
+  });
+
+  it("formats exact minutes without seconds", () => {
+    expect(formatZoneTime(120)).toBe("2m");
+  });
+
+  it("formats hours and minutes", () => {
+    expect(formatZoneTime(5400)).toBe("1h30m");
+  });
+
+  it("formats exact hours", () => {
+    expect(formatZoneTime(7200)).toBe("2h");
+  });
+
+  it("handles zero", () => {
+    expect(formatZoneTime(0)).toBe("0s");
   });
 });
 
