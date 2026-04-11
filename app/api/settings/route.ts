@@ -5,7 +5,7 @@ import {
   type UserSettings,
 } from "@/lib/settings";
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
-import { fetchAthleteRaw } from "@/lib/intervalsApi";
+import { fetchAthleteRaw, fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
 import { computeMaxHRZones, DEFAULT_MAX_HR } from "@/lib/constants";
 import { NextResponse } from "next/server";
