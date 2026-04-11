@@ -9,6 +9,7 @@ import {
   replaceWorkoutOnDate,
   fetchPaceCurves,
   updateThresholdPace,
+  updatePaceZones,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -18,6 +19,7 @@ import {
   capturedPutPayload,
   capturedDeleteEventIds,
   capturedActivityPutPayloads,
+  capturedSportSettingsPayload,
 } from "./msw/handlers";
 
 describe("fetchCalendarData", () => {
@@ -810,8 +812,25 @@ describe("updateThresholdPace", () => {
       }),
     );
 
-    // updateThresholdPace doesn't throw on non-ok (fire-and-forget pattern)
-    // but the fetch completes without error — verify it doesn't crash
-    await expect(updateThresholdPace("test-api-key", 123, 6.0)).resolves.not.toThrow();
+    await expect(updateThresholdPace("test-api-key", 123, 6.0)).rejects.toThrow("Failed to update threshold pace: 500");
+  });
+});
+
+describe("updatePaceZones", () => {
+  it("pushes zone boundaries and names derived from constants", async () => {
+    await updatePaceZones("test-api-key", 123);
+    expect(capturedSportSettingsPayload).toEqual({
+      pace_zones: [77, 90, 100, 107, 999],
+      pace_zone_names: ["Recovery", "Endurance", "Tempo", "Threshold", "VO2 Max"],
+    });
+  });
+
+  it("throws on non-ok response", async () => {
+    server.use(
+      http.put(`https://intervals.icu/api/v1/athlete/0/sport-settings/:sportSettingsId`, () => {
+        return new HttpResponse("Server error", { status: 500 });
+      }),
+    );
+    await expect(updatePaceZones("test-api-key", 123)).rejects.toThrow("Failed to update pace zones: 500");
   });
 });

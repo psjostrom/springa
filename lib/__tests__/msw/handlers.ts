@@ -59,6 +59,8 @@ export let capturedDeleteEventIds: string[] = [];
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
 export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
+export let capturedSportSettingsPayload: Record<string, unknown> | null = null;
+export let capturedAthletePayload: Record<string, unknown> | null = null;
 
 export function resetCaptures() {
   capturedUploadPayload = [];
@@ -80,6 +82,18 @@ export const handlers = [
   // GET events
   http.get(`${API_BASE}/athlete/0/events`, () => {
     return HttpResponse.json(sampleEvents);
+  }),
+
+  // PUT sport settings (HR zones, threshold pace, pace zones)
+  http.put(`${API_BASE}/athlete/0/sport-settings/:settingsId`, async ({ request }) => {
+    capturedSportSettingsPayload = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ id: 2080947, ...capturedSportSettingsPayload });
+  }),
+
+  // PUT athlete profile (resting HR, etc.)
+  http.put(`${API_BASE}/athlete/0`, async ({ request }) => {
+    capturedAthletePayload = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({ ok: true });
   }),
 
   // DELETE future workouts
