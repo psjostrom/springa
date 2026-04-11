@@ -8,6 +8,10 @@ export interface UserSettings {
   raceDist?: number;
   /** Goal race time in seconds. Null = unknown / effort-based mode. */
   goalTime?: number;
+  /** Current flat-road ability: estimated time in seconds at reference distance. */
+  currentAbilitySecs?: number;
+  /** Current flat-road ability: reference distance in km. */
+  currentAbilityDist?: number;
 
   totalWeeks?: number;
   startKm?: number;
@@ -43,7 +47,8 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: `SELECT race_date, race_name, race_dist, goal_time, total_weeks, start_km, widget_order, hidden_widgets,
+    sql: `SELECT race_date, race_name, race_dist, goal_time, current_ability_secs, current_ability_dist,
+                 total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret
@@ -57,6 +62,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.race_name) settings.raceName = row.race_name as string;
   if (row.race_dist != null) settings.raceDist = row.race_dist as number;
   if (row.goal_time != null) settings.goalTime = row.goal_time as number;
+  if (row.current_ability_secs != null) settings.currentAbilitySecs = row.current_ability_secs as number;
+  if (row.current_ability_dist != null) settings.currentAbilityDist = row.current_ability_dist as number;
   if (row.total_weeks != null) settings.totalWeeks = row.total_weeks as number;
   if (row.start_km != null) settings.startKm = row.start_km as number;
   if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
@@ -99,6 +106,8 @@ export async function saveUserSettings(
   if (partial.raceName !== undefined) { sets.push("race_name = ?"); args.push(partial.raceName ?? null); }
   if (partial.raceDist !== undefined) { sets.push("race_dist = ?"); args.push(partial.raceDist ?? null); }
   if (partial.goalTime !== undefined) { sets.push("goal_time = ?"); args.push(partial.goalTime ?? null); }
+  if (partial.currentAbilitySecs !== undefined) { sets.push("current_ability_secs = ?"); args.push(partial.currentAbilitySecs ?? null); }
+  if (partial.currentAbilityDist !== undefined) { sets.push("current_ability_dist = ?"); args.push(partial.currentAbilityDist ?? null); }
   if (partial.totalWeeks !== undefined) { sets.push("total_weeks = ?"); args.push(partial.totalWeeks ?? null); }
   if (partial.startKm !== undefined) { sets.push("start_km = ?"); args.push(partial.startKm ?? null); }
   if (partial.widgetOrder !== undefined) { sets.push("widget_order = ?"); args.push(JSON.stringify(partial.widgetOrder)); }

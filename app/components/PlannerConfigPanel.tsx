@@ -39,7 +39,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceDist, setRaceDist] = useState<number | "">(settings.raceDist ?? "");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
   const [goalTime, setGoalTime] = useState<number | undefined>(settings.goalTime);
-  const [syncError, setSyncError] = useState<string | null>(null);
   const effectiveDist = typeof raceDist === "number" ? raceDist : null;
 
   // When club type is "long", the club day IS the long run day
@@ -117,20 +116,8 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
-    // Push threshold pace to Intervals.icu when goal time changes
-    if (goalTime !== settings.goalTime && goalTime != null && effectiveDist && effectiveDist >= 1) {
-      setSyncError(null);
-      const racePaceMinPerKm = goalTime / 60 / effectiveDist;
-      fetch("/api/intervals/threshold-pace", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ racePaceMinPerKm }),
-      }).then((res) => {
-        if (!res.ok) setSyncError("Failed to sync paces to Intervals.icu");
-      }).catch(() => {
-        setSyncError("Failed to sync paces to Intervals.icu");
-      });
-    }
+    // Threshold pace is pushed during wizard completion and when ability changes.
+    // No need to re-push here — ability doesn't change from race config fields.
   };
 
   const goalTimeSliderRange = effectiveDist ? getSliderRange(effectiveDist) : null;
@@ -320,9 +307,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             </div>
           )}
         </div>
-        {syncError && (
-          <p className="text-error text-xs mt-2">{syncError}</p>
-        )}
       </div>
 
       {/* Done */}
