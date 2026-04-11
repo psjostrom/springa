@@ -1,6 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchAthleteRaw, fetchAthleteProfile, updateThresholdPace } from "@/lib/intervalsApi";
+import { fetchAthleteRaw, fetchAthleteProfile, updateThresholdPace, updatePaceZones } from "@/lib/intervalsApi";
 import { NextResponse } from "next/server";
 
 export async function PUT(req: Request) {
@@ -34,6 +34,8 @@ export async function PUT(req: Request) {
 
   try {
     await updateThresholdPace(creds.intervalsApiKey, profile.sportSettingsId, body.paceMinPerKm);
+    // Push Strava-derived pace zone boundaries alongside threshold pace
+    await updatePaceZones(creds.intervalsApiKey, profile.sportSettingsId);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to update Intervals.icu" }, { status: 502 });

@@ -98,6 +98,26 @@ export async function updateThresholdPace(
   });
 }
 
+/** Push pace zone boundaries and names to Intervals.icu sport settings.
+ *  pace_zones is an array of zone ceilings as % of threshold speed.
+ *  Format matches Intervals.icu presets (e.g. Friel: [77.5, 87.7, 94.3, 100, 103.4, 111.5, 999]).
+ *  Last value is 999 (sentinel for unlimited top zone).
+ *  We use 5 Strava-derived zones: [77, 90, 100, 107, 999]. */
+export async function updatePaceZones(
+  apiKey: string,
+  sportSettingsId: number,
+): Promise<void> {
+  const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
+  await fetch(settingsUrl.href, {
+    method: "PUT",
+    headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pace_zones: [77, 90, 100, 107, 999],
+      pace_zone_names: ["Recovery", "Endurance", "Tempo", "Threshold", "VO2 Max"],
+    }),
+  });
+}
+
 export interface PlatformConnection {
   platform: "garmin" | "polar" | "suunto" | "coros" | "wahoo" | "amazfit" | "strava" | "huawei";
   linked: boolean;
