@@ -106,9 +106,11 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     ),
   "hr-zones": (p) =>
     p.event.zoneTimes ? (
-      <HRZoneBreakdown {...p.event.zoneTimes} />
+      <div className="px-3 py-2.5">
+        <HRZoneBreakdown {...p.event.zoneTimes} />
+      </div>
     ) : p.isLoadingStreamData ? (
-      <div className="space-y-2">
+      <div className="px-3 py-2.5 space-y-2">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="skeleton h-5 w-full" />
         ))}
@@ -116,12 +118,14 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     ) : null,
   "pace-zones": (p) =>
     p.event.streamData?.pace && p.event.streamData.pace.length > 0 && p.racePacePerKm ? (
-      <PaceZoneBreakdown
-        paceData={p.event.streamData.pace}
-        thresholdPace={p.racePacePerKm}
-      />
+      <div className="px-3 py-2.5">
+        <PaceZoneBreakdown
+          paceData={p.event.streamData.pace}
+          thresholdPace={p.racePacePerKm}
+        />
+      </div>
     ) : p.isLoadingStreamData ? (
-      <div className="space-y-2">
+      <div className="px-3 py-2.5 space-y-2">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="skeleton h-5 w-full" />
         ))}
@@ -129,9 +133,13 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
     ) : null,
   "route-map": (p) =>
     p.event.streamData?.latlng && p.event.streamData.latlng.length > 0 ? (
-      <RouteMap latlng={p.event.streamData.latlng} className="h-48" />
+      <div className="px-3 py-2.5">
+        <RouteMap latlng={p.event.streamData.latlng} className="h-48" />
+      </div>
     ) : p.isLoadingStreamData ? (
-      <div className="skeleton h-48 w-full rounded-lg" />
+      <div className="px-3 py-2.5">
+        <div className="skeleton h-48 w-full rounded-lg" />
+      </div>
     ) : null,
   "run-analysis": (p) =>
     p.event.activityId ? (
