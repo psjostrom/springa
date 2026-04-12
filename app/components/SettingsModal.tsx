@@ -115,101 +115,90 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     }
   };
 
-  const [syncError, setSyncError] = useState("");
-
   const handleSave = async () => {
     setSaving(true);
-    setSyncError("");
     try {
-    const updates: Partial<UserSettings> & {
-      nightscoutUrl?: string | null;
-      nightscoutSecret?: string | null;
-    } = {};
+      const updates: Partial<UserSettings> & {
+        nightscoutUrl?: string | null;
+        nightscoutSecret?: string | null;
+      } = {};
 
-    const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
-    if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
-      return;
-    }
-    if (twVal !== settings.totalWeeks) {
-      updates.totalWeeks = twVal;
-    }
-    const skVal = startKm === "" ? undefined : Number(startKm);
-    if (skVal !== settings.startKm) {
-      updates.startKm = skVal;
-    }
-    // Force base phase off when weeks are too short to support it
-    const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
-    if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
-      updates.includeBasePhase = effectiveBasePhase;
-    }
-    if (warmthPreference !== (settings.warmthPreference ?? 0)) {
-      updates.warmthPreference = warmthPreference;
-    }
-    if (abilitySecs !== (settings.currentAbilitySecs ?? 0)) {
-      updates.currentAbilitySecs = abilitySecs || undefined;
-    }
-    if (abilityDist !== (settings.currentAbilityDist ?? 0)) {
-      updates.currentAbilityDist = abilityDist || undefined;
-    }
-    if (goalDist !== (settings.raceDist ?? 0)) {
-      updates.raceDist = goalDist || undefined;
-    }
-    if (raceDate !== (settings.raceDate ?? "")) {
-      updates.raceDate = raceDate || undefined;
-    }
-    if (maxHr !== (settings.maxHr ?? 0)) {
-      updates.maxHr = maxHr || undefined;
-    }
-    if (diabetesMode !== (settings.diabetesMode ?? false)) {
-      updates.diabetesMode = diabetesMode;
-    }
-
-    // Nightscout credentials (only send if changed)
-    if (diabetesMode) {
-      if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
-        updates.nightscoutUrl = nightscoutUrl.trim();
+      const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
+      if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
+        return;
       }
-      if (nightscoutSecret.trim()) {
-        updates.nightscoutSecret = nightscoutSecret.trim();
+      if (twVal !== settings.totalWeeks) {
+        updates.totalWeeks = twVal;
       }
+      const skVal = startKm === "" ? undefined : Number(startKm);
+      if (skVal !== settings.startKm) {
+        updates.startKm = skVal;
+      }
+      // Force base phase off when weeks are too short to support it
+      const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
+      if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
+        updates.includeBasePhase = effectiveBasePhase;
+      }
+      if (warmthPreference !== (settings.warmthPreference ?? 0)) {
+        updates.warmthPreference = warmthPreference;
+      }
+      if (abilitySecs !== (settings.currentAbilitySecs ?? 0)) {
+        updates.currentAbilitySecs = abilitySecs || undefined;
+      }
+      if (abilityDist !== (settings.currentAbilityDist ?? 0)) {
+        updates.currentAbilityDist = abilityDist || undefined;
+      }
+      if (goalDist !== (settings.raceDist ?? 0)) {
+        updates.raceDist = goalDist || undefined;
+      }
+      if (raceDate !== (settings.raceDate ?? "")) {
+        updates.raceDate = raceDate || undefined;
+      }
+      if (maxHr !== (settings.maxHr ?? 0)) {
+        updates.maxHr = maxHr || undefined;
+      }
+      if (diabetesMode !== (settings.diabetesMode ?? false)) {
+        updates.diabetesMode = diabetesMode;
+      }
+
+      // Nightscout credentials (only send if changed)
+      if (diabetesMode) {
+        if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
+          updates.nightscoutUrl = nightscoutUrl.trim();
+        }
+        if (nightscoutSecret.trim()) {
+          updates.nightscoutSecret = nightscoutSecret.trim();
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await onSave(updates);
+      }
+    } finally {
+      setSaving(false);
     }
 
-    if (Object.keys(updates).length > 0) {
-      await onSave(updates);
-    }
+    onClose();
 
-    // Sync to Intervals.icu (best-effort)
+    // Fire-and-forget sync to Intervals.icu (modal already closed)
     if (intervalsConnected) {
       const abilityChanged = abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0);
       if (abilityChanged && abilityDist > 0 && abilitySecs > 0) {
         const table = getPaceTable(abilityDist, abilitySecs);
-        try {
-          await fetch("/api/intervals/threshold-pace", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
-          });
-        } catch {
-            setSyncError("Failed to sync threshold pace to Intervals.icu");
-          }
+        fetch("/api/intervals/threshold-pace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
+        }).catch((e: unknown) => { console.error("Threshold pace sync failed:", e); });
       }
       if (maxHr !== (settings.maxHr ?? 0) && maxHr > 0 && settings.sportSettingsId) {
         const zones = computeMaxHRZones(maxHr);
-        try {
-          await fetch("/api/intervals/hr-zones", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sportSettingsId: settings.sportSettingsId, hrZones: zones, maxHr }),
-          });
-        } catch {
-            setSyncError("Failed to sync HR zones to Intervals.icu");
-          }
+        fetch("/api/intervals/hr-zones", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sportSettingsId: settings.sportSettingsId, hrZones: zones, maxHr }),
+        }).catch((e: unknown) => { console.error("HR zone sync failed:", e); });
       }
-    }
-
-    onClose();
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -671,7 +660,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           >
             {saving ? "Saving..." : "Save"}
           </button>
-          {syncError && <p className="text-sm text-error mt-2">{syncError}</p>}
         </div>
       </div>
     </div>
