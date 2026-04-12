@@ -52,6 +52,7 @@ import type { WidgetKey } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
 import { fetchActivity } from "@/lib/intervalsClient";
 import { activityToCalendarEvent } from "@/lib/calendarPipeline";
+import { getPaceTable } from "@/lib/paceTable";
 import { TabBar } from "../components/TabBar";
 import { VolumeCompact } from "../components/VolumeCompact";
 import { BGCompact } from "../components/BGCompact";
@@ -631,7 +632,9 @@ export function IntelScreen() {
             bgModel={bgModel}
             hrZones={hrZones}
             lthr={lthr}
-            racePacePerKm={settings?.goalTime && raceDist ? settings.goalTime / 60 / raceDist : undefined}
+            racePacePerKm={settings?.currentAbilityDist && settings.currentAbilitySecs
+              ? getPaceTable(settings.currentAbilityDist, settings.currentAbilitySecs).hmEquivalentPacePerKm
+              : undefined}
           />
         )
       )}

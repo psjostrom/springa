@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
-import { getSliderRange, getDefaultGoalTime } from "@/lib/paceTable";
-import { formatGoalTime } from "@/lib/format";
 
 interface PlannerConfigPanelProps {
   settings: UserSettings;
@@ -38,8 +36,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState<number | "">(settings.raceDist ?? "");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
-  const [goalTime, setGoalTime] = useState<number | undefined>(settings.goalTime);
-  const effectiveDist = typeof raceDist === "number" ? raceDist : null;
 
   // When club type is "long", the club day IS the long run day
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
@@ -112,7 +108,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     if (raceDate !== (settings.raceDate ?? "")) updates.raceDate = raceDate;
     const rdVal = raceDist === "" ? undefined : raceDist;
     if (rdVal !== settings.raceDist) updates.raceDist = rdVal;
-    if (goalTime !== settings.goalTime) updates.goalTime = goalTime;
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
@@ -120,8 +115,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     // No need to re-push here — ability doesn't change from race config fields.
   };
 
-  const goalTimeSliderRange = effectiveDist ? getSliderRange(effectiveDist) : null;
-  const goalTimeDisplay = goalTime ?? getDefaultGoalTime(effectiveDist ?? 21.0975, "intermediate");
 
   // Compute speed hint
   const speedHintDay = (() => {
@@ -284,28 +277,6 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
               className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent placeholder:text-muted"
             />
           </div>
-          {/* Goal Time */}
-          {effectiveDist && goalTimeSliderRange && (
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                {goalTime != null ? "Current Ability" : "Set Your Goal Time"}
-              </div>
-              <div className="text-center text-2xl font-bold text-brand mb-2">
-                {formatGoalTime(goalTimeDisplay)}
-              </div>
-              <input
-                type="range"
-                min={goalTimeSliderRange.min}
-                max={goalTimeSliderRange.max}
-                step={goalTimeSliderRange.step}
-                value={goalTimeDisplay}
-                onChange={(e) => { setGoalTime(Number(e.target.value)); }}
-                onMouseUp={handleRaceBlur}
-                onTouchEnd={handleRaceBlur}
-                className="w-full accent-brand"
-              />
-            </div>
-          )}
         </div>
       </div>
 
