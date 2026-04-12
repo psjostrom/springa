@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { addWeeks, format, differenceInWeeks, parseISO, isBefore } from "date-fns";
 import { DISTANCE_OPTIONS, type ExperienceLevel } from "@/lib/paceTable";
 
 interface GoalStepProps {
   raceDist?: number;
   experience?: ExperienceLevel;
-  onNext: (data: { raceDist: number; experience: ExperienceLevel }) => void;
+  raceDate?: string;
+  onNext: (data: { raceDist: number; experience: ExperienceLevel; raceDate: string }) => void;
   onBack: () => void;
 }
 
@@ -16,11 +18,14 @@ const EXPERIENCE_OPTIONS: { level: ExperienceLevel; label: string; desc: string 
   { level: "experienced", label: "Experienced", desc: "Running for years with specific goals" },
 ];
 
-export function GoalStep({ raceDist: initialDist, experience: initialExp, onNext, onBack }: GoalStepProps) {
+export function GoalStep({ raceDist: initialDist, experience: initialExp, raceDate: initialDate, onNext, onBack }: GoalStepProps) {
   const isStandardDist = initialDist != null && DISTANCE_OPTIONS.some(({ km }) => km === initialDist);
   const [selectedDist, setSelectedDist] = useState<number | null>(initialDist ?? null);
   const [customDist, setCustomDist] = useState(initialDist != null && !isStandardDist ? String(initialDist) : "");
   const [experience, setExperience] = useState<ExperienceLevel | null>(initialExp ?? null);
+  const [raceDate, setRaceDate] = useState(
+    initialDate ?? format(addWeeks(new Date(), 18), "yyyy-MM-dd")
+  );
 
   const handleDist = (km: number) => {
     setSelectedDist(km);
@@ -37,7 +42,8 @@ export function GoalStep({ raceDist: initialDist, experience: initialExp, onNext
     }
   };
 
-  const canProceed = selectedDist != null && experience != null;
+  const dateTooSoon = raceDate ? isBefore(parseISO(raceDate), addWeeks(new Date(), 12)) : false;
+  const canProceed = selectedDist != null && experience != null && !dateTooSoon;
 
   return (
     <div className="bg-surface rounded-xl border border-border p-6 shadow-lg">
@@ -104,6 +110,32 @@ export function GoalStep({ raceDist: initialDist, experience: initialExp, onNext
             </div>
           </div>
         )}
+
+        {/* Section 3: Race date (visible when experience selected) */}
+        {experience != null && (
+          <div>
+            <label className="block text-sm font-semibold text-muted mb-2">
+              Race date
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                value={raceDate}
+                min={format(addWeeks(new Date(), 12), "yyyy-MM-dd")}
+                onChange={(e) => { setRaceDate(e.target.value); }}
+                className="flex-1 px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+              />
+              {raceDate && (() => {
+                const weeks = differenceInWeeks(parseISO(raceDate), new Date());
+                return weeks > 0 ? (
+                  <span className="text-sm font-medium text-brand whitespace-nowrap">
+                    {weeks} weeks
+                  </span>
+                ) : null;
+              })()}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 mt-6">
@@ -114,7 +146,10 @@ export function GoalStep({ raceDist: initialDist, experience: initialExp, onNext
           Back
         </button>
         <button
-          onClick={() => { if (selectedDist && experience) onNext({ raceDist: selectedDist, experience }); }}
+          onClick={() => {
+            if (selectedDist && experience)
+              onNext({ raceDist: selectedDist, experience, raceDate });
+          }}
           disabled={!canProceed}
           className="flex-1 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >

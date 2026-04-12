@@ -200,8 +200,13 @@ export default function SetupPage() {
           <GoalStep
             raceDist={data.raceDist}
             experience={data.experience}
+            raceDate={data.raceDate}
             onNext={(goal) => {
-              updateData({ raceDist: goal.raceDist, experience: goal.experience });
+              updateData({
+                raceDist: goal.raceDist,
+                experience: goal.experience,
+                raceDate: goal.raceDate,
+              });
               setStep(6);
             }}
             onBack={() => { setStep(4); }}
