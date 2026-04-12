@@ -45,7 +45,7 @@ export interface UserSettings {
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
   const result = await db().execute({
-    sql: `SELECT race_date, race_name, race_dist, goal_time, current_ability_secs, current_ability_dist,
+    sql: `SELECT race_date, race_name, race_dist, current_ability_secs, current_ability_dist,
                  total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
