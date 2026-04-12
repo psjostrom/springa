@@ -1,10 +1,10 @@
-# Settings Redesign Implementation Plan
+# Settings Redesign — PR 2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove goal time from pace computation (PR 1), then replace the settings modal with a tabbed settings page (PR 2).
+**Goal:** Replace the 688-line SettingsModal with a `/settings` page route + four tab components.
 
-**Architecture:** Training paces derive from current ability only (Runna model). Goal time is disconnected from pace computation. The 750-line SettingsModal is replaced by a `/settings` page with four tab components (Training, Zones, Plan, Account), each owning its own state.
+**Architecture:** This is a decomposition — all UI already exists in SettingsModal. Extract each section into its own tab component, wire up a tabbed page route, replace the modal trigger with navigation, delete the modal.
 
 **Tech Stack:** Next.js 16 App Router, TypeScript, Vitest, Jotai, Tailwind CSS
 
@@ -12,577 +12,321 @@
 
 ---
 
-## PR 1 — Data Model Cleanup
-
-### Task 1: Remove goal params from getPaceTable
+### Task 1: Create settings page route + tab shell
 
 **Files:**
-- Modify: `lib/paceTable.ts`
-- Test: `lib/__tests__/utils.test.ts` (if getPaceTable tested there — check first)
+- Create: `app/settings/page.tsx`
 
-- [ ] **Step 1: Simplify getPaceTable signature and implementation**
+- [ ] **Step 1: Create the page route**
 
-Remove `goalDistKm` and `goalTimeSecs` params. Remove the `steadyPace` ternary — Z3 always uses `abilityPacePerKm`.
+Server component that checks auth, fetches settings, renders a client wrapper.
 
-In `lib/paceTable.ts`, replace:
+```tsx
+import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/apiHelpers";
+import { getUserSettings } from "@/lib/settings";
+import { getUserCredentials } from "@/lib/credentials";
+import { fetchAthleteProfile } from "@/lib/intervalsApi";
+import { SettingsPage } from "./SettingsPage";
 
-```ts
-export function getPaceTable(
-  abilityDistKm: number,
-  abilitySecs: number,
-  goalDistKm?: number,
-  goalTimeSecs?: number,
-): PaceTableResult {
-  if (abilityDistKm <= 0 || abilitySecs <= 0) {
-    throw new Error("Ability distance and time must be positive");
+export default async function Settings() {
+  let email: string;
+  try {
+    email = await requireAuth();
+  } catch {
+    redirect("/api/auth/signin");
   }
-  const abilityPacePerKm = abilitySecs / 60 / abilityDistKm;
-  const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
-  const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
-  const steadyPace = (goalTimeSecs && goalDistKm)
-    ? goalTimeSecs / 60 / goalDistKm
-    : abilityPacePerKm;
+  const settings = await getUserSettings(email);
+  if (!settings.onboardingComplete) redirect("/setup");
 
-  return {
-    z2: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
-    z3: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
-```
-
-With:
-
-```ts
-export function getPaceTable(
-  abilityDistKm: number,
-  abilitySecs: number,
-): PaceTableResult {
-  if (abilityDistKm <= 0 || abilitySecs <= 0) {
-    throw new Error("Ability distance and time must be positive");
+  // Enrich with Intervals.icu data (same as GET /api/settings does)
+  const creds = await getUserCredentials(email);
+  if (creds?.intervalsApiKey) {
+    try {
+      const profile = await fetchAthleteProfile(creds.intervalsApiKey);
+      settings.intervalsConnected = true;
+      if (profile.maxHr) settings.maxHr = profile.maxHr;
+      if (profile.hrZones) settings.hrZones = profile.hrZones;
+      if (profile.restingHr) settings.restingHr = profile.restingHr;
+      if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
+    } catch { /* intervals unavailable — proceed without */ }
   }
-  const abilityPacePerKm = abilitySecs / 60 / abilityDistKm;
-  const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
-  const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
-  return {
-    z2: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
-    z3: { min: abilityPacePerKm * 0.98, max: abilityPacePerKm * 1.01 },
-```
-
-- [ ] **Step 2: Fix all callers**
-
-Search for `getPaceTable(` across the codebase. Every call site that passes 3 or 4 args must be updated to 2. Known callers:
-
-- `lib/workoutGenerators.ts` — `buildContext` passes `config.raceDist, config.goalTimeSecs`. Remove those args.
-- `app/setup/page.tsx` — already uses 2 args, no change needed.
-- `app/components/SettingsModal.tsx` — already uses 2 args, no change needed.
-- `app/setup/AbilityStep.tsx` — already uses 2 args, no change needed.
-
-In `lib/workoutGenerators.ts`, find the `getPaceTable` call in `buildContext` and replace:
-
-```ts
-  if (config.currentAbilitySecs && config.currentAbilityDist) {
-    paceTable = getPaceTable(
-      config.currentAbilityDist,
-      config.currentAbilitySecs,
-      config.raceDist,
-      config.goalTimeSecs,
-    );
-  }
-```
-
-With:
-
-```ts
-  if (config.currentAbilitySecs && config.currentAbilityDist) {
-    paceTable = getPaceTable(
-      config.currentAbilityDist,
-      config.currentAbilitySecs,
-    );
-  }
-```
-
-- [ ] **Step 3: Run type checker and tests**
-
-Run: `npx tsc --noEmit && npm test`
-
-Expected: All pass. If any test was calling `getPaceTable` with goal args, fix those too.
-
-- [ ] **Step 4: Commit**
-
-```
-feat: remove goal params from getPaceTable
-
-Training paces now derive entirely from current ability.
-Z3/steady uses ability pace, not goal race pace.
-Eliminates trail race pace inversion bug.
-```
-
----
-
-### Task 2: Remove goal params from computeZonePacePct and makeStep
-
-**Files:**
-- Modify: `lib/workoutGenerators.ts`
-- Modify: `lib/types.ts`
-- Test: `lib/__tests__/workoutGenerators.test.ts`
-
-- [ ] **Step 1: Update tests**
-
-In `lib/__tests__/workoutGenerators.test.ts`, replace the `computeZonePacePct` describe block:
-
-```ts
-describe("computeZonePacePct", () => {
-  it("returns HM defaults when paceTable is null", () => {
-    const result = computeZonePacePct(null);
-    expect(result.z2).toEqual({ min: 30, max: 88 });
-    expect(result.z3).toEqual({ min: 99, max: 102 });
-    expect(result.z4).toEqual({ min: 106, max: 111 });
-    expect(result.walk).toEqual({ min: null, max: null });
-    expect(result.z5).toEqual({ min: null, max: null });
-  });
-
-  it("returns steady 99-102 for any paceTable", () => {
-    const table = getPaceTable(10, 3300);
-    const result = computeZonePacePct(table);
-    expect(result.z3).toEqual({ min: 99, max: 102 });
-  });
-
-  it("easy and tempo are fixed", () => {
-    const table = getPaceTable(10, 3300);
-    const result = computeZonePacePct(table);
-    expect(result.z2).toEqual({ min: 30, max: 88 });
-    expect(result.z4).toEqual({ min: 106, max: 111 });
-  });
-});
-```
-
-- [ ] **Step 2: Run tests to see the old goal-param tests fail**
-
-Run: `npm test -- --reporter=verbose 2>&1 | grep -A2 "computeZonePacePct"`
-
-Expected: The old "shifts steady down for slower goal" and "shifts steady up for faster goal" tests are replaced by the simpler ones above.
-
-- [ ] **Step 3: Simplify computeZonePacePct and makeStep**
-
-In `lib/workoutGenerators.ts`, replace `computeZonePacePct`:
-
-```ts
-export function computeZonePacePct(
-  paceTable: PaceTableResult | null,
-): Record<ZoneName | "walk", { min: number | null; max: number | null }> {
-  if (!paceTable) return HM_ZONE_DEFAULTS;
-
-  return {
-    walk: { min: null, max: null },
-    z1:   { min: null, max: null },
-    z2:   { min: 30, max: 88 },
-    z3:   { min: 99, max: 102 },
-    z4:   { min: 106, max: 111 },
-    z5:   { min: null, max: null },
-  };
+  return <SettingsPage email={email} initialSettings={settings} />;
 }
 ```
 
-Replace `makeStep`:
+Check how the existing `/api/settings` GET route enriches settings — match that logic. Read `app/api/settings/route.ts` first.
 
-```ts
-function makeStep(paceTable: PaceTableResult | null) {
-  const zonePct = computeZonePacePct(paceTable);
-```
+- [ ] **Step 2: Create the client tab wrapper**
 
-- [ ] **Step 4: Update all makeStep callers**
+Create `app/settings/SettingsPage.tsx` — client component with tab state and back button.
 
-Four generator functions call `makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs)`. Change all to `makeStep(ctx.paceTable)`:
+```tsx
+"use client";
 
-```
-lib/workoutGenerators.ts:183  →  const s = makeStep(ctx.paceTable);
-lib/workoutGenerators.ts:280  →  const s = makeStep(ctx.paceTable);
-lib/workoutGenerators.ts:348  →  const s = makeStep(ctx.paceTable);
-lib/workoutGenerators.ts:379  →  const s = makeStep(ctx.paceTable);
-```
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import type { UserSettings } from "@/lib/settings";
+import { TrainingTab } from "./TrainingTab";
+import { ZonesTab } from "./ZonesTab";
+import { PlanTab } from "./PlanTab";
+import { AccountTab } from "./AccountTab";
 
-- [ ] **Step 5: Remove goalTimeSecs from PlanConfig, PlanContext, buildContext**
+const TABS = ["Training", "Zones", "Plan", "Account"] as const;
+type Tab = typeof TABS[number];
 
-In `lib/workoutGenerators.ts`, remove from `PlanConfig` interface:
-```ts
-  goalTimeSecs?: number;  // DELETE this line
-```
-
-Remove from `buildContext` function:
-```ts
-    goalTimeSecs: config.goalTimeSecs,  // DELETE this line
-```
-
-In `lib/types.ts`, remove from `PlanContext` interface:
-```ts
-  goalTimeSecs?: number;  // DELETE this line
-```
-
-- [ ] **Step 6: Run all tests**
-
-Run: `npx tsc --noEmit && npm test`
-
-Expected: All tests pass.
-
-- [ ] **Step 7: Commit**
-
-```
-refactor: remove goal time from pace zone computation
-
-computeZonePacePct no longer adjusts Z3/steady based on
-goal distance. Z3 is fixed at 99-102% of threshold.
-Removes goalTimeSecs from PlanConfig and PlanContext.
-```
-
----
-
-### Task 3: Update wizard — GoalStep gets race date
-
-**Files:**
-- Modify: `app/setup/GoalStep.tsx`
-- Modify: `app/setup/page.tsx`
-
-- [ ] **Step 1: Add race date to GoalStep**
-
-In `app/setup/GoalStep.tsx`, update the interface and component:
-
-```ts
-interface GoalStepProps {
-  raceDist?: number;
-  experience?: ExperienceLevel;
-  raceDate?: string;
-  onNext: (data: { raceDist: number; experience: ExperienceLevel; raceDate: string }) => void;
-  onBack: () => void;
+interface SettingsPageProps {
+  email: string;
+  initialSettings: UserSettings;
 }
-```
 
-Add state and date input after the experience picker:
+export function SettingsPage({ email, initialSettings }: SettingsPageProps) {
+  const [tab, setTab] = useState<Tab>("Training");
+  const [settings, setSettings] = useState(initialSettings);
 
-```ts
-const [raceDate, setRaceDate] = useState(
-  initialDate ?? format(addWeeks(new Date(), 18), "yyyy-MM-dd")
-);
-```
-
-Add imports at top:
-```ts
-import { addWeeks, format, differenceInWeeks, parseISO, isBefore } from "date-fns";
-```
-
-Add the race date section after the experience picker, before the buttons:
-
-```tsx
-{/* Race date */}
-{experience != null && (
-  <div>
-    <label className="block text-sm font-semibold text-muted mb-2">
-      Race date
-    </label>
-    <div className="flex items-center gap-3">
-      <input
-        type="date"
-        value={raceDate}
-        min={format(addWeeks(new Date(), 12), "yyyy-MM-dd")}
-        onChange={(e) => { setRaceDate(e.target.value); }}
-        className="flex-1 px-4 py-3 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-      />
-      {raceDate && (() => {
-        const weeks = differenceInWeeks(parseISO(raceDate), new Date());
-        return weeks > 0 ? (
-          <span className="text-sm font-medium text-brand whitespace-nowrap">
-            {weeks} weeks
-          </span>
-        ) : null;
-      })()}
-    </div>
-  </div>
-)}
-```
-
-Update `canProceed` to include date validation (12-week minimum, matching the check AbilityStep had):
-```ts
-const dateTooSoon = raceDate ? isBefore(parseISO(raceDate), addWeeks(new Date(), 12)) : false;
-const canProceed = selectedDist != null && experience != null && !dateTooSoon;
-```
-
-Update the Next button onClick:
-```ts
-onClick={() => {
-  if (selectedDist && experience)
-    onNext({ raceDist: selectedDist, experience, raceDate });
-}}
-```
-
-- [ ] **Step 2: Update setup/page.tsx GoalStep callback**
-
-In `app/setup/page.tsx`, update the GoalStep render (around line 201-209):
-
-```tsx
-<GoalStep
-  raceDist={data.raceDist}
-  experience={data.experience}
-  raceDate={data.raceDate}
-  onNext={(goal) => {
-    updateData({
-      raceDist: goal.raceDist,
-      experience: goal.experience,
-      raceDate: goal.raceDate,
+  const handleSave = async (partial: Partial<UserSettings>) => {
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(partial),
     });
-    setStep(6);
-  }}
-  onBack={() => { setStep(4); }}
-/>
+    if (!res.ok) throw new Error("Save failed");
+    setSettings((prev) => ({ ...prev, ...partial }));
+  };
+
+  return (
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-md mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <Link href="/" className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-lg font-bold">Settings</h1>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-border">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); }}
+              className={`flex-1 py-2.5 text-sm font-semibold transition ${
+                tab === t
+                  ? "text-brand border-b-2 border-brand"
+                  : "text-muted hover:text-text"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="px-4 py-4">
+          {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} />}
+          {tab === "Zones" && <ZonesTab settings={settings} onSave={handleSave} />}
+          {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
+          {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} />}
+        </div>
+      </div>
+    </div>
+  );
+}
 ```
 
-- [ ] **Step 3: Run type checker**
+- [ ] **Step 3: Create stub tab components**
+
+Create all four as minimal stubs so the page compiles:
+
+`app/settings/TrainingTab.tsx`, `ZonesTab.tsx`, `PlanTab.tsx`, `AccountTab.tsx` — each exports a component that takes `{ settings, onSave }` and renders a placeholder `<div>TODO</div>`.
+
+- [ ] **Step 4: Verify page renders**
 
 Run: `npx tsc --noEmit`
 
-Expected: Clean (AbilityStep still accepts raceDate prop but won't use it — that's fixed in the next task).
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```
-feat: move race date from AbilityStep to GoalStep
-
-Race date is about the race, not fitness.
-GoalStep now collects: distance, experience, race date.
+feat: create /settings page route with tab shell
 ```
 
 ---
 
-### Task 4: Simplify AbilityStep — remove goal time and race date
+### Task 2: Extract TrainingTab
 
 **Files:**
-- Modify: `app/setup/AbilityStep.tsx`
-- Modify: `app/setup/page.tsx`
+- Create: `app/settings/TrainingTab.tsx` (replace stub)
+- Reference: `app/components/SettingsModal.tsx` lines 304-396
 
-- [ ] **Step 1: Simplify AbilityStep**
+- [ ] **Step 1: Build TrainingTab from SettingsModal code**
 
-Remove `goalTime` and `raceDate` from the interface, state, and UI.
+Extract the Training section (ability picker + race goal + PacePreview) and its state/save logic into a standalone component. The modal already has all the UI — copy it, then adapt:
 
-New interface:
+- Own state: `abilityDist`, `abilitySecs`, `goalDist`, `raceDate`
+- Own save handler with threshold pace sync
+- `syncError` state for Intervals.icu failure feedback
+- Uses `PacePreview` component
+- Race goal as a gold info card (option B from brainstorming): collapsed by default, "Edit" expands to distance picker + date input
+
+**Interface:**
 ```ts
-interface AbilityStepProps {
-  raceDist: number;
-  experience: ExperienceLevel;
-  currentAbilitySecs?: number;
-  currentAbilityDist?: number;
-  onNext: (data: {
-    currentAbilitySecs: number;
-    currentAbilityDist: number;
-  }) => void;
-  onBack: () => void;
+interface TrainingTabProps {
+  settings: UserSettings;
+  onSave: (partial: Partial<UserSettings>) => Promise<void>;
 }
 ```
 
-Remove these state vars:
-- `goalMode`
-- `goalTimeSecs`
-- `raceDate`
+- [ ] **Step 2: Verify it compiles**
 
-Remove these imports:
-- `addWeeks, format, differenceInWeeks, parseISO, isBefore` from date-fns
-
-Remove from JSX:
-- The "Do you have a time goal for race day?" section (goal mode toggle + slider)
-- The "Race-ready by" date section
-- All `raceDate`-related references
-
-Remove the API save from handleNext — make it a simple sync callback:
-```ts
-const canProceed = true; // ability always has defaults
-
-return (
-  // ... keep distance picker + slider + PacePreview ...
-  <button
-    onClick={() => {
-      onNext({
-        currentAbilitySecs: abilitySecs,
-        currentAbilityDist: abilityDist,
-      });
-    }}
-  >Next</button>
-);
-```
-
-Note: AbilityStep currently saves to `/api/settings` in its handleNext. Remove that — the wizard orchestrator saves all fields at once in handleComplete.
-
-- [ ] **Step 2: Update setup/page.tsx**
-
-Update the AbilityStep render to match the simplified interface:
-
-```tsx
-{step === 6 && data.experience && (
-  <AbilityStep
-    raceDist={data.raceDist}
-    experience={data.experience}
-    currentAbilitySecs={data.currentAbilitySecs}
-    currentAbilityDist={data.currentAbilityDist}
-    onNext={(ability) => {
-      updateData({
-        currentAbilitySecs: ability.currentAbilitySecs,
-        currentAbilityDist: ability.currentAbilityDist,
-      });
-      setStep(7);
-    }}
-    onBack={() => { setStep(5); }}
-  />
-)}
-```
-
-Remove `goalTime` from `WizardData` interface.
-
-Remove `goalTimeSecs: data.goalTime` from `generatePlan` call.
-
-Merge ability/race data into the existing onboardingComplete save (don't add a separate fetch):
-
-```ts
-const res = await fetch("/api/settings", {
-  method: "PUT",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    onboardingComplete: true,
-    currentAbilitySecs: data.currentAbilitySecs,
-    currentAbilityDist: data.currentAbilityDist,
-    raceDist: data.raceDist,
-    raceDate: data.raceDate,
-  }),
-});
-```
-
-- [ ] **Step 3: Run type checker and full tests**
-
-Run: `npx tsc --noEmit && npm test`
-
-Expected: All pass.
-
-- [ ] **Step 4: Commit**
-
-```
-refactor: simplify AbilityStep — remove goal time and race date
-
-AbilityStep now collects only: ability distance + time.
-Race date moved to GoalStep. Goal time removed entirely.
-```
-
----
-
-### Task 5: Simplify SettingsModal (temporary, deleted in PR 2)
-
-**Files:**
-- Modify: `app/components/SettingsModal.tsx`
-
-- [ ] **Step 1: Remove goal time state and UI**
-
-Remove these state variables:
-- `goalTimeSecs`
-- `goalMode`
-- `customGoalDist`
-
-Keep:
-- `goalDist` (race distance — still needed)
-- `raceDate` (race date — still needed)
-- `abilityDist`, `abilitySecs` (fitness)
-- `maxHr` (HR zones)
-
-Remove from JSX:
-- The "Just finish" / "Set a time" toggle buttons
-- The goal time slider (`goalMode === "time" && goalTimeSecs > 0`)
-
-Remove from save handler:
-- The `goalMode` conditional for `goalTime`
-- `updates.goalTime = ...` lines
-
-Keep in save handler:
-- `goalDist` → `updates.raceDist`
-- `raceDate` → `updates.raceDate`
-- Ability + HR sync logic
-
-- [ ] **Step 2: Run type checker and tests**
-
-Run: `npx tsc --noEmit && npm test`
-
-Expected: All pass.
+Run: `npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
 ```
-refactor: remove goal time from settings modal
-
-Goal time no longer drives any computation.
-Settings shows race distance + date but no time target.
+feat: extract TrainingTab from SettingsModal
 ```
 
 ---
 
-### Task 6: Verify everything and final commit
+### Task 3: Extract ZonesTab
 
-- [ ] **Step 1: Run full verification**
+**Files:**
+- Create: `app/settings/ZonesTab.tsx` (replace stub)
+- Reference: `app/components/SettingsModal.tsx` lines 398-432
 
-Run: `npx tsc --noEmit && npm run lint && npm test`
+- [ ] **Step 1: Build ZonesTab**
 
-Expected: All pass — 0 TypeScript errors, 0 lint errors, all tests green.
+Extract HR Zones section: maxHR input + computed zone display + Intervals.icu sync.
 
-- [ ] **Step 2: Verify no remaining goalTimeSecs references in production code**
+- Own state: `maxHr`
+- On save: push HR zones + maxHR to `/api/intervals/hr-zones`
+- `syncError` for feedback
 
-Run: `grep -r "goalTimeSecs\|goalTime" lib/ app/ --include="*.ts" --include="*.tsx" | grep -v test | grep -v node_modules | grep -v ".next"`
+- [ ] **Step 2: Verify + commit**
 
-Expected: Only `lib/settings.ts` (DB read/write — column stays) and `lib/db.ts` (schema DDL). No usage in generators, pace table, wizard, or settings.
-
-- [ ] **Step 3: Create PR**
-
-Branch: `feat/settings-redesign-data-model` (or use current branch)
+```
+feat: extract ZonesTab from SettingsModal
+```
 
 ---
 
-## PR 2 — Settings Page (outline)
+### Task 4: Extract PlanTab
 
-> Implementation plan for PR 2 should be written after PR 1 merges, since the codebase will have changed. Below is a task outline for reference.
+**Files:**
+- Create: `app/settings/PlanTab.tsx` (replace stub)
+- Reference: `app/components/SettingsModal.tsx` lines 434-558
 
-### Task 7: Create settings page route and tab shell
+- [ ] **Step 1: Build PlanTab**
 
-**Files:** `app/settings/page.tsx`
+Extract: total weeks, start km, base phase toggle, warmth preference. All existing UI, same state management pattern.
 
-Server component with auth check + onboarding redirect. Fetches settings, renders client tab component.
+- [ ] **Step 2: Verify + commit**
 
-### Task 8: TrainingTab component
+```
+feat: extract PlanTab from SettingsModal
+```
 
-**Files:** `app/settings/TrainingTab.tsx`
+---
 
-Fitness slider (distance pills + time slider + PacePreview). Gold race goal card with edit expansion (distance picker + date input). Per-tab Save button with Intervals.icu threshold sync + inline error.
+### Task 5: Extract AccountTab
 
-### Task 9: ZonesTab component
+**Files:**
+- Create: `app/settings/AccountTab.tsx` (replace stub)
+- Reference: `app/components/SettingsModal.tsx` (Intervals.icu section, Sugar mode, Notifications, sign out)
 
-**Files:** `app/settings/ZonesTab.tsx`
+- [ ] **Step 1: Build AccountTab**
 
-Max HR number input. Computed HR zone display (color-coded Z1-Z5). Save pushes HR zones + maxHR to Intervals.icu.
+Extract: Intervals.icu API key management, sugar mode toggle + nightscout URL/secret + test connection, notification permission, sign out button.
 
-### Task 10: PlanTab component
+Takes extra `email` prop for sign out display.
 
-**Files:** `app/settings/PlanTab.tsx`
+- [ ] **Step 2: Verify + commit**
 
-Move total weeks, start km, base phase toggle, warmth preference from modal. Same UI, own component.
+```
+feat: extract AccountTab from SettingsModal
+```
 
-### Task 11: AccountTab component
+---
 
-**Files:** `app/settings/AccountTab.tsx`
+### Task 6: Replace modal trigger with navigation
 
-Move Intervals.icu API key, sugar mode + nightscout, notifications, sign out from modal.
+**Files:**
+- Modify: `app/page.tsx`
 
-### Task 12: Replace modal trigger with navigation
+- [ ] **Step 1: Replace gear icon**
 
-**Files:** `app/page.tsx`
+In `app/page.tsx`:
+- Remove `showSettings` state
+- Remove `SettingsModal` import
+- Remove the modal render block (`{showSettings && settings && (<SettingsModal .../>)}`)
+- Change gear icon `onClick` from `setShowSettings(true)` to navigation: use `<Link href="/settings">` wrapping the gear icon
 
-Gear icon → `<Link href="/settings">`. Remove `showSettings` state, `SettingsModal` import, modal render block.
+- [ ] **Step 2: Verify + commit**
 
-### Task 13: Delete SettingsModal and migrate tests
+```
+feat: replace settings modal trigger with /settings navigation
+```
+
+---
+
+### Task 7: Delete SettingsModal + migrate tests
 
 **Files:**
 - Delete: `app/components/SettingsModal.tsx`
-- Delete: `app/components/__tests__/SettingsModal.integration.test.tsx`
-- Migrate: `app/components/__tests__/clothing.integration.test.tsx` warmth tests → PlanTab test
-- New: `app/settings/__tests__/TrainingTab.integration.test.tsx`
-- New: `app/settings/__tests__/ZonesTab.integration.test.tsx`
+- Modify: `app/components/__tests__/SettingsModal.integration.test.tsx` → move to `app/settings/__tests__/`
+- Modify: `app/components/__tests__/clothing.integration.test.tsx` → warmth tests move to PlanTab
 
-### Task 14: Final verification and PR
+- [ ] **Step 1: Migrate SettingsModal tests**
+
+Move the test file to `app/settings/__tests__/TrainingTab.integration.test.tsx`. Update imports to render `TrainingTab` instead of `SettingsModal`. Adapt prop shapes.
+
+Move warmth preference tests from `clothing.integration.test.tsx` to a new `PlanTab.integration.test.tsx`. If clothing tests only test warmth in SettingsModal context, migrate them. If they test other things too, only extract the SettingsModal-dependent tests.
+
+- [ ] **Step 2: Add ZonesTab test**
+
+Create `app/settings/__tests__/ZonesTab.integration.test.tsx`:
+- HR zones render when maxHr set
+- maxHr change + save triggers Intervals.icu sync
+
+- [ ] **Step 3: Delete SettingsModal**
+
+```bash
+rm app/components/SettingsModal.tsx
+```
+
+Verify no remaining imports:
+```bash
+grep -rn "SettingsModal" app/ lib/ --include="*.ts" --include="*.tsx"
+```
+
+- [ ] **Step 4: Full verification**
+
+Run: `npx tsc --noEmit && npm run lint && npm test`
+
+- [ ] **Step 5: Commit**
+
+```
+refactor: delete SettingsModal, migrate tests to tab components
+```
+
+---
+
+### Task 8: Final verification
+
+- [ ] **Step 1: Full suite**
+
+Run: `npx tsc --noEmit && npm run lint && npm test`
+
+- [ ] **Step 2: Verify no dead code**
+
+```bash
+grep -rn "SettingsModal\|showSettings" app/ lib/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -v ".next" | grep -v docs/
+```
+
+Expected: zero results.
+
+- [ ] **Step 3: Push + create PR**
