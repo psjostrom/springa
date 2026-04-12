@@ -11,7 +11,7 @@ interface DiabetesStepProps {
 }
 
 export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initialUrl, nightscoutSecret: initialSecret, onNext, onBack }: DiabetesStepProps) {
-  const [diabetesMode, setSugarMode] = useState(initialMode);
+  const [diabetesMode, setDiabetesMode] = useState(initialMode);
   const [nightscoutUrl, setNightscoutUrl] = useState(initialUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState(initialSecret ?? "");
   const [validating, setValidating] = useState(false);
@@ -88,7 +88,7 @@ export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initial
       <div className="space-y-4">
         <div className="flex gap-3">
           <button
-            onClick={() => { setSugarMode(true); }}
+            onClick={() => { setDiabetesMode(true); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               diabetesMode
                 ? "border-brand bg-brand/10 text-brand"
@@ -98,7 +98,7 @@ export function DiabetesStep({ diabetesMode: initialMode, nightscoutUrl: initial
             Yes
           </button>
           <button
-            onClick={() => { setSugarMode(false); }}
+            onClick={() => { setDiabetesMode(false); }}
             className={`flex-1 py-3 rounded-lg border-2 font-semibold transition ${
               !diabetesMode
                 ? "border-brand bg-brand/10 text-brand"
