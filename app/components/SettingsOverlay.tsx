@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, ArrowLeft } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { TrainingTab } from "@/app/settings/TrainingTab";
 import { PlanTab } from "@/app/settings/PlanTab";
@@ -45,26 +45,34 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
-      onClick={onClose}
+      className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 bg-black/70"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-surface rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-xl shadow-brand/10 border-t sm:border border-border max-h-[92vh] overflow-y-auto animate-slide-up"
+        className="h-full sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:w-full bg-surface sm:rounded-xl shadow-xl shadow-brand/10 sm:border sm:border-border flex flex-col overflow-hidden"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border">
-          <h2 className="text-lg font-bold text-text">Settings</h2>
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border flex-none">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition sm:hidden"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h2 className="text-lg font-bold text-text">Settings</h2>
+          </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition"
+            className="hidden sm:block p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-border">
+        {/* Tabs — fixed, never scrolls */}
+        <div className="flex border-b border-border flex-none">
           {TABS.map((t) => (
             <button
               key={t}
@@ -80,8 +88,8 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
           ))}
         </div>
 
-        {/* Tab content */}
-        <div className="px-4 py-4 sm:px-6">
+        {/* Content — scrollable, fills remaining space */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} />}
           {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
           {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} />}
