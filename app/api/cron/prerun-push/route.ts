@@ -69,7 +69,7 @@ export async function GET(req: Request) {
           const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret, tau);
           currentIob = iob > 0 ? iob : null;
         } catch (err) {
-          console.warn(`[prerun-push] Failed to compute IOB for ${email}:`, err);
+          console.error(`[prerun-push] Failed to compute IOB for ${email}:`, err);
         }
       }
 

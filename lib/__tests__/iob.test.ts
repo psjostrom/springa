@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeIOB } from "../iob";
+import { computeIOB, tauForInsulin } from "../iob";
 
 function makeTreatment(minutesAgo: number, insulin: number | null) {
   return { ts: Date.now() - minutesAgo * 60 * 1000, insulin };
@@ -53,5 +53,19 @@ describe("computeIOB", () => {
     const treatments = [makeTreatment(30, 3.7)];
     const iob = computeIOB(treatments, Date.now(), 55);
     expect(iob).toBe(Math.round(iob * 10) / 10);
+  });
+});
+
+describe("tauForInsulin", () => {
+  it("returns correct tau for known types", () => {
+    expect(tauForInsulin("fiasp")).toBe(55);
+    expect(tauForInsulin("novorapid")).toBe(75);
+    expect(tauForInsulin("lyumjev")).toBe(50);
+  });
+
+  it("defaults to fiasp for null/undefined/unknown", () => {
+    expect(tauForInsulin(null)).toBe(55);
+    expect(tauForInsulin(undefined)).toBe(55);
+    expect(tauForInsulin("unknown")).toBe(55);
   });
 });

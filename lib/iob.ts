@@ -75,10 +75,16 @@ export async function fetchIOB(
 
   const treatments = raw
     .filter((t) => typeof t.insulin === "number" && t.insulin > 0)
-    .map((t) => ({
-      ts: typeof t.created_at === "string" ? new Date(t.created_at).getTime() : 0,
-      insulin: t.insulin as number,
-    }));
+    .map((t) => {
+      const rawTs =
+        typeof t.created_at === "number"
+          ? t.created_at
+          : typeof t.created_at === "string"
+            ? new Date(t.created_at).getTime()
+            : 0;
+      return { ts: isNaN(rawTs) ? 0 : rawTs, insulin: t.insulin as number };
+    })
+    .filter((t) => t.ts > 0);
 
   return computeIOB(treatments, now, tauMinutes);
 }
