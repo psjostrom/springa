@@ -204,6 +204,16 @@ export const handlers = [
     return HttpResponse.json({ newId: 9999 });
   }),
 
+  // PUT threshold pace via proxy
+  http.put("/api/intervals/threshold-pace", () => {
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // PUT HR zones via proxy
+  http.put("/api/intervals/hr-zones", () => {
+    return HttpResponse.json({ ok: true });
+  }),
+
   // POST run analysis (LLM-generated post-run analysis)
   http.post("/api/run-analysis", () => {
     return HttpResponse.json({ analysis: "Test analysis." });

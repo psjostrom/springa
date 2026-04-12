@@ -38,9 +38,9 @@ export interface PaceTableResult {
  *  the Riegel formula: T_hm = T × (21.0975 / D)^1.06.
  *  Produces continuous values that closely match known VDOT tables
  *  (5K→4.56×, 10K→2.24×, Marathon→0.48×). */
-function getHmEquivalentTimeSecs(distanceKm: number, goalTimeSecs: number): number {
-  if (Math.abs(distanceKm - HM_DISTANCE_KM) < 0.5) return goalTimeSecs;
-  return goalTimeSecs * Math.pow(HM_DISTANCE_KM / distanceKm, 1.06);
+function getHmEquivalentTimeSecs(distanceKm: number, timeSecs: number): number {
+  if (Math.abs(distanceKm - HM_DISTANCE_KM) < 0.5) return timeSecs;
+  return timeSecs * Math.pow(HM_DISTANCE_KM / distanceKm, 1.06);
 }
 
 /**

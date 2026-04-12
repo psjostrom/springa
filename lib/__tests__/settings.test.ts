@@ -100,13 +100,6 @@ describe("saveUserSettings", () => {
     });
   });
 
-  it("persists goalTime as number (roundtrip test)", async () => {
-    await saveUserSettings("user@example.com", { goalTime: 8400 });
-
-    const result = await getUserSettings("user@example.com");
-    expect(result.goalTime).toBe(8400);
-  });
-
   it("persists currentAbilitySecs and currentAbilityDist (roundtrip test)", async () => {
     await saveUserSettings("user@example.com", {
       currentAbilitySecs: 3300,
