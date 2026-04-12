@@ -4,12 +4,10 @@ import { Suspense, startTransition, useCallback, useEffect, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useModalURL } from "./hooks/useModalURL";
-import { useSession } from "next-auth/react";
 import { useHydrateStore } from "./hooks/useHydrateStore";
 import {
   settingsAtom,
   settingsLoadingAtom,
-  updateSettingsAtom,
   switchTabAtom,
   diabetesModeAtom,
 } from "./atoms";
@@ -21,9 +19,9 @@ import { CoachScreen } from "./screens/CoachScreen";
 import { SimulateScreen } from "./screens/SimulateScreen";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
-import { SettingsModal } from "./components/SettingsModal";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
 import { Settings, Sun, Moon } from "lucide-react";
+import Link from "next/link";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -42,14 +40,11 @@ const splashFallback = (
 );
 
 function HomeContent() {
-  const { data: session } = useSession();
-
   // Hydrate all Jotai atoms from data-fetching hooks
   useHydrateStore();
 
   const settings = useAtomValue(settingsAtom);
   const settingsLoading = useAtomValue(settingsLoadingAtom);
-  const updateSettings = useSetAtom(updateSettingsAtom);
   const switchTab = useAtomValue(switchTabAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
@@ -122,9 +117,6 @@ function HomeContent() {
     localStorage.setItem("springa-theme", theme);
   }, [theme]);
 
-  // Settings modal
-  const [showSettings, setShowSettings] = useState(false);
-
   // Redirect: not onboarded → /setup
   useEffect(() => {
     if (settingsLoading || !settings) return;
@@ -162,13 +154,13 @@ function HomeContent() {
             >
               {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <button
-              onClick={() => { setShowSettings(true); }}
+            <Link
+              href="/settings"
               className="p-2 rounded-lg text-muted hover:text-brand hover:bg-border transition"
               title="Settings"
             >
               <Settings size={20} />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -202,14 +194,6 @@ function HomeContent() {
         <BGGraphPopover onClose={bgGraph.close} />
       )}
 
-      {showSettings && settings && (
-        <SettingsModal
-          email={session?.user?.email ?? ""}
-          settings={settings}
-          onSave={updateSettings}
-          onClose={() => { setShowSettings(false); }}
-        />
-      )}
     </div>
   );
 }
