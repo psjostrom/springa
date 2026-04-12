@@ -109,35 +109,24 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
 
 /** Compute pace percentages relative to threshold (= HM-equivalent of current ability).
  *  Easy uses a 30% floor (allows walking) with the ceiling as the real constraint.
- *  Steady uses goal race pace as % of threshold when goal differs from ability. */
+ *  Steady is fixed at 99-102% of threshold. */
 export function computeZonePacePct(
   paceTable: PaceTableResult | null,
-  goalDistKm?: number,
-  goalTimeSecs?: number,
 ): Record<ZoneName | "walk", { min: number | null; max: number | null }> {
   if (!paceTable) return HM_ZONE_DEFAULTS;
-
-  let steadyMin = 99, steadyMax = 102;
-  if (goalTimeSecs && goalDistKm) {
-    const goalRacePace = goalTimeSecs / 60 / goalDistKm;
-    const thresholdPace = paceTable.hmEquivalentPacePerKm;
-    const ratio = thresholdPace / goalRacePace;
-    steadyMin = Math.round(ratio * 0.98 * 100);
-    steadyMax = Math.round(ratio * 1.01 * 100);
-  }
 
   return {
     walk: { min: null, max: null },
     z1:   { min: null, max: null },
     z2:   { min: 30, max: 88 },
-    z3:   { min: steadyMin, max: steadyMax },
+    z3:   { min: 99, max: 102 },
     z4:   { min: 106, max: 111 },
     z5:   { min: null, max: null },
   };
 }
 
-function makeStep(paceTable: PaceTableResult | null, goalDistKm?: number, goalTimeSecs?: number) {
-  const zonePct = computeZonePacePct(paceTable, goalDistKm, goalTimeSecs);
+function makeStep(paceTable: PaceTableResult | null) {
+  const zonePct = computeZonePacePct(paceTable);
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
     const pct = zonePct[zone];
     const step = formatPaceStep(
@@ -180,7 +169,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
+  const s = makeStep(ctx.paceTable);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "z2", "Warmup");
@@ -277,7 +266,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
+  const s = makeStep(ctx.paceTable);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -345,7 +334,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
+  const s = makeStep(ctx.paceTable);
   const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
   return {
@@ -376,7 +365,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = makeStep(ctx.paceTable, ctx.raceDist, ctx.goalTimeSecs);
+  const s = makeStep(ctx.paceTable);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -476,7 +465,6 @@ export interface PlanConfig {
   longRunDay?: number;
   clubDay?: number;
   clubType?: string;
-  goalTimeSecs?: number;
   currentAbilitySecs?: number;
   currentAbilityDist?: number;
 }
@@ -513,7 +501,6 @@ export function buildContext(config: PlanConfig): PlanContext {
     clubDay: config.clubDay,
     clubType: config.clubType,
     paceTable,
-    goalTimeSecs: config.goalTimeSecs,
   };
 }
 

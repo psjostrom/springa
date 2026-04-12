@@ -105,7 +105,6 @@ export default function SetupPage() {
         clubType: data.clubType,
         currentAbilitySecs: data.currentAbilitySecs,
         currentAbilityDist: data.currentAbilityDist,
-        goalTimeSecs: data.goalTime,
       });
 
       const today = new Date();

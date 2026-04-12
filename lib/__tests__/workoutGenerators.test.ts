@@ -67,7 +67,6 @@ describe("generatePlan", () => {
     hrZones: [...TEST_HR_ZONES],
     currentAbilitySecs: TEST_GOAL_TIME,
     currentAbilityDist: 16,
-    goalTimeSecs: TEST_GOAL_TIME,
   };
 
   function generate(overrides: Partial<PlanConfig> = {}) {
@@ -254,10 +253,10 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    expect(longRuns.some((lr) => lr.description.includes("100-103% pace"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("99-102% pace"))).toBe(true);
     expect(longRuns.some((lr) => lr.description.includes("106-111% pace"))).toBe(true);
     expect(longRuns.some((lr) =>
-      !lr.description.includes("100-103% pace") && !lr.description.includes("106-111% pace"),
+      !lr.description.includes("99-102% pace") && !lr.description.includes("106-111% pace"),
     )).toBe(true);
   });
 
@@ -270,9 +269,9 @@ describe("generatePlan", () => {
     for (const run of progressiveRuns) {
       const mainSet = run.description.slice(run.description.indexOf("Main set"));
       expect(mainSet).toContain("30-88% pace");
-      expect(mainSet).toContain("100-103% pace");
+      expect(mainSet).toContain("99-102% pace");
       expect(mainSet).toContain("106-111% pace");
-      const steadyIdx = mainSet.indexOf("100-103% pace");
+      const steadyIdx = mainSet.indexOf("99-102% pace");
       const tempoIdx = mainSet.indexOf("106-111% pace");
       expect(tempoIdx).toBeGreaterThan(steadyIdx);
     }
@@ -412,33 +411,22 @@ describe("generatePlan", () => {
     }
   });
 
-  it("adjusts steady zone based on goal race pace vs threshold", () => {
-    // 5K race: goal pace faster than HM-equivalent → steady % shifts up
+  it("steady zone is fixed at 99-102% regardless of race distance", () => {
+    // 5K race
     const plan5k = generateFull({
-      raceDist: 5, currentAbilitySecs: 1620, currentAbilityDist: 5, goalTimeSecs: 1620,
+      raceDist: 5, currentAbilitySecs: 1620, currentAbilityDist: 5,
     });
     const rp5k = plan5k.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rp5k).toBeDefined();
-    const steadyMatch5k = /(\d+)-(\d+)% pace/.exec(
-      rp5k!.description.slice(rp5k!.description.indexOf("Race Pace")),
-    );
-    expect(steadyMatch5k).not.toBeNull();
-    const steadyMin5k = parseInt(steadyMatch5k![1], 10);
+    expect(rp5k!.description).toContain("99-102% pace");
 
-    // Marathon: goal pace slower than HM-equivalent → steady % shifts down
+    // Marathon race
     const planMarathon = generateFull({
-      raceDist: 42.195, currentAbilitySecs: 15300, currentAbilityDist: 42.195, goalTimeSecs: 15300,
+      raceDist: 42.195, currentAbilitySecs: 15300, currentAbilityDist: 42.195,
     });
     const rpMarathon = planMarathon.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rpMarathon).toBeDefined();
-    const steadyMatchM = /(\d+)-(\d+)% pace/.exec(
-      rpMarathon!.description.slice(rpMarathon!.description.indexOf("Race Pace")),
-    );
-    expect(steadyMatchM).not.toBeNull();
-    const steadyMinM = parseInt(steadyMatchM![1], 10);
-
-    // 5K steady min should be higher than marathon steady min
-    expect(steadyMin5k).toBeGreaterThan(steadyMinM);
+    expect(rpMarathon!.description).toContain("99-102% pace");
 
     // Easy is fixed at 30-88% regardless of distance
     const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
@@ -447,14 +435,7 @@ describe("generatePlan", () => {
     expect(easyMarathon!.description).toContain("30-88% pace");
   });
 
-  it("falls back to HM defaults when goalTimeSecs is not set", () => {
-    const plan = generateFull({ goalTimeSecs: undefined });
-    const easyRun = plan.find((e) => e.external_id.includes("easy-"));
-    expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("30-88% pace");
-  });
-
-  it("derives paceTable from currentAbility, not goalTime", () => {
+  it("derives paceTable from currentAbility", () => {
     const events = generatePlan({
       bgModel: null,
       raceDateStr: "2026-08-01",
@@ -465,7 +446,6 @@ describe("generatePlan", () => {
       hrZones: [120, 150, 165, 179, 189],
       currentAbilitySecs: 3300,   // 10K in 55:00 (flat road)
       currentAbilityDist: 10,
-      goalTimeSecs: 8400,         // EcoTrail 16km in 2:20 (trail)
     });
     const easyRun = events.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
     expect(easyRun).toBeDefined();
@@ -481,7 +461,8 @@ describe("generatePlan", () => {
       startKm: 8,
       lthr: 168,
       hrZones: [120, 150, 165, 179, 189],
-      goalTimeSecs: 8400,
+      currentAbilitySecs: 8400,
+      currentAbilityDist: 21.0975,
     });
     const easyRun = events.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
     expect(easyRun).toBeDefined();

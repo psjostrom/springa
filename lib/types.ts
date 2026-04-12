@@ -48,7 +48,6 @@ export interface PlanContext {
   clubType?: string;
   /** Pace table derived from current ability. Null = effort-based mode (no pace targets). */
   paceTable: import("./paceTable").PaceTableResult | null;
-  goalTimeSecs?: number;
 }
 
 export interface IntervalsActivity {

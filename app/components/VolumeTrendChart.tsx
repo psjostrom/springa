@@ -78,7 +78,6 @@ export function VolumeTrendChart({
       includeBasePhase: includeBasePhase ?? false,
       currentAbilitySecs,
       currentAbilityDist,
-      goalTimeSecs: goalTime,
     });
     for (const pe of planEvents) {
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);

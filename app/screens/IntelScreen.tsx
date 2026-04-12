@@ -294,7 +294,6 @@ export function IntelScreen() {
       includeBasePhase: settings?.includeBasePhase ?? false,
       currentAbilitySecs: settings?.currentAbilitySecs,
       currentAbilityDist: settings?.currentAbilityDist,
-      goalTimeSecs: settings?.goalTime,
     });
     let targetKm = 0;
     let totalRuns = 0;
