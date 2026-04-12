@@ -11,6 +11,7 @@ import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsH
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchBGFromNS } from "@/lib/nightscout";
+import { fetchIOB } from "@/lib/iob";
 import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
 
@@ -58,8 +59,15 @@ export async function GET(req: Request) {
         console.error(`[prerun-push] Failed to fetch wellness/TSB for ${email}:`, err);
       }
 
-      // IOB no longer available (MyLife scraper removed)
-      const currentIob: number | null = null;
+      let currentIob: number | null = null;
+      if (creds.nightscoutUrl && creds.nightscoutSecret) {
+        try {
+          const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret);
+          currentIob = iob > 0 ? iob : null;
+        } catch (err) {
+          console.warn(`[prerun-push] Failed to compute IOB for ${email}:`, err);
+        }
+      }
 
       // Compute "today" in the user's timezone (DST-safe)
       const todayLocal = todayInTimezone(timezone);
