@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { X, LogOut, Bell, ExternalLink } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
+import { INSULIN_OPTIONS } from "@/lib/iob";
 import { MIN_PLAN_WEEKS } from "@/lib/periodization";
 import { getPaceTable, getSliderRange, getDefaultGoalTime, DISTANCE_OPTIONS } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
@@ -22,12 +23,13 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [startKm, setStartKm] = useState(settings.startKm ?? "");
   const [includeBasePhase, setIncludeBasePhase] = useState(settings.includeBasePhase ?? false);
   const [warmthPreference, setWarmthPreference] = useState(settings.warmthPreference ?? 0);
-  const [diabetesMode, setSugarMode] = useState(settings.diabetesMode ?? false);
+  const [diabetesMode, setDiabetesMode] = useState(settings.diabetesMode ?? false);
   const [nightscoutUrl, setNightscoutUrl] = useState(settings.nightscoutUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState("");
   const [nightscoutConnected, setNightscoutConnected] = useState(settings.nightscoutConnected ?? false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState("");
+  const [insulinType, setInsulinType] = useState(settings.insulinType ?? "fiasp");
   const [intervalsApiKey, setIntervalsApiKey] = useState("");
   const [intervalsConnected, setIntervalsConnected] = useState(settings.intervalsConnected ?? false);
   const [intervalsValidating, setIntervalsValidating] = useState(false);
@@ -169,6 +171,10 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
         if (nightscoutSecret.trim()) {
           updates.nightscoutSecret = nightscoutSecret.trim();
         }
+      }
+
+      if (insulinType !== (settings.insulinType ?? "fiasp")) {
+        updates.insulinType = insulinType;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -559,7 +565,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 role="switch"
                 aria-label="Manage diabetes"
                 aria-checked={diabetesMode}
-                onClick={() => { setSugarMode(!diabetesMode); }}
+                onClick={() => { setDiabetesMode(!diabetesMode); }}
                 className={`mt-0.5 relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
                   diabetesMode ? "bg-brand" : "bg-surface-alt"
                 }`}
@@ -617,6 +623,21 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                   {connectionError && (
                     <span className="text-sm text-error">✗ {connectionError}</span>
                   )}
+                </div>
+
+                {/* Insulin Type */}
+                <div>
+                  <label className="block text-xs text-muted mb-1">Rapid-acting insulin</label>
+                  <select
+                    value={insulinType}
+                    onChange={(e) => { setInsulinType(e.target.value); }}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent text-sm"
+                  >
+                    {INSULIN_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted mt-1">Used for IOB decay calculation</p>
                 </div>
               </div>
             )}

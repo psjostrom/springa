@@ -231,6 +231,11 @@ export const handlers = [
     return HttpResponse.json({ patterns: "Test patterns.", latestActivityId: "a123" });
   }),
 
+  // GET insulin context (IOB polling in useHydrateStore)
+  http.get("/api/insulin-context", () => {
+    return HttpResponse.json({ iob: 0 });
+  }),
+
   // GET BG readings (useCurrentBG polls this on mount)
   http.get("/api/bg", () => {
     return HttpResponse.json({ readings: [], trend: null });

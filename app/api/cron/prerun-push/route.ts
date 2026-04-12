@@ -11,6 +11,7 @@ import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsH
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchBGFromNS } from "@/lib/nightscout";
+import { fetchIOB, tauForInsulin } from "@/lib/iob";
 import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
 
@@ -58,8 +59,19 @@ export async function GET(req: Request) {
         console.error(`[prerun-push] Failed to fetch wellness/TSB for ${email}:`, err);
       }
 
-      // IOB no longer available (MyLife scraper removed)
-      const currentIob: number | null = null;
+      // Check sugar mode — skip BG readiness checks when off
+      const settings = await getUserSettings(email);
+
+      let currentIob: number | null = null;
+      if (creds.nightscoutUrl && creds.nightscoutSecret) {
+        try {
+          const tau = tauForInsulin(settings.insulinType);
+          const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret, tau);
+          currentIob = iob > 0 ? iob : null;
+        } catch (err) {
+          console.error(`[prerun-push] Failed to compute IOB for ${email}:`, err);
+        }
+      }
 
       // Compute "today" in the user's timezone (DST-safe)
       const todayLocal = todayInTimezone(timezone);
@@ -82,9 +94,6 @@ export async function GET(req: Request) {
         const diffMs = eventUtcMs - now;
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
-
-      // Check sugar mode — skip BG readiness checks when off
-      const settings = await getUserSettings(email);
 
       let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
       let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;
