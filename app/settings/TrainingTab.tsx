@@ -5,6 +5,7 @@ import type { UserSettings } from "@/lib/settings";
 import { getPaceTable, getSliderRange, getDefaultGoalTime, DISTANCE_OPTIONS } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 import { PacePreview } from "@/app/components/PacePreview";
+import { computeMaxHRZones, ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
 
 interface TrainingTabProps {
   settings: UserSettings;
@@ -16,6 +17,7 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
   const [abilitySecs, setAbilitySecs] = useState(settings.currentAbilitySecs ?? 0);
   const [goalDist, setGoalDist] = useState(settings.raceDist ?? 0);
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
+  const [maxHr, setMaxHr] = useState(settings.maxHr ?? 0);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [editingRaceGoal, setEditingRaceGoal] = useState(false);
@@ -39,6 +41,9 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
       if (raceDate !== (settings.raceDate ?? "")) {
         updates.raceDate = raceDate || undefined;
       }
+      if (maxHr !== (settings.maxHr ?? 0)) {
+        updates.maxHr = maxHr || undefined;
+      }
 
       if (Object.keys(updates).length > 0) {
         await onSave(updates);
@@ -53,6 +58,14 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
         }).catch((e: unknown) => { console.error("Threshold pace sync failed:", e); });
+      }
+      if (settings.intervalsConnected && maxHr !== (settings.maxHr ?? 0) && maxHr > 0 && settings.sportSettingsId) {
+        const zones = computeMaxHRZones(maxHr);
+        fetch("/api/intervals/hr-zones", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sportSettingsId: settings.sportSettingsId, hrZones: zones, maxHr }),
+        }).catch((e: unknown) => { console.error("HR zone sync failed:", e); });
       }
 
       setStatus("Saved");
@@ -206,6 +219,42 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
           <PacePreview paceTable={getPaceTable(abilityDist, abilitySecs)} />
         </div>
       )}
+
+      {/* HR Zones */}
+      <div>
+        <p className="text-xs text-muted mb-2">HR Zones</p>
+        <div className="flex items-center gap-3 mb-3">
+          <label className="text-xs text-muted">Max HR</label>
+          <input
+            type="number"
+            min={120}
+            max={230}
+            value={maxHr || ""}
+            onChange={(e) => { setMaxHr(e.target.value === "" ? 0 : Number(e.target.value)); }}
+            className="w-20 px-3 py-2 border border-border rounded-lg text-text bg-surface-alt text-sm text-center"
+          />
+          <span className="text-xs text-muted">bpm</span>
+        </div>
+        {maxHr > 0 && (() => {
+          const zones = computeMaxHRZones(maxHr);
+          return (
+            <div className="bg-surface-alt border border-border rounded-lg p-3 space-y-1 text-sm">
+              {(["z1", "z2", "z3", "z4", "z5"] as const).map((zone, i) => {
+                const lo = i === 0 ? 0 : zones[i - 1];
+                const hi = zones[i];
+                return (
+                  <div key={zone} className="flex justify-between">
+                    <span style={{ color: ZONE_COLORS[zone] }}>{ZONE_DISPLAY_NAMES[zone]}</span>
+                    <span className="text-muted">
+                      {i === 0 ? `< ${hi}` : i === 4 ? `${lo}+` : `${lo} \u2013 ${hi}`} bpm
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Save button */}
       <div className="mt-6">

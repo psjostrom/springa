@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { TrainingTab } from "./TrainingTab";
-import { ZonesTab } from "./ZonesTab";
 import { PlanTab } from "./PlanTab";
 import { AccountTab } from "./AccountTab";
 
-const TABS = ["Training", "Zones", "Plan", "Account"] as const;
+const TABS = ["Training", "Plan", "Account"] as const;
 type Tab = typeof TABS[number];
 
 interface SettingsPageProps {
@@ -20,6 +19,15 @@ interface SettingsPageProps {
 export function SettingsPage({ email, initialSettings }: SettingsPageProps) {
   const [tab, setTab] = useState<Tab>("Training");
   const [settings, setSettings] = useState(initialSettings);
+
+  // Fetch enriched settings (includes Intervals.icu data) client-side
+  // so the page loads instantly from DB, then HR zones etc. populate
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json() as Promise<UserSettings>)
+      .then((enriched) => { setSettings((prev) => ({ ...prev, ...enriched })); })
+      .catch(() => { /* proceed with DB-only data */ });
+  }, []);
 
   const handleSave = async (partial: Partial<UserSettings>) => {
     const res = await fetch("/api/settings", {
@@ -33,7 +41,7 @@ export function SettingsPage({ email, initialSettings }: SettingsPageProps) {
 
   return (
     <div className="min-h-screen bg-bg text-text">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md md:max-w-2xl mx-auto">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <Link href="/" className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition">
             <ArrowLeft size={20} />
@@ -59,7 +67,6 @@ export function SettingsPage({ email, initialSettings }: SettingsPageProps) {
 
         <div className="px-4 py-4">
           {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} />}
-          {tab === "Zones" && <ZonesTab settings={settings} onSave={handleSave} />}
           {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
           {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} setSettings={setSettings} />}
         </div>

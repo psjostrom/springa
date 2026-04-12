@@ -5,35 +5,34 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
 import type { UserSettings } from "@/lib/settings";
-import { ZonesTab } from "../ZonesTab";
+import { TrainingTab } from "../TrainingTab";
 import "@/lib/__tests__/setup-dom";
 
 const validSettings: UserSettings = {
   totalWeeks: 18,
   startKm: 8,
+  currentAbilityDist: 10,
+  currentAbilitySecs: 3300,
 };
 
 function renderTab(overrides: Partial<UserSettings> = {}) {
   // eslint-disable-next-line no-restricted-syntax -- callback spy, not a module mock
   const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
   const settings = { ...validSettings, ...overrides };
-  render(<ZonesTab settings={settings} onSave={onSave} />);
+  render(<TrainingTab settings={settings} onSave={onSave} />);
   return { onSave };
 }
 
-describe("ZonesTab HR zones", () => {
+describe("HR zones in TrainingTab", () => {
   it("renders HR zones section when maxHr is set", () => {
     renderTab({
       maxHr: 193,
       intervalsConnected: true,
     });
 
-    expect(screen.getByText("Max HR")).toBeInTheDocument();
-
-    // Max HR input should have the value (use displayValue since label isn't connected)
+    expect(screen.getByText("HR Zones")).toBeInTheDocument();
     expect(screen.getByDisplayValue("193")).toBeInTheDocument();
 
-    // Zone names should be visible
     expect(screen.getByText("Recovery")).toBeInTheDocument();
     expect(screen.getByText("Endurance")).toBeInTheDocument();
     expect(screen.getByText("Tempo")).toBeInTheDocument();
@@ -58,7 +57,6 @@ describe("ZonesTab HR zones", () => {
       sportSettingsId: 123,
     });
 
-    // Max HR input starts with value 180
     const hrInput = screen.getByDisplayValue("180");
     await user.clear(hrInput);
     await user.type(hrInput, "193");
