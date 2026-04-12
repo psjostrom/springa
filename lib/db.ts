@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   club_day           INTEGER,
   club_type          TEXT,
   current_ability_secs INTEGER,
-  current_ability_dist REAL
+  current_ability_dist REAL,
+  insulin_type TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

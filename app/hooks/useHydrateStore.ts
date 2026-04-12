@@ -10,6 +10,7 @@ import {
   calendarLoadingAtom,
   calendarErrorAtom,
   currentBGAtom,
+  currentIobAtom,
   trendAtom,
   trendSlopeAtom,
   lastBGUpdateAtom,
@@ -116,6 +117,23 @@ export function useHydrateStore() {
       runData.bgActivityNames, runData.runBGContexts, runData.cachedActivities,
       setBgModel, setBgModelLoading, setBgModelProgress,
       setBgActivityNames, setRunBGContexts, setCachedActivities]);
+
+  // ─── IOB (Insulin on Board) ────────────────────────────
+  const diabetesMode = settings?.diabetesMode ?? false;
+  const setCurrentIob = useSetAtom(currentIobAtom);
+
+  const { data: iobData } = useSWR<{ iob: number } | null>(
+    diabetesMode ? "/api/insulin-context" : null,
+    (url: string) => fetch(url).then((r) => {
+      if (!r.ok) { console.error(`[IOB] fetch failed: ${r.status}`); return null; }
+      return r.json();
+    }),
+    { refreshInterval: 5 * 60 * 1000, revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+
+  useEffect(() => {
+    setCurrentIob(iobData?.iob ?? null);
+  }, [iobData, setCurrentIob]);
 
   // ─── Wellness ──────────────────────────────────────────
   const {

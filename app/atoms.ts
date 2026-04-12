@@ -111,7 +111,6 @@ export const currentTsbAtom = atom<number | null>((get) => {
   return data.length > 0 ? data[data.length - 1].tsb : null;
 });
 
-// MyLife scraper removed — IOB is no longer available, always null
 export const currentIobAtom = atom<number | null>(null);
 
 export const enrichedEventsAtom = atom((get) => {
