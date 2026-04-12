@@ -22,10 +22,9 @@ const validSettings: UserSettings = {
 function renderTab(overrides: Partial<UserSettings> = {}) {
   // eslint-disable-next-line no-restricted-syntax -- callback spy, not a module mock
   const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
-  const setSettings = vi.fn<(updater: React.SetStateAction<UserSettings>) => void>();
   const settings = { ...validSettings, ...overrides };
-  render(<AccountTab email="test@example.com" settings={settings} onSave={onSave} setSettings={setSettings} />);
-  return { onSave, setSettings };
+  render(<AccountTab email="test@example.com" settings={settings} onSave={onSave} />);
+  return { onSave };
 }
 
 describe("AccountTab Intervals.icu API key", () => {
@@ -80,7 +79,7 @@ describe("AccountTab Intervals.icu API key", () => {
 
   it("propagates intervalsConnected state to parent after successful key validation", async () => {
     const user = userEvent.setup();
-    const { setSettings } = renderTab({ intervalsConnected: false });
+    const { onSave } = renderTab({ intervalsConnected: false });
 
     const input = screen.getByPlaceholderText("Paste your API key");
     await user.type(input, "valid-api-key");
@@ -88,17 +87,10 @@ describe("AccountTab Intervals.icu API key", () => {
 
     await screen.findByText("Connected");
 
-    // Verify setSettings was called with intervalsConnected: true
+    // Verify onSave was called with intervalsConnected: true
     await vi.waitFor(() => {
-      expect(setSettings).toHaveBeenCalledWith(expect.any(Function));
+      expect(onSave).toHaveBeenCalledWith({ intervalsConnected: true });
     });
-
-    // Extract the updater function and verify it sets intervalsConnected
-    const updaterCall = setSettings.mock.calls[0][0];
-    if (typeof updaterCall === "function") {
-      const result = updaterCall({ ...validSettings, intervalsConnected: false });
-      expect(result.intervalsConnected).toBe(true);
-    }
   });
 });
 

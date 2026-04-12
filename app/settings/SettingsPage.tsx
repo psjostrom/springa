@@ -68,7 +68,7 @@ export function SettingsPage({ email, initialSettings }: SettingsPageProps) {
         <div className="px-4 py-4">
           {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} />}
           {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
-          {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} setSettings={setSettings} />}
+          {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} />}
         </div>
       </div>
     </div>
