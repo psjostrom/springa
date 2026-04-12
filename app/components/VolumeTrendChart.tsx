@@ -26,7 +26,6 @@ interface VolumeTrendChartProps {
   includeBasePhase?: boolean;
   currentAbilitySecs?: number;
   currentAbilityDist?: number;
-  goalTime?: number;
 }
 
 interface WeekData {
@@ -50,7 +49,6 @@ export function VolumeTrendChart({
   includeBasePhase,
   currentAbilitySecs,
   currentAbilityDist,
-  goalTime,
 }: VolumeTrendChartProps) {
 
   const data = (() => {
@@ -78,7 +76,6 @@ export function VolumeTrendChart({
       includeBasePhase: includeBasePhase ?? false,
       currentAbilitySecs,
       currentAbilityDist,
-      goalTimeSecs: goalTime,
     });
     for (const pe of planEvents) {
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);

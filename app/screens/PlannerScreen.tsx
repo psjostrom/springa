@@ -122,7 +122,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: settings.clubType,
       currentAbilitySecs: settings.currentAbilitySecs,
       currentAbilityDist: settings.currentAbilityDist,
-      goalTimeSecs: settings.goalTime,
     });
     const todayFilter = new Date();
     todayFilter.setHours(0, 0, 0, 0);

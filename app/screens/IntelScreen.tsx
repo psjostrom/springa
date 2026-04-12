@@ -52,6 +52,7 @@ import type { WidgetKey } from "@/lib/widgetRegistry";
 import { DEFAULT_WIDGETS, DEFAULT_LAYOUT, moveWidget, toggleWidget } from "@/lib/widgetRegistry";
 import { fetchActivity } from "@/lib/intervalsClient";
 import { activityToCalendarEvent } from "@/lib/calendarPipeline";
+import { getThresholdPace } from "@/lib/paceTable";
 import { TabBar } from "../components/TabBar";
 import { VolumeCompact } from "../components/VolumeCompact";
 import { BGCompact } from "../components/BGCompact";
@@ -294,7 +295,6 @@ export function IntelScreen() {
       includeBasePhase: settings?.includeBasePhase ?? false,
       currentAbilitySecs: settings?.currentAbilitySecs,
       currentAbilityDist: settings?.currentAbilityDist,
-      goalTimeSecs: settings?.goalTime,
     });
     let targetKm = 0;
     let totalRuns = 0;
@@ -392,7 +392,6 @@ export function IntelScreen() {
         includeBasePhase={settings?.includeBasePhase}
         currentAbilitySecs={settings?.currentAbilitySecs}
         currentAbilityDist={settings?.currentAbilityDist}
-        goalTime={settings?.goalTime}
       />
     ),
     "pace-zones":
@@ -633,7 +632,7 @@ export function IntelScreen() {
             bgModel={bgModel}
             hrZones={hrZones}
             lthr={lthr}
-            racePacePerKm={settings?.goalTime && raceDist ? settings.goalTime / 60 / raceDist : undefined}
+            racePacePerKm={getThresholdPace(settings?.currentAbilityDist, settings?.currentAbilitySecs)}
           />
         )
       )}

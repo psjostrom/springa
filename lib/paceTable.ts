@@ -38,26 +38,24 @@ export interface PaceTableResult {
  *  the Riegel formula: T_hm = T × (21.0975 / D)^1.06.
  *  Produces continuous values that closely match known VDOT tables
  *  (5K→4.56×, 10K→2.24×, Marathon→0.48×). */
-function getHmEquivalentTimeSecs(distanceKm: number, goalTimeSecs: number): number {
-  if (Math.abs(distanceKm - HM_DISTANCE_KM) < 0.5) return goalTimeSecs;
-  return goalTimeSecs * Math.pow(HM_DISTANCE_KM / distanceKm, 1.06);
+function getHmEquivalentTimeSecs(distanceKm: number, timeSecs: number): number {
+  if (Math.abs(distanceKm - HM_DISTANCE_KM) < 0.5) return timeSecs;
+  return timeSecs * Math.pow(HM_DISTANCE_KM / distanceKm, 1.06);
 }
 
 /**
- * Derive training paces from race distance and goal time.
+ * Derive training paces from current ability (distance + time).
  * Based on Ben Parkes' pace chart, using VDOT-style distance conversion.
  *
  * Pace ratios derived from Ben Parkes 2h20 HM row (validated across multiple goal times):
  * - Easy:     1.06-1.17× HM pace (slower)
- * - Steady:   0.98-1.01× actual race pace for goal distance
+ * - Steady:   0.98-1.01× ability pace
  * - Tempo:    0.90-0.94× HM pace (~5K effort)
  * - Hard:     0.85× HM pace (informational, strides are effort-based)
  */
 export function getPaceTable(
   abilityDistKm: number,
   abilitySecs: number,
-  goalDistKm?: number,
-  goalTimeSecs?: number,
 ): PaceTableResult {
   if (abilityDistKm <= 0 || abilitySecs <= 0) {
     throw new Error("Ability distance and time must be positive");
@@ -66,13 +64,9 @@ export function getPaceTable(
   const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
   const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
-  const steadyPace = (goalTimeSecs && goalDistKm)
-    ? goalTimeSecs / 60 / goalDistKm
-    : abilityPacePerKm;
-
   return {
     z2: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
-    z3: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
+    z3: { min: abilityPacePerKm * 0.98, max: abilityPacePerKm * 1.01 },
     z4: { min: hmEquivalentPacePerKm * 0.90, max: hmEquivalentPacePerKm * 0.94 },
     z5: hmEquivalentPacePerKm * 0.85,
     racePacePerKm: abilityPacePerKm,
@@ -134,6 +128,13 @@ export function getDefaultGoalTime(distanceKm: number, level: ExperienceLevel): 
   }
   const fraction = (distanceKm - lower.km) / (upper.km - lower.km);
   return Math.round(lower.defaults[level] + (upper.defaults[level] - lower.defaults[level]) * fraction);
+}
+
+/** Get the threshold pace (HM-equivalent) from ability settings.
+ *  Returns undefined if ability is not set. Used for workout display and pace zone analysis. */
+export function getThresholdPace(abilityDistKm?: number, abilitySecs?: number): number | undefined {
+  if (!abilityDistKm || !abilitySecs) return undefined;
+  return getPaceTable(abilityDistKm, abilitySecs).hmEquivalentPacePerKm;
 }
 
 export function getSliderRange(distanceKm: number): { min: number; max: number; step: number } {

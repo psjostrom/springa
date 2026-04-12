@@ -69,6 +69,8 @@ export function resetCaptures() {
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
   capturedActivityPutPayloads = [];
+  capturedSportSettingsPayload = null;
+  capturedAthletePayload = null;
 }
 
 export const handlers = [
@@ -202,6 +204,16 @@ export const handlers = [
     const body = (await request.json()) as { existingEventId?: number; workout: unknown };
     capturedUploadPayload = [body.workout];
     return HttpResponse.json({ newId: 9999 });
+  }),
+
+  // PUT threshold pace via proxy
+  http.put("/api/intervals/threshold-pace", () => {
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // PUT HR zones via proxy
+  http.put("/api/intervals/hr-zones", () => {
+    return HttpResponse.json({ ok: true });
   }),
 
   // POST run analysis (LLM-generated post-run analysis)

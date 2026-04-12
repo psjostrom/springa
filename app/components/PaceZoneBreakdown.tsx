@@ -19,6 +19,7 @@ export function PaceZoneBreakdown({ paceData, thresholdPace }: PaceZoneBreakdown
   const paceZones = computePaceZones(thresholdPace);
   // Each DataPoint is one sample — timestamps are minute-rounded so we can't derive
   // interval from adjacent times. Use count-based classification (sampleInterval=1).
+  // Assumes per-second pace data. Minute-indexed data (from cached streams) needs sampleInterval adjustment.
   const paceStream = paceData.map((d) => d.value);
   const zoneTimes = computePaceZoneTimes(paceStream, paceZones);
 

@@ -10,6 +10,7 @@ import {
   fetchPaceCurves,
   updateThresholdPace,
   updatePaceZones,
+  updateAthleteHRZones,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -848,5 +849,39 @@ describe("updatePaceZones", () => {
 
     await expect(updateThresholdPace("test-api-key", 123, 6.0)).resolves.toBeUndefined();
     await expect(updatePaceZones("test-api-key", 123)).rejects.toThrow("Failed to update pace zones: 500");
+  });
+});
+
+describe("updateAthleteHRZones", () => {
+  it("pushes zones to sport settings", async () => {
+    await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193]);
+
+    expect(capturedSportSettingsPayload).toEqual({
+      hr_zones: [125, 156, 172, 187, 193],
+    });
+  });
+
+  it("includes max_hr when provided", async () => {
+    await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193], undefined, 193);
+
+    expect(capturedSportSettingsPayload).toEqual({
+      hr_zones: [125, 156, 172, 187, 193],
+      max_hr: 193,
+    });
+  });
+
+  it("omits max_hr when not provided", async () => {
+    await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193]);
+
+    expect(capturedSportSettingsPayload).toEqual({
+      hr_zones: [125, 156, 172, 187, 193],
+    });
+    expect(capturedSportSettingsPayload).not.toHaveProperty("max_hr");
+  });
+
+  it("pushes resting HR to athlete profile when provided", async () => {
+    await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193], 55);
+    const handlers = await import("./msw/handlers");
+    expect(handlers.capturedAthletePayload).toEqual({ icu_resting_hr: 55 });
   });
 });

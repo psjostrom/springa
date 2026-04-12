@@ -85,9 +85,9 @@ const HR_ZONE_INDEX: Record<ZoneName, [number, number]> = {
  */
 export function computeMaxHRZones(maxHr: number): number[] {
   return [
-    Math.round(maxHr * 0.65),
-    Math.round(maxHr * 0.81),
-    Math.round(maxHr * 0.89),
+    Math.round(maxHr * 0.59),
+    Math.round(maxHr * 0.78),
+    Math.round(maxHr * 0.87),
     Math.round(maxHr * 0.97),
     maxHr,
   ];

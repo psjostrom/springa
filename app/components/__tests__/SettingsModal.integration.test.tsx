@@ -155,3 +155,118 @@ describe("SettingsModal Intervals.icu API key", () => {
     expect(screen.queryByPlaceholderText("Paste new key")).not.toBeInTheDocument();
   });
 });
+
+describe("SettingsModal training paces and HR zones", () => {
+  it("renders training paces section when ability is set", () => {
+    renderModal({
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      intervalsConnected: true,
+    });
+
+    expect(screen.getByText("Your fitness")).toBeInTheDocument();
+
+    // There are two sets of distance buttons (fitness and goal), get all and check first set
+    const allTenKButtons = screen.getAllByRole("button", { name: "10K" });
+    expect(allTenKButtons[0]).toHaveClass("border-brand", "bg-brand/10", "text-brand");
+
+    // PacePreview component renders pace preview with zone names
+    expect(screen.getByText("Easy")).toBeInTheDocument();
+    expect(screen.getByText("Race Pace")).toBeInTheDocument();
+    expect(screen.getByText("Interval")).toBeInTheDocument();
+  });
+
+  it("renders HR zones section when maxHr is set", () => {
+    renderModal({
+      maxHr: 193,
+      intervalsConnected: true,
+    });
+
+    expect(screen.getByText("HR Zones")).toBeInTheDocument();
+
+    // Max HR input should have the value (use displayValue since label isn't connected)
+    expect(screen.getByDisplayValue("193")).toBeInTheDocument();
+
+    // Zone names should be visible
+    expect(screen.getByText("Recovery")).toBeInTheDocument();
+    expect(screen.getByText("Endurance")).toBeInTheDocument();
+    expect(screen.getByText("Tempo")).toBeInTheDocument();
+    expect(screen.getByText("Threshold")).toBeInTheDocument();
+    expect(screen.getByText("VO2 Max")).toBeInTheDocument();
+  });
+
+  it("saves and pushes threshold pace to Intervals.icu when ability changes", async () => {
+    const user = userEvent.setup();
+    let capturedThresholdPayload: unknown = null;
+
+    server.use(
+      http.put("/api/intervals/threshold-pace", async ({ request }) => {
+        capturedThresholdPayload = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const { onSave } = renderModal({
+      currentAbilityDist: 0, // Start with no ability set
+      currentAbilitySecs: 0,
+      intervalsConnected: true,
+      sportSettingsId: 123,
+    });
+
+    // Select 10K ability
+    const allTenKButtons = screen.getAllByRole("button", { name: "10K" });
+    await user.click(allTenKButtons[0]); // Click the fitness 10K button
+
+    // Click save - ability changed from 0 to 10, so it will save and sync
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // Verify onSave was called with the new ability
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentAbilityDist: 10,
+      }),
+    );
+
+    // Verify threshold pace was pushed to Intervals.icu
+    await vi.waitFor(() => {
+      expect(capturedThresholdPayload).not.toBeNull();
+      expect(capturedThresholdPayload).toHaveProperty("paceMinPerKm");
+    });
+  });
+
+  it("saves and pushes HR zones to Intervals.icu when maxHr changes", async () => {
+    const user = userEvent.setup();
+    let capturedHRPayload: unknown = null;
+
+    server.use(
+      http.put("/api/intervals/hr-zones", async ({ request }) => {
+        capturedHRPayload = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const { onSave } = renderModal({
+      maxHr: 180,
+      intervalsConnected: true,
+      sportSettingsId: 123,
+    });
+
+    // Max HR input starts with value 180
+    const hrInput = screen.getByDisplayValue("180");
+    await user.clear(hrInput);
+    await user.type(hrInput, "193");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxHr: 193,
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(capturedHRPayload).not.toBeNull();
+      expect(capturedHRPayload).toHaveProperty("hrZones");
+      expect(capturedHRPayload).toHaveProperty("maxHr", 193);
+    });
+  });
+});

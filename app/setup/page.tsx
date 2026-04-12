@@ -32,7 +32,6 @@ interface WizardData {
   raceDate?: string;
   raceDist: number;
   experience?: ExperienceLevel;
-  goalTime?: number;
   maxHr?: number;
   sportSettingsId?: number;
   currentAbilitySecs?: number;
@@ -105,7 +104,6 @@ export default function SetupPage() {
         clubType: data.clubType,
         currentAbilitySecs: data.currentAbilitySecs,
         currentAbilityDist: data.currentAbilityDist,
-        goalTimeSecs: data.goalTime,
       });
 
       const today = new Date();
@@ -127,11 +125,17 @@ export default function SetupPage() {
         }
       }
 
-      // Mark onboarding complete (currentAbility already saved by AbilityStep)
+      // Mark onboarding complete and save ability/race data
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onboardingComplete: true }),
+        body: JSON.stringify({
+          onboardingComplete: true,
+          currentAbilitySecs: data.currentAbilitySecs,
+          currentAbilityDist: data.currentAbilityDist,
+          raceDist: data.raceDist,
+          raceDate,
+        }),
       });
       if (!res.ok) {
         setGenerating(false);
@@ -201,8 +205,13 @@ export default function SetupPage() {
           <GoalStep
             raceDist={data.raceDist}
             experience={data.experience}
+            raceDate={data.raceDate}
             onNext={(goal) => {
-              updateData({ raceDist: goal.raceDist, experience: goal.experience });
+              updateData({
+                raceDist: goal.raceDist,
+                experience: goal.experience,
+                raceDate: goal.raceDate,
+              });
               setStep(6);
             }}
             onBack={() => { setStep(4); }}
@@ -212,16 +221,12 @@ export default function SetupPage() {
           <AbilityStep
             raceDist={data.raceDist}
             experience={data.experience}
-            raceDate={data.raceDate}
             currentAbilitySecs={data.currentAbilitySecs}
             currentAbilityDist={data.currentAbilityDist}
-            goalTime={data.goalTime}
             onNext={(ability) => {
               updateData({
                 currentAbilitySecs: ability.currentAbilitySecs,
                 currentAbilityDist: ability.currentAbilityDist,
-                goalTime: ability.goalTime,
-                raceDate: ability.raceDate,
               });
               setStep(7);
             }}

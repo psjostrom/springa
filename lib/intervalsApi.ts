@@ -61,12 +61,15 @@ export async function updateAthleteHRZones(
   sportSettingsId: number,
   hrZones: number[],
   restingHr?: number,
+  maxHr?: number,
 ): Promise<void> {
+  const body: Record<string, unknown> = { hr_zones: hrZones };
+  if (maxHr != null) body.max_hr = maxHr;
   const settingsUrl = new URL(`/api/v1/athlete/0/sport-settings/${encodeURIComponent(String(sportSettingsId))}`, "https://intervals.icu");
   const res = await fetch(settingsUrl.href, {
     method: "PUT",
     headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
-    body: JSON.stringify({ hr_zones: hrZones }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Failed to update HR zones: ${res.status}`);
   if (restingHr != null) {

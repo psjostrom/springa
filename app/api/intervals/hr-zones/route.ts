@@ -21,6 +21,7 @@ export async function PUT(req: Request) {
     sportSettingsId: number;
     hrZones: number[];
     restingHr?: number;
+    maxHr?: number;
   };
 
   if (!body.sportSettingsId || !Array.isArray(body.hrZones) || body.hrZones.length !== 5) {
@@ -28,7 +29,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    await updateAthleteHRZones(creds.intervalsApiKey, body.sportSettingsId, body.hrZones, body.restingHr);
+    await updateAthleteHRZones(creds.intervalsApiKey, body.sportSettingsId, body.hrZones, body.restingHr, body.maxHr);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Failed to update Intervals.icu" }, { status: 502 });

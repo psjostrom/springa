@@ -48,7 +48,6 @@ export interface PlanContext {
   clubType?: string;
   /** Pace table derived from current ability. Null = effort-based mode (no pace targets). */
   paceTable: import("./paceTable").PaceTableResult | null;
-  goalTimeSecs?: number;
 }
 
 export interface IntervalsActivity {
@@ -103,8 +102,6 @@ export interface IntervalsStream {
 
 // --- PACE TABLE TYPES ---
 export type ZoneName = "z1" | "z2" | "z3" | "z4" | "z5";
-/** @deprecated Use ZoneName instead */
-export type HRZoneName = ZoneName;
 
 export interface ZonePaceEntry {
   zone: ZoneName;

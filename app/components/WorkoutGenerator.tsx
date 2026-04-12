@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2 } from "lucide-react";
 import { settingsAtom, bgModelAtom, paceTableAtom, calendarReloadAtom } from "../atoms";
+import { getThresholdPace } from "@/lib/paceTable";
 import { generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, type OnDemandCategory, type PlanConfig } from "@/lib/workoutGenerators";
 import { replaceWorkout } from "@/lib/intervalsClient";
 import { getWeekIdx } from "@/lib/workoutMath";
@@ -161,7 +162,7 @@ export function WorkoutGenerator({
         paceTable={paceTable}
         hrZones={settings.hrZones}
         lthr={settings.lthr}
-        racePacePerKm={settings.goalTime && settings.raceDist ? settings.goalTime / 60 / settings.raceDist : undefined}
+        racePacePerKm={getThresholdPace(settings.currentAbilityDist, settings.currentAbilitySecs)}
       >
         <WorkoutStructureBar
           description={workout.description}

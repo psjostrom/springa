@@ -106,7 +106,6 @@ export async function PUT(req: Request) {
   if (body.raceDate !== undefined) allowed.raceDate = body.raceDate;
   if (body.raceName !== undefined) allowed.raceName = body.raceName;
   if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
-  if (body.goalTime !== undefined) allowed.goalTime = body.goalTime;
   if (body.currentAbilitySecs !== undefined) allowed.currentAbilitySecs = body.currentAbilitySecs;
   if (body.currentAbilityDist !== undefined) allowed.currentAbilityDist = body.currentAbilityDist;
   if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;

@@ -6,6 +6,10 @@ import { X, LogOut, Bell, ExternalLink } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
 import { INSULIN_OPTIONS } from "@/lib/iob";
 import { MIN_PLAN_WEEKS } from "@/lib/periodization";
+import { getPaceTable, getSliderRange, getDefaultGoalTime, DISTANCE_OPTIONS } from "@/lib/paceTable";
+import { formatGoalTime } from "@/lib/format";
+import { computeMaxHRZones, ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
+import { PacePreview } from "./PacePreview";
 
 interface SettingsModalProps {
   email: string;
@@ -31,6 +35,11 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
   const [intervalsValidating, setIntervalsValidating] = useState(false);
   const [intervalsError, setIntervalsError] = useState("");
   const [showIntervalsKeyInput, setShowIntervalsKeyInput] = useState(!settings.intervalsConnected);
+  const [abilityDist, setAbilityDist] = useState(settings.currentAbilityDist ?? 0);
+  const [abilitySecs, setAbilitySecs] = useState(settings.currentAbilitySecs ?? 0);
+  const [goalDist, setGoalDist] = useState(settings.raceDist ?? 0);
+  const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
+  const [maxHr, setMaxHr] = useState(settings.maxHr ?? 0);
   const [saving, setSaving] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default",
@@ -110,53 +119,93 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
 
   const handleSave = async () => {
     setSaving(true);
-    const updates: Partial<UserSettings> & {
-      nightscoutUrl?: string | null;
-      nightscoutSecret?: string | null;
-    } = {};
+    try {
+      const updates: Partial<UserSettings> & {
+        nightscoutUrl?: string | null;
+        nightscoutSecret?: string | null;
+      } = {};
 
-    const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
-    if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
+      const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
+      if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
+        return;
+      }
+      if (twVal !== settings.totalWeeks) {
+        updates.totalWeeks = twVal;
+      }
+      const skVal = startKm === "" ? undefined : Number(startKm);
+      if (skVal !== settings.startKm) {
+        updates.startKm = skVal;
+      }
+      // Force base phase off when weeks are too short to support it
+      const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
+      if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
+        updates.includeBasePhase = effectiveBasePhase;
+      }
+      if (warmthPreference !== (settings.warmthPreference ?? 0)) {
+        updates.warmthPreference = warmthPreference;
+      }
+      if (abilitySecs !== (settings.currentAbilitySecs ?? 0)) {
+        updates.currentAbilitySecs = abilitySecs || undefined;
+      }
+      if (abilityDist !== (settings.currentAbilityDist ?? 0)) {
+        updates.currentAbilityDist = abilityDist || undefined;
+      }
+      if (goalDist !== (settings.raceDist ?? 0)) {
+        updates.raceDist = goalDist || undefined;
+      }
+      if (raceDate !== (settings.raceDate ?? "")) {
+        updates.raceDate = raceDate || undefined;
+      }
+      if (maxHr !== (settings.maxHr ?? 0)) {
+        updates.maxHr = maxHr || undefined;
+      }
+      if (diabetesMode !== (settings.diabetesMode ?? false)) {
+        updates.diabetesMode = diabetesMode;
+      }
+
+      // Nightscout credentials (only send if changed)
+      if (diabetesMode) {
+        if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
+          updates.nightscoutUrl = nightscoutUrl.trim();
+        }
+        if (nightscoutSecret.trim()) {
+          updates.nightscoutSecret = nightscoutSecret.trim();
+        }
+      }
+
+      if (insulinType !== (settings.insulinType ?? "fiasp")) {
+        updates.insulinType = insulinType;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await onSave(updates);
+      }
+    } finally {
       setSaving(false);
-      return;
-    }
-    if (twVal !== settings.totalWeeks) {
-      updates.totalWeeks = twVal;
-    }
-    const skVal = startKm === "" ? undefined : Number(startKm);
-    if (skVal !== settings.startKm) {
-      updates.startKm = skVal;
-    }
-    // Force base phase off when weeks are too short to support it
-    const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
-    if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
-      updates.includeBasePhase = effectiveBasePhase;
-    }
-    if (warmthPreference !== (settings.warmthPreference ?? 0)) {
-      updates.warmthPreference = warmthPreference;
-    }
-    if (diabetesMode !== (settings.diabetesMode ?? false)) {
-      updates.diabetesMode = diabetesMode;
     }
 
-    // Nightscout credentials (only send if changed)
-    if (diabetesMode) {
-      if (nightscoutUrl.trim() !== (settings.nightscoutUrl ?? "")) {
-        updates.nightscoutUrl = nightscoutUrl.trim();
-      }
-      if (nightscoutSecret.trim()) {
-        updates.nightscoutSecret = nightscoutSecret.trim();
-      }
-    }
-    if (insulinType !== (settings.insulinType ?? "fiasp")) {
-      updates.insulinType = insulinType;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      await onSave(updates);
-    }
-    setSaving(false);
     onClose();
+
+    // Fire-and-forget sync to Intervals.icu (modal already closed)
+    if (intervalsConnected) {
+      const abilityChanged = abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0);
+      if (abilityChanged && abilityDist > 0 && abilitySecs > 0) {
+        const table = getPaceTable(abilityDist, abilitySecs);
+        fetch("/api/intervals/threshold-pace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
+        }).catch((e: unknown) => { console.error("Threshold pace sync failed:", e); });
+      }
+      if (maxHr !== (settings.maxHr ?? 0) && maxHr > 0 && settings.sportSettingsId) {
+        const zones = computeMaxHRZones(maxHr);
+        fetch("/api/intervals/hr-zones", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sportSettingsId: settings.sportSettingsId, hrZones: zones, maxHr }),
+        }).catch((e: unknown) => { console.error("HR zone sync failed:", e); });
+      }
+    }
   };
 
   return (
@@ -250,6 +299,136 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
                 )}
               </div>
             )}
+          </div>
+
+          {/* Training */}
+          <div className="border-t border-border pt-4">
+            <span className="block text-sm font-semibold text-muted mb-3">Training</span>
+
+            {/* Current fitness */}
+            <p className="text-xs text-muted mb-2">Your fitness</p>
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
+              {DISTANCE_OPTIONS.map(({ label, km }) => (
+                <button
+                  key={km}
+                  type="button"
+                  onClick={() => {
+                    setAbilityDist(km);
+                    setAbilitySecs(getDefaultGoalTime(km, "intermediate"));
+                  }}
+                  className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
+                    abilityDist === km
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border text-muted hover:border-brand hover:text-brand"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {abilityDist > 0 && (() => {
+              const sliderRange = getSliderRange(abilityDist);
+              const distLabel = DISTANCE_OPTIONS.find(d => d.km === abilityDist)?.label ?? `${abilityDist}km`;
+              return (
+                <>
+                  <p className="text-xs text-muted text-center mb-1">
+                    Current {distLabel} time
+                  </p>
+                  <p className="text-2xl font-bold text-text text-center mb-2">
+                    {formatGoalTime(abilitySecs)}
+                  </p>
+                  <input
+                    type="range"
+                    min={sliderRange.min}
+                    max={sliderRange.max}
+                    step={sliderRange.step}
+                    value={abilitySecs}
+                    onChange={(e) => { setAbilitySecs(Number(e.target.value)); }}
+                    className="w-full accent-brand"
+                  />
+                </>
+              );
+            })()}
+
+            {/* Race goal */}
+            <p className="text-xs text-muted mt-4 mb-2">Race distance</p>
+            <div className="grid grid-cols-4 gap-1.5 mb-2">
+              {DISTANCE_OPTIONS.map(({ label, km }) => (
+                <button
+                  key={`goal-${km}`}
+                  type="button"
+                  onClick={() => { setGoalDist(km); }}
+                  className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
+                    goalDist === km
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border text-muted hover:border-brand hover:text-brand"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {goalDist > 0 && (
+              <div className="mt-3 flex items-center gap-3">
+                <label className="text-xs text-muted flex-shrink-0">Race date</label>
+                <input
+                  type="date"
+                  value={raceDate}
+                  onChange={(e) => { setRaceDate(e.target.value); }}
+                  className="flex-1 px-3 py-2 border border-border rounded-lg text-text bg-surface-alt text-sm"
+                />
+                {raceDate && (() => {
+                  const weeks = Math.floor((new Date(raceDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000));
+                  return weeks > 0 ? (
+                    <span className="text-xs font-medium text-brand whitespace-nowrap">{weeks}w</span>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
+            {/* Pace preview */}
+            {abilityDist > 0 && abilitySecs > 0 && (
+              <div className="mt-3">
+                <PacePreview paceTable={getPaceTable(abilityDist, abilitySecs)} />
+              </div>
+            )}
+          </div>
+
+          {/* HR Zones */}
+          <div className="border-t border-border pt-4">
+            <span className="block text-sm font-semibold text-muted mb-3">HR Zones</span>
+            <div className="flex items-center gap-3 mb-3">
+              <label className="text-xs text-muted">Max HR</label>
+              <input
+                type="number"
+                min={120}
+                max={230}
+                value={maxHr || ""}
+                onChange={(e) => { setMaxHr(e.target.value === "" ? 0 : Number(e.target.value)); }}
+                className="w-20 px-3 py-2 border border-border rounded-lg text-text bg-surface-alt text-sm text-center"
+              />
+              <span className="text-xs text-muted">bpm</span>
+            </div>
+            {maxHr > 0 && (() => {
+              const zones = computeMaxHRZones(maxHr);
+              return (
+                <div className="bg-surface-alt border border-border rounded-lg p-3 space-y-1 text-sm">
+                  {(["z1", "z2", "z3", "z4", "z5"] as const).map((zone, i) => {
+                    const lo = i === 0 ? 0 : zones[i - 1];
+                    const hi = zones[i];
+                    return (
+                      <div key={zone} className="flex justify-between">
+                        <span style={{ color: ZONE_COLORS[zone] }}>{ZONE_DISPLAY_NAMES[zone]}</span>
+                        <span className="text-muted">
+                          {i === 0 ? `< ${hi}` : i === 4 ? `${lo}+` : `${lo} \u2013 ${hi}`} bpm
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Plan */}
