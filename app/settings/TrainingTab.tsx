@@ -66,6 +66,10 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
   const hasGoal = goalDist > 0 && raceDate;
   const weeks = hasGoal ? Math.floor((new Date(raceDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)) : 0;
 
+  // Compute fitness section values
+  const sliderRange = abilityDist > 0 ? getSliderRange(abilityDist) : null;
+  const distLabel = abilityDist > 0 ? (DISTANCE_OPTIONS.find(d => d.km === abilityDist)?.label ?? `${abilityDist}km`) : "";
+
   return (
     <div className="space-y-6">
       {/* Current fitness */}
@@ -90,29 +94,25 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
             </button>
           ))}
         </div>
-        {abilityDist > 0 && (() => {
-          const sliderRange = getSliderRange(abilityDist);
-          const distLabel = DISTANCE_OPTIONS.find(d => d.km === abilityDist)?.label ?? `${abilityDist}km`;
-          return (
-            <>
-              <p className="text-xs text-muted text-center mb-1">
-                Current {distLabel} time
-              </p>
-              <p className="text-2xl font-bold text-text text-center mb-2">
-                {formatGoalTime(abilitySecs)}
-              </p>
-              <input
-                type="range"
-                min={sliderRange.min}
-                max={sliderRange.max}
-                step={sliderRange.step}
-                value={abilitySecs}
-                onChange={(e) => { setAbilitySecs(Number(e.target.value)); }}
-                className="w-full accent-brand"
-              />
-            </>
-          );
-        })()}
+        {sliderRange && (
+          <>
+            <p className="text-xs text-muted text-center mb-1">
+              Current {distLabel} time
+            </p>
+            <p className="text-2xl font-bold text-text text-center mb-2">
+              {formatGoalTime(abilitySecs)}
+            </p>
+            <input
+              type="range"
+              min={sliderRange.min}
+              max={sliderRange.max}
+              step={sliderRange.step}
+              value={abilitySecs}
+              onChange={(e) => { setAbilitySecs(Number(e.target.value)); }}
+              className="w-full accent-brand"
+            />
+          </>
+        )}
       </div>
 
       {/* Race goal */}
@@ -128,10 +128,14 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
                 <div className="text-xs text-muted">
                   {new Date(raceDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </div>
-                {weeks > 0 && (
+                {weeks > 0 ? (
                   <div className="text-xs font-medium text-brand mt-1">
                     {weeks} week{weeks !== 1 ? "s" : ""} away
                   </div>
+                ) : weeks === 0 ? (
+                  <div className="text-xs font-medium text-warning mt-1">This week</div>
+                ) : (
+                  <div className="text-xs font-medium text-muted mt-1">Past</div>
                 )}
               </div>
               <button
@@ -171,8 +175,14 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
                   onChange={(e) => { setRaceDate(e.target.value); }}
                   className="flex-1 px-3 py-2 border border-border rounded-lg text-text bg-surface-alt text-sm"
                 />
-                {raceDate && weeks > 0 && (
-                  <span className="text-xs font-medium text-brand whitespace-nowrap">{weeks}w</span>
+                {raceDate && (
+                  weeks > 0 ? (
+                    <span className="text-xs font-medium text-brand whitespace-nowrap">{weeks}w</span>
+                  ) : weeks === 0 ? (
+                    <span className="text-xs font-medium text-warning whitespace-nowrap">This week</span>
+                  ) : (
+                    <span className="text-xs font-medium text-muted whitespace-nowrap">Past</span>
+                  )
                 )}
               </div>
             )}

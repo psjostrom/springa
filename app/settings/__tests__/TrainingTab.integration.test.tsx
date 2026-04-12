@@ -80,3 +80,65 @@ describe("TrainingTab training paces", () => {
     });
   });
 });
+
+describe("TrainingTab race goal", () => {
+  it("sets race distance and date, then saves", async () => {
+    const user = userEvent.setup();
+    // eslint-disable-next-line no-restricted-syntax -- callback spy, not a module mock
+    const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
+    const settings = { ...validSettings, raceDist: 0, raceDate: "" };
+    const { container } = render(<TrainingTab settings={settings} onSave={onSave} />);
+
+    // Verify "Race goal" section exists
+    expect(screen.getByText("Race goal")).toBeInTheDocument();
+
+    // Select race distance (use the second set of buttons for race goal)
+    const allHalfButtons = screen.getAllByRole("button", { name: "Half" });
+    await user.click(allHalfButtons[1]); // Second set is for race goal
+
+    // Set race date - find input by type attribute (date inputs don't expose a role)
+    const dateInput = container.querySelector('input[type="date"]');
+    if (!dateInput) throw new Error("Date input not found");
+    await user.type(dateInput, "2026-06-13");
+
+    // Save
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raceDist: 21.0975,
+          raceDate: "2026-06-13",
+        }),
+      );
+    });
+  });
+
+  it("toggles race goal edit mode", async () => {
+    const user = userEvent.setup();
+    renderTab({
+      raceDist: 21.0975,
+      raceDate: "2026-06-13",
+    });
+
+    // Goal card should be visible with Edit button and date display
+    expect(screen.getByText("June 13, 2026")).toBeInTheDocument();
+    const editButton = screen.getByRole("button", { name: "Edit" });
+    expect(editButton).toBeInTheDocument();
+
+    // Click Edit
+    await user.click(editButton);
+
+    // Editor should appear (distance buttons and date input)
+    const allHalfButtons = screen.getAllByRole("button", { name: "Half" });
+    expect(allHalfButtons.length).toBeGreaterThan(1); // Multiple Half buttons when editing
+    expect(screen.getByDisplayValue("2026-06-13")).toBeInTheDocument();
+
+    // Click Done
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await user.click(doneButton);
+
+    // Editor should collapse, goal card should show
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+});

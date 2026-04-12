@@ -10,9 +10,10 @@ interface AccountTabProps {
   email: string;
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
+  setSettings: React.Dispatch<React.SetStateAction<UserSettings>>;
 }
 
-export function AccountTab({ email, settings, onSave }: AccountTabProps) {
+export function AccountTab({ email, settings, onSave, setSettings }: AccountTabProps) {
   const [diabetesMode, setDiabetesMode] = useState(settings.diabetesMode ?? false);
   const [nightscoutUrl, setNightscoutUrl] = useState(settings.nightscoutUrl ?? "");
   const [nightscoutSecret, setNightscoutSecret] = useState("");
@@ -86,6 +87,7 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
         setIntervalsConnected(true);
         setIntervalsApiKey("");
         setShowIntervalsKeyInput(false);
+        setSettings((prev) => ({ ...prev, intervalsConnected: true }));
       }
     } catch {
       setIntervalsError("Network error");

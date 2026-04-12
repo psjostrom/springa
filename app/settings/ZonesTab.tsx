@@ -14,6 +14,9 @@ export function ZonesTab({ settings, onSave }: ZonesTabProps) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
+  // Compute zones if maxHr is set
+  const zones = maxHr > 0 ? computeMaxHRZones(maxHr) : null;
+
   const handleSave = async () => {
     setSaving(true);
     setStatus("");
@@ -62,25 +65,22 @@ export function ZonesTab({ settings, onSave }: ZonesTabProps) {
           />
           <span className="text-xs text-muted">bpm</span>
         </div>
-        {maxHr > 0 && (() => {
-          const zones = computeMaxHRZones(maxHr);
-          return (
-            <div className="bg-surface-alt border border-border rounded-lg p-3 space-y-1 text-sm">
-              {(["z1", "z2", "z3", "z4", "z5"] as const).map((zone, i) => {
-                const lo = i === 0 ? 0 : zones[i - 1];
-                const hi = zones[i];
-                return (
-                  <div key={zone} className="flex justify-between">
-                    <span style={{ color: ZONE_COLORS[zone] }}>{ZONE_DISPLAY_NAMES[zone]}</span>
-                    <span className="text-muted">
-                      {i === 0 ? `< ${hi}` : i === 4 ? `${lo}+` : `${lo} \u2013 ${hi}`} bpm
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        {zones && (
+          <div className="bg-surface-alt border border-border rounded-lg p-3 space-y-1 text-sm">
+            {(["z1", "z2", "z3", "z4", "z5"] as const).map((zone, i) => {
+              const lo = i === 0 ? 0 : zones[i - 1];
+              const hi = zones[i];
+              return (
+                <div key={zone} className="flex justify-between">
+                  <span style={{ color: ZONE_COLORS[zone] }}>{ZONE_DISPLAY_NAMES[zone]}</span>
+                  <span className="text-muted">
+                    {i === 0 ? `< ${hi}` : i === 4 ? `${lo}+` : `${lo} \u2013 ${hi}`} bpm
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Save button */}
