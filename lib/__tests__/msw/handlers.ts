@@ -69,6 +69,8 @@ export function resetCaptures() {
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
   capturedActivityPutPayloads = [];
+  capturedSportSettingsPayload = null;
+  capturedAthletePayload = null;
 }
 
 export const handlers = [

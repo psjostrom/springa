@@ -173,7 +173,7 @@ describe("SettingsModal training paces and HR zones", () => {
     // PacePreview component renders pace preview with zone names
     expect(screen.getByText("Easy")).toBeInTheDocument();
     expect(screen.getByText("Race Pace")).toBeInTheDocument();
-    expect(screen.getByText("Intervals")).toBeInTheDocument();
+    expect(screen.getByText("Interval")).toBeInTheDocument();
   });
 
   it("renders HR zones section when maxHr is set", () => {
@@ -231,6 +231,42 @@ describe("SettingsModal training paces and HR zones", () => {
     await vi.waitFor(() => {
       expect(capturedThresholdPayload).not.toBeNull();
       expect(capturedThresholdPayload).toHaveProperty("paceMinPerKm");
+    });
+  });
+
+  it("saves and pushes HR zones to Intervals.icu when maxHr changes", async () => {
+    const user = userEvent.setup();
+    let capturedHRPayload: unknown = null;
+
+    server.use(
+      http.put("/api/intervals/hr-zones", async ({ request }) => {
+        capturedHRPayload = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    const { onSave } = renderModal({
+      maxHr: 180,
+      intervalsConnected: true,
+      sportSettingsId: 123,
+    });
+
+    // Max HR input starts with value 180
+    const hrInput = screen.getByDisplayValue("180");
+    await user.clear(hrInput);
+    await user.type(hrInput, "193");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxHr: 193,
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(capturedHRPayload).not.toBeNull();
+      expect(capturedHRPayload).toHaveProperty("hrZones");
+      expect(capturedHRPayload).toHaveProperty("maxHr", 193);
     });
   });
 });

@@ -115,8 +115,12 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     }
   };
 
+  const [syncError, setSyncError] = useState("");
+
   const handleSave = async () => {
     setSaving(true);
+    setSyncError("");
+    try {
     const updates: Partial<UserSettings> & {
       nightscoutUrl?: string | null;
       nightscoutSecret?: string | null;
@@ -124,7 +128,6 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
 
     const twVal = totalWeeks === "" ? undefined : Number(totalWeeks);
     if (twVal !== undefined && twVal < MIN_PLAN_WEEKS) {
-      setSaving(false);
       return;
     }
     if (twVal !== settings.totalWeeks) {
@@ -153,6 +156,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
     }
     if (raceDate !== (settings.raceDate ?? "")) {
       updates.raceDate = raceDate || undefined;
+    }
+    if (maxHr !== (settings.maxHr ?? 0)) {
+      updates.maxHr = maxHr || undefined;
     }
     if (diabetesMode !== (settings.diabetesMode ?? false)) {
       updates.diabetesMode = diabetesMode;
@@ -183,7 +189,9 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
           });
-        } catch { /* best-effort */ }
+        } catch {
+            setSyncError("Failed to sync threshold pace to Intervals.icu");
+          }
       }
       if (maxHr !== (settings.maxHr ?? 0) && maxHr > 0 && settings.sportSettingsId) {
         const zones = computeMaxHRZones(maxHr);
@@ -193,12 +201,16 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sportSettingsId: settings.sportSettingsId, hrZones: zones, maxHr }),
           });
-        } catch { /* best-effort */ }
+        } catch {
+            setSyncError("Failed to sync HR zones to Intervals.icu");
+          }
       }
     }
 
-    setSaving(false);
     onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -659,6 +671,7 @@ export function SettingsModal({ email, settings, onSave, onClose }: SettingsModa
           >
             {saving ? "Saving..." : "Save"}
           </button>
+          {syncError && <p className="text-sm text-error mt-2">{syncError}</p>}
         </div>
       </div>
     </div>

@@ -38,8 +38,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Failed to update threshold pace" }, { status: 502 });
   }
 
-  // Best-effort: push pace zone boundaries alongside threshold pace.
-  // If this fails, threshold pace is already saved — don't fail the whole request.
+  // Pace zones are derived from threshold — pushing both together ensures consistency.
+  // Best-effort: if zones fail, threshold is already saved.
   try {
     await updatePaceZones(creds.intervalsApiKey, profile.sportSettingsId);
   } catch (e) { console.error("Pace zone sync failed (non-critical):", e); }

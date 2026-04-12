@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   getPaceTable,
+  getThresholdPace,
   estimateGoalTimeFromEasyPace,
   getPaceRangeForZone,
   getDefaultGoalTime,
@@ -198,5 +199,19 @@ describe("getSliderRange", () => {
   });
   it("uses nearest standard range for custom distances", () => {
     expect(getSliderRange(16)).toEqual({ min: 4800, max: 11700, step: 300 });
+  });
+});
+
+describe("getThresholdPace", () => {
+  it("returns undefined for zero/undefined inputs", () => {
+    expect(getThresholdPace(0, 0)).toBeUndefined();
+    expect(getThresholdPace(undefined, undefined)).toBeUndefined();
+    expect(getThresholdPace(10, undefined)).toBeUndefined();
+  });
+
+  it("returns HM-equivalent pace for valid inputs", () => {
+    const result = getThresholdPace(10, 3300);
+    const expected = getPaceTable(10, 3300).hmEquivalentPacePerKm;
+    expect(result).toBe(expected);
   });
 });

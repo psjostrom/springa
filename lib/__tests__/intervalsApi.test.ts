@@ -878,4 +878,10 @@ describe("updateAthleteHRZones", () => {
     });
     expect(capturedSportSettingsPayload).not.toHaveProperty("max_hr");
   });
+
+  it("pushes resting HR to athlete profile when provided", async () => {
+    await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193], 55);
+    const handlers = await import("./msw/handlers");
+    expect(handlers.capturedAthletePayload).toEqual({ icu_resting_hr: 55 });
+  });
 });

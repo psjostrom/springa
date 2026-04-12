@@ -4,8 +4,8 @@ import { formatPace } from "./format";
 
 // --- PACE LOOKUP ---
 
-/** Resolve pace (min/km) for an LTHR intensity %, using calibrated table when available. */
-/** Safe accessor for FALLBACK_PACE_TABLE entries (z2-z5 populated, z1 is null). */
+/** Safe accessor for FALLBACK_PACE_TABLE entries (z2-z5 populated, z1 is null).
+ *  Returns the zone's avgPace or a conservative 7.25 min/km default if the zone has no entry. */
 function fallbackPace(zone: ZoneName): number {
   return FALLBACK_PACE_TABLE[zone]?.avgPace ?? 7.25;
 }
@@ -115,7 +115,7 @@ export interface WorkoutStep {
   label?: string;         // "Uphill", "Downhill", or undefined
   duration: string;       // raw: "10m", "2m", "8km", "20s"
   zone: ZoneName;         // classified zone name
-  bpmRange: string;       // "112-132 bpm"
+  bpmRange: string;       // detail string: "112-132 bpm" (HR mode) or "6:30-7:15 /km" (pace mode)
 }
 
 export interface WorkoutSection {

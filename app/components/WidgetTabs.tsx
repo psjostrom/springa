@@ -130,6 +130,8 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
           <div key={i} className="skeleton h-5 w-full" />
         ))}
       </div>
+    ) : !p.racePacePerKm ? (
+      <p className="text-sm text-muted px-3 py-2.5">Set your fitness in Settings to see pace zones</p>
     ) : null,
   "route-map": (p) =>
     p.event.streamData?.latlng && p.event.streamData.latlng.length > 0 ? (

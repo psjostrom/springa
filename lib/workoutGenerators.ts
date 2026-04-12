@@ -107,18 +107,15 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
   z5:   { min: null, max: null },
 };
 
-function makeStep() {
-  const zonePct = HM_ZONE_DEFAULTS;
-  return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const pct = zonePct[zone];
-    const step = formatPaceStep(
-      duration,
-      pct.min,
-      pct.max,
-      note ?? (zone === "walk" ? "Walk" : undefined),
-    );
-    return `${step} intensity=${garminIntensity(zone, note)}`;
-  };
+function makeStep(duration: string, zone: ZoneName | "walk", note?: string) {
+  const pct = HM_ZONE_DEFAULTS[zone];
+  const step = formatPaceStep(
+    duration,
+    pct.min,
+    pct.max,
+    note ?? (zone === "walk" ? "Walk" : undefined),
+  );
+  return `${step} intensity=${garminIntensity(zone, note)}`;
 }
 
 function getSpeedSessionType(
@@ -151,7 +148,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep;
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "z2", "Warmup");
@@ -248,7 +245,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep;
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -316,7 +313,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep;
   const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
 
   return {
@@ -347,7 +344,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = makeStep();
+  const s = makeStep;
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
