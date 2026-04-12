@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useModalURL } from "./hooks/useModalURL";
 import { useHydrateStore } from "./hooks/useHydrateStore";
+import { useSession } from "next-auth/react";
 import {
   settingsAtom,
   settingsLoadingAtom,
+  updateSettingsAtom,
   switchTabAtom,
   diabetesModeAtom,
 } from "./atoms";
@@ -20,8 +22,8 @@ import { SimulateScreen } from "./screens/SimulateScreen";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
+import { SettingsOverlay } from "./components/SettingsOverlay";
 import { Settings, Sun, Moon } from "lucide-react";
-import Link from "next/link";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -45,6 +47,9 @@ function HomeContent() {
 
   const settings = useAtomValue(settingsAtom);
   const settingsLoading = useAtomValue(settingsLoadingAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
+  const { data: session } = useSession();
+  const [showSettings, setShowSettings] = useState(false);
   const switchTab = useAtomValue(switchTabAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
@@ -154,13 +159,13 @@ function HomeContent() {
             >
               {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <Link
-              href="/settings"
+            <button
+              onClick={() => { setShowSettings(true); }}
               className="p-2 rounded-lg text-muted hover:text-brand hover:bg-border transition"
               title="Settings"
             >
               <Settings size={20} />
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -194,6 +199,14 @@ function HomeContent() {
         <BGGraphPopover onClose={bgGraph.close} />
       )}
 
+      {showSettings && settings && (
+        <SettingsOverlay
+          email={session?.user?.email ?? ""}
+          settings={settings}
+          onSave={updateSettings}
+          onClose={() => { setShowSettings(false); }}
+        />
+      )}
     </div>
   );
 }
