@@ -20,13 +20,6 @@ interface SettingsOverlayProps {
 export function SettingsOverlay({ email, settings: initialSettings, onSave, onClose }: SettingsOverlayProps) {
   const [tab, setTab] = useState<Tab>("Training");
   const [settings, setSettings] = useState(initialSettings);
-  const [isClosing, setIsClosing] = useState(false);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    // Fallback: if animation doesn't fire onAnimationEnd, close after timeout
-    setTimeout(onClose, 200);
-  };
 
   // Fetch enriched settings (Intervals.icu data) client-side
   useEffect(() => {
@@ -39,11 +32,11 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
   // Close on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
-  });
+  }, [onClose]);
 
   const handleSave = async (partial: Partial<UserSettings>) => {
     await onSave(partial);
@@ -52,19 +45,18 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${isClosing ? "bg-black/0" : "bg-black/70"}`}
-      onClick={handleClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 bg-black/70"
+      onClick={onClose}
     >
       <div
-        className={`bg-surface rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-xl shadow-brand/10 border-t sm:border border-border max-h-[92vh] overflow-y-auto ${isClosing ? "animate-slide-down" : "animate-slide-up"}`}
+        className="bg-surface rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg shadow-xl shadow-brand/10 border-t sm:border border-border max-h-[92vh] overflow-y-auto animate-slide-up"
         onClick={(e: React.MouseEvent) => { e.stopPropagation(); }}
-        onAnimationEnd={(e) => { if (isClosing && e.animationName === "slide-down") onClose(); }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border">
           <h2 className="text-lg font-bold text-text">Settings</h2>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-border transition"
           >
             <X size={18} />
