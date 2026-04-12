@@ -29,7 +29,7 @@ function distLabel(km: number): string {
   return match ? match.label : `${km}km`;
 }
 
-export function AbilityStep({ raceDist, experience, currentAbilitySecs: initialAbility, currentAbilityDist: initialAbilityDist, onNext, onBack }: AbilityStepProps) {
+export function AbilityStep({ experience, currentAbilitySecs: initialAbility, currentAbilityDist: initialAbilityDist, onNext, onBack }: AbilityStepProps) {
   const [abilityDist, setAbilityDist] = useState<number>(initialAbilityDist ?? 5);
   const [abilitySecs, setAbilitySecs] = useState<number>(initialAbility ?? getDefaultGoalTime(initialAbilityDist ?? 5, experience));
 

@@ -391,7 +391,6 @@ export function IntelScreen() {
         includeBasePhase={settings?.includeBasePhase}
         currentAbilitySecs={settings?.currentAbilitySecs}
         currentAbilityDist={settings?.currentAbilityDist}
-        goalTime={settings?.goalTime}
       />
     ),
     "pace-zones":
