@@ -12,7 +12,7 @@ import {
   settingsAtom,
 } from "../atoms";
 import { CalendarView } from "../components/CalendarView";
-import { getPaceTable } from "@/lib/paceTable";
+import { getThresholdPace } from "@/lib/paceTable";
 
 export function CalendarScreen() {
   const events = useAtomValue(enrichedEventsAtom);
@@ -24,9 +24,7 @@ export function CalendarScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const settings = useAtomValue(settingsAtom);
 
-  const racePacePerKm = settings?.currentAbilityDist && settings.currentAbilitySecs
-    ? getPaceTable(settings.currentAbilityDist, settings.currentAbilitySecs).hmEquivalentPacePerKm
-    : undefined;
+  const racePacePerKm = getThresholdPace(settings?.currentAbilityDist, settings?.currentAbilitySecs);
 
   return (
     <div className="h-full bg-bg flex flex-col text-text font-sans overflow-hidden">

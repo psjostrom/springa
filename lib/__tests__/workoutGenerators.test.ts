@@ -1,9 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles, computeZonePacePct } from "../workoutGenerators";
+import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { getWeekIdx } from "../workoutMath";
-import { getPaceTable } from "../paceTable";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
 describe("assignDayRoles", () => {
@@ -633,32 +632,3 @@ describe("suggestCategory", () => {
   });
 });
 
-describe("computeZonePacePct", () => {
-  it("returns HM defaults when paceTable is null", () => {
-    const result = computeZonePacePct(null);
-    expect(result.z2).toEqual({ min: 30, max: 88 });
-    expect(result.z3).toEqual({ min: 99, max: 102 });
-    expect(result.z4).toEqual({ min: 106, max: 111 });
-    expect(result.walk).toEqual({ min: null, max: null });
-    expect(result.z5).toEqual({ min: null, max: null });
-  });
-
-  it("returns default steady (99-102) when no goal is provided", () => {
-    const table = getPaceTable(10, 3300);
-    const result = computeZonePacePct(table);
-    expect(result.z3).toEqual({ min: 99, max: 102 });
-  });
-
-  it("steady is fixed at 99-102", () => {
-    const table = getPaceTable(10, 3300);
-    const result = computeZonePacePct(table);
-    expect(result.z3).toEqual({ min: 99, max: 102 });
-  });
-
-  it("easy and tempo are fixed", () => {
-    const table = getPaceTable(10, 3300);
-    const result = computeZonePacePct(table);
-    expect(result.z2).toEqual({ min: 30, max: 88 });
-    expect(result.z4).toEqual({ min: 106, max: 111 });
-  });
-});

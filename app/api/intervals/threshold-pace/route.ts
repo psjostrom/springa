@@ -42,7 +42,7 @@ export async function PUT(req: Request) {
   // If this fails, threshold pace is already saved — don't fail the whole request.
   try {
     await updatePaceZones(creds.intervalsApiKey, profile.sportSettingsId);
-  } catch { /* pace zones are non-critical — threshold pace is the important one */ }
+  } catch (e) { console.error("Pace zone sync failed (non-critical):", e); }
 
   return NextResponse.json({ ok: true });
 }

@@ -44,7 +44,7 @@ function getHmEquivalentTimeSecs(distanceKm: number, timeSecs: number): number {
 }
 
 /**
- * Derive training paces from race distance and goal time.
+ * Derive training paces from current ability (distance + time).
  * Based on Ben Parkes' pace chart, using VDOT-style distance conversion.
  *
  * Pace ratios derived from Ben Parkes 2h20 HM row (validated across multiple goal times):
@@ -128,6 +128,13 @@ export function getDefaultGoalTime(distanceKm: number, level: ExperienceLevel): 
   }
   const fraction = (distanceKm - lower.km) / (upper.km - lower.km);
   return Math.round(lower.defaults[level] + (upper.defaults[level] - lower.defaults[level]) * fraction);
+}
+
+/** Get the threshold pace (HM-equivalent) from ability settings.
+ *  Returns undefined if ability is not set. Used for workout display and pace zone analysis. */
+export function getThresholdPace(abilityDistKm?: number, abilitySecs?: number): number | undefined {
+  if (!abilityDistKm || !abilitySecs) return undefined;
+  return getPaceTable(abilityDistKm, abilitySecs).hmEquivalentPacePerKm;
 }
 
 export function getSliderRange(distanceKm: number): { min: number; max: number; step: number } {
