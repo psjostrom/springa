@@ -24,6 +24,8 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
 
   const handleClose = () => {
     setIsClosing(true);
+    // Fallback: if animation doesn't fire onAnimationEnd, close after timeout
+    setTimeout(onClose, 200);
   };
 
   // Fetch enriched settings (Intervals.icu data) client-side
