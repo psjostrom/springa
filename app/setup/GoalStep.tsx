@@ -134,6 +134,11 @@ export function GoalStep({ raceDist: initialDist, experience: initialExp, raceDa
                 ) : null;
               })()}
             </div>
+            {dateTooSoon && (
+              <p className="text-xs text-error mt-1">
+                Need at least 12 weeks to build a training plan
+              </p>
+            )}
           </div>
         )}
       </div>
