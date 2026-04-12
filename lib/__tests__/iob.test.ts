@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeIOB, tauForInsulin } from "../iob";
+import { http, HttpResponse } from "msw";
+import { server } from "./msw/server";
+import { computeIOB, tauForInsulin, fetchIOB } from "../iob";
 
 function makeTreatment(minutesAgo: number, insulin: number | null) {
   return { ts: Date.now() - minutesAgo * 60 * 1000, insulin };
@@ -53,6 +55,54 @@ describe("computeIOB", () => {
     const treatments = [makeTreatment(30, 3.7)];
     const iob = computeIOB(treatments, Date.now(), 55);
     expect(iob).toBe(Math.round(iob * 10) / 10);
+  });
+});
+
+describe("fetchIOB", () => {
+  const NS_URL = "https://test-ns.example.com";
+  const NS_SECRET = "test-secret";
+
+  function serveTreatments(treatments: Record<string, unknown>[]) {
+    server.use(
+      http.get(`${NS_URL}/api/v1/treatments.json`, () => {
+        return HttpResponse.json(treatments);
+      }),
+    );
+  }
+
+  it("computes IOB from string created_at timestamps", async () => {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    serveTreatments([
+      { _id: "t1", created_at: tenMinAgo, eventType: "Bolus", insulin: 4.0 },
+    ]);
+    const iob = await fetchIOB(NS_URL, NS_SECRET, 55);
+    expect(iob).toBeGreaterThan(3.0);
+  });
+
+  it("computes IOB from numeric epoch timestamps", async () => {
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    serveTreatments([
+      { _id: "t1", created_at: tenMinAgo, eventType: "Bolus", insulin: 4.0 },
+    ]);
+    const iob = await fetchIOB(NS_URL, NS_SECRET, 55);
+    expect(iob).toBeGreaterThan(3.0);
+  });
+
+  it("ignores treatments without insulin", async () => {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    serveTreatments([
+      { _id: "t1", created_at: fiveMinAgo, eventType: "Carbs", carbs: 30 },
+    ]);
+    const iob = await fetchIOB(NS_URL, NS_SECRET, 55);
+    expect(iob).toBe(0);
+  });
+
+  it("handles garbage created_at gracefully", async () => {
+    serveTreatments([
+      { _id: "t1", created_at: "not-a-date", eventType: "Bolus", insulin: 4.0 },
+    ]);
+    const iob = await fetchIOB(NS_URL, NS_SECRET, 55);
+    expect(iob).toBe(0);
   });
 });
 

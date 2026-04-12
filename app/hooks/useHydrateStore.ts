@@ -124,7 +124,10 @@ export function useHydrateStore() {
 
   const { data: iobData } = useSWR<{ iob: number } | null>(
     diabetesMode ? "/api/insulin-context" : null,
-    (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null)),
+    (url: string) => fetch(url).then((r) => {
+      if (!r.ok) { console.error(`[IOB] fetch failed: ${r.status}`); return null; }
+      return r.json();
+    }),
     { refreshInterval: 5 * 60 * 1000, revalidateOnFocus: false, dedupingInterval: 60_000 },
   );
 
