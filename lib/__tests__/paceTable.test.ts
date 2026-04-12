@@ -89,18 +89,8 @@ describe("getPaceTable", () => {
   });
 });
 
-describe("getPaceTable with separate goal", () => {
-  it("steady uses goal race pace when goal is provided", () => {
-    // 10K ability in 55:00, EcoTrail 16km goal in 2:20
-    const result = getPaceTable(10, 3300, 16, 8400);
-    // Steady = goal race pace 8400s / 60 / 16km = 8.75 min/km
-    expect(result.z3.min).toBeCloseTo(8.75 * 0.98, 1);
-    expect(result.z3.max).toBeCloseTo(8.75 * 1.01, 1);
-    // Easy/tempo still derived from 10K ability
-    expect(result.z2.min).toBeLessThan(result.z3.min);
-  });
-
-  it("steady uses ability pace when no goal is provided", () => {
+describe("getPaceTable steady zone", () => {
+  it("steady uses ability pace", () => {
     const result = getPaceTable(10, 3300);
     const abilityPace = 3300 / 60 / 10; // 5.5 min/km
     expect(result.z3.min).toBeCloseTo(abilityPace * 0.98, 1);
@@ -108,7 +98,7 @@ describe("getPaceTable with separate goal", () => {
   });
 
   it("stores ability context in result", () => {
-    const result = getPaceTable(10, 3300, 16, 8400);
+    const result = getPaceTable(10, 3300);
     expect(result.abilitySecs).toBe(3300);
     expect(result.abilityDistKm).toBe(10);
   });

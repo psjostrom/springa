@@ -49,15 +49,13 @@ function getHmEquivalentTimeSecs(distanceKm: number, goalTimeSecs: number): numb
  *
  * Pace ratios derived from Ben Parkes 2h20 HM row (validated across multiple goal times):
  * - Easy:     1.06-1.17× HM pace (slower)
- * - Steady:   0.98-1.01× actual race pace for goal distance
+ * - Steady:   0.98-1.01× ability pace
  * - Tempo:    0.90-0.94× HM pace (~5K effort)
  * - Hard:     0.85× HM pace (informational, strides are effort-based)
  */
 export function getPaceTable(
   abilityDistKm: number,
   abilitySecs: number,
-  goalDistKm?: number,
-  goalTimeSecs?: number,
 ): PaceTableResult {
   if (abilityDistKm <= 0 || abilitySecs <= 0) {
     throw new Error("Ability distance and time must be positive");
@@ -66,13 +64,9 @@ export function getPaceTable(
   const hmEquivalentTimeSecs = getHmEquivalentTimeSecs(abilityDistKm, abilitySecs);
   const hmEquivalentPacePerKm = hmEquivalentTimeSecs / 60 / HM_DISTANCE_KM;
 
-  const steadyPace = (goalTimeSecs && goalDistKm)
-    ? goalTimeSecs / 60 / goalDistKm
-    : abilityPacePerKm;
-
   return {
     z2: { min: hmEquivalentPacePerKm * 1.06, max: hmEquivalentPacePerKm * 1.17 },
-    z3: { min: steadyPace * 0.98, max: steadyPace * 1.01 },
+    z3: { min: abilityPacePerKm * 0.98, max: abilityPacePerKm * 1.01 },
     z4: { min: hmEquivalentPacePerKm * 0.90, max: hmEquivalentPacePerKm * 0.94 },
     z5: hmEquivalentPacePerKm * 0.85,
     racePacePerKm: abilityPacePerKm,

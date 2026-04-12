@@ -489,8 +489,6 @@ export function buildContext(config: PlanConfig): PlanContext {
     paceTable = getPaceTable(
       config.currentAbilityDist,
       config.currentAbilitySecs,
-      config.raceDist,
-      config.goalTimeSecs,
     );
   }
 
