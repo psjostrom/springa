@@ -1,6 +1,7 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchIOB } from "@/lib/iob";
+import { getUserSettings } from "@/lib/settings";
+import { fetchIOB, tauForInsulin } from "@/lib/iob";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -17,8 +18,11 @@ export async function GET() {
     return NextResponse.json(null);
   }
 
+  const settings = await getUserSettings(email);
+  const tau = tauForInsulin(settings.insulinType);
+
   try {
-    const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret);
+    const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret, tau);
     return NextResponse.json({ iob });
   } catch (err) {
     console.error("[insulin-context] Failed to compute IOB:", err);

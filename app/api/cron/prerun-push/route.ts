@@ -11,7 +11,7 @@ import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsH
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchBGFromNS } from "@/lib/nightscout";
-import { fetchIOB } from "@/lib/iob";
+import { fetchIOB, tauForInsulin } from "@/lib/iob";
 import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
 
@@ -59,10 +59,14 @@ export async function GET(req: Request) {
         console.error(`[prerun-push] Failed to fetch wellness/TSB for ${email}:`, err);
       }
 
+      // Check sugar mode — skip BG readiness checks when off
+      const settings = await getUserSettings(email);
+
       let currentIob: number | null = null;
       if (creds.nightscoutUrl && creds.nightscoutSecret) {
         try {
-          const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret);
+          const tau = tauForInsulin(settings.insulinType);
+          const iob = await fetchIOB(creds.nightscoutUrl, creds.nightscoutSecret, tau);
           currentIob = iob > 0 ? iob : null;
         } catch (err) {
           console.warn(`[prerun-push] Failed to compute IOB for ${email}:`, err);
@@ -90,9 +94,6 @@ export async function GET(req: Request) {
         const diffMs = eventUtcMs - now;
         return diffMs >= WINDOW_MIN_MS && diffMs <= WINDOW_MAX_MS;
       });
-
-      // Check sugar mode — skip BG readiness checks when off
-      const settings = await getUserSettings(email);
 
       let readings: Awaited<ReturnType<typeof fetchBGFromNS>> = [];
       let bgModel: ReturnType<typeof buildBGModelFromCached> | null = null;

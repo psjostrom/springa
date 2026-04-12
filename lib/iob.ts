@@ -2,13 +2,26 @@ import { fetchTreatmentsFromNS } from "./nightscout";
 
 // Insulin decay time constants (minutes).
 // tau ≈ DIA / 5 — derived from exponential decay model.
-const INSULIN_TAU: Record<string, number> = {
-  FIASP: 55,
-  LYUMJEV: 50,
-  NOVORAPID: 75,
+export type InsulinType = "fiasp" | "lyumjev" | "novorapid";
+
+export const INSULIN_TAU: Record<InsulinType, number> = {
+  fiasp: 55,
+  lyumjev: 50,
+  novorapid: 75,
 };
 
-const DEFAULT_TAU = INSULIN_TAU.FIASP;
+export const INSULIN_OPTIONS: { value: InsulinType; label: string }[] = [
+  { value: "fiasp", label: "Fiasp" },
+  { value: "lyumjev", label: "Lyumjev" },
+  { value: "novorapid", label: "Novorapid / Humalog" },
+];
+
+const DEFAULT_TAU = INSULIN_TAU.fiasp;
+
+export function tauForInsulin(insulinType?: string | null): number {
+  if (insulinType && insulinType in INSULIN_TAU) return INSULIN_TAU[insulinType as InsulinType];
+  return DEFAULT_TAU;
+}
 const TAU_MULTIPLIER = 5;
 
 /**
@@ -69,5 +82,3 @@ export async function fetchIOB(
 
   return computeIOB(treatments, now, tauMinutes);
 }
-
-export { DEFAULT_TAU, INSULIN_TAU };

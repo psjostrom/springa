@@ -31,6 +31,7 @@ export interface UserSettings {
   clubDay?: number;
   clubType?: string;
   onboardingComplete?: boolean;
+  insulinType?: string;
 
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsConnected?: boolean;
@@ -51,7 +52,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  total_weeks, start_km, widget_order, hidden_widgets,
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
-                 onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret
+                 onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -81,6 +82,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.club_day != null) settings.clubDay = row.club_day as number;
   if (row.club_type) settings.clubType = row.club_type as string;
   settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
+  if (row.insulin_type) settings.insulinType = row.insulin_type as string;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
   settings.nightscoutConnected = !!(row.nightscout_url && row.nightscout_secret);
@@ -122,6 +124,7 @@ export async function saveUserSettings(
   if (partial.clubDay !== undefined) { sets.push("club_day = ?"); args.push(partial.clubDay ?? null); }
   if (partial.clubType !== undefined) { sets.push("club_type = ?"); args.push(partial.clubType ?? null); }
   if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
+  if (partial.insulinType !== undefined) { sets.push("insulin_type = ?"); args.push(partial.insulinType ?? null); }
 
   if (sets.length > 0) {
     args.push(email);
