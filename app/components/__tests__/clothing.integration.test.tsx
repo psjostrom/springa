@@ -1,21 +1,12 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@/lib/__tests__/test-utils";
-import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import type { CalendarEvent } from "@/lib/types";
-import type { UserSettings } from "@/lib/settings";
 import type { SMHIWeather } from "@/lib/smhi";
 import { recommendClothing } from "@/lib/clothingCalculator";
 import { EventModal } from "../EventModal";
-import { SettingsModal } from "../SettingsModal";
 import "@/lib/__tests__/setup-dom";
-
-// Notification API mock (required by SettingsModal)
-Object.defineProperty(globalThis, "Notification", {
-  value: { permission: "default", requestPermission: vi.fn() },
-  writable: true,
-});
 
 const noop = () => {};
 const noopAsync = async () => {};
@@ -246,97 +237,3 @@ describe("full weather-to-clothing flow", () => {
   });
 });
 
-describe("SettingsModal warmth preference", () => {
-  const validSettings: UserSettings = {
-    raceDate: "2026-06-13",
-    raceName: "EcoTrail 16km",
-    raceDist: 16,
-
-    totalWeeks: 18,
-    startKm: 8,
-    warmthPreference: 0,
-  };
-
-  function renderModal(overrides: Partial<UserSettings> = {}) {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy, not a module mock
-    const onSave = vi.fn<(partial: Partial<UserSettings>) => Promise<void>>().mockResolvedValue(undefined);
-    const onClose = vi.fn();
-    const settings = { ...validSettings, ...overrides };
-    render(
-      <SettingsModal
-        email="test@example.com"
-        settings={settings}
-        onSave={onSave}
-        onClose={onClose}
-      />,
-    );
-    return { onSave, onClose };
-  }
-
-  it("renders running temperature section", () => {
-    renderModal();
-    expect(screen.getByText("Running temperature")).toBeInTheDocument();
-    expect(screen.getByText("Warmer")).toBeInTheDocument();
-    expect(screen.getByText("Colder")).toBeInTheDocument();
-  });
-
-  it("has 5 warmth buttons", () => {
-    renderModal();
-    const buttons = screen.getAllByRole("button", { name: /Warmth/ });
-    expect(buttons).toHaveLength(5);
-  });
-
-  it("saves warmth preference when changed", async () => {
-    const user = userEvent.setup();
-    const { onSave } = renderModal({ warmthPreference: 0 });
-
-    // Click the coldest option (warmth +2)
-    const buttons = screen.getAllByRole("button", { name: /Warmth/ });
-    await user.click(buttons[4]); // last button = +2 (colder)
-
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ warmthPreference: 2 }),
-    );
-  });
-
-  it("does not include warmthPreference in save when unchanged", async () => {
-    const user = userEvent.setup();
-    const { onSave } = renderModal({ warmthPreference: 0 });
-
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    // No changes → no save call (or empty object)
-    if (onSave.mock.calls.length > 0) {
-      expect(onSave.mock.calls[0][0]).not.toHaveProperty("warmthPreference");
-    }
-  });
-
-  it("shows reset button when preference is non-neutral", async () => {
-    const user = userEvent.setup();
-    renderModal({ warmthPreference: 0 });
-
-    // Initially no reset button
-    expect(screen.queryByText("Reset to neutral")).toBeNull();
-
-    // Select a non-neutral option
-    const buttons = screen.getAllByRole("button", { name: /Warmth/ });
-    await user.click(buttons[0]); // warmest (-2)
-
-    expect(screen.getByText("Reset to neutral")).toBeInTheDocument();
-  });
-
-  it("reset button returns to neutral", async () => {
-    const user = userEvent.setup();
-    renderModal({ warmthPreference: 1 });
-
-    // Reset should be visible since preference is 1
-    expect(screen.getByText("Reset to neutral")).toBeInTheDocument();
-
-    await user.click(screen.getByText("Reset to neutral"));
-
-    // Reset button should disappear
-    expect(screen.queryByText("Reset to neutral")).toBeNull();
-  });
-});

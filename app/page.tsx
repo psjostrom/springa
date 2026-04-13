@@ -4,8 +4,8 @@ import { Suspense, startTransition, useCallback, useEffect, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useModalURL } from "./hooks/useModalURL";
-import { useSession } from "next-auth/react";
 import { useHydrateStore } from "./hooks/useHydrateStore";
+import { useSession } from "next-auth/react";
 import {
   settingsAtom,
   settingsLoadingAtom,
@@ -21,8 +21,8 @@ import { CoachScreen } from "./screens/CoachScreen";
 import { SimulateScreen } from "./screens/SimulateScreen";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
-import { SettingsModal } from "./components/SettingsModal";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
+import { SettingsOverlay } from "./components/SettingsOverlay";
 import { Settings, Sun, Moon } from "lucide-react";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
@@ -42,14 +42,14 @@ const splashFallback = (
 );
 
 function HomeContent() {
-  const { data: session } = useSession();
-
   // Hydrate all Jotai atoms from data-fetching hooks
   useHydrateStore();
 
   const settings = useAtomValue(settingsAtom);
   const settingsLoading = useAtomValue(settingsLoadingAtom);
   const updateSettings = useSetAtom(updateSettingsAtom);
+  const { data: session } = useSession();
+  const [showSettings, setShowSettings] = useState(false);
   const switchTab = useAtomValue(switchTabAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
@@ -121,9 +121,6 @@ function HomeContent() {
     document.documentElement.classList.toggle("light", theme === "light");
     localStorage.setItem("springa-theme", theme);
   }, [theme]);
-
-  // Settings modal
-  const [showSettings, setShowSettings] = useState(false);
 
   // Redirect: not onboarded → /setup
   useEffect(() => {
@@ -203,7 +200,7 @@ function HomeContent() {
       )}
 
       {showSettings && settings && (
-        <SettingsModal
+        <SettingsOverlay
           email={session?.user?.email ?? ""}
           settings={settings}
           onSave={updateSettings}

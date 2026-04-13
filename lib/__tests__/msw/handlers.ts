@@ -268,6 +268,21 @@ export const handlers = [
     return HttpResponse.json({ ok: true });
   }),
 
+  // POST /api/settings/validate-ns (Nightscout connection test)
+  http.post("/api/settings/validate-ns", async ({ request }) => {
+    const body = (await request.json()) as { nightscoutUrl?: string; nightscoutSecret?: string };
+    if (!body.nightscoutUrl || !body.nightscoutSecret) {
+      return HttpResponse.json(
+        { valid: false, error: "Both URL and API secret are required" },
+        { status: 400 },
+      );
+    }
+    if (body.nightscoutUrl.includes("invalid") || body.nightscoutSecret === "bad-secret") {
+      return HttpResponse.json({ valid: false, error: "Authentication failed" });
+    }
+    return HttpResponse.json({ valid: true, name: "Test NS" });
+  }),
+
   // Google OAuth token exchange
   http.post("https://oauth2.googleapis.com/token", () => {
     return HttpResponse.json({
