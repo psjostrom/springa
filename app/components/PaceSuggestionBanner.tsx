@@ -19,7 +19,7 @@ export function PaceSuggestionBanner({ onNavigateToIntel }: PaceSuggestionBanner
     : "Pace adjustment suggested";
 
   return (
-    <div className="fixed bottom-14 md:bottom-4 left-0 right-0 z-40 flex justify-center px-4">
+    <div className="fixed bottom-28 md:bottom-20 left-0 right-0 z-50 flex justify-center px-4">
       <div className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center gap-3 shadow-lg shadow-black/40 max-w-sm w-full">
         <p className="text-sm text-muted flex-1">
           <span className="text-text font-medium">{label}</span>
