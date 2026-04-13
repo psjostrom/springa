@@ -170,7 +170,7 @@ describe("computeCardiacCostTrend", () => {
 });
 
 describe("generatePaceSuggestion", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
+  const baseAbility = { currentAbilitySecs: 5388, currentAbilityDist: 16 }; // 16km in 1:29:48 → Z4 ≈ 5:14-5:36/km
 
   function completedEvents(): CalendarEvent[] {
     // Regular training — no gaps
@@ -260,9 +260,9 @@ describe("generatePaceSuggestion", () => {
       ...baseAbility,
     });
     expect(result).not.toBeNull();
-    const maxDelta = baseAbility.currentAbilitySecs * 0.02;
+    const maxDelta = Math.round(baseAbility.currentAbilitySecs * 0.02);
     const actualDelta = Math.abs(result!.suggestedAbilitySecs - result!.currentAbilitySecs);
-    expect(actualDelta).toBeLessThanOrEqual(maxDelta + 0.01); // float tolerance
+    expect(actualDelta).toBeLessThanOrEqual(maxDelta);
   });
 
   it("returns null on conflicting signals", () => {
@@ -329,7 +329,7 @@ describe("generatePaceSuggestion", () => {
 });
 
 describe("generatePaceSuggestion — race result", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
+  const baseAbility = { currentAbilitySecs: 5388, currentAbilityDist: 16 }; // 16km in 1:29:48 → Z4 ≈ 5:14-5:36/km
 
   function completedEvents(): CalendarEvent[] {
     return Array.from({ length: 12 }, (_, i) =>
@@ -343,8 +343,8 @@ describe("generatePaceSuggestion — race result", () => {
       date: new Date(Date.now() - 10 * 86400000),
       type: "completed",
       category: "race",
-      distance: 15500, // within 10% of 16000
-      duration: 3000,  // faster than 3150
+      distance: 15500, // 15.5km, within 10% of 16km reference
+      duration: 5200,  // faster than 5388
       name: "Spring 16K",
     });
     const events = [...completedEvents(), raceEvent];
@@ -357,7 +357,7 @@ describe("generatePaceSuggestion — race result", () => {
     expect(result!.confidence).toBe("high");
     expect(result!.raceResult).not.toBeNull();
     expect(result!.raceResult!.distanceMatch).toBe(true);
-    expect(result!.suggestedAbilitySecs).toBe(3000); // direct race time, no cap
+    expect(result!.suggestedAbilitySecs).toBe(5200); // direct race time, no cap
   });
 
   it("does not suggest regression from a single slow race — falls through to trends", () => {
@@ -367,7 +367,7 @@ describe("generatePaceSuggestion — race result", () => {
       type: "completed",
       category: "race",
       distance: 16000,
-      duration: 3400, // slower than 3150
+      duration: 5600, // slower than 5388
       name: "Slow 16K",
     });
     const events = [...completedEvents(), raceEvent];
@@ -426,7 +426,7 @@ describe("generatePaceSuggestion — race result", () => {
 });
 
 describe("generatePaceSuggestion — break detection", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
+  const baseAbility = { currentAbilitySecs: 5388, currentAbilityDist: 16 }; // 16km in 1:29:48 → Z4 ≈ 5:14-5:36/km
 
   it("returns null when there is a 14+ day gap and fewer than 4 post-break runs", () => {
     // Runs early, then a big gap, then only 2 post-break runs
@@ -445,6 +445,59 @@ describe("generatePaceSuggestion — break detection", () => {
       events,
       ...baseAbility,
     });
+    expect(result).toBeNull();
+  });
+});
+
+describe("generatePaceSuggestion — calibration gap", () => {
+  it("detects when ability is much slower than actual Z4 pace", () => {
+    // Ability set to 37:00 5K (very slow), but actual Z4 pace is ~5:25/km
+    // Expected Z4 from 37:00 5K: ~7:20/km. Gap: ~1:55/km — well above 20 sec/km threshold.
+    const slowAbility = { currentAbilitySecs: 2220, currentAbilityDist: 5 };
+    const z4Segs: ZoneSegment[] = [
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s4", activityDate: daysAgo(5) },
+    ];
+    const events = Array.from({ length: 12 }, (_, i) =>
+      makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
+    );
+    const result = generatePaceSuggestion({ segments: z4Segs, events, ...slowAbility });
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("improvement");
+    expect(result!.confidence).toBe("high");
+    expect(result!.suggestedAbilitySecs).toBeLessThan(2220);
+  });
+
+  it("does not trigger when ability roughly matches actual Z4 pace", () => {
+    // Ability 27:00 5K → expected Z4 mid ≈ 5:25/km, actual 5:30/km → gap 5 sec/km, below 20 threshold
+    // All same pace to avoid triggering the trend signal
+    const matchedAbility = { currentAbilitySecs: 1620, currentAbilityDist: 5 };
+    const z4Segs: ZoneSegment[] = [
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s4", activityDate: daysAgo(5) },
+    ];
+    const events = Array.from({ length: 12 }, (_, i) =>
+      makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
+    );
+    const result = generatePaceSuggestion({ segments: z4Segs, events, ...matchedAbility });
+    expect(result).toBeNull();
+  });
+
+  it("does not trigger with fewer than 4 Z4 segments", () => {
+    const slowAbility = { currentAbilitySecs: 2220, currentAbilityDist: 5 };
+    const z4Segs: ZoneSegment[] = [
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
+    ];
+    const events = Array.from({ length: 12 }, (_, i) =>
+      makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
+    );
+    const result = generatePaceSuggestion({ segments: z4Segs, events, ...slowAbility });
     expect(result).toBeNull();
   });
 });

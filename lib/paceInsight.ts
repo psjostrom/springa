@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "./types";
 import type { ZoneSegment } from "./paceCalibration";
 import { computeZonePaceTrend } from "./paceCalibration";
+import { getPaceTable } from "./paceTable";
 
 type EventCategory = CalendarEvent["category"];
 
@@ -136,6 +137,11 @@ const MIN_POST_BREAK_RUNS = 4;
 const RACE_DISTANCE_TOLERANCE = 0.10;
 const RACE_RECENCY_MS = 28 * 24 * 60 * 60 * 1000;
 const CARDIAC_COST_TO_THRESHOLD_SEC = 5 / 60; // 3% cost change ≈ 5 sec/km
+// Calibration gap: detect when ability setting is wildly off vs actual running.
+// 20 sec/km exceeds 2σ measurement noise with 4+ segments (Z4 CV ≈ 3-5%),
+// and represents half a zone width — the runner is meaningfully misclassified.
+const CALIBRATION_GAP_THRESHOLD = 20 / 60; // 20 sec/km = 0.33 min/km
+const MIN_Z4_SEGMENTS_FOR_GAP = 4;
 
 function detectBreak(events: CalendarEvent[]): boolean {
   const now = Date.now();
@@ -246,7 +252,41 @@ export function generatePaceSuggestion(
     };
   }
 
-  // Compute Z4 pace trend
+  // Signal 0: Calibration gap — ability setting is wildly off vs actual running.
+  // Doesn't need a time trend; compares expected Z4 pace from ability to observed Z4 pace.
+  const z4Segs = segments.filter((s) => s.zone === "z4");
+  if (z4Segs.length >= MIN_Z4_SEGMENTS_FOR_GAP) {
+    const observedZ4 = z4Segs.reduce((sum, s) => sum + s.avgPace * s.durationMin, 0)
+      / z4Segs.reduce((sum, s) => sum + s.durationMin, 0);
+    const expectedTable = getPaceTable(currentAbilityDist, currentAbilitySecs);
+    const expectedZ4Mid = (expectedTable.z4.min + expectedTable.z4.max) / 2;
+    const gapMinPerKm = expectedZ4Mid - observedZ4; // positive = running faster than expected
+
+    if (Math.abs(gapMinPerKm) >= CALIBRATION_GAP_THRESHOLD) {
+      const direction: "improvement" | "regression" = gapMinPerKm > 0 ? "improvement" : "regression";
+      // Estimate ability from observed Z4: Z4 ≈ 0.92x HM pace, reverse to ability time
+      const thresholdPace = observedZ4 / Z4_TO_THRESHOLD_RATIO;
+      const suggestedAbilitySecs = Math.round(thresholdPace * currentAbilityDist * 60);
+      const cappedDelta = Math.sign(suggestedAbilitySecs - currentAbilitySecs)
+        * Math.min(Math.abs(suggestedAbilitySecs - currentAbilitySecs), currentAbilitySecs * ABILITY_CAP_PCT);
+      const cappedSuggestion = Math.round(currentAbilitySecs + cappedDelta);
+
+      if (Math.abs(cappedDelta) >= 5) {
+        return {
+          direction,
+          confidence: "high",
+          suggestedAbilitySecs: cappedSuggestion,
+          currentAbilitySecs,
+          currentAbilityDist,
+          z4ImprovementSecPerKm: Math.round(gapMinPerKm * 60),
+          cardiacCostChangePercent: null,
+          raceResult: raceInfo ? { distance: raceInfo.distance, duration: raceInfo.duration, name: raceInfo.name, distanceMatch: false } : null,
+        };
+      }
+    }
+  }
+
+  // Signal 1: Z4 pace trend (improvement/regression over time)
   const z4Slope = computeZonePaceTrend(segments, "z4");
   let z4Signal: "improving" | "regressing" | null = null;
   let z4ImprovementSecPerKm: number | null = null;
