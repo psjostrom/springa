@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "./types";
 import type { ZoneSegment } from "./paceCalibration";
+import { computeZonePaceTrend } from "./paceCalibration";
 
 type EventCategory = CalendarEvent["category"];
 
@@ -95,4 +96,236 @@ export function computeCardiacCostTrend(
   }
 
   return null;
+}
+
+// --- Pace Suggestion ---
+
+export interface RaceResult {
+  distance: number; // meters
+  duration: number; // seconds
+  name: string;
+  distanceMatch: boolean;
+}
+
+export interface PaceSuggestion {
+  direction: "improvement" | "regression";
+  confidence: "high" | "medium";
+  suggestedAbilitySecs: number;
+  currentAbilitySecs: number;
+  currentAbilityDist: number;
+  z4ImprovementSecPerKm: number | null;
+  cardiacCostChangePercent: number | null;
+  raceResult: RaceResult | null;
+}
+
+export interface PaceSuggestionInput {
+  segments: ZoneSegment[];
+  events: CalendarEvent[];
+  currentAbilitySecs: number;
+  currentAbilityDist: number;
+  paceSuggestionDismissedAt?: number | null;
+}
+
+const DISMISS_COOLDOWN_MS = 28 * 24 * 60 * 60 * 1000;
+const Z4_IMPROVEMENT_THRESHOLD = 10 / 60; // min/km
+const Z4_REGRESSION_THRESHOLD = 15 / 60; // min/km
+const Z4_TO_THRESHOLD_RATIO = 0.92;
+const ABILITY_CAP_PCT = 0.02;
+const BREAK_GAP_DAYS = 14;
+const MIN_POST_BREAK_RUNS = 4;
+const RACE_DISTANCE_TOLERANCE = 0.10;
+const RACE_RECENCY_MS = 28 * 24 * 60 * 60 * 1000;
+const CARDIAC_COST_TO_THRESHOLD_SEC = 5 / 60; // 3% cost change ≈ 5 sec/km
+
+function detectBreak(events: CalendarEvent[]): boolean {
+  const now = Date.now();
+  const windowCutoff = now - 90 * 24 * 60 * 60 * 1000;
+  const completed = events
+    .filter((e) => e.type === "completed" && e.date.getTime() >= windowCutoff)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (completed.length < 2) return false;
+
+  let largestGapEnd = -1;
+  for (let i = 1; i < completed.length; i++) {
+    const gapDays =
+      (completed[i].date.getTime() - completed[i - 1].date.getTime()) /
+      (24 * 60 * 60 * 1000);
+    if (gapDays >= BREAK_GAP_DAYS) {
+      largestGapEnd = i;
+    }
+  }
+
+  if (largestGapEnd === -1) return false;
+
+  const postBreakRuns = completed.length - largestGapEnd;
+  return postBreakRuns < MIN_POST_BREAK_RUNS;
+}
+
+function findRecentRace(
+  events: CalendarEvent[],
+  referenceDist: number,
+): { race: CalendarEvent; distanceMatch: boolean } | null {
+  const now = Date.now();
+  const races = events
+    .filter(
+      (e) =>
+        e.category === "race" &&
+        e.type === "completed" &&
+        e.distance != null &&
+        e.duration != null &&
+        now - e.date.getTime() <= RACE_RECENCY_MS,
+    )
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  if (races.length === 0) return null;
+
+  const race = races[0];
+  const distanceMatch =
+    referenceDist > 0 &&
+    Math.abs(race.distance! - referenceDist) / referenceDist <=
+      RACE_DISTANCE_TOLERANCE;
+
+  return { race, distanceMatch };
+}
+
+export function generatePaceSuggestion(
+  input: PaceSuggestionInput,
+): PaceSuggestion | null {
+  const {
+    segments,
+    events,
+    currentAbilitySecs,
+    currentAbilityDist,
+    paceSuggestionDismissedAt,
+  } = input;
+
+  // Guard: need ability settings
+  if (!currentAbilitySecs || !currentAbilityDist) return null;
+
+  // Check dismiss cooldown
+  if (paceSuggestionDismissedAt) {
+    if (Date.now() - paceSuggestionDismissedAt < DISMISS_COOLDOWN_MS) {
+      return null;
+    }
+  }
+
+  // Check for training break
+  if (detectBreak(events)) return null;
+
+  // Check for matching race result (direct comparison, no cap)
+  const raceInfo = findRecentRace(events, currentAbilityDist);
+  if (raceInfo?.distanceMatch) {
+    const race = raceInfo.race;
+    const direction =
+      race.duration! < currentAbilitySecs ? "improvement" : "regression";
+    return {
+      direction,
+      confidence: "high",
+      suggestedAbilitySecs: race.duration!,
+      currentAbilitySecs,
+      currentAbilityDist,
+      z4ImprovementSecPerKm: null,
+      cardiacCostChangePercent: null,
+      raceResult: {
+        distance: race.distance!,
+        duration: race.duration!,
+        name: race.name,
+        distanceMatch: true,
+      },
+    };
+  }
+
+  // Compute Z4 pace trend
+  const z4Slope = computeZonePaceTrend(segments, "z4");
+  let z4Signal: "improving" | "regressing" | null = null;
+  let z4ImprovementSecPerKm: number | null = null;
+
+  if (z4Slope != null) {
+    const totalChangeMinPerKm = z4Slope * 90; // project over 90 days
+    const totalChangeSecPerKm = totalChangeMinPerKm * 60;
+
+    if (totalChangeMinPerKm <= -Z4_IMPROVEMENT_THRESHOLD) {
+      z4Signal = "improving";
+      z4ImprovementSecPerKm = totalChangeSecPerKm;
+    } else if (totalChangeMinPerKm >= Z4_REGRESSION_THRESHOLD) {
+      z4Signal = "regressing";
+      z4ImprovementSecPerKm = totalChangeSecPerKm;
+    }
+  }
+
+  // Compute cardiac cost trend
+  const ccResult = computeCardiacCostTrend(segments);
+  let ccSignal: "improving" | "regressing" | null = null;
+  let cardiacCostChangePercent: number | null = null;
+
+  if (ccResult) {
+    ccSignal = ccResult.direction;
+    cardiacCostChangePercent = ccResult.changePercent;
+  }
+
+  // Check for conflicting signals
+  if (
+    z4Signal &&
+    ccSignal &&
+    z4Signal !== ccSignal
+  ) {
+    return null;
+  }
+
+  // Determine direction and confidence
+  const signal = z4Signal ?? ccSignal;
+  if (!signal) return null;
+
+  const confidence: "high" | "medium" =
+    z4Signal && ccSignal ? "high" : "medium";
+  const direction: "improvement" | "regression" =
+    signal === "improving" ? "improvement" : "regression";
+
+  // Compute suggested ability time
+  let deltaSecs: number;
+
+  if (z4ImprovementSecPerKm != null) {
+    // Z4 ≈ 0.92x threshold → divide by 0.92 to get threshold change
+    const thresholdChangeSecPerKm = z4ImprovementSecPerKm / Z4_TO_THRESHOLD_RATIO;
+    const distKm = currentAbilityDist / 1000;
+    deltaSecs = thresholdChangeSecPerKm * distKm;
+  } else {
+    // Only cardiac cost: 3% cost change ≈ 5 sec/km threshold improvement
+    const costRatio = (cardiacCostChangePercent ?? 0) / 3;
+    const thresholdChangeMinPerKm = costRatio * CARDIAC_COST_TO_THRESHOLD_SEC;
+    const distKm = currentAbilityDist / 1000;
+    deltaSecs = thresholdChangeMinPerKm * 60 * distKm;
+  }
+
+  // Apply 2% cap
+  const maxDelta = currentAbilitySecs * ABILITY_CAP_PCT;
+  if (Math.abs(deltaSecs) > maxDelta) {
+    deltaSecs = deltaSecs > 0 ? maxDelta : -maxDelta;
+  }
+
+  const suggestedAbilitySecs = currentAbilitySecs + deltaSecs;
+
+  // Attach race result if present (even without distance match)
+  let raceResult: RaceResult | null = null;
+  if (raceInfo) {
+    const race = raceInfo.race;
+    raceResult = {
+      distance: race.distance!,
+      duration: race.duration!,
+      name: race.name,
+      distanceMatch: false,
+    };
+  }
+
+  return {
+    direction,
+    confidence,
+    suggestedAbilitySecs,
+    currentAbilitySecs,
+    currentAbilityDist,
+    z4ImprovementSecPerKm,
+    cardiacCostChangePercent,
+    raceResult,
+  };
 }
