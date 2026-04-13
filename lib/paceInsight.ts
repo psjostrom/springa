@@ -224,13 +224,13 @@ export function generatePaceSuggestion(
   // Check for training break
   if (detectBreak(events)) return null;
 
-  // Check for matching race result (direct comparison, no cap)
+  // Check for matching race result — only auto-suggest improvement.
+  // A single slow race (bad day, heat, stomach) shouldn't suggest regression;
+  // for that, fall through to trend signals which need sustained evidence.
   const raceInfo = findRecentRace(events, currentAbilityDist);
-  if (raceInfo?.distanceMatch) {
-    const direction =
-      raceInfo.duration < currentAbilitySecs ? "improvement" : "regression";
+  if (raceInfo?.distanceMatch && raceInfo.duration < currentAbilitySecs) {
     return {
-      direction,
+      direction: "improvement",
       confidence: "high",
       suggestedAbilitySecs: raceInfo.duration,
       currentAbilitySecs,

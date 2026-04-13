@@ -360,7 +360,7 @@ describe("generatePaceSuggestion — race result", () => {
     expect(result!.suggestedAbilitySecs).toBe(3000); // direct race time, no cap
   });
 
-  it("detects regression via race result", () => {
+  it("does not suggest regression from a single slow race — falls through to trends", () => {
     const raceEvent = makeEvent({
       id: "race-1",
       date: new Date(Date.now() - 10 * 86400000),
@@ -371,14 +371,13 @@ describe("generatePaceSuggestion — race result", () => {
       name: "Slow 16K",
     });
     const events = [...completedEvents(), raceEvent];
+    // No trend segments → no trend signal → null (race alone doesn't trigger regression)
     const result = generatePaceSuggestion({
       segments: [],
       events,
       ...baseAbility,
     });
-    expect(result).not.toBeNull();
-    expect(result!.direction).toBe("regression");
-    expect(result!.suggestedAbilitySecs).toBe(3400);
+    expect(result).toBeNull();
   });
 
   it("attaches race result to trend suggestion when distance does not match", () => {
