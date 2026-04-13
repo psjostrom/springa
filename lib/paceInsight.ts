@@ -264,18 +264,21 @@ export function generatePaceSuggestion(
 
     if (Math.abs(gapMinPerKm) >= CALIBRATION_GAP_THRESHOLD) {
       const direction: "improvement" | "regression" = gapMinPerKm > 0 ? "improvement" : "regression";
-      // Estimate ability from observed Z4: Z4 ≈ 0.92x HM pace, reverse to ability time
+      // Estimate ability from observed Z4: Z4 ≈ 0.92x HM pace, reverse to ability time.
+      // No 2% cap — the calibration gap means the setting is wrong, not gradually drifting.
+      // Cap at 30% to guard against garbage data.
       const thresholdPace = observedZ4 / Z4_TO_THRESHOLD_RATIO;
-      const suggestedAbilitySecs = Math.round(thresholdPace * currentAbilityDist * 60);
-      const cappedDelta = Math.sign(suggestedAbilitySecs - currentAbilitySecs)
-        * Math.min(Math.abs(suggestedAbilitySecs - currentAbilitySecs), currentAbilitySecs * ABILITY_CAP_PCT);
-      const cappedSuggestion = Math.round(currentAbilitySecs + cappedDelta);
+      const rawSuggestion = Math.round(thresholdPace * currentAbilityDist * 60);
+      const maxJump = currentAbilitySecs * 0.30;
+      const delta = rawSuggestion - currentAbilitySecs;
+      const clampedDelta = Math.sign(delta) * Math.min(Math.abs(delta), maxJump);
+      const suggestedAbilitySecs = Math.round(currentAbilitySecs + clampedDelta);
 
-      if (Math.abs(cappedDelta) >= 5) {
+      if (Math.abs(clampedDelta) >= 5) {
         return {
           direction,
           confidence: "high",
-          suggestedAbilitySecs: cappedSuggestion,
+          suggestedAbilitySecs,
           currentAbilitySecs,
           currentAbilityDist,
           z4ImprovementSecPerKm: Math.round(gapMinPerKm * 60),
