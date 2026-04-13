@@ -119,6 +119,7 @@ vi.mock("lucide-react", () => {
     EyeOff: icon("EyeOff"),
     Check: icon("Check"),
     X: icon("X"),
+    ArrowLeft: icon("ArrowLeft"),
     LogOut: icon("LogOut"),
     Bell: icon("Bell"),
     GripVertical: icon("GripVertical"),
