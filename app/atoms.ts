@@ -19,6 +19,7 @@ import {
   buildCalibratedPaceTable,
   toPaceTable,
 } from "@/lib/paceCalibration";
+import { generatePaceSuggestion, type PaceSuggestion } from "@/lib/paceInsight";
 
 // ─── Settings ────────────────────────────────────────────────
 
@@ -143,6 +144,21 @@ export const paceCalibrationAtom = atom((get) => {
 export const paceTableAtom = atom<PaceTable | undefined>((get) => {
   const calibration = get(paceCalibrationAtom);
   return calibration ? toPaceTable(calibration) : undefined;
+});
+
+export const paceSuggestionAtom = atom<PaceSuggestion | null>((get) => {
+  const calibration = get(paceCalibrationAtom);
+  const settings = get(settingsAtom);
+  const events = get(enrichedEventsAtom);
+  if (!calibration || !settings?.currentAbilitySecs || !settings?.currentAbilityDist) return null;
+
+  return generatePaceSuggestion({
+    segments: calibration.segments,
+    events,
+    currentAbilitySecs: settings.currentAbilitySecs,
+    currentAbilityDist: settings.currentAbilityDist,
+    paceSuggestionDismissedAt: settings.paceSuggestionDismissedAt,
+  });
 });
 
 export const widgetLayoutAtom = atom((get) =>
