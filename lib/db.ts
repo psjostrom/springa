@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   club_type          TEXT,
   current_ability_secs INTEGER,
   current_ability_dist REAL,
-  insulin_type TEXT
+  insulin_type TEXT,
+  pace_suggestion_dismissed_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (
