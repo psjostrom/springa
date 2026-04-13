@@ -162,31 +162,41 @@ function detectBreak(events: CalendarEvent[]): boolean {
   return postBreakRuns < MIN_POST_BREAK_RUNS;
 }
 
+interface RecentRace {
+  name: string;
+  distance: number;  // meters, guaranteed non-null
+  duration: number;  // seconds, guaranteed non-null
+  distanceMatch: boolean;
+}
+
 function findRecentRace(
   events: CalendarEvent[],
   referenceDist: number,
-): { race: CalendarEvent; distanceMatch: boolean } | null {
+): RecentRace | null {
   const now = Date.now();
-  const races = events
-    .filter(
-      (e) =>
-        e.category === "race" &&
-        e.type === "completed" &&
-        e.distance != null &&
-        e.duration != null &&
-        now - e.date.getTime() <= RACE_RECENCY_MS,
-    )
-    .sort((a, b) => b.date.getTime() - a.date.getTime());
+  const races = events.filter(
+    (e) =>
+      e.category === "race" &&
+      e.type === "completed" &&
+      e.distance != null &&
+      e.duration != null &&
+      now - e.date.getTime() <= RACE_RECENCY_MS,
+  );
 
   if (races.length === 0) return null;
 
+  // Most recent race first
+  races.sort((a, b) => b.date.getTime() - a.date.getTime());
   const race = races[0];
+  if (race.distance == null || race.duration == null) return null; // narrowed by filter, but satisfies TS
+  const dist = race.distance;
+  const dur = race.duration;
+
   const distanceMatch =
     referenceDist > 0 &&
-    Math.abs(race.distance! - referenceDist) / referenceDist <=
-      RACE_DISTANCE_TOLERANCE;
+    Math.abs(dist - referenceDist) / referenceDist <= RACE_DISTANCE_TOLERANCE;
 
-  return { race, distanceMatch };
+  return { name: race.name, distance: dist, duration: dur, distanceMatch };
 }
 
 export function generatePaceSuggestion(
@@ -216,21 +226,20 @@ export function generatePaceSuggestion(
   // Check for matching race result (direct comparison, no cap)
   const raceInfo = findRecentRace(events, currentAbilityDist);
   if (raceInfo?.distanceMatch) {
-    const race = raceInfo.race;
     const direction =
-      race.duration! < currentAbilitySecs ? "improvement" : "regression";
+      raceInfo.duration < currentAbilitySecs ? "improvement" : "regression";
     return {
       direction,
       confidence: "high",
-      suggestedAbilitySecs: race.duration!,
+      suggestedAbilitySecs: raceInfo.duration,
       currentAbilitySecs,
       currentAbilityDist,
       z4ImprovementSecPerKm: null,
       cardiacCostChangePercent: null,
       raceResult: {
-        distance: race.distance!,
-        duration: race.duration!,
-        name: race.name,
+        distance: raceInfo.distance,
+        duration: raceInfo.duration,
+        name: raceInfo.name,
         distanceMatch: true,
       },
     };
@@ -309,11 +318,10 @@ export function generatePaceSuggestion(
   // Attach race result if present (even without distance match)
   let raceResult: RaceResult | null = null;
   if (raceInfo) {
-    const race = raceInfo.race;
     raceResult = {
-      distance: race.distance!,
-      duration: race.duration!,
-      name: race.name,
+      distance: raceInfo.distance,
+      duration: raceInfo.duration,
+      name: raceInfo.name,
       distanceMatch: false,
     };
   }

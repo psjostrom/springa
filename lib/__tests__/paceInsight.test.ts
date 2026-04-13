@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { categoryFromExternalId, temperatureCorrectHr, computeCardiacCostTrend, generatePaceSuggestion, type PaceSuggestion } from "../paceInsight";
+import { categoryFromExternalId, temperatureCorrectHr, computeCardiacCostTrend, generatePaceSuggestion } from "../paceInsight";
 import type { ZoneSegment } from "../paceCalibration";
 import type { CalendarEvent } from "../types";
 

@@ -22,6 +22,7 @@ import { SimulateScreen } from "./screens/SimulateScreen";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
+import { PaceSuggestionBanner } from "./components/PaceSuggestionBanner";
 import { SettingsOverlay } from "./components/SettingsOverlay";
 import { Settings, Sun, Moon } from "lucide-react";
 
@@ -191,6 +192,9 @@ function HomeContent() {
       </div>
 
       <UnratedRunBanner />
+      {activeTab !== "intel" && (
+        <PaceSuggestionBanner onNavigateToIntel={() => { handleTabChange("intel"); }} />
+      )}
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />

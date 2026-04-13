@@ -150,7 +150,8 @@ export const paceSuggestionAtom = atom<PaceSuggestion | null>((get) => {
   const calibration = get(paceCalibrationAtom);
   const settings = get(settingsAtom);
   const events = get(enrichedEventsAtom);
-  if (!calibration || !settings?.currentAbilitySecs || !settings?.currentAbilityDist) return null;
+  if (!calibration || !settings) return null;
+  if (!settings.currentAbilitySecs || !settings.currentAbilityDist) return null;
 
   return generatePaceSuggestion({
     segments: calibration.segments,
