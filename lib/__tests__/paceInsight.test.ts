@@ -170,7 +170,7 @@ describe("computeCardiacCostTrend", () => {
 });
 
 describe("generatePaceSuggestion", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16000 };
+  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
 
   function completedEvents(): CalendarEvent[] {
     // Regular training — no gaps
@@ -329,7 +329,7 @@ describe("generatePaceSuggestion", () => {
 });
 
 describe("generatePaceSuggestion — race result", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16000 };
+  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
 
   function completedEvents(): CalendarEvent[] {
     return Array.from({ length: 12 }, (_, i) =>
@@ -427,7 +427,7 @@ describe("generatePaceSuggestion — race result", () => {
 });
 
 describe("generatePaceSuggestion — break detection", () => {
-  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16000 };
+  const baseAbility = { currentAbilitySecs: 3150, currentAbilityDist: 16 }; // 16 km
 
   it("returns null when there is a 14+ day gap and fewer than 4 post-break runs", () => {
     // Runs early, then a big gap, then only 2 post-break runs

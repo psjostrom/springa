@@ -283,9 +283,13 @@ export function IntelScreen() {
     setSelectedActivityId(null);
   };
 
+  const [paceAcceptError, setPaceAcceptError] = useState<string | null>(null);
+
   const handleAcceptPaceSuggestion = async () => {
     if (!paceSuggestion || !settings?.hrZones?.length) return;
     setIsAccepting(true);
+    setPaceAcceptError(null);
+    const previousAbilitySecs = settings.currentAbilitySecs;
     try {
       await updateSettings({ currentAbilitySecs: paceSuggestion.suggestedAbilitySecs });
 
@@ -294,13 +298,15 @@ export function IntelScreen() {
         paceSuggestion.suggestedAbilitySecs,
       );
       if (newThreshold) {
-        await fetch("/api/intervals/threshold-pace", {
+        const thresholdRes = await fetch("/api/intervals/threshold-pace", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ paceMinPerKm: newThreshold }),
         });
+        if (!thresholdRes.ok) throw new Error("Failed to push threshold pace");
       }
 
+      // Same config shape as PlannerScreen.handleGenerate — consider extracting if a third caller appears
       const planEvents = generatePlan({
         bgModel: bgModel ?? null,
         raceDateStr: raceDate,
@@ -329,6 +335,13 @@ export function IntelScreen() {
       onRetryLoad();
     } catch (e) {
       console.error("Failed to accept pace suggestion:", e);
+      // Revert ability to keep DB and Intervals.icu in sync
+      if (previousAbilitySecs != null) {
+        await updateSettings({ currentAbilitySecs: previousAbilitySecs }).catch((revertErr: unknown) => {
+          console.error("Failed to revert ability time:", revertErr);
+        });
+      }
+      setPaceAcceptError(e instanceof Error ? e.message : "Failed to update paces");
     }
     setIsAccepting(false);
   };
@@ -540,14 +553,20 @@ export function IntelScreen() {
 
             {/* Pace Suggestion */}
             {paceSuggestion && (
-              <div>
+              <div className="space-y-2">
                 <PaceSuggestionCard
                   suggestion={paceSuggestion}
                   onAccept={() => { void handleAcceptPaceSuggestion(); }}
                   onDismiss={() => { void handleDismissPaceSuggestion(); }}
                   isAccepting={isAccepting}
                 />
+                {paceAcceptError && (
+                  <p className="text-xs text-red-400">{paceAcceptError}</p>
+                )}
               </div>
+            )}
+            {!paceSuggestion && paceAcceptError && (
+              <p className="text-xs text-red-400">{paceAcceptError}</p>
             )}
 
             {/* Volume Compact */}

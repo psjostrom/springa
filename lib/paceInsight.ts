@@ -192,9 +192,10 @@ function findRecentRace(
   const dist = race.distance;
   const dur = race.duration;
 
+  const distKm = dist / 1000; // CalendarEvent.distance is meters, referenceDist is km
   const distanceMatch =
     referenceDist > 0 &&
-    Math.abs(dist - referenceDist) / referenceDist <= RACE_DISTANCE_TOLERANCE;
+    Math.abs(distKm - referenceDist) / referenceDist <= RACE_DISTANCE_TOLERANCE;
 
   return { name: race.name, distance: dist, duration: dur, distanceMatch };
 }
@@ -297,14 +298,12 @@ export function generatePaceSuggestion(
   if (z4ImprovementSecPerKm != null) {
     // Z4 ≈ 0.92x threshold → divide by 0.92 to get threshold change
     const thresholdChangeSecPerKm = z4ImprovementSecPerKm / Z4_TO_THRESHOLD_RATIO;
-    const distKm = currentAbilityDist / 1000;
-    deltaSecs = thresholdChangeSecPerKm * distKm;
+    deltaSecs = thresholdChangeSecPerKm * currentAbilityDist; // currentAbilityDist is already in km
   } else {
     // Only cardiac cost: 3% cost change ≈ 5 sec/km threshold improvement
     const costRatio = (cardiacCostChangePercent ?? 0) / 3;
     const thresholdChangeMinPerKm = costRatio * CARDIAC_COST_TO_THRESHOLD_SEC;
-    const distKm = currentAbilityDist / 1000;
-    deltaSecs = thresholdChangeMinPerKm * 60 * distKm;
+    deltaSecs = thresholdChangeMinPerKm * 60 * currentAbilityDist;
   }
 
   // Apply 2% cap
@@ -313,7 +312,7 @@ export function generatePaceSuggestion(
     deltaSecs = deltaSecs > 0 ? maxDelta : -maxDelta;
   }
 
-  const suggestedAbilitySecs = currentAbilitySecs + deltaSecs;
+  const suggestedAbilitySecs = Math.round(currentAbilitySecs + deltaSecs);
 
   // Attach race result if present (even without distance match)
   let raceResult: RaceResult | null = null;
