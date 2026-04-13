@@ -28,7 +28,7 @@ interface PaceSuggestionCardProps {
 }
 
 export function PaceSuggestionCard({ suggestion, onAccept, onDismiss, isAccepting }: PaceSuggestionCardProps) {
-  const { direction, suggestedAbilitySecs, currentAbilitySecs, currentAbilityDist, z4ImprovementSecPerKm, cardiacCostChangePercent, raceResult } = suggestion;
+  const { direction, suggestedAbilitySecs, currentAbilitySecs, currentAbilityDist, z4ImprovementSecPerKm, cardiacCostChangePercent, raceResult, pbEvidence } = suggestion;
 
   const isImprovement = direction === "improvement";
   const label = distanceLabel(currentAbilityDist);
@@ -39,6 +39,10 @@ export function PaceSuggestionCard({ suggestion, onAccept, onDismiss, isAcceptin
     const faster = raceResult.duration < currentAbilitySecs;
     evidenceLines.push(
       `You finished in ${formatTime(raceResult.duration)} — ${formatTime(diff)} ${faster ? "faster" : "slower"} than your current ${label} ability (${formatTime(currentAbilitySecs)}).`,
+    );
+  } else if (pbEvidence) {
+    evidenceLines.push(
+      `Your best ${label} effort was ${formatTime(pbEvidence.timeSeconds)} (${Math.round(pbEvidence.ageDays)} days ago) — your current setting looks too conservative.`,
     );
   } else {
     if (z4ImprovementSecPerKm != null) {

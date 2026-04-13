@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { categoryFromExternalId, temperatureCorrectHr, computeCardiacCostTrend, generatePaceSuggestion } from "../paceInsight";
 import type { ZoneSegment } from "../paceCalibration";
-import type { CalendarEvent } from "../types";
+import type { CalendarEvent, BestEffort } from "../types";
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -449,55 +449,126 @@ describe("generatePaceSuggestion — break detection", () => {
   });
 });
 
-describe("generatePaceSuggestion — calibration gap", () => {
-  it("detects when ability is much slower than actual Z4 pace", () => {
-    // Ability set to 37:00 5K (very slow), but actual Z4 pace is ~5:25/km
-    // Expected Z4 from 37:00 5K: ~7:20/km. Gap: ~1:55/km — well above 20 sec/km threshold.
-    const slowAbility = { currentAbilitySecs: 2220, currentAbilityDist: 5 };
-    const z4Segs: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
-      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s4", activityDate: daysAgo(5) },
-    ];
-    const events = Array.from({ length: 12 }, (_, i) =>
+describe("generatePaceSuggestion — PB calibration gap", () => {
+  const baseAbility = { currentAbilitySecs: 2220, currentAbilityDist: 5 }; // 37:00 5K
+
+  function completedEvents(): CalendarEvent[] {
+    return Array.from({ length: 12 }, (_, i) =>
       makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
     );
-    const result = generatePaceSuggestion({ segments: z4Segs, events, ...slowAbility });
+  }
+
+  function makePB(timeSeconds: number, ageDays: number): BestEffort[] {
+    return [{
+      distance: 5000,
+      label: "5km",
+      timeSeconds,
+      pace: timeSeconds / 5000 * 1000 / 60,
+      activityDate: daysAgo(ageDays),
+    }];
+  }
+
+  it("fires when PB within 90 days is >10% faster than predicted time", () => {
+    // 37:00 (2220s) vs PB 26:39 (1599s) = 28% gap, 60 days old
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(), ...baseAbility,
+      bestEfforts: makePB(1599, 60),
+    });
     expect(result).not.toBeNull();
     expect(result!.direction).toBe("improvement");
     expect(result!.confidence).toBe("high");
-    expect(result!.suggestedAbilitySecs).toBeLessThan(2220);
+    expect(result!.suggestedAbilitySecs).toBe(1599);
+    expect(result!.pbEvidence!.timeSeconds).toBe(1599);
+    expect(result!.pbEvidence!.ageDays).toBeGreaterThanOrEqual(60);
+    expect(result!.pbEvidence!.ageDays).toBeLessThanOrEqual(61);
   });
 
-  it("does not trigger when ability roughly matches actual Z4 pace", () => {
-    // Ability 27:00 5K → expected Z4 mid ≈ 5:25/km, actual 5:30/km → gap 5 sec/km, below 20 threshold
-    // All same pace to avoid triggering the trend signal
-    const matchedAbility = { currentAbilitySecs: 1620, currentAbilityDist: 5 };
-    const z4Segs: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s4", activityDate: daysAgo(5) },
-    ];
-    const events = Array.from({ length: 12 }, (_, i) =>
-      makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
-    );
-    const result = generatePaceSuggestion({ segments: z4Segs, events, ...matchedAbility });
+  it("does not fire when PB gap is <10%", () => {
+    // 27:00 (1620s) vs PB 26:39 (1599s) = 1.3% gap
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(),
+      currentAbilitySecs: 1620, currentAbilityDist: 5,
+      bestEfforts: makePB(1599, 60),
+    });
     expect(result).toBeNull();
   });
 
-  it("does not trigger with fewer than 4 Z4 segments", () => {
-    const slowAbility = { currentAbilitySecs: 2220, currentAbilityDist: 5 };
-    const z4Segs: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s2", activityDate: daysAgo(15) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(10) },
-    ];
-    const events = Array.from({ length: 12 }, (_, i) =>
-      makeEvent({ id: `r${i}`, date: new Date(Date.now() - (80 - i * 7) * 86400000), type: "completed" }),
-    );
-    const result = generatePaceSuggestion({ segments: z4Segs, events, ...slowAbility });
+  it("uses 20% threshold for PB aged 91-180 days", () => {
+    // 37:00 (2220s) vs PB 26:39 (1599s) = 28% > 20% — fires even at 120 days
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(), ...baseAbility,
+      bestEfforts: makePB(1599, 120),
+    });
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("improvement");
+    expect(result!.suggestedAbilitySecs).toBe(1599);
+  });
+
+  it("does not fire for PB aged 91-180 days with gap 10-20%", () => {
+    // 29:00 (1740s) vs PB 26:00 (1560s) = 10.3% — below 20% threshold for old PB
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(),
+      currentAbilitySecs: 1740, currentAbilityDist: 5,
+      bestEfforts: makePB(1560, 150),
+    });
     expect(result).toBeNull();
+  });
+
+  it("does not fire for PB older than 180 days", () => {
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(), ...baseAbility,
+      bestEfforts: makePB(1599, 200),
+    });
+    expect(result).toBeNull();
+  });
+
+  it("does not fire when PB is slower than predicted time", () => {
+    // Setting 24:00 (1440s), PB 26:39 (1599s) — PB is slower
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(),
+      currentAbilitySecs: 1440, currentAbilityDist: 5,
+      bestEfforts: makePB(1599, 60),
+    });
+    expect(result).toBeNull();
+  });
+
+  it("does not fire without best efforts data", () => {
+    const result = generatePaceSuggestion({
+      segments: [], events: completedEvents(), ...baseAbility,
+    });
+    expect(result).toBeNull();
+  });
+
+  it("uses trend suggestion when PB fires but trends show regression", () => {
+    // PB says improvement but Z4 + cardiac cost say regression → trust trends
+    const regressingZ4: ZoneSegment[] = [
+      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
+      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s2", activityDate: daysAgo(60) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(40) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s4", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.35, durationMin: 4, activityId: "s5", activityDate: daysAgo(5) },
+    ];
+    const result = generatePaceSuggestion({
+      segments: regressingZ4, events: completedEvents(), ...baseAbility,
+      bestEfforts: makePB(1599, 60),
+    });
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("regression");
+    expect(result!.suggestedAbilitySecs).toBeGreaterThan(baseAbility.currentAbilitySecs);
+    expect(result!.pbEvidence).toBeUndefined();
+  });
+
+  it("uses PB suggestion when PB fires and trends also show improvement", () => {
+    // Setting 35:00 (2100s), PB 27:10 (1630s), trends improving
+    // PB gives bigger correction than 2% trend cap
+    const result = generatePaceSuggestion({
+      segments: improvingZ4Segments(), events: completedEvents(),
+      currentAbilitySecs: 2100, currentAbilityDist: 5,
+      bestEfforts: makePB(1630, 21),
+    });
+    expect(result).not.toBeNull();
+    expect(result!.direction).toBe("improvement");
+    expect(result!.suggestedAbilitySecs).toBe(1630); // PB, not 2% of 2100
+    expect(result!.pbEvidence).not.toBeNull();
   });
 });

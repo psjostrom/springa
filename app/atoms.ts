@@ -150,6 +150,7 @@ export const paceSuggestionAtom = atom<PaceSuggestion | null>((get) => {
   const calibration = get(paceCalibrationAtom);
   const settings = get(settingsAtom);
   const events = get(enrichedEventsAtom);
+  const paceCurveData = get(paceCurveDataAtom);
   if (!calibration || !settings) return null;
   if (!settings.currentAbilitySecs || !settings.currentAbilityDist) return null;
 
@@ -159,6 +160,7 @@ export const paceSuggestionAtom = atom<PaceSuggestion | null>((get) => {
     currentAbilitySecs: settings.currentAbilitySecs,
     currentAbilityDist: settings.currentAbilityDist,
     paceSuggestionDismissedAt: settings.paceSuggestionDismissedAt,
+    bestEfforts: paceCurveData?.bestEfforts,
   });
 });
 

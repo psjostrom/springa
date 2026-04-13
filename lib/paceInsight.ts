@@ -1,7 +1,6 @@
-import type { CalendarEvent } from "./types";
+import type { CalendarEvent, BestEffort } from "./types";
 import type { ZoneSegment } from "./paceCalibration";
 import { computeZonePaceTrend } from "./paceCalibration";
-import { getPaceTable } from "./paceTable";
 
 type EventCategory = CalendarEvent["category"];
 
@@ -117,6 +116,7 @@ export interface PaceSuggestion {
   z4ImprovementSecPerKm: number | null;
   cardiacCostChangePercent: number | null;
   raceResult: RaceResult | null;
+  pbEvidence?: { timeSeconds: number; ageDays: number } | null;
 }
 
 export interface PaceSuggestionInput {
@@ -125,6 +125,7 @@ export interface PaceSuggestionInput {
   currentAbilitySecs: number;
   currentAbilityDist: number;
   paceSuggestionDismissedAt?: number | null;
+  bestEfforts?: BestEffort[] | null;
 }
 
 const DISMISS_COOLDOWN_MS = 28 * 24 * 60 * 60 * 1000;
@@ -137,11 +138,14 @@ const MIN_POST_BREAK_RUNS = 4;
 const RACE_DISTANCE_TOLERANCE = 0.10;
 const RACE_RECENCY_MS = 28 * 24 * 60 * 60 * 1000;
 const CARDIAC_COST_TO_THRESHOLD_SEC = 5 / 60; // 3% cost change ≈ 5 sec/km
-// Calibration gap: detect when ability setting is wildly off vs actual running.
-// 20 sec/km exceeds 2σ measurement noise with 4+ segments (Z4 CV ≈ 3-5%),
-// and represents half a zone width — the runner is meaningfully misclassified.
-const CALIBRATION_GAP_THRESHOLD = 20 / 60; // 20 sec/km = 0.33 min/km
-const MIN_Z4_SEGMENTS_FOR_GAP = 4;
+// PB calibration gap: detect when ability setting is wildly off vs demonstrated best effort.
+// Sliding threshold: recent PBs need 10% gap, older PBs need 20% (less trustworthy).
+const PB_GAP_RECENT_DAYS = 90;
+const PB_GAP_RECENT_THRESHOLD = 0.10;
+const PB_GAP_OLDER_THRESHOLD = 0.20;
+const PB_MAX_AGE_DAYS = 180;
+const PB_MAX_JUMP_PCT = 0.30;
+const PB_DISTANCE_TOLERANCE = 0.10;
 
 function detectBreak(events: CalendarEvent[]): boolean {
   const now = Date.now();
@@ -206,6 +210,53 @@ function findRecentRace(
   return { name: race.name, distance: dist, duration: dur, distanceMatch };
 }
 
+interface PBCalibrationResult {
+  suggestedSecs: number;
+  pbTimeSeconds: number;
+  pbAgeDays: number;
+}
+
+function computePBCalibrationGap(
+  bestEfforts: BestEffort[] | undefined | null,
+  currentAbilitySecs: number,
+  currentAbilityDist: number,
+): PBCalibrationResult | null {
+  if (!bestEfforts || bestEfforts.length === 0) return null;
+
+  const referenceMeters = currentAbilityDist * 1000;
+
+  const pb = bestEfforts.find((e) => {
+    const distDiff = Math.abs(e.distance - referenceMeters) / referenceMeters;
+    return distDiff <= PB_DISTANCE_TOLERANCE;
+  });
+
+  if (!pb?.activityDate) return null;
+
+  const pbDate = new Date(pb.activityDate).getTime();
+  if (isNaN(pbDate)) return null;
+  const ageDays = (Date.now() - pbDate) / (24 * 60 * 60 * 1000);
+  if (ageDays > PB_MAX_AGE_DAYS) return null;
+
+  // Only improvement direction: PB must be faster (lower time) than setting
+  if (pb.timeSeconds >= currentAbilitySecs) return null;
+
+  // Sliding threshold: stricter for older PBs
+  const gap = (currentAbilitySecs - pb.timeSeconds) / currentAbilitySecs;
+  const threshold = ageDays <= PB_GAP_RECENT_DAYS
+    ? PB_GAP_RECENT_THRESHOLD
+    : PB_GAP_OLDER_THRESHOLD;
+
+  if (gap <= threshold) return null;
+
+  // Apply 30% cap
+  const maxJump = currentAbilitySecs * PB_MAX_JUMP_PCT;
+  const delta = currentAbilitySecs - pb.timeSeconds;
+  const clampedDelta = Math.min(delta, maxJump);
+  const suggestedSecs = Math.round(currentAbilitySecs - clampedDelta);
+
+  return { suggestedSecs, pbTimeSeconds: pb.timeSeconds, pbAgeDays: ageDays };
+}
+
 export function generatePaceSuggestion(
   input: PaceSuggestionInput,
 ): PaceSuggestion | null {
@@ -215,6 +266,7 @@ export function generatePaceSuggestion(
     currentAbilitySecs,
     currentAbilityDist,
     paceSuggestionDismissedAt,
+    bestEfforts,
   } = input;
 
   // Guard: need ability settings
@@ -252,43 +304,6 @@ export function generatePaceSuggestion(
     };
   }
 
-  // Signal 0: Calibration gap — ability setting is wildly off vs actual running.
-  // Doesn't need a time trend; compares expected Z4 pace from ability to observed Z4 pace.
-  const z4Segs = segments.filter((s) => s.zone === "z4");
-  if (z4Segs.length >= MIN_Z4_SEGMENTS_FOR_GAP) {
-    const observedZ4 = z4Segs.reduce((sum, s) => sum + s.avgPace * s.durationMin, 0)
-      / z4Segs.reduce((sum, s) => sum + s.durationMin, 0);
-    const expectedTable = getPaceTable(currentAbilityDist, currentAbilitySecs);
-    const expectedZ4Mid = (expectedTable.z4.min + expectedTable.z4.max) / 2;
-    const gapMinPerKm = expectedZ4Mid - observedZ4; // positive = running faster than expected
-
-    if (Math.abs(gapMinPerKm) >= CALIBRATION_GAP_THRESHOLD) {
-      const direction: "improvement" | "regression" = gapMinPerKm > 0 ? "improvement" : "regression";
-      // Estimate ability from observed Z4: Z4 ≈ 0.92x HM pace, reverse to ability time.
-      // No 2% cap — the calibration gap means the setting is wrong, not gradually drifting.
-      // Cap at 30% to guard against garbage data.
-      const thresholdPace = observedZ4 / Z4_TO_THRESHOLD_RATIO;
-      const rawSuggestion = Math.round(thresholdPace * currentAbilityDist * 60);
-      const maxJump = currentAbilitySecs * 0.30;
-      const delta = rawSuggestion - currentAbilitySecs;
-      const clampedDelta = Math.sign(delta) * Math.min(Math.abs(delta), maxJump);
-      const suggestedAbilitySecs = Math.round(currentAbilitySecs + clampedDelta);
-
-      if (Math.abs(clampedDelta) >= 5) {
-        return {
-          direction,
-          confidence: "high",
-          suggestedAbilitySecs,
-          currentAbilitySecs,
-          currentAbilityDist,
-          z4ImprovementSecPerKm: Math.round(gapMinPerKm * 60),
-          cardiacCostChangePercent: null,
-          raceResult: raceInfo ? { distance: raceInfo.distance, duration: raceInfo.duration, name: raceInfo.name, distanceMatch: false } : null,
-        };
-      }
-    }
-  }
-
   // Signal 1: Z4 pace trend (improvement/regression over time)
   const z4Slope = computeZonePaceTrend(segments, "z4");
   let z4Signal: "improving" | "regressing" | null = null;
@@ -317,33 +332,54 @@ export function generatePaceSuggestion(
     cardiacCostChangePercent = ccResult.changePercent;
   }
 
-  // Check for conflicting signals
-  if (
-    z4Signal &&
-    ccSignal &&
-    z4Signal !== ccSignal
-  ) {
-    return null;
+  // Resolve trend direction (null if conflicting or insufficient)
+  const trendsConflict = z4Signal && ccSignal && z4Signal !== ccSignal;
+  const trendSignal = trendsConflict ? null : (z4Signal ?? ccSignal);
+
+  // Signal 3: PB calibration gap (improvement only, sliding threshold by age)
+  const pbGap = computePBCalibrationGap(bestEfforts, currentAbilitySecs, currentAbilityDist);
+
+  // Attach race result if present (even without distance match)
+  let raceResult: RaceResult | null = null;
+  if (raceInfo) {
+    raceResult = {
+      distance: raceInfo.distance,
+      duration: raceInfo.duration,
+      name: raceInfo.name,
+      distanceMatch: false,
+    };
   }
 
-  // Determine direction and confidence
-  const signal = z4Signal ?? ccSignal;
-  if (!signal) return null;
+  // Decision: PB fires + trends not regressing → PB-based correction
+  if (pbGap && trendSignal !== "regressing") {
+    return {
+      direction: "improvement",
+      confidence: "high",
+      suggestedAbilitySecs: pbGap.suggestedSecs,
+      currentAbilitySecs,
+      currentAbilityDist,
+      z4ImprovementSecPerKm: null,
+      cardiacCostChangePercent: null,
+      raceResult,
+      pbEvidence: { timeSeconds: pbGap.pbTimeSeconds, ageDays: Math.round(pbGap.pbAgeDays) },
+    };
+  }
+
+  // Fall through to trend-based suggestion
+  if (!trendSignal) return null;
 
   const confidence: "high" | "medium" =
     z4Signal && ccSignal ? "high" : "medium";
   const direction: "improvement" | "regression" =
-    signal === "improving" ? "improvement" : "regression";
+    trendSignal === "improving" ? "improvement" : "regression";
 
-  // Compute suggested ability time
+  // Compute suggested ability time from trends
   let deltaSecs: number;
 
   if (z4ImprovementSecPerKm != null) {
-    // Z4 ≈ 0.92x threshold → divide by 0.92 to get threshold change
     const thresholdChangeSecPerKm = z4ImprovementSecPerKm / Z4_TO_THRESHOLD_RATIO;
-    deltaSecs = thresholdChangeSecPerKm * currentAbilityDist; // currentAbilityDist is already in km
+    deltaSecs = thresholdChangeSecPerKm * currentAbilityDist;
   } else {
-    // Only cardiac cost: 3% cost change ≈ 5 sec/km threshold improvement
     const costRatio = (cardiacCostChangePercent ?? 0) / 3;
     const thresholdChangeMinPerKm = costRatio * CARDIAC_COST_TO_THRESHOLD_SEC;
     deltaSecs = thresholdChangeMinPerKm * 60 * currentAbilityDist;
@@ -356,17 +392,6 @@ export function generatePaceSuggestion(
   }
 
   const suggestedAbilitySecs = Math.round(currentAbilitySecs + deltaSecs);
-
-  // Attach race result if present (even without distance match)
-  let raceResult: RaceResult | null = null;
-  if (raceInfo) {
-    raceResult = {
-      distance: raceInfo.distance,
-      duration: raceInfo.duration,
-      name: raceInfo.name,
-      distanceMatch: false,
-    };
-  }
 
   return {
     direction,
