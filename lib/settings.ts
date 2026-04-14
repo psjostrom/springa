@@ -41,6 +41,9 @@ export interface UserSettings {
   hrZones?: number[];
   restingHr?: number;
   sportSettingsId?: number;
+  email?: string;
+  /** True when serving demo fixture data — never stored in DB. */
+  demo?: boolean;
 }
 
 // --- CRUD ---
