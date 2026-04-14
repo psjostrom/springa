@@ -46,7 +46,7 @@ describe("PaceSuggestionCard", () => {
     expect(screen.getByText(/paces may need updating/i)).toBeInTheDocument();
     expect(screen.getByText(/26:00/)).toBeInTheDocument();
     expect(screen.getByText(/27:00/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /update paces/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update plan/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /not now/i })).toBeInTheDocument();
   });
 
@@ -56,7 +56,7 @@ describe("PaceSuggestionCard", () => {
     );
     expect(screen.getByText(/paces may need adjusting/i)).toBeInTheDocument();
     expect(screen.getByText(/injury risk/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /adjust paces/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adjust plan/i })).toBeInTheDocument();
   });
 
   it("renders race result card when distance matches", () => {
@@ -72,7 +72,7 @@ describe("PaceSuggestionCard", () => {
     render(
       <PaceSuggestionCard suggestion={improvementSuggestion} onAccept={onAccept} onDismiss={vi.fn()} isAccepting={false} />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /update paces/i }));
+    await userEvent.click(screen.getByRole("button", { name: /update plan/i }));
     expect(onAccept).toHaveBeenCalledOnce();
   });
 

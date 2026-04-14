@@ -15,9 +15,10 @@ interface SettingsOverlayProps {
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
   onClose: () => void;
+  onAbilityChanged?: (newSecs: number, newDist: number) => Promise<void>;
 }
 
-export function SettingsOverlay({ email, settings: initialSettings, onSave, onClose }: SettingsOverlayProps) {
+export function SettingsOverlay({ email, settings: initialSettings, onSave, onClose, onAbilityChanged }: SettingsOverlayProps) {
   const [tab, setTab] = useState<Tab>("Training");
   const [settings, setSettings] = useState(initialSettings);
 
@@ -90,7 +91,7 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
 
         {/* Content — scrollable, fills remaining space */}
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-          {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} />}
+          {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} onAbilityChanged={onAbilityChanged} />}
           {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
           {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} />}
         </div>

@@ -70,7 +70,7 @@ export function PaceSuggestionCard({ suggestion, onAccept, onDismiss, isAcceptin
       ? "Your paces may need updating"
       : "Your paces may need adjusting";
 
-  const acceptLabel = isImprovement ? "Update paces" : "Adjust paces";
+  const acceptLabel = isImprovement ? "Update plan" : "Adjust plan";
 
   return (
     <div className={`bg-surface rounded-xl border ${borderColor} p-4 space-y-3`}>

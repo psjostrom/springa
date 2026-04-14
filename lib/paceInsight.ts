@@ -144,7 +144,6 @@ const PB_GAP_RECENT_DAYS = 90;
 const PB_GAP_RECENT_THRESHOLD = 0.10;
 const PB_GAP_OLDER_THRESHOLD = 0.20;
 const PB_MAX_AGE_DAYS = 180;
-const PB_MAX_JUMP_PCT = 0.30;
 const PB_DISTANCE_TOLERANCE = 0.10;
 
 function detectBreak(events: CalendarEvent[]): boolean {
@@ -248,13 +247,8 @@ function computePBCalibrationGap(
 
   if (gap <= threshold) return null;
 
-  // Apply 30% cap
-  const maxJump = currentAbilitySecs * PB_MAX_JUMP_PCT;
-  const delta = currentAbilitySecs - pb.timeSeconds;
-  const clampedDelta = Math.min(delta, maxJump);
-  const suggestedSecs = Math.round(currentAbilitySecs - clampedDelta);
-
-  return { suggestedSecs, pbTimeSeconds: pb.timeSeconds, pbAgeDays: ageDays };
+  // No cap — the PB is a direct measurement, not an estimate.
+  return { suggestedSecs: Math.round(pb.timeSeconds), pbTimeSeconds: pb.timeSeconds, pbAgeDays: ageDays };
 }
 
 export function generatePaceSuggestion(
