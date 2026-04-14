@@ -64,7 +64,7 @@ describe("TrainingTab training paces", () => {
     await user.click(allTenKButtons[0]); // Click the fitness 10K button
 
     // Click save - ability changed from 0 to 10, so it will save and sync
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: /save/i }));
 
     // Verify onSave was called with the new ability
     expect(onSave).toHaveBeenCalledWith(

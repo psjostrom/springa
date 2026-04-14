@@ -12,6 +12,8 @@ import {
   updateSettingsAtom,
   switchTabAtom,
   diabetesModeAtom,
+  bgModelAtom,
+  calendarReloadAtom,
 } from "./atoms";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -22,8 +24,14 @@ import { SimulateScreen } from "./screens/SimulateScreen";
 import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
+import { PaceSuggestionBanner } from "./components/PaceSuggestionBanner";
 import { SettingsOverlay } from "./components/SettingsOverlay";
 import { Settings, Sun, Moon } from "lucide-react";
+import { getThresholdPace } from "@/lib/paceTable";
+import { generatePlan } from "@/lib/workoutGenerators";
+import { uploadPlan } from "@/lib/intervalsClient";
+import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
+import { DEFAULT_LTHR } from "@/lib/constants";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -53,6 +61,48 @@ function HomeContent() {
   const switchTab = useAtomValue(switchTabAtom);
   const setSwitchTab = useSetAtom(switchTabAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
+  const bgModel = useAtomValue(bgModelAtom);
+  const onRetryLoad = useSetAtom(calendarReloadAtom);
+
+  const handleAbilityChanged = useCallback(async (newSecs: number, newDist: number) => {
+    if (!settings?.hrZones?.length) return;
+
+    const newThreshold = getThresholdPace(newDist, newSecs);
+    if (newThreshold && settings.intervalsConnected) {
+      const res = await fetch("/api/intervals/threshold-pace", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paceMinPerKm: newThreshold }),
+      });
+      if (!res.ok) throw new Error("Failed to push threshold pace");
+    }
+
+    const planEvents = generatePlan({
+      bgModel: bgModel ?? null,
+      raceDateStr: settings.raceDate ?? "2026-06-13",
+      raceDist: settings.raceDist ?? 16,
+      totalWeeks: settings.totalWeeks ?? 18,
+      startKm: settings.startKm ?? 8,
+      lthr: settings.lthr ?? DEFAULT_LTHR,
+      hrZones: settings.hrZones,
+      includeBasePhase: settings.includeBasePhase ?? false,
+      diabetesMode,
+      runDays: settings.runDays,
+      longRunDay: settings.longRunDay ?? 0,
+      clubDay: settings.clubDay,
+      clubType: settings.clubType,
+      currentAbilitySecs: newSecs,
+      currentAbilityDist: newDist,
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const futureEvents = planEvents.filter((e) => e.start_date_local >= today);
+    if (futureEvents.length > 0) {
+      await uploadPlan(futureEvents);
+      void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(futureEvents) });
+    }
+    onRetryLoad();
+  }, [settings, bgModel, diabetesMode, onRetryLoad]);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -191,6 +241,9 @@ function HomeContent() {
       </div>
 
       <UnratedRunBanner />
+      {activeTab !== "intel" && (
+        <PaceSuggestionBanner onNavigateToIntel={() => { handleTabChange("intel"); }} />
+      )}
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
@@ -205,6 +258,7 @@ function HomeContent() {
           settings={settings}
           onSave={updateSettings}
           onClose={() => { setShowSettings(false); }}
+          onAbilityChanged={handleAbilityChanged}
         />
       )}
     </div>

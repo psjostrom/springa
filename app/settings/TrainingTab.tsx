@@ -10,9 +10,10 @@ import { computeMaxHRZones, ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/consta
 interface TrainingTabProps {
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
+  onAbilityChanged?: (newSecs: number, newDist: number) => Promise<void>;
 }
 
-export function TrainingTab({ settings, onSave }: TrainingTabProps) {
+export function TrainingTab({ settings, onSave, onAbilityChanged }: TrainingTabProps) {
   const [abilityDist, setAbilityDist] = useState(settings.currentAbilityDist ?? 0);
   const [abilitySecs, setAbilitySecs] = useState(settings.currentAbilitySecs ?? 0);
   const [goalDist, setGoalDist] = useState(settings.raceDist ?? 0);
@@ -49,15 +50,21 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
         await onSave(updates);
       }
 
-      // Fire-and-forget sync to Intervals.icu if ability changed
+      // Sync ability change: push threshold + regenerate plan + upload + calendar sync
       const abilityChanged = abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0);
-      if (settings.intervalsConnected && abilityChanged && abilityDist > 0 && abilitySecs > 0) {
-        const table = getPaceTable(abilityDist, abilitySecs);
-        fetch("/api/intervals/threshold-pace", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
-        }).catch((e: unknown) => { console.error("Threshold pace sync failed:", e); });
+      if (abilityChanged && abilityDist > 0 && abilitySecs > 0) {
+        if (onAbilityChanged) {
+          setStatus("Updating plan...");
+          await onAbilityChanged(abilitySecs, abilityDist);
+        } else if (settings.intervalsConnected) {
+          // Fallback: just push threshold (no plan regen)
+          const table = getPaceTable(abilityDist, abilitySecs);
+          fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paceMinPerKm: table.hmEquivalentPacePerKm }),
+          }).catch((e: unknown) => { console.error("Threshold pace sync failed:", e); });
+        }
       }
       if (settings.intervalsConnected && maxHr !== (settings.maxHr ?? 0) && maxHr > 0 && settings.sportSettingsId) {
         const zones = computeMaxHRZones(maxHr);
@@ -263,9 +270,11 @@ export function TrainingTab({ settings, onSave }: TrainingTabProps) {
           disabled={saving}
           className="w-full py-2.5 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save"}
+          {status === "Updating plan..." ? "Updating plan..." : saving ? "Saving..."
+            : (abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0))
+              ? "Save & update plan" : "Save"}
         </button>
-        {status && (
+        {status && status !== "Updating plan..." && (
           <p className={`text-sm mt-2 ${status.startsWith("Saved") ? "text-success" : "text-error"}`}>
             {status}
           </p>

@@ -8,6 +8,7 @@ import type {
 import { getWorkoutCategory } from "./constants";
 import { calculateWorkoutCarbs, estimatePlannedMinutes } from "./workoutMath";
 import { nonEmpty } from "./format";
+import { categoryFromExternalId } from "./paceInsight";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -105,8 +106,6 @@ export function processActivities(
   }
 
   for (const activity of runActivities) {
-    const category = getWorkoutCategory(activity.name);
-
     let pace: number | undefined;
     if (activity.distance && activity.moving_time) {
       const distanceKm = activity.distance / 1000;
@@ -198,6 +197,8 @@ export function processActivities(
     // Actual carbs ingested: from activity API field, default to planned totalCarbs
     const carbsIngested = activity.carbs_ingested ?? totalCarbs;
 
+    const category = categoryFromExternalId(matchingEvent?.external_id) ?? getWorkoutCategory(activity.name);
+
     const calendarEvent: CalendarEvent = {
       id: `activity-${activity.id}`,
       date: activityDate,
@@ -257,8 +258,9 @@ export function processPlannedEvents(
     const eventDate = parseISO(event.start_date_local);
     const eventDesc = event.description ?? "";
 
+    const extCategory = categoryFromExternalId(event.external_id);
     const isRace = name.toLowerCase().includes("race");
-    const category = isRace ? "race" : getWorkoutCategory(name);
+    const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
 

@@ -45,6 +45,9 @@ import {
   phaseInfoAtom,
   paceCalibrationAtom,
   paceTableAtom,
+  paceSuggestionAtom,
+  updateSettingsAtom,
+  diabetesModeAtom,
 } from "../atoms";
 import type { CalendarEvent } from "@/lib/types";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
@@ -64,6 +67,7 @@ import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
 import { BGResponsePanel, StartingBGSection, EntrySlopeSection, TimeDecaySection, BGPatternsPanel } from "../components/BGResponsePanel";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
+import { PaceSuggestionCard } from "../components/PaceSuggestionCard";
 import { PaceCurvesWidget } from "../components/PaceCurvesWidget";
 import { ReadinessPanel } from "../components/ReadinessPanel";
 import { ErrorCard } from "../components/ErrorCard";
@@ -74,7 +78,9 @@ import { useActivityStream } from "../hooks/useActivityStream";
 import { usePaceCurves } from "../hooks/usePaceCurves";
 import { mergeStreamData } from "@/lib/enrichEvents";
 import { estimateWorkoutDistance, estimatePlanEventDistance, getPlanWeekContext, getWeekIdx } from "@/lib/workoutMath";
-import { generateFullPlan } from "@/lib/workoutGenerators";
+import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
+import { uploadPlan } from "@/lib/intervalsClient";
+import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
 import type { CategoryBGResponse } from "@/lib/bgModel";
 
@@ -209,6 +215,11 @@ export function IntelScreen() {
   const lthr = settings?.lthr;
   const hrZones = settings?.hrZones;
 
+  const paceSuggestion = useAtomValue(paceSuggestionAtom);
+  const updateSettings = useSetAtom(updateSettingsAtom);
+  const diabetesMode = useAtomValue(diabetesModeAtom);
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const [activeTab, setActiveTab] = useState<IntelTabId>("overview");
   const [editMode, setEditMode] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
@@ -270,6 +281,73 @@ export function IntelScreen() {
 
   const handleCloseModal = () => {
     setSelectedActivityId(null);
+  };
+
+  const [paceAcceptError, setPaceAcceptError] = useState<string | null>(null);
+
+  const handleAcceptPaceSuggestion = async () => {
+    if (!paceSuggestion || !settings?.hrZones?.length) return;
+    setIsAccepting(true);
+    setPaceAcceptError(null);
+    const previousAbilitySecs = settings.currentAbilitySecs;
+    try {
+      await updateSettings({ currentAbilitySecs: paceSuggestion.suggestedAbilitySecs });
+
+      const newThreshold = getThresholdPace(
+        paceSuggestion.currentAbilityDist,
+        paceSuggestion.suggestedAbilitySecs,
+      );
+      if (newThreshold) {
+        const thresholdRes = await fetch("/api/intervals/threshold-pace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paceMinPerKm: newThreshold }),
+        });
+        if (!thresholdRes.ok) throw new Error("Failed to push threshold pace");
+      }
+
+      // Same config shape as PlannerScreen.handleGenerate — consider extracting if a third caller appears
+      const planEvents = generatePlan({
+        bgModel: bgModel ?? null,
+        raceDateStr: raceDate,
+        raceDist: raceDist ?? 16,
+        totalWeeks,
+        startKm: startKm ?? 8,
+        lthr: lthr ?? DEFAULT_LTHR,
+        hrZones: settings.hrZones,
+        includeBasePhase: settings.includeBasePhase ?? false,
+        diabetesMode,
+        runDays: settings.runDays,
+        longRunDay: settings.longRunDay ?? 0,
+        clubDay: settings.clubDay,
+        clubType: settings.clubType,
+        currentAbilitySecs: paceSuggestion.suggestedAbilitySecs,
+        currentAbilityDist: paceSuggestion.currentAbilityDist,
+      });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const futureEvents = planEvents.filter((e) => e.start_date_local >= today);
+      if (futureEvents.length > 0) {
+        await uploadPlan(futureEvents);
+        void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(futureEvents) });
+      }
+
+      onRetryLoad();
+    } catch (e) {
+      console.error("Failed to accept pace suggestion:", e);
+      // Revert ability to keep DB and Intervals.icu in sync
+      if (previousAbilitySecs != null) {
+        await updateSettings({ currentAbilitySecs: previousAbilitySecs }).catch((revertErr: unknown) => {
+          console.error("Failed to revert ability time:", revertErr);
+        });
+      }
+      setPaceAcceptError(e instanceof Error ? e.message : "Failed to update paces");
+    }
+    setIsAccepting(false);
+  };
+
+  const handleDismissPaceSuggestion = async () => {
+    await updateSettings({ paceSuggestionDismissedAt: Date.now() });
   };
 
   const fitnessData = wellnessToFitnessData(wellnessEntries);
@@ -471,6 +549,24 @@ export function IntelScreen() {
                 <WidgetHeading widgetKey="readiness" meta={widgetMeta.readiness} />
                 {wellnessLoading ? <WidgetLoadingCard label="Loading wellness data..." /> : <ReadinessPanel entries={wellnessEntries} />}
               </div>
+            )}
+
+            {/* Pace Suggestion */}
+            {paceSuggestion && (
+              <div className="space-y-2">
+                <PaceSuggestionCard
+                  suggestion={paceSuggestion}
+                  onAccept={() => { void handleAcceptPaceSuggestion(); }}
+                  onDismiss={() => { void handleDismissPaceSuggestion(); }}
+                  isAccepting={isAccepting}
+                />
+                {paceAcceptError && (
+                  <p className="text-xs text-red-400">{paceAcceptError}</p>
+                )}
+              </div>
+            )}
+            {!paceSuggestion && paceAcceptError && (
+              <p className="text-xs text-red-400">{paceAcceptError}</p>
             )}
 
             {/* Volume Compact */}
