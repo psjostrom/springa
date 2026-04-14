@@ -1,0 +1,223 @@
+/**
+ * Demo snapshot script — captures real data and writes scrambled fixtures.
+ *
+ * Usage: npm run demo:snapshot
+ *
+ * Requires:
+ *   INTERVALS_API_KEY — your Intervals.icu API key
+ *   SCOUT_URL — your Scout Nightscout URL (e.g., https://scout.springa.run)
+ *   SCOUT_SECRET — your Scout API secret
+ *
+ * These are read from .env.local via dotenv.
+ */
+
+import "dotenv/config";
+import * as fs from "fs";
+import * as path from "path";
+
+const INTERVALS_BASE = "https://intervals.icu/api/v1";
+const API_KEY = process.env.INTERVALS_API_KEY;
+const SCOUT_URL = process.env.SCOUT_URL;
+const SCOUT_SECRET = process.env.SCOUT_SECRET;
+
+if (!API_KEY) throw new Error("INTERVALS_API_KEY required");
+if (!SCOUT_URL) throw new Error("SCOUT_URL required");
+if (!SCOUT_SECRET) throw new Error("SCOUT_SECRET required");
+
+const intervalsHeaders = {
+  Authorization: `Basic ${Buffer.from(`API_KEY:${API_KEY}`).toString("base64")}`,
+  Accept: "application/json",
+};
+
+async function fetchIntervals(urlPath: string): Promise<unknown> {
+  const res = await fetch(`${INTERVALS_BASE}${urlPath}`, { headers: intervalsHeaders });
+  if (!res.ok) throw new Error(`Intervals ${urlPath}: ${res.status}`);
+  return res.json();
+}
+
+async function fetchScout(urlPath: string): Promise<unknown> {
+  const res = await fetch(`${SCOUT_URL}${urlPath}`, {
+    headers: { "api-secret": SCOUT_SECRET! },
+  });
+  if (!res.ok) throw new Error(`Scout ${urlPath}: ${res.status}`);
+  return res.json();
+}
+
+function makeRelativeTs(ts: number): number {
+  return ts - Date.now();
+}
+
+async function main() {
+  const today = new Date().toISOString().slice(0, 10);
+  console.log(`Snapshot date: ${today}`);
+
+  // 1. Athlete profile
+  console.log("Fetching athlete profile...");
+  const athlete = (await fetchIntervals("/athlete/0")) as Record<string, unknown>;
+
+  // 2. Calendar events (6 months back + 2 months forward)
+  const oldest = new Date();
+  oldest.setMonth(oldest.getMonth() - 6);
+  const newest = new Date();
+  newest.setMonth(newest.getMonth() + 2);
+  console.log("Fetching calendar...");
+  const events = (await fetchIntervals(
+    `/athlete/0/events?oldest=${oldest.toISOString().slice(0, 10)}&newest=${newest.toISOString().slice(0, 10)}`
+  )) as Record<string, unknown>[];
+
+  // 3. Activities (completed runs)
+  console.log("Fetching activities...");
+  const activities = (await fetchIntervals(
+    `/athlete/0/activities?oldest=${oldest.toISOString().slice(0, 10)}&newest=${today}`
+  )) as Record<string, unknown>[];
+
+  // 4. Activity streams (HR, pace for each activity)
+  const activityMap: Record<string, unknown> = {};
+  const streamMap: Record<string, unknown> = {};
+  for (const act of activities.slice(0, 50)) {
+    const id = act.id as string;
+    console.log(`  Streams for ${id}...`);
+    activityMap[id] = act;
+    try {
+      const streams = await fetchIntervals(`/activity/${id}/streams?types=heartrate,velocity_smooth,distance`);
+      streamMap[id] = streams;
+    } catch {
+      console.warn(`  Skipped streams for ${id}`);
+    }
+  }
+
+  // 5. Wellness
+  console.log("Fetching wellness...");
+  const wellness = await fetchIntervals(
+    `/athlete/0/wellness?oldest=${oldest.toISOString().slice(0, 10)}&newest=${today}`
+  );
+
+  // 6. Pace curves
+  console.log("Fetching pace curves...");
+  const paceCurves = await fetchIntervals("/athlete/0/pace-curves");
+
+  // 7. BG readings (last 24h)
+  console.log("Fetching BG readings...");
+  const bgReadings = (await fetchScout(
+    `/api/v1/entries.json?count=500&find[dateString][$gte]=${new Date(Date.now() - 86400000).toISOString()}`
+  )) as Record<string, unknown>[];
+
+  // 8. IOB
+  console.log("Fetching IOB...");
+  let iob = { iob: 0, updated: 0 };
+  try {
+    iob = (await fetchScout("/api/v1/treatments/iob")) as typeof iob;
+  } catch {
+    console.warn("  IOB fetch failed, using default");
+  }
+
+  // Convert BG readings to relative timestamps
+  const bgRelative = bgReadings.map((r) => ({
+    ...r,
+    ts: makeRelativeTs(r.date as number ?? Date.now()),
+  }));
+
+  // Build settings fixture
+  const settings = {
+    demo: true,
+    email: "demo@springa.run",
+    raceDate: "2026-06-13",
+    raceName: "EcoTrail Stockholm 16K",
+    raceDist: 16,
+    totalWeeks: 24,
+    startKm: 8,
+    diabetesMode: true,
+    onboardingComplete: true,
+    displayName: "Alex",
+    timezone: "Europe/Stockholm",
+    intervalsConnected: true,
+    nightscoutConnected: true,
+    nightscoutUrl: "https://demo.springa.run",
+    lthr: (athlete as Record<string, unknown>).lthr ?? 165,
+    maxHr: (athlete as Record<string, unknown>).max_hr ?? 192,
+    restingHr: (athlete as Record<string, unknown>).icu_resting_hr ?? 52,
+    sportSettingsId: 1,
+    insulinType: "fiasp",
+    currentAbilitySecs: 1620,
+    currentAbilityDist: 5,
+    runDays: [1, 3, 6, 0],
+    longRunDay: 0,
+    includeBasePhase: false,
+    warmthPreference: 0,
+  };
+
+  // Write output
+  const output = `/**
+ * Demo fixture data — generated by scripts/demo-snapshot.ts on ${today}.
+ *
+ * IMPORTANT: After generation, manually review and curate:
+ * 1. Workout names (events) — normalize to W{nn} Type format
+ * 2. Comments/notes — replace personal content
+ * 3. Verify settings values match desired demo experience
+ */
+
+export const SNAPSHOT_DATE = "${today}";
+
+export const settingsFixture = ${JSON.stringify(settings, null, 2)};
+
+export const bgFixture = ${JSON.stringify({
+    readings: bgRelative,
+    current: bgRelative.length > 0 ? {
+      mmol: (bgRelative[bgRelative.length - 1] as Record<string, unknown>).mmol,
+      sgv: (bgRelative[bgRelative.length - 1] as Record<string, unknown>).sgv,
+      ts: (bgRelative[bgRelative.length - 1] as Record<string, unknown>).ts,
+      direction: "Flat",
+      arrow: "\\u2192",
+    } : null,
+    trend: { slope: -0.002, direction: "Flat", arrow: "\\u2192" },
+  }, null, 2)};
+
+export const calendarFixture = ${JSON.stringify(events, null, 2)};
+
+export const wellnessFixture = ${JSON.stringify(wellness, null, 2)};
+
+export const paceCurvesFixture = ${JSON.stringify(paceCurves, null, 2)};
+
+export const insulinContextFixture = ${JSON.stringify({
+    iob: iob.iob,
+    updated: makeRelativeTs(iob.updated || Date.now()),
+  }, null, 2)};
+
+export const bgCacheFixture = {};
+
+export const bgPatternsFixture = { patternsText: null };
+
+export const activityFixtures: Record<string, unknown> = ${JSON.stringify(activityMap, null, 2)};
+
+export const streamFixtures: Record<string, unknown> = ${JSON.stringify(streamMap, null, 2)};
+
+export const coachFixtures: Record<string, string> = {
+  "What can Springa do for me?": "Springa is your AI-powered training companion designed specifically for runners managing Type 1 diabetes. Here's what I can help with:\\n\\n**Training Plan Generation** — I create periodized plans that progress from your current fitness to your race goal. Each week's workouts are structured with the right mix of easy runs, long runs, and speed work.\\n\\n**Blood Glucose Management** — During runs, I track your BG response to different workout types and fuel rates. The BG model learns from your data to recommend fuel rates that keep you stable.\\n\\n**Fuel Rate Optimization** — Based on your completed runs, I analyze how different carb intake rates affect your BG. The model suggests adjustments so you can run without worrying about lows or post-run spikes.\\n\\n**AI Coaching** — Ask me anything about your training, recovery, BG trends, or upcoming workouts. I have full context on your plan, recent runs, and physiological data.\\n\\n**Race Readiness** — I track your fitness (CTL), fatigue (ATL), and freshness (TSB) to tell you how you're tracking toward race day.",
+};
+
+export const fixtures: Record<string, unknown> = {
+  settings: settingsFixture,
+  bg: bgFixture,
+  "intervals/calendar": calendarFixture,
+  wellness: wellnessFixture,
+  "intervals/pace-curves": paceCurvesFixture,
+  "insulin-context": insulinContextFixture,
+  "bg-cache": bgCacheFixture,
+  "bg-patterns": bgPatternsFixture,
+};
+`;
+
+  const outPath = path.resolve("lib/demo/fixtures.ts");
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, output);
+  console.log(`\nSnapshot written to ${outPath}`);
+  console.log("\nNext steps:");
+  console.log("  1. Review and curate workout names in lib/demo/fixtures.ts");
+  console.log("  2. Replace any personal comments/notes");
+  console.log("  3. Run: npm run dev and open /demo to verify");
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
