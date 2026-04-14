@@ -258,7 +258,7 @@ function HomeContent() {
 
       {showSettings && settings && (
         <SettingsOverlay
-          email={settings?.email ?? session?.user?.email ?? ""}
+          email={settings.email ?? session?.user?.email ?? ""}
           settings={settings}
           onSave={updateSettings}
           onClose={() => { setShowSettings(false); }}

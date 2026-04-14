@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export function GET() {
   const response = NextResponse.redirect(new URL("/", process.env.AUTH_URL ?? "http://localhost:3000"));
   response.cookies.set("springa-demo", "1", {
     path: "/",

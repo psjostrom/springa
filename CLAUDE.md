@@ -129,10 +129,9 @@ To ensure the generated text is parsed correctly by the workout builder and disp
 - **Step Format:** `[Duration] [Min%]-[Max%]% pace` for pace targets (e.g., `10m 80-88% pace`), or `[Note] [Duration]` for effort-based steps (walks, hills, strides).
 - **Fuel Data:** Fuel info is sent via the `carbs_per_hour` API field on events, NOT embedded in descriptions. The `fuelRate` field on `WorkoutEvent` stores g/h; the upload function passes it directly as `carbs_per_hour` (rounded). Default is 60 g/h for all categories; the BG model overrides with per-category targets when data is available.
 - **Descriptions:** Clean workout text only — no `FUEL PER 10:` or `PUMP` prefixes. Notes/flavor text goes before the Warmup section.
-- **Workout Naming:**
-  - MUST include the **Suffix** (e.g., "eco16") for analysis filtering.
-  - Long runs MUST contain "Long" (e.g., "Sun Long"). DO NOT use "LR".
-  - Saturday runs MUST include "Bonus" in the name (e.g., "Bonus Easy", "Bonus Easy + Strides"). The session type can vary, but must leave energy for Sunday's long run.
+- **Workout Naming:** Format is `W{weekNum} {Type}` (e.g., `W01 Easy`, `W05 Long (12km)`, `W12 Short-Intervals`). No suffix.
+  - Long runs MUST contain "Long" (e.g., `W05 Long (12km)`). DO NOT use "LR".
+  - Saturday runs MUST include "Bonus" in the name (e.g., `W03 Bonus Easy`). The session type can vary, but must leave energy for Sunday's long run.
 
 ## Fuel Taper System
 

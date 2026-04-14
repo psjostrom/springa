@@ -7,7 +7,7 @@ import {
   SNAPSHOT_DATE,
 } from "@/lib/demo/fixtures";
 
-type Params = { params: Promise<{ path: string[] }> };
+interface Params { params: Promise<{ path: string[] }> }
 
 /** Shift all date strings and timestamps in a value by dayShift days. */
 function shiftDates(data: unknown, dayShiftMs: number): unknown {
@@ -115,8 +115,7 @@ export async function POST(req: Request, { params }: Params) {
       ?? lastUserMsg?.parts?.filter((p) => p.type === "text").map((p) => p.text).join("")
       ?? "";
 
-    const canned = coachFixtures[question.trim()];
-    const responseText = canned
+    const responseText = coachFixtures[question.trim()]
       ?? "I'm in demo mode — questions beyond the pre-set ones aren't available. Sign in to chat with your personal coach.";
 
     // Stream the response to match the real /api/chat format (text stream)
@@ -139,10 +138,10 @@ export async function POST(req: Request, { params }: Params) {
   return NextResponse.json({ ok: true, demo: true });
 }
 
-export async function PUT(_req: Request) {
+export function PUT() {
   return NextResponse.json({ ok: true, demo: true });
 }
 
-export async function DELETE(_req: Request) {
+export function DELETE() {
   return NextResponse.json({ ok: true, demo: true });
 }

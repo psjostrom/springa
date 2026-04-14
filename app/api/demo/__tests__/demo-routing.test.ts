@@ -42,13 +42,13 @@ describe("demo catch-all route", () => {
   });
 
   it("PUT returns demo: true without side effects", async () => {
-    const res = await PUT(makeRequest("settings", "PUT", { raceDate: "2026-07-01" }));
+    const res = PUT();
     const data = await res.json();
     expect(data).toEqual({ ok: true, demo: true });
   });
 
   it("DELETE returns demo: true", async () => {
-    const res = await DELETE(makeRequest("intervals/events/123", "DELETE"));
+    const res = DELETE();
     const data = await res.json();
     expect(data).toEqual({ ok: true, demo: true });
   });
