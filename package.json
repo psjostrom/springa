@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "prepare": "husky",
     "db:query": "node --env-file=.env.local -e",
-    "demo:snapshot": "npx tsx scripts/demo-snapshot.ts"
+    "demo:snapshot": "npx tsx --env-file=.env.local scripts/demo-snapshot.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.69",
