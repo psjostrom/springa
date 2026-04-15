@@ -103,11 +103,14 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json(streamFixtures);
   }
 
-  // Coach chat — return canned response or demo message
+  // Coach chat — return canned response for suggestion buttons, demo message for freeform
   if (key === "chat") {
     const body = await req.json() as {
       messages?: { role: string; parts?: { type: string; text?: string }[]; content?: string }[];
     };
+
+    // First message = suggestion button click, subsequent = freeform follow-up
+    const messageCount = body.messages?.filter((m) => m.role === "user").length ?? 0;
     const lastUserMsg = body.messages
       ?.filter((m) => m.role === "user")
       .pop();
@@ -115,8 +118,14 @@ export async function POST(req: Request, { params }: Params) {
       ?? lastUserMsg?.parts?.filter((p) => p.type === "text").map((p) => p.text).join("")
       ?? "";
 
-    const responseText = coachFixtures[question.trim()]
-      ?? "I'm in demo mode — questions beyond the pre-set ones aren't available. Sign in to chat with your personal coach.";
+    // Try exact match first, then fall back to first canned response for single-message chats
+    const demoFallback = "I'm in demo mode — this is a live preview with pre-generated data. Sign in to chat with your personal AI coach.";
+    const cannedKeys = Object.keys(coachFixtures);
+    let responseText = coachFixtures[question.trim()];
+    if (!responseText && messageCount <= 1 && cannedKeys[0]) {
+      responseText = coachFixtures[cannedKeys[0]];
+    }
+    if (!responseText) responseText = demoFallback;
 
     // Stream the response to match the real /api/chat format (text stream)
     const encoder = new TextEncoder();

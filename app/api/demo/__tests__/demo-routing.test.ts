@@ -53,10 +53,27 @@ describe("demo catch-all route", () => {
     expect(data).toEqual({ ok: true, demo: true });
   });
 
-  it("POST /chat with unknown question returns demo message", async () => {
+  it("POST /chat with unknown first question returns canned fallback", async () => {
     const res = await POST(
       makeRequest("chat", "POST", {
         messages: [{ role: "user", content: "Tell me a joke" }],
+      }),
+      makeParams("chat"),
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    // First message falls back to canned response (not demo message)
+    expect(text).toContain("training companion");
+  });
+
+  it("POST /chat with follow-up question returns demo message", async () => {
+    const res = await POST(
+      makeRequest("chat", "POST", {
+        messages: [
+          { role: "user", content: "What can Springa do?" },
+          { role: "assistant", content: "..." },
+          { role: "user", content: "Tell me more" },
+        ],
       }),
       makeParams("chat"),
     );

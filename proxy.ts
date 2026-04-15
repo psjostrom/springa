@@ -6,6 +6,13 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isDemo = req.cookies.get("springa-demo")?.value === "1";
 
+  // Logged-in user with stale demo cookie — clear it and proceed normally
+  if (isDemo && isLoggedIn) {
+    const response = NextResponse.next();
+    response.cookies.delete("springa-demo");
+    return response;
+  }
+
   // Demo mode: rewrite API routes to the demo catch-all
   if (isDemo && nextUrl.pathname.startsWith("/api/") && !nextUrl.pathname.startsWith("/api/auth")) {
     const demoPath = nextUrl.pathname.replace(/^\/api\//, "/api/demo/");
@@ -16,6 +23,11 @@ export default auth((req) => {
 
   // Demo users skip auth redirects — they get data from fixtures
   if (isDemo) {
+    return NextResponse.next();
+  }
+
+  // /demo must always pass through so the route handler can set the cookie
+  if (nextUrl.pathname === "/demo") {
     return NextResponse.next();
   }
 
