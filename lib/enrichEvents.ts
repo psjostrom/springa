@@ -46,11 +46,14 @@ export function mergeStreamData(
   };
   let glucose: DataPoint[] | undefined = event.glucose;
   if (!glucose && mergedStreamData.heartrate?.length && bgReadings.length > 0) {
-    const runStartMs = event.date.getTime();
-    const lastMin = mergedStreamData.heartrate[mergedStreamData.heartrate.length - 1].time;
-    const runEndMs = runStartMs + lastMin * 60 * 1000;
-    const reconstructed = bgToGlucosePoints(bgReadings, runStartMs, runEndMs);
-    if (reconstructed.length >= 2) glucose = reconstructed;
+    const ageMs = Date.now() - event.date.getTime();
+    if (ageMs < 24 * 60 * 60 * 1000) {
+      const runStartMs = event.date.getTime();
+      const lastMin = mergedStreamData.heartrate[mergedStreamData.heartrate.length - 1].time;
+      const runEndMs = runStartMs + lastMin * 60 * 1000;
+      const reconstructed = bgToGlucosePoints(bgReadings, runStartMs, runEndMs);
+      if (reconstructed.length >= 2) glucose = reconstructed;
+    }
   }
   return {
     ...event,

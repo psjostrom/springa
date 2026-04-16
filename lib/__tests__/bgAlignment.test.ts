@@ -194,4 +194,32 @@ describe("enrichWithGlucose", () => {
     const result = enrichWithGlucose(activities, []);
     expect(result[0].glucose).toBeUndefined();
   });
+
+  it("skips activities that already have glucose", () => {
+    const existingGlucose = [
+      { time: 0, value: 9.0 },
+      { time: 1, value: 8.5 },
+    ];
+    const activities: CachedActivity[] = [{
+      activityId: "a1",
+      category: "easy",
+      fuelRate: 48,
+      hr: [
+        { time: 0, value: 120 },
+        { time: 1, value: 125 },
+      ],
+      runStartMs: 1000000,
+      glucose: existingGlucose,
+    }];
+
+    const readings: BGReading[] = [
+      { ts: 1000000, mmol: 12.0, sgv: 216, direction: "Flat", delta: 0 },
+      { ts: 1060000, mmol: 11.0, sgv: 198, direction: "Flat", delta: 0 },
+    ];
+
+    const result = enrichWithGlucose(activities, readings);
+    // Should keep existing glucose (9.0), not overwrite with readings (12.0)
+    expect(result[0].glucose).toBe(existingGlucose);
+    expect(result[0].glucose![0].value).toBe(9.0);
+  });
 });

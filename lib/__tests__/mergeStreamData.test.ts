@@ -84,15 +84,26 @@ describe("mergeStreamData", () => {
     expect(result.glucose).toBe(existingGlucose);
   });
 
-  it("reconstructs glucose from CGM readings when not present on event", () => {
-    const readings = makeReadings(RUN_START.getTime(), 10, 7.0);
+  it("reconstructs glucose from CGM readings for recent runs", () => {
+    const recentStart = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
+    const recentEvent: CalendarEvent = { ...baseEvent, date: recentStart };
+    const readings = makeReadings(recentStart.getTime(), 10, 7.0);
 
-    const result = mergeStreamData(baseEvent, makeFreshStream(), readings);
+    const result = mergeStreamData(recentEvent, makeFreshStream(), readings);
 
     expect(result.glucose).toBeDefined();
     expect(result.glucose!.length).toBeGreaterThanOrEqual(2);
-    // First point should be near the reading value at run start
     expect(result.glucose![0].value).toBeCloseTo(7.0, 0);
+  });
+
+  it("does not reconstruct glucose for runs older than 24h", () => {
+    const oldStart = new Date(Date.now() - 48 * 60 * 60 * 1000); // 2 days ago
+    const oldEvent: CalendarEvent = { ...baseEvent, date: oldStart };
+    const readings = makeReadings(Date.now() - 12 * 60 * 60 * 1000, 10, 5.8);
+
+    const result = mergeStreamData(oldEvent, makeFreshStream(), readings);
+
+    expect(result.glucose).toBeUndefined();
   });
 
   it("does not reconstruct glucose when no heartrate data available", () => {
