@@ -10,7 +10,9 @@ import {
   saveBGCacheRemote,
 } from "@/lib/activityStreamsCache";
 import type { CachedActivity } from "@/lib/activityStreamsDb";
-import type { CalendarEvent, IntervalsStream } from "@/lib/types";
+import type { CalendarEvent, IntervalsStream, DataPoint } from "@/lib/types";
+import type { BGReading } from "@/lib/cgm";
+import { alignHRWithBG } from "@/lib/bgAlignment";
 import { getWorkoutCategory } from "@/lib/constants";
 
 type CompletedRun = CalendarEvent & { activityId: string };
@@ -89,6 +91,30 @@ export function useStreamCache(
             const rawStreams = streams ? extractRawStreams(streams) : { distance: [], time: [] };
             const cat = getWorkoutCategory(e.name);
 
+            // Fetch BG readings for this run's time window.
+            // TODO: sequential per-run fetch — consider batching if cold-start latency is noticeable
+            let glucose: DataPoint[] | undefined;
+            if (hrPoints.length > 0) {
+              const runStartMs = e.date.getTime();
+              const lastMin = hrPoints[hrPoints.length - 1].time;
+              const runEndMs = runStartMs + lastMin * 60 * 1000;
+
+              if (runEndMs > runStartMs) {
+                try {
+                  const bgRes = await fetch(`/api/bg/run?start=${runStartMs}&end=${runEndMs}`);
+                  if (bgRes.ok) {
+                    const bgData = (await bgRes.json()) as { readings?: BGReading[] };
+                    if (bgData.readings && bgData.readings.length >= 2) {
+                      const aligned = alignHRWithBG(hrPoints, bgData.readings, runStartMs);
+                      if (aligned) glucose = aligned.glucose;
+                    }
+                  }
+                } catch {
+                  // BG fetch failed — continue without glucose
+                }
+              }
+            }
+
             newCached.push({
               activityId: e.activityId,
               name: e.name,
@@ -102,6 +128,7 @@ export function useStreamCache(
               runStartMs: e.date.getTime(),
               distance: rawStreams.distance.length > 0 ? rawStreams.distance : undefined,
               rawTime: rawStreams.time.length > 0 ? rawStreams.time : undefined,
+              glucose,
             });
           }
         }
