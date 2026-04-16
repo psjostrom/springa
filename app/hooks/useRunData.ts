@@ -22,9 +22,7 @@ export function useRunData(
         .filter(
           (e): e is CalendarEvent & { activityId: string } =>
             e.type === "completed" &&
-            !!e.activityId &&
-            e.category !== "other" &&
-            e.category !== "race",
+            !!e.activityId,
         )
         .sort((a, b) => b.date.getTime() - a.date.getTime()),
     [sharedEvents],
