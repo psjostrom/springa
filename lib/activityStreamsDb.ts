@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { WorkoutCategory, DataPoint } from "./types";
+import type { WorkoutCategory } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import { getWorkoutCategory } from "./constants";
 
@@ -21,7 +21,7 @@ export interface CachedActivity {
   glucose?: { time: number; value: number }[];
 }
 
-/** @deprecated Use CachedActivity directly — glucose is now part of the cache. */
+/** Alias — glucose is now part of CachedActivity, so this is structurally identical. */
 export type EnrichedActivity = CachedActivity;
 
 export async function getActivityStreams(

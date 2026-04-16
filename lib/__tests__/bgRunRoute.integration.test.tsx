@@ -16,12 +16,12 @@ vi.mock("@libsql/client", async (importOriginal) => {
   return { ...actual, createClient: () => holder.db };
 });
 
-// eslint-disable-next-line no-restricted-syntax -- auth boundary mock
-vi.mock("@/lib/auth", () => ({
-  auth: vi.fn().mockResolvedValue({ user: { email: "test@test.com" }, expires: "" }),
-}));
-
 const EMAIL = "test@test.com";
+
+// eslint-disable-next-line no-restricted-syntax -- auth boundary mock; returns a resolved promise, not a mock chain
+vi.mock("@/lib/auth", () => ({
+  auth: () => Promise.resolve({ user: { email: EMAIL }, expires: "" }),
+}));
 
 import { GET } from "@/app/api/bg/run/route";
 import { encrypt } from "../credentials";
