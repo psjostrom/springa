@@ -291,7 +291,10 @@ export function IntelScreen() {
     setPaceAcceptError(null);
     const previousAbilitySecs = settings.currentAbilitySecs;
     try {
-      await updateSettings({ currentAbilitySecs: paceSuggestion.suggestedAbilitySecs });
+      await updateSettings({
+        currentAbilitySecs: paceSuggestion.suggestedAbilitySecs,
+        paceSuggestionDismissedAt: Date.now(),
+      });
 
       const newThreshold = getThresholdPace(
         paceSuggestion.currentAbilityDist,
