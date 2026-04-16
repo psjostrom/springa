@@ -50,6 +50,10 @@ export async function GET(request: Request) {
       until: end + PADDING_MS,
     });
 
+    // NS returns readings sorted DESC (newest first).
+    // Consumers (interpolateBG, alignHRWithBG) expect ASC (oldest first).
+    readings.sort((a, b) => a.ts - b.ts);
+
     return NextResponse.json({ readings });
   } catch (err) {
     console.error("[bg/run] Failed to fetch from Nightscout:", err);
