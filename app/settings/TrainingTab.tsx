@@ -80,6 +80,9 @@ export function TrainingTab({ settings, onSave, onAbilityChanged }: TrainingTabP
 
       // Sync ability change: push threshold + regenerate plan + upload + calendar sync
       const abilityChanged = abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0);
+      if (abilityChanged) {
+        await onSave({ paceSuggestionDismissedAt: Date.now() });
+      }
       if (abilityChanged && abilityDist > 0 && abilitySecs > 0) {
         if (onAbilityChanged) {
           setStatus("Updating plan...");
