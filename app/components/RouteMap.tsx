@@ -11,8 +11,10 @@ interface RouteMapProps {
 }
 
 function useResolvedColor(cssVar: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+  return useMemo(() => {
+    if (typeof window === "undefined") return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+  }, [cssVar, fallback]);
 }
 
 

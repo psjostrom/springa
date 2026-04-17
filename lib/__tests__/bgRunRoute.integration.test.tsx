@@ -53,11 +53,12 @@ describe("/api/bg/run", () => {
     const startMs = 1_700_000_000_000;
     const endMs = startMs + 60 * 60 * 1000;
 
+    // Return DESC (newest first) — route must sort to ASC
     server.use(
       http.get(`${NS_URL}/api/v1/entries.json`, () => {
         return HttpResponse.json([
-          { sgv: 180, date: startMs + 5 * 60 * 1000, direction: "Flat", delta: 0 },
           { sgv: 162, date: startMs + 10 * 60 * 1000, direction: "Flat", delta: 0 },
+          { sgv: 180, date: startMs + 5 * 60 * 1000, direction: "Flat", delta: 0 },
         ]);
       }),
     );
@@ -69,6 +70,8 @@ describe("/api/bg/run", () => {
     expect(res.status).toBe(200);
     expect(json.readings).toHaveLength(2);
     expect(json.readings[0].mmol).toBeGreaterThan(0);
+    // Verify ASC sort (oldest first) — critical for interpolateBG/alignHRWithBG
+    expect(json.readings[0].ts).toBeLessThan(json.readings[1].ts);
   });
 
   it("returns 400 for missing params", async () => {

@@ -109,8 +109,8 @@ export function useStreamCache(
                       if (aligned) glucose = aligned.glucose;
                     }
                   }
-                } catch {
-                  // BG fetch failed — continue without glucose
+                } catch (err) {
+                  console.warn(`[useStreamCache] BG fetch failed for ${e.activityId}:`, err);
                 }
               }
             }
