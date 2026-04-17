@@ -44,7 +44,7 @@ Vitest with three test projects: `unit` (`*.test.ts`), `integration` (`*.integra
 ### Rules (enforced by ESLint)
 
 - **No fetch mocking.** `vi.stubGlobal("fetch")` and `global.fetch = ...` are banned. Use `server.use()` for per-test response overrides.
-- **No module mocking.** `vi.mock()` is banned. Exception: `vi.mock("@libsql/client")` to redirect to in-memory SQLite.
+- **No module mocking.** `vi.mock()` is banned. Exceptions: `vi.mock("@libsql/client")` to redirect to in-memory SQLite, `vi.mock("@/lib/auth")` to stub the auth boundary (session/OAuth can't run in tests).
 - **No mock assertions.** `mockResolvedValue`, `mockImplementation`, `mockReturnValue` are banned. Use MSW capture patterns or assert on outputs.
 - **`vi.fn()` without chaining is allowed** for callback spies (`onClose`, `onChange`). If the callback returns a promise and needs `.mockResolvedValue()`, add an `eslint-disable-next-line` comment explaining it's a callback spy.
 

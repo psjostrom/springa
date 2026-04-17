@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { CalendarEvent, DataPoint } from "../types";
 import type { ActivityStreamData } from "@/app/hooks/useActivityStream";
-import type { BGReading } from "../cgm";
 import { mergeStreamData } from "../enrichEvents";
 
 const RUN_START = new Date("2026-03-08T10:00:00Z");
@@ -39,20 +38,9 @@ function makeFreshStream(overrides?: Partial<ActivityStreamData>): ActivityStrea
   };
 }
 
-function makeReadings(startMs: number, count: number, baseMmol: number): BGReading[] {
-  // One reading every 5 minutes
-  return Array.from({ length: count }, (_, i) => ({
-    ts: startMs + i * 5 * 60 * 1000,
-    sgv: Math.round((baseMmol + i * 0.2) * 18),
-    mmol: baseMmol + i * 0.2,
-    direction: "Flat" as const,
-    delta: 0,
-  }));
-}
-
 describe("mergeStreamData", () => {
   it("overlays fresh stream data onto event", () => {
-    const result = mergeStreamData(baseEvent, makeFreshStream(), []);
+    const result = mergeStreamData(baseEvent, makeFreshStream());
 
     expect(result.streamData?.heartrate).toEqual(hrStream);
     expect(result.avgHr).toBe(132);
@@ -64,48 +52,26 @@ describe("mergeStreamData", () => {
       ...baseEvent,
       streamData: { pace: [{ time: 0, value: 6.5 }] },
     };
-    const result = mergeStreamData(event, makeFreshStream(), []);
+    const result = mergeStreamData(event, makeFreshStream());
 
     expect(result.streamData?.pace).toEqual([{ time: 0, value: 6.5 }]);
     expect(result.streamData?.heartrate).toEqual(hrStream);
   });
 
-  it("preserves existing glucose when already present on event", () => {
+  it("preserves existing glucose from cache", () => {
     const existingGlucose: DataPoint[] = [
       { time: 0, value: 7.0 },
       { time: 10, value: 6.5 },
     ];
     const event: CalendarEvent = { ...baseEvent, glucose: existingGlucose };
-    const readings = makeReadings(RUN_START.getTime(), 10, 8.0);
 
-    const result = mergeStreamData(event, makeFreshStream(), readings);
+    const result = mergeStreamData(event, makeFreshStream());
 
-    // Should keep existing glucose, not reconstruct
     expect(result.glucose).toBe(existingGlucose);
   });
 
-  it("reconstructs glucose from CGM readings when not present on event", () => {
-    const readings = makeReadings(RUN_START.getTime(), 10, 7.0);
-
-    const result = mergeStreamData(baseEvent, makeFreshStream(), readings);
-
-    expect(result.glucose).toBeDefined();
-    expect(result.glucose!.length).toBeGreaterThanOrEqual(2);
-    // First point should be near the reading value at run start
-    expect(result.glucose![0].value).toBeCloseTo(7.0, 0);
-  });
-
-  it("does not reconstruct glucose when no heartrate data available", () => {
-    const readings = makeReadings(RUN_START.getTime(), 10, 7.0);
-    const noHrStream = makeFreshStream({ streamData: {} });
-
-    const result = mergeStreamData(baseEvent, noHrStream, readings);
-
-    expect(result.glucose).toBeUndefined();
-  });
-
-  it("does not reconstruct glucose when no CGM readings available", () => {
-    const result = mergeStreamData(baseEvent, makeFreshStream(), []);
+  it("passes through undefined glucose when not cached", () => {
+    const result = mergeStreamData(baseEvent, makeFreshStream());
 
     expect(result.glucose).toBeUndefined();
   });
@@ -114,7 +80,7 @@ describe("mergeStreamData", () => {
     const event: CalendarEvent = { ...baseEvent, avgHr: 125, maxHr: 160 };
     const freshStream = makeFreshStream({ avgHr: undefined, maxHr: undefined });
 
-    const result = mergeStreamData(event, freshStream, []);
+    const result = mergeStreamData(event, freshStream);
 
     expect(result.avgHr).toBe(125);
     expect(result.maxHr).toBe(160);
