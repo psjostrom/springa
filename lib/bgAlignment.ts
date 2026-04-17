@@ -1,6 +1,6 @@
 import type { BGReading } from "./cgm";
 import type { DataPoint } from "./types";
-import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
+import type { CachedActivity } from "./activityStreamsDb";
 
 /**
  * Interpolate BG at a specific timestamp using linear interpolation.
@@ -127,8 +127,9 @@ export function bgToGlucosePoints(
 export function enrichWithGlucose(
   activities: CachedActivity[],
   readings: BGReading[],
-): EnrichedActivity[] {
+): CachedActivity[] {
   return activities.map((act) => {
+    if (act.glucose && act.glucose.length > 0) return act;
     if (act.hr.length === 0 || !act.runStartMs || readings.length === 0) {
       return act;
     }

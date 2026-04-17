@@ -5,7 +5,6 @@ import { buildBGModelFromCached } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import type { BGReading } from "@/lib/cgm";
 import { buildRunBGContexts } from "@/lib/runBGContext";
-import { enrichWithGlucose } from "@/lib/bgAlignment";
 import { useStreamCache } from "./useStreamCache";
 
 export function useRunData(
@@ -22,9 +21,7 @@ export function useRunData(
         .filter(
           (e): e is CalendarEvent & { activityId: string } =>
             e.type === "completed" &&
-            !!e.activityId &&
-            e.category !== "other" &&
-            e.category !== "race",
+            !!e.activityId,
         )
         .sort((a, b) => b.date.getTime() - a.date.getTime()),
     [sharedEvents],
@@ -36,11 +33,8 @@ export function useRunData(
   // If sugar mode is off, skip all BG-related enrichment
   const skipBG = diabetesMode === false;
 
-  // 2.5. Reconstruct glucose from CGM readings (skip when sugar mode off)
-  const glucoseEnriched = useMemo(
-    () => skipBG ? cached : enrichWithGlucose(cached, bgReadings ?? []),
-    [cached, bgReadings, skipBG],
-  );
+  // Glucose is now fetched per-run in useStreamCache via /api/bg/run.
+  // No separate enrichment step needed.
 
   // 3. Activity name map
   const bgActivityNames = useMemo(
@@ -61,12 +55,12 @@ export function useRunData(
   const cachedActivities = useMemo(
     () =>
       skipBG || runBGContexts.size === 0
-        ? glucoseEnriched
-        : glucoseEnriched.map((c) => {
+        ? cached
+        : cached.map((c) => {
             const ctx = runBGContexts.get(c.activityId);
             return ctx ? { ...c, runBGContext: ctx } : c;
           }),
-    [glucoseEnriched, runBGContexts, skipBG],
+    [cached, runBGContexts, skipBG],
   );
 
   // 6. Build BG model (skip when sugar mode off)

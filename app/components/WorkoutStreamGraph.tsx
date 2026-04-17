@@ -151,11 +151,13 @@ export function WorkoutStreamGraph({ streamData, glucose }: WorkoutStreamGraphPr
 
         const scaleY = (value: number) => {
           if (useSingleStreamMode) {
-            const normalized = (value - globalMin) / (globalMax - globalMin);
+            const range = globalMax - globalMin;
+            const normalized = range > 0 ? (value - globalMin) / range : 0.5;
             const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
             return HEIGHT - PAD_STREAM.bottom - finalNormalized * CHART_HEIGHT;
           } else {
-            const normalized = (value - minValue) / (maxValue - minValue);
+            const range = maxValue - minValue;
+            const normalized = range > 0 ? (value - minValue) / range : 0.5;
             const finalNormalized = config.invertYAxis ? 1 - normalized : normalized;
             return HEIGHT - PAD_STREAM.bottom - finalNormalized * CHART_HEIGHT;
           }
