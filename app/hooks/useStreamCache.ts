@@ -63,6 +63,7 @@ export function useStreamCache(
         );
 
         const newCached: CachedActivity[] = [];
+        const bgFailedIds = new Set<string>();
 
         if (uncachedRuns.length > 0) {
           setProgress({ done: 0, total: uncachedRuns.length });
@@ -108,8 +109,11 @@ export function useStreamCache(
                       const aligned = alignHRWithBG(hrPoints, bgData.readings, runStartMs);
                       if (aligned) glucose = aligned.glucose;
                     }
+                  } else {
+                    bgFailedIds.add(e.activityId);
                   }
                 } catch (err) {
+                  bgFailedIds.add(e.activityId);
                   console.warn(`[useStreamCache] BG fetch failed for ${e.activityId}:`, err);
                 }
               }
@@ -136,8 +140,12 @@ export function useStreamCache(
         const allCached = [...cachedMap.values(), ...newCached];
 
         if (newCached.length > 0) {
-          writeLocalCache(allCached);
-          void saveBGCacheRemote(allCached);
+          // Don't persist activities where BG fetch failed — they'll be retried on next load.
+          const toPersist = bgFailedIds.size > 0
+            ? [...cachedMap.values(), ...newCached.filter(c => !bgFailedIds.has(c.activityId))]
+            : allCached;
+          writeLocalCache(toPersist);
+          void saveBGCacheRemote(toPersist);
         }
 
         if (!aborted()) setCached(allCached);
