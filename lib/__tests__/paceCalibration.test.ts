@@ -234,10 +234,12 @@ describe("computeZonePaceTrend", () => {
 
   it("returns negative slope when getting faster", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("z2", 7.5, daysAgo(60)),
-      trendSeg("z2", 7.3, daysAgo(45)),
-      trendSeg("z2", 7.1, daysAgo(30)),
-      trendSeg("z2", 6.9, daysAgo(15)),
+      trendSeg("z2", 7.6, daysAgo(85)),
+      trendSeg("z2", 7.5, daysAgo(70)),
+      trendSeg("z2", 7.3, daysAgo(55)),
+      trendSeg("z2", 7.2, daysAgo(40)),
+      trendSeg("z2", 7.0, daysAgo(25)),
+      trendSeg("z2", 6.9, daysAgo(10)),
     ];
 
     const trend = computeZonePaceTrend(segments, "z2");
@@ -247,10 +249,12 @@ describe("computeZonePaceTrend", () => {
 
   it("returns positive slope when getting slower", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("z2", 6.5, daysAgo(60)),
-      trendSeg("z2", 6.8, daysAgo(45)),
-      trendSeg("z2", 7.0, daysAgo(30)),
-      trendSeg("z2", 7.2, daysAgo(15)),
+      trendSeg("z2", 6.4, daysAgo(85)),
+      trendSeg("z2", 6.5, daysAgo(70)),
+      trendSeg("z2", 6.7, daysAgo(55)),
+      trendSeg("z2", 6.9, daysAgo(40)),
+      trendSeg("z2", 7.1, daysAgo(25)),
+      trendSeg("z2", 7.2, daysAgo(10)),
     ];
 
     const trend = computeZonePaceTrend(segments, "z2");
@@ -258,10 +262,13 @@ describe("computeZonePaceTrend", () => {
     expect(trend!).toBeGreaterThan(0); // getting slower
   });
 
-  it("returns null with fewer than 3 segments", () => {
+  it("returns null with fewer than 6 segments", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("z2", 7.5, daysAgo(30)),
-      trendSeg("z2", 7.3, daysAgo(15)),
+      trendSeg("z2", 7.5, daysAgo(60)),
+      trendSeg("z2", 7.3, daysAgo(45)),
+      trendSeg("z2", 7.1, daysAgo(30)),
+      trendSeg("z2", 7.0, daysAgo(20)),
+      trendSeg("z2", 6.9, daysAgo(15)),
     ];
 
     expect(computeZonePaceTrend(segments, "z2")).toBeNull();
@@ -270,8 +277,11 @@ describe("computeZonePaceTrend", () => {
   it("returns null when time span is less than 14 days", () => {
     const segments: ZoneSegment[] = [
       trendSeg("z2", 7.5, daysAgo(13)),
-      trendSeg("z2", 7.3, daysAgo(8)),
-      trendSeg("z2", 7.1, daysAgo(3)),
+      trendSeg("z2", 7.4, daysAgo(11)),
+      trendSeg("z2", 7.3, daysAgo(9)),
+      trendSeg("z2", 7.2, daysAgo(7)),
+      trendSeg("z2", 7.1, daysAgo(5)),
+      trendSeg("z2", 7.0, daysAgo(3)),
     ];
 
     expect(computeZonePaceTrend(segments, "z2")).toBeNull();
@@ -279,10 +289,13 @@ describe("computeZonePaceTrend", () => {
 
   it("only considers segments for the requested zone", () => {
     const segments: ZoneSegment[] = [
-      trendSeg("z2", 7.5, daysAgo(60)),
-      trendSeg("z3", 5.5, daysAgo(45)), // different zone
-      trendSeg("z2", 7.3, daysAgo(30)),
-      trendSeg("z2", 7.1, daysAgo(15)),
+      trendSeg("z2", 7.6, daysAgo(85)),
+      trendSeg("z3", 5.5, daysAgo(75)), // different zone — excluded
+      trendSeg("z2", 7.5, daysAgo(70)),
+      trendSeg("z2", 7.3, daysAgo(55)),
+      trendSeg("z2", 7.2, daysAgo(40)),
+      trendSeg("z2", 7.0, daysAgo(25)),
+      trendSeg("z2", 6.9, daysAgo(10)),
     ];
 
     const trend = computeZonePaceTrend(segments, "z2");
@@ -293,12 +306,44 @@ describe("computeZonePaceTrend", () => {
   it("respects windowDays parameter", () => {
     const segments: ZoneSegment[] = [
       trendSeg("z2", 7.5, daysAgo(200)),
+      trendSeg("z2", 7.4, daysAgo(190)),
       trendSeg("z2", 7.3, daysAgo(180)),
-      trendSeg("z2", 7.1, daysAgo(160)),
+      trendSeg("z2", 7.2, daysAgo(175)),
+      trendSeg("z2", 7.1, daysAgo(165)),
+      trendSeg("z2", 7.0, daysAgo(160)),
     ];
 
     // All outside 90-day window from now → null
     expect(computeZonePaceTrend(segments, "z2", 90)).toBeNull();
+  });
+
+  it("excludes segments before baselineMs", () => {
+    const baseline = Date.now() - 50 * 86400000; // 50 days ago
+    const segments: ZoneSegment[] = [
+      // Before baseline — excluded
+      trendSeg("z2", 7.5, daysAgo(80)),
+      trendSeg("z2", 7.3, daysAgo(60)),
+      // After baseline — 6 segments spanning >14 days
+      trendSeg("z2", 7.2, daysAgo(45)),
+      trendSeg("z2", 7.1, daysAgo(38)),
+      trendSeg("z2", 7.0, daysAgo(30)),
+      trendSeg("z2", 6.9, daysAgo(25)),
+      trendSeg("z2", 6.8, daysAgo(18)),
+      trendSeg("z2", 6.7, daysAgo(10)),
+    ];
+
+    // Without baseline: all 8 segments → trend exists
+    const withoutBaseline = computeZonePaceTrend(segments, "z2");
+    expect(withoutBaseline).not.toBeNull();
+
+    // With baseline: only 6 post-baseline segments → still enough
+    const withBaseline = computeZonePaceTrend(segments, "z2", 90, baseline);
+    expect(withBaseline).not.toBeNull();
+
+    // With recent baseline: only 2 post-baseline segments → insufficient
+    const recentBaseline = Date.now() - 20 * 86400000;
+    const withRecentBaseline = computeZonePaceTrend(segments, "z2", 90, recentBaseline);
+    expect(withRecentBaseline).toBeNull();
   });
 });
 
