@@ -43,6 +43,36 @@ export interface UserSettings {
   sportSettingsId?: number;
 }
 
+/**
+ * Fields the client is allowed to write via PUT /api/settings.
+ * This is the single source of truth — the API route loops over this array
+ * instead of maintaining a separate allowlist. If you add a field to
+ * saveUserSettings below, add it here too (a test enforces this).
+ */
+export const WRITABLE_SETTINGS_KEYS = [
+  "raceDate",
+  "raceName",
+  "raceDist",
+  "currentAbilitySecs",
+  "currentAbilityDist",
+  "totalWeeks",
+  "startKm",
+  "widgetOrder",
+  "hiddenWidgets",
+  "bgChartWindow",
+  "includeBasePhase",
+  "warmthPreference",
+  "diabetesMode",
+  "displayName",
+  "runDays",
+  "longRunDay",
+  "clubDay",
+  "clubType",
+  "onboardingComplete",
+  "insulinType",
+  "paceSuggestionDismissedAt",
+] as const satisfies readonly (keyof UserSettings)[];
+
 // --- CRUD ---
 
 export async function getUserSettings(email: string): Promise<UserSettings> {

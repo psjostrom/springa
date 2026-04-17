@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useAtomValue } from "jotai";
 import type { UserSettings } from "@/lib/settings";
 import { getPaceTable, getSliderRange, getDefaultGoalTime, DISTANCE_OPTIONS } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 import { PacePreview } from "@/app/components/PacePreview";
+import { PaceSuggestionCard } from "@/app/components/PaceSuggestionCard";
 import { computeMaxHRZones, ZONE_COLORS, ZONE_DISPLAY_NAMES } from "@/lib/constants";
+import { paceSuggestionAtom } from "@/app/atoms";
 
 interface TrainingTabProps {
   settings: UserSettings;
@@ -22,6 +25,31 @@ export function TrainingTab({ settings, onSave, onAbilityChanged }: TrainingTabP
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [editingRaceGoal, setEditingRaceGoal] = useState(false);
+  const paceSuggestion = useAtomValue(paceSuggestionAtom);
+  const [isAcceptingPace, setIsAcceptingPace] = useState(false);
+  const [paceAcceptError, setPaceAcceptError] = useState<string | null>(null);
+
+  const handleAcceptPace = async () => {
+    if (!paceSuggestion) return;
+    setIsAcceptingPace(true);
+    setPaceAcceptError(null);
+    try {
+      const newSecs = paceSuggestion.suggestedAbilitySecs;
+      const newDist = paceSuggestion.currentAbilityDist;
+      setAbilitySecs(newSecs);
+      await onSave({ currentAbilitySecs: newSecs, paceSuggestionDismissedAt: Date.now() });
+      if (onAbilityChanged) {
+        await onAbilityChanged(newSecs, newDist);
+      }
+    } catch (e) {
+      setPaceAcceptError(e instanceof Error ? e.message : "Failed to update paces");
+    }
+    setIsAcceptingPace(false);
+  };
+
+  const handleDismissPace = async () => {
+    await onSave({ paceSuggestionDismissedAt: Date.now() });
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -52,6 +80,9 @@ export function TrainingTab({ settings, onSave, onAbilityChanged }: TrainingTabP
 
       // Sync ability change: push threshold + regenerate plan + upload + calendar sync
       const abilityChanged = abilitySecs !== (settings.currentAbilitySecs ?? 0) || abilityDist !== (settings.currentAbilityDist ?? 0);
+      if (abilityChanged) {
+        await onSave({ paceSuggestionDismissedAt: Date.now() });
+      }
       if (abilityChanged && abilityDist > 0 && abilitySecs > 0) {
         if (onAbilityChanged) {
           setStatus("Updating plan...");
@@ -134,6 +165,21 @@ export function TrainingTab({ settings, onSave, onAbilityChanged }: TrainingTabP
           </>
         )}
       </div>
+
+      {/* Pace suggestion */}
+      {paceSuggestion && (
+        <div className="space-y-2">
+          <PaceSuggestionCard
+            suggestion={paceSuggestion}
+            onAccept={() => { void handleAcceptPace(); }}
+            onDismiss={() => { void handleDismissPace(); }}
+            isAccepting={isAcceptingPace}
+          />
+          {paceAcceptError && (
+            <p className="text-xs text-red-400">{paceAcceptError}</p>
+          )}
+        </div>
+      )}
 
       {/* Race goal */}
       <div>

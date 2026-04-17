@@ -228,27 +228,30 @@ export function computeZonePaceTrend(
   segments: ZoneSegment[],
   zone: ZoneName,
   windowDays = 90,
+  baselineMs?: number,
 ): number | null {
+  const MIN_SEGMENTS = 6;
   const zoneSegs = segments.filter((s) => s.zone === zone && s.activityDate);
-  if (zoneSegs.length < 3) return null;
+  if (zoneSegs.length < MIN_SEGMENTS) return null;
 
-  // Parse dates and filter to window
+  // Parse dates and filter to window (and baseline if set)
   const now = Date.now();
-  const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
+  const windowCutoff = now - windowDays * 24 * 60 * 60 * 1000;
+  const cutoff = baselineMs ? Math.max(windowCutoff, baselineMs) : windowCutoff;
 
   const dated = zoneSegs
     .map((s) => ({ ...s, dateMs: new Date(s.activityDate).getTime() }))
     .filter((s) => s.dateMs >= cutoff && !isNaN(s.dateMs))
     .sort((a, b) => a.dateMs - b.dateMs);
 
-  if (dated.length < 3) return null;
+  if (dated.length < MIN_SEGMENTS) return null;
 
   // Filter pace outliers using IQR
   const paces = dated.map((s) => s.avgPace);
   const validIndices = filterOutliersIQR(paces);
   const filtered = dated.filter((_, i) => validIndices.has(i));
 
-  if (filtered.length < 3) return null;
+  if (filtered.length < MIN_SEGMENTS) return null;
 
   // Linear regression: x = days since first, y = pace
   const firstDay = filtered[0].dateMs;

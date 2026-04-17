@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { paceSuggestionAtom } from "../atoms";
 
 interface PaceSuggestionBannerProps {
   onNavigateToIntel: () => void;
+  onDismiss: () => void;
 }
 
-export function PaceSuggestionBanner({ onNavigateToIntel }: PaceSuggestionBannerProps) {
+export function PaceSuggestionBanner({ onNavigateToIntel, onDismiss }: PaceSuggestionBannerProps) {
   const suggestion = useAtomValue(paceSuggestionAtom);
-  const [dismissed, setDismissed] = useState(false);
 
-  if (!suggestion || dismissed) return null;
+  if (!suggestion) return null;
 
   const label = suggestion.direction === "improvement"
     ? "Pace update available"
@@ -31,7 +30,7 @@ export function PaceSuggestionBanner({ onNavigateToIntel }: PaceSuggestionBanner
           View
         </button>
         <button
-          onClick={() => { setDismissed(true); }}
+          onClick={onDismiss}
           className="text-muted hover:text-text text-lg leading-none flex-shrink-0"
           aria-label="Dismiss"
         >
