@@ -1,6 +1,6 @@
 import type { CachedActivity } from "./activityStreamsDb";
 
-const LS_KEY = "bgcache_v4";
+const LS_KEY = "bgcache_v6";
 
 export function readLocalCache(): CachedActivity[] {
   try {

@@ -48,6 +48,7 @@ export async function GET(request: Request) {
     const readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
       since: start - PADDING_MS,
       until: end + PADDING_MS,
+      count: 1000,
     });
 
     // NS returns readings sorted DESC (newest first).
