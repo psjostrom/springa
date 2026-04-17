@@ -123,6 +123,7 @@ export async function PUT(req: Request) {
   if (body.clubType !== undefined) allowed.clubType = body.clubType;
   if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;
   if (body.insulinType !== undefined) allowed.insulinType = body.insulinType;
+  if (body.paceSuggestionDismissedAt !== undefined) allowed.paceSuggestionDismissedAt = body.paceSuggestionDismissedAt;
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);
