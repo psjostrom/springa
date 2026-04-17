@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor } from "@/lib/__tests__/test-utils";
 import { server } from "@/lib/__tests__/msw/server";
 import type { CalendarEvent } from "@/lib/types";
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@/lib/__tests__/test-utils";
 import { WorkoutStreamGraph } from "../WorkoutStreamGraph";
 import type { StreamData, DataPoint } from "@/lib/types";
 
