@@ -34,20 +34,21 @@ function shiftDates(data: unknown, dayShiftMs: number): unknown {
 }
 
 function getDayShiftMs(): number {
-  const snapshot = new Date(SNAPSHOT_DATE + "T00:00:00");
+  const snapshot = new Date(SNAPSHOT_DATE + "T00:00:00Z");
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today.getTime() - snapshot.getTime();
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  return todayUtc.getTime() - snapshot.getTime();
 }
 
 /** Resolve relative timestamps (negative = ms before now) to absolute. */
+const RELATIVE_TS_KEYS = new Set(["ts", "updated"]);
 function resolveRelativeTimestamps(data: unknown): unknown {
   if (data === null || data === undefined) return data;
   if (Array.isArray(data)) return data.map(resolveRelativeTimestamps);
   if (typeof data === "object") {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-      if (key === "ts" && typeof value === "number" && value < 0) {
+      if (RELATIVE_TS_KEYS.has(key) && typeof value === "number" && value < 0) {
         result[key] = Date.now() + value;
       } else {
         result[key] = resolveRelativeTimestamps(value);

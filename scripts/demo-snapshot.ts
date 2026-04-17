@@ -15,6 +15,7 @@ import { getUserSettings } from "../lib/settings";
 import { fetchPaceCurves as fetchPaceCurvesApi, fetchCalendarData } from "../lib/intervalsApi";
 import { fetchBGFromNS } from "../lib/nightscout";
 import { computeTrend, trendArrow, slopeToArrow } from "../lib/cgm";
+import { computeMaxHRZones } from "../lib/constants";
 
 const INTERVALS_BASE = "https://intervals.icu/api/v1";
 
@@ -249,6 +250,24 @@ async function main() {
     .slice(0, 50);
   const activityMap: Record<string, unknown> = {};
   const streamMap: Record<string, unknown> = {};
+
+  // Downsample stream data to ~1-min resolution to keep fixture size manageable.
+  // Intervals.icu streams are typically at ~1s resolution; keeping every 60th point
+  // preserves the shape while cutting file size by ~60x.
+  function downsampleStream(stream: { type: string; data: number[] }): { type: string; data: number[] } {
+    const STEP = 60;
+    if (stream.data.length <= STEP) return stream;
+    const sampled: number[] = [];
+    for (let i = 0; i < stream.data.length; i += STEP) {
+      sampled.push(stream.data[i]);
+    }
+    // Always include the last point
+    if ((stream.data.length - 1) % STEP !== 0) {
+      sampled.push(stream.data[stream.data.length - 1]);
+    }
+    return { type: stream.type, data: sampled };
+  }
+
   for (const id of completedIds) {
     console.log(`  Streams for ${id}...`);
     activityMap[id] = calendarEvents.find((e) => e.activityId === id);
@@ -256,8 +275,8 @@ async function main() {
       const streams = await fetchIntervals(
         `/activity/${id}/streams?types=heartrate,velocity_smooth,distance`,
         apiKey,
-      );
-      streamMap[id] = streams;
+      ) as { type: string; data: number[] }[];
+      streamMap[id] = Array.isArray(streams) ? streams.map(downsampleStream) : streams;
     } catch {
       console.warn(`  Skipped streams for ${id}`);
     }
@@ -326,6 +345,7 @@ async function main() {
     lthr: (athlete.lthr as number | undefined) ?? 165,
     maxHr: (athlete.max_hr as number | undefined) ?? 192,
     restingHr: (athlete.icu_resting_hr as number | undefined) ?? 52,
+    hrZones: computeMaxHRZones((athlete.max_hr as number | undefined) ?? 192),
     sportSettingsId: 1,
     includeBasePhase: userSettings.includeBasePhase ?? false,
     warmthPreference: userSettings.warmthPreference ?? 0,
