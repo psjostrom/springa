@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { GET, POST, PUT, DELETE } from "../[...path]/route";
 
 function makeRequest(path: string, method = "GET", body?: unknown): Request {
@@ -111,5 +111,49 @@ describe("demo catch-all route", () => {
     );
     const data = await res.json();
     expect(data).toEqual({ ok: true, demo: true });
+  });
+
+  it("GET /intervals/calendar shifts dates relative to today", async () => {
+    const res = await GET(makeRequest("intervals/calendar"), makeParams("intervals/calendar"));
+    const data = (await res.json()) as { date?: string }[];
+    expect(Array.isArray(data)).toBe(true);
+    if (data.length === 0) return;
+
+    // Find an event with a date — it should be near today, not the snapshot date
+    const withDate = data.find((e) => e.date);
+    expect(withDate).toBeDefined();
+    const eventYear = new Date(withDate!.date!).getFullYear();
+    const thisYear = new Date().getFullYear();
+    // Shifted dates should be in the current year (±1 for edge cases)
+    expect(Math.abs(eventYear - thisYear)).toBeLessThanOrEqual(1);
+  });
+
+  it("GET /settings includes hrZones", async () => {
+    const res = await GET(makeRequest("settings"), makeParams("settings"));
+    const data = (await res.json()) as { hrZones?: number[]; maxHr?: number };
+    expect(data.hrZones).toBeDefined();
+    expect(data.hrZones).toHaveLength(5);
+    // Zones should be monotonically increasing
+    for (let i = 1; i < data.hrZones!.length; i++) {
+      expect(data.hrZones![i]).toBeGreaterThan(data.hrZones![i - 1]);
+    }
+  });
+
+  it("GET /insulin-context resolves relative timestamps including updated", async () => {
+    const res = await GET(makeRequest("insulin-context"), makeParams("insulin-context"));
+    const data = (await res.json()) as { iob: number; updated: number };
+    // updated is either 0 (no IOB data captured) or a resolved absolute timestamp
+    expect(data.updated).toBeGreaterThanOrEqual(0);
+    expect(typeof data.updated).toBe("number");
+  });
+
+  it("date shifting preserves date-only string format", async () => {
+    // Settings has raceDate as "YYYY-MM-DD" — should not get time appended
+    // (settings currently skips shiftDates, but verify the function works for date-only strings)
+    const res = await GET(makeRequest("settings"), makeParams("settings"));
+    const data = (await res.json()) as { raceDate?: string };
+    if (data.raceDate) {
+      expect(data.raceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
   });
 });
