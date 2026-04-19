@@ -71,20 +71,17 @@ export function calculateWorkoutCarbs(
   return Math.round((durationMinutes / 60) * fuelRateGPerHour);
 }
 
-/** Estimate planned duration (minutes) for carbs calculation.
- *  Priority: event duration (canonical) → description parsing → fallback moving time. */
-export function estimatePlannedMinutes(
+/** Compute prescribed carbs (g) for a workout. Description is the prescription —
+ *  never derive from any actual run time (event.duration / moving_time / elapsed_time
+ *  get overwritten with the paired activity's actual time after pairing). */
+export function prescribedCarbs(
   description: string | undefined,
-  eventDurationSec: number | null | undefined,
-  fallbackMovingTimeSec?: number | null,
+  fuelRateGPerHour: number | null | undefined,
 ): number | null {
-  if (eventDurationSec != null && eventDurationSec > 0) return eventDurationSec / 60;
-  if (description) {
-    const parsed = estimateWorkoutDuration(description);
-    if (parsed) return parsed.minutes;
-  }
-  if (fallbackMovingTimeSec != null && fallbackMovingTimeSec > 0) return fallbackMovingTimeSec / 60;
-  return null;
+  if (!description || fuelRateGPerHour == null) return null;
+  const parsed = estimateWorkoutDuration(description);
+  if (!parsed) return null;
+  return calculateWorkoutCarbs(parsed.minutes, fuelRateGPerHour);
 }
 
 export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable): number {
@@ -106,19 +103,6 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
   return 0;
 }
 
-/** Recalculate totalCarbs for all events using description-based duration estimate.
- *  Uses calibrated pace table when available, fallback paces otherwise.
- *  This is the single source of truth — no other code should compute totalCarbs. */
-export function recalcTotalCarbs(events: CalendarEvent[], paceTable?: PaceTable): CalendarEvent[] {
-  return events.map((event) => {
-    if (event.fuelRate == null || !event.description) return event;
-    const est = estimateWorkoutDuration(event.description, paceTable);
-    if (!est) return event;
-    const totalCarbs = calculateWorkoutCarbs(est.minutes, event.fuelRate);
-    if (totalCarbs === event.totalCarbs) return event;
-    return { ...event, totalCarbs };
-  });
-}
 
 /** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
 export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable): number {
