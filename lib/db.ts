@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS activity_streams (
   activity_date  TEXT,
   distance       TEXT,
   raw_time       TEXT,
+  glucose        TEXT,
   PRIMARY KEY (email, activity_id)
 );
 

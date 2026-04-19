@@ -2,6 +2,7 @@ import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import {
   getUserSettings,
   saveUserSettings,
+  WRITABLE_SETTINGS_KEYS,
   type UserSettings,
 } from "@/lib/settings";
 import { getUserCredentials, updateCredentials } from "@/lib/credentials";
@@ -101,28 +102,13 @@ export async function PUT(req: Request) {
     }
   }
 
-  // Settings fields (COALESCE pattern via saveUserSettings)
+  // Pick only client-writable fields (WRITABLE_SETTINGS_KEYS is the single source of truth)
   const allowed: Partial<UserSettings> = {};
-  if (body.raceDate !== undefined) allowed.raceDate = body.raceDate;
-  if (body.raceName !== undefined) allowed.raceName = body.raceName;
-  if (body.raceDist !== undefined) allowed.raceDist = body.raceDist;
-  if (body.currentAbilitySecs !== undefined) allowed.currentAbilitySecs = body.currentAbilitySecs;
-  if (body.currentAbilityDist !== undefined) allowed.currentAbilityDist = body.currentAbilityDist;
-  if (body.totalWeeks !== undefined) allowed.totalWeeks = body.totalWeeks;
-  if (body.startKm !== undefined) allowed.startKm = body.startKm;
-  if (body.widgetOrder !== undefined) allowed.widgetOrder = body.widgetOrder;
-  if (body.hiddenWidgets !== undefined) allowed.hiddenWidgets = body.hiddenWidgets;
-  if (body.bgChartWindow !== undefined) allowed.bgChartWindow = body.bgChartWindow;
-  if (body.includeBasePhase !== undefined) allowed.includeBasePhase = body.includeBasePhase;
-  if (body.warmthPreference !== undefined) allowed.warmthPreference = body.warmthPreference;
-  if (body.diabetesMode !== undefined) allowed.diabetesMode = body.diabetesMode;
-  if (body.displayName !== undefined) allowed.displayName = body.displayName;
-  if (body.runDays !== undefined) allowed.runDays = body.runDays;
-  if (body.longRunDay !== undefined) allowed.longRunDay = body.longRunDay;
-  if (body.clubDay !== undefined) allowed.clubDay = body.clubDay;
-  if (body.clubType !== undefined) allowed.clubType = body.clubType;
-  if (body.onboardingComplete !== undefined) allowed.onboardingComplete = body.onboardingComplete;
-  if (body.insulinType !== undefined) allowed.insulinType = body.insulinType;
+  for (const key of WRITABLE_SETTINGS_KEYS) {
+    if (body[key] !== undefined) {
+      Object.assign(allowed, { [key]: body[key] });
+    }
+  }
 
   if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);

@@ -41,7 +41,6 @@ import {
   updateWidgetLayoutAtom,
   widgetSaveErrorAtom,
   runBGContextsAtom,
-  readingsAtom,
   phaseInfoAtom,
   paceCalibrationAtom,
   paceTableAtom,
@@ -271,12 +270,10 @@ export function IntelScreen() {
   const { data: streamData, isLoading: isLoadingStreamData } = useActivityStream(
     selectedEvent?.activityId ?? null,
   );
-  const bgReadings = useAtomValue(readingsAtom);
-
   // Enrich selected event with stream data
   const enrichedSelectedEvent = useMemo(
-    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData, bgReadings) : selectedEvent,
-    [selectedEvent, streamData, bgReadings],
+    () => selectedEvent && streamData ? mergeStreamData(selectedEvent, streamData) : selectedEvent,
+    [selectedEvent, streamData],
   );
 
   const handleCloseModal = () => {
@@ -291,7 +288,10 @@ export function IntelScreen() {
     setPaceAcceptError(null);
     const previousAbilitySecs = settings.currentAbilitySecs;
     try {
-      await updateSettings({ currentAbilitySecs: paceSuggestion.suggestedAbilitySecs });
+      await updateSettings({
+        currentAbilitySecs: paceSuggestion.suggestedAbilitySecs,
+        paceSuggestionDismissedAt: Date.now(),
+      });
 
       const newThreshold = getThresholdPace(
         paceSuggestion.currentAbilityDist,

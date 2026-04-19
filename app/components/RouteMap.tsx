@@ -10,19 +10,27 @@ interface RouteMapProps {
   className?: string;
 }
 
-// Main route line
-const routeLayer: LayerProps = {
-  id: "route",
-  type: "line",
-  paint: {
-    "line-color": "var(--color-brand)",
-    "line-width": 3,
-    "line-opacity": 1,
-  },
-};
+function useResolvedColor(cssVar: string, fallback: string): string {
+  return useMemo(() => {
+    if (typeof window === "undefined") return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+  }, [cssVar, fallback]);
+}
+
 
 export function RouteMap({ latlng, className }: RouteMapProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const brandColor = useResolvedColor("--color-brand", "#f23b94");
+
+  const routeLayer: LayerProps = {
+    id: "route",
+    type: "line",
+    paint: {
+      "line-color": brandColor,
+      "line-width": 3,
+      "line-opacity": 1,
+    },
+  };
 
   const bounds = useMemo(() => {
     if (latlng.length === 0) {

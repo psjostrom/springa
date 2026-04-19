@@ -46,7 +46,7 @@ export function PaceSuggestionCard({ suggestion, onAccept, onDismiss, isAcceptin
     );
   } else {
     if (z4ImprovementSecPerKm != null) {
-      const abs = Math.abs(z4ImprovementSecPerKm);
+      const abs = Math.round(Math.abs(z4ImprovementSecPerKm));
       evidenceLines.push(
         isImprovement
           ? `Your interval pace has improved by ${abs} sec/km over the last weeks.`
