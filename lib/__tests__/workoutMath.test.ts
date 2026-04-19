@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { prescribedCarbs } from "../workoutMath";
-import { processActivities } from "../calendarPipeline";
+import { processActivities, processPlannedEvents } from "../calendarPipeline";
 import type { IntervalsActivity, IntervalsEvent } from "../types";
 
 describe("prescribedCarbs", () => {
@@ -59,5 +59,50 @@ describe("prescribed carbs after activity pairing", () => {
 
     expect(completed).toBeDefined();
     expect(completed!.totalCarbs).toBe(descriptionMinutes); // 65g, NOT 97g
+  });
+});
+
+describe("prescribed carbs in planned events", () => {
+  const description = "Warmup\n- 10m 68-83% pace\n\nMain set\n- 40m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n";
+
+  it("computes totalCarbs from description and fuel rate", () => {
+    const event: IntervalsEvent = {
+      id: 9001,
+      category: "WORKOUT",
+      start_date_local: "2026-04-20T08:00:00",
+      name: "W09 Easy",
+      description,
+      carbs_per_hour: 60,
+    };
+
+    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    expect(planned.totalCarbs).toBe(65);
+  });
+
+  it("returns null totalCarbs when description is unparseable", () => {
+    const event: IntervalsEvent = {
+      id: 9002,
+      category: "WORKOUT",
+      start_date_local: "2026-04-20T08:00:00",
+      name: "Race Day",
+      description: "Race day! Have fun.",
+      carbs_per_hour: 60,
+    };
+
+    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    expect(planned.totalCarbs).toBeNull();
+  });
+
+  it("returns null totalCarbs when fuel rate is null", () => {
+    const event: IntervalsEvent = {
+      id: 9003,
+      category: "WORKOUT",
+      start_date_local: "2026-04-20T08:00:00",
+      name: "W09 Easy",
+      description,
+    };
+
+    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    expect(planned.totalCarbs).toBeNull();
   });
 });
