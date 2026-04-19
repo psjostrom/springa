@@ -110,7 +110,7 @@ export function getPhaseDefinitions(totalWeeks: number, includeBasePhase = false
         "Weekly speed sessions",
         "Long runs growing in distance",
         "3:1 build/recovery cycle",
-        "Race-pace long run variants",
+        "Race-pace long run blocks",
       ],
     },
     {

@@ -372,8 +372,8 @@ const generateLongRun = (
   }
 
   // Base and recovery weeks are always all-easy long runs.
-  // Build weeks alternate between sandwich (HM pace block in middle) and all-easy
-  // so a hard long run is always followed by an easy long run the next week.
+  // In build weeks, sandwich (HM pace block in middle) lands on every other
+  // non-recovery week so a hard long run is never followed by another hard one.
   let longRunVariant: "easy" | "sandwich" = "easy";
   if (!wp.isBase && !wp.isRecovery && !wp.isTaper && !wp.isRaceTest && wp.weekNum > wp.b.buildStart) {
     let nonSpecialCount = 0;
