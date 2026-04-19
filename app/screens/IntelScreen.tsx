@@ -244,7 +244,6 @@ export function IntelScreen() {
 
     // Need to fetch old activity
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state before async fetch is valid
     setIsFetchingEvent(true);
     void fetchActivity(selectedActivityId).then((activity) => {
       if (cancelled) return;
