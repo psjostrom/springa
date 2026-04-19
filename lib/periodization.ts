@@ -92,7 +92,7 @@ export function getPhaseDefinitions(totalWeeks: number, includeBasePhase = false
       description: "Building a foundation of easy running. No speed work yet — consistency and BG management practice come first.",
       focus: [
         "Easy runs only",
-        "Progressive long runs",
+        "Long runs growing in distance",
         "BG management practice",
         "Build running habit",
       ],
@@ -108,7 +108,7 @@ export function getPhaseDefinitions(totalWeeks: number, includeBasePhase = false
       description: "Increasing volume with weekly speed sessions. Recovery week every 4th build week.",
       focus: [
         "Weekly speed sessions",
-        "Progressive long runs",
+        "Long runs growing in distance",
         "3:1 build/recovery cycle",
         "Race-pace long run variants",
       ],
