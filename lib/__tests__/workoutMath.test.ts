@@ -1,46 +1,63 @@
 import { describe, it, expect } from "vitest";
-import { estimatePlannedMinutes } from "../workoutMath";
+import { prescribedCarbs } from "../workoutMath";
+import { processActivities } from "../calendarPipeline";
+import type { IntervalsActivity, IntervalsEvent } from "../types";
 
-describe("estimatePlannedMinutes", () => {
-  it("uses event duration when available, ignoring description and fallback", () => {
-    // 3600s = 60 min, description would parse to 41 min, fallback is 44 min
-    const result = estimatePlannedMinutes(
-      "- 41m 68-83% LTHR (115-140 bpm)",
-      3600,
-      2640,
-    );
-    expect(result).toBe(60);
+describe("prescribedCarbs", () => {
+  it("computes carbs from description duration and fuel rate", () => {
+    expect(prescribedCarbs("- 41m 68-83% pace", 60)).toBe(41);
   });
 
-  it("falls back to description parsing when event duration is null", () => {
-    const result = estimatePlannedMinutes(
-      "- 41m 68-83% LTHR (115-140 bpm)",
-      null,
-      2640,
-    );
-    expect(result).toBe(41);
+  it("returns null when description is missing", () => {
+    expect(prescribedCarbs(undefined, 60)).toBeNull();
+    expect(prescribedCarbs("", 60)).toBeNull();
   });
 
-  it("falls back to moving time when event duration and description are absent", () => {
-    const result = estimatePlannedMinutes(undefined, null, 2640);
-    expect(result).toBe(44);
+  it("returns null when fuel rate is missing", () => {
+    expect(prescribedCarbs("- 41m 68-83% pace", null)).toBeNull();
+    expect(prescribedCarbs("- 41m 68-83% pace", undefined)).toBeNull();
   });
 
-  it("returns null when all sources are absent", () => {
-    expect(estimatePlannedMinutes(undefined, null, null)).toBeNull();
-    expect(estimatePlannedMinutes(undefined, null)).toBeNull();
-    expect(estimatePlannedMinutes(undefined, undefined)).toBeNull();
+  it("returns null when description has no parseable steps", () => {
+    expect(prescribedCarbs("Race day! Have fun.", 60)).toBeNull();
   });
+});
 
-  it("skips event duration of 0 and falls through to description", () => {
-    const result = estimatePlannedMinutes(
-      "- 41m 68-83% LTHR (115-140 bpm)",
-      0,
-    );
-    expect(result).toBe(41);
-  });
+describe("prescribed carbs after activity pairing", () => {
+  it("uses description duration, not the actual run time from the paired event", () => {
+    // Regression: Intervals.icu overwrites event.moving_time with the activity's
+    // actual time after pairing. Prescribed carbs must come from the description
+    // (the prescription), never from actual run time.
+    const description = "Warmup\n- 10m 68-83% pace\n\nMain set\n- 40m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n";
+    // Description parses to 65 min → 65g at 60g/h
+    const descriptionMinutes = 65;
 
-  it("skips fallback moving time of 0", () => {
-    expect(estimatePlannedMinutes(undefined, null, 0)).toBeNull();
+    const activity: IntervalsActivity = {
+      id: "act-paired",
+      start_date: "2026-04-19T10:00:00Z",
+      start_date_local: "2026-04-19T10:00:00",
+      name: "W08 Easy",
+      type: "Run",
+      distance: 8500,
+      moving_time: 97 * 60, // 97 min actual — longer than planned
+      paired_event_id: 5001,
+    };
+
+    const event: IntervalsEvent = {
+      id: 5001,
+      category: "WORKOUT",
+      start_date_local: "2026-04-19T10:00:00",
+      name: "W08 Easy",
+      description,
+      carbs_per_hour: 60,
+      paired_activity_id: "act-paired",
+      moving_time: 97 * 60, // Intervals.icu copies actual time here after pairing
+    };
+
+    const { calendarEvents } = processActivities([activity], [event]);
+    const completed = calendarEvents.find((e) => e.activityId === "act-paired");
+
+    expect(completed).toBeDefined();
+    expect(completed!.totalCarbs).toBe(descriptionMinutes); // 65g, NOT 97g
   });
 });
