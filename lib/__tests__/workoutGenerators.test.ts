@@ -140,7 +140,7 @@ describe("generatePlan", () => {
       if (event.name.includes("RACE DAY")) continue;
       if (event.name.includes("Club Run")) continue;
       if (event.name.includes("Free Run")) continue;
-      expect(event.description).toContain("% pace");
+      expect(event.description).toContain("/km Pace");
       expect(event.description).not.toContain("LTHR");
     }
   });
@@ -252,8 +252,8 @@ describe("generatePlan", () => {
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
-    expect(longRuns.some((lr) => lr.description.includes("99-102% pace"))).toBe(true);
-    expect(longRuns.some((lr) => !lr.description.includes("99-102% pace"))).toBe(true);
+    expect(longRuns.some((lr) => lr.description.includes("race pace block sandwiched"))).toBe(true);
+    expect(longRuns.some((lr) => !lr.description.includes("race pace block sandwiched"))).toBe(true);
   });
 
   it("never schedules sandwich long runs in consecutive weeks", () => {
@@ -262,7 +262,7 @@ describe("generatePlan", () => {
       .filter((e) => e.external_id.includes("long-"))
       .sort((a, b) => a.start_date_local.getTime() - b.start_date_local.getTime());
     const variants = longRuns.map((lr) =>
-      lr.description.includes("99-102% pace") ? "sandwich" : "easy",
+      lr.description.includes("race pace block sandwiched") ? "sandwich" : "easy",
     );
     for (let i = 1; i < variants.length; i++) {
       expect(variants[i] === "sandwich" && variants[i - 1] === "sandwich").toBe(false);
@@ -397,14 +397,15 @@ describe("generatePlan", () => {
     }
   });
 
-  it("steady zone is fixed at 99-102% regardless of race distance", () => {
+  it("uses absolute pace format when ability is set", () => {
     // 5K race
     const plan5k = generateFull({
       raceDist: 5, currentAbilitySecs: 1620, currentAbilityDist: 5,
     });
     const rp5k = plan5k.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rp5k).toBeDefined();
-    expect(rp5k!.description).toContain("99-102% pace");
+    expect(rp5k!.description).toContain("/km Pace");
+    expect(rp5k!.description).not.toContain("% pace");
 
     // Marathon race
     const planMarathon = generateFull({
@@ -412,13 +413,14 @@ describe("generatePlan", () => {
     });
     const rpMarathon = planMarathon.find((e) => e.description.includes("Race Pace") && e.description.includes("Race pace practice"));
     expect(rpMarathon).toBeDefined();
-    expect(rpMarathon!.description).toContain("99-102% pace");
+    expect(rpMarathon!.description).toContain("/km Pace");
+    expect(rpMarathon!.description).not.toContain("% pace");
 
-    // Easy is fixed at 30-88% regardless of distance
+    // Easy also uses absolute pace
     const easy5k = plan5k.find((e) => e.external_id.includes("easy-"));
-    expect(easy5k!.description).toContain("30-88% pace");
+    expect(easy5k!.description).toContain("/km Pace");
     const easyMarathon = planMarathon.find((e) => e.external_id.includes("easy-"));
-    expect(easyMarathon!.description).toContain("30-88% pace");
+    expect(easyMarathon!.description).toContain("/km Pace");
   });
 
   it("derives paceTable from currentAbility", () => {
@@ -435,10 +437,50 @@ describe("generatePlan", () => {
     });
     const easyRun = events.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
     expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("% pace");
+    expect(easyRun!.description).toContain("/km Pace");
   });
 
-  it("easy run steps use 30% floor (ceiling concept: allows walking)", () => {
+  it("falls back to % pace when ability is not set", () => {
+    const plan = generatePlan({
+      bgModel: null,
+      raceDateStr: "2027-06-12",
+      raceDist: 16,
+      totalWeeks: 12,
+      startKm: 8,
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+    });
+    const easyRun = plan.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
+    expect(easyRun).toBeDefined();
+    expect(easyRun!.description).toContain("% pace");
+    expect(easyRun!.description).not.toContain("/km Pace");
+  });
+
+  it("generates correct absolute paces for race pace steps", () => {
+    const plan = generatePlan({
+      bgModel: null,
+      raceDateStr: "2027-06-12",
+      raceDist: 21.0975,
+      totalWeeks: 12,
+      startKm: 8,
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+      currentAbilitySecs: TEST_GOAL_TIME,
+      currentAbilityDist: 21.0975,
+    });
+    const rpRun = plan.find((e) => e.description.includes("Race pace practice"));
+    expect(rpRun).toBeDefined();
+    // HM at 8400s → threshold = 6.636 min/km
+    // z3 (99-102%): fast = 6.636/1.02 = 6:30, slow = 6.636/0.99 = 6:42
+    const rpLine = rpRun!.description.split("\n").find((l: string) => l.includes("Race Pace") && l.includes("/km Pace"));
+    expect(rpLine).toBeDefined();
+    const match = /(\d+:\d+)-(\d+:\d+)\/km Pace/.exec(rpLine!);
+    expect(match).not.toBeNull();
+    expect(match![1]).toBe("6:30");
+    expect(match![2]).toBe("6:42");
+  });
+
+  it("easy run steps use absolute pace format with wide range (allows walking)", () => {
     const events = generatePlan({
       bgModel: null,
       raceDateStr: "2026-08-01",
@@ -452,8 +494,8 @@ describe("generatePlan", () => {
     });
     const easyRun = events.find((e) => e.name.includes("Easy") && !e.name.includes("Strides"));
     expect(easyRun).toBeDefined();
-    expect(easyRun!.description).toContain("30-");
-    expect(easyRun!.description).not.toMatch(/\b8[0-9]-\d+% pace/);
+    expect(easyRun!.description).toContain("/km Pace");
+    expect(easyRun!.description).not.toContain("% pace");
   });
 
   it("generates free runs for 5+ day schedules", () => {

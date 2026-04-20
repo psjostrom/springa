@@ -18,6 +18,7 @@ interface AgendaViewProps {
   paceTable?: PaceTable;
   hrZones?: number[];
   lthr?: number;
+  thresholdPace?: number;
   clothingMap?: Map<string, ClothingRec>;
 }
 
@@ -29,7 +30,7 @@ function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
   return "border-l-brand";
 }
 
-function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; clothing?: ClothingRec }) {
+function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresholdPace, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; thresholdPace?: number; clothing?: ClothingRec }) {
   return (
     <div
       data-event-id={event.id}
@@ -151,6 +152,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, clothi
                 maxHeight={40}
                 hrZones={hrZones}
                 lthr={lthr}
+                thresholdPace={thresholdPace}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -201,6 +203,7 @@ export function AgendaView({
   paceTable,
   hrZones,
   lthr,
+  thresholdPace,
   clothingMap,
 }: AgendaViewProps) {
   const [view, setView] = useState<"upcoming" | "history">("upcoming");
@@ -240,6 +243,7 @@ export function AgendaView({
             paceTable={paceTable}
             hrZones={hrZones}
             lthr={lthr}
+            thresholdPace={thresholdPace}
           />
         ))}
       </div>
@@ -278,6 +282,7 @@ export function AgendaView({
           paceTable={paceTable}
           hrZones={hrZones}
           lthr={lthr}
+          thresholdPace={thresholdPace}
           clothing={clothingMap?.get(event.id)}
         />
       ))}

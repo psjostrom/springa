@@ -16,6 +16,11 @@ export function getZoneLabel(zone: ZoneName): string {
   return ZONE_LABELS[zone];
 }
 
+/** Convert pace percentage to actual min/km. Higher % = faster = lower min/km. */
+export function pctToMinPerKm(pct: number, thresholdPace: number): number {
+  return thresholdPace / (pct / 100);
+}
+
 /** Format decimal pace (e.g. 6.15) as "6:09" */
 export function formatPace(paceMinPerKm: number): string {
   const totalSeconds = Math.round(paceMinPerKm * 60);
