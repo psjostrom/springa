@@ -38,8 +38,8 @@ function shiftDates(data: unknown, dayShiftMs: number): unknown {
 
 function getDayShiftMs(): number {
   const snapshot = new Date(SNAPSHOT_DATE + "T00:00:00Z");
-  const today = new Date();
-  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   return todayUtc.getTime() - snapshot.getTime();
 }
 
@@ -76,7 +76,7 @@ export async function GET(_req: Request, { params }: Params) {
       return NextResponse.json(details);
     }
     const fixture = activityFixtures[path[2]];
-    if (!fixture) return NextResponse.json({ error: "Activity not found in demo" }, { status: 404 });
+    if (!fixture) return NextResponse.json({});
     return NextResponse.json(shiftDates(fixture, dayShiftMs));
   }
 
@@ -87,8 +87,16 @@ export async function GET(_req: Request, { params }: Params) {
   // Per-run BG readings — look up by activity ID from calendar, fallback to 24h fixture
   if (key === "bg/run") {
     const url = new URL(_req.url);
-    const startMs = Number(url.searchParams.get("start"));
-    const endMs = Number(url.searchParams.get("end"));
+    const startParam = url.searchParams.get("start");
+    const endParam = url.searchParams.get("end");
+    if (!startParam || !endParam) {
+      return NextResponse.json({ error: "Missing start or end parameter" }, { status: 400 });
+    }
+    const startMs = Number(startParam);
+    const endMs = Number(endParam);
+    if (isNaN(startMs) || isNaN(endMs) || startMs >= endMs) {
+      return NextResponse.json({ error: "Invalid start or end parameter" }, { status: 400 });
+    }
     const dayShift = getDayShiftMs();
 
     // Find the activity whose date matches this time window

@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { useAtomValue } from "jotai";
+import { isDemoAtom } from "../atoms";
 
 const DISMISSED_KEY = "notification-prompt-dismissed";
 
 function getSnapshot(): boolean {
   if (typeof window === "undefined" || !("Notification" in window))
     return false;
-  if (document.cookie.includes("springa-demo=1")) return false;
   if (Notification.permission !== "default") return false;
   if (localStorage.getItem(DISMISSED_KEY)) return false;
   return true;
@@ -26,6 +27,7 @@ function subscribe(onStoreChange: () => void): () => void {
 }
 
 export function NotificationPrompt() {
+  const isDemo = useAtomValue(isDemoAtom);
   const shouldShow = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -47,7 +49,7 @@ export function NotificationPrompt() {
     window.dispatchEvent(new Event("storage"));
   }, []);
 
-  if (!shouldShow) return null;
+  if (isDemo || !shouldShow) return null;
 
   return (
     <div className="fixed bottom-16 md:bottom-4 left-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-surface p-4 shadow-lg">

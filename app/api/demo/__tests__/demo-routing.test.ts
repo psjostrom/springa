@@ -148,12 +148,75 @@ describe("demo catch-all route", () => {
   });
 
   it("date shifting preserves date-only string format", async () => {
-    // Settings has raceDate as "YYYY-MM-DD" — should not get time appended
-    // (settings currently skips shiftDates, but verify the function works for date-only strings)
     const res = await GET(makeRequest("settings"), makeParams("settings"));
     const data = (await res.json()) as { raceDate?: string };
     if (data.raceDate) {
       expect(data.raceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+  });
+
+  it("GET /intervals/activity/{id}?streams=1 returns streamData shape", async () => {
+    const res = await GET(
+      makeRequest("intervals/activity/i122525970?streams=1"),
+      makeParams("intervals/activity/i122525970"),
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { streamData?: Record<string, unknown>; avgHr?: number };
+    expect(data.streamData).toBeDefined();
+  });
+
+  it("GET /intervals/activity/{id}?streams=1 for unknown ID returns empty streamData", async () => {
+    const res = await GET(
+      makeRequest("intervals/activity/nonexistent?streams=1"),
+      makeParams("intervals/activity/nonexistent"),
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { streamData?: Record<string, unknown> };
+    expect(data.streamData).toEqual({});
+  });
+
+  it("GET /intervals/activity/{id} for unknown ID returns empty object", async () => {
+    const res = await GET(
+      makeRequest("intervals/activity/nonexistent"),
+      makeParams("intervals/activity/nonexistent"),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toEqual({});
+  });
+
+  it("GET /bg/run without params returns 400", async () => {
+    const res = await GET(makeRequest("bg/run"), makeParams("bg/run"));
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /bg/run with invalid params returns 400", async () => {
+    const res = await GET(
+      makeRequest("bg/run?start=abc&end=def"),
+      makeParams("bg/run"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /bg/run with valid params returns readings array", async () => {
+    const now = Date.now();
+    const res = await GET(
+      makeRequest(`bg/run?start=${now - 3600000}&end=${now}`),
+      makeParams("bg/run"),
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { readings: unknown[] };
+    expect(data.readings).toBeDefined();
+    expect(Array.isArray(data.readings)).toBe(true);
+  });
+
+  it("POST /run-analysis returns canned analysis", async () => {
+    const res = await POST(
+      makeRequest("run-analysis", "POST", { activityId: "i123" }),
+      makeParams("run-analysis"),
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { analysis: string };
+    expect(data.analysis).toContain("Demo Mode");
   });
 });

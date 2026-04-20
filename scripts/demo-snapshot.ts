@@ -255,6 +255,7 @@ async function main() {
   const activityMap: Record<string, unknown> = {};
   const streamMap: Record<string, unknown> = {};
 
+  // Keep every 60th sample (~1 point per minute from 1Hz source) to reduce fixture size
   function downsampleStream(stream: { type: string; data: number[] }): { type: string; data: number[] } {
     const STEP = 60;
     if (stream.data.length <= STEP) return stream;
@@ -268,14 +269,15 @@ async function main() {
     return { type: stream.type, data: sampled };
   }
 
+  const failedActivities: string[] = [];
   for (const id of completedIds) {
     console.log(`  Activity ${id}...`);
     try {
       const activity = await fetchIntervals(`/activity/${id}`, apiKey);
       activityMap[id] = activity;
     } catch {
-      console.warn(`  Skipped activity details for ${id}, using calendar event`);
-      activityMap[id] = calendarEvents.find((e) => e.activityId === id);
+      console.warn(`  ⚠ Failed to fetch activity details for ${id}`);
+      failedActivities.push(id);
     }
     try {
       const streams = await fetchIntervals(
@@ -284,7 +286,18 @@ async function main() {
       ) as { type: string; data: number[] }[];
       streamMap[id] = Array.isArray(streams) ? streams.map(downsampleStream) : streams;
     } catch {
-      console.warn(`  Skipped streams for ${id}`);
+      console.warn(`  ⚠ Failed to fetch streams for ${id}`);
+      if (!failedActivities.includes(id)) failedActivities.push(id);
+    }
+  }
+
+  // Remove activities with no data from the calendar to avoid broken UI cards
+  if (failedActivities.length > 0) {
+    console.warn(`\n⚠ ${failedActivities.length} activities had fetch failures — removing from calendar:`);
+    for (const id of failedActivities) {
+      console.warn(`  - ${id}`);
+      const idx = calendarEvents.findIndex((e) => e.activityId === id);
+      if (idx !== -1) calendarEvents.splice(idx, 1);
     }
   }
 
