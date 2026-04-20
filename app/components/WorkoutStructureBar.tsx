@@ -1,5 +1,5 @@
 import { ZONE_COLORS, classifyHR, DEFAULT_LTHR } from "@/lib/constants";
-import { parseWorkoutSegments } from "@/lib/descriptionParser";
+import { parseWorkoutSegments, classifyPacePct } from "@/lib/descriptionParser";
 
 interface WorkoutStructureBarProps {
   description: string;
@@ -17,8 +17,9 @@ export function WorkoutStructureBar({
   thresholdPace,
 }: WorkoutStructureBarProps) {
   const segments = parseWorkoutSegments(description, undefined, thresholdPace);
+  const isPaceBased = description.includes("/km Pace") || description.includes("% pace");
 
-  if (!segments.length || hrZones?.length !== 5) return null;
+  if (!segments.length || (!isPaceBased && hrZones?.length !== 5)) return null;
 
   const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
 
@@ -26,11 +27,10 @@ export function WorkoutStructureBar({
     <div className="w-full flex items-end gap-0.5" style={{ height: `${maxHeight}px` }}>
       {segments.map((segment, idx) => {
         const widthPercent = (segment.duration / totalDuration) * 100;
-        // Map intensity 70-100% to 30-100% height
         const heightPercent = ((segment.intensity - 70) / 30) * 70 + 30;
-        // Convert LTHR% to BPM, then classify
-        const hr = (segment.intensity / 100) * lthr;
-        const zoneKey = classifyHR(hr, hrZones);
+        const zoneKey = isPaceBased
+          ? classifyPacePct(segment.intensity)
+          : classifyHR((segment.intensity / 100) * lthr, hrZones!);
 
         return (
           <div

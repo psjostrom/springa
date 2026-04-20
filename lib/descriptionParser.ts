@@ -32,7 +32,7 @@ function classifyIntensity(lthrPct: number, lthr: number, hrZones: number[]): Zo
 }
 
 /** Classify zone from Intervals.icu pace percentage (higher % = faster). */
-function classifyPacePct(avgPct: number): ZoneName {
+export function classifyPacePct(avgPct: number): ZoneName {
   if (avgPct >= 112) return "z5";
   if (avgPct >= 103) return "z4";
   if (avgPct >= 96) return "z3";
