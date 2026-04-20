@@ -55,6 +55,7 @@ const PREVIOUS_WINDOW_DAYS = 56;
 
 export function computeCardiacCostTrend(
   segments: ZoneSegment[],
+  baselineMs?: number,
 ): CardiacCostResult | null {
   const now = Date.now();
   const recentCutoff = now - RECENT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -68,6 +69,7 @@ export function computeCardiacCostTrend(
   for (const seg of z2Segments) {
     const dateMs = new Date(seg.activityDate).getTime();
     if (isNaN(dateMs)) continue;
+    if (baselineMs && dateMs < baselineMs) continue;
 
     const month = new Date(seg.activityDate).getMonth();
     const correctedHr = temperatureCorrectHr(seg.avgHr, month);
@@ -298,8 +300,11 @@ export function generatePaceSuggestion(
     };
   }
 
+  // Baseline for trend computation: only use data after last ability update
+  const trendBaseline = paceSuggestionDismissedAt ?? undefined;
+
   // Signal 1: Z4 pace trend (improvement/regression over time)
-  const z4Slope = computeZonePaceTrend(segments, "z4");
+  const z4Slope = computeZonePaceTrend(segments, "z4", 90, trendBaseline);
   let z4Signal: "improving" | "regressing" | null = null;
   let z4ImprovementSecPerKm: number | null = null;
 
@@ -317,7 +322,7 @@ export function generatePaceSuggestion(
   }
 
   // Compute cardiac cost trend
-  const ccResult = computeCardiacCostTrend(segments);
+  const ccResult = computeCardiacCostTrend(segments, trendBaseline);
   let ccSignal: "improving" | "regressing" | null = null;
   let cardiacCostChangePercent: number | null = null;
 

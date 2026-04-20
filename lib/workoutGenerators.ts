@@ -371,16 +371,17 @@ const generateLongRun = (
     type = " [RACE TEST]";
   }
 
-  // Base and recovery weeks are always all-easy long runs
-  // Build weeks alternate between sandwich and progressive variants
-  let longRunVariant: "easy" | "sandwich" | "progressive" = "easy";
+  // Base and recovery weeks are always all-easy long runs.
+  // In build weeks, sandwich (HM pace block in middle) lands on every other
+  // non-recovery week so a hard long run is never followed by another hard one.
+  let longRunVariant: "easy" | "sandwich" = "easy";
   if (!wp.isBase && !wp.isRecovery && !wp.isTaper && !wp.isRaceTest && wp.weekNum > wp.b.buildStart) {
     let nonSpecialCount = 0;
     for (let i = wp.b.buildStart; i < wp.weekNum; i++) {
       const idx = i - wp.b.buildStart;
       if (!(idx > 0 && (idx + 1) % 4 === 0)) nonSpecialCount++;
     }
-    longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "progressive";
+    longRunVariant = nonSpecialCount % 2 === 0 ? "sandwich" : "easy";
   }
 
   const mainKm = Math.max(km - 3, 1); // -1km WU, -2km CD
@@ -396,12 +397,6 @@ const generateLongRun = (
     const easyAfterKm = mainKm - rpBlockKm - easyBeforeKm;
     mainSteps = [s(`${easyBeforeKm}km`, "z2", "Easy"), s(`${rpBlockKm}km`, "z3", "Race Pace"), s(`${easyAfterKm}km`, "z2", "Easy")];
     notes = `Long run with a ${rpBlockKm}km race pace block sandwiched in the middle. Start easy and settle in before picking up to race effort. The race pace section should feel controlled, not hard — practise running at goal effort on tired legs. Ease back down afterwards and finish relaxed.`;
-  } else if (longRunVariant === "progressive" && mainKm >= 4) {
-    const easyKm = Math.floor(mainKm * 0.5);
-    const steadyKm = Math.max(Math.floor(mainKm * 0.3), 1);
-    const tempoKm = mainKm - easyKm - steadyKm;
-    mainSteps = [s(`${easyKm}km`, "z2", "Easy"), s(`${steadyKm}km`, "z3", "Race Pace"), s(`${tempoKm}km`, "z4", "Fast")];
-    notes = `Progressive long run — start easy and build through the gears. The first ${easyKm}km should feel effortless. Pick up to race pace for ${steadyKm}km, then finish the last ${tempoKm}km at interval effort. The goal is to feel strongest at the end, not to survive it.`;
   } else {
     mainSteps = [s(`${mainKm}km`, "z2", "Easy")];
     if (wp.isRecovery) {

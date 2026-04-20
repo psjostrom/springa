@@ -16,7 +16,8 @@ vi.mock("@libsql/client", async (importOriginal) => {
 });
 
 import { SCHEMA_DDL } from "../db";
-import { getUserSettings, saveUserSettings } from "../settings";
+import { getUserSettings, saveUserSettings, WRITABLE_SETTINGS_KEYS } from "../settings";
+import type { UserSettings } from "../settings";
 
 const testDb = () => holder.db;
 
@@ -109,5 +110,41 @@ describe("saveUserSettings", () => {
     const result = await getUserSettings("user@example.com");
     expect(result.currentAbilitySecs).toBe(3300);
     expect(result.currentAbilityDist).toBe(10);
+  });
+
+  it("every WRITABLE_SETTINGS_KEYS field roundtrips through save/load", async () => {
+    const testValues: Record<string, unknown> = {
+      raceDate: "2030-01-01",
+      raceName: "Test Race",
+      raceDist: 42,
+      currentAbilitySecs: 1800,
+      currentAbilityDist: 5,
+      totalWeeks: 12,
+      startKm: 10,
+      widgetOrder: ["a", "b"],
+      hiddenWidgets: ["c"],
+      bgChartWindow: 120,
+      includeBasePhase: true,
+      warmthPreference: -1,
+      diabetesMode: true,
+      displayName: "Test User",
+      runDays: [1, 3, 5],
+      longRunDay: 0,
+      clubDay: 3,
+      clubType: "speed",
+      onboardingComplete: true,
+      insulinType: "fiasp",
+      paceSuggestionDismissedAt: 1700000000000,
+    };
+
+    for (const key of WRITABLE_SETTINGS_KEYS) {
+      const email = `roundtrip-${key}@test.com`;
+      await saveUserSettings(email, { [key]: testValues[key] } as Partial<UserSettings>);
+      const result = await getUserSettings(email);
+      expect(
+        result[key as keyof UserSettings],
+        `"${key}" not handled by saveUserSettings — add it there and to WRITABLE_SETTINGS_KEYS`,
+      ).toBeDefined();
+    }
   });
 });

@@ -242,7 +242,10 @@ function HomeContent() {
 
       <UnratedRunBanner />
       {activeTab !== "intel" && (
-        <PaceSuggestionBanner onNavigateToIntel={() => { handleTabChange("intel"); }} />
+        <PaceSuggestionBanner
+          onNavigateToIntel={() => { handleTabChange("intel"); }}
+          onDismiss={() => { void updateSettings({ paceSuggestionDismissedAt: Date.now() }); }}
+        />
       )}
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
