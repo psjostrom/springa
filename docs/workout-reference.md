@@ -133,63 +133,80 @@ To keep things varied, rotate through the formats across the plan:
 
 The generator MUST output descriptions matching these patterns exactly. Descriptions contain only notes and structured workout steps — no fuel data. Fuel is sent via `carbs_per_hour` on the API event and stored as `fuelRate` (g/h) on `WorkoutEvent`.
 
+### Pace Format
+
+When the user has set their ability (distance + time), the generator resolves pace percentages to **absolute paces** using Intervals.icu's syntax:
+
+```
+<fast_pace>-<slow_pace>/km Pace
+```
+
+- Capital `P` in `Pace` is required — lowercase doesn't trigger the parser
+- Fast pace (lower min:sec) comes first
+- Always use the range form, not a single value
+- Garmin intensity tag (`intensity=warmup|active|rest|cooldown`) is required for watch sync
+
+When ability is not set, falls back to `% pace` syntax (resolved by Intervals.icu at sync time).
+
+**Example (threshold 5:30/km):** `- 10m 6:15-18:20/km Pace intensity=warmup`
+
 ### Example A: Short Intervals
 
 **Name:** `W01 Short Intervals eco16`
 **fuelRate:** `30` (g/h → `carbs_per_hour: 30`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Short, punchy efforts to build leg speed and running economy.
 
 Warmup
-- 10m 30-94% pace
+- 10m 6:15-18:20/km Pace intensity=warmup
 
 Main set 6x
-- 2m 106-111% pace
-- Walk 2m
+- Fast 2m 4:57-5:11/km Pace intensity=active
+- Walk 2m intensity=rest
 
 Cooldown
-- 5m 30-94% pace
+- 5m 6:15-18:20/km Pace intensity=cooldown
 ```
 
 ### Example B: Hills
 
 **Name:** `W02 Hills eco16`
 **fuelRate:** `30` (g/h → `carbs_per_hour: 30`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Hill reps build strength and power that translates directly to EcoTrail's terrain.
 
 Warmup
-- 10m 30-94% pace
+- 10m 6:15-18:20/km Pace intensity=warmup
 
 Main set 6x
-- Uphill 2m hard effort
-- Downhill 3m easy jog
+- Uphill 2m intensity=active
+- Downhill 3m 6:15-18:20/km Pace intensity=rest
 
 Cooldown
-- 5m 30-94% pace
+- 5m 6:15-18:20/km Pace intensity=cooldown
 ```
 
 ### Example C: Long Run — All Easy
 
 **Name:** `W01 Long (8km) eco16`
 **fuelRate:** `60` (g/h → `carbs_per_hour: 60`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Long run at easy pace. This is the most important run of the week.
 
 Warmup
-- 1km 30-94% pace
+- 1km 6:15-18:20/km Pace intensity=warmup
 
 Main set
-- 5km 30-94% pace
+- 5km 6:15-18:20/km Pace intensity=active
 
 Cooldown
-- 2km 30-94% pace
+- 2km 6:15-18:20/km Pace intensity=cooldown
 ```
 
 Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with the sandwich variant. The 2km cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change.
@@ -198,40 +215,40 @@ Note: Long runs keep the warmup/cooldown structure even when all-easy for psycho
 
 **Name:** `W05 Long (12km) eco16`
 **fuelRate:** `60` (g/h → `carbs_per_hour: 60`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
-- 1km 30-94% pace
+- 1km 6:15-18:20/km Pace intensity=warmup
 
 Main set
-- 3km 30-94% pace
-- 3km 99-102% pace
-- 3km 30-94% pace
+- Easy 3km 6:15-18:20/km Pace intensity=active
+- Race Pace 3km 5:24-5:33/km Pace intensity=active
+- Easy 3km 6:15-18:20/km Pace intensity=active
 
 Cooldown
-- 2km 30-94% pace
+- 2km 6:15-18:20/km Pace intensity=cooldown
 ```
 
 ### Example E: Easy Run
 
 **Name:** `W01 Easy eco16`
 **fuelRate:** `48` (g/h → `carbs_per_hour: 48`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Steady easy running to build your aerobic base. This should feel comfortable and conversational the entire way. If you can't chat in full sentences, slow down. Easy days make hard days possible.
 
 Warmup
-- 10m 30-94% pace
+- Warmup 10m 6:15-18:20/km Pace intensity=warmup
 
 Main set
-- 10m 30-94% pace
+- 10m 6:15-18:20/km Pace intensity=active
 
 Cooldown
-- 15m 30-94% pace
+- Cooldown 15m 6:15-18:20/km Pace intensity=cooldown
 ```
 
 Note: Easy runs use WU/main/CD structure even though all zones are the same. The extended 15m cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change, cueing the runner to stop eating.
@@ -240,23 +257,23 @@ Note: Easy runs use WU/main/CD structure even though all zones are the same. The
 
 **Name:** `W02 Easy + Strides eco16`
 **fuelRate:** `48` (g/h → `carbs_per_hour: 48`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 Easy run with strides at the end.
 
 Warmup
-- 10m 30-94% pace
+- Warmup 10m 6:15-18:20/km Pace intensity=warmup
 
 Main set
-- 11m 30-94% pace
+- Easy 11m 6:15-18:20/km Pace intensity=active
 
 Strides 4x
-- 20s hard effort
-- 1m easy jog
+- Stride 20s intensity=active
+- Walk 1m intensity=rest
 
 Cooldown
-- 15m 30-94% pace
+- Cooldown 15m 6:15-18:20/km Pace intensity=cooldown
 ```
 
 Note: Easy + Strides keeps the warmup/cooldown structure because strides are in a different HR zone (Z5). The 15m cooldown is the fuel taper signal.
@@ -265,17 +282,17 @@ Note: Easy + Strides keeps the warmup/cooldown structure because strides are in 
 
 **Name:** `W03 Bonus Easy eco16`
 **fuelRate:** `48` (g/h → `carbs_per_hour: 48`)
-**Description:**
+**Description (threshold ≈ 5:30/km):**
 
 ```text
 The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.
 
 Warmup
-- 10m 30-94% pace
+- Warmup 10m 6:15-18:20/km Pace intensity=warmup
 
 Main set
-- 20m 30-94% pace
+- 20m 6:15-18:20/km Pace intensity=active
 
 Cooldown
-- 15m 30-94% pace
+- Cooldown 15m 6:15-18:20/km Pace intensity=cooldown
 ```

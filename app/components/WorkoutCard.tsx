@@ -89,9 +89,11 @@ export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, p
     );
   }
 
-  const estDuration = estimateWorkoutDuration(description, paceTable);
-  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable);
-  const zones = hrZones?.length === 5 ? parseWorkoutZones(description, lthr, hrZones) : [];
+  const estDuration = estimateWorkoutDuration(description, paceTable, racePacePerKm);
+  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable, racePacePerKm);
+  const zones = (hrZones?.length === 5 || racePacePerKm)
+    ? parseWorkoutZones(description, lthr, hrZones ?? [], racePacePerKm)
+    : [];
   const notes = extractNotes(description);
 
   return (

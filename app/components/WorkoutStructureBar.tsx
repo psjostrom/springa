@@ -6,6 +6,7 @@ interface WorkoutStructureBarProps {
   maxHeight?: number;
   hrZones?: number[];
   lthr?: number;
+  thresholdPace?: number;
 }
 
 export function WorkoutStructureBar({
@@ -13,8 +14,9 @@ export function WorkoutStructureBar({
   maxHeight = 40,
   hrZones,
   lthr = DEFAULT_LTHR,
+  thresholdPace,
 }: WorkoutStructureBarProps) {
-  const segments = parseWorkoutSegments(description);
+  const segments = parseWorkoutSegments(description, undefined, thresholdPace);
 
   if (!segments.length || hrZones?.length !== 5) return null;
 

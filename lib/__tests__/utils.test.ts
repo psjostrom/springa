@@ -5,6 +5,7 @@ import {
   extractNotes,
   extractStructure,
   parseWorkoutStructure,
+  extractStepTotals,
 } from "../descriptionParser";
 import { formatPace, formatZoneTime, getPaceForZone, getZoneLabel } from "../format";
 import {
@@ -1311,5 +1312,132 @@ describe("totalCarbs recomputation with calibrated paces", () => {
 
     expect(calculateWorkoutCarbs(fastDuration.minutes, fuelRate))
       .toBe(calculateWorkoutCarbs(noneDuration.minutes, fuelRate));
+  });
+});
+
+// --- ABSOLUTE PACE FORMAT TESTS ---
+
+const ABS_PACE_WORKOUT = `Race pace practice.
+
+Warmup
+- Warmup 10m 6:15-7:52/km Pace intensity=warmup
+
+Main set 5x
+- Race Pace 5m 5:24-5:33/km Pace intensity=active
+- Walk 2m intensity=rest
+
+Cooldown
+- Cooldown 5m 6:15-7:52/km Pace intensity=cooldown
+`;
+
+const ABS_PACE_THRESHOLD = 5.5; // 5:30/km
+
+describe("parseWorkoutZones — absolute pace format", () => {
+  it("extracts zones from absolute pace format with threshold", () => {
+    const zones = parseWorkoutZones(ABS_PACE_WORKOUT, DEFAULT_LTHR, testHrZones, ABS_PACE_THRESHOLD);
+    expect(zones).toContain("z2");
+    expect(zones).toContain("z3");
+  });
+
+  it("returns empty when threshold is missing for absolute pace", () => {
+    const zones = parseWorkoutZones(ABS_PACE_WORKOUT, DEFAULT_LTHR, testHrZones);
+    expect(zones).toEqual([]);
+  });
+});
+
+describe("parseWorkoutStructure — absolute pace format", () => {
+  it("parses absolute pace steps with zone classification", () => {
+    const sections = parseWorkoutStructure(ABS_PACE_WORKOUT, DEFAULT_LTHR, testHrZones, ABS_PACE_THRESHOLD);
+    expect(sections).toHaveLength(3);
+
+    expect(sections[0].name).toBe("Warmup");
+    expect(sections[0].steps[0].duration).toBe("10m");
+    expect(sections[0].steps[0].bpmRange).toBe("6:15-7:52 /km");
+    expect(sections[0].steps[0].zone).toBe("z2");
+
+    expect(sections[1].name).toBe("Main set");
+    expect(sections[1].repeats).toBe(5);
+    expect(sections[1].steps[0].bpmRange).toBe("5:24-5:33 /km");
+    expect(sections[1].steps[0].zone).toBe("z3");
+
+    expect(sections[1].steps[1].zone).toBe("z1");
+    expect(sections[1].steps[1].bpmRange).toBe("");
+  });
+
+  it("falls back to z2 classification when racePacePerKm is missing", () => {
+    const sections = parseWorkoutStructure(ABS_PACE_WORKOUT, DEFAULT_LTHR, testHrZones);
+    expect(sections).toHaveLength(3);
+    expect(sections[0].steps[0].zone).toBe("z2");
+  });
+});
+
+describe("parseWorkoutSegments — absolute pace format", () => {
+  it("estimates duration from absolute pace for km-based steps", () => {
+    const desc = `Warmup
+- 1km 6:15-7:52/km Pace intensity=warmup
+
+Main set
+- 4km 5:24-5:33/km Pace intensity=active
+
+Cooldown
+- 2km 6:15-7:52/km Pace intensity=cooldown
+`;
+    const segments = parseWorkoutSegments(desc);
+    expect(segments).toHaveLength(3);
+
+    // 1km at avg pace ~7.06 min/km → ~7.06 min
+    expect(segments[0].duration).toBeCloseTo(7.06, 0);
+    expect(segments[0].estimated).toBe(true);
+    expect(segments[0].km).toBe(1);
+
+    // 4km at avg pace ~5.475 min/km → ~21.9 min
+    expect(segments[1].duration).toBeCloseTo(21.9, 0);
+    expect(segments[1].km).toBe(4);
+
+    // 2km at avg pace ~7.06 min/km → ~14.1 min
+    expect(segments[2].duration).toBeCloseTo(14.1, 0);
+  });
+
+  it("handles time-based absolute pace steps", () => {
+    const desc = `- 10m 6:15-7:52/km Pace intensity=warmup
+`;
+    const segments = parseWorkoutSegments(desc);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].duration).toBe(10);
+    expect(segments[0].estimated).toBe(false);
+    expect(segments[0].km).toBeNull();
+  });
+
+  it("computes real intensity from threshold when provided", () => {
+    const desc = `- 10m 5:24-5:33/km Pace intensity=active
+`;
+    const segments = parseWorkoutSegments(desc, undefined, ABS_PACE_THRESHOLD);
+    expect(segments).toHaveLength(1);
+    // avg pace ~5.475 min/km, threshold 5.5 → pct ~100.5
+    expect(segments[0].intensity).toBeCloseTo(100.5, 0);
+  });
+
+  it("falls back to 85 intensity without threshold", () => {
+    const desc = `- 10m 5:24-5:33/km Pace intensity=active
+`;
+    const segments = parseWorkoutSegments(desc);
+    expect(segments[0].intensity).toBe(85);
+  });
+});
+
+describe("extractStepTotals — absolute pace format", () => {
+  it("counts named steps in repeat sections", () => {
+    const desc = `Main set 6x
+- Downhill 3m 6:15-7:52/km Pace intensity=rest
+`;
+    const totals = extractStepTotals(desc);
+    expect(totals).toEqual({ DOWNHILL: 6 });
+  });
+
+  it("returns empty for non-repeat sections", () => {
+    const desc = `Main set
+- 20m 6:15-7:52/km Pace intensity=active
+`;
+    expect(extractStepTotals(desc)).toEqual({});
   });
 });
