@@ -26,6 +26,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Auth API must always pass through
+  if (nextUrl.pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
   // /demo must always pass through so the route handler can set the cookie
   if (nextUrl.pathname === "/demo") {
     return NextResponse.next();

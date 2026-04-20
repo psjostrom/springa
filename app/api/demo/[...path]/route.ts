@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import {
   fixtures,
   activityFixtures,
+  activityDetailsFixtures,
   streamFixtures,
   coachFixtures,
+  bgFixture,
+  perRunBGFixtures,
   SNAPSHOT_DATE,
 } from "@/lib/demo/fixtures";
 
@@ -66,6 +69,12 @@ export async function GET(_req: Request, { params }: Params) {
 
   // Parameterized routes
   if (path[0] === "intervals" && path[1] === "activity" && path[2]) {
+    const url = new URL(_req.url);
+    if (url.searchParams.get("streams") === "1") {
+      const details = activityDetailsFixtures[path[2]];
+      if (!details) return NextResponse.json({ streamData: {} });
+      return NextResponse.json(details);
+    }
     const fixture = activityFixtures[path[2]];
     if (!fixture) return NextResponse.json({ error: "Activity not found in demo" }, { status: 404 });
     return NextResponse.json(shiftDates(fixture, dayShiftMs));
@@ -73,6 +82,40 @@ export async function GET(_req: Request, { params }: Params) {
 
   if (path[0] === "intervals" && path[1] === "events" && path[2]) {
     return NextResponse.json({ error: "Not available in demo" }, { status: 404 });
+  }
+
+  // Per-run BG readings — look up by activity ID from calendar, fallback to 24h fixture
+  if (key === "bg/run") {
+    const url = new URL(_req.url);
+    const startMs = Number(url.searchParams.get("start"));
+    const endMs = Number(url.searchParams.get("end"));
+    const dayShift = getDayShiftMs();
+
+    // Find the activity whose date matches this time window
+    const cal = fixtures["intervals/calendar"] as { date: string; activityId?: string }[] | undefined;
+    const matchedEvent = cal?.find((e) =>
+      e.activityId && Math.abs(new Date(e.date).getTime() + dayShift - startMs) < 30 * 60 * 1000,
+    );
+    const bgReadingsForRun = matchedEvent?.activityId
+      ? perRunBGFixtures[matchedEvent.activityId] as { ts: number }[] | undefined
+      : undefined;
+
+    if (bgReadingsForRun) {
+      const readings = bgReadingsForRun.map((r) => ({
+        ...r,
+        ts: r.ts + dayShift,
+      }));
+      return NextResponse.json({ readings });
+    }
+
+    // Fallback: filter from 24h BG fixture
+    const bgData = bgFixture as { readings?: { ts: number }[] };
+    const allReadings = (bgData.readings ?? []).map((r) => ({
+      ...r,
+      ts: r.ts < 0 ? Date.now() + r.ts : r.ts,
+    }));
+    const filtered = allReadings.filter((r) => r.ts >= startMs && r.ts <= endMs);
+    return NextResponse.json({ readings: filtered });
   }
 
   // BG data uses relative timestamps — resolve to absolute
@@ -98,6 +141,13 @@ export async function GET(_req: Request, { params }: Params) {
 export async function POST(req: Request, { params }: Params) {
   const { path } = await params;
   const key = path.join("/");
+
+  // Run analysis — return canned demo analysis
+  if (key === "run-analysis") {
+    return NextResponse.json({
+      analysis: "**Demo Mode** — This is a preview of the AI run analysis feature. In the full app, each completed run gets a personalized breakdown covering BG response, pacing, fueling, and recommendations for your next session.\n\nSign in to see your real analysis.",
+    });
+  }
 
   // Streams — POST with activityIds, return fixture stream data
   if (key === "intervals/streams") {

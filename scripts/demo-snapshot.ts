@@ -81,8 +81,13 @@ async function main() {
   const newest = new Date();
   newest.setMonth(newest.getMonth() + 2);
   console.log("Fetching calendar (activities + events via calendarPipeline)...");
-  const calendarEvents = await fetchCalendarData(apiKey, oldest, newest);
-  console.log(`  ${calendarEvents.length} calendar events`);
+  const rawEvents = await fetchCalendarData(apiKey, oldest, newest);
+  const now = new Date();
+  const calendarEvents = rawEvents.filter((e) => {
+    if (e.type === "planned" && new Date(e.date) < now) return false;
+    return true;
+  });
+  console.log(`  ${calendarEvents.length} calendar events (${rawEvents.length - calendarEvents.length} past planned events removed)`);
 
   // Normalize workout names for demo consistency.
   // Calculate week number from the first event's date so ALL events
@@ -243,17 +248,13 @@ async function main() {
   }
   console.log(`  Replaced ${commentCount} feedback comments`);
 
-  // 3. Activity streams (HR, pace for completed runs)
+  // 3. Activity details + streams (HR, pace for completed runs)
   const completedIds = calendarEvents
     .filter((e) => e.type === "completed" && e.activityId)
-    .map((e) => e.activityId as string)
-    .slice(0, 50);
+    .map((e) => e.activityId as string);
   const activityMap: Record<string, unknown> = {};
   const streamMap: Record<string, unknown> = {};
 
-  // Downsample stream data to ~1-min resolution to keep fixture size manageable.
-  // Intervals.icu streams are typically at ~1s resolution; keeping every 60th point
-  // preserves the shape while cutting file size by ~60x.
   function downsampleStream(stream: { type: string; data: number[] }): { type: string; data: number[] } {
     const STEP = 60;
     if (stream.data.length <= STEP) return stream;
@@ -261,7 +262,6 @@ async function main() {
     for (let i = 0; i < stream.data.length; i += STEP) {
       sampled.push(stream.data[i]);
     }
-    // Always include the last point
     if ((stream.data.length - 1) % STEP !== 0) {
       sampled.push(stream.data[stream.data.length - 1]);
     }
@@ -269,17 +269,92 @@ async function main() {
   }
 
   for (const id of completedIds) {
-    console.log(`  Streams for ${id}...`);
-    activityMap[id] = calendarEvents.find((e) => e.activityId === id);
+    console.log(`  Activity ${id}...`);
+    try {
+      const activity = await fetchIntervals(`/activity/${id}`, apiKey);
+      activityMap[id] = activity;
+    } catch {
+      console.warn(`  Skipped activity details for ${id}, using calendar event`);
+      activityMap[id] = calendarEvents.find((e) => e.activityId === id);
+    }
     try {
       const streams = await fetchIntervals(
-        `/activity/${id}/streams?types=heartrate,velocity_smooth,distance`,
+        `/activity/${id}/streams?types=time,heartrate,velocity_smooth,cadence,altitude,distance`,
         apiKey,
       ) as { type: string; data: number[] }[];
       streamMap[id] = Array.isArray(streams) ? streams.map(downsampleStream) : streams;
     } catch {
       console.warn(`  Skipped streams for ${id}`);
     }
+  }
+
+  // 4. Pre-compute activity details ({ streamData, avgHr, maxHr }) from raw streams.
+  const activityDetailsMap: Record<string, unknown> = {};
+  for (const id of completedIds) {
+    const streams = streamMap[id] as { type: string; data: number[] }[] | undefined;
+    if (!streams || !Array.isArray(streams)) continue;
+
+    const timeData = streams.find((s) => s.type === "time")?.data ?? [];
+    const hrData = streams.find((s) => s.type === "heartrate")?.data ?? [];
+    const velData = streams.find((s) => s.type === "velocity_smooth")?.data ?? [];
+    const cadData = streams.find((s) => s.type === "cadence")?.data ?? [];
+    const altData = streams.find((s) => s.type === "altitude")?.data ?? [];
+    const distData = streams.find((s) => s.type === "distance")?.data ?? [];
+
+    const result: Record<string, unknown> = {};
+
+    if (hrData.length > 0) {
+      result.avgHr = Math.round(hrData.reduce((a, b) => a + b, 0) / hrData.length);
+      result.maxHr = Math.round(Math.max(...hrData));
+    }
+
+    if (timeData.length > 0) {
+      const streamData: Record<string, unknown> = {};
+
+      if (hrData.length > 0) {
+        streamData.heartrate = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: hrData[idx],
+        }));
+      }
+
+      if (velData.length > 0) {
+        streamData.pace = timeData
+          .map((t, idx) => {
+            const v = velData[idx];
+            if (v === 0 || v < 0.001) return null;
+            const pace = 1000 / (v * 60);
+            if (pace < 2.0 || pace > 12.0) return null;
+            return { time: Math.round(t / 60), value: pace };
+          })
+          .filter(Boolean);
+      }
+
+      if (cadData.length > 0) {
+        streamData.cadence = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: cadData[idx] * 2,
+        }));
+      }
+
+      if (altData.length > 0) {
+        streamData.altitude = timeData.map((t, idx) => ({
+          time: Math.round(t / 60),
+          value: altData[idx],
+        }));
+      }
+
+      if (distData.length > 0) {
+        streamData.distance = distData;
+        streamData.rawTime = timeData;
+      }
+
+      if (Object.keys(streamData).length > 0) {
+        result.streamData = streamData;
+      }
+    }
+
+    activityDetailsMap[id] = result;
   }
 
   // 5. Wellness
@@ -304,7 +379,36 @@ async function main() {
   const bgTrend = computeTrend(bgReadings);
   const latestBG = bgReadings.length > 0 ? bgReadings[bgReadings.length - 1] : null;
 
-  // 8. IOB
+  // 8. Per-run BG readings for each completed activity
+  console.log("Fetching per-run BG readings...");
+  const PADDING_MS = 10 * 60 * 1000;
+  const perRunBGMap: Record<string, unknown[]> = {};
+  for (const id of completedIds) {
+    const act = activityMap[id] as Record<string, unknown> | undefined;
+    if (!act) continue;
+    const startStr = (act.start_date_local ?? act.start_date) as string | undefined;
+    const movingSec = (act.moving_time ?? act.elapsed_time) as number | undefined;
+    if (!startStr || !movingSec) continue;
+
+    const startMs = new Date(startStr).getTime();
+    const endMs = startMs + movingSec * 1000;
+    try {
+      const readings = await fetchBGFromNS(nsUrl, nsSecret, {
+        since: startMs - PADDING_MS,
+        until: endMs + PADDING_MS,
+        count: 1000,
+      });
+      readings.sort((a, b) => a.ts - b.ts);
+      if (readings.length >= 2) {
+        perRunBGMap[id] = readings;
+      }
+    } catch {
+      // No BG for this run — skip
+    }
+  }
+  console.log(`  ${Object.keys(perRunBGMap).length} runs with BG data`);
+
+  // 9. IOB
   console.log("Fetching IOB...");
   let iob = { iob: 0, updated: 0 };
   try {
@@ -399,6 +503,10 @@ export const bgPatternsFixture = { patternsText: null };
 export const activityFixtures: Record<string, unknown> = ${JSON.stringify(activityMap, null, 2)};
 
 export const streamFixtures: Record<string, unknown> = ${JSON.stringify(streamMap, null, 2)};
+
+export const activityDetailsFixtures: Record<string, unknown> = ${JSON.stringify(activityDetailsMap, null, 2)};
+
+export const perRunBGFixtures: Record<string, unknown[]> = ${JSON.stringify(perRunBGMap, null, 2)};
 
 export const coachFixtures: Record<string, string> = {
   "What can Springa do for me?": "Springa is your AI-powered training companion designed specifically for runners managing Type 1 diabetes. Here's what I can help with:\\n\\n**Training Plan Generation** — I create periodized plans that progress from your current fitness to your race goal. Each week's workouts are structured with the right mix of easy runs, long runs, and speed work.\\n\\n**Blood Glucose Management** — During runs, I track your BG response to different workout types and fuel rates. The BG model learns from your data to recommend fuel rates that keep you stable.\\n\\n**Fuel Rate Optimization** — Based on your completed runs, I analyze how different carb intake rates affect your BG. The model suggests adjustments so you can run without worrying about lows or post-run spikes.\\n\\n**AI Coaching** — Ask me anything about your training, recovery, BG trends, or upcoming workouts. I have full context on your plan, recent runs, and physiological data.\\n\\n**Race Readiness** — I track your fitness (CTL), fatigue (ATL), and freshness (TSB) to tell you how you're tracking toward race day.",
