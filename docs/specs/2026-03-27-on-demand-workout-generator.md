@@ -50,7 +50,7 @@ export function generateSingleWorkout(
 |----------|-----------|-------|
 | `easy` | `generateEasyRun` | Uses the date's weekday, not forced to Tuesday |
 | `quality` | `generateQualityRun` | Picks session type from speed rotation based on week |
-| `long` | `generateLongRun` | Progressive/sandwich/easy based on phase |
+| `long` | `generateLongRun` | Sandwich/easy based on phase |
 | `club` | Returns a Club Run stub | 60min, 18:30, trail club session |
 
 The existing private generators (`generateEasyRun`, etc.) already take `(ctx, weekIdx, weekStart, wp)`. `generateSingleWorkout` computes these from the date and delegates.

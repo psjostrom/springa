@@ -192,7 +192,7 @@ Cooldown
 - 2km 30-94% pace
 ```
 
-Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with sandwich/progressive variants. The 2km cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change.
+Note: Long runs keep the warmup/cooldown structure even when all-easy for psychological bookends and consistency with the sandwich variant. The 2km cooldown serves as a "stop fueling" signal — Garmin vibrates on the step change.
 
 ### Example D: Long Run — Race Pace Sandwich
 
