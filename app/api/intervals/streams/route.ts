@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const ids = activityIds.slice(0, 50);
 
   try {
-    const streamMap = await fetchStreamBatch(creds.intervalsApiKey, ids, 3);
+    const streamMap = await fetchStreamBatch(creds.intervalsApiKey, ids, 5);
     const result = Object.fromEntries(streamMap);
     return NextResponse.json(result);
   } catch (err) {
