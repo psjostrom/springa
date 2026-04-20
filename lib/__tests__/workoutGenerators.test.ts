@@ -245,49 +245,36 @@ describe("generatePlan", () => {
     }
   });
 
-  // --- LONG RUN SANDWICH PROGRESSION ---
+  // --- LONG RUN COMPOSITION ---
 
-  it("rotates long runs between all-easy, sandwich, and progressive", () => {
+  it("produces both all-easy and sandwich long runs in the build phase", () => {
     const plan = generateFull();
     const longRuns = plan.filter(
       (e) => e.external_id.includes("long-") && !e.name.includes("RECOVERY") && !e.name.includes("TAPER") && !e.name.includes("RACE TEST"),
     );
     expect(longRuns.some((lr) => lr.description.includes("99-102% pace"))).toBe(true);
-    expect(longRuns.some((lr) => lr.description.includes("106-111% pace"))).toBe(true);
-    expect(longRuns.some((lr) =>
-      !lr.description.includes("99-102% pace") && !lr.description.includes("106-111% pace"),
-    )).toBe(true);
+    expect(longRuns.some((lr) => !lr.description.includes("99-102% pace"))).toBe(true);
   });
 
-  it("progressive long runs build from easy through steady to tempo", () => {
+  it("never schedules sandwich long runs in consecutive weeks", () => {
     const plan = generateFull();
-    const progressiveRuns = plan.filter(
-      (e) => e.external_id.includes("long-") && e.description.includes("Progressive"),
+    const longRuns = plan
+      .filter((e) => e.external_id.includes("long-"))
+      .sort((a, b) => a.start_date_local.getTime() - b.start_date_local.getTime());
+    const variants = longRuns.map((lr) =>
+      lr.description.includes("99-102% pace") ? "sandwich" : "easy",
     );
-    expect(progressiveRuns.length).toBeGreaterThan(0);
-    for (const run of progressiveRuns) {
-      const mainSet = run.description.slice(run.description.indexOf("Main set"));
-      expect(mainSet).toContain("30-88% pace");
-      expect(mainSet).toContain("99-102% pace");
-      expect(mainSet).toContain("106-111% pace");
-      const steadyIdx = mainSet.indexOf("99-102% pace");
-      const tempoIdx = mainSet.indexOf("106-111% pace");
-      expect(tempoIdx).toBeGreaterThan(steadyIdx);
+    for (let i = 1; i < variants.length; i++) {
+      expect(variants[i] === "sandwich" && variants[i - 1] === "sandwich").toBe(false);
     }
   });
 
-  it("grows race pace block distance as plan progresses", () => {
+  it("never puts interval pace in a long run", () => {
     const plan = generateFull();
-    const sandwichRuns = plan.filter(
-      (e) => e.external_id.includes("long-") && e.description.includes("100-103% pace"),
-    );
-    if (sandwichRuns.length < 2) return;
-    const rpKms = sandwichRuns.map((lr) => {
-      const match = /(\d+)km\s+100-103% pace/.exec(lr.description);
-      return match ? parseInt(match[1], 10) : 0;
-    });
-    for (let i = 1; i < rpKms.length; i++) {
-      expect(rpKms[i]).toBeGreaterThanOrEqual(rpKms[i - 1]);
+    const longRuns = plan.filter((e) => e.external_id.includes("long-"));
+    expect(longRuns.length).toBeGreaterThan(0);
+    for (const run of longRuns) {
+      expect(run.description).not.toContain("106-111% pace");
     }
   });
 

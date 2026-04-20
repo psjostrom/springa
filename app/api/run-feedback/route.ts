@@ -14,7 +14,7 @@ import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
 import { db } from "@/lib/db";
-import { estimatePlannedMinutes, calculateWorkoutCarbs } from "@/lib/workoutMath";
+import { prescribedCarbs } from "@/lib/workoutMath";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
@@ -22,7 +22,8 @@ interface MatchedEvent {
 }
 
 /** Find the matching WORKOUT event for this activity date and compute prescribed carbs
- *  using the PLANNED duration, not the actual moving time. */
+ *  from the description (the prescription). Never derive from event time fields —
+ *  Intervals.icu overwrites those with actual run time after pairing. */
 async function findMatchingEvent(
   apiKey: string,
   activity: IntervalsActivity,
@@ -37,15 +38,10 @@ async function findMatchingEvent(
     if (!res.ok) return { prescribedCarbsG: null, eventId: null };
     const events = (await res.json()) as IntervalsEvent[];
     const planned = events.find((e) => e.category === "WORKOUT" && e.carbs_per_hour != null);
-    if (!planned?.carbs_per_hour) return { prescribedCarbsG: null, eventId: planned?.id ?? null };
-
-    // Same logic as calendarPipeline: event duration first, description fallback, actual moving time last resort.
-    const eventDur = planned.duration ?? planned.elapsed_time ?? planned.moving_time;
-    const estMinutes = estimatePlannedMinutes(planned.description, eventDur, activity.moving_time);
-    if (estMinutes == null) return { prescribedCarbsG: null, eventId: planned.id };
+    if (!planned) return { prescribedCarbsG: null, eventId: null };
 
     return {
-      prescribedCarbsG: calculateWorkoutCarbs(estMinutes, planned.carbs_per_hour),
+      prescribedCarbsG: prescribedCarbs(planned.description, planned.carbs_per_hour),
       eventId: planned.id,
     };
   } catch (err) {

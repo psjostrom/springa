@@ -13,11 +13,12 @@ function z2Seg(hr: number, pace: number, date: string): ZoneSegment {
 
 function improvingZ4Segments(): ZoneSegment[] {
   return [
-    { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
-    { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s2", activityDate: daysAgo(60) },
-    { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(40) },
-    { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s4", activityDate: daysAgo(20) },
-    { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s5", activityDate: daysAgo(5) },
+    { zone: "z4", avgHr: 162, avgPace: 5.33, durationMin: 4, activityId: "s1", activityDate: daysAgo(85) },
+    { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s2", activityDate: daysAgo(70) },
+    { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s3", activityDate: daysAgo(55) },
+    { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s4", activityDate: daysAgo(40) },
+    { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+    { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
   ];
 }
 
@@ -211,9 +212,12 @@ describe("generatePaceSuggestion", () => {
 
   it("returns null when no trend signals are present", () => {
     const flatZ4: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s2", activityDate: daysAgo(40) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(5) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s1", activityDate: daysAgo(85) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s2", activityDate: daysAgo(70) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(55) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s4", activityDate: daysAgo(40) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
     ];
     const result = generatePaceSuggestion({
       segments: flatZ4,
@@ -234,7 +238,38 @@ describe("generatePaceSuggestion", () => {
     expect(result).toBeNull();
   });
 
-  it("returns suggestion after 5-week-old dismiss", () => {
+  it("returns suggestion when enough post-baseline data exists after cooldown", () => {
+    // Dismiss was 70 days ago — cooldown expired, and all data is post-baseline
+    const dismissAt = Date.now() - 70 * 86400000;
+    const postBaselineZ4: ZoneSegment[] = [
+      { zone: "z4", avgHr: 162, avgPace: 5.33, durationMin: 4, activityId: "s1", activityDate: daysAgo(65) },
+      { zone: "z4", avgHr: 162, avgPace: 5.30, durationMin: 4, activityId: "s2", activityDate: daysAgo(55) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s3", activityDate: daysAgo(45) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s4", activityDate: daysAgo(35) },
+      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
+    ];
+    const postBaselineZ2: ZoneSegment[] = [
+      z2Seg(145, 7.0, daysAgo(50)),
+      z2Seg(144, 7.0, daysAgo(46)),
+      z2Seg(146, 7.0, daysAgo(42)),
+      z2Seg(145, 7.0, daysAgo(38)),
+      z2Seg(135, 7.0, daysAgo(22)),
+      z2Seg(136, 7.0, daysAgo(18)),
+      z2Seg(134, 7.0, daysAgo(14)),
+      z2Seg(135, 7.0, daysAgo(10)),
+    ];
+    const result = generatePaceSuggestion({
+      segments: [...postBaselineZ4, ...postBaselineZ2],
+      events: completedEvents(),
+      ...baseAbility,
+      paceSuggestionDismissedAt: dismissAt,
+    });
+    expect(result).not.toBeNull();
+  });
+
+  it("returns null after dismiss when pre-baseline data would trigger but post-baseline data is insufficient", () => {
+    // Dismiss was 35 days ago — cooldown expired, but only 2 Z4 sessions since then
     const segments = [...improvingZ4Segments(), ...improvingZ2Segments()];
     const result = generatePaceSuggestion({
       segments,
@@ -242,17 +277,18 @@ describe("generatePaceSuggestion", () => {
       ...baseAbility,
       paceSuggestionDismissedAt: Date.now() - 35 * 86400000,
     });
-    expect(result).not.toBeNull();
+    expect(result).toBeNull();
   });
 
   it("caps suggested change at 2% of current ability time", () => {
     // Exaggerated improvement — very steep slope
     const steepZ4: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 6.00, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
-      { zone: "z4", avgHr: 162, avgPace: 5.80, durationMin: 4, activityId: "s2", activityDate: daysAgo(60) },
-      { zone: "z4", avgHr: 162, avgPace: 5.50, durationMin: 4, activityId: "s3", activityDate: daysAgo(40) },
-      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s4", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 4.60, durationMin: 4, activityId: "s5", activityDate: daysAgo(5) },
+      { zone: "z4", avgHr: 162, avgPace: 6.10, durationMin: 4, activityId: "s1", activityDate: daysAgo(85) },
+      { zone: "z4", avgHr: 162, avgPace: 6.00, durationMin: 4, activityId: "s2", activityDate: daysAgo(70) },
+      { zone: "z4", avgHr: 162, avgPace: 5.80, durationMin: 4, activityId: "s3", activityDate: daysAgo(55) },
+      { zone: "z4", avgHr: 162, avgPace: 5.50, durationMin: 4, activityId: "s4", activityDate: daysAgo(40) },
+      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 4.60, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
     ];
     const result = generatePaceSuggestion({
       segments: steepZ4,
@@ -266,7 +302,7 @@ describe("generatePaceSuggestion", () => {
   });
 
   it("returns null on conflicting signals", () => {
-    // Z4 improving but cardiac cost regressing
+    // Z4 improving but cardiac cost regressing — need segments in both windows
     const improvingZ4 = improvingZ4Segments();
     const regressingZ2: ZoneSegment[] = [
       z2Seg(135, 7.0, daysAgo(50)),
@@ -289,11 +325,12 @@ describe("generatePaceSuggestion", () => {
   it("detects regression with high confidence", () => {
     // Z4 getting slower + cardiac cost rising
     const regressingZ4: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
-      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s2", activityDate: daysAgo(60) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(40) },
-      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s4", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 5.35, durationMin: 4, activityId: "s5", activityDate: daysAgo(5) },
+      { zone: "z4", avgHr: 162, avgPace: 5.05, durationMin: 4, activityId: "s1", activityDate: daysAgo(85) },
+      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s2", activityDate: daysAgo(70) },
+      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s3", activityDate: daysAgo(55) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s4", activityDate: daysAgo(40) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.35, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
     ];
     const regressingZ2: ZoneSegment[] = [
       z2Seg(135, 7.0, daysAgo(50)),
@@ -542,11 +579,12 @@ describe("generatePaceSuggestion — PB calibration gap", () => {
   it("uses trend suggestion when PB fires but trends show regression", () => {
     // PB says improvement but Z4 + cardiac cost say regression → trust trends
     const regressingZ4: ZoneSegment[] = [
-      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s1", activityDate: daysAgo(80) },
-      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s2", activityDate: daysAgo(60) },
-      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s3", activityDate: daysAgo(40) },
-      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s4", activityDate: daysAgo(20) },
-      { zone: "z4", avgHr: 162, avgPace: 5.35, durationMin: 4, activityId: "s5", activityDate: daysAgo(5) },
+      { zone: "z4", avgHr: 162, avgPace: 5.05, durationMin: 4, activityId: "s1", activityDate: daysAgo(85) },
+      { zone: "z4", avgHr: 162, avgPace: 5.10, durationMin: 4, activityId: "s2", activityDate: daysAgo(70) },
+      { zone: "z4", avgHr: 162, avgPace: 5.15, durationMin: 4, activityId: "s3", activityDate: daysAgo(55) },
+      { zone: "z4", avgHr: 162, avgPace: 5.20, durationMin: 4, activityId: "s4", activityDate: daysAgo(40) },
+      { zone: "z4", avgHr: 162, avgPace: 5.25, durationMin: 4, activityId: "s5", activityDate: daysAgo(20) },
+      { zone: "z4", avgHr: 162, avgPace: 5.35, durationMin: 4, activityId: "s6", activityDate: daysAgo(5) },
     ];
     const result = generatePaceSuggestion({
       segments: regressingZ4, events: completedEvents(), ...baseAbility,

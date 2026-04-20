@@ -42,7 +42,12 @@ export async function enrichActivitiesWithGlucose(
     const readings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
       since: minMs - PADDING_MS,
       until: maxMs + PADDING_MS,
+      count: 1000,
     });
+
+    // NS returns readings sorted DESC (newest first).
+    // Consumers (interpolateBG, alignHRWithBG) expect ASC (oldest first).
+    readings.sort((a, b) => a.ts - b.ts);
 
     return enrichWithGlucose(activities, readings);
   } catch (err) {
