@@ -1,6 +1,6 @@
 import type { ZoneName, PaceTable } from "./types";
 import { FALLBACK_PACE_TABLE, classifyHR, DEFAULT_LTHR } from "./constants";
-import { formatPace } from "./format";
+import { formatPace, pctToMinPerKm } from "./format";
 
 // --- PACE LOOKUP ---
 
@@ -32,37 +32,53 @@ function classifyIntensity(lthrPct: number, lthr: number, hrZones: number[]): Zo
 }
 
 /** Classify zone from Intervals.icu pace percentage (higher % = faster). */
-function classifyPacePct(avgPct: number): ZoneName {
+export function classifyPacePct(avgPct: number): ZoneName {
   if (avgPct >= 112) return "z5";
   if (avgPct >= 103) return "z4";
   if (avgPct >= 96) return "z3";
   return "z2";
 }
 
-/** Convert pace percentage to actual min/km given threshold (race) pace. */
-function pctToMinPerKm(pct: number, racePacePerKm: number): number {
-  return racePacePerKm / (pct / 100);
+/** Parse "M:SS" pace string to decimal min/km. */
+function parsePaceStr(s: string): number {
+  const [min, sec] = s.split(":").map(Number);
+  return min + sec / 60;
 }
 
 /**
  * Parse a workout description and return all distinct HR zones used,
  * ordered from lowest to highest intensity.
  */
-export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = []): ZoneName[] {
+export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = [], thresholdPace?: number): ZoneName[] {
   const isPaceFormat = description.includes("% pace");
-  if (!isPaceFormat && hrZones.length !== 5) return [];
-
-  const stepMatches = Array.from(
-    description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(\d+)-(\d+)%/g),
-  );
-  if (stepMatches.length === 0) return [];
+  const isAbsolutePace = description.includes("/km Pace");
+  if (!isPaceFormat && !isAbsolutePace && hrZones.length !== 5) return [];
 
   const zones = new Set<ZoneName>();
-  for (const m of stepMatches) {
-    const minPct = parseInt(m[1], 10);
-    const maxPct = parseInt(m[2], 10);
-    const avgPct = (minPct + maxPct) / 2;
-    zones.add(isPaceFormat ? classifyPacePct(avgPct) : classifyIntensity(avgPct, lthr, hrZones));
+
+  if (isAbsolutePace) {
+    // Absolute pace format requires threshold to classify into zones
+    if (!thresholdPace) return [];
+    const absPaceMatches = Array.from(
+      description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace/g),
+    );
+    for (const m of absPaceMatches) {
+      const fastPace = parsePaceStr(m[1]);
+      const slowPace = parsePaceStr(m[2]);
+      const avgPace = (fastPace + slowPace) / 2;
+      const avgPct = thresholdPace / avgPace * 100;
+      zones.add(classifyPacePct(avgPct));
+    }
+  } else {
+    const stepMatches = Array.from(
+      description.matchAll(/-\s*(?:[\w\s]*?\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(\d+)-(\d+)%/g),
+    );
+    for (const m of stepMatches) {
+      const minPct = parseInt(m[1], 10);
+      const maxPct = parseInt(m[2], 10);
+      const avgPct = (minPct + maxPct) / 2;
+      zones.add(isPaceFormat ? classifyPacePct(avgPct) : classifyIntensity(avgPct, lthr, hrZones));
+    }
   }
 
   const order: ZoneName[] = ["z2", "z3", "z4", "z5"];
@@ -131,15 +147,18 @@ export interface WorkoutSection {
 export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = [], racePacePerKm?: number): WorkoutSection[] {
   if (!description) return [];
   const isPaceFormat = description.includes("% pace");
-  if (!isPaceFormat && hrZones.length !== 5) return [];
+  const isAbsolutePace = description.includes("/km Pace");
+  if (!isPaceFormat && !isAbsolutePace && hrZones.length !== 5) return [];
 
   const sections: WorkoutSection[] = [];
   // HR-based: "- Warmup 10m 68-83% LTHR (115-140 bpm)"
   const hrStepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
   // Pace-based: "- Warmup 10m 85-94% pace intensity=warmup"
   const paceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
+  // Absolute pace: "- Warmup 10m 6:15-7:52/km Pace intensity=warmup"
+  const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
 
-  const stepPattern = isPaceFormat ? paceStepPattern : hrStepPattern;
+  const stepPattern = isAbsolutePace ? absPaceStepPattern : isPaceFormat ? paceStepPattern : hrStepPattern;
 
   // Split into section blocks
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
@@ -155,6 +174,20 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
   function parseStep(m: RegExpExecArray): WorkoutStep {
     const label = m[1] && !GENERIC_LABELS.includes(m[1]) ? m[1] : undefined;
     const duration = m[2];
+
+    if (isAbsolutePace) {
+      // Absolute pace: groups 3,4 are pace strings like "5:33" and "5:44" (may be undefined for effort steps)
+      if (m[3] && m[4]) {
+        const fastPace = parsePaceStr(m[3]);
+        const slowPace = parsePaceStr(m[4]);
+        const avgPace = (fastPace + slowPace) / 2;
+        const avgPct = racePacePerKm ? racePacePerKm / avgPace * 100 : 85;
+        const zone = classifyPacePct(avgPct);
+        return { label, duration, zone, bpmRange: `${formatPace(fastPace)}-${formatPace(slowPace)} /km` };
+      }
+      const zone: ZoneName = m[1] === "Walk" ? "z1" : "z5";
+      return { label, duration, zone, bpmRange: "" };
+    }
 
     if (isPaceFormat) {
       // Pace-based: groups 3,4 are pace percentages (may be undefined for effort steps)
@@ -235,8 +268,8 @@ export function extractStepTotals(description: string): Record<string, number> {
   if (!description) return {};
 
   const totals: Record<string, number> = {};
-  // Match both HR-based ("X-Y% LTHR") and pace-based ("X-Y% pace") steps
-  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+\d+-\d+%/;
+  // Match HR-based ("X-Y% LTHR"), pace-based ("X-Y% pace"), and absolute pace ("M:SS-M:SS/km Pace") steps
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
 
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
   const headers: { name: string; index: number }[] = [];
@@ -272,7 +305,7 @@ export function extractStepTotals(description: string): Record<string, number> {
 
 export interface WorkoutSegment {
   duration: number; // in minutes
-  intensity: number; // average LTHR percentage (0-100)
+  intensity: number; // average percentage (LTHR % for HR format, pace % for pace formats)
   estimated: boolean; // true if duration was converted from km using pace estimates
   km: number | null; // original km value if distance-based, null if time-based
 }
@@ -287,20 +320,36 @@ function toMinutes(value: number, unit: string, avgPercent: number, table?: Pace
 }
 
 /** Parse step lines within a section, returning total duration and individual segments. */
-function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegment[] {
+function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?: number): WorkoutSegment[] {
   const segments: WorkoutSegment[] = [];
-  // Extract step lines (start with "- "), then parse each for duration + intensity
-  const stepPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
+  const pctPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
+  const absPacePattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace/;
   for (const rawLine of section.split("\n")) {
     if (!rawLine.startsWith("- ")) continue;
-    const line = rawLine.slice(0, 100);
-    const m = stepPattern.exec(line);
-    if (!m) continue;
-    const value = parseFloat(m[1]);
-    const unit = m[2];
-    const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
-    const conv = toMinutes(value, unit, avgPercent, table);
-    segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
+    const line = rawLine.slice(0, 150);
+    const m = pctPattern.exec(line);
+    if (m) {
+      const value = parseFloat(m[1]);
+      const unit = m[2];
+      const avgPercent = (parseInt(m[3], 10) + parseInt(m[4], 10)) / 2;
+      const conv = toMinutes(value, unit, avgPercent, table);
+      segments.push({ duration: conv.minutes, intensity: avgPercent, estimated: conv.estimated, km: conv.km });
+      continue;
+    }
+    const am = absPacePattern.exec(line);
+    if (am) {
+      const value = parseFloat(am[1]);
+      const unit = am[2];
+      const avgPace = (parsePaceStr(am[3]) + parsePaceStr(am[4])) / 2;
+      const intensity = thresholdPace ? thresholdPace / avgPace * 100 : 85;
+      if (unit === "km") {
+        segments.push({ duration: value * avgPace, intensity, estimated: true, km: value });
+      } else if (unit === "s") {
+        segments.push({ duration: value / 60, intensity, estimated: false, km: null });
+      } else {
+        segments.push({ duration: value, intensity, estimated: false, km: null });
+      }
+    }
   }
   return segments;
 }
@@ -309,50 +358,43 @@ function parseSectionSegments(section: string, table?: PaceTable): WorkoutSegmen
  * Parse a workout description into an ordered list of segments with duration and intensity.
  * Handles Warmup, Main set (with repeats), Strides (with repeats), Cooldown, and single-step workouts.
  */
-export function parseWorkoutSegments(description: string, paceTable?: PaceTable): WorkoutSegment[] {
+export function parseWorkoutSegments(description: string, paceTable?: PaceTable, thresholdPace?: number): WorkoutSegment[] {
   if (!description) return [];
   const segments: WorkoutSegment[] = [];
 
-  // Check if this is a single-step workout (no section headers)
   const hasSectionHeaders = /(?:^|\n)(Warmup|Main set|Strides|Cooldown)/m.test(description);
   if (!hasSectionHeaders) {
-    // Single-step workout — parse all step lines directly
-    return parseSectionSegments(description, paceTable);
+    return parseSectionSegments(description, paceTable, thresholdPace);
   }
 
-  // Warmup
   const warmupMatch = /(?:^|\n)Warmup\n(?:- [^\n]*\n?)*/.exec(description);
   if (warmupMatch) {
-    segments.push(...parseSectionSegments(warmupMatch[0], paceTable));
+    segments.push(...parseSectionSegments(warmupMatch[0], paceTable, thresholdPace));
   }
 
-  // Main set (with optional repeats)
   const mainSetSection = /\nMain set[^\n]*\n(?:- [^\n]*\n?)*/.exec(description);
   if (mainSetSection) {
     const repsMatch = /Main set\s+(\d+)x/.exec(mainSetSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
-    const stepSegs = parseSectionSegments(mainSetSection[0], paceTable);
+    const stepSegs = parseSectionSegments(mainSetSection[0], paceTable, thresholdPace);
     for (let r = 0; r < reps; r++) {
       segments.push(...stepSegs);
     }
   }
 
-  // Strides (with optional repeats)
   const stridesSection = /\nStrides\s+\d+x\n(?:- [^\n]*\n?)*/.exec(description);
   if (stridesSection) {
     const repsMatch = /Strides\s+(\d+)x/.exec(stridesSection[0]);
     const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
-    const stepSegs = parseSectionSegments(stridesSection[0], paceTable);
+    const stepSegs = parseSectionSegments(stridesSection[0], paceTable, thresholdPace);
     for (let r = 0; r < reps; r++) {
       segments.push(...stepSegs);
     }
   }
 
-  // Cooldown
   const cooldownMatch = /\nCooldown\n(?:- [^\n]*\n?)*/.exec(description);
   if (cooldownMatch) {
-    const cdSegs = parseSectionSegments(cooldownMatch[0], paceTable);
-    segments.push(...cdSegs);
+    segments.push(...parseSectionSegments(cooldownMatch[0], paceTable, thresholdPace));
   }
 
   return segments;

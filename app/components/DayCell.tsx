@@ -23,6 +23,7 @@ interface DayCellProps {
   onGenerateWorkout?: (date: Date) => void;
   hrZones?: number[];
   lthr?: number;
+  thresholdPace?: number;
 }
 
 export function DayCell({
@@ -43,6 +44,7 @@ export function DayCell({
   onGenerateWorkout,
   hrZones,
   lthr,
+  thresholdPace,
 }: DayCellProps) {
   const isTodayDate = isToday(day);
   const dateKey = format(day, "yyyy-MM-dd");
@@ -108,7 +110,7 @@ export function DayCell({
                 />
               )}
               {event.type === "planned" && event.description && (
-                <WorkoutStructureBar description={event.description} maxHeight={20} hrZones={hrZones} lthr={lthr} />
+                <WorkoutStructureBar description={event.description} maxHeight={20} hrZones={hrZones} lthr={lthr} thresholdPace={thresholdPace} />
               )}
             </button>
           ))}

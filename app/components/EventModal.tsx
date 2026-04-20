@@ -338,7 +338,7 @@ export function EventModal({
 
         {editMode.kind !== "replacing" && selectedEvent.description && selectedEvent.type === "planned" && (
           <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
-            <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} />
+            <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} thresholdPace={racePacePerKm} />
           </WorkoutCard>
         )}
 

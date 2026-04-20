@@ -169,6 +169,7 @@ export function WorkoutGenerator({
           maxHeight={48}
           hrZones={settings.hrZones}
           lthr={settings.lthr}
+          thresholdPace={getThresholdPace(settings.currentAbilityDist, settings.currentAbilitySecs)}
         />
       </WorkoutCard>
 

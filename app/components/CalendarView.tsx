@@ -241,6 +241,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
       onDragEnd={handleDragEnd}
       hrZones={hrZones}
       lthr={lthr}
+      thresholdPace={racePacePerKm}
       onEventClick={openWorkoutModal}
       onGenerateWorkout={handleGenerateWorkout}
     />
@@ -384,6 +385,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
               paceTable={paceTable}
               hrZones={hrZones}
               lthr={lthr}
+              thresholdPace={racePacePerKm}
               clothingMap={clothingMap}
             />
           </div>
