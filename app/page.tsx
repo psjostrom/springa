@@ -14,6 +14,7 @@ import {
   diabetesModeAtom,
   bgModelAtom,
   calendarReloadAtom,
+  isDemoAtom,
 } from "./atoms";
 import { TabNavigation } from "./components/TabNavigation";
 import { PlannerScreen } from "./screens/PlannerScreen";
@@ -26,6 +27,7 @@ import { BGGraphPopover } from "./components/BGGraphPopover";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
 import { PaceSuggestionBanner } from "./components/PaceSuggestionBanner";
 import { SettingsOverlay } from "./components/SettingsOverlay";
+import { DemoBanner } from "./components/DemoBanner";
 import { Settings, Sun, Moon } from "lucide-react";
 import { getThresholdPace } from "@/lib/paceTable";
 import { generatePlan } from "@/lib/workoutGenerators";
@@ -63,6 +65,7 @@ function HomeContent() {
   const diabetesMode = useAtomValue(diabetesModeAtom);
   const bgModel = useAtomValue(bgModelAtom);
   const onRetryLoad = useSetAtom(calendarReloadAtom);
+  const isDemo = useAtomValue(isDemoAtom);
 
   const handleAbilityChanged = useCallback(async (newSecs: number, newDist: number) => {
     if (!settings?.hrZones?.length) return;
@@ -187,6 +190,7 @@ function HomeContent() {
 
   return (
     <div className="h-screen bg-bg flex flex-col text-text font-sans overflow-hidden">
+      {isDemo && <DemoBanner />}
       <div className="bg-surface border-b border-border flex-shrink-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
           <button
@@ -257,7 +261,7 @@ function HomeContent() {
 
       {showSettings && settings && (
         <SettingsOverlay
-          email={session?.user?.email ?? ""}
+          email={settings.email ?? session?.user?.email ?? ""}
           settings={settings}
           onSave={updateSettings}
           onClose={() => { setShowSettings(false); }}

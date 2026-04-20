@@ -1,4 +1,5 @@
 import { signIn } from "@/lib/auth";
+import Link from "next/link";
 
 export default function LoginPage() {
   return (
@@ -25,6 +26,12 @@ export default function LoginPage() {
             Sign in with Google
           </button>
         </form>
+        <Link
+          href="/demo"
+          className="block mt-4 text-sm text-muted hover:text-brand transition"
+        >
+          Try the demo
+        </Link>
       </div>
     </div>
   );
