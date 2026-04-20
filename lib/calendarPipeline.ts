@@ -6,7 +6,7 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { getWorkoutCategory } from "./constants";
-import { calculateWorkoutCarbs, estimatePlannedMinutes } from "./workoutMath";
+import { prescribedCarbs } from "./workoutMath";
 import { nonEmpty } from "./format";
 import { categoryFromExternalId } from "./paceInsight";
 
@@ -183,16 +183,7 @@ export function processActivities(
       matchingEvent?.description ?? activity.description ?? "";
 
     const fuelRate = matchingEvent?.carbs_per_hour ?? null;
-
-    // Calculate total carbs from fuel rate and PLANNED duration.
-    let totalCarbs: number | null = null;
-    if (fuelRate != null) {
-      const eventDur = matchingEvent?.duration ?? matchingEvent?.elapsed_time ?? matchingEvent?.moving_time;
-      const estMinutes = estimatePlannedMinutes(description, eventDur, activity.moving_time);
-      if (estMinutes != null) {
-        totalCarbs = calculateWorkoutCarbs(estMinutes, fuelRate);
-      }
-    }
+    const totalCarbs = prescribedCarbs(description, fuelRate);
 
     // Actual carbs ingested: from activity API field, default to planned totalCarbs
     const carbsIngested = activity.carbs_ingested ?? totalCarbs;
@@ -263,16 +254,7 @@ export function processPlannedEvents(
     const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
-
-    // Calculate total carbs from fuel rate and estimated duration.
-    let eventTotalCarbs: number | null = null;
-    if (eventFuelRate != null) {
-      const eventDur = event.duration ?? event.elapsed_time ?? event.moving_time;
-      const estMinutes = estimatePlannedMinutes(eventDesc, eventDur);
-      if (estMinutes != null) {
-        eventTotalCarbs = calculateWorkoutCarbs(estMinutes, eventFuelRate);
-      }
-    }
+    const eventTotalCarbs = prescribedCarbs(eventDesc, eventFuelRate);
 
     calendarEvents.push({
       id: `event-${event.id}`,
