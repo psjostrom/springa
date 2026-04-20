@@ -19,7 +19,9 @@ export function WorkoutStructureBar({
   const segments = parseWorkoutSegments(description, undefined, thresholdPace);
   const isPaceBased = description.includes("/km Pace") || description.includes("% pace");
 
-  if (!segments.length || (!isPaceBased && hrZones?.length !== 5)) return null;
+  if (!segments.length) return null;
+  const validHrZones = hrZones?.length === 5 ? hrZones : null;
+  if (!isPaceBased && !validHrZones) return null;
 
   const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
 
@@ -28,9 +30,9 @@ export function WorkoutStructureBar({
       {segments.map((segment, idx) => {
         const widthPercent = (segment.duration / totalDuration) * 100;
         const heightPercent = ((segment.intensity - 70) / 30) * 70 + 30;
-        const zoneKey = isPaceBased
+        const zoneKey = isPaceBased || !validHrZones
           ? classifyPacePct(segment.intensity)
-          : classifyHR((segment.intensity / 100) * lthr, hrZones!);
+          : classifyHR((segment.intensity / 100) * lthr, validHrZones);
 
         return (
           <div
