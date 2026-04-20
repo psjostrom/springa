@@ -39,7 +39,7 @@ async function insertCredentials() {
   });
 }
 
-function makeRequest(windows: Array<{ activityId: string; start: number; end: number }>) {
+function makeRequest(windows: { activityId: string; start: number; end: number }[]) {
   return new Request("http://localhost/api/bg/runs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
