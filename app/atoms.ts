@@ -31,6 +31,7 @@ export const lastGeneratedConfigAtom = atomWithStorage<string | null>("lastGener
 
 export const intervalsConnectedAtom = atom((get) => get(settingsAtom)?.intervalsConnected ?? false);
 export const diabetesModeAtom = atom((get) => get(settingsAtom)?.diabetesMode ?? false);
+export const isDemoAtom = atom((get) => get(settingsAtom)?.demo === true);
 
 export const updateSettingsAtom = atom(
   null,
