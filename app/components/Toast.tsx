@@ -59,3 +59,13 @@ export function Toast({
     </div>
   );
 }
+
+export function ToastStack({ children }: { children: ReactNode }) {
+  return (
+    <div className="toast-stack fixed z-50 left-0 right-0 px-4 md:left-auto md:right-4 md:px-0 md:w-80">
+      <div className="max-w-sm w-full mx-auto md:max-w-none flex flex-col gap-2">
+        {children}
+      </div>
+    </div>
+  );
+}
