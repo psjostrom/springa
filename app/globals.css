@@ -195,3 +195,16 @@ html.light input[type="datetime-local"] {
   0%, 100% { opacity: 0.85; }
   50% { opacity: 1; }
 }
+
+/* Toast stack positioning — calc()+env() can't be expressed in Tailwind */
+.toast-stack {
+  bottom: calc(56px + env(safe-area-inset-bottom) + 8px);
+}
+@media (min-width: 768px) {
+  .toast-stack { bottom: 1rem; }
+}
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}

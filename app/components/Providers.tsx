@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SessionProvider, useSession } from "next-auth/react";
-import { NotificationPrompt } from "./NotificationPrompt";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -105,7 +104,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <PushSubscriptionManager />
-      <NotificationPrompt />
       {waitingWorker && <UpdateBanner onUpdate={handleUpdate} />}
       {children}
     </SessionProvider>

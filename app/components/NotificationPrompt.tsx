@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
 import { isDemoAtom } from "../atoms";
+import { Toast } from "./Toast";
 
 const DISMISSED_KEY = "notification-prompt-dismissed";
 
@@ -52,38 +53,11 @@ export function NotificationPrompt() {
   if (isDemo || !shouldShow) return null;
 
   return (
-    <div className="fixed bottom-16 md:bottom-4 left-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-surface p-4 shadow-lg">
-      <p className="flex-1 text-sm text-text">
-        Enable push notifications for pre-run alerts
-      </p>
-      <button
-        type="button"
-        onClick={handleEnable}
-        className="shrink-0 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white"
-      >
-        Enable
-      </button>
-      <button
-        type="button"
-        onClick={handleDismiss}
-        className="shrink-0 text-muted hover:text-text"
-        aria-label="Dismiss"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
-        </svg>
-      </button>
-    </div>
+    <Toast
+      message="Enable push notifications for pre-run alerts"
+      actionLabel="Enable"
+      onAction={handleEnable}
+      onDismiss={handleDismiss}
+    />
   );
 }
