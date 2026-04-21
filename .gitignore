@@ -43,3 +43,9 @@ docs/superpowers/
 # typescript
 tsconfig.tsbuildinfo
 .superpowers/
+
+# claude code local settings
+.claude/settings.local.json
+
+# playwright MCP artifacts
+.playwright-mcp/

@@ -82,56 +82,72 @@ export function useStreamCache(
           }
           if (aborted()) return;
 
-          // Process each run: extract streams (glucose reconstructed later in useRunData)
-          for (const e of uncachedRuns) {
-            if (aborted()) return;
-
+          // Extract streams for each run and collect BG time windows
+          const runData = uncachedRuns.map((e) => {
             const streams = allStreams.get(e.activityId);
             const hrPoints = streams ? extractHRStream(streams) : [];
             const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
-            const rawStreams = streams ? extractRawStreams(streams) : { distance: [], time: [] };
+            const rawS = streams ? extractRawStreams(streams) : { distance: [], time: [] };
             const cat = getWorkoutCategory(e.name);
+            const runStartMs = e.date.getTime();
+            const lastMin = hrPoints.length > 0 ? hrPoints[hrPoints.length - 1].time : 0;
+            const runEndMs = runStartMs + lastMin * 60 * 1000;
+            return { activityId: e.activityId, hrPoints, extra, rawStreams: rawS, cat, runStartMs, runEndMs };
+          });
 
-            // Fetch BG readings for this run's time window.
-            // TODO: sequential per-run fetch — consider batching if cold-start latency is noticeable
-            let glucose: DataPoint[] | undefined;
-            if (hrPoints.length > 0) {
-              const runStartMs = e.date.getTime();
-              const lastMin = hrPoints[hrPoints.length - 1].time;
-              const runEndMs = runStartMs + lastMin * 60 * 1000;
+          // Batch-fetch BG for all runs in one request
+          const bgWindows = runData
+            .filter((r) => r.hrPoints.length > 0 && r.runEndMs > r.runStartMs)
+            .map((r) => ({ activityId: r.activityId, start: r.runStartMs, end: r.runEndMs }));
 
-              if (runEndMs > runStartMs) {
-                try {
-                  const bgRes = await fetch(`/api/bg/run?start=${runStartMs}&end=${runEndMs}`);
-                  if (bgRes.ok) {
-                    const bgData = (await bgRes.json()) as { readings?: BGReading[] };
-                    if (bgData.readings && bgData.readings.length >= 2) {
-                      const aligned = alignHRWithBG(hrPoints, bgData.readings, runStartMs);
-                      if (aligned) glucose = aligned.glucose;
-                    }
-                  } else {
-                    bgFailedIds.add(e.activityId);
+          const bgMap = new Map<string, BGReading[]>();
+          if (bgWindows.length > 0) {
+            try {
+              const bgRes = await fetch("/api/bg/runs", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ windows: bgWindows }),
+              });
+              if (bgRes.ok) {
+                const bgData = (await bgRes.json()) as { readings?: Record<string, BGReading[]> };
+                if (bgData.readings) {
+                  for (const [id, r] of Object.entries(bgData.readings)) {
+                    bgMap.set(id, r);
                   }
-                } catch (err) {
-                  bgFailedIds.add(e.activityId);
-                  console.warn(`[useStreamCache] BG fetch failed for ${e.activityId}:`, err);
                 }
               }
+            } catch (err) {
+              console.warn("[useStreamCache] Batch BG fetch failed:", err);
+            }
+          }
+          if (aborted()) return;
+
+          for (let i = 0; i < uncachedRuns.length; i++) {
+            const e = uncachedRuns[i];
+            const rd = runData[i];
+
+            let glucose: DataPoint[] | undefined;
+            const readings = bgMap.get(e.activityId);
+            if (readings && readings.length >= 2) {
+              const aligned = alignHRWithBG(rd.hrPoints, readings, rd.runStartMs);
+              if (aligned) glucose = aligned.glucose;
+            } else if (rd.hrPoints.length > 0 && rd.runEndMs > rd.runStartMs && !readings) {
+              bgFailedIds.add(e.activityId);
             }
 
             newCached.push({
               activityId: e.activityId,
               name: e.name,
-              category: cat === "other" ? "easy" : cat,
+              category: rd.cat === "other" ? "easy" : rd.cat,
               fuelRate: e.fuelRate ?? null,
-              hr: hrPoints,
-              pace: extra.pace,
-              cadence: extra.cadence,
-              altitude: extra.altitude,
+              hr: rd.hrPoints,
+              pace: rd.extra.pace,
+              cadence: rd.extra.cadence,
+              altitude: rd.extra.altitude,
               activityDate: e.date.toISOString().slice(0, 10),
-              runStartMs: e.date.getTime(),
-              distance: rawStreams.distance.length > 0 ? rawStreams.distance : undefined,
-              rawTime: rawStreams.time.length > 0 ? rawStreams.time : undefined,
+              runStartMs: rd.runStartMs,
+              distance: rd.rawStreams.distance.length > 0 ? rd.rawStreams.distance : undefined,
+              rawTime: rd.rawStreams.time.length > 0 ? rd.rawStreams.time : undefined,
               glucose,
             });
           }

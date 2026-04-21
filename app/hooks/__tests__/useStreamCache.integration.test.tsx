@@ -50,18 +50,22 @@ function setupHandlers(options?: { bgStatus?: number }) {
       });
     }),
 
-    // BG readings for run window
-    http.get("/api/bg/run", () => {
+    // BG readings batch endpoint
+    http.post("/api/bg/runs", async ({ request }) => {
       if (options?.bgStatus) {
         return new HttpResponse(null, { status: options.bgStatus });
       }
-      return HttpResponse.json({
-        readings: [
-          { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
-          { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
-          { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
-        ],
-      });
+      const body = (await request.json()) as { windows: { activityId: string }[] };
+      const bgReadings = [
+        { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+        { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
+        { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
+      ];
+      const readings: Record<string, typeof bgReadings> = {};
+      for (const w of body.windows) {
+        readings[w.activityId] = bgReadings;
+      }
+      return HttpResponse.json({ readings });
     }),
   );
 }
