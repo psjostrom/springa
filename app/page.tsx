@@ -26,6 +26,8 @@ import { CurrentBGPill } from "./components/CurrentBGPill";
 import { BGGraphPopover } from "./components/BGGraphPopover";
 import { UnratedRunBanner } from "./components/UnratedRunBanner";
 import { PaceSuggestionBanner } from "./components/PaceSuggestionBanner";
+import { ToastStack } from "./components/Toast";
+import { NotificationPrompt } from "./components/NotificationPrompt";
 import { SettingsOverlay } from "./components/SettingsOverlay";
 import { DemoBanner } from "./components/DemoBanner";
 import { Settings, Sun, Moon } from "lucide-react";
@@ -244,13 +246,16 @@ function HomeContent() {
         )}
       </div>
 
-      <UnratedRunBanner />
-      {activeTab !== "intel" && (
-        <PaceSuggestionBanner
-          onNavigateToIntel={() => { handleTabChange("intel"); }}
-          onDismiss={() => { void updateSettings({ paceSuggestionDismissedAt: Date.now() }); }}
-        />
-      )}
+      <ToastStack>
+        <NotificationPrompt />
+        {activeTab !== "intel" && (
+          <PaceSuggestionBanner
+            onNavigateToIntel={() => { handleTabChange("intel"); }}
+            onDismiss={() => { void updateSettings({ paceSuggestionDismissedAt: Date.now() }); }}
+          />
+        )}
+        <UnratedRunBanner />
+      </ToastStack>
 
       {/* Spacer to prevent bottom tab bar overlap on mobile */}
       <div className="h-12 md:hidden flex-shrink-0" />
