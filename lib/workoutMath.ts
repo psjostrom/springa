@@ -37,8 +37,8 @@ export function getEstimatedDuration(event: WorkoutEvent): number {
   return DEFAULT_WORKOUT_DURATION_MINUTES;
 }
 
-export function estimateWorkoutDuration(description: string, paceTable?: PaceTable): { minutes: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description, paceTable);
+export function estimateWorkoutDuration(description: string, paceTable?: PaceTable, thresholdPace?: number): { minutes: number; estimated: boolean } | null {
+  const segments = parseWorkoutSegments(description, paceTable, thresholdPace);
   if (segments.length === 0) return null;
   const total = segments.reduce((sum, s) => sum + s.duration, 0);
   if (total <= 0) return null;
@@ -47,8 +47,8 @@ export function estimateWorkoutDuration(description: string, paceTable?: PaceTab
 }
 
 /** Estimate total distance (km) from a workout description. Returns exact km for distance-based workouts, estimated for time-based. */
-export function estimateWorkoutDescriptionDistance(description: string, paceTable?: PaceTable): { km: number; estimated: boolean } | null {
-  const segments = parseWorkoutSegments(description, paceTable);
+export function estimateWorkoutDescriptionDistance(description: string, paceTable?: PaceTable, thresholdPace?: number): { km: number; estimated: boolean } | null {
+  const segments = parseWorkoutSegments(description, paceTable, thresholdPace);
   if (segments.length === 0) return null;
   let totalKm = 0;
   let hasTimeBasedSegment = false;

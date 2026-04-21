@@ -126,7 +126,7 @@ Read `docs/workout-reference.md` when working on workout generation, workout des
 To ensure the generated text is parsed correctly by the workout builder and displayed on the watch:
 
 - **Duration:** ALWAYS use `m` (e.g., `10m`, `45m`). NEVER "min" or "mins".
-- **Step Format:** `[Duration] [Min%]-[Max%]% pace` for pace targets (e.g., `10m 80-88% pace`), or `[Note] [Duration]` for effort-based steps (walks, hills, strides).
+- **Step Format:** `[Duration] [Fast]-[Slow]/km Pace` when threshold is available (e.g., `10m 6:49-20:00/km Pace`), `[Duration] [Min%]-[Max%]% pace` as fallback, or `[Note] [Duration]` for effort-based steps. Capital `P` in `Pace` is required.
 - **Fuel Data:** Fuel info is sent via the `carbs_per_hour` API field on events, NOT embedded in descriptions. The `fuelRate` field on `WorkoutEvent` stores g/h; the upload function passes it directly as `carbs_per_hour` (rounded). Default is 60 g/h for all categories; the BG model overrides with per-category targets when data is available.
 - **Descriptions:** Clean workout text only — no `FUEL PER 10:` or `PUMP` prefixes. Notes/flavor text goes before the Warmup section.
 - **Workout Naming:** Format is `W{weekNum} {Type}` (e.g., `W01 Easy`, `W05 Long (12km)`, `W12 Short-Intervals`). No suffix.
