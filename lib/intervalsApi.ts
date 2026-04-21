@@ -273,7 +273,7 @@ export async function fetchStreams(
 
 // --- BATCH STREAM FETCHING ---
 
-const BATCH_DELAY_MS = 500; // pause between batches to avoid 429s
+const BATCH_DELAY_MS = 200;
 
 /** Fetch streams for multiple activities with concurrency control and rate limiting. */
 export async function fetchStreamBatch(

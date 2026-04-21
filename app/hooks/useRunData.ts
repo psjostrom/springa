@@ -33,9 +33,6 @@ export function useRunData(
   // If sugar mode is off, skip all BG-related enrichment
   const skipBG = diabetesMode === false;
 
-  // Glucose is now fetched per-run in useStreamCache via /api/bg/run.
-  // No separate enrichment step needed.
-
   // 3. Activity name map
   const bgActivityNames = useMemo(
     () => skipBG ? new Map() : new Map(completedRuns.map((e) => [e.activityId, e.name])),
