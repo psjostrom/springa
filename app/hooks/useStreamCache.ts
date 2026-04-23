@@ -180,7 +180,11 @@ export function useStreamCache(
             ? [...cachedMap.values(), ...newCached.filter(c => !bgFailedIds.has(c.activityId))]
             : allCached;
           writeLocalCache(toPersist);
-          void saveBGCacheRemote(toPersist);
+          void saveBGCacheRemote(toPersist).then((saved) => {
+            if (!saved) {
+              console.error("useStreamCache: remote cache save failed");
+            }
+          });
         }
 
         if (!aborted()) setCachedState(allCached);

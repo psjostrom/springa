@@ -29,14 +29,16 @@ export async function fetchBGCache(): Promise<CachedActivity[]> {
   }
 }
 
-export async function saveBGCacheRemote(data: CachedActivity[]): Promise<void> {
+export async function saveBGCacheRemote(data: CachedActivity[]): Promise<boolean> {
   try {
-    await fetch("/api/bg-cache", {
+    const res = await fetch("/api/bg-cache", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    return res.ok;
   } catch {
     // non-critical — next visit will rebuild
+    return false;
   }
 }

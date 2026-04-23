@@ -176,4 +176,49 @@ describe("useStreamCache BG fetch", () => {
 
     expect(streamRequests).toEqual([["act-1"], ["act-2"]]);
   });
+
+  it("logs when remote cache persistence returns a non-ok response", async () => {
+    const originalConsoleError = console.error;
+    const consoleErrorCalls: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      consoleErrorCalls.push(args);
+    };
+
+    try {
+      server.use(
+        http.get("/api/bg-cache", () => HttpResponse.json([])),
+        http.put("/api/bg-cache", () => new HttpResponse(null, { status: 500 })),
+        http.post("/api/intervals/streams", async ({ request }) => {
+          const body = (await request.json()) as { activityIds?: string[] };
+          const activityIds = body.activityIds ?? [];
+          return HttpResponse.json(
+            Object.fromEntries(activityIds.map((activityId) => [activityId, makeStreamPayload(activityId)])),
+          );
+        }),
+        http.post("/api/bg/runs", async ({ request }) => {
+          const body = (await request.json()) as { windows: { activityId: string }[] };
+          const readings = Object.fromEntries(
+            body.windows.map((window) => [window.activityId, [
+              { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+              { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
+              { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
+            ]]),
+          );
+          return HttpResponse.json({ readings });
+        }),
+      );
+
+      const { result } = renderHook(() => useStreamCache(true, [makeRun("act-1")]));
+
+      await waitFor(() => {
+        expect(result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1"]);
+      });
+
+      await waitFor(() => {
+        expect(consoleErrorCalls).toContainEqual(["useStreamCache: remote cache save failed"]);
+      });
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
 });
