@@ -9,9 +9,9 @@ import { Toast } from "./Toast";
 export function UnratedRunBanner() {
   const events = useAtomValue(enrichedEventsAtom);
   const unrated = useUnratedRun(events);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedActivityId, setDismissedActivityId] = useState<string | null>(null);
 
-  if (!unrated || dismissed) return null;
+  if (!unrated || dismissedActivityId === unrated.activityId) return null;
 
   return (
     <Toast
@@ -19,7 +19,7 @@ export function UnratedRunBanner() {
       actionLabel="Rate"
       accent="success"
       actionHref={`/feedback?activityId=${unrated.activityId}`}
-      onDismiss={() => { setDismissed(true); }}
+      onDismiss={() => { setDismissedActivityId(unrated.activityId); }}
     />
   );
 }

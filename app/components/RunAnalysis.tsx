@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import useSWR, { mutate } from "swr";
+import { useMemo } from "react";
+import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -11,7 +11,7 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import { summarizeBGModel } from "@/lib/bgModel";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { buildReportCard } from "@/lib/reportCard";
-import { buildRunAnalysisContextKey } from "@/lib/runAnalysisCache";
+import { buildRunAnalysisClientContextKey } from "@/lib/runAnalysisCache";
 import { diabetesModeAtom } from "../atoms";
 
 interface RunAnalysisProps {
@@ -59,19 +59,14 @@ async function fetchAnalysisApi(request: AnalysisRequest): Promise<string> {
 export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData }: RunAnalysisProps) {
   const diabetesMode = useAtomValue(diabetesModeAtom);
   const activityId = event.activityId;
-  const reportCard = useMemo(
-    () => buildReportCard(event, runBGContext, diabetesMode),
-    [event, runBGContext, diabetesMode],
-  );
   const analysisContextKey = useMemo(
-    () => buildRunAnalysisContextKey({
+    () => buildRunAnalysisClientContextKey({
       event,
       diabetesMode,
       runBGContext,
-      reportCard,
-      bgModelSummary: bgModel ? summarizeBGModel(bgModel) : undefined,
+      bgModel,
     }),
-    [event, diabetesMode, runBGContext, reportCard, bgModel],
+    [event, diabetesMode, runBGContext, bgModel],
   );
   const swrKey = activityId && !isLoadingStreamData
     ? ["run-analysis", activityId, analysisContextKey] as const
@@ -87,11 +82,6 @@ export function RunAnalysis({ event, runBGContext, bgModel, isLoadingStreamData 
       dedupingInterval: 60000,
     },
   );
-
-  useEffect(() => {
-    if (!activityId || !analysis) return;
-    void mutate(["run-analysis", activityId], analysis, { revalidate: false });
-  }, [activityId, analysis]);
 
   // Regenerate mutation — same key, so it updates the useSWR cache automatically
   const { trigger, isMutating, error: mutationError } = useSWRMutation<string, Error, readonly [string, string, string] | null, AnalysisRequest>(

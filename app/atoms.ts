@@ -20,6 +20,7 @@ import {
   toPaceTable,
 } from "@/lib/paceCalibration";
 import { generatePaceSuggestion, type PaceSuggestion } from "@/lib/paceInsight";
+import { isSharedCalendarKey } from "@/lib/sharedCalendarData";
 
 // ─── Settings ────────────────────────────────────────────────
 
@@ -62,7 +63,11 @@ export const calendarErrorAtom = atom<string | null>(null);
 // Uses SWR's global mutate with the same key as useSharedCalendarData.
 export const calendarReloadAtom = atom(null, (get) => {
   const connected = get(intervalsConnectedAtom);
-  if (connected) void mutate("calendar-data");
+  if (connected) {
+    void mutate((key: unknown) => isSharedCalendarKey(key), undefined, {
+      revalidate: true,
+    });
+  }
 });
 
 /** Optimistically patch a single CalendarEvent by id after a widget save. */
