@@ -26,7 +26,20 @@ export function useStreamCache(
   const [cached, setCached] = useState<CachedActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const loadedRef = useRef(false);
+  const cachedRef = useRef<CachedActivity[]>([]);
+  const runSnapshotRef = useRef<CompletedRun[]>(runs);
+  const runCacheKey = runs
+    .map((run) => `${run.activityId}:${run.date.getTime()}:${run.name}`)
+    .join("|");
+
+  const setCachedState = (next: CachedActivity[]) => {
+    cachedRef.current = next;
+    setCached(next);
+  };
+
+  useEffect(() => {
+    runSnapshotRef.current = runs;
+  }, [runCacheKey, runs]);
 
   // L1: instant render from localStorage (once)
   const l1DoneRef = useRef(false);
@@ -34,31 +47,37 @@ export function useStreamCache(
     if (l1DoneRef.current) return;
     l1DoneRef.current = true;
     const local = readLocalCache();
-    if (local.length > 0) setCached(local);
+    if (local.length > 0) setCachedState(local);
   }, []);
 
   // L2: fetch remote cache, diff, fetch uncached streams, merge, save
   useEffect(() => {
-    if (!enabled || loadedRef.current || runs.length === 0) return;
-    loadedRef.current = true;
+    const runSnapshot = runSnapshotRef.current;
+    if (!enabled || runSnapshot.length === 0) return;
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
 
     void (async () => {
       setLoading(true);
       try {
-        const wantedIds = new Set(runs.map((e) => e.activityId));
+        const wantedIds = new Set(runSnapshot.map((e) => e.activityId));
 
         const remoteCached = await fetchBGCache();
         if (aborted()) return;
 
-        const cachedMap = new Map(
-          remoteCached
-            .filter((c) => wantedIds.has(c.activityId))
-            .map((c) => [c.activityId, c]),
-        );
+        const cachedMap = new Map<string, CachedActivity>();
+        for (const entry of cachedRef.current) {
+          if (wantedIds.has(entry.activityId)) {
+            cachedMap.set(entry.activityId, entry);
+          }
+        }
+        for (const entry of remoteCached) {
+          if (wantedIds.has(entry.activityId) && !cachedMap.has(entry.activityId)) {
+            cachedMap.set(entry.activityId, entry);
+          }
+        }
 
-        const uncachedRuns = runs.filter(
+        const uncachedRuns = runSnapshot.filter(
           (e) => !cachedMap.has(e.activityId),
         );
 
@@ -164,17 +183,16 @@ export function useStreamCache(
           void saveBGCacheRemote(toPersist);
         }
 
-        if (!aborted()) setCached(allCached);
+        if (!aborted()) setCachedState(allCached);
       } catch (err) {
         console.error("useStreamCache: fetch failed", err);
-        loadedRef.current = false;
       } finally {
         if (!aborted()) setLoading(false);
       }
     })();
 
     return () => { controller.abort(); };
-  }, [enabled, runs]);
+  }, [enabled, runCacheKey]);
 
   return { cached, loading, progress };
 }

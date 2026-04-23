@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
@@ -25,15 +25,22 @@ const completed: CalendarEvent = {
   type: "completed",
   category: "long",
 };
+let originalConsoleError: typeof console.error;
 
 describe("useDragDrop", () => {
   let setEventsMock: ReturnType<typeof vi.fn>;
   let setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
 
   beforeEach(() => {
+    originalConsoleError = console.error;
+    console.error = () => {};
     resetCaptures();
     setEventsMock = vi.fn();
     setEvents = setEventsMock as unknown as React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
   });
 
   it("allows dragging planned events", () => {

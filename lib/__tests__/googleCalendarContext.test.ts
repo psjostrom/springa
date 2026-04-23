@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Client } from "@libsql/client";
 
 const { holder } = vi.hoisted(() => {
@@ -23,15 +23,22 @@ import { encrypt } from "../credentials";
 
 const TEST_KEY = "a".repeat(64);
 const EMAIL = "test@example.com";
+let originalConsoleError: typeof console.error;
 
 describe("getGoogleCalendarContext", () => {
   beforeEach(async () => {
+    originalConsoleError = console.error;
+    console.error = () => {};
     await holder.db.executeMultiple(SCHEMA_DDL);
     await holder.db.execute("DELETE FROM user_settings");
     await holder.db.execute({
       sql: "INSERT INTO user_settings (email, google_refresh_token, google_calendar_id, timezone) VALUES (?, ?, ?, ?)",
       args: [EMAIL, encrypt("1//mock-refresh", TEST_KEY), "existing-cal-id", "Europe/Stockholm"],
     });
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
   });
 
   it("returns accessToken and calendarId for valid user", async () => {

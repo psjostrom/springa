@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import {
   fetchCalendarData,
@@ -21,7 +21,27 @@ import {
   capturedDeleteEventIds,
   capturedActivityPutPayloads,
   capturedSportSettingsPayload,
+  resetCaptures,
 } from "./msw/handlers";
+let originalConsoleLog: typeof console.log;
+let originalConsoleWarn: typeof console.warn;
+let originalConsoleError: typeof console.error;
+
+beforeEach(() => {
+  resetCaptures();
+  originalConsoleLog = console.log;
+  originalConsoleWarn = console.warn;
+  originalConsoleError = console.error;
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+});
+
+afterEach(() => {
+  console.log = originalConsoleLog;
+  console.warn = originalConsoleWarn;
+  console.error = originalConsoleError;
+});
 
 describe("fetchCalendarData", () => {
   it("fetches activities and events in parallel", async () => {
@@ -490,11 +510,41 @@ describe("updateEvent", () => {
 });
 
 describe("uploadToIntervals", () => {
-  it("deletes future workouts then uploads new plan", async () => {
+  it("fetches existing workouts, uploads new plan, then deletes stale workouts", async () => {
     const callOrder: string[] = [];
     server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        callOrder.push("list");
+        return HttpResponse.json([
+          {
+            id: 100,
+            category: "WORKOUT",
+            start_date_local: "2026-03-01T12:00:00",
+            name: "Old workout",
+            external_id: "old-1",
+          },
+          {
+            id: 101,
+            category: "WORKOUT",
+            start_date_local: "2026-03-02T12:00:00",
+            name: "Kept workout",
+            external_id: "test-1",
+          },
+          {
+            id: 102,
+            category: "WORKOUT",
+            start_date_local: "2026-03-03T12:00:00",
+            name: "Manual workout",
+          },
+        ]);
+      }),
       http.delete(`${API_BASE}/athlete/0/events`, () => {
         callOrder.push("delete");
+        return new HttpResponse(null, { status: 200 });
+      }),
+      http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+        capturedDeleteEventIds.push(params.eventId as string);
+        callOrder.push(`delete:${params.eventId as string}`);
         return new HttpResponse(null, { status: 200 });
       }),
       http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
@@ -510,7 +560,42 @@ describe("uploadToIntervals", () => {
 
     const count = await uploadToIntervals("test-key", events);
     expect(count).toBe(1);
-    expect(callOrder).toEqual(["delete", "upload"]);
+    expect(callOrder).toEqual(["list", "upload", "delete:100"]);
+    expect(capturedDeleteEventIds).toEqual(["100"]);
+  });
+
+  it("does not delete existing workouts when upload fails", async () => {
+    const callOrder: string[] = [];
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        callOrder.push("list");
+        return HttpResponse.json([
+          {
+            id: 100,
+            category: "WORKOUT",
+            start_date_local: "2026-03-01T12:00:00",
+            name: "Old workout",
+            external_id: "old-1",
+          },
+        ]);
+      }),
+      http.post(`${API_BASE}/athlete/0/events/bulk`, () => {
+        callOrder.push("upload");
+        return new HttpResponse("Internal Server Error", { status: 500 });
+      }),
+      http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+        callOrder.push(`delete:${params.eventId as string}`);
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
+    ];
+
+    await expect(uploadToIntervals("test-key", events)).rejects.toThrow("API Error 500");
+    expect(callOrder).toEqual(["list", "upload"]);
+    expect(capturedDeleteEventIds).toEqual([]);
   });
 
   it("includes carbs_per_hour in upload payload when fuelRate is set", async () => {

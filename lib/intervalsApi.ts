@@ -543,22 +543,14 @@ export async function uploadToIntervals(
   const auth = authHeader(apiKey);
   const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
-
-  try {
-    const deleteRes = await fetch(
-      `${API_BASE}/athlete/0/events?oldest=${todayStr}&newest=${endStr}&category=WORKOUT`,
-      {
-        method: "DELETE",
-        headers: { Authorization: auth },
-      },
-    );
-
-    if (!deleteRes.ok) {
-      console.error(`Delete failed with status ${deleteRes.status}`);
-    }
-  } catch (deleteError) {
-    console.error("Error during deletion phase:", deleteError);
+  const existingRes = await fetch(
+    `${API_BASE}/athlete/0/events?oldest=${todayStr}&newest=${endStr}&category=WORKOUT`,
+    { headers: { Authorization: auth } },
+  );
+  if (!existingRes.ok) {
+    throw new Error(`Failed to fetch existing events: ${existingRes.status}`);
   }
+  const existingEvents = (await existingRes.json()) as IntervalsEvent[];
 
   const payload = events.map((e) => ({
     category: "WORKOUT",
@@ -580,6 +572,29 @@ export async function uploadToIntervals(
       const errorText = await res.text();
       throw new Error(`API Error ${res.status}: ${errorText}`);
     }
+    const nextExternalIds = new Set(payload.map((event) => event.external_id));
+    const staleEvents = existingEvents.filter(
+      (event) =>
+        event.category === "WORKOUT" &&
+        typeof event.external_id === "string" &&
+        event.external_id.length > 0 &&
+        !nextExternalIds.has(event.external_id),
+    );
+
+    for (const staleEvent of staleEvents) {
+      try {
+        const deleteRes = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(staleEvent.id))}`, {
+          method: "DELETE",
+          headers: { Authorization: auth },
+        });
+        if (!deleteRes.ok) {
+          console.error(`Delete failed for event ${staleEvent.id} with status ${deleteRes.status}`);
+        }
+      } catch (deleteError) {
+        console.error(`Error deleting stale event ${staleEvent.id}:`, deleteError);
+      }
+    }
+
     return payload.length;
   } catch (error) {
     console.error("Upload failed:", error);

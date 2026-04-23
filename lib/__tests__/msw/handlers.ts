@@ -56,6 +56,7 @@ function fixtureCalendarEvents(): CalendarEvent[] {
 export let capturedUploadPayload: unknown[] = [];
 export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
+export let capturedFetchedEventsUrl: string | null = null;
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
 export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
@@ -66,6 +67,7 @@ export function resetCaptures() {
   capturedUploadPayload = [];
   capturedPutPayload = null;
   capturedDeleteEventIds = [];
+  capturedFetchedEventsUrl = null;
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
   capturedActivityPutPayloads = [];
@@ -82,7 +84,8 @@ export const handlers = [
   }),
 
   // GET events
-  http.get(`${API_BASE}/athlete/0/events`, () => {
+  http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
+    capturedFetchedEventsUrl = request.url;
     return HttpResponse.json(sampleEvents);
   }),
 
@@ -100,6 +103,12 @@ export const handlers = [
 
   // DELETE future workouts
   http.delete(`${API_BASE}/athlete/0/events`, () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
+
+  // DELETE single event
+  http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+    capturedDeleteEventIds.push(params.eventId as string);
     return new HttpResponse(null, { status: 200 });
   }),
 
@@ -254,6 +263,11 @@ export const handlers = [
   // Google Calendar sync API route (fire-and-forget)
   http.post("/api/google-calendar-sync", () => {
     return HttpResponse.json({ synced: true });
+  }),
+
+  // GET /api/settings (client-side enrichment fetch)
+  http.get("/api/settings", () => {
+    return HttpResponse.json({});
   }),
 
   // PUT /api/settings (Intervals.icu key validation, Nightscout, etc.)

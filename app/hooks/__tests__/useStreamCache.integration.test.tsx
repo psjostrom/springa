@@ -70,6 +70,18 @@ function setupHandlers(options?: { bgStatus?: number }) {
   );
 }
 
+function makeStreamPayload(activityId: string) {
+  return [
+    { type: "heartrate", data: [120, 125, 130, 128, 126] },
+    { type: "time", data: [0, 60, 120, 180, 240] },
+    { type: "distance", data: [0, 200, 400, 600, 800] },
+    { type: "velocity_smooth", data: [2.5, 2.5, 2.5, 2.5, 2.5] },
+    { type: "cadence", data: [80, 82, 81, 80, 79] },
+    { type: "altitude", data: [10, 11, 12, 12, 11] },
+    { type: "activity-id", data: [activityId] },
+  ];
+}
+
 describe("useStreamCache BG fetch", () => {
   beforeEach(() => {
     store.clear();
@@ -118,5 +130,50 @@ describe("useStreamCache BG fetch", () => {
     // Should NOT be persisted — will be retried on next load
     const persisted = JSON.parse(store.get("bgcache_v6") ?? "[]");
     expect(persisted).toHaveLength(0);
+  });
+
+  it("fetches newly added runs without refetching runs already cached in-session", async () => {
+    const streamRequests: string[][] = [];
+
+    server.use(
+      http.get("/api/bg-cache", () => HttpResponse.json([])),
+      http.put("/api/bg-cache", () => HttpResponse.json({ ok: true })),
+      http.post("/api/intervals/streams", async ({ request }) => {
+        const body = (await request.json()) as { activityIds?: string[] };
+        const activityIds = body.activityIds ?? [];
+        streamRequests.push(activityIds);
+        return HttpResponse.json(
+          Object.fromEntries(activityIds.map((activityId) => [activityId, makeStreamPayload(activityId)])),
+        );
+      }),
+      http.post("/api/bg/runs", async ({ request }) => {
+        const body = (await request.json()) as { windows: { activityId: string }[] };
+        const readings = Object.fromEntries(
+          body.windows.map((window) => [window.activityId, [
+            { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+            { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
+            { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
+          ]]),
+        );
+        return HttpResponse.json({ readings });
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ hookRuns }: { hookRuns: (CalendarEvent & { activityId: string })[] }) => useStreamCache(true, hookRuns),
+      { initialProps: { hookRuns: [makeRun("act-1")] } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1"]);
+    });
+
+    rerender({ hookRuns: [makeRun("act-1"), makeRun("act-2")] });
+
+    await waitFor(() => {
+      expect(result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1", "act-2"]);
+    });
+
+    expect(streamRequests).toEqual([["act-1"], ["act-2"]]);
   });
 });
