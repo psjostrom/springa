@@ -58,6 +58,7 @@ export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
+export let capturedGooglePatchedEvents: { eventId: string; body: unknown }[] = [];
 export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
 export let capturedSportSettingsPayload: Record<string, unknown> | null = null;
 export let capturedAthletePayload: Record<string, unknown> | null = null;
@@ -68,6 +69,7 @@ export function resetCaptures() {
   capturedDeleteEventIds = [];
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
+  capturedGooglePatchedEvents = [];
   capturedActivityPutPayloads = [];
   capturedSportSettingsPayload = null;
   capturedAthletePayload = null;
@@ -329,9 +331,21 @@ export const handlers = [
     return HttpResponse.json({ id: `gcal-${capturedGoogleCalendarEvents.length}`, ...body });
   }),
 
+  // Google Calendar — get event by ID (returns Sun 12:00 → Sun 13:34, a 1h34m event)
+  http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", ({ params }) => {
+    return HttpResponse.json({
+      id: params.eventId,
+      summary: "W11 Long",
+      start: { dateTime: "2026-04-26T12:00:00+02:00", timeZone: "Europe/Stockholm" },
+      end: { dateTime: "2026-04-26T13:34:00+02:00", timeZone: "Europe/Stockholm" },
+    });
+  }),
+
   // Google Calendar — update event
-  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
-    return HttpResponse.json({ id: "gcal-event-1", summary: "Updated" });
+  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", async ({ request, params }) => {
+    const body = await request.json() as Record<string, unknown>;
+    capturedGooglePatchedEvents.push({ eventId: params.eventId as string, body });
+    return HttpResponse.json({ id: params.eventId, ...body });
   }),
 
   // Google Calendar — delete event

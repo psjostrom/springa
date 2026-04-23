@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
+import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import {
   getGoogleCalendarContext,
   clearFutureGoogleEvents,
   syncEventsToGoogle,
   findGoogleEvent,
+  getGoogleEvent,
   updateGoogleEvent,
   deleteGoogleEvent,
 } from "@/lib/googleCalendar";
 import type { SyncEvent } from "@/lib/googleCalendar";
+
+// Strip a trailing TZ offset (`+02:00` or `Z`) so the wall-clock can be parsed
+// as a naive Date for delta math. We never compare absolute instants here.
+function toWallClock(dateTime: string): Date {
+  return new Date(dateTime.replace(/([+-]\d{2}:\d{2}|Z)$/, ""));
+}
 
 interface SyncRequest {
   action: "bulk-sync" | "update" | "delete";
@@ -48,7 +56,23 @@ export async function POST(req: Request) {
         if (body.updates.name) updates.summary = body.updates.name;
         if (body.updates.description) updates.description = body.updates.description;
         if (body.updates.date) {
-          updates.start = { dateTime: body.updates.date, timeZone: ctx.timezone };
+          // Shift end by the same delta as start so the duration is preserved.
+          // Without this, Google leaves the original end alone and a 1h event
+          // dragged across days becomes a multi-day event.
+          const newStart = body.updates.date;
+          updates.start = { dateTime: newStart, timeZone: ctx.timezone };
+
+          const existing = await getGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId);
+          if (existing) {
+            const oldStart = toWallClock(existing.start.dateTime);
+            const oldEnd = toWallClock(existing.end.dateTime);
+            const durationMs = oldEnd.getTime() - oldStart.getTime();
+            const newEnd = new Date(toWallClock(newStart).getTime() + durationMs);
+            updates.end = {
+              dateTime: format(newEnd, "yyyy-MM-dd'T'HH:mm:ss"),
+              timeZone: ctx.timezone,
+            };
+          }
         }
         await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
       }

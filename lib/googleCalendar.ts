@@ -117,6 +117,28 @@ export async function clearFutureGoogleEvents(
   }
 }
 
+/** Fetch a Google Calendar event by its ID. Returns start/end or null if missing. */
+export async function getGoogleEvent(
+  accessToken: string,
+  calendarId: string,
+  googleEventId: string,
+): Promise<{ start: { dateTime: string; timeZone?: string }; end: { dateTime: string; timeZone?: string } } | null> {
+  const res = await fetch(
+    `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+    { headers: authHeaders(accessToken) },
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    start?: { dateTime?: string; timeZone?: string };
+    end?: { dateTime?: string; timeZone?: string };
+  };
+  if (!data.start?.dateTime || !data.end?.dateTime) return null;
+  return {
+    start: { dateTime: data.start.dateTime, timeZone: data.start.timeZone },
+    end: { dateTime: data.end.dateTime, timeZone: data.end.timeZone },
+  };
+}
+
 /** Find a Google Calendar event by summary (name) and date. Returns the event ID or null. */
 export async function findGoogleEvent(
   accessToken: string,
