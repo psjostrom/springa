@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { renderHook, waitFor } from "@/lib/__tests__/test-utils";
 import { server } from "@/lib/__tests__/msw/server";
+import type { CachedActivity } from "@/lib/activityStreamsDb";
 import type { CalendarEvent } from "@/lib/types";
 
 // Stub localStorage — hooks read/write cache here
@@ -80,6 +81,24 @@ function makeStreamPayload(activityId: string) {
     { type: "altitude", data: [10, 11, 12, 12, 11] },
     { type: "activity-id", data: [activityId] },
   ];
+}
+
+function makeCachedActivity(activityId: string): CachedActivity {
+  return {
+    activityId,
+    name: "Easy Run eco16",
+    category: "easy",
+    fuelRate: null,
+    hr: [{ time: 0, value: 120 }],
+    pace: [{ time: 0, value: 6.67 }],
+    cadence: [{ time: 0, value: 160 }],
+    altitude: [{ time: 0, value: 10 }],
+    activityDate: RUN_START.toISOString().slice(0, 10),
+    runStartMs: RUN_START_MS,
+    distance: [0, 1000],
+    rawTime: [0, 300],
+    glucose: [{ time: 0, value: 8.0 }],
+  };
 }
 
 describe("useStreamCache BG fetch", () => {
@@ -175,6 +194,109 @@ describe("useStreamCache BG fetch", () => {
     });
 
     expect(streamRequests).toEqual([["act-1"], ["act-2"]]);
+  });
+
+  it("retries remote save on the next visit without refetching streams", async () => {
+    const streamRequests: string[][] = [];
+    let remoteSaveAttempts = 0;
+
+    server.use(
+      http.get("/api/bg-cache", () => HttpResponse.json([])),
+      http.put("/api/bg-cache", () => {
+        remoteSaveAttempts += 1;
+        if (remoteSaveAttempts === 1) {
+          return new HttpResponse(null, { status: 500 });
+        }
+        return HttpResponse.json({ ok: true });
+      }),
+      http.post("/api/intervals/streams", async ({ request }) => {
+        const body = (await request.json()) as { activityIds?: string[] };
+        const activityIds = body.activityIds ?? [];
+        streamRequests.push(activityIds);
+        return HttpResponse.json(
+          Object.fromEntries(activityIds.map((activityId) => [activityId, makeStreamPayload(activityId)])),
+        );
+      }),
+      http.post("/api/bg/runs", async ({ request }) => {
+        const body = (await request.json()) as { windows: { activityId: string }[] };
+        const readings = Object.fromEntries(
+          body.windows.map((window) => [window.activityId, [
+            { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+            { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
+            { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
+          ]]),
+        );
+        return HttpResponse.json({ readings });
+      }),
+    );
+
+    const firstVisit = renderHook(() => useStreamCache(true, [makeRun("act-1")]));
+
+    await waitFor(() => {
+      expect(firstVisit.result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1"]);
+    });
+    await waitFor(() => {
+      expect(remoteSaveAttempts).toBe(1);
+    });
+
+    firstVisit.unmount();
+
+    const secondVisit = renderHook(() => useStreamCache(true, [makeRun("act-1")]));
+
+    await waitFor(() => {
+      expect(secondVisit.result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1"]);
+    });
+    await waitFor(() => {
+      expect(remoteSaveAttempts).toBe(2);
+    });
+
+    expect(streamRequests).toEqual([["act-1"]]);
+  });
+
+  it("preserves unrelated persisted cache rows when syncing a subset of runs", async () => {
+    const remoteSavePayloads: CachedActivity[][] = [];
+    store.set("bgcache_v6", JSON.stringify([makeCachedActivity("act-2")]));
+
+    server.use(
+      http.get("/api/bg-cache", () => HttpResponse.json([])),
+      http.put("/api/bg-cache", async ({ request }) => {
+        const payload = (await request.json()) as CachedActivity[];
+        remoteSavePayloads.push(payload);
+        return HttpResponse.json({ ok: true });
+      }),
+      http.post("/api/intervals/streams", async ({ request }) => {
+        const body = (await request.json()) as { activityIds?: string[] };
+        const activityIds = body.activityIds ?? [];
+        return HttpResponse.json(
+          Object.fromEntries(activityIds.map((activityId) => [activityId, makeStreamPayload(activityId)])),
+        );
+      }),
+      http.post("/api/bg/runs", async ({ request }) => {
+        const body = (await request.json()) as { windows: { activityId: string }[] };
+        const readings = Object.fromEntries(
+          body.windows.map((window) => [window.activityId, [
+            { ts: RUN_START_MS, mmol: 8.0, sgv: 144, direction: "Flat", delta: 0 },
+            { ts: RUN_START_MS + 2 * 60_000, mmol: 7.5, sgv: 135, direction: "FortyFiveDown", delta: -0.5 },
+            { ts: RUN_START_MS + 4 * 60_000, mmol: 7.0, sgv: 126, direction: "Flat", delta: 0 },
+          ]]),
+        );
+        return HttpResponse.json({ readings });
+      }),
+    );
+
+    const { result } = renderHook(() => useStreamCache(true, [makeRun("act-1")]));
+
+    await waitFor(() => {
+      expect(result.current.cached.map((entry) => entry.activityId)).toEqual(["act-1"]);
+    });
+    await waitFor(() => {
+      expect(remoteSavePayloads).toHaveLength(1);
+    });
+
+    expect(remoteSavePayloads[0].map((entry) => entry.activityId).sort()).toEqual(["act-1", "act-2"]);
+
+    const persisted = JSON.parse(store.get("bgcache_v6") ?? "[]") as CachedActivity[];
+    expect(persisted.map((entry) => entry.activityId).sort()).toEqual(["act-1", "act-2"]);
   });
 
   it("logs when remote cache persistence returns a non-ok response", async () => {
