@@ -39,18 +39,12 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
     maxObservedMinute != null && maxObservedMinute < lastMinute;
 
   const opacity = reliable ? 1 : 0.4;
+  const bandFill = "var(--color-glucose)";
 
   return (
     <div className="w-full h-56 md:h-72" style={{ opacity }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-          <defs>
-            <linearGradient id="simBand" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-glucose)" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="var(--color-glucose)" stopOpacity={0.05} />
-            </linearGradient>
-          </defs>
-
           <XAxis
             dataKey="minute"
             tick={{ fill: "var(--color-muted)", fontSize: 12 }}
@@ -105,7 +99,8 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
           <Area
             dataKey="bgHigh"
             stroke="none"
-            fill="url(#simBand)"
+            fill={bandFill}
+            fillOpacity={0.12}
             isAnimationActive={false}
           />
           <Area

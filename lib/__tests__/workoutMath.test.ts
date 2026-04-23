@@ -1,7 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { prescribedCarbs } from "../workoutMath";
 import { processActivities, processPlannedEvents } from "../calendarPipeline";
 import type { IntervalsActivity, IntervalsEvent } from "../types";
+
+let originalConsoleLog: typeof console.log;
+
+beforeEach(() => {
+  originalConsoleLog = console.log;
+  console.log = () => {};
+});
+
+afterEach(() => {
+  console.log = originalConsoleLog;
+});
 
 describe("prescribedCarbs", () => {
   it("computes carbs from description duration and fuel rate", () => {

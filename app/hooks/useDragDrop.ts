@@ -66,7 +66,12 @@ export function useDragDrop(
       void syncToGoogleCalendar("update", {
         eventName: draggedEvent.name,
         eventDate: format(draggedEvent.date, "yyyy-MM-dd"),
-        updates: { date: newDateLocal },
+        event: {
+          name: draggedEvent.name,
+          description: draggedEvent.description,
+          startLocal: newDateLocal,
+          ...(draggedEvent.fuelRate != null && { fuelRate: draggedEvent.fuelRate }),
+        },
       });
 
       setEvents((prev) =>

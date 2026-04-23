@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@/lib/__tests__/test-utils";
+import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
+import { useSetAtom } from "jotai";
+import { http, HttpResponse } from "msw";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import {
   settingsAtom,
@@ -8,8 +11,26 @@ import {
   bgModelAtom,
 } from "@/app/atoms";
 import type { UserSettings } from "@/lib/settings";
+import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import "@/lib/__tests__/setup-dom";
+import { server } from "@/lib/__tests__/msw/server";
+
+function PlannerAutoAdaptHarness({
+  autoAdapt,
+  bgModel,
+}: {
+  autoAdapt: boolean;
+  bgModel: BGResponseModel | null;
+}) {
+  const setBgModel = useSetAtom(bgModelAtom);
+
+  useEffect(() => {
+    setBgModel(bgModel);
+  }, [bgModel, setBgModel]);
+
+  return <PlannerScreen autoAdapt={autoAdapt} />;
+}
 
 function baseSettings(overrides?: Partial<UserSettings>): UserSettings {
   return {
@@ -141,5 +162,43 @@ describe("PlannerScreen", () => {
     expect(screen.getByText("3 days/wk")).toBeInTheDocument();
     expect(screen.getByText(/long: sun/i)).toBeInTheDocument();
     expect(screen.getByText(/EcoTrail 16km/)).toBeInTheDocument();
+  });
+
+  it("keeps pending auto-adapt after the URL flag is stripped before bgModel loads", async () => {
+    const capturedBodies: unknown[] = [];
+    server.use(
+      http.post("/api/adapt-plan", async ({ request }) => {
+        capturedBodies.push(await request.json());
+        return HttpResponse.json({ adaptedEvents: [] });
+      }),
+    );
+
+    const model: BGResponseModel = {
+      activitiesAnalyzed: 1,
+      categories: { easy: null, long: null, interval: null },
+      observations: [],
+      bgByStartLevel: [],
+      bgByEntrySlope: [],
+      bgByTime: [],
+      targetFuelRates: [],
+    };
+
+    const { rerender } = render(
+      <PlannerAutoAdaptHarness autoAdapt={true} bgModel={null} />,
+      {
+        atomInits: [
+          [settingsAtom, baseSettings()],
+          [calendarEventsAtom, [futurePlannedEvent()]],
+          [bgModelAtom, null],
+        ],
+      },
+    );
+
+    rerender(<PlannerAutoAdaptHarness autoAdapt={false} bgModel={model} />);
+
+    await waitFor(() => {
+      expect(capturedBodies).toHaveLength(1);
+    });
+    expect(screen.getByText(/Adapted 0 workouts/i)).toBeInTheDocument();
   });
 });

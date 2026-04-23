@@ -94,6 +94,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
   const [optedIn, setOptedIn] = useState<Record<string, boolean>>({});
+  const [pendingAutoAdapt, setPendingAutoAdapt] = useState(Boolean(autoAdapt));
 
   const chartData = useWeeklyVolumeData(planEvents);
 
@@ -230,18 +231,27 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   // Auto-adapt trigger from feedback flow — fires once on mount when autoAdapt is true
   const autoAdaptFired = useRef(false);
-  const onAutoAdapt = useEffectEvent(() => {
-    if (!autoAdaptFired.current && !isAdapting) {
-      autoAdaptFired.current = true;
-      void handleAdapt();
+  useEffect(() => {
+    if (autoAdapt) {
+      setPendingAutoAdapt(true);
     }
+  }, [autoAdapt]);
+
+  const onAutoAdapt = useEffectEvent(() => {
+    if (!pendingAutoAdapt || autoAdaptFired.current || isAdapting) {
+      return;
+    }
+
+      autoAdaptFired.current = true;
+      setPendingAutoAdapt(false);
+      void handleAdapt();
   });
 
   useEffect(() => {
-    if (autoAdapt && bgModel && hasPlannedEvents) {
+    if (pendingAutoAdapt && bgModel && hasPlannedEvents) {
       onAutoAdapt();
     }
-  }, [autoAdapt, bgModel, hasPlannedEvents]);
+  }, [pendingAutoAdapt, bgModel, hasPlannedEvents]);
 
   const handleSync = async () => {
     if (!connected) {
@@ -280,7 +290,12 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         void syncToGoogleCalendar("update", {
           eventName: adapted.original.name,
           eventDate,
-          updates: { description: adapted.description },
+          event: {
+            name: adapted.original.name,
+            description: adapted.description,
+            startLocal: format(adapted.original.date, "yyyy-MM-dd'T'HH:mm:ss"),
+            ...(adapted.fuelRate != null && { fuelRate: adapted.fuelRate }),
+          },
         });
       }
 

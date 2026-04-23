@@ -10,6 +10,21 @@ import {
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CALENDAR_API = "https://www.googleapis.com/calendar/v3";
 
+export interface SyncEvent {
+  name: string;
+  description: string;
+  startLocal: string; // "yyyy-MM-dd'T'HH:mm:ss" in user's local timezone
+  fuelRate?: number;
+  distance?: number;
+}
+
+export interface GoogleCalendarEventPayload {
+  summary: string;
+  description: string;
+  start: { dateTime: string; timeZone: string };
+  end: { dateTime: string; timeZone: string };
+}
+
 /** Exchange a refresh token for a short-lived access token. */
 export async function getGoogleAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch(GOOGLE_TOKEN_URL, {
@@ -71,16 +86,7 @@ export async function syncEventsToGoogle(
   timezone: string,
 ): Promise<void> {
   for (const event of events) {
-    const durationMin = estimateWorkoutDuration(event.description)?.minutes ?? 45;
-    const startDate = new Date(event.startLocal);
-    const endDate = new Date(startDate.getTime() + durationMin * 60_000);
-
-    const body = {
-      summary: event.name,
-      description: formatSyncEventDescription(event),
-      start: { dateTime: event.startLocal, timeZone: timezone },
-      end: { dateTime: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: timezone },
-    };
+    const body = buildGoogleCalendarEventPayload(event, timezone);
 
     const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: "POST",
@@ -144,6 +150,22 @@ export interface EventUpdates {
   description?: string;
   start?: { dateTime: string; timeZone: string };
   end?: { dateTime: string; timeZone: string };
+}
+
+export function buildGoogleCalendarEventPayload(
+  event: SyncEvent,
+  timezone: string,
+): GoogleCalendarEventPayload {
+  const durationMin = estimateWorkoutDuration(event.description)?.minutes ?? 45;
+  const startDate = new Date(event.startLocal);
+  const endDate = new Date(startDate.getTime() + durationMin * 60_000);
+
+  return {
+    summary: event.name,
+    description: formatSyncEventDescription(event),
+    start: { dateTime: event.startLocal, timeZone: timezone },
+    end: { dateTime: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: timezone },
+  };
 }
 
 /** Update a Google Calendar event by its ID. */
@@ -257,15 +279,6 @@ function formatSyncEventDescription(event: SyncEvent): string {
   return lines.join("\n");
 }
 
-/** Pre-formatted event for the sync API route. Dates are local time strings, not Date objects. */
-export interface SyncEvent {
-  name: string;
-  description: string;
-  startLocal: string; // "yyyy-MM-dd'T'HH:mm:ss" in user's local timezone
-  fuelRate?: number;
-  distance?: number;
-}
-
 /** Convert WorkoutEvents to SyncEvents with pre-formatted local time strings.
  *  Must be called on the CLIENT where Date objects are in the user's local timezone. */
 export function toSyncEvents(events: WorkoutEvent[]): SyncEvent[] {
@@ -285,7 +298,7 @@ export async function syncToGoogleCalendar(
     events?: SyncEvent[];
     eventName?: string;
     eventDate?: string;
-    updates?: { name?: string; date?: string; description?: string };
+    event?: SyncEvent;
   },
 ): Promise<void> {
   try {

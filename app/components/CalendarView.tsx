@@ -53,7 +53,7 @@ type CalendarViewMode = "month" | "week" | "agenda";
 
 export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference, racePacePerKm }: CalendarViewProps) {
   const setSwitchTab = useSetAtom(switchTabAtom);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
 
@@ -91,12 +91,10 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
     ? events.find((e) => e.id === selectedEventId) ?? null
     : null;
 
-  // Sync local state when shared events change (setState during render — React-approved pattern)
-  const [prevInitial, setPrevInitial] = useState(initialEvents);
-  if (initialEvents !== prevInitial && initialEvents.length > 0) {
-    setPrevInitial(initialEvents);
+  // Sync local state when shared events change so optimistic UI stays in step with server reloads.
+  useEffect(() => {
     setEvents(initialEvents);
-  }
+  }, [initialEvents]);
 
   const {
     draggedEvent,

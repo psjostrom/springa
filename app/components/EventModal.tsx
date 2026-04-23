@@ -167,7 +167,12 @@ export function EventModal({
       void syncToGoogleCalendar("update", {
         eventName: selectedEvent.name,
         eventDate: format(selectedEvent.date, "yyyy-MM-dd"),
-        updates: { date: newDateLocal },
+        event: {
+          name: selectedEvent.name,
+          description: selectedEvent.description,
+          startLocal: newDateLocal,
+          ...(selectedEvent.fuelRate != null && { fuelRate: selectedEvent.fuelRate }),
+        },
       });
 
       const newDate = new Date(newDateLocal);

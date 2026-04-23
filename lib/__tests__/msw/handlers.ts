@@ -56,8 +56,10 @@ function fixtureCalendarEvents(): CalendarEvent[] {
 export let capturedUploadPayload: unknown[] = [];
 export let capturedPutPayload: { url: string; body: unknown } | null = null;
 export let capturedDeleteEventIds: string[] = [];
+export let capturedFetchedEventsUrl: string | null = null;
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
+export let capturedGooglePatchedEvents: { eventId: string; body: unknown }[] = [];
 export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
 export let capturedSportSettingsPayload: Record<string, unknown> | null = null;
 export let capturedAthletePayload: Record<string, unknown> | null = null;
@@ -66,8 +68,10 @@ export function resetCaptures() {
   capturedUploadPayload = [];
   capturedPutPayload = null;
   capturedDeleteEventIds = [];
+  capturedFetchedEventsUrl = null;
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
+  capturedGooglePatchedEvents = [];
   capturedActivityPutPayloads = [];
   capturedSportSettingsPayload = null;
   capturedAthletePayload = null;
@@ -82,7 +86,8 @@ export const handlers = [
   }),
 
   // GET events
-  http.get(`${API_BASE}/athlete/0/events`, () => {
+  http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
+    capturedFetchedEventsUrl = request.url;
     return HttpResponse.json(sampleEvents);
   }),
 
@@ -100,6 +105,12 @@ export const handlers = [
 
   // DELETE future workouts
   http.delete(`${API_BASE}/athlete/0/events`, () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
+
+  // DELETE single event
+  http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+    capturedDeleteEventIds.push(params.eventId as string);
     return new HttpResponse(null, { status: 200 });
   }),
 
@@ -256,6 +267,11 @@ export const handlers = [
     return HttpResponse.json({ synced: true });
   }),
 
+  // GET /api/settings (client-side enrichment fetch)
+  http.get("/api/settings", () => {
+    return HttpResponse.json({});
+  }),
+
   // PUT /api/settings (Intervals.icu key validation, Nightscout, etc.)
   http.put("/api/settings", async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
@@ -330,8 +346,10 @@ export const handlers = [
   }),
 
   // Google Calendar — update event
-  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
-    return HttpResponse.json({ id: "gcal-event-1", summary: "Updated" });
+  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", async ({ request, params }) => {
+    const body = await request.json() as Record<string, unknown>;
+    capturedGooglePatchedEvents.push({ eventId: params.eventId as string, body });
+    return HttpResponse.json({ id: params.eventId, ...body });
   }),
 
   // Google Calendar — delete event

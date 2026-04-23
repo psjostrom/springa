@@ -4,6 +4,7 @@ import {
   getGoogleCalendarContext,
   clearFutureGoogleEvents,
   syncEventsToGoogle,
+  buildGoogleCalendarEventPayload,
   findGoogleEvent,
   updateGoogleEvent,
   deleteGoogleEvent,
@@ -15,11 +16,7 @@ interface SyncRequest {
   events?: SyncEvent[];
   eventName?: string;
   eventDate?: string;
-  updates?: {
-    name?: string;
-    date?: string;
-    description?: string;
-  };
+  event?: SyncEvent;
 }
 
 export async function POST(req: Request) {
@@ -41,15 +38,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ synced: true, count: body.events.length });
     }
 
-    if (body.action === "update" && body.eventName && body.eventDate) {
+    if (body.action === "update" && body.eventName && body.eventDate && body.event) {
       const googleEventId = await findGoogleEvent(ctx.accessToken, ctx.calendarId, body.eventName, body.eventDate);
-      if (googleEventId && body.updates) {
-        const updates: Record<string, unknown> = {};
-        if (body.updates.name) updates.summary = body.updates.name;
-        if (body.updates.description) updates.description = body.updates.description;
-        if (body.updates.date) {
-          updates.start = { dateTime: body.updates.date, timeZone: ctx.timezone };
-        }
+      if (googleEventId) {
+        const updates = buildGoogleCalendarEventPayload(body.event, ctx.timezone);
         await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
       }
       return NextResponse.json({ synced: true });

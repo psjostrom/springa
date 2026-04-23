@@ -1,8 +1,36 @@
+import { createHash } from "node:crypto";
 import { db } from "./db";
 import { getWorkoutCategory } from "./constants";
 import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 import type { CalendarEvent, IntervalsActivity } from "./types";
 import { nonEmpty } from "./format";
+
+const CONTEXT_HASH_PREFIX = "[[springa-run-analysis-context:";
+
+function parseStoredRunAnalysis(text: string): { text: string; contextHash: string | null } {
+  if (!text.startsWith(CONTEXT_HASH_PREFIX)) {
+    return { text, contextHash: null };
+  }
+
+  const delimiterIndex = text.indexOf("]]\n");
+  if (delimiterIndex === -1) {
+    return { text, contextHash: null };
+  }
+
+  return {
+    contextHash: text.slice(CONTEXT_HASH_PREFIX.length, delimiterIndex),
+    text: text.slice(delimiterIndex + 3),
+  };
+}
+
+function serializeRunAnalysis(text: string, contextHash?: string): string {
+  if (!contextHash) return text;
+  return `${CONTEXT_HASH_PREFIX}${contextHash}]]\n${text}`;
+}
+
+export function hashRunAnalysisContext(contextKey: string): string {
+  return createHash("sha256").update(contextKey).digest("hex");
+}
 
 export interface RunHistoryBG {
   startBG: number;
@@ -18,22 +46,31 @@ export interface RunHistoryEntry {
 export async function getRunAnalysis(
   email: string,
   activityId: string,
+  contextHash?: string,
 ): Promise<string | null> {
   const result = await db().execute({
     sql: "SELECT text FROM run_analysis WHERE email = ? AND activity_id = ?",
     args: [email, activityId],
   });
-  return result.rows.length > 0 ? (result.rows[0].text as string) : null;
+  if (result.rows.length === 0) return null;
+
+  const parsed = parseStoredRunAnalysis(result.rows[0].text as string);
+  if (contextHash && parsed.contextHash !== contextHash) {
+    return null;
+  }
+
+  return parsed.text;
 }
 
 export async function saveRunAnalysis(
   email: string,
   activityId: string,
   text: string,
+  contextHash?: string,
 ): Promise<void> {
   await db().execute({
     sql: "INSERT OR REPLACE INTO run_analysis (email, activity_id, text) VALUES (?, ?, ?)",
-    args: [email, activityId, text],
+    args: [email, activityId, serializeRunAnalysis(text, contextHash)],
   });
 }
 

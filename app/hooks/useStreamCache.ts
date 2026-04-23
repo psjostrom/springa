@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { fetchStreams } from "@/lib/intervalsClient";
 import { extractHRStream, extractExtraStreams, extractRawStreams } from "@/lib/streams";
 import {
@@ -18,163 +18,311 @@ import { getWorkoutCategory } from "@/lib/constants";
 type CompletedRun = CalendarEvent & { activityId: string };
 
 const BATCH_SIZE = 5;
+const EMPTY_PROGRESS = { done: 0, total: 0 };
+
+interface RunData {
+  activityId: string;
+  hrPoints: DataPoint[];
+  extra: ReturnType<typeof extractExtraStreams>;
+  rawStreams: ReturnType<typeof extractRawStreams>;
+  category: ReturnType<typeof getWorkoutCategory>;
+  runStartMs: number;
+  runEndMs: number;
+}
+
+function buildRunCacheKey(runs: CompletedRun[]): string {
+  return runs
+    .map((run) => `${run.activityId}:${run.date.getTime()}:${run.name}`)
+    .join("|");
+}
+
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted;
+}
+
+function compareCachedActivity(a: CachedActivity, b: CachedActivity): number {
+  const dateCompare = (b.activityDate ?? "").localeCompare(a.activityDate ?? "");
+  if (dateCompare !== 0) return dateCompare;
+
+  const startCompare = (b.runStartMs ?? 0) - (a.runStartMs ?? 0);
+  if (startCompare !== 0) return startCompare;
+
+  return a.activityId.localeCompare(b.activityId);
+}
+
+function serializeCache(entries: CachedActivity[]): string {
+  return JSON.stringify([...entries].sort(compareCachedActivity));
+}
+
+function mergeCaches(
+  preferred: CachedActivity[],
+  fallback: CachedActivity[],
+): CachedActivity[] {
+  const merged = new Map<string, CachedActivity>();
+
+  for (const entry of fallback) {
+    merged.set(entry.activityId, entry);
+  }
+  for (const entry of preferred) {
+    merged.set(entry.activityId, entry);
+  }
+
+  return [...merged.values()].sort(compareCachedActivity);
+}
+
+function buildVisibleCache(
+  runs: CompletedRun[],
+  persistedCache: CachedActivity[],
+  sessionCache: CachedActivity[],
+): CachedActivity[] {
+  const persistedMap = new Map(
+    persistedCache.map((entry) => [entry.activityId, entry]),
+  );
+  const sessionMap = new Map(
+    sessionCache.map((entry) => [entry.activityId, entry]),
+  );
+
+  return runs.flatMap((run) => {
+    const entry = sessionMap.get(run.activityId) ?? persistedMap.get(run.activityId);
+    return entry ? [entry] : [];
+  });
+}
+
+function buildRunData(
+  run: CompletedRun,
+  streams: IntervalsStream[] | undefined,
+): RunData {
+  const hrPoints = streams ? extractHRStream(streams) : [];
+  const extra = streams
+    ? extractExtraStreams(streams)
+    : { pace: [], cadence: [], altitude: [] };
+  const rawStreams = streams
+    ? extractRawStreams(streams)
+    : { distance: [], time: [], heartrate: [], velocity: [], cadence: [], altitude: [] };
+  const category = getWorkoutCategory(run.name);
+  const runStartMs = run.date.getTime();
+  const lastMinute = hrPoints.length > 0 ? hrPoints[hrPoints.length - 1].time : 0;
+
+  return {
+    activityId: run.activityId,
+    hrPoints,
+    extra,
+    rawStreams,
+    category,
+    runStartMs,
+    runEndMs: runStartMs + lastMinute * 60 * 1000,
+  };
+}
+
+async function fetchBGReadings(
+  runData: RunData[],
+  signal: AbortSignal,
+): Promise<Map<string, BGReading[]> | null> {
+  const bgMap = new Map<string, BGReading[]>();
+  const windows = runData
+    .filter((run) => run.hrPoints.length > 0 && run.runEndMs > run.runStartMs)
+    .map((run) => ({
+      activityId: run.activityId,
+      start: run.runStartMs,
+      end: run.runEndMs,
+    }));
+
+  if (windows.length === 0) {
+    return bgMap;
+  }
+
+  try {
+    const response = await fetch("/api/bg/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ windows }),
+    });
+    if (signal.aborted) return null;
+
+    if (!response.ok) {
+      return bgMap;
+    }
+
+    const data = (await response.json()) as {
+      readings?: Record<string, BGReading[]>;
+    };
+    for (const [activityId, readings] of Object.entries(data.readings ?? {})) {
+      bgMap.set(activityId, readings);
+    }
+  } catch (err) {
+    console.warn("[useStreamCache] Batch BG fetch failed:", err);
+  }
+
+  return bgMap;
+}
+
+async function loadUncachedRuns(
+  uncachedRuns: CompletedRun[],
+  signal: AbortSignal,
+  setProgress: (progress: { done: number; total: number }) => void,
+): Promise<{
+  entries: CachedActivity[];
+  bgFailedIds: Set<string>;
+} | null> {
+  if (uncachedRuns.length === 0) {
+    setProgress(EMPTY_PROGRESS);
+    return { entries: [], bgFailedIds: new Set<string>() };
+  }
+
+  setProgress({ done: 0, total: uncachedRuns.length });
+
+  const allStreams = new Map<string, IntervalsStream[]>();
+  const uncachedIds = uncachedRuns.map((run) => run.activityId);
+  for (let i = 0; i < uncachedIds.length; i += BATCH_SIZE) {
+    if (signal.aborted) return null;
+
+    const batch = uncachedIds.slice(i, i + BATCH_SIZE);
+    const result = await fetchStreams(batch);
+    for (const [activityId, streams] of Object.entries(result)) {
+      allStreams.set(activityId, streams);
+    }
+
+    if (isAborted(signal)) return null;
+    setProgress({
+      done: Math.min(i + BATCH_SIZE, uncachedIds.length),
+      total: uncachedIds.length,
+    });
+  }
+  if (signal.aborted) return null;
+
+  const runData = uncachedRuns.map((run) => buildRunData(run, allStreams.get(run.activityId)));
+  const bgMap = await fetchBGReadings(runData, signal);
+  if (bgMap === null) return null;
+
+  const bgFailedIds = new Set<string>();
+  const entries = uncachedRuns.map((run, index) => {
+    const data = runData[index];
+    const readings = bgMap.get(run.activityId);
+
+    let glucose: DataPoint[] | undefined;
+    if (readings && readings.length >= 2) {
+      glucose = alignHRWithBG(data.hrPoints, readings, data.runStartMs)?.glucose;
+    } else if (data.hrPoints.length > 0 && data.runEndMs > data.runStartMs && !readings) {
+      bgFailedIds.add(run.activityId);
+    }
+
+    return {
+      activityId: run.activityId,
+      name: run.name,
+      category: data.category === "other" ? "easy" : data.category,
+      fuelRate: run.fuelRate ?? null,
+      hr: data.hrPoints,
+      pace: data.extra.pace,
+      cadence: data.extra.cadence,
+      altitude: data.extra.altitude,
+      activityDate: run.date.toISOString().slice(0, 10),
+      runStartMs: data.runStartMs,
+      distance: data.rawStreams.distance.length > 0 ? data.rawStreams.distance : undefined,
+      rawTime: data.rawStreams.time.length > 0 ? data.rawStreams.time : undefined,
+      glucose,
+    } satisfies CachedActivity;
+  });
+
+  return { entries, bgFailedIds };
+}
 
 export function useStreamCache(
   enabled: boolean,
   runs: CompletedRun[],
 ) {
-  const [cached, setCached] = useState<CachedActivity[]>([]);
+  const [persistedCache, setPersistedCache] = useState<CachedActivity[]>([]);
+  const [sessionCache, setSessionCache] = useState<CachedActivity[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const loadedRef = useRef(false);
+  const [progress, setProgress] = useState(EMPTY_PROGRESS);
+  const runCacheKey = buildRunCacheKey(runs);
+  const cached = useMemo(
+    () => buildVisibleCache(runs, persistedCache, sessionCache),
+    [runs, persistedCache, sessionCache],
+  );
 
-  // L1: instant render from localStorage (once)
-  const l1DoneRef = useRef(false);
+  const reconcileCache = useEffectEvent(async (signal: AbortSignal) => {
+    setLoading(true);
+    try {
+      const remoteCached = await fetchBGCache();
+      if (signal.aborted) return;
+
+      const mergedPersisted = mergeCaches(persistedCache, remoteCached);
+      const mergedPersistedMap = new Map(
+        mergedPersisted.map((entry) => [entry.activityId, entry]),
+      );
+      const uncachedRuns = runs.filter(
+        (run) => !mergedPersistedMap.has(run.activityId),
+      );
+
+      const loaded = await loadUncachedRuns(
+        uncachedRuns,
+        signal,
+        setProgress,
+      );
+      if (loaded === null) return;
+
+      const sessionEntries = loaded.entries.filter((entry) =>
+        loaded.bgFailedIds.has(entry.activityId),
+      );
+      const persistableEntries = loaded.entries.filter(
+        (entry) => !loaded.bgFailedIds.has(entry.activityId),
+      );
+      const nextPersisted = mergeCaches(persistableEntries, mergedPersisted);
+
+      const currentPersistedSignature = serializeCache(persistedCache);
+      const nextPersistedSignature = serializeCache(nextPersisted);
+      const remoteSignature = serializeCache(remoteCached);
+      const persistedChanged = nextPersistedSignature !== currentPersistedSignature;
+      if (persistedChanged) {
+        writeLocalCache(nextPersisted);
+      }
+
+      const remoteChanged = nextPersistedSignature !== remoteSignature;
+      if (remoteChanged) {
+        void saveBGCacheRemote(nextPersisted).then((saved) => {
+          if (!saved) {
+            console.error("useStreamCache: remote cache save failed");
+          }
+        });
+      }
+
+      setSessionCache(sessionEntries);
+      if (persistedChanged) {
+        setPersistedCache(nextPersisted);
+      }
+    } catch (err) {
+      console.error("useStreamCache: fetch failed", err);
+    } finally {
+      if (!signal.aborted) {
+        setLoading(false);
+      }
+    }
+  });
+
   useEffect(() => {
-    if (l1DoneRef.current) return;
-    l1DoneRef.current = true;
-    const local = readLocalCache();
-    if (local.length > 0) setCached(local);
+    setPersistedCache(readLocalCache());
+    setHydrated(true);
   }, []);
 
-  // L2: fetch remote cache, diff, fetch uncached streams, merge, save
   useEffect(() => {
-    if (!enabled || loadedRef.current || runs.length === 0) return;
-    loadedRef.current = true;
+    if (!hydrated) return;
+
+    if (!enabled || runCacheKey.length === 0) {
+      setSessionCache([]);
+      setLoading(false);
+      setProgress(EMPTY_PROGRESS);
+      return;
+    }
+
     const controller = new AbortController();
-    const aborted = () => controller.signal.aborted;
 
-    void (async () => {
-      setLoading(true);
-      try {
-        const wantedIds = new Set(runs.map((e) => e.activityId));
+    void reconcileCache(controller.signal);
 
-        const remoteCached = await fetchBGCache();
-        if (aborted()) return;
-
-        const cachedMap = new Map(
-          remoteCached
-            .filter((c) => wantedIds.has(c.activityId))
-            .map((c) => [c.activityId, c]),
-        );
-
-        const uncachedRuns = runs.filter(
-          (e) => !cachedMap.has(e.activityId),
-        );
-
-        const newCached: CachedActivity[] = [];
-        const bgFailedIds = new Set<string>();
-
-        if (uncachedRuns.length > 0) {
-          setProgress({ done: 0, total: uncachedRuns.length });
-
-          // Fetch streams for HR, pace, cadence, altitude
-          const uncachedIds = uncachedRuns.map((e) => e.activityId);
-          const allStreams = new Map<string, IntervalsStream[]>();
-          for (let i = 0; i < uncachedIds.length; i += BATCH_SIZE) {
-            if (aborted()) return;
-            const batch = uncachedIds.slice(i, i + BATCH_SIZE);
-            const result = await fetchStreams(batch);
-            for (const [id, streams] of Object.entries(result)) {
-              allStreams.set(id, streams);
-            }
-            if (!aborted()) setProgress({ done: Math.min(i + BATCH_SIZE, uncachedIds.length), total: uncachedIds.length });
-          }
-          if (aborted()) return;
-
-          // Extract streams for each run and collect BG time windows
-          const runData = uncachedRuns.map((e) => {
-            const streams = allStreams.get(e.activityId);
-            const hrPoints = streams ? extractHRStream(streams) : [];
-            const extra = streams ? extractExtraStreams(streams) : { pace: [], cadence: [], altitude: [] };
-            const rawS = streams ? extractRawStreams(streams) : { distance: [], time: [] };
-            const cat = getWorkoutCategory(e.name);
-            const runStartMs = e.date.getTime();
-            const lastMin = hrPoints.length > 0 ? hrPoints[hrPoints.length - 1].time : 0;
-            const runEndMs = runStartMs + lastMin * 60 * 1000;
-            return { activityId: e.activityId, hrPoints, extra, rawStreams: rawS, cat, runStartMs, runEndMs };
-          });
-
-          // Batch-fetch BG for all runs in one request
-          const bgWindows = runData
-            .filter((r) => r.hrPoints.length > 0 && r.runEndMs > r.runStartMs)
-            .map((r) => ({ activityId: r.activityId, start: r.runStartMs, end: r.runEndMs }));
-
-          const bgMap = new Map<string, BGReading[]>();
-          if (bgWindows.length > 0) {
-            try {
-              const bgRes = await fetch("/api/bg/runs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ windows: bgWindows }),
-              });
-              if (bgRes.ok) {
-                const bgData = (await bgRes.json()) as { readings?: Record<string, BGReading[]> };
-                if (bgData.readings) {
-                  for (const [id, r] of Object.entries(bgData.readings)) {
-                    bgMap.set(id, r);
-                  }
-                }
-              }
-            } catch (err) {
-              console.warn("[useStreamCache] Batch BG fetch failed:", err);
-            }
-          }
-          if (aborted()) return;
-
-          for (let i = 0; i < uncachedRuns.length; i++) {
-            const e = uncachedRuns[i];
-            const rd = runData[i];
-
-            let glucose: DataPoint[] | undefined;
-            const readings = bgMap.get(e.activityId);
-            if (readings && readings.length >= 2) {
-              const aligned = alignHRWithBG(rd.hrPoints, readings, rd.runStartMs);
-              if (aligned) glucose = aligned.glucose;
-            } else if (rd.hrPoints.length > 0 && rd.runEndMs > rd.runStartMs && !readings) {
-              bgFailedIds.add(e.activityId);
-            }
-
-            newCached.push({
-              activityId: e.activityId,
-              name: e.name,
-              category: rd.cat === "other" ? "easy" : rd.cat,
-              fuelRate: e.fuelRate ?? null,
-              hr: rd.hrPoints,
-              pace: rd.extra.pace,
-              cadence: rd.extra.cadence,
-              altitude: rd.extra.altitude,
-              activityDate: e.date.toISOString().slice(0, 10),
-              runStartMs: rd.runStartMs,
-              distance: rd.rawStreams.distance.length > 0 ? rd.rawStreams.distance : undefined,
-              rawTime: rd.rawStreams.time.length > 0 ? rd.rawStreams.time : undefined,
-              glucose,
-            });
-          }
-        }
-
-        const allCached = [...cachedMap.values(), ...newCached];
-
-        if (newCached.length > 0) {
-          // Don't persist activities where BG fetch failed — they'll be retried on next load.
-          const toPersist = bgFailedIds.size > 0
-            ? [...cachedMap.values(), ...newCached.filter(c => !bgFailedIds.has(c.activityId))]
-            : allCached;
-          writeLocalCache(toPersist);
-          void saveBGCacheRemote(toPersist);
-        }
-
-        if (!aborted()) setCached(allCached);
-      } catch (err) {
-        console.error("useStreamCache: fetch failed", err);
-        loadedRef.current = false;
-      } finally {
-        if (!aborted()) setLoading(false);
-      }
-    })();
-
-    return () => { controller.abort(); };
-  }, [enabled, runs]);
+    return () => {
+      controller.abort();
+    };
+  }, [enabled, hydrated, runCacheKey]);
 
   return { cached, loading, progress };
 }
