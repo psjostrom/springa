@@ -290,7 +290,12 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         void syncToGoogleCalendar("update", {
           eventName: adapted.original.name,
           eventDate,
-          updates: { description: adapted.description },
+          event: {
+            name: adapted.original.name,
+            description: adapted.description,
+            startLocal: format(adapted.original.date, "yyyy-MM-dd'T'HH:mm:ss"),
+            ...(adapted.fuelRate != null && { fuelRate: adapted.fuelRate }),
+          },
         });
       }
 

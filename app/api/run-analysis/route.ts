@@ -2,7 +2,8 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { getRunAnalysis, saveRunAnalysis } from "@/lib/runAnalysisDb";
+import { getRunAnalysis, hashRunAnalysisContext, saveRunAnalysis } from "@/lib/runAnalysisDb";
+import { buildRunAnalysisContextKey } from "@/lib/runAnalysisCache";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { buildRunAnalysisContext } from "@/lib/runAnalysisContext";
 import { formatAIError } from "@/lib/aiError";
@@ -67,28 +68,37 @@ export async function POST(req: Request) {
   // Restore Date object (JSON serialization turns it into a string)
   event.date = new Date(event.date);
 
+  // Check sugar mode — exclude BG data from prompt when off
+  const { getUserSettings } = await import("@/lib/settings");
+  const settings = await getUserSettings(email);
+  const diabetesMode = settings.diabetesMode === true;
+  const cacheContextKey = buildRunAnalysisContextKey({
+    event,
+    diabetesMode,
+    runBGContext: diabetesMode ? runBGContext : undefined,
+    reportCard: diabetesMode ? reportCard : undefined,
+    bgModelSummary: diabetesMode ? bgModelSummary : undefined,
+  });
+  const cacheContextHash = hashRunAnalysisContext(cacheContextKey);
+
   // Check cache unless regenerating
   if (!regenerate) {
-    const cached = await getRunAnalysis(email, activityId);
+    const cached = await getRunAnalysis(email, activityId, cacheContextHash);
     if (cached) {
       return NextResponse.json({ analysis: cached });
     }
   }
-
-  // Check sugar mode — exclude BG data from prompt when off
-  const { getUserSettings } = await import("@/lib/settings");
-  const settings = await getUserSettings(email);
 
   const promptParams = await buildRunAnalysisContext({
     email,
     event,
     runStartMs: event.date.getTime(),
     intervalsApiKey: creds.intervalsApiKey,
-    runBGContext: settings.diabetesMode ? runBGContext : undefined,
-    reportCard: settings.diabetesMode ? reportCard : undefined,
-    bgModelSummary: settings.diabetesMode ? bgModelSummary : undefined,
-    nightscoutUrl: settings.diabetesMode ? (creds.nightscoutUrl ?? undefined) : undefined,
-    nightscoutSecret: settings.diabetesMode ? (creds.nightscoutSecret ?? undefined) : undefined,
+    runBGContext: diabetesMode ? runBGContext : undefined,
+    reportCard: diabetesMode ? reportCard : undefined,
+    bgModelSummary: diabetesMode ? bgModelSummary : undefined,
+    nightscoutUrl: diabetesMode ? (creds.nightscoutUrl ?? undefined) : undefined,
+    nightscoutSecret: diabetesMode ? (creds.nightscoutSecret ?? undefined) : undefined,
   });
 
   const { system, user } = buildRunAnalysisPrompt(promptParams);
@@ -105,7 +115,7 @@ export async function POST(req: Request) {
     const analysis = result.text;
 
     // Cache the result
-    await saveRunAnalysis(email, activityId, analysis);
+    await saveRunAnalysis(email, activityId, analysis, cacheContextHash);
 
     return NextResponse.json({ analysis });
   } catch (err) {

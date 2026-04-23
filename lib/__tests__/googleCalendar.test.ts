@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   getGoogleAccessToken,
   ensureSpringaCalendar,
+  buildGoogleCalendarEventPayload,
   syncEventsToGoogle,
   clearFutureGoogleEvents,
   findGoogleEvent,
@@ -51,7 +52,7 @@ describe("syncEventsToGoogle", () => {
       {
         startLocal: "2026-04-01T12:00:00",
         name: "W01 Easy eco16",
-        description: "Warmup 10m 60%-70% LTHR\nMain 30m 70%-80% LTHR\nCooldown 15m 60%-70% LTHR",
+        description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 30m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
         fuelRate: 45,
       },
     ];
@@ -60,7 +61,28 @@ describe("syncEventsToGoogle", () => {
     const created = capturedGoogleCalendarEvents[0] as Record<string, unknown>;
     expect(created.summary).toBe("W01 Easy eco16");
     expect(created.start).toEqual({ dateTime: "2026-04-01T12:00:00", timeZone: "Europe/Stockholm" });
+    expect(created.end).toEqual({ dateTime: "2026-04-01T12:55:00", timeZone: "Europe/Stockholm" });
     expect(created.description).toContain("Fuel: 45 g/h");
+  });
+});
+
+describe("buildGoogleCalendarEventPayload", () => {
+  it("recomputes end time and formatted description from the sync event", () => {
+    const payload = buildGoogleCalendarEventPayload(
+      {
+        startLocal: "2026-04-22T12:00:00",
+        name: "W11 Long",
+        description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 60m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+        fuelRate: 72,
+      },
+      "Europe/Stockholm",
+    );
+
+    expect(payload.start).toEqual({ dateTime: "2026-04-22T12:00:00", timeZone: "Europe/Stockholm" });
+    expect(payload.end).toEqual({ dateTime: "2026-04-22T13:25:00", timeZone: "Europe/Stockholm" });
+    expect(payload.description).toContain("Fuel: 72 g/h");
+    expect(payload.description).toContain("Main set");
+    expect(payload.description).toContain("- 60m 68-83% pace");
   });
 });
 

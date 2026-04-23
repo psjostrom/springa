@@ -59,6 +59,7 @@ export let capturedDeleteEventIds: string[] = [];
 export let capturedFetchedEventsUrl: string | null = null;
 export let capturedGoogleCalendarEvents: unknown[] = [];
 export let capturedGoogleDeletedEventIds: string[] = [];
+export let capturedGooglePatchedEvents: { eventId: string; body: unknown }[] = [];
 export let capturedActivityPutPayloads: { activityId: string; body: unknown }[] = [];
 export let capturedSportSettingsPayload: Record<string, unknown> | null = null;
 export let capturedAthletePayload: Record<string, unknown> | null = null;
@@ -70,6 +71,7 @@ export function resetCaptures() {
   capturedFetchedEventsUrl = null;
   capturedGoogleCalendarEvents = [];
   capturedGoogleDeletedEventIds = [];
+  capturedGooglePatchedEvents = [];
   capturedActivityPutPayloads = [];
   capturedSportSettingsPayload = null;
   capturedAthletePayload = null;
@@ -344,8 +346,10 @@ export const handlers = [
   }),
 
   // Google Calendar — update event
-  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
-    return HttpResponse.json({ id: "gcal-event-1", summary: "Updated" });
+  http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", async ({ request, params }) => {
+    const body = await request.json() as Record<string, unknown>;
+    capturedGooglePatchedEvents.push({ eventId: params.eventId as string, body });
+    return HttpResponse.json({ id: params.eventId, ...body });
   }),
 
   // Google Calendar — delete event
