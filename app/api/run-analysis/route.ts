@@ -3,7 +3,6 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { getRunAnalysis, hashRunAnalysisContext, saveRunAnalysis } from "@/lib/runAnalysisDb";
-import { buildRunAnalysisContextKey } from "@/lib/runAnalysisCache";
 import { buildRunAnalysisPrompt } from "@/lib/runAnalysisPrompt";
 import { buildRunAnalysisContext } from "@/lib/runAnalysisContext";
 import { formatAIError } from "@/lib/aiError";
@@ -72,22 +71,6 @@ export async function POST(req: Request) {
   const { getUserSettings } = await import("@/lib/settings");
   const settings = await getUserSettings(email);
   const diabetesMode = settings.diabetesMode === true;
-  const cacheContextKey = buildRunAnalysisContextKey({
-    event,
-    diabetesMode,
-    runBGContext: diabetesMode ? runBGContext : undefined,
-    reportCard: diabetesMode ? reportCard : undefined,
-    bgModelSummary: diabetesMode ? bgModelSummary : undefined,
-  });
-  const cacheContextHash = hashRunAnalysisContext(cacheContextKey);
-
-  // Check cache unless regenerating
-  if (!regenerate) {
-    const cached = await getRunAnalysis(email, activityId, cacheContextHash);
-    if (cached) {
-      return NextResponse.json({ analysis: cached });
-    }
-  }
 
   const promptParams = await buildRunAnalysisContext({
     email,
@@ -102,6 +85,17 @@ export async function POST(req: Request) {
   });
 
   const { system, user } = buildRunAnalysisPrompt(promptParams);
+  const cacheContextHash = hashRunAnalysisContext(
+    JSON.stringify({ system, user }),
+  );
+
+  // Check cache unless regenerating
+  if (!regenerate) {
+    const cached = await getRunAnalysis(email, activityId, cacheContextHash);
+    if (cached) {
+      return NextResponse.json({ analysis: cached });
+    }
+  }
 
   const anthropic = createAnthropic({ apiKey });
 

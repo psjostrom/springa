@@ -521,14 +521,14 @@ describe("uploadToIntervals", () => {
             category: "WORKOUT",
             start_date_local: "2026-03-01T12:00:00",
             name: "Old workout",
-            external_id: "old-1",
+            external_id: "easy-1-2",
           },
           {
             id: 101,
             category: "WORKOUT",
             start_date_local: "2026-03-02T12:00:00",
             name: "Kept workout",
-            external_id: "test-1",
+            external_id: "easy-1-1",
           },
           {
             id: 102,
@@ -555,13 +555,57 @@ describe("uploadToIntervals", () => {
     );
 
     const events: WorkoutEvent[] = [
-      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "easy-1-1", type: "Run" },
     ];
 
     const count = await uploadToIntervals("test-key", events);
     expect(count).toBe(1);
     expect(callOrder).toEqual(["list", "upload", "delete:100"]);
     expect(capturedDeleteEventIds).toEqual(["100"]);
+  });
+
+  it("does not delete workouts with non-Springa external_id prefixes", async () => {
+    const callOrder: string[] = [];
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        callOrder.push("list");
+        return HttpResponse.json([
+          {
+            id: 100,
+            category: "WORKOUT",
+            start_date_local: "2026-03-01T12:00:00",
+            name: "Imported workout",
+            external_id: "garmin-123",
+          },
+          {
+            id: 101,
+            category: "WORKOUT",
+            start_date_local: "2026-03-02T12:00:00",
+            name: "Kept Springa workout",
+            external_id: "easy-1-1",
+          },
+        ]);
+      }),
+      http.delete(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+        capturedDeleteEventIds.push(params.eventId as string);
+        callOrder.push(`delete:${params.eventId as string}`);
+        return new HttpResponse(null, { status: 200 });
+      }),
+      http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
+        callOrder.push("upload");
+        const body = await request.json();
+        return HttpResponse.json((body as unknown[]).map((_, i) => ({ id: 1000 + i })));
+      }),
+    );
+
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "easy-1-1", type: "Run" },
+    ];
+
+    await uploadToIntervals("test-key", events);
+
+    expect(callOrder).toEqual(["list", "upload"]);
+    expect(capturedDeleteEventIds).toEqual([]);
   });
 
   it("does not delete existing workouts when upload fails", async () => {

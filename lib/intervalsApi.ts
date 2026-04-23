@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { API_BASE, PACE_ZONE_PCT, ZONE_DISPLAY_NAMES, type ZoneKey } from "./constants";
 import { extractRawStreams, extractLatlng } from "./streams";
+import { categoryFromExternalId } from "./paceInsight";
 import {
   processActivities,
   processPlannedEvents,
@@ -577,6 +578,7 @@ export async function uploadToIntervals(
       (event) =>
         event.category === "WORKOUT" &&
         typeof event.external_id === "string" &&
+        categoryFromExternalId(event.external_id) !== null &&
         event.external_id.length > 0 &&
         !nextExternalIds.has(event.external_id),
     );
