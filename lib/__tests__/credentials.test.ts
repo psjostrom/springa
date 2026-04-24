@@ -124,6 +124,20 @@ describe("updateCredentials", () => {
     await updateCredentials(EMAIL, { intervalsApiKey: null });
     expect((await getUserCredentials(EMAIL))!.intervalsApiKey).toBeNull();
   });
+
+  it("creates user row when updating credentials for a new email", async () => {
+    const newEmail = "new-user@example.com";
+
+    await updateCredentials(newEmail, {
+      intervalsApiKey: "new-key",
+      nightscoutSecret: "new-secret",
+    });
+
+    const creds = await getUserCredentials(newEmail);
+    expect(creds).not.toBeNull();
+    expect(creds!.intervalsApiKey).toBe("new-key");
+    expect(creds!.nightscoutSecret).toBe("new-secret");
+  });
 });
 
 
@@ -166,5 +180,17 @@ describe("Google Calendar credentials", () => {
   it("returns null for unknown email", async () => {
     const creds = await getGoogleCalendarCredentials("nobody@example.com");
     expect(creds).toBeNull();
+  });
+
+  it("creates user row when storing Google credentials for new email", async () => {
+    const newEmail = "new-google@example.com";
+
+    await updateGoogleRefreshToken(newEmail, "1//fresh-token");
+    await updateGoogleCalendarId(newEmail, "cal-id-new");
+
+    const creds = await getGoogleCalendarCredentials(newEmail);
+    expect(creds).not.toBeNull();
+    expect(creds!.refreshToken).toBe("1//fresh-token");
+    expect(creds!.calendarId).toBe("cal-id-new");
   });
 });
