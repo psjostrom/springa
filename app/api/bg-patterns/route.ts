@@ -31,7 +31,7 @@ export async function GET() {
 }
 
 interface RequestBody {
-  events: CalendarEvent[];
+  events?: CalendarEvent[];
 }
 
 export async function POST(req: Request) {
@@ -69,10 +69,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as RequestBody;
+  let body: RequestBody;
+  try {
+    body = (await req.json()) as RequestBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { events } = body;
 
-  if (events.length === 0) {
+  if (!events || events.length === 0) {
     return NextResponse.json(
       { error: "No events provided" },
       { status: 400 },

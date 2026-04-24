@@ -22,10 +22,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as {
+  let body: {
     messages: { role: string; parts?: { type: string; text?: string }[]; content?: string }[];
     context?: string;
   };
+  try {
+    body = (await req.json()) as {
+      messages: { role: string; parts?: { type: string; text?: string }[]; content?: string }[];
+      context?: string;
+    };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { messages, context } = body;
 
   // Check sugar mode — exclude BG patterns from coach context when off
