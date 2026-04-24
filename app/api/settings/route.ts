@@ -57,7 +57,7 @@ export async function PUT(req: Request) {
     throw e;
   }
 
-  const body = (await req.json()) as Partial<UserSettings> & {
+  let body: Partial<UserSettings> & {
     intervalsApiKey?: string | null;
     nightscoutUrl?: string | null;
     nightscoutSecret?: string | null;
@@ -66,6 +66,20 @@ export async function PUT(req: Request) {
     runDays?: number[];
     onboardingComplete?: boolean;
   };
+
+  try {
+    body = (await req.json()) as Partial<UserSettings> & {
+      intervalsApiKey?: string | null;
+      nightscoutUrl?: string | null;
+      nightscoutSecret?: string | null;
+      timezone?: string;
+      displayName?: string;
+      runDays?: number[];
+      onboardingComplete?: boolean;
+    };
+  } catch {
+    return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+  }
 
   // Validate Intervals.icu API key if provided
   if (body.intervalsApiKey) {
