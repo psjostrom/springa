@@ -11,7 +11,9 @@ export default function LoginPage() {
         </svg>
         <h1 className="text-2xl font-[family-name:var(--font-sora)] font-extrabold text-brand tracking-tight mb-2">springa</h1>
         <p className="text-muted text-sm mb-6">
-          Sign in to access your training planner
+          Springa is currently invite-only closed beta.
+          <br />
+          Sign in with your approved account, or take a sneak peek in the demo.
         </p>
         <form
           action={async () => {
@@ -30,7 +32,7 @@ export default function LoginPage() {
           href="/demo"
           className="block mt-4 text-sm text-muted hover:text-brand transition"
         >
-          Try the demo
+          Sneak peek: try the demo
         </Link>
       </div>
     </div>
