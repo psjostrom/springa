@@ -250,7 +250,8 @@ export function processPlannedEvents(
     const eventDesc = event.description ?? "";
 
     const extCategory = categoryFromExternalId(event.external_id);
-    const isRace = name.toLowerCase().includes("race");
+    const normalizedName = name.trim().toLowerCase();
+    const isRace = extCategory === "race" || /^race day\b/.test(normalizedName);
     const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
