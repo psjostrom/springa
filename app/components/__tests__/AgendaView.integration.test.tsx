@@ -14,6 +14,19 @@ function makePlannedEvent(date: string): CalendarEvent {
   };
 }
 
+function makeRaceEvent(date: string): CalendarEvent {
+  return {
+    id: "race-1",
+    date: new Date(date),
+    name: "RACE DAY",
+    description: "Race day!",
+    type: "race",
+    category: "race",
+    fuelRate: 72,
+    totalCarbs: 96,
+  };
+}
+
 describe("AgendaView", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -41,5 +54,19 @@ describe("AgendaView", () => {
     });
 
     expect(screen.queryByText("Generate workout for today")).not.toBeInTheDocument();
+  });
+
+  it("shows race-day fuel recommendation chip", () => {
+    vi.setSystemTime(new Date("2026-04-23T10:00:00"));
+
+    render(
+      <AgendaView
+        events={[makeRaceEvent("2026-04-24T09:00:00")]}
+        onSelectEvent={() => {}}
+        onGenerateWorkout={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("72g/h · 96g total")).toBeInTheDocument();
   });
 });

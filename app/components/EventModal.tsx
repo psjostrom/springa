@@ -126,6 +126,7 @@ export function EventModal({
   const currentTsb = useAtomValue(currentTsbAtom);
   const currentIob = useAtomValue(currentIobAtom);
   const showReadiness = !selectedEvent.activityId && isToday(selectedEvent.date) && currentBG != null;
+  const isUpcomingWorkout = selectedEvent.type !== "completed";
   const workoutCategory = (() => {
     const raw = getWorkoutCategory(selectedEvent.name);
     return raw === "other" ? "easy" : raw;
@@ -330,18 +331,18 @@ export function EventModal({
           />
         )}
 
-        {editMode.kind !== "replacing" && !selectedEvent.activityId && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && !selectedEvent.activityId && isUpcomingWorkout && (
           <PreRunCarbsInput eventId={selectedEvent.id} />
         )}
 
-        {editMode.kind !== "replacing" && clothing && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && clothing && isUpcomingWorkout && (
           <div className="mb-4 px-3 py-2.5 rounded-lg bg-surface-alt border border-border">
             <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1.5">What to wear</div>
             <ClothingRecommendation recommendation={clothing} />
           </div>
         )}
 
-        {editMode.kind !== "replacing" && selectedEvent.description && selectedEvent.type === "planned" && (
+        {editMode.kind !== "replacing" && selectedEvent.description && isUpcomingWorkout && (
           <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} totalCarbs={selectedEvent.totalCarbs} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
             <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} thresholdPace={racePacePerKm} />
           </WorkoutCard>

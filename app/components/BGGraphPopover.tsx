@@ -37,14 +37,14 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const currentTsb = useAtomValue(currentTsbAtom);
   const currentIob = useAtomValue(currentIobAtom);
 
-  // Find today's planned workout (if any)
+  // Find today's upcoming workout (planned or race)
   const todaysWorkout = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return events.find(
-      (e) => e.type === "planned" && e.date >= today && e.date < tomorrow,
+      (e) => e.type !== "completed" && e.date >= today && e.date < tomorrow,
     ) ?? null;
   }, [events]);
 

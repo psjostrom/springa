@@ -157,7 +157,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
           </>
         )}
 
-        {event.type === "planned" && event.description && (
+        {event.type !== "completed" && event.description && (
           <>
             <div className="mb-2">
               <WorkoutStructureBar
