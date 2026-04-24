@@ -7,6 +7,7 @@ import { fetchCalendar } from "@/lib/intervalsClient";
 import {
   advanceSharedCalendarKey,
   buildSharedCalendarKey,
+  getSharedCalendarTimeoutDelay,
   msUntilNextSharedCalendarBoundary,
   type SharedCalendarKey,
 } from "@/lib/sharedCalendarData";
@@ -35,12 +36,22 @@ export function useSharedCalendarData() {
   useEffect(() => {
     if (!connected) return;
 
-    const timeoutId = setTimeout(() => {
-      setWindowKey((previousKey) => advanceSharedCalendarKey(previousKey));
-    }, msUntilNextSharedCalendarBoundary());
+    const boundaryAt = Date.now() + msUntilNextSharedCalendarBoundary();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleBoundaryUpdate = () => {
+      const delay = getSharedCalendarTimeoutDelay(boundaryAt);
+      if (delay == null) {
+        setWindowKey((previousKey) => advanceSharedCalendarKey(previousKey));
+        return;
+      }
+      timeoutId = setTimeout(scheduleBoundaryUpdate, delay);
+    };
+
+    scheduleBoundaryUpdate();
 
     return () => {
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [connected, swrOldest, swrNewest]);
 

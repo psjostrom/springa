@@ -8,6 +8,8 @@ export interface SharedCalendarWindow {
 
 export type SharedCalendarKey = readonly ["calendar-data", string, string];
 
+export const MAX_TIMEOUT_MS = 2_147_000_000;
+
 export function getSharedCalendarWindow(now = new Date()): SharedCalendarWindow {
   const start = startOfMonth(subMonths(now, CALENDAR_LOOKBACK_MONTHS));
   const end = endOfMonth(addMonths(now, 6));
@@ -37,6 +39,15 @@ export function advanceSharedCalendarKey(key: SharedCalendarKey): SharedCalendar
 export function msUntilNextSharedCalendarBoundary(now = new Date()): number {
   const nextBoundary = startOfMonth(addMonths(now, 1));
   return nextBoundary.getTime() - now.getTime();
+}
+
+export function getSharedCalendarTimeoutDelay(
+  boundaryAtMs: number,
+  nowMs = Date.now(),
+): number | null {
+  const remainingMs = boundaryAtMs - nowMs;
+  if (remainingMs <= 0) return null;
+  return Math.min(remainingMs, MAX_TIMEOUT_MS);
 }
 
 export function isSharedCalendarKey(key: unknown): key is SharedCalendarKey {
