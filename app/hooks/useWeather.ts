@@ -5,6 +5,7 @@ import { fetchForecast, getWeatherForTime } from "@/lib/smhi";
 import { recommendClothing, type ClothingRecommendation } from "@/lib/clothingCalculator";
 
 const MAX_DAYS_AHEAD = 3;
+const ELIGIBILITY_REFRESH_MS = 15 * 60 * 1000;
 
 interface EligibleEvent {
   id: string;
@@ -14,8 +15,8 @@ interface EligibleEvent {
 
 function getEligibleEvents(
   events: { id: string; date: Date; type: string; category: string }[],
+  now: number,
 ): EligibleEvent[] {
-  const now = Date.now();
   return events.filter((e) => {
     if (e.type !== "planned") return false;
     const diff = e.date.getTime() - now;
@@ -34,8 +35,14 @@ export function useWeather(
   const [recs, setRecs] = useState<Map<string, ClothingRecommendation>>(
     () => new Map(),
   );
+  const [now, setNow] = useState(() => Date.now());
 
-  const eligible = getEligibleEvents(events);
+  useEffect(() => {
+    const id = setInterval(() => { setNow(Date.now()); }, ELIGIBILITY_REFRESH_MS);
+    return () => { clearInterval(id); };
+  }, []);
+
+  const eligible = getEligibleEvents(events, now);
   const eligibleKey = eligible.map((e) => `${e.id}:${e.date.getTime()}:${e.category}`).join(",");
 
   useEffect(() => {

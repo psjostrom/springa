@@ -18,6 +18,7 @@ const HEIGHT = 200;
 const PAD = { top: 12, right: 12, bottom: 28, left: 36 };
 const CHART_W = WIDTH - PAD.left - PAD.right;
 const CHART_H = HEIGHT - PAD.top - PAD.bottom;
+const NOW_REFRESH_INTERVAL_MS = 30_000;
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -55,7 +56,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const windowHours = WINDOWS[windowIdx];
 
   const [scrubIdx, setScrubIdx] = useState<number | null>(null);
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -65,6 +66,11 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
+
+  useEffect(() => {
+    const id = setInterval(() => { setNow(Date.now()); }, NOW_REFRESH_INTERVAL_MS);
+    return () => { clearInterval(id); };
+  }, []);
 
   // Filter to selected window
   const data = useMemo(() => {

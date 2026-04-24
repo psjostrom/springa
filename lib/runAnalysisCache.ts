@@ -1,6 +1,8 @@
 import type { CalendarEvent } from "./types";
 import type { RunBGContext } from "./runBGContext";
 import type { ReportCard } from "./reportCard";
+import { buildReportCard } from "./reportCard";
+import { summarizeBGModel, type BGResponseModel } from "./bgModel";
 
 interface RunAnalysisCacheInput {
   event: CalendarEvent;
@@ -8,6 +10,13 @@ interface RunAnalysisCacheInput {
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
+}
+
+interface RunAnalysisClientCacheInput {
+  event: CalendarEvent;
+  diabetesMode: boolean;
+  runBGContext?: RunBGContext | null;
+  bgModel?: BGResponseModel | null;
 }
 
 function stableStringify(value: unknown): string {
@@ -69,5 +78,17 @@ export function buildRunAnalysisContextKey(input: RunAnalysisCacheInput): string
     runBGContext: input.diabetesMode ? input.runBGContext ?? null : null,
     reportCard: input.diabetesMode ? input.reportCard ?? null : null,
     bgModelSummary: input.diabetesMode ? input.bgModelSummary ?? null : null,
+  });
+}
+
+export function buildRunAnalysisClientContextKey(
+  input: RunAnalysisClientCacheInput,
+): string {
+  return buildRunAnalysisContextKey({
+    event: input.event,
+    diabetesMode: input.diabetesMode,
+    runBGContext: input.runBGContext,
+    reportCard: buildReportCard(input.event, input.runBGContext, input.diabetesMode),
+    bgModelSummary: input.bgModel ? summarizeBGModel(input.bgModel) : undefined,
   });
 }
