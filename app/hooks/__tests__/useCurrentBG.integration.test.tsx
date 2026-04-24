@@ -44,11 +44,11 @@ describe("useCurrentBG", () => {
   it("ignores an in-flight response after diabetes mode is turned off", async () => {
     let releaseStarted: (() => void) | undefined;
     const started = new Promise<void>((resolve) => {
-      releaseStarted = () => resolve();
+      releaseStarted = () => { resolve(); };
     });
     let releaseResponse: (() => void) | undefined;
     const responseGate = new Promise<void>((resolve) => {
-      releaseResponse = () => resolve();
+      releaseResponse = () => { resolve(); };
     });
 
     server.use(
