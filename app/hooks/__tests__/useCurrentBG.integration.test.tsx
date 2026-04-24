@@ -42,18 +42,18 @@ describe("useCurrentBG", () => {
   });
 
   it("ignores an in-flight response after diabetes mode is turned off", async () => {
-    let resolveStarted: (() => void) | null = null;
+    let releaseStarted: (() => void) | undefined;
     const started = new Promise<void>((resolve) => {
-      resolveStarted = resolve;
+      releaseStarted = () => resolve();
     });
-    let releaseResponse: (() => void) | null = null;
+    let releaseResponse: (() => void) | undefined;
     const responseGate = new Promise<void>((resolve) => {
-      releaseResponse = resolve;
+      releaseResponse = () => resolve();
     });
 
     server.use(
       http.get("/api/bg", async () => {
-        resolveStarted?.();
+        releaseStarted?.();
         await responseGate;
         return HttpResponse.json({
           current: { mmol: 7.4, arrow: "↘", ts: Date.now() },
