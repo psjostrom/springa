@@ -11,10 +11,12 @@ export async function POST(req: Request) {
     throw e;
   }
 
-  const body = (await req.json()) as {
-    endpoint?: string;
-    keys?: { p256dh?: string; auth?: string };
-  };
+  let body: { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+  try {
+    body = (await req.json()) as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { endpoint, keys } = body;
 
   if (!endpoint || !keys?.p256dh || !keys.auth) {

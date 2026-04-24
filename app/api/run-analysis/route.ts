@@ -13,7 +13,7 @@ import type { ReportCard } from "@/lib/reportCard";
 
 interface RequestBody {
   activityId: string;
-  event: CalendarEvent;
+  event?: CalendarEvent;
   runBGContext?: RunBGContext | null;
   reportCard?: ReportCard | null;
   bgModelSummary?: string;
@@ -60,6 +60,13 @@ export async function POST(req: Request) {
   if (!activityId) {
     return NextResponse.json(
       { error: "activityId is required" },
+      { status: 400 },
+    );
+  }
+
+  if (!event) {
+    return NextResponse.json(
+      { error: "event is required" },
       { status: 400 },
     );
   }
