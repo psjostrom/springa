@@ -68,6 +68,13 @@ export interface GoogleCalendarCredentials {
   timezone: string;
 }
 
+async function ensureUserRow(email: string): Promise<void> {
+  await db().execute({
+    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
+    args: [email],
+  });
+}
+
 /** Fetch and decrypt per-user credentials from DB. */
 export async function getUserCredentials(email: string): Promise<UserCredentials | null> {
   const result = await db().execute({
@@ -99,6 +106,8 @@ export async function updateCredentials(
   const encKey = getEncryptionKey();
   const sets: string[] = [];
   const args: (string | null)[] = [];
+
+  await ensureUserRow(email);
 
   if ("intervalsApiKey" in updates) {
     sets.push("intervals_api_key = ?");
@@ -146,6 +155,7 @@ export async function getGoogleCalendarCredentials(email: string): Promise<Googl
 
 /** Store encrypted Google refresh token. Pass null to clear. */
 export async function updateGoogleRefreshToken(email: string, refreshToken: string | null): Promise<void> {
+  await ensureUserRow(email);
   const encKey = getEncryptionKey();
   await db().execute({
     sql: "UPDATE user_settings SET google_refresh_token = ? WHERE email = ?",
@@ -155,6 +165,7 @@ export async function updateGoogleRefreshToken(email: string, refreshToken: stri
 
 /** Store Google Calendar ID. */
 export async function updateGoogleCalendarId(email: string, calendarId: string): Promise<void> {
+  await ensureUserRow(email);
   await db().execute({
     sql: "UPDATE user_settings SET google_calendar_id = ? WHERE email = ?",
     args: [calendarId, email],
