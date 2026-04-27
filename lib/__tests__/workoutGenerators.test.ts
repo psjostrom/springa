@@ -107,6 +107,16 @@ describe("generatePlan", () => {
     expect(raceDay).toBeDefined();
   });
 
+  it("generates a parseable race day description for prescribed carbs", () => {
+    const plan = generate();
+    const raceDay = plan.find((e) => e.name.includes("RACE DAY"));
+
+    expect(raceDay).toBeDefined();
+    expect(raceDay!.description).toContain("16km");
+    expect(raceDay!.description).toContain("Race");
+    expect(prescribedCarbs(raceDay!.description, raceDay!.fuelRate)).not.toBeNull();
+  });
+
   it("generates club run when clubDay is configured", () => {
     const plan = generatePlan({
       ...defaultConfig, raceDateStr: "2027-06-12",

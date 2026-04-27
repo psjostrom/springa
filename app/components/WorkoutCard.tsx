@@ -78,19 +78,55 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
 }
 
 export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, paceTable, children, hrZones, lthr = DEFAULT_LTHR, racePacePerKm }: WorkoutCardProps) {
+  const estDuration = estimateWorkoutDuration(description, paceTable, racePacePerKm);
+  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable, racePacePerKm);
   const sections = parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm);
 
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
+    const hasStripData = estDuration != null || estDistance != null || fuelRate != null || totalCarbs != null;
     return (
-      <div className="bg-surface-alt rounded-lg p-3 sm:p-4">
-        <div className="text-sm whitespace-pre-wrap text-muted">{description}</div>
+      <div>
+        {hasStripData && (
+          <div className="px-3 py-2.5 bg-tint-brand border-b border-brand/30">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+              {estDuration != null && (
+                <div className="flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 shrink-0 text-warning" viewBox="0 0 16 16" fill="none" stroke="currentColor">
+                    <circle cx="8" cy="8" r="6.5" strokeWidth="2" />
+                    <line x1="8" y1="4.5" x2="8" y2="8.5" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="8" y1="8.5" x2="10.5" y2="10.5" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  <span className="text-base font-bold text-warning">
+                    {estDuration.estimated ? "~" : ""}{estDuration.minutes} min
+                  </span>
+                </div>
+              )}
+              {estDistance != null && (
+                <span className="text-base font-bold text-warning">
+                  {estDistance.estimated ? "~" : ""}{estDistance.km} km
+                </span>
+              )}
+              {fuelRate != null && (
+                <span className={`text-sm font-semibold ${fuelRateNote ? "text-warning/40" : "text-warning/80"}`}>
+                  {fuelRate}g/h{fuelRateNote && ` (${fuelRateNote})`}
+                </span>
+              )}
+              {totalCarbs != null && (
+                <span className="text-sm font-bold text-warning">
+                  {totalCarbs}g total
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="bg-surface-alt rounded-lg p-3 sm:p-4">
+          <div className="text-sm whitespace-pre-wrap text-muted">{description}</div>
+        </div>
       </div>
     );
   }
 
-  const estDuration = estimateWorkoutDuration(description, paceTable, racePacePerKm);
-  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable, racePacePerKm);
   const zones = (hrZones?.length === 5 || racePacePerKm)
     ? parseWorkoutZones(description, lthr, hrZones ?? [], racePacePerKm)
     : [];

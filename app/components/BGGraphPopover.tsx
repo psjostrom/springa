@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { trendArrow } from "@/lib/cgm";
 import { bgColor } from "./CurrentBGPill";
+import { getWorkoutCategory } from "@/lib/constants";
 import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
 import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom, currentTsbAtom, currentIobAtom } from "../atoms";
 import { PreRunReadiness } from "./PreRunReadiness";
@@ -25,6 +26,13 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function readinessCategoryForEvent(event: { category: "long" | "interval" | "easy" | "race" | "other"; name: string }): WorkoutCategory {
+  if (event.category === "race") return "long";
+  if (event.category === "long" || event.category === "interval" || event.category === "easy") return event.category;
+  const byName = getWorkoutCategory(event.name);
+  return byName === "other" ? "easy" : byName;
+}
+
 export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const readings = useAtomValue(readingsAtom);
   const trend = useAtomValue(trendAtom);
@@ -37,16 +45,21 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
   const currentTsb = useAtomValue(currentTsbAtom);
   const currentIob = useAtomValue(currentIobAtom);
 
-  // Find today's planned workout (if any)
+  // Find today's upcoming workout (planned or race)
   const todaysWorkout = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return events.find(
-      (e) => e.type === "planned" && e.date >= today && e.date < tomorrow,
+      (e) => e.type !== "completed" && e.date >= today && e.date < tomorrow,
     ) ?? null;
   }, [events]);
+
+  const todaysWorkoutCategory = useMemo(
+    () => (todaysWorkout ? readinessCategoryForEvent(todaysWorkout) : null),
+    [todaysWorkout],
+  );
 
   const WINDOWS = [1, 3, 6, 12, 24] as const;
   const savedWindow = settings?.bgChartWindow;
@@ -371,7 +384,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
         </div>
 
         {/* Pre-run readiness — shown when there's a planned workout today */}
-        {todaysWorkout && currentBG != null && (
+        {todaysWorkout && todaysWorkoutCategory && currentBG != null && (
           <div className="px-3 pb-4">
             <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1.5 px-1">
               {todaysWorkout.name}
@@ -381,7 +394,7 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
               trendSlope={trendSlope}
               trend={trend}
               bgModel={bgModel}
-              category={todaysWorkout.category as WorkoutCategory}
+              category={todaysWorkoutCategory}
               currentTsb={currentTsb}
               iob={currentIob}
             />

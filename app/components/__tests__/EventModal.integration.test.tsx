@@ -85,6 +85,20 @@ describe("EventModal race event", () => {
     expect(screen.getByText("Race")).toBeInTheDocument();
     expect(screen.getByText("EcoTrail 16km")).toBeInTheDocument();
   });
+
+  it("shows race-day fueling recommendation", () => {
+    render(
+      <EventModal
+        event={baseRace}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.getByText("60g/h")).toBeInTheDocument();
+    expect(screen.getByText("120g total")).toBeInTheDocument();
+  });
 });
 
 describe("EventModal workout card", () => {
