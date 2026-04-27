@@ -337,10 +337,14 @@ const generateLongRun = (
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
+    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY`,
-      description: `RACE DAY! ${ctx.raceDist}km.\n\nGood luck!`,
+      description: createSimpleWorkoutText(
+        s(`${ctx.raceDist}km`, "z3", "Race"),
+        `Race day. ${ctx.raceDist}km at race effort. Start controlled, settle into rhythm, and fuel on schedule. Good luck!`,
+      ),
       external_id: `race`,
       type: "Run",
       fuelRate: ctx.fuelLong,
