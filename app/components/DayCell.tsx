@@ -109,7 +109,7 @@ export function DayCell({
                   hrZones={hrZones}
                 />
               )}
-              {event.type === "planned" && event.description && (
+              {event.type !== "completed" && event.description && (
                 <WorkoutStructureBar description={event.description} maxHeight={20} hrZones={hrZones} lthr={lthr} thresholdPace={thresholdPace} />
               )}
             </button>

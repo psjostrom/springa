@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import useSWR from "swr";
-import { enrichedEventsAtom } from "../atoms";
+import { diabetesModeAtom, enrichedEventsAtom } from "../atoms";
 import type {
   ModalWidgetId,
   ModalTabId,
@@ -17,6 +17,7 @@ import {
   saveModalLayout,
   toggleWidgetVisibility,
 } from "@/lib/modalWidgets";
+import { buildRunAnalysisClientContextKey } from "@/lib/runAnalysisCache";
 import { Droplets, Activity, Utensils, MessageSquare, BarChart3, Gauge, Heart, MapPin, type LucideIcon } from "lucide-react";
 import { RunReportCard } from "./RunReportCard";
 import { RunAnalysis } from "./RunAnalysis";
@@ -35,10 +36,20 @@ import { NextTimeWidget } from "./NextTimeWidget";
 import { WidgetList } from "./WidgetList";
 import { TabBar } from "./TabBar";
 
-function NextTimeSWRBridge({ activityId }: { activityId: string }) {
+function NextTimeSWRBridge({ event, runBGContext, bgModel }: Pick<WidgetProps, "event" | "runBGContext" | "bgModel">) {
+  const diabetesMode = useAtomValue(diabetesModeAtom);
+  const analysisContextKey = useMemo(
+    () => buildRunAnalysisClientContextKey({
+      event,
+      diabetesMode,
+      runBGContext,
+      bgModel,
+    }),
+    [event, diabetesMode, runBGContext, bgModel],
+  );
   const { data: analysis } = useSWR<string>(
-    ["run-analysis", activityId],
-    null, // read from cache — RunAnalysis on Analysis tab populates it
+    ["run-analysis", event.activityId, analysisContextKey],
+    null,
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
   if (!analysis) return null; // shows nothing until analysis is generated via Analysis tab
@@ -56,7 +67,11 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
   "stats": (p) => <StatsWidget {...p} />,
   "next-time": (p) =>
     p.event.activityId ? (
-      <NextTimeSWRBridge activityId={p.event.activityId} />
+      <NextTimeSWRBridge
+        event={p.event}
+        runBGContext={p.runBGContext}
+        bgModel={p.bgModel}
+      />
     ) : null,
   "pace-splits": (p) =>
     p.event.streamData?.distance || p.isLoadingStreamData ? (

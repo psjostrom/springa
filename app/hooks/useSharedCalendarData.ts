@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useAtomValue } from "jotai";
-import { startOfMonth, subMonths, endOfMonth, addMonths, format } from "date-fns";
 import { fetchCalendar } from "@/lib/intervalsClient";
-import { CALENDAR_LOOKBACK_MONTHS } from "@/lib/constants";
+import {
+  advanceSharedCalendarKey,
+  buildSharedCalendarKey,
+  getSharedCalendarTimeoutDelay,
+  msUntilNextSharedCalendarBoundary,
+  type SharedCalendarKey,
+} from "@/lib/sharedCalendarData";
 import { intervalsConnectedAtom } from "../atoms";
 import type { CalendarEvent } from "@/lib/types";
 
@@ -14,13 +20,44 @@ import type { CalendarEvent } from "@/lib/types";
  */
 export function useSharedCalendarData() {
   const connected = useAtomValue(intervalsConnectedAtom);
+  const [windowKey, setWindowKey] = useState<SharedCalendarKey>(() => buildSharedCalendarKey());
+
+  const currentWindowKey = buildSharedCalendarKey();
+  const swrKey = connected
+    ? (
+        windowKey[1] === currentWindowKey[1] && windowKey[2] === currentWindowKey[2]
+          ? windowKey
+          : currentWindowKey
+      )
+    : null;
+  const swrOldest = swrKey?.[1];
+  const swrNewest = swrKey?.[2];
+
+  useEffect(() => {
+    if (!connected) return;
+
+    const boundaryAt = Date.now() + msUntilNextSharedCalendarBoundary();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleBoundaryUpdate = () => {
+      const delay = getSharedCalendarTimeoutDelay(boundaryAt);
+      if (delay == null) {
+        setWindowKey((previousKey) => advanceSharedCalendarKey(previousKey));
+        return;
+      }
+      timeoutId = setTimeout(scheduleBoundaryUpdate, delay);
+    };
+
+    scheduleBoundaryUpdate();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [connected, swrOldest, swrNewest]);
+
   const { data: events, error, isLoading, mutate } = useSWR<CalendarEvent[], Error>(
-    connected ? "calendar-data" : null,
-    async () => {
-      const start = startOfMonth(subMonths(new Date(), CALENDAR_LOOKBACK_MONTHS));
-      const end = endOfMonth(addMonths(new Date(), 6));
-      return fetchCalendar(format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
-    },
+    swrKey,
+    ([, oldest, newest]: SharedCalendarKey) => fetchCalendar(oldest, newest),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,

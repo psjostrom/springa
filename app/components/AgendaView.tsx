@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format, isSameDay } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History, Plus } from "lucide-react";
@@ -20,6 +20,19 @@ interface AgendaViewProps {
   lthr?: number;
   thresholdPace?: number;
   clothingMap?: Map<string, ClothingRec>;
+}
+
+function startOfToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function msUntilNextMidnight(): number {
+  const now = new Date();
+  const nextMidnight = new Date(now);
+  nextMidnight.setHours(24, 0, 0, 0);
+  return nextMidnight.getTime() - now.getTime();
 }
 
 function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
@@ -144,7 +157,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
           </>
         )}
 
-        {event.type === "planned" && event.description && (
+        {event.type !== "completed" && event.description && (
           <>
             <div className="mb-2">
               <WorkoutStructureBar
@@ -207,11 +220,26 @@ export function AgendaView({
   clothingMap,
 }: AgendaViewProps) {
   const [view, setView] = useState<"upcoming" | "history">("upcoming");
+  const [today, setToday] = useState(() => startOfToday());
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-  const splitIndex = events.findIndex((e) => e.date >= now);
+    const scheduleNextDayRefresh = () => {
+      timeoutId = setTimeout(() => {
+        setToday(startOfToday());
+        scheduleNextDayRefresh();
+      }, msUntilNextMidnight());
+    };
+
+    scheduleNextDayRefresh();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  const splitIndex = events.findIndex((e) => e.date >= today);
   const hasEarlier = splitIndex > 0;
   const earlierEvents = hasEarlier ? events.slice(0, splitIndex) : [];
   const upcomingEvents = splitIndex === -1 ? events : events.slice(Math.max(0, splitIndex));
@@ -250,7 +278,6 @@ export function AgendaView({
     );
   }
 
-  const today = new Date();
   const todayHasEvent = events.some((e) => isSameDay(e.date, today));
 
   return (

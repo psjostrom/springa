@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { applyAdaptations, assembleDescription } from "@/lib/adaptPlan";
+import { applyAdaptations, assembleDescription, mapWithConcurrency } from "@/lib/adaptPlan";
 import { buildAdaptNotePrompt } from "@/lib/adaptPlanPrompt";
 import { formatAIError } from "@/lib/aiError";
 import { NextResponse } from "next/server";
@@ -25,6 +25,24 @@ interface RequestBody {
   paceTable?: PaceTable;
 }
 
+function isValidRequestBody(body: unknown): body is RequestBody {
+  if (body == null || typeof body !== "object") return false;
+
+  const candidate = body as Partial<RequestBody>;
+  return Array.isArray(candidate.upcomingEvents)
+    && Array.isArray(candidate.recentCompleted)
+    && candidate.bgModel != null
+    && candidate.insights != null
+    && candidate.runBGContexts != null
+    && typeof candidate.runBGContexts === "object"
+    && typeof candidate.lthr === "number"
+    && Array.isArray(candidate.hrZones)
+    && (candidate.maxHr == null || typeof candidate.maxHr === "number")
+    && (candidate.paceTable == null || typeof candidate.paceTable === "object");
+}
+
+const NOTE_CONCURRENCY = 4;
+
 export async function POST(req: Request) {
   let email: string;
   try {
@@ -42,7 +60,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as RequestBody;
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+  }
+
+  if (!isValidRequestBody(rawBody)) {
+    return NextResponse.json({ error: "Invalid adapt-plan payload" }, { status: 400 });
+  }
+
+  const body = rawBody;
   const {
     upcomingEvents,
     recentCompleted,
@@ -94,8 +123,10 @@ export async function POST(req: Request) {
   const anthropic = createAnthropic({ apiKey });
 
   try {
-    const withNotes = await Promise.all(
-      adapted.map(async (event): Promise<AdaptedEvent> => {
+    const withNotes = await mapWithConcurrency(
+      adapted,
+      NOTE_CONCURRENCY,
+      async (event): Promise<AdaptedEvent> => {
         // Find recent completed runs of the same category
         const cat = event.category;
         const recentSameCategory = recentCompleted.filter(
@@ -137,7 +168,7 @@ export async function POST(req: Request) {
           const description = assembleDescription(fallbackNotes, event.structure);
           return { ...event, notes: fallbackNotes, description };
         }
-      }),
+      },
     );
 
     return NextResponse.json({ adaptedEvents: withNotes });

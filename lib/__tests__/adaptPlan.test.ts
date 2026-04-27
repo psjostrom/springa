@@ -5,6 +5,7 @@ import {
   shouldSwapToEasy,
   reconstructExternalId,
   applyAdaptations,
+  mapWithConcurrency,
 } from "../adaptPlan";
 import { extractNotes, extractStructure } from "../descriptionParser";
 import type { FitnessInsights } from "../fitness";
@@ -464,5 +465,38 @@ describe("applyAdaptations", () => {
 
     const fuelChange = result[0].changes.find((c) => c.type === "fuel");
     expect(fuelChange?.confidence).toBe("low");
+  });
+});
+
+describe("mapWithConcurrency", () => {
+  it("preserves output order", async () => {
+    const input = [1, 2, 3, 4];
+    const output = await mapWithConcurrency(input, 2, async (value) => value * 10);
+
+    expect(output).toEqual([10, 20, 30, 40]);
+  });
+
+  it("enforces max in-flight tasks", async () => {
+    const input = [1, 2, 3, 4, 5, 6];
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    await mapWithConcurrency(input, 3, async (value) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => {
+        setTimeout(resolve, 5);
+      });
+      inFlight -= 1;
+      return value;
+    });
+
+    expect(maxInFlight).toBeLessThanOrEqual(3);
+  });
+
+  it("throws for invalid concurrency limit", async () => {
+    await expect(mapWithConcurrency([1], 0, async (value) => value)).rejects.toThrow(
+      "Concurrency limit must be at least 1",
+    );
   });
 });

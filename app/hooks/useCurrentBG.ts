@@ -30,7 +30,12 @@ function createBGStore() {
   const listeners = new Set<() => void>();
   let interval: ReturnType<typeof setInterval> | undefined;
   let refs = 0;
-  let enabled = true;
+  let enabled = false;
+  let latestPollToken = 0;
+
+  function isStalePoll(pollToken: number) {
+    return !enabled || pollToken !== latestPollToken;
+  }
 
   function set(next: CurrentBGData) {
     data = next;
@@ -43,8 +48,12 @@ function createBGStore() {
       return;
     }
 
+    const pollToken = ++latestPollToken;
+
     try {
       const res = await fetch("/api/bg");
+      if (isStalePoll(pollToken)) return;
+
       if (!res.ok) {
         set({ ...data, loading: false });
         return;
@@ -54,6 +63,7 @@ function createBGStore() {
         trend?: { arrow?: string; slope?: number };
         readings?: BGReading[];
       };
+      if (isStalePoll(pollToken)) return;
 
       const readings: BGReading[] = json.readings ?? [];
 
@@ -71,6 +81,7 @@ function createBGStore() {
         readings,
       });
     } catch {
+      if (isStalePoll(pollToken)) return;
       set({ ...data, loading: false });
     }
   }
@@ -79,6 +90,7 @@ function createBGStore() {
     setEnabled: (value: boolean) => {
       enabled = value;
       if (!enabled) {
+        latestPollToken += 1;
         if (interval) { clearInterval(interval); interval = undefined; }
         set({ ...EMPTY, loading: false });
       } else if (refs > 0) {
@@ -102,6 +114,9 @@ function createBGStore() {
         if (refs === 0 && interval) {
           clearInterval(interval);
           interval = undefined;
+        }
+        if (refs === 0) {
+          latestPollToken += 1;
         }
       };
     },

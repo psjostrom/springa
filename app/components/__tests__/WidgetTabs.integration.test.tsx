@@ -3,8 +3,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
+import { useSWRConfig } from "swr";
 import type { CalendarEvent } from "@/lib/types";
 import type { WidgetProps } from "@/lib/modalWidgets";
+import { buildRunAnalysisClientContextKey } from "@/lib/runAnalysisCache";
 import { WidgetTabs } from "../WidgetTabs";
 
 const completedEvent: CalendarEvent = {
@@ -48,6 +50,22 @@ function buildProps(overrides?: Partial<WidgetProps>): WidgetProps {
     isLoadingStreamData: false,
     ...overrides,
   };
+}
+
+function RunAnalysisCacheSeeder({
+  cacheKey,
+  analysis,
+}: {
+  cacheKey: readonly [string, string, string] | readonly [string, string];
+  analysis: string;
+}) {
+  const { mutate } = useSWRConfig();
+
+  React.useEffect(() => {
+    void mutate(cacheKey, analysis, { revalidate: false });
+  }, [cacheKey, analysis, mutate]);
+
+  return null;
 }
 
 const STORAGE_KEY = "springa:modal-widget-layout";
@@ -161,6 +179,50 @@ describe("WidgetTabs NextTime widget", () => {
     render(<WidgetTabs widgetProps={buildProps()} />);
     // NextTimeWidget returns null when SWR cache has no analysis
     expect(screen.queryByText("Next Time")).not.toBeInTheDocument();
+  });
+
+  it("shows Next Time when the context-aware analysis cache is populated", async () => {
+    const props = buildProps();
+    const cacheKey = [
+      "run-analysis",
+      props.event.activityId!,
+      buildRunAnalysisClientContextKey({
+        event: props.event,
+        diabetesMode: false,
+        runBGContext: props.runBGContext,
+        bgModel: props.bgModel,
+      }),
+    ] as const;
+
+    render(
+      <>
+        <RunAnalysisCacheSeeder
+          cacheKey={cacheKey}
+          analysis={"**Next Time**:\n- Ease off the first 10 minutes"}
+        />
+        <WidgetTabs widgetProps={props} />
+      </>,
+    );
+
+    expect(await screen.findByText("Next Time")).toBeInTheDocument();
+    expect(screen.getByText("Ease off the first 10 minutes")).toBeInTheDocument();
+  });
+
+  it("does not read stale analysis from the legacy cache key", () => {
+    const props = buildProps();
+
+    render(
+      <>
+        <RunAnalysisCacheSeeder
+          cacheKey={["run-analysis", props.event.activityId!]}
+          analysis={"**Next Time**:\n- Legacy stale advice"}
+        />
+        <WidgetTabs widgetProps={props} />
+      </>,
+    );
+
+    expect(screen.queryByText("Next Time")).not.toBeInTheDocument();
+    expect(screen.queryByText("Legacy stale advice")).not.toBeInTheDocument();
   });
 });
 

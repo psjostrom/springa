@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
-import { getWeekIdx } from "../workoutMath";
+import { getWeekIdx, prescribedCarbs } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
 describe("assignDayRoles", () => {
@@ -107,6 +107,16 @@ describe("generatePlan", () => {
     expect(raceDay).toBeDefined();
   });
 
+  it("generates a parseable race day description for prescribed carbs", () => {
+    const plan = generate();
+    const raceDay = plan.find((e) => e.name.includes("RACE DAY"));
+
+    expect(raceDay).toBeDefined();
+    expect(raceDay!.description).toContain("16km");
+    expect(raceDay!.description).toContain("Race");
+    expect(prescribedCarbs(raceDay!.description, raceDay!.fuelRate)).not.toBeNull();
+  });
+
   it("generates club run when clubDay is configured", () => {
     const plan = generatePlan({
       ...defaultConfig, raceDateStr: "2027-06-12",
@@ -119,6 +129,20 @@ describe("generatePlan", () => {
       expect(getDay(run.start_date_local)).toBe(4);
       expect(run.start_date_local.getHours()).toBe(18);
       expect(run.start_date_local.getMinutes()).toBe(30);
+    }
+  });
+
+  it("generates club runs with parseable duration for carb totals", () => {
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
+    });
+    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
+    expect(clubRuns.length).toBeGreaterThan(0);
+    for (const run of clubRuns) {
+      const carbs = prescribedCarbs(run.description, run.fuelRate);
+      expect(carbs).not.toBeNull();
+      expect(carbs).toBeGreaterThan(0);
     }
   });
 

@@ -337,10 +337,14 @@ const generateLongRun = (
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
+    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY`,
-      description: `RACE DAY! ${ctx.raceDist}km.\n\nGood luck!`,
+      description: createSimpleWorkoutText(
+        s(`${ctx.raceDist}km`, "z3", "Race"),
+        `Race day. ${ctx.raceDist}km at race effort. Start controlled, settle into rhythm, and fuel on schedule. Good luck!`,
+      ),
       external_id: `race`,
       type: "Run",
       fuelRate: ctx.fuelLong,
@@ -482,16 +486,21 @@ export function buildContext(config: PlanConfig): PlanContext {
   };
 }
 
-function buildClubRunEvent(date: Date, wp: WeekPhase, fuelRate: number, externalId: string): WorkoutEvent {
+function buildClubRunEvent(
+  date: Date,
+  wp: WeekPhase,
+  fuelRate: number,
+  externalId: string,
+  thresholdPace?: number,
+): WorkoutEvent {
+  const s = createStepMaker(thresholdPace);
   return {
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
-    description: [
+    description: createSimpleWorkoutText(
+      s("60m", "z2", "Easy"),
       "Club run — workout varies week to week.",
-      "",
-      "- 60m",
-      "",
-    ].join("\n"),
+    ),
     external_id: externalId,
     type: "Run",
     fuelRate,
@@ -529,7 +538,13 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
         easyCount++;
         break;
       case "club":
-        event = buildClubRunEvent(date, wp, ctx.fuelInterval, `club-${wp.weekNum}`);
+        event = buildClubRunEvent(
+          date,
+          wp,
+          ctx.fuelInterval,
+          `club-${wp.weekNum}`,
+          ctx.paceTable?.hmEquivalentPacePerKm,
+        );
         break;
       case "free":
         event = generateFreeRun(ctx, date, wp);
@@ -610,7 +625,13 @@ export function generateSingleWorkout(
       event = generateLongRun(ctx, weekIdx, date, wp);
       break;
     case "club":
-      return buildClubRunEvent(date, wp, ctx.fuelInterval, `ondemand-${format(date, "yyyy-MM-dd")}`);
+      return buildClubRunEvent(
+        date,
+        wp,
+        ctx.fuelInterval,
+        `ondemand-${format(date, "yyyy-MM-dd")}`,
+        ctx.paceTable?.hmEquivalentPacePerKm,
+      );
   }
 
   if (!event) return null;

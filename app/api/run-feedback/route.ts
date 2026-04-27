@@ -150,27 +150,40 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let email: string;
   try {
-    await requireAuth();
+    email = await requireAuth();
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
   }
 
-  const body = (await req.json()) as {
+  let body: {
     activityId: string;
     rating: string;
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
   };
+
+  try {
+    body = (await req.json()) as {
+      activityId: string;
+      rating: string;
+      comment?: string;
+      carbsG?: number;
+      preRunCarbsG?: number;
+    };
+  } catch {
+    return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+  }
+
   const { activityId, rating, comment, carbsG, preRunCarbsG } = body;
 
   if (!activityId || !rating) {
     return NextResponse.json({ error: "Missing activityId or rating" }, { status: 400 });
   }
 
-  const email = await requireAuth();
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
     return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
