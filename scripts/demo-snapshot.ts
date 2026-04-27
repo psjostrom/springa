@@ -32,10 +32,26 @@ function makeIntervalsHeaders(apiKey: string) {
   };
 }
 
+const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchIntervals(urlPath: string, apiKey: string): Promise<unknown> {
-  const res = await fetch(`${INTERVALS_BASE}${urlPath}`, { headers: makeIntervalsHeaders(apiKey) });
-  if (!res.ok) throw new Error(`Intervals ${urlPath}: ${res.status}`);
-  return res.json();
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const res = await fetch(`${INTERVALS_BASE}${urlPath}`, { headers: makeIntervalsHeaders(apiKey) });
+    if (res.ok) return res.json();
+    if (res.status === 429 && attempt < RETRY_DELAYS_MS.length) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : RETRY_DELAYS_MS[attempt];
+      console.warn(`  ⏳ 429 on ${urlPath} — waiting ${wait}ms (attempt ${attempt + 1}/${RETRY_DELAYS_MS.length})`);
+      await sleep(wait);
+      continue;
+    }
+    throw new Error(`Intervals ${urlPath}: ${res.status}`);
+  }
+  throw new Error(`Intervals ${urlPath}: exhausted retries`);
 }
 
 async function fetchScout(urlPath: string, nsUrl: string, nsSecret: string): Promise<unknown> {
@@ -275,8 +291,8 @@ async function main() {
     try {
       const activity = await fetchIntervals(`/activity/${id}`, apiKey);
       activityMap[id] = activity;
-    } catch {
-      console.warn(`  ⚠ Failed to fetch activity details for ${id}`);
+    } catch (e) {
+      console.warn(`  ⚠ Failed to fetch activity details for ${id}: ${(e as Error).message}`);
       failedActivities.push(id);
     }
     try {
@@ -285,8 +301,8 @@ async function main() {
         apiKey,
       ) as { type: string; data: number[] }[];
       streamMap[id] = Array.isArray(streams) ? streams.map(downsampleStream) : streams;
-    } catch {
-      console.warn(`  ⚠ Failed to fetch streams for ${id}`);
+    } catch (e) {
+      console.warn(`  ⚠ Failed to fetch streams for ${id}: ${(e as Error).message}`);
       if (!failedActivities.includes(id)) failedActivities.push(id);
     }
   }
