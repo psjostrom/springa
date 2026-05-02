@@ -55,10 +55,11 @@ export function estimateWorkoutDescriptionDistance(description: string, paceTabl
   for (const seg of segments) {
     if (seg.km != null) {
       totalKm += seg.km;
-    } else {
+    } else if (!seg.noPace) {
       hasTimeBasedSegment = true;
       totalKm += seg.duration / paceForIntensity(seg.intensity, paceTable);
     }
+    // noPace segments contribute to duration only — we don't fake a distance from them.
   }
   if (totalKm <= 0) return null;
   return { km: Math.round(totalKm * 10) / 10, estimated: hasTimeBasedSegment };

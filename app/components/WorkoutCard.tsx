@@ -8,7 +8,7 @@ import {
   parseWorkoutZones,
 } from "@/lib/descriptionParser";
 import type { WorkoutSection, WorkoutStep } from "@/lib/descriptionParser";
-import { getPaceForZone, getZoneLabel, formatPace } from "@/lib/format";
+import { getPaceForZone, getZoneLabel, formatPace, formatHrMin } from "@/lib/format";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
 
 interface WorkoutCardProps {
@@ -98,7 +98,7 @@ export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, p
                     <line x1="8" y1="8.5" x2="10.5" y2="10.5" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                   <span className="text-base font-bold text-warning">
-                    {estDuration.estimated ? "~" : ""}{estDuration.minutes} min
+                    {estDuration.estimated ? "~" : ""}{formatHrMin(estDuration.minutes)}
                   </span>
                 </div>
               )}
@@ -145,7 +145,7 @@ export function WorkoutCard({ description, fuelRate, fuelRateNote, totalCarbs, p
                 <line x1="8" y1="8.5" x2="10.5" y2="10.5" strokeWidth="2" strokeLinecap="round" />
               </svg>
               <span className="text-base font-bold text-warning">
-                {estDuration.estimated ? "~" : ""}{estDuration.minutes} min
+                {estDuration.estimated ? "~" : ""}{formatHrMin(estDuration.minutes)}
               </span>
             </div>
           )}

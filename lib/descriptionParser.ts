@@ -148,17 +148,28 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
   if (!description) return [];
   const isPaceFormat = description.includes("% pace");
   const isAbsolutePace = description.includes("/km Pace");
-  if (!isPaceFormat && !isAbsolutePace && hrZones.length !== 5) return [];
+  const isHrFormat = description.includes("% LTHR");
+  // Free format: step lines with no pace AND no HR markers (e.g. "- Free 60m intensity=active").
+  const isFreeFormat = !isPaceFormat && !isAbsolutePace && !isHrFormat && /^-\s+\S/m.test(description);
+  if (!isPaceFormat && !isAbsolutePace && !isFreeFormat && hrZones.length !== 5) return [];
 
   const sections: WorkoutSection[] = [];
   // HR-based: "- Warmup 10m 68-83% LTHR (115-140 bpm)"
-  const hrStepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+  const hrStepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
   // Pace-based: "- Warmup 10m 85-94% pace intensity=warmup"
-  const paceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
+  const paceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
   // Absolute pace: "- Warmup 10m 6:15-7:52/km Pace intensity=warmup"
-  const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
+  const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
+  // Free: "- Free 60m intensity=active" — duration only, no pace target.
+  const freeStepPattern = /^-\s*(?:(Free|Easy|Walk|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+intensity=\w+)?\s*$/;
 
-  const stepPattern = isAbsolutePace ? absPaceStepPattern : isPaceFormat ? paceStepPattern : hrStepPattern;
+  const stepPattern = isAbsolutePace
+    ? absPaceStepPattern
+    : isPaceFormat
+      ? paceStepPattern
+      : isFreeFormat
+        ? freeStepPattern
+        : hrStepPattern;
 
   // Split into section blocks
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
@@ -174,6 +185,12 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
   function parseStep(m: RegExpExecArray): WorkoutStep {
     const label = m[1] && !GENERIC_LABELS.includes(m[1]) ? m[1] : undefined;
     const duration = m[2];
+
+    if (isFreeFormat) {
+      // Free run — no pace target. "Free" stays as the label (it's not in GENERIC_LABELS),
+      // zone defaults to z2 for the colored easy-effort badge, no pace text.
+      return { label, duration, zone: "z2", bpmRange: "" };
+    }
 
     if (isAbsolutePace) {
       // Absolute pace: groups 3,4 are pace strings like "5:33" and "5:44" (may be undefined for effort steps)
@@ -305,9 +322,10 @@ export function extractStepTotals(description: string): Record<string, number> {
 
 export interface WorkoutSegment {
   duration: number; // in minutes
-  intensity: number; // average percentage (LTHR % for HR format, pace % for pace formats)
+  intensity: number; // average percentage (LTHR % for HR format, pace % for pace formats); 0 when noPace
   estimated: boolean; // true if duration was converted from km using pace estimates
   km: number | null; // original km value if distance-based, null if time-based
+  noPace?: boolean; // true for effort-based steps with no pace target (e.g. "Free 60m")
 }
 
 /** Convert a value+unit into minutes, using pace estimates for km distances. */
@@ -324,6 +342,9 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
   const segments: WorkoutSegment[] = [];
   const pctPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
   const absPacePattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace/;
+  // Effort-based step with no pace target, e.g. "Free 60m intensity=Z2".
+  // Anchored on `intensity=` or end-of-line so it can't false-match a duration inside a pace spec.
+  const noPacePattern = /(\d+(?:\.\d+)?)(m|s)\s*(?:intensity=|$)/;
   for (const rawLine of section.split("\n")) {
     if (!rawLine.startsWith("- ")) continue;
     const line = rawLine.slice(0, 150);
@@ -341,14 +362,27 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
       const value = parseFloat(am[1]);
       const unit = am[2];
       const avgPace = (parsePaceStr(am[3]) + parsePaceStr(am[4])) / 2;
+      // Wide ranges (e.g. easy z2 with walking allowance) make the literal midpoint
+      // meaningless for duration estimation. With a known threshold we can classify the
+      // prescription's intensity and use the user's typical pace for that zone.
+      // Without threshold info we have no better basis than the literal midpoint.
       const intensity = thresholdPace ? thresholdPace / avgPace * 100 : 85;
+      const estPace = thresholdPace ? paceForIntensity(intensity, table) : avgPace;
       if (unit === "km") {
-        segments.push({ duration: value * avgPace, intensity, estimated: true, km: value });
+        segments.push({ duration: value * estPace, intensity, estimated: true, km: value });
       } else if (unit === "s") {
         segments.push({ duration: value / 60, intensity, estimated: false, km: null });
       } else {
         segments.push({ duration: value, intensity, estimated: false, km: null });
       }
+      continue;
+    }
+    const np = noPacePattern.exec(line);
+    if (np) {
+      const value = parseFloat(np[1]);
+      const unit = np[2];
+      const duration = unit === "s" ? value / 60 : value;
+      segments.push({ duration, intensity: 0, estimated: false, km: null, noPace: true });
     }
   }
   return segments;

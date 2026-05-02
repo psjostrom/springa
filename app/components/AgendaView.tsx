@@ -3,7 +3,7 @@ import { format, isSameDay } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History, Plus } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
-import { formatPace, formatDuration } from "@/lib/format";
+import { formatPace, formatDuration, formatHrMin } from "@/lib/format";
 import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
@@ -174,7 +174,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
                 const dist = estimateWorkoutDescriptionDistance(event.description, paceTable);
                 if (!est && !dist) return null;
                 const parts = [
-                  est ? `${est.estimated ? "~" : ""}${est.minutes} min` : null,
+                  est ? `${est.estimated ? "~" : ""}${formatHrMin(est.minutes)}` : null,
                   dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
                 ].filter(Boolean);
                 return (
