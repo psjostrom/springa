@@ -74,18 +74,25 @@ export function calculateWorkoutCarbs(
 
 /** Compute prescribed carbs (g) for a workout. Description is the prescription —
  *  never derive from any actual run time (event.duration / moving_time / elapsed_time
- *  get overwritten with the paired activity's actual time after pairing). */
+ *  get overwritten with the paired activity's actual time after pairing).
+ *
+ *  paceTable + thresholdPace are required to get an accurate duration for absolute-pace
+ *  prescriptions with wide ranges (e.g. easy z2 with the walking-pace floor) — without
+ *  them the literal pace midpoint of "6:27-18:54/km" is taken at face value and the
+ *  carb total ends up 2x too high. Callers should always pass them when available. */
 export function prescribedCarbs(
   description: string | undefined,
   fuelRateGPerHour: number | null | undefined,
+  paceTable?: PaceTable,
+  thresholdPace?: number,
 ): number | null {
   if (!description || fuelRateGPerHour == null) return null;
-  const parsed = estimateWorkoutDuration(description);
+  const parsed = estimateWorkoutDuration(description, paceTable, thresholdPace);
   if (!parsed) return null;
   return calculateWorkoutCarbs(parsed.minutes, fuelRateGPerHour);
 }
 
-export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable): number {
+export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable, thresholdPace?: number): number {
   if (event.distance) {
     return event.distance / 1000;
   }
@@ -96,7 +103,7 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
     ? paceForIntensity(90, paceTable)
     : paceForIntensity(70, paceTable);
 
-  const parsed = estimateWorkoutDuration(event.description, paceTable);
+  const parsed = estimateWorkoutDuration(event.description, paceTable, thresholdPace);
   if (parsed) return parsed.minutes / pace;
 
   if (event.duration) return event.duration / 60 / pace;
@@ -104,18 +111,15 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
   return 0;
 }
 
-
-
-
 /** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
-export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable): number {
+export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable, thresholdPace?: number): number {
   if (event.distance) return event.distance;
   const kmMatch = /\((\d+)km\)/.exec(event.name);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 
   const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
   const pace = paceForIntensity(isInterval ? 90 : 70, paceTable);
-  const parsed = estimateWorkoutDuration(event.description, paceTable);
+  const parsed = estimateWorkoutDuration(event.description, paceTable, thresholdPace);
   if (parsed) return parsed.minutes / pace;
   return 0;
 }

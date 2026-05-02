@@ -15,15 +15,16 @@ function makePlannedEvent(date: string): CalendarEvent {
 }
 
 function makeRaceEvent(date: string): CalendarEvent {
+  // Real race descriptions follow the workout-step format so the strip can derive a
+  // total (totalCarbs is no longer a stored field). 16km × ~5:38/km midpoint ≈ 90 min.
   return {
     id: "race-1",
     date: new Date(date),
     name: "RACE DAY",
-    description: "Race day!",
+    description: "Race day. 16km at race effort.\n\n- Race 16km 5:32-5:43/km Pace intensity=active\n",
     type: "race",
     category: "race",
     fuelRate: 72,
-    totalCarbs: 96,
   };
 }
 
@@ -67,6 +68,7 @@ describe("AgendaView", () => {
       />,
     );
 
-    expect(screen.getByText("72g/h · 96g total")).toBeInTheDocument();
+    // 16km × ~5:38/km midpoint = ~90 min × 72g/h ÷ 60 = 108g (no threshold passed in this test).
+    expect(screen.getByText("72g/h · 108g total")).toBeInTheDocument();
   });
 });

@@ -78,15 +78,18 @@ export async function ensureSpringaCalendar(
   return data.id;
 }
 
-/** Create Google Calendar events from pre-formatted SyncEvents. Sequential to avoid rate limits. */
+/** Create Google Calendar events from pre-formatted SyncEvents. Sequential to avoid rate limits.
+ *  thresholdPace (HM-equivalent) sizes the calendar event accurately for absolute-pace
+ *  prescriptions — without it, easy runs get 2x event length from the walking-pace floor. */
 export async function syncEventsToGoogle(
   accessToken: string,
   calendarId: string,
   events: SyncEvent[],
   timezone: string,
+  thresholdPace: number | undefined,
 ): Promise<void> {
   for (const event of events) {
-    const body = buildGoogleCalendarEventPayload(event, timezone);
+    const body = buildGoogleCalendarEventPayload(event, timezone, thresholdPace);
 
     const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: "POST",
@@ -155,8 +158,9 @@ export interface EventUpdates {
 export function buildGoogleCalendarEventPayload(
   event: SyncEvent,
   timezone: string,
+  thresholdPace: number | undefined,
 ): GoogleCalendarEventPayload {
-  const durationMin = estimateWorkoutDuration(event.description)?.minutes ?? 45;
+  const durationMin = estimateWorkoutDuration(event.description, undefined, thresholdPace)?.minutes ?? 45;
   const startDate = new Date(event.startLocal);
   const endDate = new Date(startDate.getTime() + durationMin * 60_000);
 

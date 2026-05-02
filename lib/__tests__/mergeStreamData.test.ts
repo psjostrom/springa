@@ -18,7 +18,6 @@ const baseEvent: CalendarEvent = {
   avgHr: 130,
   pace: 360,
   fuelRate: null,
-  totalCarbs: null,
   carbsIngested: null,
 };
 

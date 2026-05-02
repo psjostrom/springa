@@ -15,6 +15,8 @@ import { NextResponse } from "next/server";
 import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
 import { db } from "@/lib/db";
 import { prescribedCarbs } from "@/lib/workoutMath";
+import { getUserSettings } from "@/lib/settings";
+import { getThresholdPace } from "@/lib/paceTable";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
@@ -23,10 +25,15 @@ interface MatchedEvent {
 
 /** Find the matching WORKOUT event for this activity date and compute prescribed carbs
  *  from the description (the prescription). Never derive from event time fields —
- *  Intervals.icu overwrites those with actual run time after pairing. */
+ *  Intervals.icu overwrites those with actual run time after pairing.
+ *
+ *  thresholdPace must be the user's HM-equivalent pace (from getThresholdPace) —
+ *  without it, absolute-pace prescriptions estimate at the literal walking-pace
+ *  midpoint and the carb total comes out 2x too high. */
 async function findMatchingEvent(
   apiKey: string,
   activity: IntervalsActivity,
+  thresholdPace: number | undefined,
 ): Promise<MatchedEvent> {
   const dateStr = (activity.start_date_local ?? activity.start_date).slice(0, 10);
 
@@ -41,7 +48,7 @@ async function findMatchingEvent(
     if (!planned) return { prescribedCarbsG: null, eventId: null };
 
     return {
-      prescribedCarbsG: prescribedCarbs(planned.description, planned.carbs_per_hour),
+      prescribedCarbsG: prescribedCarbs(planned.description, planned.carbs_per_hour, undefined, thresholdPace),
       eventId: planned.id,
     };
   } catch (err) {
@@ -110,6 +117,9 @@ export async function GET(req: Request) {
   }
   const apiKey = creds.intervalsApiKey;
 
+  const settings = await getUserSettings(email);
+  const thresholdPace = getThresholdPace(settings.currentAbilityDist, settings.currentAbilitySecs);
+
   const { searchParams } = new URL(req.url);
   const activityIdParam = searchParams.get("activityId");
 
@@ -126,7 +136,7 @@ export async function GET(req: Request) {
     }
   }
 
-  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(apiKey, activity);
+  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(apiKey, activity, thresholdPace);
 
   // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
   // Use paired_event_id if available, otherwise use the event we matched above.

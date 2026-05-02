@@ -27,7 +27,6 @@ const completedEvent: CalendarEvent = {
   load: 85,
   intensity: 72,
   fuelRate: 60,
-  totalCarbs: 60,
   carbsIngested: 55,
   zoneTimes: { z1: 60, z2: 1800, z3: 900, z4: 300, z5: 60 },
   streamData: {

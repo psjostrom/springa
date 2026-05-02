@@ -13,6 +13,7 @@ import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { estimateWorkoutDistance, estimatePlanEventDistance, getPlanWeekContext, getWeekIdx } from "@/lib/workoutMath";
 import { generateFullPlan } from "@/lib/workoutGenerators";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import { getThresholdPace } from "@/lib/paceTable";
 
 interface VolumeTrendChartProps {
   events: CalendarEvent[];
@@ -51,6 +52,8 @@ export function VolumeTrendChart({
   currentAbilityDist,
 }: VolumeTrendChartProps) {
 
+  const thresholdPace = getThresholdPace(currentAbilityDist, currentAbilitySecs);
+
   const data = (() => {
     const { planStartMonday, currentWeekIdx } = getPlanWeekContext(raceDate, totalWeeks);
 
@@ -80,7 +83,7 @@ export function VolumeTrendChart({
     for (const pe of planEvents) {
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-      const km = estimatePlanEventDistance(pe, paceTable);
+      const km = estimatePlanEventDistance(pe, paceTable, thresholdPace);
       const isOptional = /bonus|optional/i.test(pe.name);
       if (isOptional) {
         weeks[weekIdx].plannedOptional += km;
@@ -94,7 +97,7 @@ export function VolumeTrendChart({
       if (event.type !== "completed") continue;
       const weekIdx = getWeekIdx(event.date, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-      weeks[weekIdx].completed += estimateWorkoutDistance(event, paceTable);
+      weeks[weekIdx].completed += estimateWorkoutDistance(event, paceTable, thresholdPace);
     }
 
     // Compute totals and round

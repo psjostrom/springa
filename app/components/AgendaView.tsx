@@ -4,7 +4,7 @@ import { enGB } from "date-fns/locale";
 import { ChevronLeft, History, Plus } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { formatPace, formatDuration, formatHrMin } from "@/lib/format";
-import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance } from "@/lib/workoutMath";
+import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, prescribedCarbs } from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 import { HRMiniChart } from "./HRMiniChart";
@@ -170,8 +170,8 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
             </div>
             <div className="flex flex-wrap gap-2">
               {(() => {
-                const est = estimateWorkoutDuration(event.description, paceTable);
-                const dist = estimateWorkoutDescriptionDistance(event.description, paceTable);
+                const est = estimateWorkoutDuration(event.description, paceTable, thresholdPace);
+                const dist = estimateWorkoutDescriptionDistance(event.description, paceTable, thresholdPace);
                 if (!est && !dist) return null;
                 const parts = [
                   est ? `${est.estimated ? "~" : ""}${formatHrMin(est.minutes)}` : null,
@@ -186,9 +186,10 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
               {(() => {
                 const fuelRate = event.fuelRate;
                 if (fuelRate == null) return null;
+                const totalCarbs = prescribedCarbs(event.description, fuelRate, paceTable, thresholdPace);
                 const parts = [
                   `${fuelRate}g/h`,
-                  event.totalCarbs != null ? `${event.totalCarbs}g total` : null,
+                  totalCarbs != null ? `${totalCarbs}g total` : null,
                 ].filter(Boolean);
                 return (
                   <div className="text-sm font-medium text-text bg-tint-warning border border-warning/30 rounded px-2 py-0.5">

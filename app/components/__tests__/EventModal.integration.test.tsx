@@ -30,7 +30,6 @@ const basePlanned: CalendarEvent = {
   type: "planned",
   category: "interval",
   fuelRate: 30,
-  totalCarbs: 25,
 };
 
 const baseCompleted: CalendarEvent = {
@@ -60,15 +59,17 @@ const baseCompleted: CalendarEvent = {
 const noop = () => {};
 const noopAsync = async () => {};
 
+// Real race descriptions follow the workout-step format so the strip can derive a
+// total. The previous fixture used a free-text "Race day!" string and relied on a
+// hardcoded totalCarbs field — that field is gone now (derived everywhere).
 const baseRace: CalendarEvent = {
   id: "e300",
   date: new Date("2026-06-13T09:00:00"),
   name: "EcoTrail 16km",
-  description: "Race day!",
+  description: "Race day. 16km at race effort.\n\n- Race 16km 5:32-5:43/km Pace intensity=active\n",
   type: "race",
   category: "race",
   fuelRate: 60,
-  totalCarbs: 120,
 };
 
 describe("EventModal race event", () => {
@@ -97,7 +98,8 @@ describe("EventModal race event", () => {
     );
 
     expect(screen.getByText("60g/h")).toBeInTheDocument();
-    expect(screen.getByText("120g total")).toBeInTheDocument();
+    // 16km × ~5:38/km midpoint = ~90 min × 60g/h = 90g (no threshold passed in this test).
+    expect(screen.getByText("90g total")).toBeInTheDocument();
   });
 });
 

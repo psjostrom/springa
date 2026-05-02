@@ -6,7 +6,6 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { getWorkoutCategory } from "./constants";
-import { prescribedCarbs } from "./workoutMath";
 import { nonEmpty } from "./format";
 import { categoryFromExternalId } from "./paceInsight";
 
@@ -63,7 +62,6 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     cadence: activity.average_cadence ? activity.average_cadence * 2 : undefined,
     zoneTimes,
     fuelRate: null,
-    totalCarbs: null,
     carbsIngested: activity.carbs_ingested ?? null,
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
     rating: nonEmpty(activity.Rating),
@@ -183,10 +181,10 @@ export function processActivities(
       matchingEvent?.description ?? activity.description ?? "";
 
     const fuelRate = matchingEvent?.carbs_per_hour ?? null;
-    const totalCarbs = prescribedCarbs(description, fuelRate);
-
-    // Actual carbs ingested: from activity API field, default to planned totalCarbs
-    const carbsIngested = activity.carbs_ingested ?? totalCarbs;
+    // carbsIngested: only from the activity itself. Pipeline never falls back to a
+    // computed prescription — the display layer derives the planned total via
+    // prescribedCarbs() with full pace context and uses it as a fallback there.
+    const carbsIngested = activity.carbs_ingested ?? null;
 
     const category = categoryFromExternalId(matchingEvent?.external_id) ?? getWorkoutCategory(activity.name);
 
@@ -211,7 +209,6 @@ export function processActivities(
         : undefined,
       zoneTimes,
       fuelRate,
-      totalCarbs,
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
       rating: nonEmpty(activity.Rating),
@@ -255,7 +252,6 @@ export function processPlannedEvents(
     const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
-    const eventTotalCarbs = prescribedCarbs(eventDesc, eventFuelRate);
 
     calendarEvents.push({
       id: `event-${event.id}`,
@@ -267,7 +263,6 @@ export function processPlannedEvents(
       distance: event.distance ?? 0,
       duration: event.moving_time ?? event.duration ?? event.elapsed_time,
       fuelRate: eventFuelRate,
-      totalCarbs: eventTotalCarbs,
     });
   }
 
