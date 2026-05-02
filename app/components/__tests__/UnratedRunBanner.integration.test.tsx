@@ -32,21 +32,29 @@ function BannerHarness({ events }: { events: CalendarEvent[] }) {
 
 describe("UnratedRunBanner", () => {
   it("shows again when a new unrated run replaces a dismissed one", async () => {
-    const user = userEvent.setup();
-    const firstRun = makeCompletedRun("activity-1", "W04 Easy", "2026-04-23T09:00:00Z");
-    const secondRun = makeCompletedRun("activity-2", "W05 Long", "2026-04-24T09:00:00Z");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
-    const { rerender } = render(<BannerHarness events={[firstRun]} />);
+    try {
+      vi.setSystemTime(new Date("2026-04-25T09:00:00Z"));
 
-    expect(await screen.findByText("W04 Easy")).toBeInTheDocument();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const firstRun = makeCompletedRun("activity-1", "W04 Easy", "2026-04-23T09:00:00Z");
+      const secondRun = makeCompletedRun("activity-2", "W05 Long", "2026-04-24T09:00:00Z");
 
-    await user.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(screen.queryByText("W04 Easy")).not.toBeInTheDocument();
+      const { rerender } = render(<BannerHarness events={[firstRun]} />);
 
-    rerender(<BannerHarness events={[firstRun, secondRun]} />);
+      expect(await screen.findByText("W04 Easy")).toBeInTheDocument();
 
-    expect(await screen.findByText("W05 Long")).toBeInTheDocument();
-    expect(screen.queryByText("W04 Easy")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Dismiss" }));
+      expect(screen.queryByText("W04 Easy")).not.toBeInTheDocument();
+
+      rerender(<BannerHarness events={[firstRun, secondRun]} />);
+
+      expect(await screen.findByText("W05 Long")).toBeInTheDocument();
+      expect(screen.queryByText("W04 Easy")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hides when the current unrated run ages past seven days without a parent rerender", async () => {
