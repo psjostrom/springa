@@ -322,11 +322,38 @@ export function extractStepTotals(description: string): Record<string, number> {
 
 export interface WorkoutSegment {
   duration: number; // in minutes
-  intensity: number; // average percentage (LTHR % for HR format, pace % for pace formats); 0 when noPace
+  intensity: number; // average percentage (LTHR % for HR format, pace % for pace formats); zone-typical % when noPace
   estimated: boolean; // true if duration was converted from km using pace estimates
   km: number | null; // original km value if distance-based, null if time-based
   noPace?: boolean; // true for effort-based steps with no pace target (e.g. "Free 60m")
+  zone?: ZoneName; // explicit zone, set when classifyPacePct can't recover it (no-pace steps; covers z1)
 }
+
+/** Effort labels with no pace target, mapped to the zone they represent.
+ *  Mirrors parseWorkoutStructure's no-pace defaults so the bar agrees with the step badges. */
+const NO_PACE_ZONE_BY_LABEL: Record<string, ZoneName> = {
+  Walk: "z1",
+  Downhill: "z1",
+  Stride: "z5",
+  Uphill: "z5",
+  Fast: "z4",
+  Interval: "z4",
+  "Race Pace": "z3",
+  Easy: "z2",
+  Warmup: "z2",
+  Cooldown: "z2",
+  Free: "z2",
+};
+
+/** Representative pace-percentage per zone — used as the intensity field for no-pace
+ *  segments so the bar's height calc (intensity → height) renders sensibly. */
+const ZONE_TYPICAL_INTENSITY: Record<ZoneName, number> = {
+  z1: 60,
+  z2: 80,
+  z3: 100,
+  z4: 108,
+  z5: 115,
+};
 
 /** Convert a value+unit into minutes, using pace estimates for km distances. */
 function toMinutes(value: number, unit: string, avgPercent: number, table?: PaceTable): { minutes: number; estimated: boolean; km: number | null } {
@@ -342,9 +369,10 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
   const segments: WorkoutSegment[] = [];
   const pctPattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+)-(\d+)%/;
   const absPacePattern = /(\d+(?:\.\d+)?)(s|m|km)\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace/;
-  // Effort-based step with no pace target, e.g. "Free 60m intensity=Z2".
+  // Effort-based step with no pace target, e.g. "Stride 20s intensity=active" or "Free 60m intensity=active".
+  // Captures an optional label so the bar can colour the segment by intended zone.
   // Anchored on `intensity=` or end-of-line so it can't false-match a duration inside a pace spec.
-  const noPacePattern = /(\d+(?:\.\d+)?)(m|s)\s*(?:intensity=|$)/;
+  const noPacePattern = /^-\s+(?:(Walk|Downhill|Stride|Uphill|Fast|Interval|Race Pace|Easy|Warmup|Cooldown|Free)\s+)?(\d+(?:\.\d+)?)(m|s)\s*(?:intensity=\w+)?\s*$/;
   for (const rawLine of section.split("\n")) {
     if (!rawLine.startsWith("- ")) continue;
     const line = rawLine.slice(0, 150);
@@ -379,10 +407,19 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
     }
     const np = noPacePattern.exec(line);
     if (np) {
-      const value = parseFloat(np[1]);
-      const unit = np[2];
+      const label = np[1];
+      const value = parseFloat(np[2]);
+      const unit = np[3];
       const duration = unit === "s" ? value / 60 : value;
-      segments.push({ duration, intensity: 0, estimated: false, km: null, noPace: true });
+      const zone: ZoneName = label ? (NO_PACE_ZONE_BY_LABEL[label] ?? "z2") : "z2";
+      segments.push({
+        duration,
+        intensity: ZONE_TYPICAL_INTENSITY[zone],
+        estimated: false,
+        km: null,
+        noPace: true,
+        zone,
+      });
     }
   }
   return segments;

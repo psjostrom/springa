@@ -1499,6 +1499,7 @@ describe("parseWorkoutSegments — no-pace step (free format)", () => {
     expect(segments[0].km).toBeNull();
     expect(segments[0].noPace).toBe(true);
     expect(segments[0].estimated).toBe(false);
+    expect(segments[0].zone).toBe("z2"); // Free defaults to easy effort
   });
 
   it("parses seconds unit", () => {
@@ -1516,6 +1517,33 @@ describe("parseWorkoutSegments — no-pace step (free format)", () => {
     expect(segments).toHaveLength(1);
     expect(segments[0].noPace).toBeUndefined();
     expect(segments[0].duration).toBe(60); // m unit, literal
+    expect(segments[0].zone).toBeUndefined();
+  });
+
+  // Regression: WorkoutStructureBar painted strides cyan because no-pace
+  // steps had no explicit zone — classifyPacePct(0) defaulted to z2.
+  it("infers zone from the label so the bar can colour strides as hard and walks as recovery", () => {
+    const desc = `Easy run with strides.
+
+Warmup
+- 10m 6:27-18:54/km Pace intensity=warmup
+
+Strides 4x
+- Stride 20s intensity=active
+- Walk 1m intensity=rest
+
+Cooldown
+- 15m 6:27-18:54/km Pace intensity=cooldown
+`;
+    const segments = parseWorkoutSegments(desc);
+    // 1 warmup + (1 stride + 1 walk) × 4 + 1 cooldown = 10
+    expect(segments).toHaveLength(10);
+    const stride = segments.find((s) => s.zone === "z5");
+    const walk = segments.find((s) => s.zone === "z1");
+    expect(stride?.noPace).toBe(true);
+    expect(stride?.duration).toBeCloseTo(1 / 3, 2); // 20s
+    expect(walk?.noPace).toBe(true);
+    expect(walk?.duration).toBe(1); // 1m
   });
 });
 
