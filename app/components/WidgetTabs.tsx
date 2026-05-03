@@ -85,9 +85,11 @@ const widgetRenderMap: Record<ModalWidgetId, (props: WidgetProps) => React.React
       <WorkoutCard
         description={p.event.description}
         fuelRate={p.event.fuelRate}
+        prescribedCarbsG={p.event.prescribedCarbsG}
         paceTable={p.paceTable}
         hrZones={p.hrZones}
         lthr={p.lthr}
+        racePacePerKm={p.racePacePerKm}
       >
         {p.event.type === "completed" && p.event.zoneTimes ? (
           <HRMiniChart

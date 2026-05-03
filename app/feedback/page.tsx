@@ -99,7 +99,7 @@ function FeedbackContent() {
         setFormState({
           rating: data.rating,
           comment: data.comment ?? "",
-          carbsG: data.carbsG != null ? String(data.carbsG) : (data.prescribedCarbsG != null && !data.rating ? String(data.prescribedCarbsG) : ""),
+          carbsG: data.carbsG != null ? String(data.carbsG) : "",
           preRunCarbsG: data.preRunCarbsG != null ? String(data.preRunCarbsG) : "",
           prescribedCarbsG: data.prescribedCarbsG ?? null,
           activityId: data.activityId,
@@ -221,8 +221,11 @@ function FeedbackContent() {
             <>
               <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
               <p className="text-success text-lg font-bold">Thanks!</p>
-              {(formState.carbsG || formState.prescribedCarbsG) && (
-                <p className="text-muted text-sm mt-2">Carbs: {formState.carbsG || formState.prescribedCarbsG}g</p>
+              {formState.carbsG && (
+                <p className="text-muted text-sm mt-2">Carbs ingested: {formState.carbsG}g</p>
+              )}
+              {formState.prescribedCarbsG != null && (
+                <p className="text-muted text-sm mt-1">Prescribed: {formState.prescribedCarbsG}g</p>
               )}
               {formState.preRunCarbsG && (
                 <p className="text-muted text-sm mt-1">Pre-run: {formState.preRunCarbsG}g</p>
@@ -267,13 +270,29 @@ function FeedbackContent() {
 
           {/* Carbs ingested */}
           <div className="w-full max-w-sm mb-4">
-            <label className="block text-xs text-muted uppercase tracking-wider font-semibold mb-1">Carbs ingested (g)</label>
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <label className="block text-xs text-muted uppercase tracking-wider font-semibold">Carbs ingested (g)</label>
+              {formState.prescribedCarbsG != null && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormState((s) => ({ ...s, carbsG: String(s.prescribedCarbsG ?? "") }));
+                  }}
+                  className="text-xs font-semibold text-brand hover:text-brand-hover transition"
+                >
+                  Use prescribed
+                </button>
+              )}
+            </div>
+            {formState.prescribedCarbsG != null && (
+              <p className="text-xs text-muted mb-2">Prescribed: {formState.prescribedCarbsG}g</p>
+            )}
             <input
               type="number"
               inputMode="numeric"
               value={formState.carbsG}
               onChange={(e) => { setFormState((s) => ({ ...s, carbsG: e.target.value })); }}
-              placeholder={formState.prescribedCarbsG != null ? `${formState.prescribedCarbsG} (prescribed)` : "e.g. 40"}
+              placeholder="e.g. 40"
               className="w-full px-4 py-3 bg-surface-alt border border-border rounded-xl text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand text-sm"
             />
           </div>

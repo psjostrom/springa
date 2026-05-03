@@ -805,10 +805,12 @@ Cooldown
       type: "planned",
       category: "interval",
     };
-    // 39 min / 5.15 min/km (tempo pace for intervals) ≈ 7.6 km
+    // Distance is now resolved from the parsed step mix: easy recoveries use easy pace,
+    // work reps use interval pace. That lands around 6 km instead of treating all 39 min
+    // as interval-pace running.
     const result = estimateWorkoutDistance(event);
-    expect(result).toBeGreaterThan(7);
-    expect(result).toBeLessThan(8);
+    expect(result).toBeGreaterThan(5.5);
+    expect(result).toBeLessThan(6.5);
   });
 
   it("returns 0 for events with no data", () => {
@@ -1084,6 +1086,17 @@ Warmup
       "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
     );
   });
+
+  it("extracts notes from a labeled free-format single-step workout", () => {
+    const desc = `Club run — pace and route follow the club. Workout varies week to week.
+
+- Free 60m intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe(
+      "Club run — pace and route follow the club. Workout varies week to week.",
+    );
+  });
 });
 
 describe("extractStructure", () => {
@@ -1114,6 +1127,15 @@ Cooldown
 
     const structure = extractStructure(desc);
     expect(structure).toBe("- 35m 68-83% LTHR (115-140 bpm) intensity=active");
+  });
+
+  it("extracts structure from a labeled free-format single-step workout", () => {
+    const desc = `Club run — pace and route follow the club. Workout varies week to week.
+
+- Free 60m intensity=active
+`;
+
+    expect(extractStructure(desc)).toBe("- Free 60m intensity=active");
   });
 
   it("returns empty string for description without structure", () => {
@@ -1472,6 +1494,20 @@ describe("parseWorkoutStructure — free format", () => {
     expect(step.label).toBe("Free");
     expect(step.duration).toBe("60m");
     expect(step.bpmRange).toBe("");
+  });
+
+  it("renders a Race absolute-pace step as structured content", () => {
+    const desc = `Race day.
+
+- Race 16km 5:32-5:43/km Pace intensity=active
+`;
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(1);
+    const step = sections[0].steps[0];
+    expect(step.label).toBe("Race");
+    expect(step.duration).toBe("16km");
+    expect(step.bpmRange).toBe("5:32-5:43 /km");
   });
 });
 

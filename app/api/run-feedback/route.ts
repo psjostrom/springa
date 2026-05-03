@@ -14,41 +14,77 @@ import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
 import { db } from "@/lib/db";
-import { prescribedCarbs } from "@/lib/workoutMath";
+import type { WorkoutEstimationContext } from "@/lib/workoutMath";
 import { getUserSettings } from "@/lib/settings";
-import { getThresholdPace } from "@/lib/paceTable";
+import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import { findAuthoritativeWorkoutEventMatch } from "@/lib/workoutEventMatching";
+import {
+  calculateExactDescriptionPrescription,
+  loadWorkoutEventPrescriptions,
+  upsertWorkoutEventPrescriptions,
+} from "@/lib/workoutPrescriptions";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
   eventId: number | null;
 }
 
+function shiftDateString(dateStr: string, dayOffset: number): string {
+  const date = new Date(`${dateStr}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + dayOffset);
+  return date.toISOString().slice(0, 10);
+}
+
 /** Find the matching WORKOUT event for this activity date and compute prescribed carbs
  *  from the description (the prescription). Never derive from event time fields —
  *  Intervals.icu overwrites those with actual run time after pairing.
  *
- *  thresholdPace must be the user's HM-equivalent pace (from getThresholdPace) —
- *  without it, absolute-pace prescriptions estimate at the literal walking-pace
- *  midpoint and the carb total comes out 2x too high. */
+ *  The full workout estimation context must come from the same resolver the UI uses —
+ *  otherwise the post-run screen drifts from the pre-run prescription. */
 async function findMatchingEvent(
+  email: string,
   apiKey: string,
   activity: IntervalsActivity,
-  thresholdPace: number | undefined,
+  context: WorkoutEstimationContext,
 ): Promise<MatchedEvent> {
   const dateStr = (activity.start_date_local ?? activity.start_date).slice(0, 10);
+  const oldest = shiftDateString(dateStr, -3);
+  const newest = shiftDateString(dateStr, 3);
 
   try {
     const res = await fetch(
-      `${API_BASE}/athlete/0/events?oldest=${dateStr}T00:00:00&newest=${dateStr}T23:59:59`,
+      `${API_BASE}/athlete/0/events?oldest=${oldest}T00:00:00&newest=${newest}T23:59:59`,
       { headers: { Authorization: authHeader(apiKey) } },
     );
     if (!res.ok) return { prescribedCarbsG: null, eventId: null };
     const events = (await res.json()) as IntervalsEvent[];
-    const planned = events.find((e) => e.category === "WORKOUT" && e.carbs_per_hour != null);
+    const planned = findAuthoritativeWorkoutEventMatch(activity, events);
     if (!planned) return { prescribedCarbsG: null, eventId: null };
 
+    const eventId = String(planned.id);
+    const stored = await loadWorkoutEventPrescriptions(email, [eventId]);
+    if (stored.has(eventId)) {
+      return {
+        prescribedCarbsG: stored.get(eventId)?.prescribedCarbsG ?? null,
+        eventId: planned.id,
+      };
+    }
+
+    const prescribedCarbsG = calculateExactDescriptionPrescription(
+      planned.description,
+      planned.carbs_per_hour,
+      context,
+    );
+    if (prescribedCarbsG != null) {
+      await upsertWorkoutEventPrescriptions(email, [{
+        eventId,
+        plannedDurationSeconds: null,
+        prescribedCarbsG,
+      }]);
+    }
+
     return {
-      prescribedCarbsG: prescribedCarbs(planned.description, planned.carbs_per_hour, undefined, thresholdPace),
+      prescribedCarbsG,
       eventId: planned.id,
     };
   } catch (err) {
@@ -69,7 +105,7 @@ async function findLatestUnratedRun(apiKey: string): Promise<IntervalsActivity |
 
   const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
   return activities
-    .filter((a) => a.type === "Run" && !a.Rating)
+    .filter((a) => (a.type === "Run" || a.type === "VirtualRun") && !a.Rating)
     .sort((a, b) =>
       new Date(b.start_date_local ?? b.start_date).getTime() -
       new Date(a.start_date_local ?? a.start_date).getTime(),
@@ -118,7 +154,7 @@ export async function GET(req: Request) {
   const apiKey = creds.intervalsApiKey;
 
   const settings = await getUserSettings(email);
-  const thresholdPace = getThresholdPace(settings.currentAbilityDist, settings.currentAbilitySecs);
+  const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
 
   const { searchParams } = new URL(req.url);
   const activityIdParam = searchParams.get("activityId");
@@ -136,7 +172,12 @@ export async function GET(req: Request) {
     }
   }
 
-  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(apiKey, activity, thresholdPace);
+  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
+    email,
+    apiKey,
+    activity,
+    workoutContext,
+  );
 
   // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
   // Use paired_event_id if available, otherwise use the event we matched above.

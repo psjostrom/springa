@@ -1,6 +1,9 @@
 import { format } from "date-fns";
 import type { WorkoutEvent } from "./types";
-import { estimateWorkoutDuration } from "./workoutMath";
+import {
+  resolveWorkoutMetrics,
+  type WorkoutEstimationContext,
+} from "./workoutMath";
 import {
   getGoogleCalendarCredentials,
   updateGoogleRefreshToken,
@@ -79,17 +82,17 @@ export async function ensureSpringaCalendar(
 }
 
 /** Create Google Calendar events from pre-formatted SyncEvents. Sequential to avoid rate limits.
- *  thresholdPace (HM-equivalent) sizes the calendar event accurately for absolute-pace
- *  prescriptions — without it, easy runs get 2x event length from the walking-pace floor. */
+ *  The shared workout estimation context keeps server-side calendar sizing aligned
+ *  with the UI and feedback flows. */
 export async function syncEventsToGoogle(
   accessToken: string,
   calendarId: string,
   events: SyncEvent[],
   timezone: string,
-  thresholdPace: number | undefined,
+  context: WorkoutEstimationContext,
 ): Promise<void> {
   for (const event of events) {
-    const body = buildGoogleCalendarEventPayload(event, timezone, thresholdPace);
+    const body = buildGoogleCalendarEventPayload(event, timezone, context);
 
     const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: "POST",
@@ -158,9 +161,13 @@ export interface EventUpdates {
 export function buildGoogleCalendarEventPayload(
   event: SyncEvent,
   timezone: string,
-  thresholdPace: number | undefined,
+  context: WorkoutEstimationContext,
 ): GoogleCalendarEventPayload {
-  const durationMin = estimateWorkoutDuration(event.description, undefined, thresholdPace)?.minutes ?? 45;
+  const durationMin = resolveWorkoutMetrics(
+    event.description,
+    event.fuelRate,
+    context,
+  ).duration?.minutes ?? 45;
   const startDate = new Date(event.startLocal);
   const endDate = new Date(startDate.getTime() + durationMin * 60_000);
 

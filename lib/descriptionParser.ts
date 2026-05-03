@@ -39,6 +39,15 @@ export function classifyPacePct(avgPct: number): ZoneName {
   return "z2";
 }
 
+const SECTION_HEADER_SEARCH_PATTERN = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/m;
+const STEP_LINE_START_PATTERN = /(?:^|\n)-\s+(?:[A-Za-z][\w ]*\s+)?\d+(?:\.\d+)?(?:s|m|km)\b/m;
+
+function findFirstStructureIndex(description: string): number {
+  const firstHeaderIdx = description.search(SECTION_HEADER_SEARCH_PATTERN);
+  if (firstHeaderIdx !== -1) return firstHeaderIdx;
+  return description.search(STEP_LINE_START_PATTERN);
+}
+
 /** Parse "M:SS" pace string to decimal min/km. */
 function parsePaceStr(s: string): number {
   const [min, sec] = s.split(":").map(Number);
@@ -91,12 +100,7 @@ export function parseWorkoutZones(description: string, lthr = DEFAULT_LTHR, hrZo
 /** Extract notes/flavor text from between any header lines and the first section header or step line. */
 export function extractNotes(description: string): string | null {
   if (!description) return null;
-  // Look for first section header OR first step line (for single-step workouts)
-  let firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
-  if (firstSectionIdx === -1) {
-    // No section headers — look for first step line (starts with "- ")
-    firstSectionIdx = description.search(/(?:^|\n)-\s+\d/m);
-  }
+  const firstSectionIdx = findFirstStructureIndex(description);
   if (firstSectionIdx === -1) return null;
   const preamble = description.slice(0, firstSectionIdx);
   const lines = preamble.split("\n");
@@ -115,12 +119,7 @@ export function extractNotes(description: string): string | null {
 /** Extract the workout structure (everything from the first section header or step line onward). */
 export function extractStructure(description: string): string {
   if (!description) return "";
-  // Look for first section header OR first step line (for single-step workouts)
-  let firstSectionIdx = description.search(/(?:^|\n)Warmup/m);
-  if (firstSectionIdx === -1) {
-    // No section headers — look for first step line (starts with "- ")
-    firstSectionIdx = description.search(/(?:^|\n)-\s+\d/m);
-  }
+  const firstSectionIdx = findFirstStructureIndex(description);
   if (firstSectionIdx === -1) return "";
   return description.slice(firstSectionIdx).trim();
 }
@@ -155,11 +154,11 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
 
   const sections: WorkoutSection[] = [];
   // HR-based: "- Warmup 10m 68-83% LTHR (115-140 bpm)"
-  const hrStepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+  const hrStepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
   // Pace-based: "- Warmup 10m 85-94% pace intensity=warmup"
-  const paceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
+  const paceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
   // Absolute pace: "- Warmup 10m 6:15-7:52/km Pace intensity=warmup"
-  const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
+  const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
   // Free: "- Free 60m intensity=active" — duration only, no pace target.
   const freeStepPattern = /^-\s*(?:(Free|Easy|Walk|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+intensity=\w+)?\s*$/;
 
@@ -286,7 +285,7 @@ export function extractStepTotals(description: string): Record<string, number> {
 
   const totals: Record<string, number> = {};
   // Match HR-based ("X-Y% LTHR"), pace-based ("X-Y% pace"), and absolute pace ("M:SS-M:SS/km Pace") steps
-  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
 
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
   const headers: { name: string; index: number }[] = [];

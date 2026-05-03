@@ -8,6 +8,7 @@ import type {
 import { getWorkoutCategory } from "./constants";
 import { nonEmpty } from "./format";
 import { categoryFromExternalId } from "./paceInsight";
+import { findWorkoutEventMatch } from "./workoutEventMatching";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -91,18 +92,6 @@ export function processActivities(
 
   console.log(`[auto-pair] ${runActivities.length} run activities, ${events.length} events`);
 
-  // Build reverse lookups for authoritative pairing (both directions)
-  const pairedEventMap = new Map<string, IntervalsEvent>();
-  const eventById = new Map<number, IntervalsEvent>();
-  for (const event of events) {
-    if (event.category === "WORKOUT") {
-      eventById.set(event.id, event);
-      if (event.paired_activity_id) {
-        pairedEventMap.set(event.paired_activity_id, event);
-      }
-    }
-  }
-
   for (const activity of runActivities) {
     let pace: number | undefined;
     if (activity.distance && activity.moving_time) {
@@ -130,35 +119,11 @@ export function processActivities(
     // time, which is wrong on Vercel (UTC) for CET users.
     const activityDate = parseISO(activity.start_date);
 
-    // Prefer authoritative link (either direction), fall back to ±3 day exact name match
-    const authoritativeMatch = pairedEventMap.get(activity.id)
-      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined);
-
-    const rejections: string[] = [];
-    const fallbackMatch = !authoritativeMatch ? events.find((event) => {
-      if (event.category !== "WORKOUT") return false;
-      const actName = activity.name.trim().toLowerCase();
-      const evtName = (event.name ?? "").trim().toLowerCase();
-      if (event.paired_activity_id) {
-        rejections.push(`${event.id}|${event.name}|paired→${event.paired_activity_id}`);
-        return false;
-      }
-      if (fallbackClaimedEventIds.has(event.id)) {
-        rejections.push(`${event.id}|${event.name}|claimed`);
-        return false;
-      }
-      const eventDate = parseISO(event.start_date_local);
-      const dayDiff = Math.abs(differenceInDays(activityDate, eventDate));
-      const withinWindow = dayDiff <= 3;
-      const nameMatch = actName === evtName || (evtName.length > 0 && actName.endsWith(evtName));
-      if (!withinWindow) {
-        rejections.push(`${event.id}|${event.name}|dayDiff=${dayDiff}`);
-      } else if (!nameMatch) {
-        rejections.push(`${event.id}|${event.name}|name≠"${actName}"`);
-      }
-      return withinWindow && nameMatch;
-    }) : undefined;
-    const matchingEvent = authoritativeMatch ?? fallbackMatch;
+    const { matchingEvent, fallbackMatch, rejections } = findWorkoutEventMatch(
+      activity,
+      events,
+      fallbackClaimedEventIds,
+    );
 
     // Log: fallback match → one line; plan workout with no match → detail block; otherwise silent
     if (fallbackMatch) {

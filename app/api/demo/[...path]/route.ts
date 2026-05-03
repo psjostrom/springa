@@ -12,6 +12,36 @@ import {
 
 interface Params { params: Promise<{ path: string[] }> }
 
+const NORMALIZED_CLUB_RUN_DESCRIPTION = "Club run — pace and route follow the club. Workout varies week to week.\n\n- Free 60m intensity=active";
+
+function normalizeDemoWorkoutDescription(description: string): string {
+  if (description === "Club run — workout varies week to week.\n\n- 60m") {
+    return NORMALIZED_CLUB_RUN_DESCRIPTION;
+  }
+  if (description === "Club run — workout varies week to week.\n\n- Easy 60m 6:27-18:54/km Pace intensity=active") {
+    return NORMALIZED_CLUB_RUN_DESCRIPTION;
+  }
+  return description;
+}
+
+function normalizeDemoWorkoutData(data: unknown): unknown {
+  if (data === null || data === undefined) return data;
+  if (Array.isArray(data)) return data.map(normalizeDemoWorkoutData);
+  if (typeof data === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      if (key === "totalCarbs") continue;
+      if (key === "description" && typeof value === "string") {
+        result[key] = normalizeDemoWorkoutDescription(value);
+        continue;
+      }
+      result[key] = normalizeDemoWorkoutData(value);
+    }
+    return result;
+  }
+  return data;
+}
+
 /** Shift all date strings and timestamps in a value by dayShift days. */
 function shiftDates(data: unknown, dayShiftMs: number): unknown {
   if (data === null || data === undefined) return data;
@@ -73,11 +103,11 @@ export async function GET(_req: Request, { params }: Params) {
     if (url.searchParams.get("streams") === "1") {
       const details = activityDetailsFixtures[path[2]];
       if (!details) return NextResponse.json({ streamData: {} });
-      return NextResponse.json(details);
+      return NextResponse.json(normalizeDemoWorkoutData(details));
     }
     const fixture = activityFixtures[path[2]];
     if (!fixture) return NextResponse.json({});
-    return NextResponse.json(shiftDates(fixture, dayShiftMs));
+    return NextResponse.json(shiftDates(normalizeDemoWorkoutData(fixture), dayShiftMs));
   }
 
   if (path[0] === "intervals" && path[1] === "events" && path[2]) {
@@ -130,12 +160,12 @@ export async function GET(_req: Request, { params }: Params) {
   if (key === "bg" || key === "insulin-context") {
     const fixture = fixtures[key];
     if (!fixture) return NextResponse.json({ error: "Not available in demo" }, { status: 404 });
-    return NextResponse.json(resolveRelativeTimestamps(fixture));
+    return NextResponse.json(resolveRelativeTimestamps(normalizeDemoWorkoutData(fixture)));
   }
 
   // Settings — no date shifting needed
   if (key === "settings") {
-    return NextResponse.json(fixtures[key]);
+    return NextResponse.json(normalizeDemoWorkoutData(fixtures[key]));
   }
 
   // Default: exact match with date shifting
@@ -143,7 +173,7 @@ export async function GET(_req: Request, { params }: Params) {
   if (!fixture) {
     return NextResponse.json({ error: "Not available in demo" }, { status: 404 });
   }
-  return NextResponse.json(shiftDates(fixture, dayShiftMs));
+  return NextResponse.json(shiftDates(normalizeDemoWorkoutData(fixture), dayShiftMs));
 }
 
 export async function POST(req: Request, { params }: Params) {

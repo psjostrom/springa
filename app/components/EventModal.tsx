@@ -343,7 +343,7 @@ export function EventModal({
         )}
 
         {editMode.kind !== "replacing" && selectedEvent.description && isUpcomingWorkout && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
+          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} prescribedCarbsG={selectedEvent.prescribedCarbsG} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
             <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} thresholdPace={racePacePerKm} />
           </WorkoutCard>
         )}

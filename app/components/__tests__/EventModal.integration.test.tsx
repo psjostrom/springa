@@ -83,7 +83,7 @@ describe("EventModal race event", () => {
       />,
     );
 
-    expect(screen.getByText("Race")).toBeInTheDocument();
+    expect(screen.getAllByText("Race").length).toBeGreaterThan(0);
     expect(screen.getByText("EcoTrail 16km")).toBeInTheDocument();
   });
 

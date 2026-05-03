@@ -103,6 +103,15 @@ CREATE TABLE IF NOT EXISTS prerun_carbs (
   PRIMARY KEY (email, event_id)
 );
 
+CREATE TABLE IF NOT EXISTS workout_event_prescriptions (
+  email                TEXT NOT NULL,
+  event_id             TEXT NOT NULL,
+  planned_duration_sec INTEGER,
+  prescribed_carbs_g   INTEGER,
+  created_at           INTEGER NOT NULL,
+  PRIMARY KEY (email, event_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret);
 `;
 

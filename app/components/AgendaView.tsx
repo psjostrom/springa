@@ -4,7 +4,10 @@ import { enGB } from "date-fns/locale";
 import { ChevronLeft, History, Plus } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import { formatPace, formatDuration, formatHrMin } from "@/lib/format";
-import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, prescribedCarbs } from "@/lib/workoutMath";
+import {
+  createWorkoutEstimationContext,
+  resolveWorkoutMetrics,
+} from "@/lib/workoutMath";
 import { getEventIcon, isMissedEvent } from "@/lib/eventStyles";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
 import { HRMiniChart } from "./HRMiniChart";
@@ -44,6 +47,11 @@ function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
 }
 
 function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresholdPace, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; thresholdPace?: number; clothing?: ClothingRec }) {
+  const workoutContext = createWorkoutEstimationContext({ paceTable, thresholdPace });
+  const workoutMetrics = event.type !== "completed" && event.description
+    ? resolveWorkoutMetrics(event.description, event.fuelRate, workoutContext)
+    : null;
+
   return (
     <div
       data-event-id={event.id}
@@ -169,34 +177,30 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {(() => {
-                const est = estimateWorkoutDuration(event.description, paceTable, thresholdPace);
-                const dist = estimateWorkoutDescriptionDistance(event.description, paceTable, thresholdPace);
-                if (!est && !dist) return null;
-                const parts = [
-                  est ? `${est.estimated ? "~" : ""}${formatHrMin(est.minutes)}` : null,
-                  dist ? `${dist.estimated ? "~" : ""}${dist.km} km` : null,
-                ].filter(Boolean);
-                return (
-                  <div className="text-sm font-medium text-text bg-surface-alt border border-border rounded px-2 py-0.5">
-                    {parts.join(" · ")}
-                  </div>
-                );
-              })()}
-              {(() => {
-                const fuelRate = event.fuelRate;
-                if (fuelRate == null) return null;
-                const totalCarbs = prescribedCarbs(event.description, fuelRate, paceTable, thresholdPace);
-                const parts = [
-                  `${fuelRate}g/h`,
-                  totalCarbs != null ? `${totalCarbs}g total` : null,
-                ].filter(Boolean);
-                return (
-                  <div className="text-sm font-medium text-text bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
-                    {parts.join(" · ")}
-                  </div>
-                );
-              })()}
+              {workoutMetrics && (workoutMetrics.duration != null || workoutMetrics.distance != null) && (
+                <div className="text-sm font-medium text-text bg-surface-alt border border-border rounded px-2 py-0.5">
+                  {[
+                    workoutMetrics.duration
+                      ? `${workoutMetrics.duration.estimated ? "~" : ""}${formatHrMin(workoutMetrics.duration.minutes)}`
+                      : null,
+                    workoutMetrics.distance
+                      ? `${workoutMetrics.distance.estimated ? "~" : ""}${workoutMetrics.distance.km} km`
+                      : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
+              )}
+              {event.fuelRate != null && (
+                <div className="text-sm font-medium text-text bg-tint-warning border border-warning/30 rounded px-2 py-0.5">
+                  {[
+                    `${event.fuelRate}g/h`,
+                    event.prescribedCarbsG != null
+                      ? `${event.prescribedCarbsG}g total`
+                      : workoutMetrics?.prescribedCarbsG != null
+                        ? `${workoutMetrics.prescribedCarbsG}g total`
+                        : null,
+                  ].filter(Boolean).join(" · ")}
+                </div>
+              )}
             </div>
             {clothing && (
               <div className="mt-2">

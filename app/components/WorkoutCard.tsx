@@ -9,11 +9,15 @@ import {
 } from "@/lib/descriptionParser";
 import type { WorkoutSection, WorkoutStep } from "@/lib/descriptionParser";
 import { getPaceForZone, getZoneLabel, formatPace, formatHrMin } from "@/lib/format";
-import { estimateWorkoutDuration, estimateWorkoutDescriptionDistance, prescribedCarbs } from "@/lib/workoutMath";
+import {
+  createWorkoutEstimationContext,
+  resolveWorkoutMetrics,
+} from "@/lib/workoutMath";
 
 interface WorkoutCardProps {
   description: string;
   fuelRate?: number | null;
+  prescribedCarbsG?: number | null;
   /** When set, dims the fuel rate and shows this label in parentheses (e.g. "plan"). */
   fuelRateNote?: string;
   paceTable?: PaceTable;
@@ -77,11 +81,15 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
   );
 }
 
-export function WorkoutCard({ description, fuelRate, fuelRateNote, paceTable, children, hrZones, lthr = DEFAULT_LTHR, racePacePerKm }: WorkoutCardProps) {
-  const estDuration = estimateWorkoutDuration(description, paceTable, racePacePerKm);
-  const estDistance = estimateWorkoutDescriptionDistance(description, paceTable, racePacePerKm);
-  // Derived from the same duration the strip shows — single source of truth.
-  const totalCarbs = prescribedCarbs(description, fuelRate, paceTable, racePacePerKm);
+export function WorkoutCard({ description, fuelRate, prescribedCarbsG, fuelRateNote, paceTable, children, hrZones, lthr = DEFAULT_LTHR, racePacePerKm }: WorkoutCardProps) {
+  const workoutContext = createWorkoutEstimationContext({
+    paceTable,
+    thresholdPace: racePacePerKm,
+  });
+  const metrics = resolveWorkoutMetrics(description, fuelRate, workoutContext);
+  const estDuration = metrics.duration;
+  const estDistance = metrics.distance;
+  const totalCarbs = prescribedCarbsG ?? metrics.prescribedCarbsG;
   const sections = parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm);
 
   // Fall back to raw text if parsing fails
