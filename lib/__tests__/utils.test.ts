@@ -1097,6 +1097,15 @@ Warmup
       "Club run — pace and route follow the club. Workout varies week to week.",
     );
   });
+
+  it("extracts notes from a multi-word labeled single-step workout", () => {
+    const desc = `Lock into race effort.
+
+- Race Pace 20m 95-100% pace intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe("Lock into race effort.");
+  });
 });
 
 describe("extractStructure", () => {

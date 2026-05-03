@@ -89,7 +89,7 @@ export async function syncEventsToGoogle(
   calendarId: string,
   events: SyncEvent[],
   timezone: string,
-  context: WorkoutEstimationContext,
+  context: WorkoutEstimationContext = {},
 ): Promise<void> {
   for (const event of events) {
     const body = buildGoogleCalendarEventPayload(event, timezone, context);
@@ -161,7 +161,7 @@ export interface EventUpdates {
 export function buildGoogleCalendarEventPayload(
   event: SyncEvent,
   timezone: string,
-  context: WorkoutEstimationContext,
+  context: WorkoutEstimationContext = {},
 ): GoogleCalendarEventPayload {
   const durationMin = resolveWorkoutMetrics(
     event.description,

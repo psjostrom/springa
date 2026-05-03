@@ -39,13 +39,80 @@ export function classifyPacePct(avgPct: number): ZoneName {
   return "z2";
 }
 
-const SECTION_HEADER_SEARCH_PATTERN = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/m;
-const STEP_LINE_START_PATTERN = /(?:^|\n)-\s+(?:[A-Za-z][\w ]*\s+)?\d+(?:\.\d+)?(?:s|m|km)\b/m;
+function isRepeatSuffix(value: string): boolean {
+  if (!value.startsWith(" ")) return false;
+  const trimmed = value.trim();
+  if (!trimmed.endsWith("x")) return false;
+  const count = trimmed.slice(0, -1);
+  if (count.length === 0) return false;
+  for (const char of count) {
+    if (char < "0" || char > "9") return false;
+  }
+  return true;
+}
+
+function isSectionHeaderLine(line: string): boolean {
+  if (line === "Warmup" || line === "Cooldown") return true;
+  if (line === "Main set") return true;
+  if (line.startsWith("Main set")) return isRepeatSuffix(line.slice("Main set".length));
+  if (line.startsWith("Strides")) return isRepeatSuffix(line.slice("Strides".length));
+  return false;
+}
+
+function isDurationToken(token: string): boolean {
+  let numericPart = "";
+  if (token.endsWith("km")) {
+    numericPart = token.slice(0, -2);
+  } else if (token.endsWith("m") || token.endsWith("s")) {
+    numericPart = token.slice(0, -1);
+  } else {
+    return false;
+  }
+
+  if (numericPart.length === 0) return false;
+
+  let sawDot = false;
+  let digitsAfterDot = 0;
+  for (let index = 0; index < numericPart.length; index++) {
+    const char = numericPart[index];
+    if (char === ".") {
+      if (sawDot || index === 0 || index === numericPart.length - 1) return false;
+      sawDot = true;
+      continue;
+    }
+    if (char < "0" || char > "9") return false;
+    if (sawDot) digitsAfterDot += 1;
+  }
+
+  return !sawDot || digitsAfterDot > 0;
+}
+
+function isWorkoutStepLine(line: string): boolean {
+  if (!line.startsWith("- ")) return false;
+
+  for (const token of line.slice(2).split(/\s+/)) {
+    if (isDurationToken(token)) return true;
+  }
+
+  return false;
+}
 
 function findFirstStructureIndex(description: string): number {
-  const firstHeaderIdx = description.search(SECTION_HEADER_SEARCH_PATTERN);
-  if (firstHeaderIdx !== -1) return firstHeaderIdx;
-  return description.search(STEP_LINE_START_PATTERN);
+  let lineStart = 0;
+
+  while (lineStart <= description.length) {
+    const lineEnd = description.indexOf("\n", lineStart);
+    const nextLineStart = lineEnd === -1 ? description.length + 1 : lineEnd + 1;
+    const line = description.slice(lineStart, lineEnd === -1 ? description.length : lineEnd);
+
+    if (isSectionHeaderLine(line) || isWorkoutStepLine(line)) {
+      return lineStart;
+    }
+
+    lineStart = nextLineStart;
+  }
+
+  return -1;
 }
 
 /** Parse "M:SS" pace string to decimal min/km. */
