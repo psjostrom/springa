@@ -35,10 +35,18 @@ export function calculateCanonicalPlannedPrescription(
   context: WorkoutEstimationContext = {},
 ): number | null {
   if (fuelRateGPerHour == null) return null;
+  // Description is the prescription source of truth — even for km-based steps
+  // where duration is estimated from pace. The pace table gives a better estimate
+  // than whatever Intervals.icu stores as event.duration, and it stays consistent
+  // with the duration shown in the UI.
+  const fromDescription = resolveWorkoutMetrics(description, fuelRateGPerHour, context).prescribedCarbsG;
+  if (fromDescription != null) return fromDescription;
+  // Only fall back to the stored planned duration when the description can't be
+  // parsed (missing, empty, or unrecognized format).
   if (plannedDurationSeconds != null && plannedDurationSeconds > 0) {
     return calculateWorkoutCarbs(plannedDurationSeconds / 60, fuelRateGPerHour);
   }
-  return resolveWorkoutMetrics(description, fuelRateGPerHour, context).prescribedCarbsG;
+  return null;
 }
 
 export function calculateExactDescriptionPrescription(
