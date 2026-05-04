@@ -93,7 +93,8 @@ export function WorkoutCard({ description, fuelRate, prescribedCarbsG, fuelRateN
   );
   const estDuration = metrics.duration;
   const estDistance = metrics.distance;
-  const totalCarbs = prescribedCarbsG ?? null;
+  // Use provided prescribedCarbsG if available (frozen from plan time), otherwise use computed value.
+  const totalCarbs = prescribedCarbsG ?? metrics.prescribedCarbsG ?? null;
   const sections = useMemo(
     () => parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm),
     [description, hrZones, lthr, racePacePerKm],

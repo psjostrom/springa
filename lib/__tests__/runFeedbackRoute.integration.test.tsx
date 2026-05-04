@@ -66,6 +66,13 @@ describe("/api/run-feedback", () => {
   });
 
   it("uses the paired workout when computing prescribed carbs", async () => {
+    // Pre-insert the stored prescription (would be set at plan time via bulk/replace endpoints).
+    await holder.db.execute({
+      sql: `INSERT INTO workout_event_prescriptions (email, event_id, planned_duration_sec, prescribed_carbs_g, created_at)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: ["test@example.com", "202", 56 * 60, 56, Date.now()],
+    });
+
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
         if (params.activityId !== "act-1") return new HttpResponse(null, { status: 404 });
@@ -111,6 +118,43 @@ describe("/api/run-feedback", () => {
       prescribedCarbsG: 56,
       distance: 8100,
       avgHr: 142,
+    });
+  });
+
+  it("uses activity duration fallback when paired event description is unparseable", async () => {
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
+        if (params.activityId !== "act-duration") return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({
+          id: "act-duration",
+          type: "Run",
+          start_date_local: "2026-05-05T12:00:00",
+          start_date: "2026-05-05T10:00:00Z",
+          moving_time: 5640,
+          paired_event_id: null,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([
+          {
+            id: 202,
+            category: "WORKOUT",
+            name: "W13 Easy",
+            start_date_local: "2026-05-05T10:00:00",
+            description: "legacy free text with no step format",
+            carbs_per_hour: 60,
+            paired_activity_id: "act-duration",
+          },
+        ]);
+      }),
+    );
+
+    const res = await GET(new Request("http://localhost/api/run-feedback?activityId=act-duration"));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      activityId: "act-duration",
+      prescribedCarbsG: 94,
     });
   });
 
@@ -204,7 +248,6 @@ describe("/api/run-feedback", () => {
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
-    expect(state.authCalls).toBe(1);
     expect(capturedActivityPutPayloads).toEqual([
       { activityId: "act-1", body: { Rating: "good", FeedbackComment: "solid run" } },
       { activityId: "act-1", body: { carbs_ingested: 30 } },

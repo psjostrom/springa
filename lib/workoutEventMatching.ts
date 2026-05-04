@@ -30,13 +30,20 @@ function parseComparableDay(dateString: string | undefined): Date | null {
 export function findAuthoritativeWorkoutEventMatch(
   activity: IntervalsActivity,
   events: IntervalsEvent[],
+  claimedEventIds: ReadonlySet<number> = new Set<number>(),
 ): IntervalsEvent | undefined {
   const workoutEvents = events.filter((event) => event.category === "WORKOUT");
   const eventById = new Map(workoutEvents.map((event) => [event.id, event]));
 
-  return workoutEvents.find(
-    (event) => event.paired_activity_id === activity.id,
-  ) ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined);
+  const pairedEvent = workoutEvents.find(
+    (event) => event.paired_activity_id === activity.id && !claimedEventIds.has(event.id),
+  );
+  if (pairedEvent) return pairedEvent;
+
+  const claimedPairedEvent = activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined;
+  if (claimedPairedEvent && !claimedEventIds.has(claimedPairedEvent.id)) return claimedPairedEvent;
+
+  return undefined;
 }
 
 export function findWorkoutEventMatch(
@@ -45,7 +52,7 @@ export function findWorkoutEventMatch(
   claimedEventIds: ReadonlySet<number> = new Set<number>(),
 ): WorkoutEventMatchResult {
   const workoutEvents = events.filter((event) => event.category === "WORKOUT");
-  const authoritativeMatch = findAuthoritativeWorkoutEventMatch(activity, events);
+  const authoritativeMatch = findAuthoritativeWorkoutEventMatch(activity, events, claimedEventIds);
   if (authoritativeMatch) {
     return {
       matchingEvent: authoritativeMatch,

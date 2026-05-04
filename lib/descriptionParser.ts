@@ -56,8 +56,8 @@ function isRepeatSuffix(value: string): boolean {
 function isSectionHeaderLine(line: string): boolean {
   if (line === "Warmup" || line === "Cooldown") return true;
   if (line === "Main set") return true;
-  if (line.startsWith("Main set")) return isRepeatSuffix(line.slice("Main set".length));
-  if (line.startsWith("Strides")) return isRepeatSuffix(line.slice("Strides".length));
+  if (line.startsWith("Main set") && /^\s+\d+x(?:\s|$)/.test(line.slice("Main set".length))) return true;
+  if (line.startsWith("Strides") && /^\s+\d+x(?:\s|$)/.test(line.slice("Strides".length))) return true;
   return false;
 }
 
@@ -99,6 +99,11 @@ function isWorkoutStepLine(line: string): boolean {
   return false;
 }
 
+/**
+ * Find the index of the first line that is a section header (e.g., "Warmup", "Main set 3x")
+ * or a workout step line (e.g., "- 10m 68-83% pace").
+ * Returns -1 if no structure line is found.
+ */
 function findFirstStructureIndex(description: string): number {
   let lineStart = 0;
 
@@ -117,7 +122,11 @@ function findFirstStructureIndex(description: string): number {
   return -1;
 }
 
-/** Parse "M:SS" pace string to decimal min/km. */
+/**
+ * Parse a pace string in "M:SS" format (e.g., "5:33") to decimal minutes per km.
+ * @param s - Pace string in format "M:SS"
+ * @returns Decimal minutes per km
+ */
 function parsePaceStr(s: string): number {
   const [min, sec] = s.split(":").map(Number);
   return min + sec / 60;
@@ -211,6 +220,16 @@ export interface WorkoutSection {
 /**
  * Parse a workout description into structured sections for display.
  * Returns the raw display strings (unlike parseWorkoutSegments which returns computed values).
+ */
+/**
+ * Parse a workout description into structured sections and steps.
+ * Supports multiple formats: HR-based (% LTHR), pace-based (% pace or absolute /km Pace), and free format (no pace/HR targets).
+ * 
+ * @param description - Workout description text with section headers and step lines
+ * @param lthr - Lactate threshold HR, used to classify HR-based steps into zones
+ * @param hrZones - Array of 5 HR zone threshold values, used to classify HR-based steps
+ * @param racePacePerKm - Optional race/threshold pace for classifying absolute pace steps into zones
+ * @returns Array of workout sections (each with name, optional repeats count, and steps)
  */
 export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, hrZones: number[] = [], racePacePerKm?: number): WorkoutSection[] {
   if (!description) return [];
@@ -353,8 +372,9 @@ export function extractStepTotals(description: string): Record<string, number> {
   if (!description) return {};
 
   const totals: Record<string, number> = {};
-  // Match HR-based ("X-Y% LTHR"), pace-based ("X-Y% pace"), and absolute pace ("M:SS-M:SS/km Pace") steps
-  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
+  // Match HR-based ("X-Y% LTHR"), pace-based ("X-Y% pace"), and absolute pace ("M:SS-M:SS/km Pace") steps.
+  // Note: Free steps don't have pace/HR specs, so they won't match. Label list is symmetric with parseWorkoutStructure.
+  const stepPattern = /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
 
   const sectionPattern = /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
   const headers: { name: string; index: number }[] = [];
@@ -444,7 +464,7 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
   // Effort-based step with no pace target, e.g. "Stride 20s intensity=active" or "Free 60m intensity=active".
   // Captures an optional label so the bar can colour the segment by intended zone.
   // Anchored on `intensity=` or end-of-line so it can't false-match a duration inside a pace spec.
-  const noPacePattern = new RegExp(`^-\\s+(?:(${NO_PACE_STEP_LABEL_PATTERN})\\s+)?(\\d+(?:\\.\\d+)?)(m|s)\\s*(?:intensity=\\w+)?\\s*$`);
+  const noPacePattern = new RegExp(`^-\\s+(?:(${NO_PACE_STEP_LABEL_PATTERN})\\s+)?(\\d+(?:\\.\\d+)?)(m|s|km)\\s*(?:intensity=\\w+)?\\s*$`);
   for (const rawLine of section.split("\n")) {
     if (!rawLine.startsWith("- ")) continue;
     const line = rawLine.slice(0, 150);

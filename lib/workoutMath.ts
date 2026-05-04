@@ -61,10 +61,9 @@ interface WorkoutEstimationOptions extends WorkoutEstimationContext {
 }
 
 function isPaceTableLike(
-  value: WorkoutEstimationContext | PaceTable | undefined,
+  value: PaceTable | undefined,
 ): value is PaceTable {
   if (!value || typeof value !== "object") return false;
-  if ("paceTable" in value || "thresholdPace" in value) return false;
   return "z1" in value || "z2" in value || "z3" in value || "z4" in value || "z5" in value;
 }
 
@@ -79,17 +78,18 @@ export function createWorkoutEstimationContext(
   };
 }
 
-export function normalizeWorkoutEstimationContext(
-  contextOrPaceTable?: WorkoutEstimationContext | PaceTable,
+// Normalizes a PaceTable + thresholdPace into a WorkoutEstimationContext.
+// Used internally by public functions that accept PaceTable parameters.
+function normalizeWorkoutEstimationContext(
+  paceTable?: PaceTable,
   thresholdPace?: number,
 ): WorkoutEstimationContext {
-  if (isPaceTableLike(contextOrPaceTable)) {
+  if (isPaceTableLike(paceTable)) {
     return createWorkoutEstimationContext({
-      paceTable: contextOrPaceTable,
+      paceTable,
       thresholdPace,
     });
   }
-  if (contextOrPaceTable) return contextOrPaceTable;
   return createWorkoutEstimationContext({ thresholdPace });
 }
 

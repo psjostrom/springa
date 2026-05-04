@@ -85,7 +85,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type,
-                 pace_suggestion_dismissed_at
+                 pace_suggestion_dismissed_at, hr_zones, max_hr
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -116,6 +116,9 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
   if (row.insulin_type) settings.insulinType = row.insulin_type as string;
   if (row.pace_suggestion_dismissed_at != null) settings.paceSuggestionDismissedAt = row.pace_suggestion_dismissed_at as number;
+
+  if (row.hr_zones) settings.hrZones = JSON.parse(row.hr_zones as string) as number[];
+  if (row.max_hr != null) settings.maxHr = row.max_hr as number;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
   settings.nightscoutConnected = !!(row.nightscout_url && row.nightscout_secret);
@@ -158,6 +161,8 @@ export async function saveUserSettings(
   if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
   if (partial.insulinType !== undefined) { sets.push("insulin_type = ?"); args.push(partial.insulinType ?? null); }
   if (partial.paceSuggestionDismissedAt !== undefined) { sets.push("pace_suggestion_dismissed_at = ?"); args.push(partial.paceSuggestionDismissedAt ?? null); }
+  if (partial.hrZones !== undefined) { sets.push("hr_zones = ?"); args.push(partial.hrZones ? JSON.stringify(partial.hrZones) : null); }
+  if (partial.maxHr !== undefined) { sets.push("max_hr = ?"); args.push(partial.maxHr ?? null); }
 
   if (sets.length > 0) {
     args.push(email);

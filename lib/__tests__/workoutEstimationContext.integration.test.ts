@@ -83,3 +83,92 @@ it("builds context successfully with API key, profile fetch and cached streams",
   // Presence is not guaranteed for tiny fixtures, but the call path must stay stable.
   expect(context).toMatchObject({ thresholdPace: expect.any(Number) });
 });
+
+it("uses cached settings.hrZones without calling athlete profile", async () => {
+  await holder.db.execute({
+    sql: `INSERT INTO user_settings (email, current_ability_dist, current_ability_secs, hr_zones)
+          VALUES (?, ?, ?, ?)`,
+    args: [EMAIL, 10, 3000, JSON.stringify([120, 140, 160, 175, 190])],
+  });
+
+  // If this endpoint is called, the context builder did not use cached hr_zones.
+  server.use(
+    http.get(`${API_BASE}/athlete/0`, () => {
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+
+  const context = await getUserWorkoutEstimationContext(EMAIL, "intervals-key");
+  expect(context.thresholdPace).toBeTypeOf("number");
+});
+
+it("caches profile.hrZones into user_settings", async () => {
+  await holder.db.execute({
+    sql: "INSERT INTO user_settings (email, current_ability_dist, current_ability_secs) VALUES (?, ?, ?)",
+    args: [EMAIL, 10, 3000],
+  });
+
+  server.use(
+    http.get(`${API_BASE}/athlete/0`, () => {
+      return HttpResponse.json({
+        sportSettings: [{ types: ["Run"], hr_zones: [120, 140, 160, 175, 190] }],
+      });
+    }),
+  );
+
+  await getUserWorkoutEstimationContext(EMAIL, "intervals-key");
+
+  const row = await holder.db.execute({
+    sql: "SELECT hr_zones, max_hr FROM user_settings WHERE email = ?",
+    args: [EMAIL],
+  });
+  expect(row.rows[0]?.hr_zones).toBe(JSON.stringify([120, 140, 160, 175, 190]));
+  expect(row.rows[0]?.max_hr).toBeNull();
+});
+
+it("caches profile.maxHr into user_settings when hrZones are missing", async () => {
+  await holder.db.execute({
+    sql: "INSERT INTO user_settings (email, current_ability_dist, current_ability_secs) VALUES (?, ?, ?)",
+    args: [EMAIL, 10, 3000],
+  });
+
+  server.use(
+    http.get(`${API_BASE}/athlete/0`, () => {
+      return HttpResponse.json({
+        sportSettings: [{ types: ["Run"], max_hr: 190 }],
+      });
+    }),
+  );
+
+  await getUserWorkoutEstimationContext(EMAIL, "intervals-key");
+
+  const row = await holder.db.execute({
+    sql: "SELECT hr_zones, max_hr FROM user_settings WHERE email = ?",
+    args: [EMAIL],
+  });
+  expect(row.rows[0]?.hr_zones).toBeNull();
+  expect(row.rows[0]?.max_hr).toBe(190);
+});
+
+it("falls back to DEFAULT_MAX_HR when profile has neither hrZones nor maxHr", async () => {
+  await holder.db.execute({
+    sql: "INSERT INTO user_settings (email, current_ability_dist, current_ability_secs) VALUES (?, ?, ?)",
+    args: [EMAIL, 10, 3000],
+  });
+
+  server.use(
+    http.get(`${API_BASE}/athlete/0`, () => {
+      return HttpResponse.json({});
+    }),
+  );
+
+  const context = await getUserWorkoutEstimationContext(EMAIL, "intervals-key");
+  expect(context.thresholdPace).toBeTypeOf("number");
+
+  const row = await holder.db.execute({
+    sql: "SELECT hr_zones, max_hr FROM user_settings WHERE email = ?",
+    args: [EMAIL],
+  });
+  expect(row.rows[0]?.hr_zones).toBeNull();
+  expect(row.rows[0]?.max_hr).toBeNull();
+});

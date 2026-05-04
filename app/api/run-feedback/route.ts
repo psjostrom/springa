@@ -19,9 +19,8 @@ import { getUserSettings } from "@/lib/settings";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
 import { findAuthoritativeWorkoutEventMatch } from "@/lib/workoutEventMatching";
 import {
-  calculateExactDescriptionPrescription,
   loadWorkoutEventPrescriptions,
-  upsertWorkoutEventPrescriptions,
+  calculateCanonicalPlannedPrescription,
 } from "@/lib/workoutPrescriptions";
 
 interface MatchedEvent {
@@ -70,21 +69,16 @@ async function findMatchingEvent(
       };
     }
 
-    const prescribedCarbsG = calculateExactDescriptionPrescription(
-      planned.description,
-      planned.carbs_per_hour,
-      context,
-    );
-    if (prescribedCarbsG != null) {
-      await upsertWorkoutEventPrescriptions(email, [{
-        eventId,
-        plannedDurationSeconds: null,
-        prescribedCarbsG,
-      }]);
-    }
-
+    // No stored prescription: return null rather than lazy backfill.
+    // No stored prescription (pre-PR run): compute a read-only best-effort fallback
+    // using the activity's actual duration. This does NOT write to DB.
     return {
-      prescribedCarbsG,
+      prescribedCarbsG: calculateCanonicalPlannedPrescription(
+        planned.description,
+        planned.carbs_per_hour,
+        activity.moving_time ?? null,
+        context,
+      ),
       eventId: planned.id,
     };
   } catch (err) {

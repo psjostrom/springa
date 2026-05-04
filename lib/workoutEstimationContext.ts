@@ -6,7 +6,7 @@ import {
   toPaceTable,
 } from "./paceCalibration";
 import { fetchAthleteProfile } from "./intervalsApi";
-import { getUserSettings, type UserSettings } from "./settings";
+import { getUserSettings, saveUserSettings, type UserSettings } from "./settings";
 import {
   createWorkoutEstimationContext,
   type WorkoutEstimationContext,
@@ -46,17 +46,31 @@ export async function getUserWorkoutEstimationContext(
 
   if (!intervalsApiKey) return context;
 
-  const [profile, cachedActivities] = await Promise.all([
-    fetchAthleteProfile(intervalsApiKey),
-    getActivityStreams(email),
-  ]);
-  const hrZones = resolvedSettings.hrZones?.length === 5
-    ? resolvedSettings.hrZones
-    : profile.hrZones?.length === 5
+  // Use cached hrZones/maxHr from settings to skip the live profile API call.
+  // If not cached, fetch once and write back for future requests.
+  let hrZones: number[];
+  const cachedHrZones = resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
+  const cachedMaxHr = resolvedSettings.maxHr ?? null;
+
+  const cachedActivities = await getActivityStreams(email);
+
+  if (cachedHrZones) {
+    hrZones = cachedHrZones;
+  } else if (cachedMaxHr) {
+    hrZones = computeMaxHRZones(cachedMaxHr);
+  } else {
+    const profile = await fetchAthleteProfile(intervalsApiKey);
+    hrZones = profile.hrZones?.length === 5
       ? profile.hrZones
       : profile.maxHr
         ? computeMaxHRZones(profile.maxHr)
         : computeMaxHRZones(DEFAULT_MAX_HR);
+    // Write back so subsequent requests skip the live fetch.
+    await saveUserSettings(email, {
+      hrZones: profile.hrZones?.length === 5 ? profile.hrZones : undefined,
+      maxHr: profile.maxHr ?? undefined,
+    });
+  }
 
   const paceTable = deriveCalibratedPaceTable(cachedActivities, hrZones);
 

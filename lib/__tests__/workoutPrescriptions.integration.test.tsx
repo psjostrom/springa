@@ -103,14 +103,12 @@ describe("workout event prescriptions", () => {
 
     await applyWorkoutEventPrescriptions("test@example.com", [plannedEvent]);
 
-    const [updatedEvent] = await applyWorkoutEventPrescriptions("test@example.com", [{
+    await applyWorkoutEventPrescriptions("test@example.com", [{
       ...plannedEvent,
       fuelRate: null,
-      prescribedCarbsG: 999,
     }]);
 
-    expect(updatedEvent.prescribedCarbsG).toBe(999);
-
+    // When fuelRate is removed, the stored prescription should be cleared (null).
     const stored = await holder.db.execute({
       sql: "SELECT prescribed_carbs_g, planned_duration_sec FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",
       args: ["test@example.com", "104924874"],

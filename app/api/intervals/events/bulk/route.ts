@@ -42,8 +42,10 @@ export async function POST(req: Request) {
 
     const today = new Date();
     const horizon = addDays(today, 365);
-    const calendarEvents = await fetchCalendarData(creds.intervalsApiKey, today, horizon);
-    const settings = await getUserSettings(email);
+    const [calendarEvents, settings] = await Promise.all([
+      fetchCalendarData(creds.intervalsApiKey, today, horizon),
+      getUserSettings(email),
+    ]);
     const workoutContext = await getUserWorkoutEstimationContext(
       email,
       creds.intervalsApiKey,

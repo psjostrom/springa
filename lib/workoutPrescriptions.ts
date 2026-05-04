@@ -49,15 +49,14 @@ export function calculateCanonicalPlannedPrescription(
   return null;
 }
 
+// Deprecated: use calculateCanonicalPlannedPrescription instead.
+// Kept for backwards compatibility with existing callers.
 export function calculateExactDescriptionPrescription(
   description: string | undefined,
   fuelRateGPerHour: number | null | undefined,
   context: WorkoutEstimationContext = {},
 ): number | null {
-  if (fuelRateGPerHour == null) return null;
-  const resolved = resolveWorkoutMetrics(description, fuelRateGPerHour, context);
-  if (!resolved.duration || resolved.duration.estimated) return null;
-  return resolved.prescribedCarbsG;
+  return calculateCanonicalPlannedPrescription(description, fuelRateGPerHour, null, context);
 }
 
 export async function loadWorkoutEventPrescriptions(
@@ -102,22 +101,22 @@ export async function upsertWorkoutEventPrescriptions(
   if (rows.length === 0) return;
 
   const createdAt = Date.now();
-  for (const row of rows) {
-    await db().execute({
-      sql: `INSERT INTO workout_event_prescriptions (email, event_id, planned_duration_sec, prescribed_carbs_g, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (email, event_id) DO UPDATE SET
-              planned_duration_sec = excluded.planned_duration_sec,
-              prescribed_carbs_g = excluded.prescribed_carbs_g`,
-      args: [
-        email,
-        row.eventId,
-        row.plannedDurationSeconds,
-        row.prescribedCarbsG,
-        createdAt,
-      ],
-    });
-  }
+  const statements = rows.map((row) => ({
+    sql: `INSERT INTO workout_event_prescriptions (email, event_id, planned_duration_sec, prescribed_carbs_g, created_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT (email, event_id) DO UPDATE SET
+            planned_duration_sec = excluded.planned_duration_sec,
+            prescribed_carbs_g = excluded.prescribed_carbs_g`,
+    args: [
+      email,
+      row.eventId,
+      row.plannedDurationSeconds,
+      row.prescribedCarbsG,
+      createdAt,
+    ],
+  }));
+
+  await db().batch(statements);
 }
 
 export async function deleteWorkoutEventPrescriptions(
@@ -192,9 +191,14 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
   ));
   const stored = await loadWorkoutEventPrescriptions(email, linkedEventIds);
 
-  const plannedRowsById = new Map(
-    buildPlannedPrescriptionRows(events, context).map((row) => [row.eventId, row]),
-  );
+  // Only compute planned prescriptions if we have calibration context.
+  // Without context, values are live-derived and may be wide-zone inflated for new users.
+  const hasContext = context.paceTable || context.thresholdPace;
+  const plannedRowsById = hasContext
+    ? new Map(
+        buildPlannedPrescriptionRows(events, context).map((row) => [row.eventId, row]),
+      )
+    : new Map();
 
   return events.map((event) => {
     const eventId = linkedPlannedEventId(event);
@@ -205,9 +209,10 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
       if (stored.has(eventId)) {
         prescribedCarbsG = stored.get(eventId)?.prescribedCarbsG ?? null;
       } else {
-        prescribedCarbsG = calculateExactDescriptionPrescription(
+        prescribedCarbsG = calculateCanonicalPlannedPrescription(
           event.description,
           event.fuelRate,
+          event.duration ?? null,
           context,
         );
       }
@@ -223,6 +228,8 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
   });
 }
 
+// Deprecated: use syncWorkoutEventPrescriptions + enrichEventsWithWorkoutEventPrescriptions separately.
+// This wrapper remains only for backwards compatibility with tests.
 export async function applyWorkoutEventPrescriptions(
   email: string,
   events: CalendarEvent[],

@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS user_settings (
   current_ability_secs INTEGER,
   current_ability_dist REAL,
   insulin_type TEXT,
-  pace_suggestion_dismissed_at INTEGER
+  pace_suggestion_dismissed_at INTEGER,
+  hr_zones TEXT,  -- JSON array of 5 HR zone boundary values, cached from Intervals.icu profile
+  max_hr   INTEGER -- cached from Intervals.icu profile; used when hr_zones not set
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

@@ -44,6 +44,13 @@ export async function POST(req: Request) {
   try {
     const newId = await replaceWorkoutOnDate(creds.intervalsApiKey, existingEventId, workout);
 
+    if (newId === undefined || newId === null) {
+      return NextResponse.json(
+        { error: "Failed to create new event (newId undefined)" },
+        { status: 502 },
+      );
+    }
+
     const settings = await getUserSettings(email);
     const workoutContext = await getUserWorkoutEstimationContext(
       email,
@@ -56,7 +63,7 @@ export async function POST(req: Request) {
       name: workout.name,
       description: workout.description,
       type: "planned",
-      category: "other",
+      category: workout.fuelRate ? (workout.fuelRate >= 30 ? "long" : "easy") : "easy",
       fuelRate: workout.fuelRate ?? null,
     };
     await syncWorkoutEventPrescriptions(email, [newPlannedEvent], workoutContext);
