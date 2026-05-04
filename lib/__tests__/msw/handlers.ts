@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 import { API_BASE } from "../../constants";
 import { sampleActivities, sampleEvents, sampleStreams } from "./fixtures";
 import type { CalendarEvent } from "../../types";
+import { resolveWorkoutMetrics } from "../../workoutMath";
 
 /** Convert raw Intervals.icu fixtures to CalendarEvent format for proxy route mocks. */
 function fixtureCalendarEvents(): CalendarEvent[] {
@@ -37,6 +38,10 @@ function fixtureCalendarEvents(): CalendarEvent[] {
   // Planned events (without paired activity)
   for (const e of sampleEvents) {
     if (e.paired_activity_id) continue; // skip paired — already represented by activity
+    const prescribedCarbsG = resolveWorkoutMetrics(
+      e.description,
+      e.carbs_per_hour,
+    ).prescribedCarbsG;
     events.push({
       id: `event-${e.id}`,
       date: new Date(e.start_date_local),
@@ -45,6 +50,7 @@ function fixtureCalendarEvents(): CalendarEvent[] {
       type: "planned",
       category: /long/i.test(e.name) ? "long" : /interval|hill|speed|tempo/i.test(e.name) ? "interval" : "easy",
       fuelRate: e.carbs_per_hour,
+      prescribedCarbsG,
       duration: e.duration,
     });
   }

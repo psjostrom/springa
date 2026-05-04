@@ -35,8 +35,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ synced: false, reason: "no-token" });
     }
 
-    const settings = await getUserSettings(session.user.email);
-    const creds = await getUserCredentials(session.user.email);
+    const [settings, creds] = await Promise.all([
+      getUserSettings(session.user.email),
+      getUserCredentials(session.user.email),
+    ]);
     const workoutContext = await getUserWorkoutEstimationContext(
       session.user.email,
       creds?.intervalsApiKey,

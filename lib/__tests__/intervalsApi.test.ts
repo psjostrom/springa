@@ -560,8 +560,9 @@ describe("uploadToIntervals", () => {
       { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "easy-1-1", type: "Run" },
     ];
 
-    const count = await uploadToIntervals("test-key", events);
-    expect(count).toBe(1);
+    const result = await uploadToIntervals("test-key", events);
+    expect(result.count).toBe(1);
+    expect(result.staleDeletedEventIds).toEqual([100]);
     expect(callOrder).toEqual(["list", "upload", "delete:100"]);
     expect(capturedDeleteEventIds).toEqual(["100"]);
   });

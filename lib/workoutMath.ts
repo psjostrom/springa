@@ -63,7 +63,9 @@ interface WorkoutEstimationOptions extends WorkoutEstimationContext {
 function isPaceTableLike(
   value: WorkoutEstimationContext | PaceTable | undefined,
 ): value is PaceTable {
-  return !!value && typeof value === "object" && !("paceTable" in value) && !("thresholdPace" in value);
+  if (!value || typeof value !== "object") return false;
+  if ("paceTable" in value || "thresholdPace" in value) return false;
+  return "z1" in value || "z2" in value || "z3" in value || "z4" in value || "z5" in value;
 }
 
 export function createWorkoutEstimationContext(

@@ -46,7 +46,10 @@ export async function getUserWorkoutEstimationContext(
 
   if (!intervalsApiKey) return context;
 
-  const profile = await fetchAthleteProfile(intervalsApiKey);
+  const [profile, cachedActivities] = await Promise.all([
+    fetchAthleteProfile(intervalsApiKey),
+    getActivityStreams(email),
+  ]);
   const hrZones = resolvedSettings.hrZones?.length === 5
     ? resolvedSettings.hrZones
     : profile.hrZones?.length === 5
@@ -55,7 +58,6 @@ export async function getUserWorkoutEstimationContext(
         ? computeMaxHRZones(profile.maxHr)
         : computeMaxHRZones(DEFAULT_MAX_HR);
 
-  const cachedActivities = await getActivityStreams(email);
   const paceTable = deriveCalibratedPaceTable(cachedActivities, hrZones);
 
   return createWorkoutEstimationContext({

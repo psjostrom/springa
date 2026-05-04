@@ -153,51 +153,86 @@ export async function GET(req: Request) {
   }
   const apiKey = creds.intervalsApiKey;
 
-  const settings = await getUserSettings(email);
-  const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
-
   const { searchParams } = new URL(req.url);
   const activityIdParam = searchParams.get("activityId");
 
+  const settingsPromise = getUserSettings(email);
   let activity: IntervalsActivity | null;
   if (activityIdParam) {
-    activity = await fetchActivityById(apiKey, activityIdParam);
+    const [resolvedActivity, settings] = await Promise.all([
+      fetchActivityById(apiKey, activityIdParam),
+      settingsPromise,
+    ]);
+    activity = resolvedActivity;
     if (!activity) {
       return NextResponse.json({ error: "Activity not found" }, { status: 404 });
     }
+    const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
+
+    const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
+      email,
+      apiKey,
+      activity,
+      workoutContext,
+    );
+
+    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
+    // Use paired_event_id if available, otherwise use the event we matched above.
+    let preRunFallback: PreRunCarbsFallback | undefined;
+    if (activity.PreRunCarbsG == null) {
+      const lookupEventId = activity.paired_event_id ?? matchedEventId;
+      if (lookupEventId != null) {
+        const result = await db().execute({
+          sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
+          args: [email, String(lookupEventId)],
+        });
+        if (result.rows.length > 0) {
+          preRunFallback = {
+            carbsG: result.rows[0].carbs_g as number | null,
+          };
+        }
+      }
+    }
+
+    return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
   } else {
-    activity = await findLatestUnratedRun(apiKey);
+    const [resolvedActivity, settings] = await Promise.all([
+      findLatestUnratedRun(apiKey),
+      settingsPromise,
+    ]);
+    activity = resolvedActivity;
     if (!activity) {
       return NextResponse.json({ error: "No unrated run found", retry: true }, { status: 404 });
     }
-  }
+    const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
 
-  const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
-    email,
-    apiKey,
-    activity,
-    workoutContext,
-  );
+    const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
+      email,
+      apiKey,
+      activity,
+      workoutContext,
+    );
 
-  // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
-  // Use paired_event_id if available, otherwise use the event we matched above.
-  let preRunFallback: PreRunCarbsFallback | undefined;
-  if (activity.PreRunCarbsG == null) {
-    const lookupEventId = activity.paired_event_id ?? matchedEventId;
-    if (lookupEventId != null) {
-      const result = await db().execute({
-        sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-        args: [email, String(lookupEventId)],
-      });
-      if (result.rows.length > 0) {
-        preRunFallback = {
-          carbsG: result.rows[0].carbs_g as number | null,
-        };
+    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
+    // Use paired_event_id if available, otherwise use the event we matched above.
+    let preRunFallback: PreRunCarbsFallback | undefined;
+    if (activity.PreRunCarbsG == null) {
+      const lookupEventId = activity.paired_event_id ?? matchedEventId;
+      if (lookupEventId != null) {
+        const result = await db().execute({
+          sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
+          args: [email, String(lookupEventId)],
+        });
+        if (result.rows.length > 0) {
+          preRunFallback = {
+            carbsG: result.rows[0].carbs_g as number | null,
+          };
+        }
       }
     }
-  }
 
-  return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
+    return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
+  }
 }
 
 export async function POST(req: Request) {

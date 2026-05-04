@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { updateEvent, deleteEvent } from "@/lib/intervalsApi";
+import { deleteWorkoutEventPrescriptions } from "@/lib/workoutPrescriptions";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let email: string;
@@ -75,6 +76,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   try {
     await deleteEvent(creds.intervalsApiKey, eventId);
+    await deleteWorkoutEventPrescriptions(email, [String(eventId)]);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[intervals/events]", err);

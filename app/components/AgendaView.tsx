@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, isSameDay } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { ChevronLeft, History, Plus } from "lucide-react";
@@ -47,10 +47,16 @@ function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
 }
 
 function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresholdPace, clothing }: { event: CalendarEvent; isMissed: boolean; onSelect: () => void; paceTable?: PaceTable; hrZones?: number[]; lthr?: number; thresholdPace?: number; clothing?: ClothingRec }) {
-  const workoutContext = createWorkoutEstimationContext({ paceTable, thresholdPace });
-  const workoutMetrics = event.type !== "completed" && event.description
-    ? resolveWorkoutMetrics(event.description, event.fuelRate, workoutContext)
-    : null;
+  const workoutContext = useMemo(
+    () => createWorkoutEstimationContext({ paceTable, thresholdPace }),
+    [paceTable, thresholdPace],
+  );
+  const workoutMetrics = useMemo(
+    () => event.type !== "completed" && event.description
+      ? resolveWorkoutMetrics(event.description, event.fuelRate, workoutContext)
+      : null,
+    [event.description, event.fuelRate, event.type, workoutContext],
+  );
 
   return (
     <div
@@ -195,9 +201,7 @@ function EventCard({ event, isMissed, onSelect, paceTable, hrZones, lthr, thresh
                     `${event.fuelRate}g/h`,
                     event.prescribedCarbsG != null
                       ? `${event.prescribedCarbsG}g total`
-                      : workoutMetrics?.prescribedCarbsG != null
-                        ? `${workoutMetrics.prescribedCarbsG}g total`
-                        : null,
+                      : null,
                   ].filter(Boolean).join(" · ")}
                 </div>
               )}

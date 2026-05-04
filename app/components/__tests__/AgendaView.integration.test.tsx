@@ -25,6 +25,7 @@ function makeRaceEvent(date: string): CalendarEvent {
     type: "race",
     category: "race",
     fuelRate: 72,
+    prescribedCarbsG: 108,
   };
 }
 

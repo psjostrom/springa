@@ -5,10 +5,6 @@ import { useSetAtom } from "jotai";
 import { Pencil } from "lucide-react";
 import { updateActivityCarbs } from "@/lib/intervalsClient";
 import { patchCalendarEventAtom } from "../atoms";
-import {
-  createWorkoutEstimationContext,
-  resolveWorkoutMetrics,
-} from "@/lib/workoutMath";
 import type { WidgetProps } from "@/lib/modalWidgets";
 
 type EditState =
@@ -17,24 +13,10 @@ type EditState =
   | { kind: "saving"; value: string };
 
 /** Carbs ingested widget with inline edit. */
-export function CarbsWidget({ event, paceTable, racePacePerKm }: WidgetProps) {
+export function CarbsWidget({ event }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
   const patchEvent = useSetAtom(patchCalendarEventAtom);
-  const workoutContext = createWorkoutEstimationContext({
-    paceTable,
-    thresholdPace: racePacePerKm,
-  });
-
-  // Fall back to the prescribed total — derived here, not stored — when the user
-  // hasn't entered an actual value. Pace context is required for absolute-pace
-  // descriptions (without it the wide easy zone gives a 2x-too-high number).
-  const planned = resolveWorkoutMetrics(
-    event.description,
-    event.fuelRate,
-    workoutContext,
-  ).prescribedCarbsG;
-  const prescribedCarbsG = event.prescribedCarbsG ?? planned;
-  const displayCarbs = event.carbsIngested ?? prescribedCarbsG ?? null;
+  const displayCarbs = event.carbsIngested ?? event.prescribedCarbsG ?? null;
 
   const saveCarbs = async () => {
     if (editState.kind !== "editing") return;

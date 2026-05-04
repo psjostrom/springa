@@ -1,5 +1,3 @@
-// --- Timezone ---
-
 /**
  * Compute UTC offset string (e.g. "+01:00") for a timezone at a given date.
  * Handles DST transitions correctly via Intl.

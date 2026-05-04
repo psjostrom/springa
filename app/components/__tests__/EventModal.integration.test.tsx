@@ -70,6 +70,7 @@ const baseRace: CalendarEvent = {
   type: "race",
   category: "race",
   fuelRate: 60,
+  prescribedCarbsG: 90,
 };
 
 describe("EventModal race event", () => {

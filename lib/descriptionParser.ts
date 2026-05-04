@@ -39,6 +39,8 @@ export function classifyPacePct(avgPct: number): ZoneName {
   return "z2";
 }
 
+const NO_PACE_STEP_LABEL_PATTERN = "Walk|Downhill|Stride|Uphill|Fast|Interval|Race Pace|Easy|Warmup|Cooldown|Free";
+
 function isRepeatSuffix(value: string): boolean {
   if (!value.startsWith(" ")) return false;
   const trimmed = value.trim();
@@ -227,7 +229,7 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
   // Absolute pace: "- Warmup 10m 6:15-7:52/km Pace intensity=warmup"
   const absPaceStepPattern = /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
   // Free: "- Free 60m intensity=active" — duration only, no pace target.
-  const freeStepPattern = /^-\s*(?:(Free|Easy|Walk|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+intensity=\w+)?\s*$/;
+  const freeStepPattern = new RegExp(`^-\\s*(?:(${NO_PACE_STEP_LABEL_PATTERN})\\s+)?(\\d+(?:\\.\\d+)?(?:s|m|km))(?:\\s+intensity=\\w+)?\\s*$`);
 
   const stepPattern = isAbsolutePace
     ? absPaceStepPattern
@@ -253,9 +255,9 @@ export function parseWorkoutStructure(description: string, lthr = DEFAULT_LTHR, 
     const duration = m[2];
 
     if (isFreeFormat) {
-      // Free run — no pace target. "Free" stays as the label (it's not in GENERIC_LABELS),
-      // zone defaults to z2 for the colored easy-effort badge, no pace text.
-      return { label, duration, zone: "z2", bpmRange: "" };
+      // No-pace step uses the same label->zone mapping as parseWorkoutSegments
+      // so the structure card and structure bar stay visually consistent.
+      return { label, duration, zone: zoneForNoPaceLabel(m[1]), bpmRange: "" };
     }
 
     if (isAbsolutePace) {
@@ -411,6 +413,10 @@ const NO_PACE_ZONE_BY_LABEL: Record<string, ZoneName> = {
   Free: "z2",
 };
 
+function zoneForNoPaceLabel(label?: string): ZoneName {
+  return label ? (NO_PACE_ZONE_BY_LABEL[label] ?? "z2") : "z2";
+}
+
 /** Representative pace-percentage per zone — used as the intensity field for no-pace
  *  segments so the bar's height calc (intensity → height) renders sensibly. */
 const ZONE_TYPICAL_INTENSITY: Record<ZoneName, number> = {
@@ -438,7 +444,7 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
   // Effort-based step with no pace target, e.g. "Stride 20s intensity=active" or "Free 60m intensity=active".
   // Captures an optional label so the bar can colour the segment by intended zone.
   // Anchored on `intensity=` or end-of-line so it can't false-match a duration inside a pace spec.
-  const noPacePattern = /^-\s+(?:(Walk|Downhill|Stride|Uphill|Fast|Interval|Race Pace|Easy|Warmup|Cooldown|Free)\s+)?(\d+(?:\.\d+)?)(m|s)\s*(?:intensity=\w+)?\s*$/;
+  const noPacePattern = new RegExp(`^-\\s+(?:(${NO_PACE_STEP_LABEL_PATTERN})\\s+)?(\\d+(?:\\.\\d+)?)(m|s)\\s*(?:intensity=\\w+)?\\s*$`);
   for (const rawLine of section.split("\n")) {
     if (!rawLine.startsWith("- ")) continue;
     const line = rawLine.slice(0, 150);
@@ -477,7 +483,7 @@ function parseSectionSegments(section: string, table?: PaceTable, thresholdPace?
       const value = parseFloat(np[2]);
       const unit = np[3];
       const duration = unit === "s" ? value / 60 : value;
-      const zone: ZoneName = label ? (NO_PACE_ZONE_BY_LABEL[label] ?? "z2") : "z2";
+      const zone = zoneForNoPaceLabel(label);
       segments.push({
         duration,
         intensity: ZONE_TYPICAL_INTENSITY[zone],

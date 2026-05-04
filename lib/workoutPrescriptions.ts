@@ -108,8 +108,7 @@ export async function upsertWorkoutEventPrescriptions(
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (email, event_id) DO UPDATE SET
               planned_duration_sec = excluded.planned_duration_sec,
-              prescribed_carbs_g = excluded.prescribed_carbs_g,
-              created_at = excluded.created_at`,
+              prescribed_carbs_g = excluded.prescribed_carbs_g`,
       args: [
         email,
         row.eventId,
@@ -121,19 +120,26 @@ export async function upsertWorkoutEventPrescriptions(
   }
 }
 
-export async function applyWorkoutEventPrescriptions(
+export async function deleteWorkoutEventPrescriptions(
   email: string,
-  events: CalendarEvent[],
-  context: WorkoutEstimationContext = {},
-): Promise<CalendarEvent[]> {
-  const linkedEventIds = Array.from(new Set(
-    events
-      .map((event) => linkedPlannedEventId(event))
-      .filter((eventId): eventId is string => eventId != null),
-  ));
-  const stored = await loadWorkoutEventPrescriptions(email, linkedEventIds);
+  eventIds: readonly string[],
+): Promise<void> {
+  const uniqueEventIds = Array.from(new Set(eventIds.filter((eventId) => eventId.length > 0)));
+  if (uniqueEventIds.length === 0) return;
 
-  const plannedRows = events.flatMap((event) => {
+  const placeholders = uniqueEventIds.map(() => "?").join(", ");
+  await db().execute({
+    sql: `DELETE FROM workout_event_prescriptions
+          WHERE email = ? AND event_id IN (${placeholders})`,
+    args: [email, ...uniqueEventIds],
+  });
+}
+
+function buildPlannedPrescriptionRows(
+  events: readonly CalendarEvent[],
+  context: WorkoutEstimationContext,
+): WorkoutEventPrescriptionRow[] {
+  return events.flatMap((event) => {
     if (event.type === "completed") return [];
     const eventId = rawPlannedEventId(event);
     if (!eventId) return [];
@@ -148,20 +154,53 @@ export async function applyWorkoutEventPrescriptions(
       ),
     }];
   });
+}
+
+export async function syncWorkoutEventPrescriptions(
+  email: string,
+  events: readonly CalendarEvent[],
+  context: WorkoutEstimationContext = {},
+): Promise<void> {
+  const plannedRows = buildPlannedPrescriptionRows(events, context);
+  if (plannedRows.length === 0) return;
+
+  const stored = await loadWorkoutEventPrescriptions(
+    email,
+    plannedRows.map((row) => row.eventId),
+  );
 
   const rowsToUpsert = plannedRows.filter((row) => {
     const existing = stored.get(row.eventId);
     if (row.prescribedCarbsG == null && !existing) return false;
     return prescriptionRowChanged(existing, row);
   });
-  const repairRows: WorkoutEventPrescriptionRow[] = [];
-  const plannedRowsById = new Map(plannedRows.map((row) => [row.eventId, row]));
 
-  const enrichedEvents = events.map((event) => {
+  if (rowsToUpsert.length > 0) {
+    await upsertWorkoutEventPrescriptions(email, rowsToUpsert);
+  }
+}
+
+export async function enrichEventsWithWorkoutEventPrescriptions(
+  email: string,
+  events: CalendarEvent[],
+  context: WorkoutEstimationContext = {},
+): Promise<CalendarEvent[]> {
+  const linkedEventIds = Array.from(new Set(
+    events
+      .map((event) => linkedPlannedEventId(event))
+      .filter((eventId): eventId is string => eventId != null),
+  ));
+  const stored = await loadWorkoutEventPrescriptions(email, linkedEventIds);
+
+  const plannedRowsById = new Map(
+    buildPlannedPrescriptionRows(events, context).map((row) => [row.eventId, row]),
+  );
+
+  return events.map((event) => {
     const eventId = linkedPlannedEventId(event);
     if (!eventId) return event;
 
-    let prescribedCarbsG: number | null;
+    let prescribedCarbsG: number | null = null;
     if (event.type === "completed") {
       if (stored.has(eventId)) {
         prescribedCarbsG = stored.get(eventId)?.prescribedCarbsG ?? null;
@@ -171,13 +210,6 @@ export async function applyWorkoutEventPrescriptions(
           event.fuelRate,
           context,
         );
-        if (prescribedCarbsG != null) {
-          repairRows.push({
-            eventId,
-            plannedDurationSeconds: null,
-            prescribedCarbsG,
-          });
-        }
       }
     } else {
       const plannedRow = plannedRowsById.get(eventId);
@@ -189,12 +221,13 @@ export async function applyWorkoutEventPrescriptions(
     if (prescribedCarbsG == null) return event;
     return { ...event, prescribedCarbsG };
   });
+}
 
-  const repairRowsToUpsert = repairRows.filter((row) => prescriptionRowChanged(stored.get(row.eventId), row));
-
-  if (rowsToUpsert.length > 0 || repairRowsToUpsert.length > 0) {
-    await upsertWorkoutEventPrescriptions(email, [...rowsToUpsert, ...repairRowsToUpsert]);
-  }
-
-  return enrichedEvents;
+export async function applyWorkoutEventPrescriptions(
+  email: string,
+  events: CalendarEvent[],
+  context: WorkoutEstimationContext = {},
+): Promise<CalendarEvent[]> {
+  await syncWorkoutEventPrescriptions(email, events, context);
+  return enrichEventsWithWorkoutEventPrescriptions(email, events, context);
 }

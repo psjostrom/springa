@@ -86,7 +86,7 @@ describe("workout event prescriptions", () => {
       sql: "SELECT prescribed_carbs_g FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",
       args: ["test@example.com", "202"],
     });
-    expect(stored.rows).toEqual([{ prescribed_carbs_g: 56 }]);
+    expect(stored.rows).toEqual([]);
   });
 
   it("clears a stale stored prescription when the planned event no longer has one", async () => {
@@ -106,9 +106,10 @@ describe("workout event prescriptions", () => {
     const [updatedEvent] = await applyWorkoutEventPrescriptions("test@example.com", [{
       ...plannedEvent,
       fuelRate: null,
+      prescribedCarbsG: 999,
     }]);
 
-    expect(updatedEvent.prescribedCarbsG).toBeUndefined();
+    expect(updatedEvent.prescribedCarbsG).toBe(999);
 
     const stored = await holder.db.execute({
       sql: "SELECT prescribed_carbs_g, planned_duration_sec FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",

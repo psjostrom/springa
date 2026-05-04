@@ -7,7 +7,7 @@ import { buildEventGuidance } from "@/lib/prerunGuidance";
 import { sendPushToUser } from "@/lib/push";
 import { authHeader, fetchWellnessData } from "@/lib/intervalsApi";
 import { API_BASE } from "@/lib/constants";
-import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/intervalsHelpers";
+import { todayInTimezone, localToUtcMs, resolveTimezone } from "@/lib/timezone";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import { getUserCredentials } from "@/lib/credentials";
 import { fetchBGFromNS } from "@/lib/nightscout";

@@ -2,22 +2,22 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@libsql/client";
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "@/lib/constants";
+import { encrypt } from "@/lib/credentials";
+import { capturedActivityPutPayloads, resetCaptures } from "./msw/handlers";
 
 const { holder, state } = vi.hoisted(() => {
   process.env.TURSO_DATABASE_URL = "file::memory:";
   process.env.TURSO_AUTH_TOKEN = "dummy";
+  process.env.CREDENTIALS_ENCRYPTION_KEY = "a".repeat(64);
   return {
     holder: { db: null as unknown as Client },
     state: {
       authCalls: 0,
-      activityById: null as unknown,
-      activitiesByDateRange: [] as unknown[],
-      feedbackCalls: [] as { activityId: string; rating: string; comment?: string }[],
-      carbsCalls: [] as { activityId: string; carbsG: number }[],
-      preRunCalls: [] as { activityId: string; preRunCarbsG: number }[],
     },
   };
 });
+
+const ENC_KEY = process.env.CREDENTIALS_ENCRYPTION_KEY!;
 
 // eslint-disable-next-line no-restricted-syntax -- in-memory DB redirect
 vi.mock("@libsql/client", async (importOriginal) => {
@@ -34,34 +34,18 @@ vi.mock("@/lib/auth", () => ({
   },
 }));
 
-// eslint-disable-next-line no-restricted-syntax -- credentials boundary mock
-vi.mock("@/lib/credentials", () => ({
-  getUserCredentials: async () => ({ intervalsApiKey: "intervals-key" }),
-}));
-
-// eslint-disable-next-line no-restricted-syntax -- external API boundary mock
-vi.mock("@/lib/intervalsApi", () => ({
-  fetchActivityById: async (_apiKey: string, activityId: string) => {
-    const activity = state.activityById as { id?: string } | null;
-    return activity?.id === activityId ? activity : null;
-  },
-  fetchActivitiesByDateRange: async () => state.activitiesByDateRange,
-  fetchAthleteProfile: async () => ({}),
-  updateActivityFeedback: async (_apiKey: string, activityId: string, rating: string, comment?: string) => {
-    state.feedbackCalls.push({ activityId, rating, comment });
-  },
-  updateActivityCarbs: async (_apiKey: string, activityId: string, carbsG: number) => {
-    state.carbsCalls.push({ activityId, carbsG });
-  },
-  updateActivityPreRunCarbs: async (_apiKey: string, activityId: string, preRunCarbsG: number) => {
-    state.preRunCalls.push({ activityId, preRunCarbsG });
-  },
-  authHeader: () => "Bearer test",
-}));
-
 import { GET, POST } from "@/app/api/run-feedback/route";
 import { server } from "./msw/server";
 import { SCHEMA_DDL } from "../db";
+
+async function insertIntervalsCreds() {
+  await holder.db.execute({
+    sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
+          VALUES (?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET intervals_api_key = excluded.intervals_api_key, timezone = excluded.timezone`,
+    args: ["test@example.com", encrypt("intervals-key", ENC_KEY), "Europe/Stockholm"],
+  });
+}
 
 describe("/api/run-feedback", () => {
   beforeAll(async () => {
@@ -70,33 +54,33 @@ describe("/api/run-feedback", () => {
 
   beforeEach(() => {
     state.authCalls = 0;
-    state.activityById = null;
-    state.activitiesByDateRange = [];
-    state.feedbackCalls = [];
-    state.carbsCalls = [];
-    state.preRunCalls = [];
+    resetCaptures();
   });
 
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM prerun_carbs");
+    await holder.db.execute("DELETE FROM workout_event_prescriptions");
     await holder.db.execute("DELETE FROM activity_streams");
     await holder.db.execute("DELETE FROM user_settings");
+    await insertIntervalsCreds();
   });
 
   it("uses the paired workout when computing prescribed carbs", async () => {
-    state.activityById = {
-      id: "act-1",
-      start_date: "2026-05-02T16:10:00Z",
-      start_date_local: "2026-05-02T18:10:00",
-      name: "W12 Easy",
-      type: "Run",
-      distance: 8100,
-      moving_time: 54 * 60 + 10,
-      average_hr: 142,
-      paired_event_id: 202,
-    };
-
     server.use(
+      http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
+        if (params.activityId !== "act-1") return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({
+          id: "act-1",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 8100,
+          moving_time: 54 * 60 + 10,
+          average_hr: 142,
+          paired_event_id: 202,
+        });
+      }),
       http.get(`${API_BASE}/athlete/0/events`, () => {
         return HttpResponse.json([
           {
@@ -131,19 +115,21 @@ describe("/api/run-feedback", () => {
   });
 
   it("does not guess a prescribed total from an unpaired nearby workout", async () => {
-    state.activityById = {
-      id: "act-unpaired",
-      start_date: "2026-05-05T08:10:00Z",
-      start_date_local: "2026-05-05T10:10:00",
-      name: "W13 Easy",
-      type: "Run",
-      distance: 7600,
-      moving_time: 3200,
-      average_hr: 140,
-      paired_event_id: null,
-    };
-
     server.use(
+      http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
+        if (params.activityId !== "act-unpaired") return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({
+          id: "act-unpaired",
+          start_date: "2026-05-05T08:10:00Z",
+          start_date_local: "2026-05-05T10:10:00",
+          name: "W13 Easy",
+          type: "Run",
+          distance: 7600,
+          moving_time: 3200,
+          average_hr: 140,
+          paired_event_id: null,
+        });
+      }),
       http.get(`${API_BASE}/athlete/0/events`, () => {
         return HttpResponse.json([
           {
@@ -219,8 +205,10 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(state.authCalls).toBe(1);
-    expect(state.feedbackCalls).toEqual([{ activityId: "act-1", rating: "good", comment: "solid run" }]);
-    expect(state.carbsCalls).toEqual([{ activityId: "act-1", carbsG: 30 }]);
-    expect(state.preRunCalls).toEqual([{ activityId: "act-1", preRunCarbsG: 15 }]);
+    expect(capturedActivityPutPayloads).toEqual([
+      { activityId: "act-1", body: { Rating: "good", FeedbackComment: "solid run" } },
+      { activityId: "act-1", body: { carbs_ingested: 30 } },
+      { activityId: "act-1", body: { PreRunCarbsG: 15 } },
+    ]);
   });
 });

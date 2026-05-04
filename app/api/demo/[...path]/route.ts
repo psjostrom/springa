@@ -13,12 +13,11 @@ import {
 interface Params { params: Promise<{ path: string[] }> }
 
 const NORMALIZED_CLUB_RUN_DESCRIPTION = "Club run — pace and route follow the club. Workout varies week to week.\n\n- Free 60m intensity=active";
+const CLUB_RUN_HEADER_PATTERN = /^Club run.*workout varies week to week\./i;
+const CLUB_RUN_STEP_PATTERN = /^-\s+(?:Easy\s+)?60m(?:\s+\d+:\d+-\d+:\d+\/km\s*Pace)?(?:\s+intensity=active)?$/im;
 
 function normalizeDemoWorkoutDescription(description: string): string {
-  if (description === "Club run — workout varies week to week.\n\n- 60m") {
-    return NORMALIZED_CLUB_RUN_DESCRIPTION;
-  }
-  if (description === "Club run — workout varies week to week.\n\n- Easy 60m 6:27-18:54/km Pace intensity=active") {
+  if (CLUB_RUN_HEADER_PATTERN.test(description) && CLUB_RUN_STEP_PATTERN.test(description)) {
     return NORMALIZED_CLUB_RUN_DESCRIPTION;
   }
   return description;

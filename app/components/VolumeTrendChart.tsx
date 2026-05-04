@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -54,7 +55,7 @@ export function VolumeTrendChart({
 
   const thresholdPace = getThresholdPace(currentAbilityDist, currentAbilitySecs);
 
-  const data = (() => {
+  const data = useMemo(() => {
     const { planStartMonday, currentWeekIdx } = getPlanWeekContext(raceDate, totalWeeks);
 
     const weeks: WeekData[] = Array.from({ length: totalWeeks }, (_, i) => ({
@@ -109,7 +110,20 @@ export function VolumeTrendChart({
     }
 
     return { weeks, currentWeekIdx };
-  })();
+  }, [
+    currentAbilityDist,
+    currentAbilitySecs,
+    events,
+    hrZones,
+    includeBasePhase,
+    lthr,
+    paceTable,
+    raceDate,
+    raceDist,
+    startKm,
+    thresholdPace,
+    totalWeeks,
+  ]);
 
   if (events.length === 0) return null;
 

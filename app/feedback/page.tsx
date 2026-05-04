@@ -15,7 +15,7 @@ interface FeedbackResponse {
   duration?: number;
   avgHr?: number;
   activityId: string;
-  prescribedCarbsG?: number;
+  prescribedCarbsG?: number | null;
   preRunCarbsG?: number | null;
 }
 

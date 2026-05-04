@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useMemo } from "react";
 import type { ZoneName, PaceTable } from "@/lib/types";
 import { FALLBACK_PACE_TABLE, ZONE_COLORS, DEFAULT_LTHR } from "@/lib/constants";
 import {
@@ -82,15 +83,28 @@ function SectionBlock({ section }: { section: WorkoutSection }) {
 }
 
 export function WorkoutCard({ description, fuelRate, prescribedCarbsG, fuelRateNote, paceTable, children, hrZones, lthr = DEFAULT_LTHR, racePacePerKm }: WorkoutCardProps) {
-  const workoutContext = createWorkoutEstimationContext({
+  const workoutContext = useMemo(() => createWorkoutEstimationContext({
     paceTable,
     thresholdPace: racePacePerKm,
-  });
-  const metrics = resolveWorkoutMetrics(description, fuelRate, workoutContext);
+  }), [paceTable, racePacePerKm]);
+  const metrics = useMemo(
+    () => resolveWorkoutMetrics(description, fuelRate, workoutContext),
+    [description, fuelRate, workoutContext],
+  );
   const estDuration = metrics.duration;
   const estDistance = metrics.distance;
-  const totalCarbs = prescribedCarbsG ?? metrics.prescribedCarbsG;
-  const sections = parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm);
+  const totalCarbs = prescribedCarbsG ?? null;
+  const sections = useMemo(
+    () => parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm),
+    [description, hrZones, lthr, racePacePerKm],
+  );
+  const zones = useMemo(
+    () => (hrZones?.length === 5 || racePacePerKm)
+      ? parseWorkoutZones(description, lthr, hrZones ?? [], racePacePerKm)
+      : [],
+    [description, hrZones, lthr, racePacePerKm],
+  );
+  const notes = useMemo(() => extractNotes(description), [description]);
 
   // Fall back to raw text if parsing fails
   if (sections.length === 0) {
@@ -136,11 +150,6 @@ export function WorkoutCard({ description, fuelRate, prescribedCarbsG, fuelRateN
       </div>
     );
   }
-
-  const zones = (hrZones?.length === 5 || racePacePerKm)
-    ? parseWorkoutZones(description, lthr, hrZones ?? [], racePacePerKm)
-    : [];
-  const notes = extractNotes(description);
 
   return (
     <div>
