@@ -22,14 +22,20 @@ export async function POST(req: Request) {
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
+    );
   }
 
   const body = (await req.json()) as { events?: WorkoutEvent[] };
   const rawEvents = body.events;
 
   if (!Array.isArray(rawEvents) || rawEvents.length === 0) {
-    return NextResponse.json({ error: "Missing or invalid events" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing or invalid events" },
+      { status: 400 },
+    );
   }
 
   const events = rawEvents.map((e) => ({
@@ -38,7 +44,10 @@ export async function POST(req: Request) {
   }));
 
   try {
-    const { count, staleDeletedEventIds } = await uploadToIntervals(creds.intervalsApiKey, events);
+    const { count, staleDeletedEventIds } = await uploadToIntervals(
+      creds.intervalsApiKey,
+      events,
+    );
 
     const today = new Date();
     const horizon = addDays(today, 365);

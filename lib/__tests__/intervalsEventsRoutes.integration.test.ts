@@ -39,7 +39,11 @@ async function insertIntervalsCreds() {
     sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
           VALUES (?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET intervals_api_key = excluded.intervals_api_key, timezone = excluded.timezone`,
-    args: ["test@example.com", encrypt("intervals-key", ENC_KEY), "Europe/Stockholm"],
+    args: [
+      "test@example.com",
+      encrypt("intervals-key", ENC_KEY),
+      "Europe/Stockholm",
+    ],
   });
 }
 
@@ -84,7 +88,8 @@ describe("/api/intervals/events routes", () => {
             category: "WORKOUT",
             start_date_local: "2026-05-12T10:00:00",
             name: "W13 Easy",
-            description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+            description:
+              "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
             carbs_per_hour: 64,
             duration: 3120,
           },
@@ -95,21 +100,25 @@ describe("/api/intervals/events routes", () => {
       }),
     );
 
-    const response = await bulkPOST(new Request("http://localhost/api/intervals/events/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        events: [{
-          start_date_local: "2026-05-12T10:00:00.000Z",
-          category: "easy",
-          type: "Run",
-          name: "W13 Easy",
-          description: "Warmup\n- 10m 68-83% pace\n",
-          fuelRate: 64,
-          external_id: "easy-new",
-        }],
+    const response = await bulkPOST(
+      new Request("http://localhost/api/intervals/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: [
+            {
+              start_date_local: "2026-05-12T10:00:00.000Z",
+              category: "easy",
+              type: "Run",
+              name: "W13 Easy",
+              description: "Warmup\n- 10m 68-83% pace\n",
+              fuelRate: 64,
+              external_id: "easy-new",
+            },
+          ],
+        }),
       }),
-    }));
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ count: 1 });
@@ -124,7 +133,9 @@ describe("/api/intervals/events routes", () => {
       sql: "SELECT event_id, planned_duration_sec FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",
       args: ["test@example.com", "777"],
     });
-    expect(fresh.rows).toEqual([{ event_id: "777", planned_duration_sec: 3120 }]);
+    expect(fresh.rows).toEqual([
+      { event_id: "777", planned_duration_sec: 3120 },
+    ]);
   });
 
   it("replace route writes new prescription and removes old event prescription", async () => {
@@ -143,22 +154,25 @@ describe("/api/intervals/events routes", () => {
       }),
     );
 
-    const response = await replacePOST(new Request("http://localhost/api/intervals/events/replace", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        existingEventId: 201,
-        workout: {
-          start_date_local: "2026-05-13T10:00:00.000Z",
-          category: "easy",
-          type: "Run",
-          name: "W13 Easy",
-          description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
-          fuelRate: 64,
-          external_id: "new-ext-201",
-        },
+    const response = await replacePOST(
+      new Request("http://localhost/api/intervals/events/replace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          existingEventId: 201,
+          workout: {
+            start_date_local: "2026-05-13T10:00:00.000Z",
+            category: "easy",
+            type: "Run",
+            name: "W13 Easy",
+            description:
+              "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+            fuelRate: 64,
+            external_id: "new-ext-201",
+          },
+        }),
       }),
-    }));
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ newId: 999 });
@@ -184,7 +198,9 @@ describe("/api/intervals/events routes", () => {
     });
 
     const response = await deleteEventRoute(
-      new Request("http://localhost/api/intervals/events/333", { method: "DELETE" }),
+      new Request("http://localhost/api/intervals/events/333", {
+        method: "DELETE",
+      }),
       { params: Promise.resolve({ id: "333" }) },
     );
 

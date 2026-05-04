@@ -6,7 +6,11 @@ import {
   toPaceTable,
 } from "./paceCalibration";
 import { fetchAthleteProfile } from "./intervalsApi";
-import { getUserSettings, saveUserSettings, type UserSettings } from "./settings";
+import {
+  getUserSettings,
+  saveUserSettings,
+  type UserSettings,
+} from "./settings";
 import {
   createWorkoutEstimationContext,
   type WorkoutEstimationContext,
@@ -17,7 +21,11 @@ function deriveCalibratedPaceTable(
   hrZones: number[],
 ) {
   const segments = activities.flatMap((activity) => {
-    if (!activity.hr.length || !activity.pace?.length || !activity.activityDate) {
+    if (
+      !activity.hr.length ||
+      !activity.pace?.length ||
+      !activity.activityDate
+    ) {
       return [];
     }
     return extractZoneSegments(
@@ -38,7 +46,7 @@ export async function getUserWorkoutEstimationContext(
   intervalsApiKey?: string | null,
   settings?: UserSettings,
 ): Promise<WorkoutEstimationContext> {
-  const resolvedSettings = settings ?? await getUserSettings(email);
+  const resolvedSettings = settings ?? (await getUserSettings(email));
   const context = createWorkoutEstimationContext({
     currentAbilityDist: resolvedSettings.currentAbilityDist,
     currentAbilitySecs: resolvedSettings.currentAbilitySecs,
@@ -49,7 +57,8 @@ export async function getUserWorkoutEstimationContext(
   // Use cached hrZones/maxHr from settings to skip the live profile API call.
   // If not cached, fetch once and write back for future requests.
   let hrZones: number[];
-  const cachedHrZones = resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
+  const cachedHrZones =
+    resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
   const cachedMaxHr = resolvedSettings.maxHr ?? null;
 
   const cachedActivities = await getActivityStreams(email);
@@ -60,11 +69,12 @@ export async function getUserWorkoutEstimationContext(
     hrZones = computeMaxHRZones(cachedMaxHr);
   } else {
     const profile = await fetchAthleteProfile(intervalsApiKey);
-    hrZones = profile.hrZones?.length === 5
-      ? profile.hrZones
-      : profile.maxHr
-        ? computeMaxHRZones(profile.maxHr)
-        : computeMaxHRZones(DEFAULT_MAX_HR);
+    hrZones =
+      profile.hrZones?.length === 5
+        ? profile.hrZones
+        : profile.maxHr
+          ? computeMaxHRZones(profile.maxHr)
+          : computeMaxHRZones(DEFAULT_MAX_HR);
     // Write back so subsequent requests skip the live fetch.
     await saveUserSettings(email, {
       hrZones: profile.hrZones?.length === 5 ? profile.hrZones : undefined,

@@ -43,7 +43,11 @@ async function insertIntervalsCreds() {
     sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
           VALUES (?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET intervals_api_key = excluded.intervals_api_key, timezone = excluded.timezone`,
-    args: ["test@example.com", encrypt("intervals-key", ENC_KEY), "Europe/Stockholm"],
+    args: [
+      "test@example.com",
+      encrypt("intervals-key", ENC_KEY),
+      "Europe/Stockholm",
+    ],
   });
 }
 
@@ -75,7 +79,8 @@ describe("/api/run-feedback", () => {
 
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
-        if (params.activityId !== "act-1") return new HttpResponse(null, { status: 404 });
+        if (params.activityId !== "act-1")
+          return new HttpResponse(null, { status: 404 });
         return HttpResponse.json({
           id: "act-1",
           start_date: "2026-05-02T16:10:00Z",
@@ -110,7 +115,9 @@ describe("/api/run-feedback", () => {
       }),
     );
 
-    const res = await GET(new Request("http://localhost/api/run-feedback?activityId=act-1"));
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-1"),
+    );
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
@@ -124,7 +131,8 @@ describe("/api/run-feedback", () => {
   it("uses activity duration fallback when paired event description is unparseable", async () => {
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
-        if (params.activityId !== "act-duration") return new HttpResponse(null, { status: 404 });
+        if (params.activityId !== "act-duration")
+          return new HttpResponse(null, { status: 404 });
         return HttpResponse.json({
           id: "act-duration",
           type: "Run",
@@ -149,7 +157,9 @@ describe("/api/run-feedback", () => {
       }),
     );
 
-    const res = await GET(new Request("http://localhost/api/run-feedback?activityId=act-duration"));
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-duration"),
+    );
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
@@ -161,7 +171,8 @@ describe("/api/run-feedback", () => {
   it("does not guess a prescribed total from an unpaired nearby workout", async () => {
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
-        if (params.activityId !== "act-unpaired") return new HttpResponse(null, { status: 404 });
+        if (params.activityId !== "act-unpaired")
+          return new HttpResponse(null, { status: 404 });
         return HttpResponse.json({
           id: "act-unpaired",
           start_date: "2026-05-05T08:10:00Z",
@@ -189,14 +200,17 @@ describe("/api/run-feedback", () => {
             category: "WORKOUT",
             start_date_local: "2026-05-05T10:00:00",
             name: "W13 Easy",
-            description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+            description:
+              "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
             carbs_per_hour: 64,
           },
         ]);
       }),
     );
 
-    const res = await GET(new Request("http://localhost/api/run-feedback?activityId=act-unpaired"));
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-unpaired"),
+    );
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
@@ -215,7 +229,9 @@ describe("/api/run-feedback", () => {
     );
 
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid or empty request body" });
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid or empty request body",
+    });
   });
 
   it("returns 400 when required fields are missing", async () => {
@@ -228,7 +244,9 @@ describe("/api/run-feedback", () => {
     );
 
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Missing activityId or rating" });
+    await expect(res.json()).resolves.toEqual({
+      error: "Missing activityId or rating",
+    });
   });
 
   it("writes feedback and optional carb fields", async () => {
@@ -249,7 +267,10 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(capturedActivityPutPayloads).toEqual([
-      { activityId: "act-1", body: { Rating: "good", FeedbackComment: "solid run" } },
+      {
+        activityId: "act-1",
+        body: { Rating: "good", FeedbackComment: "solid run" },
+      },
       { activityId: "act-1", body: { carbs_ingested: 30 } },
       { activityId: "act-1", body: { PreRunCarbsG: 15 } },
     ]);

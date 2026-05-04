@@ -34,9 +34,15 @@ async function main() {
       }
 
       const before = await getUserSettings(email);
-      const hadBefore = !!(before.hrZones?.length === 5 || before.maxHr != null);
+      const hadBefore = !!(
+        before.hrZones?.length === 5 || before.maxHr != null
+      );
 
-      await getUserWorkoutEstimationContext(email, creds.intervalsApiKey, before);
+      await getUserWorkoutEstimationContext(
+        email,
+        creds.intervalsApiKey,
+        before,
+      );
 
       const after = await getUserSettings(email);
       const hasAfter = !!(after.hrZones?.length === 5 || after.maxHr != null);
@@ -50,7 +56,10 @@ async function main() {
       }
     } catch (error) {
       failed += 1;
-      console.error(`[failed] ${email}:`, error instanceof Error ? error.message : String(error));
+      console.error(
+        `[failed] ${email}:`,
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 

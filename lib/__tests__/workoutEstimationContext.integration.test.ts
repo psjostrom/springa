@@ -111,7 +111,9 @@ it("caches profile.hrZones into user_settings", async () => {
   server.use(
     http.get(`${API_BASE}/athlete/0`, () => {
       return HttpResponse.json({
-        sportSettings: [{ types: ["Run"], hr_zones: [120, 140, 160, 175, 190] }],
+        sportSettings: [
+          { types: ["Run"], hr_zones: [120, 140, 160, 175, 190] },
+        ],
       });
     }),
   );

@@ -34,21 +34,27 @@ describe("workout event prescriptions", () => {
       id: "event-104924874",
       date: new Date("2026-05-05T10:00:00Z"),
       name: "W13 Easy",
-      description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+      description:
+        "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
       type: "planned",
       category: "easy",
       duration: 3120,
       fuelRate: 64,
     };
 
-    const [enrichedPlanned] = await applyWorkoutEventPrescriptions("test@example.com", [plannedEvent]);
+    const [enrichedPlanned] = await applyWorkoutEventPrescriptions(
+      "test@example.com",
+      [plannedEvent],
+    );
     expect(enrichedPlanned.prescribedCarbsG).toBe(55);
 
     const stored = await holder.db.execute({
       sql: "SELECT prescribed_carbs_g, planned_duration_sec FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",
       args: ["test@example.com", "104924874"],
     });
-    expect(stored.rows).toEqual([{ prescribed_carbs_g: 55, planned_duration_sec: 3120 }]);
+    expect(stored.rows).toEqual([
+      { prescribed_carbs_g: 55, planned_duration_sec: 3120 },
+    ]);
 
     const completedEvent: CalendarEvent = {
       id: "activity-i144999999",
@@ -62,7 +68,10 @@ describe("workout event prescriptions", () => {
       pairedEventId: 104924874,
     };
 
-    const [enrichedCompleted] = await applyWorkoutEventPrescriptions("test@example.com", [completedEvent]);
+    const [enrichedCompleted] = await applyWorkoutEventPrescriptions(
+      "test@example.com",
+      [completedEvent],
+    );
     expect(enrichedCompleted.prescribedCarbsG).toBe(55);
   });
 
@@ -71,7 +80,8 @@ describe("workout event prescriptions", () => {
       id: "activity-act-56",
       date: new Date("2026-05-02T18:10:00Z"),
       name: "W12 Easy",
-      description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 31m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+      description:
+        "Warmup\n- 10m 68-83% pace\n\nMain set\n- 31m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
       type: "completed",
       category: "easy",
       duration: 3250,
@@ -79,7 +89,10 @@ describe("workout event prescriptions", () => {
       pairedEventId: 202,
     };
 
-    const [enrichedCompleted] = await applyWorkoutEventPrescriptions("test@example.com", [completedEvent]);
+    const [enrichedCompleted] = await applyWorkoutEventPrescriptions(
+      "test@example.com",
+      [completedEvent],
+    );
     expect(enrichedCompleted.prescribedCarbsG).toBe(56);
 
     const stored = await holder.db.execute({
@@ -94,7 +107,8 @@ describe("workout event prescriptions", () => {
       id: "event-104924874",
       date: new Date("2026-05-05T10:00:00Z"),
       name: "W13 Easy",
-      description: "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
+      description:
+        "Warmup\n- 10m 68-83% pace\n\nMain set\n- 27m 68-83% pace\n\nCooldown\n- 15m 68-83% pace\n",
       type: "planned",
       category: "easy",
       duration: 3120,
@@ -103,16 +117,20 @@ describe("workout event prescriptions", () => {
 
     await applyWorkoutEventPrescriptions("test@example.com", [plannedEvent]);
 
-    await applyWorkoutEventPrescriptions("test@example.com", [{
-      ...plannedEvent,
-      fuelRate: null,
-    }]);
+    await applyWorkoutEventPrescriptions("test@example.com", [
+      {
+        ...plannedEvent,
+        fuelRate: null,
+      },
+    ]);
 
     // When fuelRate is removed, the stored prescription should be cleared (null).
     const stored = await holder.db.execute({
       sql: "SELECT prescribed_carbs_g, planned_duration_sec FROM workout_event_prescriptions WHERE email = ? AND event_id = ?",
       args: ["test@example.com", "104924874"],
     });
-    expect(stored.rows).toEqual([{ prescribed_carbs_g: null, planned_duration_sec: 3120 }]);
+    expect(stored.rows).toEqual([
+      { prescribed_carbs_g: null, planned_duration_sec: 3120 },
+    ]);
   });
 });

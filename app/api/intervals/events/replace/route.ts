@@ -22,7 +22,10 @@ export async function POST(req: Request) {
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
+    );
   }
 
   const body = (await req.json()) as {
@@ -42,7 +45,11 @@ export async function POST(req: Request) {
   };
 
   try {
-    const newId = await replaceWorkoutOnDate(creds.intervalsApiKey, existingEventId, workout);
+    const newId = await replaceWorkoutOnDate(
+      creds.intervalsApiKey,
+      existingEventId,
+      workout,
+    );
 
     if (newId === undefined || newId === null) {
       return NextResponse.json(
@@ -63,10 +70,18 @@ export async function POST(req: Request) {
       name: workout.name,
       description: workout.description,
       type: "planned",
-      category: workout.fuelRate ? (workout.fuelRate >= 30 ? "long" : "easy") : "easy",
+      category: workout.fuelRate
+        ? workout.fuelRate >= 30
+          ? "long"
+          : "easy"
+        : "easy",
       fuelRate: workout.fuelRate ?? null,
     };
-    await syncWorkoutEventPrescriptions(email, [newPlannedEvent], workoutContext);
+    await syncWorkoutEventPrescriptions(
+      email,
+      [newPlannedEvent],
+      workoutContext,
+    );
 
     if (existingEventId != null) {
       await deleteWorkoutEventPrescriptions(email, [String(existingEventId)]);
@@ -76,7 +91,9 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[intervals/events/replace]", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to replace workout" },
+      {
+        error: err instanceof Error ? err.message : "Failed to replace workout",
+      },
       { status: 502 },
     );
   }

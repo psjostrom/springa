@@ -39,7 +39,11 @@ export function calculateCanonicalPlannedPrescription(
   // where duration is estimated from pace. The pace table gives a better estimate
   // than whatever Intervals.icu stores as event.duration, and it stays consistent
   // with the duration shown in the UI.
-  const fromDescription = resolveWorkoutMetrics(description, fuelRateGPerHour, context).prescribedCarbsG;
+  const fromDescription = resolveWorkoutMetrics(
+    description,
+    fuelRateGPerHour,
+    context,
+  ).prescribedCarbsG;
   if (fromDescription != null) return fromDescription;
   // Only fall back to the stored planned duration when the description can't be
   // parsed (missing, empty, or unrecognized format).
@@ -56,14 +60,21 @@ export function calculateExactDescriptionPrescription(
   fuelRateGPerHour: number | null | undefined,
   context: WorkoutEstimationContext = {},
 ): number | null {
-  return calculateCanonicalPlannedPrescription(description, fuelRateGPerHour, null, context);
+  return calculateCanonicalPlannedPrescription(
+    description,
+    fuelRateGPerHour,
+    null,
+    context,
+  );
 }
 
 export async function loadWorkoutEventPrescriptions(
   email: string,
   eventIds: readonly string[],
 ): Promise<Map<string, StoredWorkoutEventPrescription>> {
-  const uniqueEventIds = Array.from(new Set(eventIds.filter((eventId) => eventId.length > 0)));
+  const uniqueEventIds = Array.from(
+    new Set(eventIds.filter((eventId) => eventId.length > 0)),
+  );
   if (uniqueEventIds.length === 0) return new Map();
 
   const placeholders = uniqueEventIds.map(() => "?").join(", ");
@@ -90,8 +101,10 @@ function prescriptionRowChanged(
   next: WorkoutEventPrescriptionRow,
 ): boolean {
   if (!stored) return true;
-  return stored.plannedDurationSeconds !== next.plannedDurationSeconds
-    || stored.prescribedCarbsG !== next.prescribedCarbsG;
+  return (
+    stored.plannedDurationSeconds !== next.plannedDurationSeconds ||
+    stored.prescribedCarbsG !== next.prescribedCarbsG
+  );
 }
 
 export async function upsertWorkoutEventPrescriptions(
@@ -123,7 +136,9 @@ export async function deleteWorkoutEventPrescriptions(
   email: string,
   eventIds: readonly string[],
 ): Promise<void> {
-  const uniqueEventIds = Array.from(new Set(eventIds.filter((eventId) => eventId.length > 0)));
+  const uniqueEventIds = Array.from(
+    new Set(eventIds.filter((eventId) => eventId.length > 0)),
+  );
   if (uniqueEventIds.length === 0) return;
 
   const placeholders = uniqueEventIds.map(() => "?").join(", ");
@@ -142,16 +157,18 @@ function buildPlannedPrescriptionRows(
     if (event.type === "completed") return [];
     const eventId = rawPlannedEventId(event);
     if (!eventId) return [];
-    return [{
-      eventId,
-      plannedDurationSeconds: event.duration ?? null,
-      prescribedCarbsG: calculateCanonicalPlannedPrescription(
-        event.description,
-        event.fuelRate,
-        event.duration ?? null,
-        context,
-      ),
-    }];
+    return [
+      {
+        eventId,
+        plannedDurationSeconds: event.duration ?? null,
+        prescribedCarbsG: calculateCanonicalPlannedPrescription(
+          event.description,
+          event.fuelRate,
+          event.duration ?? null,
+          context,
+        ),
+      },
+    ];
   });
 }
 
@@ -184,11 +201,13 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
   events: CalendarEvent[],
   context: WorkoutEstimationContext = {},
 ): Promise<CalendarEvent[]> {
-  const linkedEventIds = Array.from(new Set(
-    events
-      .map((event) => linkedPlannedEventId(event))
-      .filter((eventId): eventId is string => eventId != null),
-  ));
+  const linkedEventIds = Array.from(
+    new Set(
+      events
+        .map((event) => linkedPlannedEventId(event))
+        .filter((eventId): eventId is string => eventId != null),
+    ),
+  );
   const stored = await loadWorkoutEventPrescriptions(email, linkedEventIds);
 
   // Only compute planned prescriptions if we have calibration context.
@@ -196,7 +215,10 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
   const hasContext = context.paceTable || context.thresholdPace;
   const plannedRowsById = hasContext
     ? new Map(
-        buildPlannedPrescriptionRows(events, context).map((row) => [row.eventId, row]),
+        buildPlannedPrescriptionRows(events, context).map((row) => [
+          row.eventId,
+          row,
+        ]),
       )
     : new Map();
 

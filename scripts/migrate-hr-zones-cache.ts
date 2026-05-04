@@ -35,7 +35,9 @@ async function main() {
     }
   }
 
-  console.log("Migration complete. hr_zones and max_hr will be populated on next calendar load.");
+  console.log(
+    "Migration complete. hr_zones and max_hr will be populated on next calendar load.",
+  );
 }
 
 main().catch((error) => {

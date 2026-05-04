@@ -23,7 +23,9 @@ export function getPlanWeekContext(raceDate: string, totalWeeks: number) {
   const raceWeekMonday = startOfWeek(rDate, { weekStartsOn: 1 });
   const planStartMonday = addWeeks(raceWeekMonday, -(totalWeeks - 1));
   const today = new Date();
-  const currentWeekIdx = differenceInCalendarWeeks(today, planStartMonday, { weekStartsOn: 1 });
+  const currentWeekIdx = differenceInCalendarWeeks(today, planStartMonday, {
+    weekStartsOn: 1,
+  });
 
   return { planStartMonday, currentWeekIdx };
 }
@@ -60,18 +62,23 @@ interface WorkoutEstimationOptions extends WorkoutEstimationContext {
   currentAbilitySecs?: number;
 }
 
-function isPaceTableLike(
-  value: PaceTable | undefined,
-): value is PaceTable {
+function isPaceTableLike(value: PaceTable | undefined): value is PaceTable {
   if (!value || typeof value !== "object") return false;
-  return "z1" in value || "z2" in value || "z3" in value || "z4" in value || "z5" in value;
+  return (
+    "z1" in value ||
+    "z2" in value ||
+    "z3" in value ||
+    "z4" in value ||
+    "z5" in value
+  );
 }
 
 export function createWorkoutEstimationContext(
   options: WorkoutEstimationOptions = {},
 ): WorkoutEstimationContext {
-  const thresholdPace = options.thresholdPace
-    ?? getThresholdPace(options.currentAbilityDist, options.currentAbilitySecs);
+  const thresholdPace =
+    options.thresholdPace ??
+    getThresholdPace(options.currentAbilityDist, options.currentAbilitySecs);
   return {
     paceTable: options.paceTable,
     thresholdPace,
@@ -93,7 +100,9 @@ function normalizeWorkoutEstimationContext(
   return createWorkoutEstimationContext({ thresholdPace });
 }
 
-function resolveWorkoutDuration(segments: WorkoutSegment[]): WorkoutMetricDuration | null {
+function resolveWorkoutDuration(
+  segments: WorkoutSegment[],
+): WorkoutMetricDuration | null {
   if (segments.length === 0) return null;
   const total = segments.reduce((sum, segment) => sum + segment.duration, 0);
   if (total <= 0) return null;
@@ -120,7 +129,8 @@ function resolveWorkoutDistance(
     if (segment.noPace) continue;
 
     hasTimeBasedSegment = true;
-    totalKm += segment.duration / paceForIntensity(segment.intensity, context.paceTable);
+    totalKm +=
+      segment.duration / paceForIntensity(segment.intensity, context.paceTable);
   }
 
   if (totalKm <= 0) return null;
@@ -155,9 +165,10 @@ export function resolveWorkoutMetrics(
   return {
     duration,
     distance,
-    prescribedCarbsG: duration && fuelRateGPerHour != null
-      ? calculateWorkoutCarbs(duration.minutes, fuelRateGPerHour)
-      : null,
+    prescribedCarbsG:
+      duration && fuelRateGPerHour != null
+        ? calculateWorkoutCarbs(duration.minutes, fuelRateGPerHour)
+        : null,
     segments,
   };
 }
@@ -171,7 +182,11 @@ export function getEstimatedDuration(event: WorkoutEvent): number {
   return DEFAULT_WORKOUT_DURATION_MINUTES;
 }
 
-export function estimateWorkoutDuration(description: string, paceTable?: PaceTable, thresholdPace?: number): { minutes: number; estimated: boolean } | null {
+export function estimateWorkoutDuration(
+  description: string,
+  paceTable?: PaceTable,
+  thresholdPace?: number,
+): { minutes: number; estimated: boolean } | null {
   return resolveWorkoutMetrics(
     description,
     null,
@@ -180,7 +195,11 @@ export function estimateWorkoutDuration(description: string, paceTable?: PaceTab
 }
 
 /** Estimate total distance (km) from a workout description. Returns exact km for distance-based workouts, estimated for time-based. */
-export function estimateWorkoutDescriptionDistance(description: string, paceTable?: PaceTable, thresholdPace?: number): { km: number; estimated: boolean } | null {
+export function estimateWorkoutDescriptionDistance(
+  description: string,
+  paceTable?: PaceTable,
+  thresholdPace?: number,
+): { km: number; estimated: boolean } | null {
   return resolveWorkoutMetrics(
     description,
     null,
@@ -216,7 +235,11 @@ export function prescribedCarbs(
   ).prescribedCarbsG;
 }
 
-export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTable, thresholdPace?: number): number {
+export function estimateWorkoutDistance(
+  event: CalendarEvent,
+  paceTable?: PaceTable,
+  thresholdPace?: number,
+): number {
   const context = normalizeWorkoutEstimationContext(paceTable, thresholdPace);
   if (event.distance) {
     return event.distance / 1000;
@@ -224,12 +247,17 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
   const kmMatch = /\((\d+)km\)/.exec(event.name);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 
-  const resolved = resolveWorkoutMetrics(event.description, event.fuelRate, context);
+  const resolved = resolveWorkoutMetrics(
+    event.description,
+    event.fuelRate,
+    context,
+  );
   if (resolved.distance) return resolved.distance.km;
 
-  const pace = event.category === "interval"
-    ? paceForIntensity(90, context.paceTable)
-    : paceForIntensity(70, context.paceTable);
+  const pace =
+    event.category === "interval"
+      ? paceForIntensity(90, context.paceTable)
+      : paceForIntensity(70, context.paceTable);
 
   if (resolved.duration) return resolved.duration.minutes / pace;
 
@@ -239,16 +267,27 @@ export function estimateWorkoutDistance(event: CalendarEvent, paceTable?: PaceTa
 }
 
 /** Estimate distance (km) from a generated WorkoutEvent (no activity data). */
-export function estimatePlanEventDistance(event: WorkoutEvent, paceTable?: PaceTable, thresholdPace?: number): number {
+export function estimatePlanEventDistance(
+  event: WorkoutEvent,
+  paceTable?: PaceTable,
+  thresholdPace?: number,
+): number {
   const context = normalizeWorkoutEstimationContext(paceTable, thresholdPace);
   if (event.distance) return event.distance;
   const kmMatch = /\((\d+)km\)/.exec(event.name);
   if (kmMatch) return parseInt(kmMatch[1], 10);
 
-  const resolved = resolveWorkoutMetrics(event.description, event.fuelRate, context);
+  const resolved = resolveWorkoutMetrics(
+    event.description,
+    event.fuelRate,
+    context,
+  );
   if (resolved.distance) return resolved.distance.km;
 
-  const isInterval = /interval|hills|short|long intervals|distance intervals|race pace/i.test(event.name);
+  const isInterval =
+    /interval|hills|short|long intervals|distance intervals|race pace/i.test(
+      event.name,
+    );
   const pace = paceForIntensity(isInterval ? 90 : 70, context.paceTable);
   if (resolved.duration) return resolved.duration.minutes / pace;
   return 0;

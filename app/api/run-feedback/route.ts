@@ -1,7 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import {
-
   fetchActivityById,
   fetchActivitiesByDateRange,
   updateActivityFeedback,
@@ -46,7 +45,10 @@ async function findMatchingEvent(
   activity: IntervalsActivity,
   context: WorkoutEstimationContext,
 ): Promise<MatchedEvent> {
-  const dateStr = (activity.start_date_local ?? activity.start_date).slice(0, 10);
+  const dateStr = (activity.start_date_local ?? activity.start_date).slice(
+    0,
+    10,
+  );
   const oldest = shiftDateString(dateStr, -3);
   const newest = shiftDateString(dateStr, 3);
 
@@ -82,13 +84,19 @@ async function findMatchingEvent(
       eventId: planned.id,
     };
   } catch (err) {
-    console.error("Failed to find matching event for activity:", activity.id, err);
+    console.error(
+      "Failed to find matching event for activity:",
+      activity.id,
+      err,
+    );
     return { prescribedCarbsG: null, eventId: null };
   }
 }
 
 /** Find the latest unrated Run activity from the last 2 days. */
-async function findLatestUnratedRun(apiKey: string): Promise<IntervalsActivity | null> {
+async function findLatestUnratedRun(
+  apiKey: string,
+): Promise<IntervalsActivity | null> {
   const now = new Date();
   const twoDaysAgo = new Date(now);
   twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -98,13 +106,16 @@ async function findLatestUnratedRun(apiKey: string): Promise<IntervalsActivity |
   const newest = tomorrow.toISOString().slice(0, 10);
 
   const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
-  return activities
-    .filter((a) => (a.type === "Run" || a.type === "VirtualRun") && !a.Rating)
-    .sort((a, b) =>
-      new Date(b.start_date_local ?? b.start_date).getTime() -
-      new Date(a.start_date_local ?? a.start_date).getTime(),
-    )
-    .at(0) ?? null;
+  return (
+    activities
+      .filter((a) => (a.type === "Run" || a.type === "VirtualRun") && !a.Rating)
+      .sort(
+        (a, b) =>
+          new Date(b.start_date_local ?? b.start_date).getTime() -
+          new Date(a.start_date_local ?? a.start_date).getTime(),
+      )
+      .at(0) ?? null
+  );
 }
 
 interface PreRunCarbsFallback {
@@ -116,10 +127,13 @@ function buildResponse(
   prescribedCarbsG: number | null,
   preRunFallback?: PreRunCarbsFallback,
 ) {
-  const movingTimeMs = activity.moving_time != null ? activity.moving_time * 1000 : null;
+  const movingTimeMs =
+    activity.moving_time != null ? activity.moving_time * 1000 : null;
   const avgHr = activity.average_hr ?? activity.average_heartrate ?? null;
   return {
-    createdAt: new Date(activity.start_date_local ?? activity.start_date).getTime(),
+    createdAt: new Date(
+      activity.start_date_local ?? activity.start_date,
+    ).getTime(),
     rating: nonEmpty(activity.Rating),
     comment: nonEmpty(activity.FeedbackComment),
     carbsG: activity.carbs_ingested ?? null,
@@ -143,7 +157,10 @@ export async function GET(req: Request) {
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
+    );
   }
   const apiKey = creds.intervalsApiKey;
 
@@ -159,16 +176,19 @@ export async function GET(req: Request) {
     ]);
     activity = resolvedActivity;
     if (!activity) {
-      return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Activity not found" },
+        { status: 404 },
+      );
     }
-    const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
-
-    const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
+    const workoutContext = await getUserWorkoutEstimationContext(
       email,
       apiKey,
-      activity,
-      workoutContext,
+      settings,
     );
+
+    const { prescribedCarbsG, eventId: matchedEventId } =
+      await findMatchingEvent(email, apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
@@ -188,7 +208,9 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
+    return NextResponse.json(
+      buildResponse(activity, prescribedCarbsG, preRunFallback),
+    );
   } else {
     const [resolvedActivity, settings] = await Promise.all([
       findLatestUnratedRun(apiKey),
@@ -196,16 +218,19 @@ export async function GET(req: Request) {
     ]);
     activity = resolvedActivity;
     if (!activity) {
-      return NextResponse.json({ error: "No unrated run found", retry: true }, { status: 404 });
+      return NextResponse.json(
+        { error: "No unrated run found", retry: true },
+        { status: 404 },
+      );
     }
-    const workoutContext = await getUserWorkoutEstimationContext(email, apiKey, settings);
-
-    const { prescribedCarbsG, eventId: matchedEventId } = await findMatchingEvent(
+    const workoutContext = await getUserWorkoutEstimationContext(
       email,
       apiKey,
-      activity,
-      workoutContext,
+      settings,
     );
+
+    const { prescribedCarbsG, eventId: matchedEventId } =
+      await findMatchingEvent(email, apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
@@ -225,7 +250,9 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json(buildResponse(activity, prescribedCarbsG, preRunFallback));
+    return NextResponse.json(
+      buildResponse(activity, prescribedCarbsG, preRunFallback),
+    );
   }
 }
 
@@ -255,18 +282,27 @@ export async function POST(req: Request) {
       preRunCarbsG?: number;
     };
   } catch {
-    return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid or empty request body" },
+      { status: 400 },
+    );
   }
 
   const { activityId, rating, comment, carbsG, preRunCarbsG } = body;
 
   if (!activityId || !rating) {
-    return NextResponse.json({ error: "Missing activityId or rating" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing activityId or rating" },
+      { status: 400 },
+    );
   }
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json({ error: "Intervals.icu not configured" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Intervals.icu not configured" },
+      { status: 400 },
+    );
   }
   const apiKey = creds.intervalsApiKey;
 

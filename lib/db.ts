@@ -7,7 +7,8 @@ export function db() {
   if (!_db) {
     const url = process.env.TURSO_DATABASE_URL;
     const token = process.env.TURSO_AUTH_TOKEN;
-    if (!url || !token) throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required");
+    if (!url || !token)
+      throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required");
     _db = createClient({ url, authToken: token });
   }
   return _db;
@@ -116,4 +117,3 @@ CREATE TABLE IF NOT EXISTS workout_event_prescriptions (
 
 CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret);
 `;
-
