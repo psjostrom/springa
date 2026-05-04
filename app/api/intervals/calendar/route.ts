@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
+import { getUserSettings } from "@/lib/settings";
 import { fetchCalendarData } from "@/lib/intervalsApi";
+import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import { enrichEventsWithWorkoutEventPrescriptions } from "@/lib/workoutPrescriptions";
 
 export async function GET(req: Request) {
   let email: string;
@@ -27,7 +30,14 @@ export async function GET(req: Request) {
 
   try {
     const data = await fetchCalendarData(creds.intervalsApiKey, new Date(oldest), new Date(newest));
-    return NextResponse.json(data);
+    const settings = await getUserSettings(email);
+    const workoutContext = await getUserWorkoutEstimationContext(
+      email,
+      creds.intervalsApiKey,
+      settings,
+    );
+    const enriched = await enrichEventsWithWorkoutEventPrescriptions(email, data, workoutContext);
+    return NextResponse.json(enriched);
   } catch (err) {
     console.error("[intervals/calendar]", err);
     return NextResponse.json(

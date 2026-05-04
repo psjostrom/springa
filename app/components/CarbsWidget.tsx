@@ -16,8 +16,7 @@ type EditState =
 export function CarbsWidget({ event }: WidgetProps) {
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
   const patchEvent = useSetAtom(patchCalendarEventAtom);
-
-  const displayCarbs = event.carbsIngested ?? event.totalCarbs ?? null;
+  const displayCarbs = event.carbsIngested ?? event.prescribedCarbsG ?? null;
 
   const saveCarbs = async () => {
     if (editState.kind !== "editing") return;

@@ -491,15 +491,16 @@ function buildClubRunEvent(
   wp: WeekPhase,
   fuelRate: number,
   externalId: string,
-  thresholdPace?: number,
 ): WorkoutEvent {
-  const s = createStepMaker(thresholdPace);
+  // Free format: no pace prescription — runner follows the club's pace and route.
+  // Fuel rate uses ctx.fuelInterval so carbs match a quality session.
+  const step = `${formatPaceStep("60m", null, null, "Free")} intensity=active`;
   return {
     start_date_local: set(date, { hours: 18, minutes: 30, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Club Run`,
     description: createSimpleWorkoutText(
-      s("60m", "z2", "Easy"),
-      "Club run — workout varies week to week.",
+      step,
+      "Club run — pace and route follow the club. Workout varies week to week.",
     ),
     external_id: externalId,
     type: "Run",
@@ -543,7 +544,6 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
           wp,
           ctx.fuelInterval,
           `club-${wp.weekNum}`,
-          ctx.paceTable?.hmEquivalentPacePerKm,
         );
         break;
       case "free":
@@ -630,7 +630,6 @@ export function generateSingleWorkout(
         wp,
         ctx.fuelInterval,
         `ondemand-${format(date, "yyyy-MM-dd")}`,
-        ctx.paceTable?.hmEquivalentPacePerKm,
       );
   }
 

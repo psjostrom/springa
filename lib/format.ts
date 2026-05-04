@@ -29,6 +29,16 @@ export function formatPace(paceMinPerKm: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+/** Format a minute count as "Xh Ym" / "Xh" / "Ym". For workout duration display
+ *  where the value is already in whole minutes (no sub-minute precision).
+ *  Use formatDuration when starting from seconds. */
+export function formatHrMin(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+}
+
 /** Format seconds as "Xh Ym" or "Ym". */
 export function formatDuration(seconds: number): string {
   const secs = Math.round(seconds % 60);

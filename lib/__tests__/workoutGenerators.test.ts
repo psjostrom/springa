@@ -146,6 +146,24 @@ describe("generatePlan", () => {
     }
   });
 
+  it("emits club runs with no pace prescription and quality-rate fuel", () => {
+    const plan = generatePlan({
+      ...defaultConfig, raceDateStr: "2027-06-12",
+      runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
+    });
+    const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
+    expect(clubRuns.length).toBeGreaterThan(0);
+    for (const run of clubRuns) {
+      // No pace target rendered into the description.
+      expect(run.description).not.toContain("/km Pace");
+      expect(run.description).not.toMatch(/\d+-\d+%/);
+      // Step is the literal "Free 60m".
+      expect(run.description).toContain("Free 60m");
+      // Carbs derive directly from minutes × fuel rate (60 min × 60 g/h = 60 g).
+      expect(prescribedCarbs(run.description, run.fuelRate)).toBe(60);
+    }
+  });
+
   it("does not generate club runs when clubDay is not configured", () => {
     const plan = generateFull();
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));

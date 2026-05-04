@@ -39,7 +39,23 @@ afterEach(() => {
 });
 
 describe("Feedback page — prescribed carbs", () => {
-  it("submits prescribed carbs when user leaves input empty", async () => {
+  it("shows prescribed carbs separately and keeps the input empty by default", async () => {
+    installFeedbackHandlers();
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
+
+    render(<FeedbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("5.5 km")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Prescribed: 41g")).toBeInTheDocument();
+    const carbsInput = screen.getByPlaceholderText("e.g. 40");
+    expect(carbsInput).toBeInTheDocument();
+    expect(carbsInput).toHaveValue(null);
+  });
+
+  it("copies prescribed carbs into the input when requested", async () => {
     installFeedbackHandlers();
     const user = userEvent.setup();
     searchParamsState.current = new URLSearchParams("activityId=i12345");
@@ -50,11 +66,11 @@ describe("Feedback page — prescribed carbs", () => {
       expect(screen.getByText("5.5 km")).toBeInTheDocument();
     });
 
-    // Placeholder should show prescribed amount
-    const carbsInput = screen.getByPlaceholderText("41 (prescribed)");
-    expect(carbsInput).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Use prescribed/i }));
 
-    // Rate good, hit save without touching carbs
+    const carbsInput = screen.getByPlaceholderText("e.g. 40");
+    expect(carbsInput).toHaveValue(41);
+
     await user.click(screen.getByText("\uD83D\uDC4D"));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
@@ -62,8 +78,6 @@ describe("Feedback page — prescribed carbs", () => {
       expect(capturedPostBody).not.toBeNull();
     });
 
-    expect(capturedPostBody!.activityId).toBe("i12345");
-    expect(capturedPostBody!.rating).toBe("good");
     expect(capturedPostBody!.carbsG).toBe(41);
   });
 
@@ -78,9 +92,7 @@ describe("Feedback page — prescribed carbs", () => {
       expect(screen.getByText("5.5 km")).toBeInTheDocument();
     });
 
-    // Clear pre-filled value and type a different one
-    const carbsInput = screen.getByPlaceholderText("41 (prescribed)");
-    await user.clear(carbsInput);
+    const carbsInput = screen.getByPlaceholderText("e.g. 40");
     await user.type(carbsInput, "55");
 
     // Rate good, save

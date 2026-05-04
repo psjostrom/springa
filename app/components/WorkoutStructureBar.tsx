@@ -30,9 +30,13 @@ export function WorkoutStructureBar({
       {segments.map((segment, idx) => {
         const widthPercent = (segment.duration / totalDuration) * 100;
         const heightPercent = ((segment.intensity - 70) / 30) * 70 + 30;
-        const zoneKey = isPaceBased || !validHrZones
-          ? classifyPacePct(segment.intensity)
-          : classifyHR((segment.intensity / 100) * lthr, validHrZones);
+        // Prefer the explicit zone when set (no-pace effort steps — covers z1
+        // which classifyPacePct can't return). Fall back to classification.
+        const zoneKey = segment.zone ?? (
+          isPaceBased || !validHrZones
+            ? classifyPacePct(segment.intensity)
+            : classifyHR((segment.intensity / 100) * lthr, validHrZones)
+        );
 
         return (
           <div

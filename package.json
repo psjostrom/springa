@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "prepare": "husky",
     "db:query": "node --env-file=.env.local -e",
+    "db:migrate:workout-prescriptions": "npx tsx --env-file=.env.local scripts/migrate-workout-event-prescriptions.ts",
     "demo:snapshot": "npx tsx --env-file=.env.local scripts/demo-snapshot.ts"
   },
   "dependencies": {

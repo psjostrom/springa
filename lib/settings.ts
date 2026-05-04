@@ -85,7 +85,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type,
-                 pace_suggestion_dismissed_at
+                 pace_suggestion_dismissed_at, hr_zones, max_hr
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -95,30 +95,50 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.race_date) settings.raceDate = row.race_date as string;
   if (row.race_name) settings.raceName = row.race_name as string;
   if (row.race_dist != null) settings.raceDist = row.race_dist as number;
-  if (row.current_ability_secs != null) settings.currentAbilitySecs = row.current_ability_secs as number;
-  if (row.current_ability_dist != null) settings.currentAbilityDist = row.current_ability_dist as number;
+  if (row.current_ability_secs != null)
+    settings.currentAbilitySecs = row.current_ability_secs as number;
+  if (row.current_ability_dist != null)
+    settings.currentAbilityDist = row.current_ability_dist as number;
   if (row.total_weeks != null) settings.totalWeeks = row.total_weeks as number;
   if (row.start_km != null) settings.startKm = row.start_km as number;
-  if (row.widget_order) settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
-  if (row.hidden_widgets) settings.hiddenWidgets = JSON.parse(row.hidden_widgets as string) as string[];
-  if (row.bg_chart_window != null) settings.bgChartWindow = row.bg_chart_window as number;
-  if (row.include_base_phase != null) settings.includeBasePhase = (row.include_base_phase as number) === 1;
-  if (row.warmth_preference != null) settings.warmthPreference = row.warmth_preference as number;
+  if (row.widget_order)
+    settings.widgetOrder = JSON.parse(row.widget_order as string) as string[];
+  if (row.hidden_widgets)
+    settings.hiddenWidgets = JSON.parse(
+      row.hidden_widgets as string,
+    ) as string[];
+  if (row.bg_chart_window != null)
+    settings.bgChartWindow = row.bg_chart_window as number;
+  if (row.include_base_phase != null)
+    settings.includeBasePhase = (row.include_base_phase as number) === 1;
+  if (row.warmth_preference != null)
+    settings.warmthPreference = row.warmth_preference as number;
 
   // Multi-user fields (NULL-safe: ALTER TABLE doesn't backfill existing rows)
-  settings.diabetesMode = (row.diabetes_mode as number | null ?? 0) === 1;
+  settings.diabetesMode = ((row.diabetes_mode as number | null) ?? 0) === 1;
   if (row.display_name) settings.displayName = row.display_name as string;
   settings.timezone = (row.timezone as string | null) ?? "Europe/Stockholm";
-  if (row.run_days) settings.runDays = JSON.parse(row.run_days as string) as number[];
-  if (row.long_run_day != null) settings.longRunDay = row.long_run_day as number;
+  if (row.run_days)
+    settings.runDays = JSON.parse(row.run_days as string) as number[];
+  if (row.long_run_day != null)
+    settings.longRunDay = row.long_run_day as number;
   if (row.club_day != null) settings.clubDay = row.club_day as number;
   if (row.club_type) settings.clubType = row.club_type as string;
-  settings.onboardingComplete = (row.onboarding_complete as number | null ?? 0) === 1;
+  settings.onboardingComplete =
+    ((row.onboarding_complete as number | null) ?? 0) === 1;
   if (row.insulin_type) settings.insulinType = row.insulin_type as string;
-  if (row.pace_suggestion_dismissed_at != null) settings.paceSuggestionDismissedAt = row.pace_suggestion_dismissed_at as number;
+  if (row.pace_suggestion_dismissed_at != null)
+    settings.paceSuggestionDismissedAt =
+      row.pace_suggestion_dismissed_at as number;
+
+  if (row.hr_zones)
+    settings.hrZones = JSON.parse(row.hr_zones as string) as number[];
+  if (row.max_hr != null) settings.maxHr = row.max_hr as number;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
-  settings.nightscoutConnected = !!(row.nightscout_url && row.nightscout_secret);
+  settings.nightscoutConnected = !!(
+    row.nightscout_url && row.nightscout_secret
+  );
 
   return settings;
 }
@@ -137,27 +157,98 @@ export async function saveUserSettings(
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
 
-  if (partial.raceDate !== undefined) { sets.push("race_date = ?"); args.push(partial.raceDate ?? null); }
-  if (partial.raceName !== undefined) { sets.push("race_name = ?"); args.push(partial.raceName ?? null); }
-  if (partial.raceDist !== undefined) { sets.push("race_dist = ?"); args.push(partial.raceDist ?? null); }
-  if (partial.currentAbilitySecs !== undefined) { sets.push("current_ability_secs = ?"); args.push(partial.currentAbilitySecs ?? null); }
-  if (partial.currentAbilityDist !== undefined) { sets.push("current_ability_dist = ?"); args.push(partial.currentAbilityDist ?? null); }
-  if (partial.totalWeeks !== undefined) { sets.push("total_weeks = ?"); args.push(partial.totalWeeks ?? null); }
-  if (partial.startKm !== undefined) { sets.push("start_km = ?"); args.push(partial.startKm ?? null); }
-  if (partial.widgetOrder !== undefined) { sets.push("widget_order = ?"); args.push(JSON.stringify(partial.widgetOrder)); }
-  if (partial.hiddenWidgets !== undefined) { sets.push("hidden_widgets = ?"); args.push(JSON.stringify(partial.hiddenWidgets)); }
-  if (partial.bgChartWindow !== undefined) { sets.push("bg_chart_window = ?"); args.push(partial.bgChartWindow ?? null); }
-  if (partial.includeBasePhase !== undefined) { sets.push("include_base_phase = ?"); args.push(partial.includeBasePhase ? 1 : 0); }
-  if (partial.warmthPreference !== undefined) { sets.push("warmth_preference = ?"); args.push(partial.warmthPreference); }
-  if (partial.diabetesMode !== undefined) { sets.push("diabetes_mode = ?"); args.push(partial.diabetesMode ? 1 : 0); }
-  if (partial.displayName !== undefined) { sets.push("display_name = ?"); args.push(partial.displayName ?? null); }
-  if (partial.runDays !== undefined) { sets.push("run_days = ?"); args.push(JSON.stringify(partial.runDays)); }
-  if (partial.longRunDay !== undefined) { sets.push("long_run_day = ?"); args.push(partial.longRunDay ?? null); }
-  if (partial.clubDay !== undefined) { sets.push("club_day = ?"); args.push(partial.clubDay ?? null); }
-  if (partial.clubType !== undefined) { sets.push("club_type = ?"); args.push(partial.clubType ?? null); }
-  if (partial.onboardingComplete !== undefined) { sets.push("onboarding_complete = ?"); args.push(partial.onboardingComplete ? 1 : 0); }
-  if (partial.insulinType !== undefined) { sets.push("insulin_type = ?"); args.push(partial.insulinType ?? null); }
-  if (partial.paceSuggestionDismissedAt !== undefined) { sets.push("pace_suggestion_dismissed_at = ?"); args.push(partial.paceSuggestionDismissedAt ?? null); }
+  if (partial.raceDate !== undefined) {
+    sets.push("race_date = ?");
+    args.push(partial.raceDate ?? null);
+  }
+  if (partial.raceName !== undefined) {
+    sets.push("race_name = ?");
+    args.push(partial.raceName ?? null);
+  }
+  if (partial.raceDist !== undefined) {
+    sets.push("race_dist = ?");
+    args.push(partial.raceDist ?? null);
+  }
+  if (partial.currentAbilitySecs !== undefined) {
+    sets.push("current_ability_secs = ?");
+    args.push(partial.currentAbilitySecs ?? null);
+  }
+  if (partial.currentAbilityDist !== undefined) {
+    sets.push("current_ability_dist = ?");
+    args.push(partial.currentAbilityDist ?? null);
+  }
+  if (partial.totalWeeks !== undefined) {
+    sets.push("total_weeks = ?");
+    args.push(partial.totalWeeks ?? null);
+  }
+  if (partial.startKm !== undefined) {
+    sets.push("start_km = ?");
+    args.push(partial.startKm ?? null);
+  }
+  if (partial.widgetOrder !== undefined) {
+    sets.push("widget_order = ?");
+    args.push(JSON.stringify(partial.widgetOrder));
+  }
+  if (partial.hiddenWidgets !== undefined) {
+    sets.push("hidden_widgets = ?");
+    args.push(JSON.stringify(partial.hiddenWidgets));
+  }
+  if (partial.bgChartWindow !== undefined) {
+    sets.push("bg_chart_window = ?");
+    args.push(partial.bgChartWindow ?? null);
+  }
+  if (partial.includeBasePhase !== undefined) {
+    sets.push("include_base_phase = ?");
+    args.push(partial.includeBasePhase ? 1 : 0);
+  }
+  if (partial.warmthPreference !== undefined) {
+    sets.push("warmth_preference = ?");
+    args.push(partial.warmthPreference);
+  }
+  if (partial.diabetesMode !== undefined) {
+    sets.push("diabetes_mode = ?");
+    args.push(partial.diabetesMode ? 1 : 0);
+  }
+  if (partial.displayName !== undefined) {
+    sets.push("display_name = ?");
+    args.push(partial.displayName ?? null);
+  }
+  if (partial.runDays !== undefined) {
+    sets.push("run_days = ?");
+    args.push(JSON.stringify(partial.runDays));
+  }
+  if (partial.longRunDay !== undefined) {
+    sets.push("long_run_day = ?");
+    args.push(partial.longRunDay ?? null);
+  }
+  if (partial.clubDay !== undefined) {
+    sets.push("club_day = ?");
+    args.push(partial.clubDay ?? null);
+  }
+  if (partial.clubType !== undefined) {
+    sets.push("club_type = ?");
+    args.push(partial.clubType ?? null);
+  }
+  if (partial.onboardingComplete !== undefined) {
+    sets.push("onboarding_complete = ?");
+    args.push(partial.onboardingComplete ? 1 : 0);
+  }
+  if (partial.insulinType !== undefined) {
+    sets.push("insulin_type = ?");
+    args.push(partial.insulinType ?? null);
+  }
+  if (partial.paceSuggestionDismissedAt !== undefined) {
+    sets.push("pace_suggestion_dismissed_at = ?");
+    args.push(partial.paceSuggestionDismissedAt ?? null);
+  }
+  if (partial.hrZones !== undefined) {
+    sets.push("hr_zones = ?");
+    args.push(JSON.stringify(partial.hrZones));
+  }
+  if (partial.maxHr !== undefined) {
+    sets.push("max_hr = ?");
+    args.push(partial.maxHr ?? null);
+  }
 
   if (sets.length > 0) {
     args.push(email);

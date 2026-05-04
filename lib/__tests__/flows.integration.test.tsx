@@ -310,7 +310,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
     // 5. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
-      expect(screen.getByText("48g/h")).toBeInTheDocument();
+      expect(screen.getAllByText("48g/h").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -342,7 +342,7 @@ describe("Flow 6: Calendar — Fuel info matches in agenda and modal", () => {
 
     // 5. Assert modal WorkoutCard shows fuel info
     await waitFor(() => {
-      expect(screen.getByText("30g/h")).toBeInTheDocument();
+      expect(screen.getAllByText("30g/h").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

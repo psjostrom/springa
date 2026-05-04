@@ -1,4 +1,4 @@
-import { differenceInDays, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import type {
   IntervalsEvent,
   HRZoneData,
@@ -6,9 +6,9 @@ import type {
   IntervalsActivity,
 } from "./types";
 import { getWorkoutCategory } from "./constants";
-import { prescribedCarbs } from "./workoutMath";
 import { nonEmpty } from "./format";
 import { categoryFromExternalId } from "./paceInsight";
+import { findWorkoutEventMatch } from "./workoutEventMatching";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -63,7 +63,6 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     cadence: activity.average_cadence ? activity.average_cadence * 2 : undefined,
     zoneTimes,
     fuelRate: null,
-    totalCarbs: null,
     carbsIngested: activity.carbs_ingested ?? null,
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
     rating: nonEmpty(activity.Rating),
@@ -93,18 +92,6 @@ export function processActivities(
 
   console.log(`[auto-pair] ${runActivities.length} run activities, ${events.length} events`);
 
-  // Build reverse lookups for authoritative pairing (both directions)
-  const pairedEventMap = new Map<string, IntervalsEvent>();
-  const eventById = new Map<number, IntervalsEvent>();
-  for (const event of events) {
-    if (event.category === "WORKOUT") {
-      eventById.set(event.id, event);
-      if (event.paired_activity_id) {
-        pairedEventMap.set(event.paired_activity_id, event);
-      }
-    }
-  }
-
   for (const activity of runActivities) {
     let pace: number | undefined;
     if (activity.distance && activity.moving_time) {
@@ -132,35 +119,11 @@ export function processActivities(
     // time, which is wrong on Vercel (UTC) for CET users.
     const activityDate = parseISO(activity.start_date);
 
-    // Prefer authoritative link (either direction), fall back to ±3 day exact name match
-    const authoritativeMatch = pairedEventMap.get(activity.id)
-      ?? (activity.paired_event_id ? eventById.get(activity.paired_event_id) : undefined);
-
-    const rejections: string[] = [];
-    const fallbackMatch = !authoritativeMatch ? events.find((event) => {
-      if (event.category !== "WORKOUT") return false;
-      const actName = activity.name.trim().toLowerCase();
-      const evtName = (event.name ?? "").trim().toLowerCase();
-      if (event.paired_activity_id) {
-        rejections.push(`${event.id}|${event.name}|paired→${event.paired_activity_id}`);
-        return false;
-      }
-      if (fallbackClaimedEventIds.has(event.id)) {
-        rejections.push(`${event.id}|${event.name}|claimed`);
-        return false;
-      }
-      const eventDate = parseISO(event.start_date_local);
-      const dayDiff = Math.abs(differenceInDays(activityDate, eventDate));
-      const withinWindow = dayDiff <= 3;
-      const nameMatch = actName === evtName || (evtName.length > 0 && actName.endsWith(evtName));
-      if (!withinWindow) {
-        rejections.push(`${event.id}|${event.name}|dayDiff=${dayDiff}`);
-      } else if (!nameMatch) {
-        rejections.push(`${event.id}|${event.name}|name≠"${actName}"`);
-      }
-      return withinWindow && nameMatch;
-    }) : undefined;
-    const matchingEvent = authoritativeMatch ?? fallbackMatch;
+    const { matchingEvent, fallbackMatch, rejections } = findWorkoutEventMatch(
+      activity,
+      events,
+      fallbackClaimedEventIds,
+    );
 
     // Log: fallback match → one line; plan workout with no match → detail block; otherwise silent
     if (fallbackMatch) {
@@ -183,10 +146,10 @@ export function processActivities(
       matchingEvent?.description ?? activity.description ?? "";
 
     const fuelRate = matchingEvent?.carbs_per_hour ?? null;
-    const totalCarbs = prescribedCarbs(description, fuelRate);
-
-    // Actual carbs ingested: from activity API field, default to planned totalCarbs
-    const carbsIngested = activity.carbs_ingested ?? totalCarbs;
+    // carbsIngested: only from the activity itself. Pipeline never falls back to a
+    // computed prescription — the display layer derives the planned total via
+    // prescribedCarbs() with full pace context and uses it as a fallback there.
+    const carbsIngested = activity.carbs_ingested ?? null;
 
     const category = categoryFromExternalId(matchingEvent?.external_id) ?? getWorkoutCategory(activity.name);
 
@@ -211,7 +174,6 @@ export function processActivities(
         : undefined,
       zoneTimes,
       fuelRate,
-      totalCarbs,
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
       rating: nonEmpty(activity.Rating),
@@ -255,7 +217,6 @@ export function processPlannedEvents(
     const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
-    const eventTotalCarbs = prescribedCarbs(eventDesc, eventFuelRate);
 
     calendarEvents.push({
       id: `event-${event.id}`,
@@ -267,7 +228,6 @@ export function processPlannedEvents(
       distance: event.distance ?? 0,
       duration: event.moving_time ?? event.duration ?? event.elapsed_time,
       fuelRate: eventFuelRate,
-      totalCarbs: eventTotalCarbs,
     });
   }
 

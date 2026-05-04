@@ -540,7 +540,7 @@ export async function deleteActivity(
 export async function uploadToIntervals(
   apiKey: string,
   events: WorkoutEvent[],
-): Promise<number> {
+): Promise<{ count: number; staleDeletedEventIds: number[] }> {
   const auth = authHeader(apiKey);
   const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
@@ -583,6 +583,8 @@ export async function uploadToIntervals(
         !nextExternalIds.has(event.external_id),
     );
 
+    const staleDeletedEventIds: number[] = [];
+
     for (const staleEvent of staleEvents) {
       try {
         const deleteRes = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(staleEvent.id))}`, {
@@ -591,13 +593,15 @@ export async function uploadToIntervals(
         });
         if (!deleteRes.ok) {
           console.error(`Delete failed for event ${staleEvent.id} with status ${deleteRes.status}`);
+        } else {
+          staleDeletedEventIds.push(staleEvent.id);
         }
       } catch (deleteError) {
         console.error(`Error deleting stale event ${staleEvent.id}:`, deleteError);
       }
     }
 
-    return payload.length;
+    return { count: payload.length, staleDeletedEventIds };
   } catch (error) {
     console.error("Upload failed:", error);
     throw error;
