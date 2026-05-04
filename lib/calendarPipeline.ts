@@ -1,4 +1,4 @@
-import { differenceInDays, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import type {
   IntervalsEvent,
   HRZoneData,
