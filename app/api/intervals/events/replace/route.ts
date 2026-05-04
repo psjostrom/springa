@@ -51,13 +51,6 @@ export async function POST(req: Request) {
       workout,
     );
 
-    if (newId === undefined || newId === null) {
-      return NextResponse.json(
-        { error: "Failed to create new event (newId undefined)" },
-        { status: 502 },
-      );
-    }
-
     const settings = await getUserSettings(email);
     const workoutContext = await getUserWorkoutEstimationContext(
       email,

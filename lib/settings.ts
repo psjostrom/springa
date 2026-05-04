@@ -243,7 +243,7 @@ export async function saveUserSettings(
   }
   if (partial.hrZones !== undefined) {
     sets.push("hr_zones = ?");
-    args.push(partial.hrZones ? JSON.stringify(partial.hrZones) : null);
+    args.push(JSON.stringify(partial.hrZones));
   }
   if (partial.maxHr !== undefined) {
     sets.push("max_hr = ?");

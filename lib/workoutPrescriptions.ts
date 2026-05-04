@@ -212,7 +212,7 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
 
   // Only compute planned prescriptions if we have calibration context.
   // Without context, values are live-derived and may be wide-zone inflated for new users.
-  const hasContext = context.paceTable || context.thresholdPace;
+  const hasContext = context.paceTable != null || context.thresholdPace != null;
   const plannedRowsById = hasContext
     ? new Map(
         buildPlannedPrescriptionRows(events, context).map((row) => [
@@ -220,7 +220,7 @@ export async function enrichEventsWithWorkoutEventPrescriptions(
           row,
         ]),
       )
-    : new Map();
+    : new Map<string, WorkoutEventPrescriptionRow>();
 
   return events.map((event) => {
     const eventId = linkedPlannedEventId(event);

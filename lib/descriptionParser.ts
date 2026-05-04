@@ -49,18 +49,6 @@ export function classifyPacePct(avgPct: number): ZoneName {
 const NO_PACE_STEP_LABEL_PATTERN =
   "Walk|Downhill|Stride|Uphill|Fast|Interval|Race Pace|Easy|Warmup|Cooldown|Free";
 
-function isRepeatSuffix(value: string): boolean {
-  if (!value.startsWith(" ")) return false;
-  const trimmed = value.trim();
-  if (!trimmed.endsWith("x")) return false;
-  const count = trimmed.slice(0, -1);
-  if (count.length === 0) return false;
-  for (const char of count) {
-    if (char < "0" || char > "9") return false;
-  }
-  return true;
-}
-
 function isSectionHeaderLine(line: string): boolean {
   if (line === "Warmup" || line === "Cooldown") return true;
   if (line === "Main set") return true;
