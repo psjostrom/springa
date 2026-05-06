@@ -11,7 +11,6 @@ import type { BGReading } from "@/lib/cgm";
 import type { WidgetLayout } from "@/lib/widgetRegistry";
 import { resolveLayout } from "@/lib/widgetRegistry";
 import { enrichEvents } from "@/lib/enrichEvents";
-import { prescribedCarbs } from "@/lib/workoutMath";
 import { wellnessToFitnessData } from "@/lib/fitness";
 import type { PhaseInfo } from "./hooks/usePhaseInfo";
 import {
@@ -120,14 +119,9 @@ export const currentTsbAtom = atom<number | null>((get) => {
 
 export const currentIobAtom = atom<number | null>(null);
 
-export const enrichedEventsAtom = atom((get) => {
-  const events = enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom));
-  return events.map((e) => {
-    const totalCarbs = prescribedCarbs(e.description, e.fuelRate);
-    if (totalCarbs == null || totalCarbs === e.totalCarbs) return e;
-    return { ...e, totalCarbs };
-  });
-});
+export const enrichedEventsAtom = atom((get) =>
+  enrichEvents(get(calendarEventsAtom), get(cachedActivitiesAtom)),
+);
 
 export const phaseInfoAtom = atom<PhaseInfo>({ name: "Build Phase", week: 0, progress: 0 });
 

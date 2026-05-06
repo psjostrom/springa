@@ -7,7 +7,7 @@ import {
   parseWorkoutStructure,
   extractStepTotals,
 } from "../descriptionParser";
-import { formatPace, formatZoneTime, getPaceForZone, getZoneLabel } from "../format";
+import { formatPace, formatZoneTime, formatHrMin, getPaceForZone, getZoneLabel } from "../format";
 import {
   getEstimatedDuration,
   estimateWorkoutDuration,
@@ -62,6 +62,23 @@ describe("formatZoneTime", () => {
 
   it("handles zero", () => {
     expect(formatZoneTime(0)).toBe("0s");
+  });
+});
+
+describe("formatHrMin", () => {
+  it("formats minutes only when under an hour", () => {
+    expect(formatHrMin(45)).toBe("45m");
+    expect(formatHrMin(0)).toBe("0m");
+  });
+
+  it("formats hours and minutes", () => {
+    expect(formatHrMin(101)).toBe("1h 41m");
+    expect(formatHrMin(135)).toBe("2h 15m");
+  });
+
+  it("drops the minutes part for exact hours", () => {
+    expect(formatHrMin(60)).toBe("1h");
+    expect(formatHrMin(120)).toBe("2h");
   });
 });
 
@@ -788,10 +805,12 @@ Cooldown
       type: "planned",
       category: "interval",
     };
-    // 39 min / 5.15 min/km (tempo pace for intervals) ≈ 7.6 km
+    // Distance is now resolved from the parsed step mix: easy recoveries use easy pace,
+    // work reps use interval pace. That lands around 6 km instead of treating all 39 min
+    // as interval-pace running.
     const result = estimateWorkoutDistance(event);
-    expect(result).toBeGreaterThan(7);
-    expect(result).toBeLessThan(8);
+    expect(result).toBeGreaterThan(5.5);
+    expect(result).toBeLessThan(6.5);
   });
 
   it("returns 0 for events with no data", () => {
@@ -1067,6 +1086,26 @@ Warmup
       "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
     );
   });
+
+  it("extracts notes from a labeled free-format single-step workout", () => {
+    const desc = `Club run — pace and route follow the club. Workout varies week to week.
+
+- Free 60m intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe(
+      "Club run — pace and route follow the club. Workout varies week to week.",
+    );
+  });
+
+  it("extracts notes from a multi-word labeled single-step workout", () => {
+    const desc = `Lock into race effort.
+
+- Race Pace 20m 95-100% pace intensity=active
+`;
+
+    expect(extractNotes(desc)).toBe("Lock into race effort.");
+  });
 });
 
 describe("extractStructure", () => {
@@ -1097,6 +1136,15 @@ Cooldown
 
     const structure = extractStructure(desc);
     expect(structure).toBe("- 35m 68-83% LTHR (115-140 bpm) intensity=active");
+  });
+
+  it("extracts structure from a labeled free-format single-step workout", () => {
+    const desc = `Club run — pace and route follow the club. Workout varies week to week.
+
+- Free 60m intensity=active
+`;
+
+    expect(extractStructure(desc)).toBe("- Free 60m intensity=active");
   });
 
   it("returns empty string for description without structure", () => {
@@ -1439,5 +1487,116 @@ describe("extractStepTotals — absolute pace format", () => {
 - 20m 6:15-7:52/km Pace intensity=active
 `;
     expect(extractStepTotals(desc)).toEqual({});
+  });
+});
+
+describe("parseWorkoutStructure — free format", () => {
+  it("renders a no-pace step with the Free label and no pace text", () => {
+    const desc = `Club run — pace and route follow the club. Workout varies week to week.
+
+- Free 60m intensity=active
+`;
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(1);
+    const step = sections[0].steps[0];
+    expect(step.label).toBe("Free");
+    expect(step.duration).toBe("60m");
+    expect(step.bpmRange).toBe("");
+  });
+
+  it("renders a Race absolute-pace step as structured content", () => {
+    const desc = `Race day.
+
+- Race 16km 5:32-5:43/km Pace intensity=active
+`;
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(1);
+    const step = sections[0].steps[0];
+    expect(step.label).toBe("Race");
+    expect(step.duration).toBe("16km");
+    expect(step.bpmRange).toBe("5:32-5:43 /km");
+  });
+});
+
+describe("parseWorkoutSegments — wide easy zone duration estimate", () => {
+  // Regression: wide z2 range (30-88% — allows walking) used to produce a
+  // duration estimate of ~12-13 min/km because we averaged the literal pace
+  // bounds, including the walking-pace lower bound. With a known threshold
+  // the estimate now uses the user's typical zone pace via paceForIntensity.
+  it("uses zone-typical pace, not the literal walking-pace midpoint, when threshold is known", () => {
+    const desc = `- 8km 6:27-18:54/km Pace intensity=active
+`;
+    const segments = parseWorkoutSegments(desc, undefined, 5.5);
+    expect(segments).toHaveLength(1);
+    // intensity = 5.5 / 12.675 * 100 ≈ 43% → fallback z2 = 7.25 min/km
+    // 8km × 7.25 ≈ 58 min — sane for an 8km easy run.
+    expect(segments[0].duration).toBeCloseTo(58, 0);
+  });
+});
+
+describe("parseWorkoutSegments — no-pace step (free format)", () => {
+  it("parses literal duration with no pace target", () => {
+    const segments = parseWorkoutSegments(`- Free 60m intensity=active`);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].duration).toBe(60);
+    expect(segments[0].km).toBeNull();
+    expect(segments[0].noPace).toBe(true);
+    expect(segments[0].estimated).toBe(false);
+    expect(segments[0].zone).toBe("z2"); // Free defaults to easy effort
+  });
+
+  it("parses seconds unit", () => {
+    const segments = parseWorkoutSegments(`- Free 90s intensity=active`);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].duration).toBe(1.5);
+    expect(segments[0].noPace).toBe(true);
+  });
+
+  it("does not false-match a pace-spec step as no-pace", () => {
+    // The "60m" inside a paced step must be claimed by absPacePattern, not noPace.
+    const segments = parseWorkoutSegments(
+      `- Easy 60m 6:27-18:54/km Pace intensity=active`,
+    );
+    expect(segments).toHaveLength(1);
+    expect(segments[0].noPace).toBeUndefined();
+    expect(segments[0].duration).toBe(60); // m unit, literal
+    expect(segments[0].zone).toBeUndefined();
+  });
+
+  // Regression: WorkoutStructureBar painted strides cyan because no-pace
+  // steps had no explicit zone — classifyPacePct(0) defaulted to z2.
+  it("infers zone from the label so the bar can colour strides as hard and walks as recovery", () => {
+    const desc = `Easy run with strides.
+
+Warmup
+- 10m 6:27-18:54/km Pace intensity=warmup
+
+Strides 4x
+- Stride 20s intensity=active
+- Walk 1m intensity=rest
+
+Cooldown
+- 15m 6:27-18:54/km Pace intensity=cooldown
+`;
+    const segments = parseWorkoutSegments(desc);
+    // 1 warmup + (1 stride + 1 walk) × 4 + 1 cooldown = 10
+    expect(segments).toHaveLength(10);
+    const stride = segments.find((s) => s.zone === "z5");
+    const walk = segments.find((s) => s.zone === "z1");
+    expect(stride?.noPace).toBe(true);
+    expect(stride?.duration).toBeCloseTo(1 / 3, 2); // 20s
+    expect(walk?.noPace).toBe(true);
+    expect(walk?.duration).toBe(1); // 1m
+  });
+});
+
+describe("estimateWorkoutDescriptionDistance — no-pace segments", () => {
+  it("returns null when all segments are no-pace (distance unknowable)", () => {
+    const desc = `- Free 60m intensity=active
+`;
+    const dist = estimateWorkoutDescriptionDistance(desc);
+    expect(dist).toBeNull();
   });
 });

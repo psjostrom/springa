@@ -87,7 +87,6 @@ describe("BGGraphPopover", () => {
           type: "race",
           category: "race",
           fuelRate: 60,
-          totalCarbs: 90,
         }]],
       ],
     });

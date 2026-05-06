@@ -305,7 +305,7 @@ describe("fetchCalendarData", () => {
     expect(result[0].fuelRate).toBe(48);
   });
 
-  it("defaults carbsIngested to planned totalCarbs when carbs_ingested is absent", async () => {
+  it("leaves carbsIngested null when activity has no carbs_ingested (display layer derives fallback)", async () => {
     server.use(
       http.get(`${API_BASE}/athlete/0/activities`, () => {
         return HttpResponse.json([
@@ -337,8 +337,12 @@ describe("fetchCalendarData", () => {
 
     const result = await fetchCalendarData("test-key", new Date("2026-09-01"), new Date("2026-09-30"));
     expect(result.length).toBe(1);
-    expect(result[0].carbsIngested).toBe(result[0].totalCarbs);
+    // Pipeline does not fall back to a computed prescription. CarbsWidget computes
+    // planned via prescribedCarbs(description, fuelRate, paceTable, threshold) and
+    // uses it as the display fallback when carbsIngested is null.
+    expect(result[0].carbsIngested).toBeNull();
     expect(result[0].activityId).toBe("act-2");
+    expect(result[0].fuelRate).toBe(48);
   });
 
   it("populates fuelRate from carbs_per_hour on planned events", async () => {
@@ -363,7 +367,6 @@ describe("fetchCalendarData", () => {
     const result = await fetchCalendarData("test-key", new Date("2026-10-01"), new Date("2026-10-31"));
     expect(result.length).toBe(1);
     expect(result[0].fuelRate).toBe(48);
-    expect(result[0].totalCarbs).toBeDefined();
   });
 
   it("returns null fuelRate when carbs_per_hour is absent", async () => {
@@ -387,7 +390,6 @@ describe("fetchCalendarData", () => {
     const result = await fetchCalendarData("test-key", new Date("2026-11-01"), new Date("2026-11-30"));
     expect(result.length).toBe(1);
     expect(result[0].fuelRate).toBeNull();
-    expect(result[0].totalCarbs).toBeNull();
   });
 
   it("marks race events with type 'race'", async () => {
@@ -558,8 +560,9 @@ describe("uploadToIntervals", () => {
       { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "easy-1-1", type: "Run" },
     ];
 
-    const count = await uploadToIntervals("test-key", events);
-    expect(count).toBe(1);
+    const result = await uploadToIntervals("test-key", events);
+    expect(result.count).toBe(1);
+    expect(result.staleDeletedEventIds).toEqual([100]);
     expect(callOrder).toEqual(["list", "upload", "delete:100"]);
     expect(capturedDeleteEventIds).toEqual(["100"]);
   });

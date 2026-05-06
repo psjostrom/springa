@@ -69,7 +69,10 @@ describe("prescribed carbs after activity pairing", () => {
     const completed = calendarEvents.find((e) => e.activityId === "act-paired");
 
     expect(completed).toBeDefined();
-    expect(completed!.totalCarbs).toBe(descriptionMinutes); // 65g, NOT 97g
+    // Pipeline no longer computes totalCarbs (it's derived at display).
+    // The carb total is computed from description + fuelRate via prescribedCarbs,
+    // which is the only place duration is reduced from the description.
+    expect(prescribedCarbs(completed!.description, completed!.fuelRate)).toBe(descriptionMinutes); // 65g, NOT 97g
   });
 });
 
@@ -87,7 +90,7 @@ describe("prescribed carbs in planned events", () => {
     };
 
     const [planned] = processPlannedEvents([event], new Map(), new Set());
-    expect(planned.totalCarbs).toBe(65);
+    expect(prescribedCarbs(planned.description, planned.fuelRate)).toBe(65);
   });
 
   it("returns null totalCarbs when description is unparseable", () => {
@@ -101,7 +104,7 @@ describe("prescribed carbs in planned events", () => {
     };
 
     const [planned] = processPlannedEvents([event], new Map(), new Set());
-    expect(planned.totalCarbs).toBeNull();
+    expect(prescribedCarbs(planned.description, planned.fuelRate)).toBeNull();
   });
 
   it("returns null totalCarbs when fuel rate is null", () => {
@@ -114,6 +117,29 @@ describe("prescribed carbs in planned events", () => {
     };
 
     const [planned] = processPlannedEvents([event], new Map(), new Set());
-    expect(planned.totalCarbs).toBeNull();
+    expect(prescribedCarbs(planned.description, planned.fuelRate)).toBeNull();
+  });
+});
+
+describe("prescribedCarbs — wide easy zone with threshold", () => {
+  // Regression: an 8 km easy run with absPace "6:27-18:54/km Pace" gave 177g at 56g/h
+  // because prescribedCarbs ignored threshold pace. Without threshold the duration
+  // estimate uses the literal walking-pace midpoint; with threshold it classifies the
+  // intensity and uses the user's typical zone pace via paceForIntensity.
+  const desc = `- 8km 6:27-18:54/km Pace intensity=active`;
+
+  it("inflates duration without threshold (degraded fallback)", () => {
+    // 8km × ~12.7 min/km midpoint = ~101 min × 60g/h = ~101g
+    const carbs = prescribedCarbs(desc, 60);
+    expect(carbs).toBeGreaterThan(95);
+    expect(carbs).toBeLessThan(110);
+  });
+
+  it("computes a sane carb total when threshold is provided", () => {
+    // intensity = 5.5 / 12.675 * 100 ≈ 43% → fallback z2 = 7.25 min/km
+    // 8km × 7.25 = 58 min × 60g/h ÷ 60 = ~58g
+    const carbs = prescribedCarbs(desc, 60, undefined, 5.5);
+    expect(carbs).toBeGreaterThan(50);
+    expect(carbs).toBeLessThan(65);
   });
 });

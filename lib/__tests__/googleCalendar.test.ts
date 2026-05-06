@@ -56,7 +56,7 @@ describe("syncEventsToGoogle", () => {
         fuelRate: 45,
       },
     ];
-    await syncEventsToGoogle("mock-access-token", "cal-id", events, "Europe/Stockholm");
+    await syncEventsToGoogle("mock-access-token", "cal-id", events, "Europe/Stockholm", undefined);
     expect(capturedGoogleCalendarEvents).toHaveLength(1);
     const created = capturedGoogleCalendarEvents[0] as Record<string, unknown>;
     expect(created.summary).toBe("W01 Easy eco16");
@@ -76,6 +76,7 @@ describe("buildGoogleCalendarEventPayload", () => {
         fuelRate: 72,
       },
       "Europe/Stockholm",
+      undefined,
     );
 
     expect(payload.start).toEqual({ dateTime: "2026-04-22T12:00:00", timeZone: "Europe/Stockholm" });

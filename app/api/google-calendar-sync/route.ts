@@ -10,6 +10,9 @@ import {
   deleteGoogleEvent,
 } from "@/lib/googleCalendar";
 import type { SyncEvent } from "@/lib/googleCalendar";
+import { getUserCredentials } from "@/lib/credentials";
+import { getUserSettings } from "@/lib/settings";
+import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
 
 interface SyncRequest {
   action: "bulk-sync" | "update" | "delete";
@@ -32,16 +35,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ synced: false, reason: "no-token" });
     }
 
+    const [settings, creds] = await Promise.all([
+      getUserSettings(session.user.email),
+      getUserCredentials(session.user.email),
+    ]);
+    const workoutContext = await getUserWorkoutEstimationContext(
+      session.user.email,
+      creds?.intervalsApiKey,
+      settings,
+    );
+
     if (body.action === "bulk-sync" && body.events) {
       await clearFutureGoogleEvents(ctx.accessToken, ctx.calendarId);
-      await syncEventsToGoogle(ctx.accessToken, ctx.calendarId, body.events, ctx.timezone);
+      await syncEventsToGoogle(
+        ctx.accessToken,
+        ctx.calendarId,
+        body.events,
+        ctx.timezone,
+        workoutContext,
+      );
       return NextResponse.json({ synced: true, count: body.events.length });
     }
 
     if (body.action === "update" && body.eventName && body.eventDate && body.event) {
       const googleEventId = await findGoogleEvent(ctx.accessToken, ctx.calendarId, body.eventName, body.eventDate);
       if (googleEventId) {
-        const updates = buildGoogleCalendarEventPayload(body.event, ctx.timezone);
+        const updates = buildGoogleCalendarEventPayload(body.event, ctx.timezone, workoutContext);
         await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
       }
       return NextResponse.json({ synced: true });

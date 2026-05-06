@@ -355,6 +355,8 @@ export function IntelScreen() {
 
   const { data: paceCurveData } = usePaceCurves("all");
 
+  const thresholdPace = getThresholdPace(settings?.currentAbilityDist, settings?.currentAbilitySecs);
+
   // Plan is deterministic — separate memo to avoid regenerating on every events change
   const planTarget = useMemo(() => {
     if (hrZones?.length !== 5) return null;
@@ -378,11 +380,11 @@ export function IntelScreen() {
     for (const pe of planEvents) {
       if (getWeekIdx(pe.start_date_local, planStartMonday) !== currentWeekIdx) continue;
       if (/bonus|optional/i.test(pe.name)) continue;
-      targetKm += estimatePlanEventDistance(pe, paceTable);
+      targetKm += estimatePlanEventDistance(pe, paceTable, thresholdPace);
       totalRuns++;
     }
     return { planStartMonday, currentWeekIdx, targetKm: Math.round(targetKm * 10) / 10, totalRuns };
-  }, [raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, settings]);
+  }, [raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, thresholdPace, settings]);
 
   // Completed volume — depends on events
   const currentWeekVolume = useMemo(() => {
@@ -394,7 +396,7 @@ export function IntelScreen() {
     for (const event of events) {
       if (event.type !== "completed") continue;
       if (getWeekIdx(event.date, planStartMonday) === currentWeekIdx) {
-        actualKm += estimateWorkoutDistance(event, paceTable);
+        actualKm += estimateWorkoutDistance(event, paceTable, thresholdPace);
         completedRuns++;
       }
     }
@@ -405,7 +407,7 @@ export function IntelScreen() {
       completedRuns,
       totalRuns,
     };
-  }, [events, planTarget, paceTable]);
+  }, [events, planTarget, paceTable, thresholdPace]);
 
   // BG categories for BGCompact (Overview tab)
   const bgCategories = useMemo(() =>

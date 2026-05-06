@@ -157,7 +157,10 @@ export interface CalendarEvent {
   streamData?: StreamData;
   glucose?: DataPoint[]; // from CGM readings, not from Intervals streams
   fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
-  totalCarbs?: number | null; // planned total carbs
+  // Canonical prescribed total for the paired/planned workout event.
+  // This is frozen from the planned workout before pairing so post-run screens can
+  // reuse the exact same prescription instead of recalculating from actual run data.
+  prescribedCarbsG?: number | null;
   carbsIngested?: number | null; // actual carbs consumed (from activity)
   preRunCarbsG?: number | null; // pre-run carbs grams (from Intervals.icu custom field)
   rating?: string | null; // athlete feedback rating (from Intervals.icu custom field)

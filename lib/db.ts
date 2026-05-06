@@ -7,7 +7,8 @@ export function db() {
   if (!_db) {
     const url = process.env.TURSO_DATABASE_URL;
     const token = process.env.TURSO_AUTH_TOKEN;
-    if (!url || !token) throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required");
+    if (!url || !token)
+      throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required");
     _db = createClient({ url, authToken: token });
   }
   return _db;
@@ -44,7 +45,9 @@ CREATE TABLE IF NOT EXISTS user_settings (
   current_ability_secs INTEGER,
   current_ability_dist REAL,
   insulin_type TEXT,
-  pace_suggestion_dismissed_at INTEGER
+  pace_suggestion_dismissed_at INTEGER,
+  hr_zones TEXT,  -- JSON array of 5 HR zone boundary values, cached from Intervals.icu profile
+  max_hr   INTEGER -- cached from Intervals.icu profile; used when hr_zones not set
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (
@@ -103,6 +106,14 @@ CREATE TABLE IF NOT EXISTS prerun_carbs (
   PRIMARY KEY (email, event_id)
 );
 
+CREATE TABLE IF NOT EXISTS workout_event_prescriptions (
+  email                TEXT NOT NULL,
+  event_id             TEXT NOT NULL,
+  planned_duration_sec INTEGER,
+  prescribed_carbs_g   INTEGER,
+  created_at           INTEGER NOT NULL,
+  PRIMARY KEY (email, event_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_nightscout_secret ON user_settings(nightscout_secret);
 `;
-
