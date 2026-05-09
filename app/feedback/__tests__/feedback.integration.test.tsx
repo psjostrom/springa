@@ -119,3 +119,42 @@ describe("Feedback page — prescribed carbs", () => {
     expect(screen.getByPlaceholderText("e.g. 40")).toBeInTheDocument();
   });
 });
+
+describe("Feedback page — post-submit navigation", () => {
+  it("shows Done and Adapt upcoming links after submitting a rating", async () => {
+    installFeedbackHandlers();
+    const user = userEvent.setup();
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
+
+    render(<FeedbackPage />);
+
+    expect(await screen.findByText("5.5 km")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Rate good" }));
+    await user.click(screen.getByRole("button", { name: /Save/ }));
+
+    const doneLink = await screen.findByRole("link", { name: /Done/ });
+    expect(doneLink).toHaveAttribute("href", "/");
+
+    const adaptLink = screen.getByRole("link", { name: /Adapt upcoming/ });
+    expect(adaptLink).toHaveAttribute("href", "/?tab=planner&adapt=true");
+  });
+
+  it("shows Done and Adapt upcoming links after skipping", async () => {
+    installFeedbackHandlers();
+    const user = userEvent.setup();
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
+
+    render(<FeedbackPage />);
+
+    expect(await screen.findByText("5.5 km")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Skip/ }));
+
+    const doneLink = await screen.findByRole("link", { name: /Done/ });
+    expect(doneLink).toHaveAttribute("href", "/");
+
+    const adaptLink = screen.getByRole("link", { name: /Adapt upcoming/ });
+    expect(adaptLink).toHaveAttribute("href", "/?tab=planner&adapt=true");
+  });
+});
