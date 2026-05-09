@@ -128,11 +128,9 @@ describe("Feedback page — post-submit navigation", () => {
 
     render(<FeedbackPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText("5.5 km")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("5.5 km")).toBeInTheDocument();
 
-    await user.click(screen.getByText("👍"));
+    await user.click(screen.getByRole("button", { name: "Rate good" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     const doneLink = await screen.findByRole("link", { name: /Done/ });
@@ -149,15 +147,14 @@ describe("Feedback page — post-submit navigation", () => {
 
     render(<FeedbackPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText("5.5 km")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("5.5 km")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Skip/ }));
 
     const doneLink = await screen.findByRole("link", { name: /Done/ });
     expect(doneLink).toHaveAttribute("href", "/");
 
-    expect(screen.getByRole("link", { name: /Adapt upcoming/ })).toBeInTheDocument();
+    const adaptLink = screen.getByRole("link", { name: /Adapt upcoming/ });
+    expect(adaptLink).toHaveAttribute("href", "/?tab=planner&adapt=true");
   });
 });

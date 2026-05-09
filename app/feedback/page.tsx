@@ -253,6 +253,7 @@ function FeedbackContent() {
           {/* Rating buttons */}
           <div className="flex gap-6 mb-6">
             <button
+              aria-label="Rate good"
               onClick={() => { setFormState((s) => ({ ...s, rating: "good" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "good"
@@ -263,6 +264,7 @@ function FeedbackContent() {
               {"\uD83D\uDC4D"}
             </button>
             <button
+              aria-label="Rate bad"
               onClick={() => { setFormState((s) => ({ ...s, rating: "bad" })); }}
               className={`text-5xl p-4 rounded-2xl border-2 transition ${
                 formState.rating === "bad"
