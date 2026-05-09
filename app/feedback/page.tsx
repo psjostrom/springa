@@ -214,11 +214,11 @@ function FeedbackContent() {
       )}
 
       {formState.submitted ? (
-        <div className="text-center">
+        <div className="w-full max-w-sm flex flex-col items-center text-center">
           {formState.rating === "skipped" ? (
-            <p className="text-muted text-lg">Skipped</p>
+            <p className="text-muted text-lg mb-6">Skipped</p>
           ) : (
-            <>
+            <div className="mb-6">
               <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
               <p className="text-success text-lg font-bold">Thanks!</p>
               {formState.carbsG && (
@@ -233,14 +233,20 @@ function FeedbackContent() {
               {formState.comment && (
                 <p className="text-muted text-sm mt-2">{formState.comment}</p>
               )}
-              <Link
-                href="/?tab=planner&adapt=true"
-                className="inline-block mt-4 px-5 py-2.5 text-sm font-bold text-brand border border-brand/30 rounded-lg bg-brand/10 hover:bg-brand/20 transition"
-              >
-                Adapt upcoming &rarr;
-              </Link>
-            </>
+            </div>
           )}
+          <Link
+            href="/"
+            className="block w-full py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 text-center"
+          >
+            Done
+          </Link>
+          <Link
+            href="/?tab=planner&adapt=true"
+            className="mt-3 text-sm text-brand hover:underline"
+          >
+            Adapt upcoming &rarr;
+          </Link>
         </div>
       ) : (
         <>
