@@ -19,6 +19,8 @@ export interface PredictedOutcome {
     p10Rebound: number;
     p90Rebound: number;
     medianPeakBG: number;
+    p10PeakBG: number;
+    p90PeakBG: number;
     lateHypoCount: number;
     bigReboundCount: number;     // matches with peak60mAboveEnd > 2.0
     matchCount: number;
@@ -58,6 +60,8 @@ export function predictRunOutcome(matches: MatchableRunWithPost[]): PredictedOut
       p10Rebound:      quantile(peaks, 0.1),
       p90Rebound:      quantile(peaks, 0.9),
       medianPeakBG:    quantile(peakBGs, 0.5),
+      p10PeakBG:       quantile(peakBGs, 0.1),
+      p90PeakBG:       quantile(peakBGs, 0.9),
       lateHypoCount:   matches.filter((m) => m.postRunHypo).length,
       bigReboundCount: matches.filter((m) => m.peak60mAboveEnd > 2.0).length,
       matchCount:      matches.length,

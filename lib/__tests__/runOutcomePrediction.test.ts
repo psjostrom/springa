@@ -44,8 +44,10 @@ describe("predictRunOutcome", () => {
     const matches = [mk(5, 1), mk(5, 3), mk(5, 5)];
     const out = predictRunOutcome(matches)!;
     expect(out.after.medianRebound).toBe(3);
-    expect(out.after.medianPeakBG).toBe(8);    // end 5 + rebound 3
-    expect(out.after.bigReboundCount).toBe(2); // peak60 > 2.0 → only the rows with 3 and 5
+    expect(out.after.medianPeakBG).toBe(8);        // quantile([6, 8, 10], 0.5)
+    expect(out.after.p10PeakBG).toBeCloseTo(6.4, 1); // quantile([6, 8, 10], 0.1)
+    expect(out.after.p90PeakBG).toBeCloseTo(9.6, 1); // quantile([6, 8, 10], 0.9)
+    expect(out.after.bigReboundCount).toBe(2);     // peak60 > 2.0 → only the rows with 3 and 5
   });
 
   it("counts late hypos", () => {

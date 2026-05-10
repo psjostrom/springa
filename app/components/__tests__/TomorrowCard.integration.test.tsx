@@ -35,6 +35,8 @@ const sample = {
       p10Rebound: 0.5,
       p90Rebound: 5.8,
       medianPeakBG: 8.8,
+      p10PeakBG: 6.3,
+      p90PeakBG: 11.6,
       lateHypoCount: 1,
       bigReboundCount: 8,
       matchCount: 11,
@@ -106,5 +108,16 @@ describe("TomorrowCard", () => {
     render(<TomorrowCard {...sample} currentBG={null} currentBGSource="fallback" />);
     expect(screen.getByText(/no live BG/i)).toBeInTheDocument();
     expect(screen.getByText(/typical 8\.0 mmol\/L start/i)).toBeInTheDocument();
+  });
+
+  it("renders prediction without fuel rec when recommendation is null", () => {
+    render(<TomorrowCard {...sample} recommendation={null} />);
+    expect(screen.getByText(/no fuel rate recorded for these matches/i)).toBeInTheDocument();
+    expect(screen.getByText(/8 runs without fuel data/i)).toBeInTheDocument();
+    // Prediction blocks should still be visible.
+    expect(screen.getAllByText(/5\.8/).length).toBeGreaterThan(0); // median end BG
+    expect(screen.getByText(/2 of 8/i)).toBeInTheDocument(); // hypo count
+    expect(screen.getByRole("button", { name: /matching runs/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/\+3\.0/).length).toBeGreaterThan(0); // rebound
   });
 });

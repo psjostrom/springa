@@ -18,7 +18,7 @@ interface Props {
 const NAME_COLOR: Record<WorkoutCategory, string> = {
   easy: "text-[var(--theme-chart-secondary)]",
   long: "text-warning",
-  interval: "text-orange-400",
+  interval: "text-warning",
 };
 
 const HYPO = 4.0;

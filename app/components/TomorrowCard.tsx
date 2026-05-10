@@ -110,13 +110,19 @@ export function TomorrowCard({
 
       {/* DURING */}
       <PhaseSection label="DURING" dotColor="bg-brand">
-        {prediction && recommendation ? (
+        {prediction ? (
           <>
-            <FuelHeadline
-              value={String(recommendation.fuelRate)}
-              unit="g/h"
-              meta={`${recommendation.matchCountAtRate} runs at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
-            />
+            {recommendation ? (
+              <FuelHeadline
+                value={String(recommendation.fuelRate)}
+                unit="g/h"
+                meta={`${recommendation.matchCountAtRate} runs at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
+              />
+            ) : (
+              <div className="text-xs text-muted py-2">
+                No fuel rate recorded for these matches — based on {predictionMatchCount} runs without fuel data.
+              </div>
+            )}
 
             <Ribbon
               label={`Predicted end BG · starting at ${ribbonStartBG.toFixed(1)}`}
@@ -128,8 +134,10 @@ export function TomorrowCard({
 
             <p className="text-xs text-text mt-3 leading-snug">
               <strong>{prediction.during.hypoCount} of {predictionMatchCount}</strong>{" "}
-              matching past runs ended below 4.0. The recommended rate keeps the predicted 10th
-              percentile end BG at {recommendation.predictedP10EndBG.toFixed(1)}.
+              matching past runs ended below 4.0.
+              {recommendation && (
+                <> The recommended rate keeps the predicted 10th percentile end BG at {recommendation.predictedP10EndBG.toFixed(1)}.</>
+              )}
             </p>
 
             <button
@@ -194,9 +202,9 @@ export function TomorrowCard({
 
             <Ribbon
               label="Predicted peak BG within one hour"
-              p10={prediction.after.medianPeakBG - (prediction.after.medianRebound - prediction.after.p10Rebound)}
+              p10={prediction.after.p10PeakBG}
               median={prediction.after.medianPeakBG}
-              p90={prediction.after.medianPeakBG + (prediction.after.p90Rebound - prediction.after.medianRebound)}
+              p90={prediction.after.p90PeakBG}
               variant="after"
             />
 
