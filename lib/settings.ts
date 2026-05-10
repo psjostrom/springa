@@ -52,6 +52,8 @@ export interface UserSettings {
   hrZones?: number[];
   restingHr?: number;
   sportSettingsId?: number;
+  vo2max?: number;
+  thresholdPaceMinPerKm?: number;
   email?: string;
   /** True when serving demo fixture data — never stored in DB. */
   demo?: boolean;

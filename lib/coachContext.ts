@@ -1,4 +1,4 @@
-import { format, subDays, addDays, startOfDay } from "date-fns";
+import { format, subDays, addDays, startOfDay, differenceInYears, parseISO } from "date-fns";
 import type { CalendarEvent, WorkoutCategory } from "./types";
 import { summarizeBGModel } from "./bgModel";
 import type { BGResponseModel } from "./bgModel";
@@ -6,8 +6,8 @@ import type { FitnessInsights } from "./fitness";
 import type { BGReading } from "./cgm";
 import type { RunBGContext } from "./runBGContext";
 import type { PaceTable } from "./types";
-import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
+import { formatPace } from "./format";
 import { formatRunLine } from "./runLine";
 
 interface CoachContext {
@@ -15,6 +15,7 @@ interface CoachContext {
   insights: FitnessInsights | null;
   bgModel: BGResponseModel | null;
   events: CalendarEvent[];
+  /** @deprecated Use `race.date`. Kept for back-compat; prompt builder no longer reads it. */
   raceDate?: string;
   lthr?: number;
   maxHr?: number;
@@ -26,6 +27,29 @@ interface CoachContext {
   lastUpdate?: Date | null;
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
+  profile?: {
+    dob?: string;
+    weightKg?: number;
+    heightCm?: number;
+    t1dSinceYear?: number;
+    pumpModel?: string;
+    cgmModel?: string;
+    loopSystem?: string;
+    pumpDuringRuns?: "on" | "off" | "mixed";
+    targetStartBG?: number;
+    vo2max?: number;
+    thresholdPaceMinPerKm?: number;
+  };
+  race?: {
+    name?: string;
+    distanceKm?: number;
+    date?: string;
+  };
+  derived?: {
+    longestRun?: { distanceKm: number; name: string; dateISO: string };
+    volume?: { runs7d: number; runs28d: number };
+    earliestRunDate?: string;
+  };
 }
 
 function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
@@ -193,6 +217,94 @@ function summarizeFitness(insights: FitnessInsights | null): string {
   ].join("\n");
 }
 
+function buildRoleLine(race?: CoachContext["race"]): string {
+  const base = "You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner.";
+  if (!race?.name) return base;
+
+  const distancePart = race.distanceKm ? ` ${race.distanceKm}km` : "";
+  const datePart = race.date ? ` (${race.date})` : "";
+  return `${base} Preparing for ${race.name}${distancePart}${datePart}.`;
+}
+
+function computeAge(dob?: string): number | null {
+  if (!dob) return null;
+  try {
+    const years = differenceInYears(new Date(), parseISO(dob));
+    return years > 0 && years < 150 ? years : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildRunnerProfileSection(
+  profile: CoachContext["profile"],
+  derived: CoachContext["derived"],
+): string {
+  const bullets: string[] = [];
+
+  // Demographics: age + body
+  const age = computeAge(profile?.dob);
+  const demographics: string[] = [];
+  if (age != null) demographics.push(`Age ${age}`);
+  if (profile?.weightKg != null) demographics.push(`${profile.weightKg}kg`);
+  if (profile?.heightCm != null) demographics.push(`${profile.heightCm}cm`);
+  if (demographics.length > 0) bullets.push(`- ${demographics.join(", ")}.`);
+
+  // Performance metrics
+  const perf: string[] = [];
+  if (profile?.thresholdPaceMinPerKm != null) {
+    perf.push(`LT Pace ${formatPace(profile.thresholdPaceMinPerKm)}/km`);
+  }
+  if (profile?.vo2max != null) perf.push(`VO2max ${profile.vo2max}`);
+  if (perf.length > 0) bullets.push(`- ${perf.join(", ")}.`);
+
+  // Training history
+  const history: string[] = [];
+  if (derived?.earliestRunDate) {
+    history.push(`Running since ${derived.earliestRunDate}`);
+  }
+  if (derived?.longestRun) {
+    history.push(`Longest run: ${derived.longestRun.distanceKm}km on ${derived.longestRun.dateISO} (${derived.longestRun.name})`);
+  }
+  if (derived?.volume) {
+    history.push(`Recent volume: ${derived.volume.runs7d}/${derived.volume.runs28d} runs in last 7d/28d`);
+  }
+  if (history.length > 0) bullets.push(`- ${history.join(". ")}.`);
+
+  // T1D + equipment
+  const t1dParts: string[] = [];
+  const sinceClause = profile?.t1dSinceYear ? ` (since ${profile.t1dSinceYear})` : "";
+  t1dParts.push(`Type 1 Diabetic${sinceClause}.`);
+  const equipment: string[] = [];
+  if (profile?.pumpModel) equipment.push(`${profile.pumpModel} pump`);
+  if (profile?.cgmModel) equipment.push(profile.cgmModel);
+  if (profile?.loopSystem) equipment.push(profile.loopSystem);
+  if (equipment.length > 0) {
+    t1dParts.push(`${equipment.join(" + ")}.`);
+  }
+  bullets.push(`- ${t1dParts.join(" ")}`);
+
+  // Pump-during-runs preference
+  if (profile?.pumpDuringRuns) {
+    bullets.push(`- Pump during runs: ${profile.pumpDuringRuns}.`);
+  }
+
+  // Target start BG
+  if (profile?.targetStartBG != null) {
+    bullets.push(`- Target start BG ${profile.targetStartBG} mmol/L.`);
+  }
+
+  if (bullets.length === 0) return "";
+  return `## Runner Profile\n${bullets.join("\n")}\n\n`;
+}
+
+function buildPaceZonesSection(ctx: CoachContext): string {
+  if (ctx.lthr == null || ctx.maxHr == null) {
+    return "## Pace Zones\nHR zones not yet calibrated — do not reference HR targets.\n";
+  }
+  return `## Pace Zones\n${buildProfileLine(ctx.lthr, ctx.maxHr)}\n${buildZoneBlock(ctx.lthr, ctx.maxHr, ctx.paceTable, ctx.hrZones)}\n`;
+}
+
 export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -200,20 +312,13 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
     : "";
 
-  const raceDateStr = ctx.raceDate ?? "2026-06-13";
-  const lthr = ctx.lthr ?? DEFAULT_LTHR;
-  const maxHr = ctx.maxHr ?? DEFAULT_MAX_HR;
-  return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (${raceDateStr}).
+  const roleLine = buildRoleLine(ctx.race);
+  const runnerProfileSection = buildRunnerProfileSection(ctx.profile, ctx.derived);
+  const paceZonesSection = buildPaceZonesSection(ctx);
 
-## Runner Profile
-- Age 40, 80kg, 185cm. ${buildProfileLine(lthr, maxHr)}, LT Pace 4:53/km, VO2max 49.
-- Restarted running ~8 months ago. Longest distance: 10km. Currently 3-4x/week.
-- Type 1 Diabetic (since 2009). Ypsomed pump + CamAPS FX + Dexcom G6.
-- All runs are pump-off. Target start BG ~10 mmol/L.
+  return `${roleLine}
 
-## Pace Zones
-${buildZoneBlock(lthr, maxHr, ctx.paceTable, ctx.hrZones)}
-
+${runnerProfileSection}${paceZonesSection}
 ## Current Status (${today})
 - Training phase: ${ctx.phaseInfo.name} (week ${ctx.phaseInfo.week}, ${Math.round(ctx.phaseInfo.progress)}% through plan)
 

@@ -85,13 +85,15 @@ const defaultHrZones = [...TEST_HR_ZONES];
 // --- Tests ---
 
 describe("buildSystemPrompt", () => {
-  it("includes runner profile and pace zones", () => {
+  it("includes pace zones when LTHR and MaxHR provided", () => {
     const prompt = buildSystemPrompt({
       phaseInfo: basePhaseInfo,
       insights: null,
       bgModel: null,
       events: [],
       hrZones: defaultHrZones,
+      lthr: 168,
+      maxHr: 189,
     });
 
     expect(prompt).toContain("Type 1 Diabetic");
@@ -730,5 +732,80 @@ describe("buildSystemPrompt with feedback", () => {
 
     expect(prompt).not.toContain("feedback:");
     expect(prompt).toContain("Easy Run");
+  });
+});
+
+// --- Omit-on-missing runner profile (spec acceptance) ---
+
+describe("coach prompt — omit on missing", () => {
+  const baseCtx = {
+    phaseInfo: { name: "Build", week: 1, progress: 10 },
+    insights: null,
+    bgModel: null,
+    events: [],
+    hrZones: [],
+  };
+
+  it("does not contain hardcoded 10km longest distance", () => {
+    expect(buildSystemPrompt(baseCtx)).not.toMatch(/Longest (run|distance):\s*10km/);
+  });
+
+  it("does not contain hardcoded EcoTrail 16km when race not provided", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).not.toMatch(/EcoTrail 16km/);
+    expect(out).not.toMatch(/Preparing for/i);
+  });
+
+  it("includes race line when race fields provided", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      race: { name: "Ultra-Foo", distanceKm: 50, date: "2027-01-01" },
+    });
+    expect(out).toContain("Ultra-Foo");
+    expect(out).toContain("50");
+    expect(out).toContain("2027-01-01");
+  });
+
+  it("includes derived longest run when provided", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      derived: {
+        longestRun: { distanceKm: 14, name: "Järfälla - W11 Long (14km)", dateISO: "2026-04-22" },
+      },
+    });
+    expect(out).toContain("14");
+    expect(out).toContain("2026-04-22");
+    expect(out).toContain("Järfälla - W11 Long (14km)");
+  });
+
+  it("does not contain Age 40, 80kg, 185cm hardcoded", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).not.toMatch(/Age 40/);
+    expect(out).not.toMatch(/80kg/);
+    expect(out).not.toMatch(/185cm/);
+  });
+
+  it("does not contain LT Pace 4:53/km or VO2max 49 hardcoded", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).not.toMatch(/LT Pace 4:53/);
+    expect(out).not.toMatch(/VO2max 49/);
+  });
+
+  it("does not silently default LTHR / MaxHR — substitutes a calibration notice", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).not.toContain("168");
+    expect(out).not.toContain("189");
+    expect(out).toMatch(/HR zones not yet calibrated/);
+  });
+
+  it("includes Pace Zones block when both LTHR and MaxHR provided", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      lthr: 168,
+      maxHr: 189,
+      hrZones: [120, 140, 152, 162, 168],
+    });
+    expect(out).not.toMatch(/HR zones not yet calibrated/);
+    expect(out).toMatch(/## Pace Zones/);
   });
 });

@@ -14,7 +14,6 @@ interface UseCoachDataOptions {
   wellnessEntries: WellnessEntry[];
   phaseInfo: { name: string; week: number; progress: number };
   bgModel: BGResponseModel | null;
-  raceDate?: string;
   lthr?: number;
   maxHr?: number;
   hrZones: number[];
@@ -25,9 +24,50 @@ interface UseCoachDataOptions {
   lastUpdate?: Date | null;
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
+  profile?: {
+    dob?: string;
+    weightKg?: number;
+    heightCm?: number;
+    t1dSinceYear?: number;
+    pumpModel?: string;
+    cgmModel?: string;
+    loopSystem?: string;
+    pumpDuringRuns?: "on" | "off" | "mixed";
+    targetStartBG?: number;
+    vo2max?: number;
+    thresholdPaceMinPerKm?: number;
+  };
+  race?: {
+    name?: string;
+    distanceKm?: number;
+    date?: string;
+  };
+  derived?: {
+    longestRun?: { distanceKm: number; name: string; dateISO: string };
+    volume?: { runs7d: number; runs28d: number };
+    earliestRunDate?: string;
+  };
 }
 
-export function useCoachData({ events, wellnessEntries, phaseInfo, bgModel, raceDate, lthr, maxHr, hrZones, paceTable, currentBG, trendSlope, trendArrow, lastUpdate, readings, runBGContexts }: UseCoachDataOptions) {
+export function useCoachData({
+  events,
+  wellnessEntries,
+  phaseInfo,
+  bgModel,
+  lthr,
+  maxHr,
+  hrZones,
+  paceTable,
+  currentBG,
+  trendSlope,
+  trendArrow,
+  lastUpdate,
+  readings,
+  runBGContexts,
+  profile,
+  race,
+  derived,
+}: UseCoachDataOptions) {
   const fitnessData = wellnessToFitnessData(wellnessEntries);
   const insights = fitnessData.length === 0
     ? null
@@ -40,7 +80,6 @@ export function useCoachData({ events, wellnessEntries, phaseInfo, bgModel, race
         insights,
         bgModel,
         events,
-        raceDate,
         lthr,
         maxHr,
         hrZones,
@@ -51,6 +90,9 @@ export function useCoachData({ events, wellnessEntries, phaseInfo, bgModel, race
         lastUpdate,
         readings,
         runBGContexts,
+        profile,
+        race,
+        derived,
       });
 
   return { context, isLoading: events.length === 0 || fitnessData.length === 0 };

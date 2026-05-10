@@ -10,6 +10,11 @@ import { ChatInput } from "../components/ChatInput";
 import { useCoachData } from "../hooks/useCoachData";
 import { getCoachSuggestions } from "@/lib/coachSuggestions";
 import {
+  getLongestRun,
+  getRunVolumeStats,
+  getEarliestRunDate,
+} from "@/lib/runProfile";
+import {
   enrichedEventsAtom,
   wellnessEntriesAtom,
   phaseInfoAtom,
@@ -46,16 +51,50 @@ export function CoachScreen() {
   const readings = useAtomValue(readingsAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
-  const raceDate = settings?.raceDate;
   const lthr = settings?.lthr;
   const maxHr = settings?.maxHr;
   const hrZones = settings?.hrZones ?? [];
+
+  const profile = useMemo(
+    () => ({
+      dob: settings?.dob,
+      weightKg: settings?.weightKg,
+      heightCm: settings?.heightCm,
+      t1dSinceYear: settings?.t1dSinceYear,
+      pumpModel: settings?.pumpModel,
+      cgmModel: settings?.cgmModel,
+      loopSystem: settings?.loopSystem,
+      pumpDuringRuns: settings?.pumpDuringRuns,
+      targetStartBG: settings?.targetStartBG,
+      vo2max: settings?.vo2max,
+      thresholdPaceMinPerKm: settings?.thresholdPaceMinPerKm,
+    }),
+    [settings],
+  );
+
+  const race = useMemo(
+    () => ({
+      name: settings?.raceName,
+      distanceKm: settings?.raceDist,
+      date: settings?.raceDate,
+    }),
+    [settings],
+  );
+
+  const derived = useMemo(
+    () => ({
+      longestRun: getLongestRun(events) ?? undefined,
+      volume: getRunVolumeStats(events, new Date()),
+      earliestRunDate: getEarliestRunDate(events) ?? undefined,
+    }),
+    [events],
+  );
+
   const { context, isLoading: contextLoading } = useCoachData({
     events,
     wellnessEntries,
     phaseInfo,
     bgModel,
-    raceDate,
     lthr,
     maxHr,
     hrZones,
@@ -66,6 +105,9 @@ export function CoachScreen() {
     lastUpdate,
     readings,
     runBGContexts,
+    profile,
+    race,
+    derived,
   });
 
   const hasRuns = events.some((e) => e.type === "completed");

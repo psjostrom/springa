@@ -36,6 +36,8 @@ export async function GET() {
       if (profile.lthr) settings.lthr = profile.lthr;
       if (profile.restingHr) settings.restingHr = profile.restingHr;
       if (profile.sportSettingsId) settings.sportSettingsId = profile.sportSettingsId;
+      if (profile.vo2max) settings.vo2max = profile.vo2max;
+      if (profile.thresholdPaceMinPerKm) settings.thresholdPaceMinPerKm = profile.thresholdPaceMinPerKm;
     } catch {
       console.warn("[settings] Failed to fetch athlete profile");
     }
