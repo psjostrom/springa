@@ -117,7 +117,10 @@ export function WorkoutCard({
   );
   const estDuration = metrics.duration;
   const estDistance = metrics.distance;
-  // Use provided prescribedCarbsG if available (frozen from plan time), otherwise use computed value.
+  // Prefer the prop (set by the calendar pipeline using the user's server-side
+  // workout context) and fall back to the locally-computed value for sites that
+  // render the card without a CalendarEvent — e.g., the workout preview before
+  // sync, where no event exists yet.
   const totalCarbs = prescribedCarbsG ?? metrics.prescribedCarbsG ?? null;
   const sections = useMemo(
     () =>

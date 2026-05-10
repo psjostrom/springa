@@ -562,7 +562,6 @@ describe("uploadToIntervals", () => {
 
     const result = await uploadToIntervals("test-key", events);
     expect(result.count).toBe(1);
-    expect(result.staleDeletedEventIds).toEqual([100]);
     expect(callOrder).toEqual(["list", "upload", "delete:100"]);
     expect(capturedDeleteEventIds).toEqual(["100"]);
   });

@@ -39,14 +39,26 @@ import { server } from "./msw/server";
 import { SCHEMA_DDL } from "../db";
 
 async function insertIntervalsCreds() {
+  // current_ability_dist + current_ability_secs give the user a thresholdPace,
+  // which the calibration gate in run-feedback requires before computing any
+  // prescription. Without them the route returns prescribedCarbsG: null.
   await holder.db.execute({
-    sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
-          VALUES (?, ?, ?)
-          ON CONFLICT(email) DO UPDATE SET intervals_api_key = excluded.intervals_api_key, timezone = excluded.timezone`,
+    sql: `INSERT INTO user_settings (
+            email, intervals_api_key, timezone,
+            current_ability_dist, current_ability_secs
+          )
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET
+            intervals_api_key = excluded.intervals_api_key,
+            timezone = excluded.timezone,
+            current_ability_dist = excluded.current_ability_dist,
+            current_ability_secs = excluded.current_ability_secs`,
     args: [
       "test@example.com",
       encrypt("intervals-key", ENC_KEY),
       "Europe/Stockholm",
+      21097,
+      6600,
     ],
   });
 }
@@ -63,20 +75,12 @@ describe("/api/run-feedback", () => {
 
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM prerun_carbs");
-    await holder.db.execute("DELETE FROM workout_event_prescriptions");
     await holder.db.execute("DELETE FROM activity_streams");
     await holder.db.execute("DELETE FROM user_settings");
     await insertIntervalsCreds();
   });
 
-  it("uses the paired workout when computing prescribed carbs", async () => {
-    // Pre-insert the stored prescription (would be set at plan time via bulk/replace endpoints).
-    await holder.db.execute({
-      sql: `INSERT INTO workout_event_prescriptions (email, event_id, planned_duration_sec, prescribed_carbs_g, created_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: ["test@example.com", "202", 56 * 60, 56, Date.now()],
-    });
-
+  it("computes prescribed carbs live from the paired workout's description and fuel rate", async () => {
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
         if (params.activityId !== "act-1")
@@ -128,7 +132,7 @@ describe("/api/run-feedback", () => {
     });
   });
 
-  it("uses activity duration fallback when paired event description is unparseable", async () => {
+  it("returns null prescribedCarbsG when paired event description is unparseable", async () => {
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
         if (params.activityId !== "act-duration")
@@ -164,7 +168,7 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
       activityId: "act-duration",
-      prescribedCarbsG: 94,
+      prescribedCarbsG: null,
     });
   });
 

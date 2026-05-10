@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { uploadToIntervals, fetchCalendarData } from "@/lib/intervalsApi";
-import { getUserSettings } from "@/lib/settings";
-import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
-import {
-  deleteWorkoutEventPrescriptions,
-  syncWorkoutEventPrescriptions,
-} from "@/lib/workoutPrescriptions";
-import { addDays } from "date-fns";
+import { uploadToIntervals } from "@/lib/intervalsApi";
 import type { WorkoutEvent } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -44,28 +37,7 @@ export async function POST(req: Request) {
   }));
 
   try {
-    const { count, staleDeletedEventIds } = await uploadToIntervals(
-      creds.intervalsApiKey,
-      events,
-    );
-
-    const today = new Date();
-    const horizon = addDays(today, 365);
-    const [calendarEvents, settings] = await Promise.all([
-      fetchCalendarData(creds.intervalsApiKey, today, horizon),
-      getUserSettings(email),
-    ]);
-    const workoutContext = await getUserWorkoutEstimationContext(
-      email,
-      creds.intervalsApiKey,
-      settings,
-    );
-    await syncWorkoutEventPrescriptions(email, calendarEvents, workoutContext);
-    await deleteWorkoutEventPrescriptions(
-      email,
-      staleDeletedEventIds.map((eventId) => String(eventId)),
-    );
-
+    const { count } = await uploadToIntervals(creds.intervalsApiKey, events);
     return NextResponse.json({ count });
   } catch (err) {
     console.error("[intervals/events/bulk]", err);
