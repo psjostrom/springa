@@ -6,8 +6,9 @@ import type { UserSettings } from "@/lib/settings";
 import { TrainingTab } from "@/app/settings/TrainingTab";
 import { PlanTab } from "@/app/settings/PlanTab";
 import { AccountTab } from "@/app/settings/AccountTab";
+import { ProfileTab } from "@/app/settings/ProfileTab";
 
-const TABS = ["Training", "Plan", "Account"] as const;
+const TABS = ["Training", "Plan", "Profile", "Account"] as const;
 type Tab = typeof TABS[number];
 
 interface SettingsOverlayProps {
@@ -93,6 +94,7 @@ export function SettingsOverlay({ email, settings: initialSettings, onSave, onCl
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
           {tab === "Training" && <TrainingTab settings={settings} onSave={handleSave} onAbilityChanged={onAbilityChanged} />}
           {tab === "Plan" && <PlanTab settings={settings} onSave={handleSave} />}
+          {tab === "Profile" && <ProfileTab settings={settings} onSave={handleSave} />}
           {tab === "Account" && <AccountTab email={email} settings={settings} onSave={handleSave} />}
         </div>
       </div>

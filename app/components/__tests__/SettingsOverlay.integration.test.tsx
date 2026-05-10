@@ -76,6 +76,10 @@ describe("SettingsOverlay", () => {
     await userEvent.click(screen.getByRole("button", { name: "Plan" }));
     expect(screen.getByText("Running temperature")).toBeInTheDocument();
 
+    // Switch to Profile tab
+    await userEvent.click(screen.getByRole("button", { name: "Profile" }));
+    expect(screen.getByLabelText(/date of birth/i)).toBeInTheDocument();
+
     // Switch to Account tab
     await userEvent.click(screen.getByRole("button", { name: "Account" }));
     expect(screen.getByText("Intervals.icu")).toBeInTheDocument();
