@@ -133,12 +133,12 @@ export function CoachScreen() {
     [hasPlan, hasRuns, bgModel, settings?.raceDate, diabetesMode],
   );
 
-  const transport = new TextStreamChatTransport({
+  const transport = useMemo(() => new TextStreamChatTransport({
     api: "/api/chat",
     prepareSendMessagesRequest: ({ id, messages, trigger, requestMetadata }) => ({
       body: { id, messages, context: requestMetadata as string, trigger },
     }),
-  });
+  }), []);
 
   const { messages, sendMessage, status, error } = useChat({ transport });
 

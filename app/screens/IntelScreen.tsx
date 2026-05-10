@@ -386,7 +386,7 @@ export function IntelScreen() {
       totalRuns++;
     }
     return { planStartMonday, currentWeekIdx, targetKm: Math.round(targetKm * 10) / 10, totalRuns };
-  }, [raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, thresholdPace, settings]);
+  }, [raceDate, totalWeeks, raceDist, startKm, lthr, hrZones, paceTable, thresholdPace, settings?.includeBasePhase, settings?.currentAbilitySecs, settings?.currentAbilityDist]);
 
   // Completed volume — depends on events
   const currentWeekVolume = useMemo(() => {
