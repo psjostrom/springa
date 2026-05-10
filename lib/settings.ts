@@ -32,6 +32,17 @@ export interface UserSettings {
   insulinType?: string;
   paceSuggestionDismissedAt?: number;
 
+  // Profile fields
+  dob?: string;
+  weightKg?: number;
+  heightCm?: number;
+  t1dSinceYear?: number;
+  pumpModel?: string;
+  cgmModel?: string;
+  loopSystem?: string;
+  pumpDuringRuns?: "on" | "off" | "mixed";
+  targetStartBG?: number;
+
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsConnected?: boolean;
   nightscoutUrl?: string;
@@ -74,6 +85,15 @@ export const WRITABLE_SETTINGS_KEYS = [
   "onboardingComplete",
   "insulinType",
   "paceSuggestionDismissedAt",
+  "dob",
+  "weightKg",
+  "heightCm",
+  "t1dSinceYear",
+  "pumpModel",
+  "cgmModel",
+  "loopSystem",
+  "pumpDuringRuns",
+  "targetStartBG",
 ] as const satisfies readonly (keyof UserSettings)[];
 
 // --- CRUD ---
@@ -85,7 +105,9 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type,
-                 pace_suggestion_dismissed_at, hr_zones, max_hr
+                 pace_suggestion_dismissed_at, hr_zones, max_hr,
+                 dob, weight_kg, height_cm, t1d_since_year, pump_model, cgm_model, loop_system,
+                 pump_during_runs, target_start_bg
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -134,6 +156,24 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.hr_zones)
     settings.hrZones = JSON.parse(row.hr_zones as string) as number[];
   if (row.max_hr != null) settings.maxHr = row.max_hr as number;
+
+  // Profile fields
+  if (row.dob) settings.dob = row.dob as string;
+  if (row.weight_kg != null) settings.weightKg = row.weight_kg as number;
+  if (row.height_cm != null) settings.heightCm = row.height_cm as number;
+  if (row.t1d_since_year != null)
+    settings.t1dSinceYear = row.t1d_since_year as number;
+  if (row.pump_model) settings.pumpModel = row.pump_model as string;
+  if (row.cgm_model) settings.cgmModel = row.cgm_model as string;
+  if (row.loop_system) settings.loopSystem = row.loop_system as string;
+  if (row.pump_during_runs) {
+    const val = row.pump_during_runs as string;
+    if (val === "on" || val === "off" || val === "mixed") {
+      settings.pumpDuringRuns = val;
+    }
+  }
+  if (row.target_start_bg != null)
+    settings.targetStartBG = row.target_start_bg as number;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
   settings.nightscoutConnected = !!(
@@ -248,6 +288,42 @@ export async function saveUserSettings(
   if (partial.maxHr !== undefined) {
     sets.push("max_hr = ?");
     args.push(partial.maxHr ?? null);
+  }
+  if (partial.dob !== undefined) {
+    sets.push("dob = ?");
+    args.push(partial.dob ?? null);
+  }
+  if (partial.weightKg !== undefined) {
+    sets.push("weight_kg = ?");
+    args.push(partial.weightKg ?? null);
+  }
+  if (partial.heightCm !== undefined) {
+    sets.push("height_cm = ?");
+    args.push(partial.heightCm ?? null);
+  }
+  if (partial.t1dSinceYear !== undefined) {
+    sets.push("t1d_since_year = ?");
+    args.push(partial.t1dSinceYear ?? null);
+  }
+  if (partial.pumpModel !== undefined) {
+    sets.push("pump_model = ?");
+    args.push(partial.pumpModel ?? null);
+  }
+  if (partial.cgmModel !== undefined) {
+    sets.push("cgm_model = ?");
+    args.push(partial.cgmModel ?? null);
+  }
+  if (partial.loopSystem !== undefined) {
+    sets.push("loop_system = ?");
+    args.push(partial.loopSystem ?? null);
+  }
+  if (partial.pumpDuringRuns !== undefined) {
+    sets.push("pump_during_runs = ?");
+    args.push(partial.pumpDuringRuns ?? null);
+  }
+  if (partial.targetStartBG !== undefined) {
+    sets.push("target_start_bg = ?");
+    args.push(partial.targetStartBG ?? null);
   }
 
   if (sets.length > 0) {

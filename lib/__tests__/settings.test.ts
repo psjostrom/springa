@@ -135,6 +135,15 @@ describe("saveUserSettings", () => {
       onboardingComplete: true,
       insulinType: "fiasp",
       paceSuggestionDismissedAt: 1700000000000,
+      dob: "1990-01-01",
+      weightKg: 75,
+      heightCm: 180,
+      t1dSinceYear: 2010,
+      pumpModel: "Omnipod",
+      cgmModel: "Libre 3",
+      loopSystem: "Loop",
+      pumpDuringRuns: "on",
+      targetStartBG: 9,
     };
 
     for (const key of WRITABLE_SETTINGS_KEYS) {
@@ -146,5 +155,31 @@ describe("saveUserSettings", () => {
         `"${key}" not handled by saveUserSettings — add it there and to WRITABLE_SETTINGS_KEYS`,
       ).toBeDefined();
     }
+  });
+});
+
+describe("UserSettings profile fields", () => {
+  it("round-trips dob, weight, height, t1d-since, equipment, pump-during-runs, target-start-bg", async () => {
+    await saveUserSettings("test-profile@example.com", {
+      dob: "1985-06-12",
+      weightKg: 80,
+      heightCm: 185,
+      t1dSinceYear: 2009,
+      pumpModel: "Ypsomed",
+      cgmModel: "Dexcom G7",
+      loopSystem: "CamAPS FX",
+      pumpDuringRuns: "off",
+      targetStartBG: 10,
+    });
+    const result = await getUserSettings("test-profile@example.com");
+    expect(result.dob).toBe("1985-06-12");
+    expect(result.weightKg).toBe(80);
+    expect(result.heightCm).toBe(185);
+    expect(result.t1dSinceYear).toBe(2009);
+    expect(result.pumpModel).toBe("Ypsomed");
+    expect(result.cgmModel).toBe("Dexcom G7");
+    expect(result.loopSystem).toBe("CamAPS FX");
+    expect(result.pumpDuringRuns).toBe("off");
+    expect(result.targetStartBG).toBe(10);
   });
 });
