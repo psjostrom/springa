@@ -22,6 +22,7 @@ export interface PostRunContext {
   readingCount: number;
   peak30m: number; // max BG in 30m after end
   spike30m: number; // peak30m - endBG (positive = BG rose post-run)
+  peak60mAboveEnd: number; // max(reading.mmol - endBG) within 60 min after run end; 0 if never rises above end
 }
 
 export interface RunBGContext {
@@ -205,6 +206,16 @@ export function computePostRunContext(
     : endReading.mmol;
   const spike30m = Math.max(0, peak30m - endReading.mmol);
 
+  // Peak BG rise above end within 60 min
+  const within60 = findReadingsInWindow(
+    readings,
+    runEndMs,
+    runEndMs + 60 * 60 * 1000,
+  );
+  const peak60mAboveEnd = within60.length > 0
+    ? Math.max(0, ...within60.map((r) => r.mmol - endReading.mmol))
+    : 0;
+
   // Nadir: lowest in 2h after
   const nadirPostRun = Math.min(...postReadings.map((r) => r.mmol));
 
@@ -223,6 +234,7 @@ export function computePostRunContext(
     readingCount: postReadings.length,
     peak30m,
     spike30m,
+    peak60mAboveEnd,
   };
 }
 

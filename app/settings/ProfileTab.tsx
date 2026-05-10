@@ -19,7 +19,7 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
   const [pumpModel, setPumpModel] = useState(settings.pumpModel ?? "");
   const [cgmModel, setCgmModel] = useState(settings.cgmModel ?? "");
   const [loopSystem, setLoopSystem] = useState(settings.loopSystem ?? "");
-  const [pumpDuringRuns, setPumpDuringRuns] = useState(settings.pumpDuringRuns ?? "");
+  const [pumpDuringRuns, setPumpDuringRuns] = useState<"on" | "off" | "mixed" | "">(settings.pumpDuringRuns ?? "");
   const [targetStartBG, setTargetStartBG] = useState(settings.targetStartBG?.toString() ?? "");
 
   const [saving, setSaving] = useState(false);
@@ -82,7 +82,7 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
         updates.loopSystem = newLoopSystem;
       }
 
-      const newPumpDuringRuns = pumpDuringRuns || undefined;
+      const newPumpDuringRuns = pumpDuringRuns === "" ? undefined : pumpDuringRuns;
       if (newPumpDuringRuns !== settings.pumpDuringRuns) {
         updates.pumpDuringRuns = newPumpDuringRuns;
       }
@@ -253,7 +253,7 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
           <select
             id="pumpDuringRuns"
             value={pumpDuringRuns}
-            onChange={(e) => { setPumpDuringRuns(e.target.value); }}
+            onChange={(e) => { setPumpDuringRuns(e.target.value as "" | "on" | "off" | "mixed"); }}
             className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent text-sm"
           >
             <option value="">Not set</option>
@@ -281,7 +281,9 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
       {/* Save button */}
       <div className="mt-6">
         <button
-          onClick={() => { void handleSave(); }}
+          onClick={() => {
+            void handleSave();
+          }}
           disabled={saving}
           className="w-full py-2.5 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-50"
         >

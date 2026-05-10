@@ -32,6 +32,7 @@ describe("extractPostRunSpikes", () => {
             readingCount: 10,
             peak30m: 12.0,
             spike30m: 4.0,
+            peak60mAboveEnd: 0,
           },
           totalBGImpact: null,
         },

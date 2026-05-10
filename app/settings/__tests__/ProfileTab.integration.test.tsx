@@ -45,7 +45,9 @@ describe("ProfileTab", () => {
     await userEvent.clear(screen.getByLabelText(/weight/i));
     await userEvent.type(screen.getByLabelText(/weight/i), "82");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalled();
+    });
     const saved = onSave.mock.calls[0][0];
     expect(saved.weightKg).toBe(82);
   });
@@ -55,7 +57,9 @@ describe("ProfileTab", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<ProfileTab settings={{}} onSave={onSave} />);
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalled();
+    });
   });
 
   it("supports pumpDuringRuns enum select", async () => {
@@ -64,7 +68,9 @@ describe("ProfileTab", () => {
     render(<ProfileTab settings={{}} onSave={onSave} />);
     await userEvent.selectOptions(screen.getByLabelText(/pump during runs/i), "off");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalled();
+    });
     expect(onSave.mock.calls[0][0].pumpDuringRuns).toBe("off");
   });
 
@@ -74,7 +80,9 @@ describe("ProfileTab", () => {
     render(<ProfileTab settings={{ weightKg: 80 }} onSave={onSave} />);
     await userEvent.clear(screen.getByLabelText(/weight/i));
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalled();
+    });
     const saved = onSave.mock.calls[0][0];
     expect(saved.weightKg).toBeUndefined();
   });
@@ -84,6 +92,8 @@ describe("ProfileTab", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<ProfileTab settings={{}} onSave={onSave} />);
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
-    await waitFor(() => expect(screen.getByText(/saved/i)).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText(/saved/i)).toBeInTheDocument();
+    });
   });
 });

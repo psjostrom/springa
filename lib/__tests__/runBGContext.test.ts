@@ -478,6 +478,62 @@ describe("computePostRunContext spike fields", () => {
   });
 });
 
+// --- computePostRunContext: peak60mAboveEnd ---
+
+describe("computePostRunContext peak60mAboveEnd", () => {
+  const runEndMs = T0 + 40 * 60 * 1000;
+
+  it("equals max(reading - endBG) within 60min after end", () => {
+    // endBG = 6.0 (closest to runEnd)
+    // Readings: +5min: 7.5, +30min: 9.5, +90min: 11.0 (outside window)
+    // Expected: peak60mAboveEnd = 3.5 (9.5 - 6.0)
+    const postReadings: BGReading[] = [
+      { sgv: 108, mmol: 6.0, ts: runEndMs + 0, direction: "Flat", delta: 0 },
+      { sgv: 135, mmol: 7.5, ts: runEndMs + 5 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 171, mmol: 9.5, ts: runEndMs + 30 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 198, mmol: 11.0, ts: runEndMs + 90 * 60 * 1000, direction: "Flat", delta: 0 },
+    ];
+
+    const result = computePostRunContext(postReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak60mAboveEnd).toBeCloseTo(3.5, 1);
+  });
+
+  it("is 0 when post-run BG never exceeds end", () => {
+    // endBG = 8.0, all subsequent readings stay below
+    const postReadings = makeReadings(runEndMs, [8.0, 7.5, 7.0, 6.5, 6.0, 5.5, 5.0]);
+    const result = computePostRunContext(postReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak60mAboveEnd).toBe(0);
+  });
+
+  it("is 0 when no post-run readings within 60min", () => {
+    // Only reading is at +90min (outside window)
+    const postReadings: BGReading[] = [
+      { sgv: 108, mmol: 6.0, ts: runEndMs + 0, direction: "Flat", delta: 0 },
+      { sgv: 198, mmol: 11.0, ts: runEndMs + 90 * 60 * 1000, direction: "Flat", delta: 0 },
+    ];
+    const result = computePostRunContext(postReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak60mAboveEnd).toBe(0);
+  });
+
+  it("captures rebound peak at 55min after run end", () => {
+    // endBG = 7.0, peak at +55min = 10.0 → peak60mAboveEnd = 3.0
+    const postReadings: BGReading[] = [
+      { sgv: 126, mmol: 7.0, ts: runEndMs + 0, direction: "Flat", delta: 0 },
+      { sgv: 117, mmol: 6.5, ts: runEndMs + 10 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 108, mmol: 6.0, ts: runEndMs + 20 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 144, mmol: 8.0, ts: runEndMs + 40 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 180, mmol: 10.0, ts: runEndMs + 55 * 60 * 1000, direction: "Flat", delta: 0 },
+      { sgv: 198, mmol: 11.0, ts: runEndMs + 70 * 60 * 1000, direction: "Flat", delta: 0 },
+    ];
+    const result = computePostRunContext(postReadings, runEndMs);
+    expect(result).not.toBeNull();
+    expect(result!.peak60mAboveEnd).toBeCloseTo(3.0, 1);
+  });
+});
+
 // --- Integration test: realistic run scenario ---
 
 describe("integration: realistic run scenario", () => {
