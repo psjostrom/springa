@@ -1,5 +1,9 @@
 import { createClient } from "@libsql/client";
-import { computePreRunContext, computePostRunContext } from "../lib/runBGContext";
+import {
+  computePreRunContext,
+  computePostRunContext,
+  PRE_STABILITY_WINDOW_MS,
+} from "../lib/runBGContext";
 import type { BGReading } from "../lib/cgm";
 import type { WorkoutCategory } from "../lib/types";
 import { getWorkoutCategory } from "../lib/constants";
@@ -64,8 +68,8 @@ async function main() {
     const rawCategory = name ? getWorkoutCategory(name) : "other";
     const category: WorkoutCategory = (rawCategory === "other" ? "easy" : rawCategory) as WorkoutCategory;
 
-    // Fetch BG readings: 30 min before start → 2h after end
-    const preLookback = 30 * 60 * 1000; // 30 min
+    // Fetch BG readings: 60 min before start → 2h after end
+    const preLookback = PRE_STABILITY_WINDOW_MS; // 60 min
     const postWindow = 2 * 60 * 60 * 1000; // 2 hours
     const startWindow = run_start_ms - preLookback;
     const endWindow = runEndMs + postWindow;

@@ -34,6 +34,8 @@ export interface TomorrowWorkoutSummary {
   targetHRRange: string;
 }
 
+export type PredictorName = "startBG" | "entrySlope" | "fuelRate" | "timeOfDay";
+
 export interface TomorrowData {
   workout: TomorrowWorkoutSummary;
   /** null when no live CGM reading is available; UI should label this clearly. */
@@ -43,6 +45,8 @@ export interface TomorrowData {
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
+  matchPredictors: PredictorName[];
+  matchRelaxed: boolean;
 }
 
 export interface IntelHistoryData {
@@ -308,7 +312,7 @@ function buildTomorrow(
     .map((a) => activityToMatchableRun(a))
     .filter((r): r is MatchableRun => r != null);
 
-  const { matches } = findMatchingRuns(target, history);
+  const { matches, relaxed, usedPredictors } = findMatchingRuns(target, history);
 
   const matchActivities = new Map<string, CachedActivity>(
     activities.map((a) => [a.activityId, a]),
@@ -355,6 +359,8 @@ function buildTomorrow(
     recommendation,
     prediction,
     matches: matchesSummary,
+    matchPredictors: usedPredictors,
+    matchRelaxed: relaxed,
   };
 }
 

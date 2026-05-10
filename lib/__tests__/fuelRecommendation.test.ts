@@ -39,6 +39,14 @@ describe("recommendFuelRate", () => {
     expect(rec?.basis).toBe("limited-evidence");
   });
 
+  it("returns null when only 1-2 samples exist per fuel rate", () => {
+    const matches = [
+      ...at(56, [4.0, 4.2]),                // only 2 — below MIN_RATE_SAMPLES
+      ...at(60, [4.5]),                      // only 1 — below MIN_RATE_SAMPLES
+    ];
+    expect(recommendFuelRate(matches, 4.5)).toBeNull();
+  });
+
   it("returns null when zero matches", () => {
     expect(recommendFuelRate([], 4.5)).toBeNull();
   });

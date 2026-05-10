@@ -35,13 +35,14 @@ export interface RunBGContext {
 
 // --- Constants ---
 
-const MAX_GAP_MS = 10 * 60 * 1000; // 10 minutes
-const PRE_SLOPE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
-const PRE_STABILITY_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
-const POST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
-const POST_30M_MS = 30 * 60 * 1000; // 30 minutes
-const STABLE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const MIN_READINGS = 2;
+export const MAX_GAP_MS = 10 * 60 * 1000; // 10 minutes
+export const PRE_SLOPE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+export const PRE_STABILITY_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
+export const POST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+export const POST_30M_MS = 30 * 60 * 1000; // 30 minutes
+export const STABLE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+export const MIN_READINGS = 2;
+export const MIN_RATE_SAMPLES = 3;
 
 // --- Utility functions ---
 

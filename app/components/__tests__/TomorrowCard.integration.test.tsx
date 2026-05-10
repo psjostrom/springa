@@ -2,6 +2,7 @@ import { render, screen } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import { TomorrowCard } from "../TomorrowCard";
+import type { PredictorName } from "@/lib/intelScreenData";
 
 const sample = {
   workout: {
@@ -46,6 +47,8 @@ const sample = {
     { activityId: "x1", date: "2026-04-30", startBG: 8.6, endBG: 4.8, fuelRate: 60 },
     { activityId: "x2", date: "2026-04-23", startBG: 11.7, endBG: 9.1, fuelRate: 60 },
   ],
+  matchPredictors: ["startBG", "fuelRate"] as PredictorName[],
+  matchRelaxed: false,
 };
 
 describe("TomorrowCard", () => {
@@ -74,7 +77,16 @@ describe("TomorrowCard", () => {
   });
 
   it("shows 'no matching history yet' when prediction is null", () => {
-    render(<TomorrowCard {...sample} prediction={null} recommendation={null} matches={[]} />);
+    render(
+      <TomorrowCard
+        {...sample}
+        prediction={null}
+        recommendation={null}
+        matches={[]}
+        matchPredictors={[]}
+        matchRelaxed={false}
+      />,
+    );
     expect(screen.getAllByText(/no matching history yet/i).length).toBeGreaterThan(0);
   });
 
@@ -119,5 +131,24 @@ describe("TomorrowCard", () => {
     expect(screen.getByText(/2 of 8/i)).toBeInTheDocument(); // hypo count
     expect(screen.getByRole("button", { name: /matching runs/i })).toBeInTheDocument();
     expect(screen.getAllByText(/\+3\.0/).length).toBeGreaterThan(0); // rebound
+  });
+
+  it("shows matching predictor explainer when predictors are used", () => {
+    render(
+      <TomorrowCard {...sample} matchPredictors={["startBG", "fuelRate"]} matchRelaxed={false} />,
+    );
+    expect(screen.getByText(/Matched on similar starting BG and fuel rate/i)).toBeInTheDocument();
+  });
+
+  it("shows relaxed filter label when matchRelaxed is true", () => {
+    render(<TomorrowCard {...sample} matchPredictors={[]} matchRelaxed={true} />);
+    expect(
+      screen.getByText(/Matched on category only — relaxed soft filters to find enough runs/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows nothing when no predictors are used and match is not relaxed", () => {
+    render(<TomorrowCard {...sample} matchPredictors={[]} matchRelaxed={false} />);
+    expect(screen.queryByText(/Matched on/i)).not.toBeInTheDocument();
   });
 });

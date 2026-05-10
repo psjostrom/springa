@@ -163,6 +163,8 @@ describe("buildIntelScreenData", () => {
     expect(result.tomorrow?.currentBGSource).toBe("live");
     // matches array exists (may be empty when no soft predictors hit)
     expect(Array.isArray(result.tomorrow?.matches)).toBe(true);
+    expect(Array.isArray(result.tomorrow?.matchPredictors)).toBe(true);
+    expect(typeof result.tomorrow?.matchRelaxed).toBe("boolean");
   });
 
   it("returns null tomorrow when no future planned events", () => {

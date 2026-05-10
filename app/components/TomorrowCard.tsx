@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import type { WorkoutCategory } from "@/lib/types";
 import type { PredictedOutcome } from "@/lib/runOutcomePrediction";
 import type { FuelRecommendation } from "@/lib/fuelRecommendation";
+import type { PredictorName } from "@/lib/intelScreenData";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 
 export interface TomorrowMatchSummary {
@@ -34,6 +35,8 @@ interface Props {
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
+  matchPredictors: PredictorName[];
+  matchRelaxed: boolean;
 }
 
 const FALLBACK_START_BG = 8.0;
@@ -42,6 +45,13 @@ const HYPO = 4.0;
 const MIN = 3.5;
 const MAX = 14.0;
 const SPAN = MAX - MIN;
+
+const PREDICTOR_LABELS: Record<PredictorName, string> = {
+  startBG: "starting BG",
+  entrySlope: "entry trend",
+  fuelRate: "fuel rate",
+  timeOfDay: "time of day",
+};
 
 const LEVER_LINES: Record<WorkoutCategory, string> = {
   long: "Reconnect pump within 5 min of stop · skip post-run quick carbs · wait 30 min before correction bolus.",
@@ -68,6 +78,14 @@ function formatMatchDate(dateIso: string): string {
   return format(parseLocalDate(dateIso), "MMM d");
 }
 
+function formatPredictorList(predictors: PredictorName[]): string {
+  if (predictors.length === 0) return "";
+  const labels = predictors.map((p) => PREDICTOR_LABELS[p]);
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
 export function TomorrowCard({
   workout,
   currentBG,
@@ -75,6 +93,8 @@ export function TomorrowCard({
   recommendation,
   prediction,
   matches,
+  matchPredictors,
+  matchRelaxed,
 }: Props) {
   const [matchesOpen, setMatchesOpen] = useState(false);
   const liveBG = currentBGSource === "live" && currentBG != null ? currentBG : null;
@@ -140,16 +160,30 @@ export function TomorrowCard({
               )}
             </p>
 
-            <button
-              type="button"
-              onClick={() => {
-                setMatchesOpen((o) => !o);
-              }}
-              className="mt-2 text-xs text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded"
-              aria-expanded={matchesOpen}
-            >
-              {matchesOpen ? "Hide" : "Show"} {predictionMatchCount} matching runs
-            </button>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMatchesOpen((o) => !o);
+                }}
+                className="text-xs text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded"
+                aria-expanded={matchesOpen}
+              >
+                {matchesOpen ? "Hide" : "Show"} {predictionMatchCount} matching runs
+              </button>
+
+              {matchPredictors.length > 0 && !matchRelaxed && (
+                <span className="ml-2 text-[11px] text-muted">
+                  Matched on similar {formatPredictorList(matchPredictors)}.
+                </span>
+              )}
+
+              {matchRelaxed && (
+                <span className="ml-2 text-[11px] text-muted">
+                  Matched on category only — relaxed soft filters to find enough runs.
+                </span>
+              )}
+            </div>
 
             {showsPostGap && (
               <p className="text-[11px] text-muted mt-1 leading-snug">
