@@ -55,8 +55,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   pump_model        TEXT,
   cgm_model         TEXT,
   loop_system       TEXT,
-  pump_during_runs  TEXT,
-  target_start_bg   REAL
+  pump_during_runs  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

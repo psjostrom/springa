@@ -809,3 +809,65 @@ describe("coach prompt — omit on missing", () => {
     expect(out).toMatch(/## Pace Zones/);
   });
 });
+
+// --- Pre-exercise BG: consensus + personal hypo floor ---
+
+describe("coach prompt — pre-exercise BG references", () => {
+  const baseCtx = {
+    phaseInfo: { name: "Build", week: 1, progress: 10 },
+    insights: null,
+    bgModel: null,
+    events: [],
+    hrZones: [],
+  };
+
+  it("always includes the international consensus line", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).toContain("Pre-exercise BG target: 7-10 mmol/L");
+    expect(out).toContain("Riddell 2017");
+  });
+
+  it("does not include the personal hypo signal line when pastRuns omitted", () => {
+    const out = buildSystemPrompt(baseCtx);
+    expect(out).not.toMatch(/Personal hypo signal/);
+  });
+
+  it("does not include the personal hypo signal line when pastRuns has too little data", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      pastRuns: [
+        { startBG: 8, wentHypo: false },
+        { startBG: 9, wentHypo: true },
+      ],
+    });
+    expect(out).not.toMatch(/Personal hypo signal/);
+  });
+
+  it("includes the personal hypo signal line when pastRuns produces a floor", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      pastRuns: [
+        { startBG: 7.0, wentHypo: true },
+        { startBG: 7.1, wentHypo: true },
+        { startBG: 7.2, wentHypo: true },
+        { startBG: 8.5, wentHypo: false },
+        { startBG: 8.6, wentHypo: false },
+        { startBG: 8.7, wentHypo: false },
+        { startBG: 9.0, wentHypo: false },
+        { startBG: 9.5, wentHypo: false },
+        { startBG: 10.0, wentHypo: false },
+        { startBG: 10.5, wentHypo: false },
+        { startBG: 11.0, wentHypo: false },
+      ],
+    });
+    expect(out).toMatch(/Personal hypo signal/);
+  });
+
+  it("never references the removed targetStartBG profile field", () => {
+    const out = buildSystemPrompt({
+      ...baseCtx,
+      profile: { weightKg: 80 },
+    });
+    expect(out).not.toMatch(/Target start BG/i);
+  });
+});

@@ -9,6 +9,29 @@ import type { PaceTable } from "./types";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
 import { formatPace } from "./format";
 import { formatRunLine } from "./runLine";
+import { computeHypoFloor, type RunForFloorAnalysis } from "./personalHypoFloor";
+
+const CONSENSUS_LINE =
+  "Pre-exercise BG target: 7-10 mmol/L (international consensus, Riddell 2017). Below 7 -> supplement carbs; above 15 -> avoid aerobic.";
+
+function buildPersonalHypoFloorLine(pastRuns?: RunForFloorAnalysis[]): string | null {
+  if (!pastRuns || pastRuns.length === 0) return null;
+  const analysis = computeHypoFloor(pastRuns);
+  if (!analysis) return null;
+
+  const { dangerFloor, dangerFloorHypoRate, dangerFloorRunCount, alwaysSafeFloor, alwaysSafeFloorRunCount, totalHypos } = analysis;
+
+  if (dangerFloor != null && alwaysSafeFloor != null) {
+    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}); above ${alwaysSafeFloor.toFixed(1)}: 0 hypos in ${alwaysSafeFloorRunCount} runs.`;
+  }
+  if (dangerFloor != null) {
+    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}).`;
+  }
+  if (alwaysSafeFloor != null) {
+    return `Personal hypo signal: starts above ${alwaysSafeFloor.toFixed(1)} have not hypo'd in ${alwaysSafeFloorRunCount} runs (${totalHypos} total hypos lower down).`;
+  }
+  return null;
+}
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
@@ -36,7 +59,6 @@ interface CoachContext {
     cgmModel?: string;
     loopSystem?: string;
     pumpDuringRuns?: "on" | "off" | "mixed";
-    targetStartBG?: number;
     vo2max?: number;
     thresholdPaceMinPerKm?: number;
   };
@@ -50,6 +72,7 @@ interface CoachContext {
     volume?: { runs7d: number; runs28d: number };
     earliestRunDate?: string;
   };
+  pastRuns?: RunForFloorAnalysis[];
 }
 
 function buildActivityBGMap(bgModel: BGResponseModel | null): Map<string, { startBG: number; avgRate: number; samples: number; entrySlope: number | null }> {
@@ -239,6 +262,7 @@ function computeAge(dob?: string): number | null {
 function buildRunnerProfileSection(
   profile: CoachContext["profile"],
   derived: CoachContext["derived"],
+  pastRuns: RunForFloorAnalysis[] | undefined,
 ): string {
   const bullets: string[] = [];
 
@@ -289,9 +313,11 @@ function buildRunnerProfileSection(
     bullets.push(`- Pump during runs: ${profile.pumpDuringRuns}.`);
   }
 
-  // Target start BG
-  if (profile?.targetStartBG != null) {
-    bullets.push(`- Target start BG ${profile.targetStartBG} mmol/L.`);
+  // Pre-exercise BG: consensus range + personal hypo signal (when enough data)
+  bullets.push(`- ${CONSENSUS_LINE}`);
+  const personalFloorLine = buildPersonalHypoFloorLine(pastRuns);
+  if (personalFloorLine) {
+    bullets.push(`- ${personalFloorLine}`);
   }
 
   if (bullets.length === 0) return "";
@@ -313,7 +339,7 @@ export function buildSystemPrompt(ctx: CoachContext): string {
     : "";
 
   const roleLine = buildRoleLine(ctx.race);
-  const runnerProfileSection = buildRunnerProfileSection(ctx.profile, ctx.derived);
+  const runnerProfileSection = buildRunnerProfileSection(ctx.profile, ctx.derived, ctx.pastRuns);
   const paceZonesSection = buildPaceZonesSection(ctx);
 
   return `${roleLine}

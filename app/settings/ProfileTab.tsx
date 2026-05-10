@@ -20,7 +20,6 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
   const [cgmModel, setCgmModel] = useState(settings.cgmModel ?? "");
   const [loopSystem, setLoopSystem] = useState(settings.loopSystem ?? "");
   const [pumpDuringRuns, setPumpDuringRuns] = useState<"on" | "off" | "mixed" | "">(settings.pumpDuringRuns ?? "");
-  const [targetStartBG, setTargetStartBG] = useState(settings.targetStartBG?.toString() ?? "");
 
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -85,11 +84,6 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
       const newPumpDuringRuns = pumpDuringRuns === "" ? undefined : pumpDuringRuns;
       if (newPumpDuringRuns !== settings.pumpDuringRuns) {
         updates.pumpDuringRuns = newPumpDuringRuns;
-      }
-
-      const parsedTargetStartBG = targetStartBG.trim() ? Number(targetStartBG) : undefined;
-      if (parsedTargetStartBG !== settings.targetStartBG) {
-        updates.targetStartBG = parsedTargetStartBG;
       }
 
       await onSave(updates);
@@ -261,20 +255,6 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
             <option value="off">Off</option>
             <option value="mixed">Mixed</option>
           </select>
-        </div>
-
-        <div className="mt-3">
-          <label htmlFor="targetStartBG" className="block text-xs text-muted mb-1">
-            Target start BG (mmol/L)
-          </label>
-          <input
-            id="targetStartBG"
-            type="number"
-            step="0.1"
-            value={targetStartBG}
-            onChange={(e) => { setTargetStartBG(e.target.value); }}
-            className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent text-sm"
-          />
         </div>
       </div>
 

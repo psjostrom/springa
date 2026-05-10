@@ -19,7 +19,6 @@ describe("ProfileTab", () => {
           cgmModel: "Dexcom G7",
           loopSystem: "Loop 3",
           pumpDuringRuns: "off",
-          targetStartBG: 8.5,
         }}
         onSave={vi.fn()}
       />,
@@ -35,7 +34,6 @@ describe("ProfileTab", () => {
     expect(screen.getByLabelText(/cgm model/i)).toHaveValue("Dexcom G7");
     expect(screen.getByLabelText(/loop system/i)).toHaveValue("Loop 3");
     expect(screen.getByLabelText(/pump during runs/i)).toHaveValue("off");
-    expect(screen.getByLabelText(/target start bg/i)).toHaveValue(8.5);
   });
 
   it("saves edited values via onSave", async () => {

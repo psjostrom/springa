@@ -288,7 +288,8 @@ function buildTomorrow(
   const category: WorkoutCategory =
     next.category === "race" ? "long" : (next.category as WorkoutCategory);
 
-  const startBG = currentBG ?? settings.targetStartBG ?? 8.0;
+  // Fallback: if live CGM unavailable, assume mid-consensus 8.0 mmol/L (Riddell 2017: 7-10).
+  const startBG = currentBG ?? 8.0;
   const fuelRate = next.fuelRate ?? DEFAULT_FUEL_RATE;
   const hourOfDay = next.date.getHours();
   const recentLoad = recentLoadFromEvents(events, reference);

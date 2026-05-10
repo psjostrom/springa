@@ -36,6 +36,7 @@ export interface RunHistoryBG {
   startBG: number;
   endBG: number | null;
   dropRate: number | null; // mmol/L per min
+  wentHypo: boolean;
 }
 
 export interface RunHistoryEntry {
@@ -156,10 +157,11 @@ export function buildRunHistory(
     };
 
     const startBG = glucose?.length ? glucose[0].value : 0;
+    const wentHypo = (glucose ?? []).some((g) => g.value < 4.0);
 
     return {
       event,
-      bgSummary: { startBG, endBG, dropRate },
+      bgSummary: { startBG, endBG, dropRate, wentHypo },
     };
   });
 }

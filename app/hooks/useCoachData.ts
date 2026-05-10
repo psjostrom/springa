@@ -8,6 +8,7 @@ import type { BGReading } from "@/lib/cgm";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { PaceTable } from "@/lib/types";
 import type { WellnessEntry } from "@/lib/intervalsApi";
+import type { RunForFloorAnalysis } from "@/lib/personalHypoFloor";
 
 interface UseCoachDataOptions {
   events: CalendarEvent[];
@@ -33,7 +34,6 @@ interface UseCoachDataOptions {
     cgmModel?: string;
     loopSystem?: string;
     pumpDuringRuns?: "on" | "off" | "mixed";
-    targetStartBG?: number;
     vo2max?: number;
     thresholdPaceMinPerKm?: number;
   };
@@ -47,6 +47,7 @@ interface UseCoachDataOptions {
     volume?: { runs7d: number; runs28d: number };
     earliestRunDate?: string;
   };
+  pastRuns?: RunForFloorAnalysis[];
 }
 
 export function useCoachData({
@@ -67,6 +68,7 @@ export function useCoachData({
   profile,
   race,
   derived,
+  pastRuns,
 }: UseCoachDataOptions) {
   const fitnessData = wellnessToFitnessData(wellnessEntries);
   const insights = fitnessData.length === 0
@@ -93,6 +95,7 @@ export function useCoachData({
         profile,
         race,
         derived,
+        pastRuns,
       });
 
   return { context, isLoading: events.length === 0 || fitnessData.length === 0 };

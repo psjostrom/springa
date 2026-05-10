@@ -28,7 +28,9 @@ import {
   readingsAtom,
   runBGContextsAtom,
   diabetesModeAtom,
+  cachedActivitiesAtom,
 } from "../atoms";
+import type { RunForFloorAnalysis } from "@/lib/personalHypoFloor";
 
 function getMessageText(parts: { type: string; text?: string }[]): string {
   return parts
@@ -51,6 +53,7 @@ export function CoachScreen() {
   const readings = useAtomValue(readingsAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
+  const cachedActivities = useAtomValue(cachedActivitiesAtom);
   const lthr = settings?.lthr;
   const maxHr = settings?.maxHr;
   const hrZones = settings?.hrZones ?? [];
@@ -65,11 +68,23 @@ export function CoachScreen() {
       cgmModel: settings?.cgmModel,
       loopSystem: settings?.loopSystem,
       pumpDuringRuns: settings?.pumpDuringRuns,
-      targetStartBG: settings?.targetStartBG,
       vo2max: settings?.vo2max,
       thresholdPaceMinPerKm: settings?.thresholdPaceMinPerKm,
     }),
     [settings],
+  );
+
+  const pastRuns = useMemo<RunForFloorAnalysis[]>(
+    () =>
+      cachedActivities.flatMap((a) => {
+        const glucose = a.glucose;
+        if (!glucose || glucose.length === 0) return [];
+        return [{
+          startBG: glucose[0].value,
+          wentHypo: glucose.some((g) => g.value < 4.0),
+        }];
+      }),
+    [cachedActivities],
   );
 
   const race = useMemo(
@@ -108,6 +123,7 @@ export function CoachScreen() {
     profile,
     race,
     derived,
+    pastRuns,
   });
 
   const hasRuns = events.some((e) => e.type === "completed");

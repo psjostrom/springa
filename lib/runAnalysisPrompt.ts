@@ -7,10 +7,35 @@ import type { FitnessInsights } from "./fitness";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
+import { computeHypoFloor, type RunForFloorAnalysis } from "./personalHypoFloor";
 
 function ratingLabel(rating: "good" | "ok" | "bad"): string {
   return rating === "good" ? "Good" : rating === "ok" ? "OK" : "Bad";
 }
+
+const CONSENSUS_LINE =
+  "Pre-exercise BG target: 7-10 mmol/L (international consensus, Riddell 2017). Below 7 -> supplement carbs; above 15 -> avoid aerobic.";
+
+export function buildPersonalHypoFloorLine(pastRuns?: RunForFloorAnalysis[]): string | null {
+  if (!pastRuns || pastRuns.length === 0) return null;
+  const analysis = computeHypoFloor(pastRuns);
+  if (!analysis) return null;
+
+  const { dangerFloor, dangerFloorHypoRate, dangerFloorRunCount, alwaysSafeFloor, alwaysSafeFloorRunCount, totalHypos } = analysis;
+
+  if (dangerFloor != null && alwaysSafeFloor != null) {
+    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}); above ${alwaysSafeFloor.toFixed(1)}: 0 hypos in ${alwaysSafeFloorRunCount} runs.`;
+  }
+  if (dangerFloor != null) {
+    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}).`;
+  }
+  if (alwaysSafeFloor != null) {
+    return `Personal hypo signal: starts above ${alwaysSafeFloor.toFixed(1)} have not hypo'd in ${alwaysSafeFloorRunCount} runs (${totalHypos} total hypos lower down).`;
+  }
+  return null;
+}
+
+export { CONSENSUS_LINE };
 
 export function buildRunAnalysisPrompt(params: {
   event: CalendarEvent;
@@ -26,8 +51,9 @@ export function buildRunAnalysisPrompt(params: {
   fitnessInsights?: FitnessInsights | null;
   bgModelSummary?: string;
   crossRunPatterns?: string;
+  pastRuns?: RunForFloorAnalysis[];
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns, pastRuns } = params;
   const lthr = params.lthr;
   const maxHr = params.maxHr;
   const easyMaxBpm = params.hrZones[1];
@@ -38,7 +64,11 @@ export function buildRunAnalysisPrompt(params: {
   if (lthr != null && maxHr != null) {
     runnerProfileLines.push(buildProfileLine(lthr, maxHr));
   }
-  runnerProfileLines.push("Target start BG: ~10 mmol/L");
+  runnerProfileLines.push(CONSENSUS_LINE);
+  const personalFloorLine = buildPersonalHypoFloorLine(pastRuns);
+  if (personalFloorLine) {
+    runnerProfileLines.push(personalFloorLine);
+  }
 
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 

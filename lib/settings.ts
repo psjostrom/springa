@@ -41,7 +41,6 @@ export interface UserSettings {
   cgmModel?: string;
   loopSystem?: string;
   pumpDuringRuns?: "on" | "off" | "mixed";
-  targetStartBG?: number;
 
   // Non-DB fields — populated by the settings API route, not stored in DB
   intervalsConnected?: boolean;
@@ -95,7 +94,6 @@ export const WRITABLE_SETTINGS_KEYS = [
   "cgmModel",
   "loopSystem",
   "pumpDuringRuns",
-  "targetStartBG",
 ] as const satisfies readonly (keyof UserSettings)[];
 
 // --- CRUD ---
@@ -109,7 +107,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type,
                  pace_suggestion_dismissed_at, hr_zones, max_hr,
                  dob, weight_kg, height_cm, t1d_since_year, pump_model, cgm_model, loop_system,
-                 pump_during_runs, target_start_bg
+                 pump_during_runs
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -174,8 +172,6 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
       settings.pumpDuringRuns = val;
     }
   }
-  if (row.target_start_bg != null)
-    settings.targetStartBG = row.target_start_bg as number;
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
   settings.nightscoutConnected = !!(
@@ -322,10 +318,6 @@ export async function saveUserSettings(
   if (partial.pumpDuringRuns !== undefined) {
     sets.push("pump_during_runs = ?");
     args.push(partial.pumpDuringRuns ?? null);
-  }
-  if (partial.targetStartBG !== undefined) {
-    sets.push("target_start_bg = ?");
-    args.push(partial.targetStartBG ?? null);
   }
 
   if (sets.length > 0) {

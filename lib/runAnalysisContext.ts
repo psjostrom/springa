@@ -10,6 +10,7 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
 import type { RunHistoryEntry } from "@/lib/runAnalysisDb";
 import type { FitnessInsights } from "@/lib/fitness";
+import type { RunForFloorAnalysis } from "@/lib/personalHypoFloor";
 
 interface BuildRunAnalysisContextInput {
   email: string;
@@ -36,6 +37,7 @@ interface RunAnalysisContextResult {
   fitnessInsights?: FitnessInsights | null;
   bgModelSummary?: string;
   crossRunPatterns?: string;
+  pastRuns?: RunForFloorAnalysis[];
 }
 
 export async function buildRunAnalysisContext(
@@ -98,6 +100,14 @@ export async function buildRunAnalysisContext(
     ? { rating: event.rating ?? undefined, comment: event.feedbackComment ?? undefined, carbsG: event.carbsIngested ?? undefined }
     : undefined;
 
+  // Past-runs floor analysis: only count entries with a real startBG (>0).
+  const pastRuns: RunForFloorAnalysis[] = history
+    .filter((h) => h.bgSummary.startBG > 0)
+    .map((h) => ({
+      startBG: h.bgSummary.startBG,
+      wentHypo: h.bgSummary.wentHypo,
+    }));
+
   return {
     event,
     runBGContext,
@@ -111,5 +121,6 @@ export async function buildRunAnalysisContext(
     fitnessInsights,
     bgModelSummary,
     crossRunPatterns: patterns?.patternsText,
+    pastRuns,
   };
 }

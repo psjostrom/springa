@@ -143,7 +143,6 @@ describe("saveUserSettings", () => {
       cgmModel: "Libre 3",
       loopSystem: "Loop",
       pumpDuringRuns: "on",
-      targetStartBG: 9,
     };
 
     for (const key of WRITABLE_SETTINGS_KEYS) {
@@ -159,7 +158,7 @@ describe("saveUserSettings", () => {
 });
 
 describe("UserSettings profile fields", () => {
-  it("round-trips dob, weight, height, t1d-since, equipment, pump-during-runs, target-start-bg", async () => {
+  it("round-trips dob, weight, height, t1d-since, equipment, pump-during-runs", async () => {
     await saveUserSettings("test-profile@example.com", {
       dob: "1985-06-12",
       weightKg: 80,
@@ -169,7 +168,6 @@ describe("UserSettings profile fields", () => {
       cgmModel: "Dexcom G7",
       loopSystem: "CamAPS FX",
       pumpDuringRuns: "off",
-      targetStartBG: 10,
     });
     const result = await getUserSettings("test-profile@example.com");
     expect(result.dob).toBe("1985-06-12");
@@ -180,6 +178,5 @@ describe("UserSettings profile fields", () => {
     expect(result.cgmModel).toBe("Dexcom G7");
     expect(result.loopSystem).toBe("CamAPS FX");
     expect(result.pumpDuringRuns).toBe("off");
-    expect(result.targetStartBG).toBe(10);
   });
 });

@@ -305,4 +305,52 @@ describe("buildRunAnalysisPrompt", () => {
       expect(system).toContain("195");
     });
   });
+
+  describe("pre-exercise BG references", () => {
+    it("always includes the international consensus line", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+      });
+      expect(system).toContain("Pre-exercise BG target: 7-10 mmol/L");
+      expect(system).toContain("Riddell 2017");
+    });
+
+    it("does not include the removed targetStartBG line", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+      });
+      expect(system).not.toMatch(/Target start BG/i);
+    });
+
+    it("does not include personal hypo signal line when pastRuns omitted", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+      });
+      expect(system).not.toMatch(/Personal hypo signal/);
+    });
+
+    it("includes personal hypo signal line when pastRuns produces a floor", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        pastRuns: [
+          { startBG: 7.0, wentHypo: true },
+          { startBG: 7.1, wentHypo: true },
+          { startBG: 7.2, wentHypo: true },
+          { startBG: 8.5, wentHypo: false },
+          { startBG: 8.6, wentHypo: false },
+          { startBG: 8.7, wentHypo: false },
+          { startBG: 9.0, wentHypo: false },
+          { startBG: 9.5, wentHypo: false },
+          { startBG: 10.0, wentHypo: false },
+          { startBG: 10.5, wentHypo: false },
+          { startBG: 11.0, wentHypo: false },
+        ],
+      });
+      expect(system).toMatch(/Personal hypo signal/);
+    });
+  });
 });

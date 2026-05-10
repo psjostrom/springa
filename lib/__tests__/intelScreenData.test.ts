@@ -118,7 +118,6 @@ describe("buildIntelScreenData", () => {
       raceName: "EcoTrail",
       raceDist: 16,
       hrZones: [120, 140, 160, 175, 190],
-      targetStartBG: 8,
     };
 
     const result = buildIntelScreenData(activities, events, settings, 7.5, new Date("2026-04-07T12:00:00Z"));
