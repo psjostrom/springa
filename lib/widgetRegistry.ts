@@ -3,15 +3,14 @@
 export type WidgetKey =
   | "readiness"
   | "phase-tracker"
+  | "tomorrow"
   | "fitness-chart"
   | "volume-trend"
   | "pace-zones"
   | "pace-curves"
   | "bg-categories"
-  | "bg-start-level"
-  | "bg-entry-slope"
-  | "bg-time-decay"
-  | "bg-patterns"
+  | "bg-after"
+  | "distance-readiness"
   | "bg-scatter";
 
 export interface WidgetDef {
@@ -22,15 +21,14 @@ export interface WidgetDef {
 export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "readiness", label: "Readiness" },
   { key: "phase-tracker", label: "Training Progress" },
+  { key: "tomorrow", label: "Tomorrow" },
   { key: "fitness-chart", label: "Fitness / Fatigue / Form" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
   { key: "pace-curves", label: "Personal Bests" },
-  { key: "bg-categories", label: "BG Response" },
-  { key: "bg-start-level", label: "BG by Start Level" },
-  { key: "bg-entry-slope", label: "BG by Entry Slope" },
-  { key: "bg-time-decay", label: "BG Over Time" },
-  { key: "bg-patterns", label: "BG Patterns" },
+  { key: "bg-categories", label: "During the Run" },
+  { key: "bg-after", label: "After the Run" },
+  { key: "distance-readiness", label: "Distance Readiness" },
   { key: "bg-scatter", label: "BG Scatter Chart" },
 ] as const;
 

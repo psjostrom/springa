@@ -17,11 +17,10 @@ import {
   Gauge,
   Timer,
   Droplets,
-  ArrowUpFromLine,
-  TrendingDown,
-  Clock,
-  Sparkles,
   ScatterChart,
+  Sunrise,
+  TrendingUp,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -34,7 +33,8 @@ import {
   bgModelAtom,
   bgModelLoadingAtom,
   bgModelProgressAtom,
-  bgActivityNamesAtom,
+  cachedActivitiesAtom,
+  currentBGAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
   widgetLayoutAtom,
@@ -57,13 +57,15 @@ import { activityToCalendarEvent } from "@/lib/calendarPipeline";
 import { getThresholdPace } from "@/lib/paceTable";
 import { TabBar } from "../components/TabBar";
 import { VolumeCompact } from "../components/VolumeCompact";
-import { BGCompact } from "../components/BGCompact";
 import { PacePBs } from "../components/PacePBs";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
 import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
-import { BGResponsePanel, StartingBGSection, EntrySlopeSection, TimeDecaySection, BGPatternsPanel } from "../components/BGResponsePanel";
+import { DuringPatternCards } from "../components/DuringPatternCards";
+import { AfterPatternCards } from "../components/AfterPatternCards";
+import { DistanceReadiness } from "../components/DistanceReadiness";
+import { TomorrowCard } from "../components/TomorrowCard";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
 import { PaceSuggestionCard } from "../components/PaceSuggestionCard";
@@ -81,22 +83,21 @@ import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
-import type { CategoryBGResponse } from "@/lib/bgModel";
+import { buildIntelScreenData } from "@/lib/intelScreenData";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
 const ICON_MAP: Record<WidgetKey, LucideIcon> = {
   readiness: Battery,
   "phase-tracker": Route,
+  tomorrow: Sunrise,
   "fitness-chart": Activity,
   "volume-trend": BarChart3,
   "pace-zones": Gauge,
   "pace-curves": Timer,
   "bg-categories": Droplets,
-  "bg-start-level": ArrowUpFromLine,
-  "bg-entry-slope": TrendingDown,
-  "bg-time-decay": Clock,
-  "bg-patterns": Sparkles,
+  "bg-after": TrendingUp,
+  "distance-readiness": Trophy,
   "bg-scatter": ScatterChart,
 };
 
@@ -195,7 +196,8 @@ export function IntelScreen() {
   const bgModel = useAtomValue(bgModelAtom);
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const bgModelProgress = useAtomValue(bgModelProgressAtom);
-  const bgActivityNames = useAtomValue(bgActivityNamesAtom);
+  const cachedActivities = useAtomValue(cachedActivitiesAtom);
+  const currentBG = useAtomValue(currentBGAtom);
 
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const wellnessLoading = useAtomValue(wellnessLoadingAtom);
@@ -409,16 +411,31 @@ export function IntelScreen() {
     };
   }, [events, planTarget, paceTable, thresholdPace]);
 
-  // BG categories for BGCompact (Overview tab)
-  const bgCategories = useMemo(() =>
-    bgModel ? Object.values(bgModel.categories).filter((c): c is CategoryBGResponse => c != null) : [],
-    [bgModel]
+  // Build adapter inputs for the new BG/fuel components.
+  const intelData = useMemo(
+    () => buildIntelScreenData(cachedActivities, events, settings ?? {}, currentBG),
+    [cachedActivities, events, settings, currentBG],
   );
+
+  const duringRunCount = useMemo(() => {
+    return Object.values(intelData.duringStats).reduce(
+      (sum, s) => sum + (s?.runCount ?? 0),
+      0,
+    );
+  }, [intelData.duringStats]);
+
+  const afterRunCount = useMemo(() => {
+    return Object.values(intelData.afterStats).reduce(
+      (sum, s) => sum + (s?.runCount ?? 0),
+      0,
+    );
+  }, [intelData.afterStats]);
 
   // Per-widget contextual meta (shown after heading)
   const widgetMeta: Partial<WidgetMeta> = {
     "pace-zones": lthr ? `LTHR ${lthr}` : null,
-    "bg-categories": bgModel ? `${bgModel.activitiesAnalyzed} runs analyzed` : null,
+    "bg-categories": duringRunCount > 0 ? `${duringRunCount} runs` : null,
+    "bg-after": afterRunCount > 0 ? `${afterRunCount} runs` : null,
   };
 
   // Resolve readiness renderer
@@ -457,6 +474,8 @@ export function IntelScreen() {
         includeBasePhase={settings?.includeBasePhase}
       />
     ),
+    tomorrow: ((tomorrow) =>
+      tomorrow ? () => <TomorrowCard {...tomorrow} /> : null)(intelData.tomorrow),
     "fitness-chart": fitnessChartRenderer,
     "volume-trend": () => (
       <VolumeTrendChart
@@ -480,22 +499,20 @@ export function IntelScreen() {
     "pace-curves": () => <PaceCurvesWidget onActivitySelect={setSelectedActivityId} />,
     "bg-categories": bgModelLoading
       ? () => <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
-      : bgModel
-        ? () => <BGResponsePanel model={bgModel} activityNames={bgActivityNames} />
+      : duringRunCount > 0
+        ? () => <DuringPatternCards stats={intelData.duringStats} />
         : null,
-    "bg-start-level":
-      bgModel && bgModel.bgByStartLevel.length > 0
-        ? () => <StartingBGSection bands={bgModel.bgByStartLevel} />
-        : null,
-    "bg-entry-slope":
-      bgModel && bgModel.bgByEntrySlope.length > 0
-        ? () => <EntrySlopeSection slopes={bgModel.bgByEntrySlope} />
-        : null,
-    "bg-time-decay":
-      bgModel && bgModel.bgByTime.length > 0
-        ? () => <TimeDecaySection buckets={bgModel.bgByTime} />
-        : null,
-    "bg-patterns": () => <BGPatternsPanel events={events} />,
+    "bg-after": afterRunCount > 0
+      ? () => <AfterPatternCards stats={intelData.afterStats} />
+      : null,
+    "distance-readiness": intelData.distance.longestRun
+      ? () => (
+          <DistanceReadiness
+            longestRun={intelData.distance.longestRun}
+            race={intelData.distance.race}
+          />
+        )
+      : null,
     "bg-scatter":
       bgModel
         ? () => <BGScatterChart model={bgModel} />
@@ -578,15 +595,42 @@ export function IntelScreen() {
               </div>
             )}
 
-            {/* BG Compact */}
+            {/* Tomorrow */}
+            {intelData.tomorrow && (
+              <div>
+                <WidgetHeading widgetKey="tomorrow" meta={null} />
+                <TomorrowCard {...intelData.tomorrow} />
+              </div>
+            )}
+
+            {/* During the run */}
             {bgModelLoading ? (
               <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
-            ) : bgCategories.length > 0 ? (
+            ) : duringRunCount > 0 ? (
               <div>
                 <WidgetHeading widgetKey="bg-categories" meta={widgetMeta["bg-categories"]} />
-                <BGCompact categories={bgCategories} />
+                <DuringPatternCards stats={intelData.duringStats} />
               </div>
             ) : null}
+
+            {/* After the run */}
+            {afterRunCount > 0 && (
+              <div>
+                <WidgetHeading widgetKey="bg-after" meta={widgetMeta["bg-after"]} />
+                <AfterPatternCards stats={intelData.afterStats} />
+              </div>
+            )}
+
+            {/* Distance readiness */}
+            {intelData.distance.longestRun && (
+              <div>
+                <WidgetHeading widgetKey="distance-readiness" meta={null} />
+                <DistanceReadiness
+                  longestRun={intelData.distance.longestRun}
+                  race={intelData.distance.race}
+                />
+              </div>
+            )}
 
             {/* Pace PBs */}
             {paceCurveData && paceCurveData.bestEfforts.length > 0 && (
@@ -686,9 +730,19 @@ export function IntelScreen() {
         )}
 
         {activeTab === "analysis" && (hasCompletedRuns || eventsLoading) && (
-          <div>
-            <WidgetHeading widgetKey="bg-patterns" meta={null} />
-            {widgetRenderMap["bg-patterns"]?.()}
+          <div className="space-y-6">
+            {afterRunCount > 0 && (
+              <div>
+                <WidgetHeading widgetKey="bg-after" meta={widgetMeta["bg-after"]} />
+                <AfterPatternCards stats={intelData.afterStats} />
+              </div>
+            )}
+            {bgModel && (
+              <div>
+                <WidgetHeading widgetKey="bg-scatter" meta={null} />
+                <BGScatterChart model={bgModel} />
+              </div>
+            )}
           </div>
         )}
 
