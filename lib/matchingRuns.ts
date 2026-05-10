@@ -1,8 +1,9 @@
 import type { RunForRanking, PredictorName } from "./predictorImportance";
 import { rankPredictors } from "./predictorImportance";
+import type { WorkoutCategory } from "./types";
 
 export interface MatchTarget {
-  category: "easy" | "long" | "interval";
+  category: WorkoutCategory;
   startBG: number;
   fuelRate: number | null;
   hourOfDay: number;
@@ -12,7 +13,7 @@ export interface MatchTarget {
 export interface MatchableRun extends RunForRanking {
   activityId: string;
   date: string;
-  category: "easy" | "long" | "interval";
+  category: WorkoutCategory;
 }
 
 export interface MatchResult {

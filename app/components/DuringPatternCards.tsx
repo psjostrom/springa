@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorkoutCategory } from "@/lib/types";
+import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 
 export interface CategoryStats {
   runCount: number;
@@ -13,12 +14,6 @@ export interface CategoryStats {
 interface Props {
   stats: Record<WorkoutCategory, CategoryStats | null>;
 }
-
-const LABEL: Record<WorkoutCategory, string> = {
-  easy: "Easy",
-  long: "Long",
-  interval: "Interval / Club",
-};
 
 const NAME_COLOR: Record<WorkoutCategory, string> = {
   easy: "text-[var(--theme-chart-secondary)]",
@@ -66,7 +61,7 @@ function Card({
     >
       <div className="flex justify-between items-center mb-2">
         <span data-testid="during-card-name" className={`text-sm font-bold ${NAME_COLOR[cat]}`}>
-          {LABEL[cat]}
+          {WORKOUT_CATEGORY_LABEL[cat]}
         </span>
         <span className="text-xs text-muted">{stats.runCount} runs</span>
       </div>

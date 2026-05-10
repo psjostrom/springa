@@ -11,6 +11,7 @@ import type { ReportCard } from "@/lib/reportCard";
 import type { RunHistoryEntry } from "@/lib/runAnalysisDb";
 import type { FitnessInsights } from "@/lib/fitness";
 import type { RunForFloorAnalysis } from "@/lib/personalHypoFloor";
+import { buildPastRunsFromActivities } from "@/lib/pastRuns";
 
 interface BuildRunAnalysisContextInput {
   email: string;
@@ -100,13 +101,8 @@ export async function buildRunAnalysisContext(
     ? { rating: event.rating ?? undefined, comment: event.feedbackComment ?? undefined, carbsG: event.carbsIngested ?? undefined }
     : undefined;
 
-  // Past-runs floor analysis: only count entries with a real startBG (>0).
-  const pastRuns: RunForFloorAnalysis[] = history
-    .filter((h) => h.bgSummary.startBG > 0)
-    .map((h) => ({
-      startBG: h.bgSummary.startBG,
-      wentHypo: h.bgSummary.wentHypo,
-    }));
+  // Past-runs floor analysis: use the centralised helper that applies startBG > 0 filter.
+  const pastRuns = buildPastRunsFromActivities(rows);
 
   return {
     event,

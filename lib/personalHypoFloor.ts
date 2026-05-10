@@ -31,6 +31,8 @@ export interface HypoFloorAnalysis {
   dangerFloorHypoRate: number;
   /** Sample count in the danger bucket. */
   dangerFloorRunCount: number;
+  /** Hypo count (integer) in the danger bucket. */
+  dangerFloorHypoCount: number;
   /** Total runs analyzed. */
   totalRuns: number;
   /** Total runs that went hypo. */
@@ -73,6 +75,7 @@ export function computeHypoFloor(runs: RunForFloorAnalysis[]): HypoFloorAnalysis
   let dangerFloor: number | null = null;
   let dangerFloorHypoRate = 0;
   let dangerFloorRunCount = 0;
+  let dangerFloorHypoCount = 0;
   for (let i = sortedBuckets.length - 1; i >= 0; i--) {
     const key = sortedBuckets[i];
     const entry = bucketCounts.get(key);
@@ -82,6 +85,7 @@ export function computeHypoFloor(runs: RunForFloorAnalysis[]): HypoFloorAnalysis
       dangerFloor = key;
       dangerFloorHypoRate = rate;
       dangerFloorRunCount = entry.count;
+      dangerFloorHypoCount = entry.hypoCount;
       break;
     }
   }
@@ -112,6 +116,7 @@ export function computeHypoFloor(runs: RunForFloorAnalysis[]): HypoFloorAnalysis
     dangerFloor,
     dangerFloorHypoRate,
     dangerFloorRunCount,
+    dangerFloorHypoCount,
     totalRuns,
     totalHypos,
   };

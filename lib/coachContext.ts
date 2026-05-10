@@ -9,37 +9,14 @@ import type { PaceTable } from "./types";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
 import { formatPace } from "./format";
 import { formatRunLine } from "./runLine";
-import { computeHypoFloor, type RunForFloorAnalysis } from "./personalHypoFloor";
-
-const CONSENSUS_LINE =
-  "Pre-exercise BG target: 7-10 mmol/L (international consensus, Riddell 2017). Below 7 -> supplement carbs; above 15 -> avoid aerobic.";
-
-function buildPersonalHypoFloorLine(pastRuns?: RunForFloorAnalysis[]): string | null {
-  if (!pastRuns || pastRuns.length === 0) return null;
-  const analysis = computeHypoFloor(pastRuns);
-  if (!analysis) return null;
-
-  const { dangerFloor, dangerFloorHypoRate, dangerFloorRunCount, alwaysSafeFloor, alwaysSafeFloorRunCount, totalHypos } = analysis;
-
-  if (dangerFloor != null && alwaysSafeFloor != null) {
-    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}); above ${alwaysSafeFloor.toFixed(1)}: 0 hypos in ${alwaysSafeFloorRunCount} runs.`;
-  }
-  if (dangerFloor != null) {
-    return `Personal hypo signal: starts in ${dangerFloor.toFixed(1)}-${(dangerFloor + 0.5).toFixed(1)} have hypo'd ${Math.round(dangerFloorHypoRate * 100)}% of the time (${Math.round(dangerFloorHypoRate * dangerFloorRunCount)} of ${dangerFloorRunCount}).`;
-  }
-  if (alwaysSafeFloor != null) {
-    return `Personal hypo signal: starts above ${alwaysSafeFloor.toFixed(1)} have not hypo'd in ${alwaysSafeFloorRunCount} runs (${totalHypos} total hypos lower down).`;
-  }
-  return null;
-}
+import type { RunForFloorAnalysis } from "./personalHypoFloor";
+import { CONSENSUS_LINE, buildPersonalHypoFloorLine } from "./preRunBgCopy";
 
 interface CoachContext {
   phaseInfo: { name: string; week: number; progress: number };
   insights: FitnessInsights | null;
   bgModel: BGResponseModel | null;
   events: CalendarEvent[];
-  /** @deprecated Use `race.date`. Kept for back-compat; prompt builder no longer reads it. */
-  raceDate?: string;
   lthr?: number;
   maxHr?: number;
   hrZones: number[];

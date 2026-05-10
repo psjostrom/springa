@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorkoutCategory } from "@/lib/types";
+import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 
 export interface AfterStats {
   runCount: number;
@@ -12,12 +13,6 @@ export interface AfterStats {
 interface Props {
   stats: Record<WorkoutCategory, AfterStats | null>;
 }
-
-const LABEL: Record<WorkoutCategory, string> = {
-  easy: "Easy",
-  long: "Long",
-  interval: "Interval / Club",
-};
 
 const LEVER_LINES: Record<WorkoutCategory, string> = {
   long: "reduce the rebound (reconnect pump earlier, smaller recovery carb) and the correction bolus shrinks — likely cuts the late hypo with it.",
@@ -62,7 +57,7 @@ function Card({
     >
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-bold">
-          {LABEL[cat]}
+          {WORKOUT_CATEGORY_LABEL[cat]}
         </span>
         <span className="text-xs text-muted">{stats.runCount} runs</span>
       </div>

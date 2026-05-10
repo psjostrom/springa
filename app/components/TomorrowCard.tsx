@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import type { WorkoutCategory } from "@/lib/types";
 import type { PredictedOutcome } from "@/lib/runOutcomePrediction";
 import type { FuelRecommendation } from "@/lib/fuelRecommendation";
+import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 
 export interface TomorrowMatchSummary {
   activityId: string;
@@ -41,12 +42,6 @@ const HYPO = 4.0;
 const MIN = 3.5;
 const MAX = 14.0;
 const SPAN = MAX - MIN;
-
-const CATEGORY_LABEL: Record<WorkoutCategory, string> = {
-  easy: "easy",
-  long: "long",
-  interval: "interval",
-};
 
 const LEVER_LINES: Record<WorkoutCategory, string> = {
   long: "Reconnect pump within 5 min of stop · skip post-run quick carbs · wait 30 min before correction bolus.",
@@ -106,7 +101,7 @@ export function TomorrowCard({
       {/* HEADER */}
       <div className="flex justify-between items-center text-[11px] uppercase tracking-wider text-muted font-bold">
         <span>{formatHeader(workout.date, workout.timeOfDay)}</span>
-        <span>{CATEGORY_LABEL[workout.category]}</span>
+        <span>{WORKOUT_CATEGORY_LABEL[workout.category].toUpperCase()}</span>
       </div>
       <div className="mt-1 text-base font-bold text-text">{workout.name}</div>
       <div className="text-xs text-muted">
@@ -193,7 +188,7 @@ export function TomorrowCard({
             <FuelHeadline
               value={`+${prediction.after.medianRebound.toFixed(1)}`}
               unit="mmol/L typical peak"
-              meta={`${prediction.after.matchCount} past ${CATEGORY_LABEL[workout.category]}s · range +${prediction.after.p10Rebound.toFixed(1)} to +${prediction.after.p90Rebound.toFixed(1)}`}
+              meta={`${prediction.after.matchCount} past ${WORKOUT_CATEGORY_LABEL[workout.category]}s · range +${prediction.after.p10Rebound.toFixed(1)} to +${prediction.after.p90Rebound.toFixed(1)}`}
               valueClass="text-warning"
             />
 
@@ -209,7 +204,7 @@ export function TomorrowCard({
               <strong>
                 {prediction.after.bigReboundCount} of {prediction.after.matchCount}
               </strong>{" "}
-              recent {CATEGORY_LABEL[workout.category]}s rebounded &gt; +2.0 mmol/L within one hour.{" "}
+              recent {WORKOUT_CATEGORY_LABEL[workout.category]}s rebounded &gt; +2.0 mmol/L within one hour.{" "}
               <strong>Likely chain:</strong> rebound → correction bolus →{" "}
               {prediction.after.lateHypoCount} of {prediction.after.matchCount} late-hypo within 2 h.
             </p>

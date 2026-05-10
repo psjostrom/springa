@@ -30,7 +30,7 @@ import {
   diabetesModeAtom,
   cachedActivitiesAtom,
 } from "../atoms";
-import type { RunForFloorAnalysis } from "@/lib/personalHypoFloor";
+import { buildPastRunsFromActivities } from "@/lib/pastRuns";
 
 function getMessageText(parts: { type: string; text?: string }[]): string {
   return parts
@@ -74,16 +74,8 @@ export function CoachScreen() {
     [settings],
   );
 
-  const pastRuns = useMemo<RunForFloorAnalysis[]>(
-    () =>
-      cachedActivities.flatMap((a) => {
-        const glucose = a.glucose;
-        if (!glucose || glucose.length === 0) return [];
-        return [{
-          startBG: glucose[0].value,
-          wentHypo: glucose.some((g) => g.value < 4.0),
-        }];
-      }),
+  const pastRuns = useMemo(
+    () => buildPastRunsFromActivities(cachedActivities),
     [cachedActivities],
   );
 
