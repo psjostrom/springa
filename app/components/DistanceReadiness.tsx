@@ -9,9 +9,15 @@ interface Props {
 
 export function DistanceReadiness({ longestRun, race }: Props) {
   if (!longestRun) return null;
-  const longestKm = Math.round(longestRun.distanceKm);
-  const raceKm = race?.distanceKm ? Math.round(race.distanceKm) : null;
-  const gap = raceKm != null ? Math.max(0, raceKm - longestKm) : null;
+  const longestKmRaw = longestRun.distanceKm;
+  const raceKmRaw = race?.distanceKm ?? null;
+
+  // Skip rendering if longest is zero or negative, or race is invalid
+  if (longestKmRaw <= 0 || (raceKmRaw != null && raceKmRaw <= 0)) return null;
+
+  const longestKmDisplay = Math.round(longestKmRaw);
+  const raceKmDisplay = raceKmRaw != null ? Math.round(raceKmRaw) : null;
+  const gap = raceKmRaw != null ? Math.max(0, raceKmRaw - longestKmRaw) : null;
 
   return (
     <div className="bg-surface rounded-xl border border-border p-4">
@@ -22,14 +28,14 @@ export function DistanceReadiness({ longestRun, race }: Props) {
         )}
       </div>
       <div className="grid grid-cols-3 gap-2 my-3">
-        <Stat value={longestKm} label="Longest run" unit="km" />
-        {raceKm != null && <Stat value={raceKm} label="Race" unit="km" accent="brand" />}
-        {gap != null && <Stat value={gap} label="Gap" unit="km" accent="success" />}
+        <Stat value={longestKmDisplay} label="Longest run" unit="km" />
+        {raceKmDisplay != null && <Stat value={raceKmDisplay} label="Race" unit="km" accent="brand" />}
+        {gap != null && <Stat value={Math.round(gap)} label="Gap" unit="km" accent="success" />}
       </div>
-      {raceKm != null && <ProgressBar pct={Math.min(100, (longestKm / raceKm) * 100)} />}
+      {raceKmRaw != null && <ProgressBar pct={Math.min(100, (longestKmRaw / raceKmRaw) * 100)} />}
       <div className="text-xs text-muted pt-3 mt-3 border-t border-border">
         Longest run: <strong className="text-text">{longestRun.name}</strong> on {longestRun.dateISO}
-        {gap != null && <> — you&apos;re <strong className="text-text">{gap}km</strong> short of race distance.</>}
+        {gap != null && <> — you&apos;re <strong className="text-text">{Math.round(gap)}km</strong> short of race distance.</>}
       </div>
     </div>
   );

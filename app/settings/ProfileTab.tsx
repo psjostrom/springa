@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { UserSettings } from "@/lib/settings";
 
 interface ProfileTabProps {
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
+}
+
+function parseNumberOrUndefined(s: string): number | undefined {
+  const trimmed = s.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export function ProfileTab({ settings, onSave }: ProfileTabProps) {
@@ -24,6 +31,21 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
+  // Resync form state when settings prop changes (async-loaded from enriched endpoint)
+  useEffect(() => {
+    setDob(settings.dob ?? "");
+    setWeightKg(settings.weightKg?.toString() ?? "");
+    setHeightCm(settings.heightCm?.toString() ?? "");
+    setRaceName(settings.raceName ?? "");
+    setRaceDist(settings.raceDist?.toString() ?? "");
+    setRaceDate(settings.raceDate ?? "");
+    setT1dSinceYear(settings.t1dSinceYear?.toString() ?? "");
+    setPumpModel(settings.pumpModel ?? "");
+    setCgmModel(settings.cgmModel ?? "");
+    setLoopSystem(settings.loopSystem ?? "");
+    setPumpDuringRuns(settings.pumpDuringRuns ?? "");
+  }, [settings]);
+
   const handleSave = async () => {
     setSaving(true);
     setStatus("");
@@ -36,12 +58,12 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
         updates.dob = newDob;
       }
 
-      const parsedWeight = weightKg.trim() ? Number(weightKg) : undefined;
+      const parsedWeight = parseNumberOrUndefined(weightKg);
       if (parsedWeight !== settings.weightKg) {
         updates.weightKg = parsedWeight;
       }
 
-      const parsedHeight = heightCm.trim() ? Number(heightCm) : undefined;
+      const parsedHeight = parseNumberOrUndefined(heightCm);
       if (parsedHeight !== settings.heightCm) {
         updates.heightCm = parsedHeight;
       }
@@ -51,7 +73,7 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
         updates.raceName = newRaceName;
       }
 
-      const parsedRaceDist = raceDist.trim() ? Number(raceDist) : undefined;
+      const parsedRaceDist = parseNumberOrUndefined(raceDist);
       if (parsedRaceDist !== settings.raceDist) {
         updates.raceDist = parsedRaceDist;
       }
@@ -61,7 +83,7 @@ export function ProfileTab({ settings, onSave }: ProfileTabProps) {
         updates.raceDate = newRaceDate;
       }
 
-      const parsedT1dYear = t1dSinceYear.trim() ? Number(t1dSinceYear) : undefined;
+      const parsedT1dYear = parseNumberOrUndefined(t1dSinceYear);
       if (parsedT1dYear !== settings.t1dSinceYear) {
         updates.t1dSinceYear = parsedT1dYear;
       }

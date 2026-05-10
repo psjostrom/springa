@@ -122,6 +122,15 @@ export async function PUT(req: Request) {
   const allowed: Partial<UserSettings> = {};
   for (const key of WRITABLE_SETTINGS_KEYS) {
     if (body[key] !== undefined) {
+      // Validate pumpDuringRuns enum
+      if (key === "pumpDuringRuns") {
+        const val = body.pumpDuringRuns;
+        const validValues = new Set(["on", "off", "mixed", null, undefined]);
+        if (!validValues.has(val)) {
+          console.warn(`[settings] Invalid pumpDuringRuns value, dropping field`);
+          continue;
+        }
+      }
       Object.assign(allowed, { [key]: body[key] });
     }
   }
