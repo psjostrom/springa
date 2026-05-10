@@ -38,19 +38,23 @@ export async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null
   }
 }
 
-export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number }> {
+export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number; vo2max?: number; thresholdPaceMinPerKm?: number }> {
   const data = await fetchAthleteRaw(apiKey);
   if (!data) return {};
   const runSettings = Array.isArray(data.sportSettings)
     ? (data.sportSettings as { id?: number; types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[]).find((s) => s.types?.includes("Run"))
     : null;
   if (!runSettings) return {};
-  const result: { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number } = {};
+  const result: { lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number; vo2max?: number; thresholdPaceMinPerKm?: number } = {};
   if (typeof runSettings.lthr === "number" && runSettings.lthr > 0) result.lthr = runSettings.lthr;
   if (typeof runSettings.max_hr === "number" && runSettings.max_hr > 0) result.maxHr = runSettings.max_hr;
   if (Array.isArray(runSettings.hr_zones) && runSettings.hr_zones.length === 5) result.hrZones = runSettings.hr_zones;
   if (typeof data.icu_resting_hr === "number" && data.icu_resting_hr > 0) result.restingHr = data.icu_resting_hr;
   if (typeof runSettings.id === "number") result.sportSettingsId = runSettings.id;
+  if (typeof data.vo2max === "number" && data.vo2max > 0) result.vo2max = data.vo2max;
+  if (typeof data.icu_threshold_pace === "number" && data.icu_threshold_pace > 0) {
+    result.thresholdPaceMinPerKm = 1000 / data.icu_threshold_pace / 60;
+  }
   return result;
 }
 

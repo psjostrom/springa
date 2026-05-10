@@ -11,6 +11,7 @@ import {
   updateThresholdPace,
   updatePaceZones,
   updateAthleteHRZones,
+  fetchAthleteProfile,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -1015,5 +1016,61 @@ describe("updateAthleteHRZones", () => {
     await updateAthleteHRZones("test-key", 123, [125, 156, 172, 187, 193], 55);
     const handlers = await import("./msw/handlers");
     expect(handlers.capturedAthletePayload).toEqual({ icu_resting_hr: 55 });
+  });
+});
+
+describe("fetchAthleteProfile", () => {
+  it("includes vo2max and thresholdPaceMinPerKm when present", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json({
+          vo2max: 49,
+          icu_threshold_pace: 3.413,
+          sportSettings: [
+            {
+              id: 12,
+              types: ["Run"],
+              lthr: 168,
+              max_hr: 189,
+              hr_zones: [],
+            },
+          ],
+        });
+      }),
+    );
+
+    const result = await fetchAthleteProfile("test-api-key");
+    expect(result.vo2max).toBe(49);
+    expect(result.thresholdPaceMinPerKm).toBeCloseTo(4.883, 2);
+  });
+
+  it("omits vo2max and thresholdPaceMinPerKm when absent", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json({
+          sportSettings: [{ id: 12, types: ["Run"] }],
+        });
+      }),
+    );
+
+    const result = await fetchAthleteProfile("test-api-key");
+    expect(result.vo2max).toBeUndefined();
+    expect(result.thresholdPaceMinPerKm).toBeUndefined();
+  });
+
+  it("treats vo2max <= 0 and threshold_pace <= 0 as absent", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        return HttpResponse.json({
+          vo2max: 0,
+          icu_threshold_pace: 0,
+          sportSettings: [{ id: 12, types: ["Run"] }],
+        });
+      }),
+    );
+
+    const result = await fetchAthleteProfile("test-api-key");
+    expect(result.vo2max).toBeUndefined();
+    expect(result.thresholdPaceMinPerKm).toBeUndefined();
   });
 });
