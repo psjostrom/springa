@@ -22,7 +22,7 @@ export interface PostRunContext {
   readingCount: number;
   peak30m: number; // max BG in 30m after end
   spike30m: number; // peak30m - endBG (positive = BG rose post-run)
-  peak60mAboveEnd: number; // max(reading.mmol - endBG) within 60 min after run end; 0 if never rises above end
+  peak60mAboveEnd?: number; // max(reading.mmol - endBG) within 60 min after run end; 0 if never rises above end. Optional because legacy rows pre-date Task 8.
 }
 
 export interface RunBGContext {

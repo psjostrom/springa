@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildIntelScreenData } from "../intelScreenData";
+import {
+  buildIntelScreenData,
+  buildHistoryData,
+  buildTomorrowData,
+} from "../intelScreenData";
 import type { CachedActivity } from "../activityStreamsDb";
 import type { CalendarEvent } from "../types";
 import type { UserSettings } from "../settings";
@@ -25,14 +29,15 @@ function makeActivity(overrides: Partial<CachedActivity> & { activityId: string 
 
 describe("buildIntelScreenData", () => {
   it("returns shape with all four sections present", () => {
+    // glucose `time` is in MINUTES — 0, 30, 60 = a one-hour run.
     const activities: CachedActivity[] = [
       makeActivity({
         activityId: "a1",
         category: "easy",
         glucose: [
           { time: 0, value: 8.0 },
-          { time: 1800, value: 6.5 },
-          { time: 3600, value: 5.2 },
+          { time: 30, value: 6.5 },
+          { time: 60, value: 5.2 },
         ],
         runBGContext: {
           activityId: "a1",
@@ -57,8 +62,8 @@ describe("buildIntelScreenData", () => {
         category: "long",
         glucose: [
           { time: 0, value: 10.0 },
-          { time: 1800, value: 7.0 },
-          { time: 3600, value: 3.8 },
+          { time: 30, value: 7.0 },
+          { time: 60, value: 3.8 },
         ],
         runBGContext: {
           activityId: "a2",
@@ -126,8 +131,12 @@ describe("buildIntelScreenData", () => {
     expect(result.duringStats.easy).not.toBeNull();
     expect(result.duringStats.easy?.runCount).toBe(1);
     expect(result.duringStats.easy?.medianEndBG).toBeCloseTo(5.2, 1);
+    // (8.0 - 5.2) over 1 hour = 2.8 mmol/L per hour. Locks in the units fix
+    // (was previously 60x too large because we divided by 3600 instead of 60).
+    expect(result.duringStats.easy?.avgDropPerHr).toBeCloseTo(2.8, 1);
     expect(result.duringStats.long).not.toBeNull();
     expect(result.duringStats.long?.hypoCount).toBe(1); // 3.8 < 4.0
+    expect(result.duringStats.long?.avgDropPerHr).toBeCloseTo(6.2, 1);
     expect(result.duringStats.interval).toBeNull();
 
     // afterStats
@@ -151,6 +160,7 @@ describe("buildIntelScreenData", () => {
     expect(result.tomorrow?.workout.distanceKm).toBe(6);
     expect(result.tomorrow?.workout.targetHRRange).toContain("Z2");
     expect(result.tomorrow?.currentBG).toBe(7.5);
+    expect(result.tomorrow?.currentBGSource).toBe("live");
     // matches array exists (may be empty when no soft predictors hit)
     expect(Array.isArray(result.tomorrow?.matches)).toBe(true);
   });
@@ -161,5 +171,58 @@ describe("buildIntelScreenData", () => {
     expect(result.distance.longestRun).toBeNull();
     expect(result.duringStats.easy).toBeNull();
     expect(result.afterStats.easy).toBeNull();
+  });
+
+  it("excludes legacy run_bg_context rows lacking peak60mAboveEnd from after stats", () => {
+    const activities: CachedActivity[] = [
+      makeActivity({
+        activityId: "legacy",
+        category: "easy",
+        glucose: [
+          { time: 0, value: 8.0 },
+          { time: 60, value: 5.0 },
+        ],
+        runBGContext: {
+          activityId: "legacy",
+          category: "easy",
+          pre: { startBG: 8.0, entrySlope30m: 0.0, entryStability: 0.5, readingCount: 6 },
+          // Pre-Task-8 row: post exists but peak60mAboveEnd is undefined.
+          post: {
+            endBG: 5.0,
+            recoveryDrop30m: -0.2,
+            nadirPostRun: 4.8,
+            timeToStable: 30,
+            postRunHypo: false,
+            readingCount: 6,
+            peak30m: 5.5,
+            spike30m: 0.5,
+          } as never,
+          totalBGImpact: -3.0,
+        },
+      }),
+    ];
+    const result = buildHistoryData(activities, [], {});
+    // Legacy row is gracefully excluded — afterStats stays null instead of
+    // producing NaN medians from undefined peak60mAboveEnd.
+    expect(result.afterStats.easy).toBeNull();
+  });
+
+  it("flags currentBGSource as fallback and surfaces null currentBG when no live reading", () => {
+    const events: CalendarEvent[] = [
+      {
+        id: "e-future",
+        date: new Date("2026-04-08T07:00:00Z"),
+        name: "W02 Easy",
+        description: "",
+        type: "planned",
+        category: "easy",
+        distance: 6000,
+        duration: 2100,
+      },
+    ];
+    const tomorrow = buildTomorrowData([], events, {}, null, new Date("2026-04-07T12:00:00Z"));
+    expect(tomorrow).not.toBeNull();
+    expect(tomorrow?.currentBG).toBeNull();
+    expect(tomorrow?.currentBGSource).toBe("fallback");
   });
 });

@@ -11,7 +11,6 @@ const at = (fuelRate: number, ends: number[]): MatchableRunWithPost[] =>
     entrySlope: null,
     fuelRate,
     hourOfDay: 7,
-    recentLoad: 50,
     endBG: e,
     wentHypo: e < 4.0,
     peak60mAboveEnd: 1,

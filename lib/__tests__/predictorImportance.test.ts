@@ -10,7 +10,6 @@ const synthHistory = (count = 50): RunForRanking[] => {
       entrySlope: 0,
       fuelRate: 60,
       hourOfDay: 7,
-      recentLoad: 50,
       endBG: startBG - 2,
       wentHypo: startBG < 7,
     });
@@ -40,16 +39,16 @@ describe("rankPredictors", () => {
 
   it("excludes runs where the predictor is null from sampleCount", () => {
     const partial: RunForRanking[] = [
-      { startBG: 8, entrySlope: 0.1,  fuelRate: 60, hourOfDay: 7, recentLoad: 50, endBG: 5, wentHypo: false },
-      { startBG: 9, entrySlope: null, fuelRate: 60, hourOfDay: 7, recentLoad: 50, endBG: 6, wentHypo: false },
+      { startBG: 8, entrySlope: 0.1,  fuelRate: 60, hourOfDay: 7, endBG: 5, wentHypo: false },
+      { startBG: 9, entrySlope: null, fuelRate: 60, hourOfDay: 7, endBG: 6, wentHypo: false },
     ];
     const entrySlopeScore = rankPredictors(partial).find((p) => p.predictor === "entrySlope");
     expect(entrySlopeScore?.sampleCount).toBe(1);
   });
 
-  it("returns all 5 predictors", () => {
+  it("returns all 4 predictors", () => {
     const ranked = rankPredictors(synthHistory());
     const names = ranked.map((p) => p.predictor).sort();
-    expect(names).toEqual(["entrySlope", "fuelRate", "recentLoad", "startBG", "timeOfDay"]);
+    expect(names).toEqual(["entrySlope", "fuelRate", "startBG", "timeOfDay"]);
   });
 });

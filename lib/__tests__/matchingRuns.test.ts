@@ -9,7 +9,6 @@ const mk = (over: Partial<MatchableRun>): MatchableRun => ({
   entrySlope: 0,
   fuelRate: 60,
   hourOfDay: 7,
-  recentLoad: 50,
   endBG: 7.0,
   wentHypo: false,
   ...over,
@@ -20,7 +19,6 @@ const target: MatchTarget = {
   startBG: 8.5,
   fuelRate: 60,
   hourOfDay: 7,
-  recentLoad: 50,
 };
 
 describe("findMatchingRuns", () => {

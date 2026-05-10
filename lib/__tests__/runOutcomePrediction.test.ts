@@ -13,7 +13,6 @@ const mk = (
   entrySlope: null,
   fuelRate: 60,
   hourOfDay: 7,
-  recentLoad: 50,
   endBG,
   wentHypo: endBG < 4.0,
   peak60mAboveEnd: peak60,

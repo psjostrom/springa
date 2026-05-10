@@ -83,7 +83,7 @@ import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
-import { buildIntelScreenData } from "@/lib/intelScreenData";
+import { buildHistoryData, buildTomorrowData } from "@/lib/intelScreenData";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
@@ -411,10 +411,23 @@ export function IntelScreen() {
     };
   }, [events, planTarget, paceTable, thresholdPace]);
 
-  // Build adapter inputs for the new BG/fuel components.
-  const intelData = useMemo(
-    () => buildIntelScreenData(cachedActivities, events, settings ?? {}, currentBG),
+  // History is the heavy pass — iterates every activity. Cache on inputs that
+  // don't change with each CGM tick.
+  const historyData = useMemo(
+    () => buildHistoryData(cachedActivities, events, settings ?? {}),
+    [cachedActivities, events, settings],
+  );
+
+  // Tomorrow is light — re-runs cheaply on every CGM tick (every 5 min) so the
+  // displayed fuel recommendation reflects the live BG without redoing history.
+  const tomorrowData = useMemo(
+    () => buildTomorrowData(cachedActivities, events, settings ?? {}, currentBG),
     [cachedActivities, events, settings, currentBG],
+  );
+
+  const intelData = useMemo(
+    () => ({ ...historyData, tomorrow: tomorrowData }),
+    [historyData, tomorrowData],
   );
 
   const duringRunCount = useMemo(() => {

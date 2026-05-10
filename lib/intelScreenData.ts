@@ -36,20 +36,26 @@ export interface TomorrowWorkoutSummary {
 
 export interface TomorrowData {
   workout: TomorrowWorkoutSummary;
-  currentBG: number;
+  /** null when no live CGM reading is available; UI should label this clearly. */
+  currentBG: number | null;
+  /** "live" = real CGM reading, "fallback" = no live reading, matched against typical 8.0 mmol/L. */
+  currentBGSource: "live" | "fallback";
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
 }
 
-export interface IntelScreenData {
+export interface IntelHistoryData {
   duringStats: Record<WorkoutCategory, CategoryStats | null>;
   afterStats: Record<WorkoutCategory, AfterStats | null>;
-  tomorrow: TomorrowData | null;
   distance: {
     longestRun: LongestRun | null;
     race: { name?: string; distanceKm?: number; date?: string } | null;
   };
+}
+
+export interface IntelScreenData extends IntelHistoryData {
+  tomorrow: TomorrowData | null;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -60,8 +66,7 @@ const CATEGORIES: WorkoutCategory[] = ["easy", "long", "interval"];
 const HYPO = 4.0;
 const BIG_REBOUND_THRESHOLD = 2.0;
 const DEFAULT_FUEL_RATE = 60;
-const RECENT_LOAD_DAYS = 7;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_START_BG = 8.0;
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -95,8 +100,10 @@ function startBGFromActivity(activity: CachedActivity): number | null {
 
 function durationHoursFromGlucose(glucose: { time: number; value: number }[]): number {
   if (glucose.length < 2) return 0;
-  const seconds = glucose[glucose.length - 1].time - glucose[0].time;
-  return seconds / 3600;
+  // glucose `time` is in MINUTES (verified at lib/bgAlignment.ts where hrPoint.time
+  // is treated as minutes and multiplied by 60*1000 to reach milliseconds).
+  const minutes = glucose[glucose.length - 1].time - glucose[0].time;
+  return minutes / 60;
 }
 
 function emptyCategoryRecord<T>(): Record<WorkoutCategory, T | null> {
@@ -173,10 +180,15 @@ function buildAfterStats(
     for (const a of withPost) {
       const post = a.runBGContext?.post;
       if (!post) continue;
+      // Legacy run_bg_context rows pre-date peak60mAboveEnd (Task 8). Treat as
+      // missing-after-data so they don't pollute medians or undercount rebounds.
+      if (post.peak60mAboveEnd == null) continue;
       rebounds.push(post.peak60mAboveEnd);
       if (post.peak60mAboveEnd > BIG_REBOUND_THRESHOLD) bigReboundCount++;
       if (post.postRunHypo) lateHypoCount++;
     }
+
+    if (rebounds.length === 0) continue;
 
     out[cat] = {
       runCount: rebounds.length,
@@ -209,7 +221,6 @@ function getTargetHRRange(
 
 function activityToMatchableRun(
   activity: CachedActivity,
-  recentLoad: number,
 ): MatchableRun | null {
   const startBG = activity.runBGContext?.pre?.startBG;
   const endBG = endBGFromActivity(activity);
@@ -233,7 +244,6 @@ function activityToMatchableRun(
     fuelRate: activity.fuelRate,
     entrySlope: activity.runBGContext?.pre?.entrySlope30m ?? null,
     hourOfDay,
-    recentLoad,
     wentHypo,
   };
 }
@@ -244,23 +254,13 @@ function activityWithPost(
 ): MatchableRunWithPost | null {
   const post = activity.runBGContext?.post;
   if (!post) return null;
+  // Legacy rows pre-date peak60mAboveEnd; exclude them from prediction inputs.
+  if (post.peak60mAboveEnd == null) return null;
   return {
     ...base,
     peak60mAboveEnd: post.peak60mAboveEnd,
     postRunHypo: post.postRunHypo,
   };
-}
-
-function recentLoadFromEvents(events: CalendarEvent[], reference: Date): number {
-  // Sum durations (minutes) of completed runs in the last RECENT_LOAD_DAYS.
-  const cutoff = reference.getTime() - RECENT_LOAD_DAYS * ONE_DAY_MS;
-  let totalMin = 0;
-  for (const e of events) {
-    if (e.type !== "completed") continue;
-    if (e.date.getTime() < cutoff || e.date.getTime() > reference.getTime()) continue;
-    if (e.duration) totalMin += e.duration / 60;
-  }
-  return Math.round(totalMin);
 }
 
 function pickNextPlannedRun(events: CalendarEvent[], reference: Date): CalendarEvent | null {
@@ -288,23 +288,24 @@ function buildTomorrow(
   const category: WorkoutCategory =
     next.category === "race" ? "long" : (next.category as WorkoutCategory);
 
-  // Fallback: if live CGM unavailable, assume mid-consensus 8.0 mmol/L (Riddell 2017: 7-10).
-  const startBG = currentBG ?? 8.0;
+  // Internal target uses 8.0 (Riddell 2017 mid-consensus) when no live CGM reading
+  // exists — that's a reasonable anchor for finding similar past runs. The UI is
+  // told via currentBGSource that we don't actually have a live reading.
+  const currentBGSource: TomorrowData["currentBGSource"] = currentBG == null ? "fallback" : "live";
+  const startBG = currentBG ?? FALLBACK_START_BG;
   const fuelRate = next.fuelRate ?? DEFAULT_FUEL_RATE;
   const hourOfDay = next.date.getHours();
-  const recentLoad = recentLoadFromEvents(events, reference);
 
   const target: MatchTarget = {
     category,
     startBG,
     fuelRate,
     hourOfDay,
-    recentLoad,
     entrySlope: null,
   };
 
   const history: MatchableRun[] = activities
-    .map((a) => activityToMatchableRun(a, recentLoad))
+    .map((a) => activityToMatchableRun(a))
     .filter((r): r is MatchableRun => r != null);
 
   const { matches } = findMatchingRuns(target, history);
@@ -349,7 +350,8 @@ function buildTomorrow(
       distanceKm,
       targetHRRange,
     },
-    currentBG: startBG,
+    currentBG: currentBG,
+    currentBGSource,
     recommendation,
     prediction,
     matches: matchesSummary,
@@ -376,7 +378,7 @@ function formatHHMM(d: Date): string {
 function buildDistance(
   events: CalendarEvent[],
   settings: UserSettings,
-): IntelScreenData["distance"] {
+): IntelHistoryData["distance"] {
   const longestRun = getLongestRun(events);
   const race =
     settings.raceName || settings.raceDist || settings.raceDate
@@ -390,8 +392,39 @@ function buildDistance(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Entry point
+// Entry points
 // ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Heavy history-only computation. Iterates all activities and events.
+ * Cache-friendly: only depends on activities, events, and settings — does NOT
+ * change when live CGM ticks every 5 min.
+ */
+export function buildHistoryData(
+  activities: CachedActivity[],
+  events: CalendarEvent[],
+  settings: UserSettings,
+): IntelHistoryData {
+  return {
+    duringStats: buildDuringStats(activities),
+    afterStats: buildAfterStats(activities),
+    distance: buildDistance(events, settings),
+  };
+}
+
+/**
+ * Light tomorrow-only computation. Re-runs cheaply on each CGM tick because
+ * the heavy history pass is memoized separately by callers.
+ */
+export function buildTomorrowData(
+  activities: CachedActivity[],
+  events: CalendarEvent[],
+  settings: UserSettings,
+  currentBG: number | null,
+  reference: Date = new Date(),
+): TomorrowData | null {
+  return buildTomorrow(activities, events, settings, currentBG, reference);
+}
 
 export function buildIntelScreenData(
   activities: CachedActivity[],
@@ -401,9 +434,7 @@ export function buildIntelScreenData(
   reference: Date = new Date(),
 ): IntelScreenData {
   return {
-    duringStats: buildDuringStats(activities),
-    afterStats: buildAfterStats(activities),
-    tomorrow: buildTomorrow(activities, events, settings, currentBG, reference),
-    distance: buildDistance(events, settings),
+    ...buildHistoryData(activities, events, settings),
+    tomorrow: buildTomorrowData(activities, events, settings, currentBG, reference),
   };
 }

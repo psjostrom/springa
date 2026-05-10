@@ -13,7 +13,8 @@ const sample = {
     distanceKm: 7,
     targetHRRange: "152-158 bpm",
   },
-  currentBG: 8.5,
+  currentBG: 8.5 as number | null,
+  currentBGSource: "live" as const,
   recommendation: {
     fuelRate: 60,
     basis: "evidence" as const,
@@ -49,7 +50,7 @@ describe("TomorrowCard", () => {
   it("renders workout name, recommended fuel, predicted end BG range", () => {
     render(<TomorrowCard {...sample} />);
     expect(screen.getByText(/W14 Long Intervals/)).toBeInTheDocument();
-    expect(screen.getByText(/60/)).toBeInTheDocument();
+    expect(screen.getAllByText(/60/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/5\.8/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/4\.4/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/6\.6/).length).toBeGreaterThan(0);
@@ -73,5 +74,37 @@ describe("TomorrowCard", () => {
   it("shows 'no matching history yet' when prediction is null", () => {
     render(<TomorrowCard {...sample} prediction={null} recommendation={null} matches={[]} />);
     expect(screen.getAllByText(/no matching history yet/i).length).toBeGreaterThan(0);
+  });
+
+  it("labels the fuel chip with the per-rate subset count, not the overall total", () => {
+    render(<TomorrowCard {...sample} />);
+    // Sample has matchCountAtRate=8, fuelRate=60 — meta should mention the per-rate subset.
+    expect(screen.getByText(/8 runs at 60 g\/h/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the gap when more matches exist than have post-run data", () => {
+    render(
+      <TomorrowCard
+        {...sample}
+        matches={[
+          ...sample.matches,
+          { activityId: "x3", date: "2026-04-20", startBG: 9, endBG: 6, fuelRate: 60 },
+          { activityId: "x4", date: "2026-04-19", startBG: 8, endBG: 5, fuelRate: 60 },
+          { activityId: "x5", date: "2026-04-18", startBG: 7, endBG: 4, fuelRate: 60 },
+          { activityId: "x6", date: "2026-04-17", startBG: 8, endBG: 5, fuelRate: 60 },
+          { activityId: "x7", date: "2026-04-16", startBG: 8, endBG: 5, fuelRate: 60 },
+          { activityId: "x8", date: "2026-04-15", startBG: 8, endBG: 5, fuelRate: 60 },
+          { activityId: "x9", date: "2026-04-14", startBG: 8, endBG: 5, fuelRate: 60 },
+        ]}
+      />,
+    );
+    // 9 matches total, 8 have post-run data — gap label should appear.
+    expect(screen.getByText(/Showing 9 matches; 8 have post-run data/i)).toBeInTheDocument();
+  });
+
+  it("renders fallback BG label when no live reading is available", () => {
+    render(<TomorrowCard {...sample} currentBG={null} currentBGSource="fallback" />);
+    expect(screen.getByText(/no live BG/i)).toBeInTheDocument();
+    expect(screen.getByText(/typical 8\.0 mmol\/L start/i)).toBeInTheDocument();
   });
 });

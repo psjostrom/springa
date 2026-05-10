@@ -3,12 +3,11 @@ export interface RunForRanking {
   entrySlope: number | null;
   fuelRate: number | null;
   hourOfDay: number;
-  recentLoad: number;
   endBG: number;
   wentHypo: boolean;
 }
 
-export type PredictorName = "startBG" | "entrySlope" | "fuelRate" | "timeOfDay" | "recentLoad";
+export type PredictorName = "startBG" | "entrySlope" | "fuelRate" | "timeOfDay";
 
 export interface PredictorScore {
   predictor: PredictorName;
@@ -46,7 +45,6 @@ const CANDIDATES: Candidate[] = [
   { name: "entrySlope", pick: (r) => r.entrySlope },
   { name: "fuelRate",   pick: (r) => r.fuelRate },
   { name: "timeOfDay",  pick: (r) => r.hourOfDay },
-  { name: "recentLoad", pick: (r) => r.recentLoad },
 ];
 
 export function rankPredictors(history: RunForRanking[]): PredictorScore[] {

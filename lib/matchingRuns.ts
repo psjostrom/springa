@@ -6,7 +6,6 @@ export interface MatchTarget {
   startBG: number;
   fuelRate: number | null;
   hourOfDay: number;
-  recentLoad: number;
   entrySlope?: number | null;
 }
 
@@ -27,7 +26,6 @@ const SOFT_WINDOWS: Record<PredictorName, number> = {
   entrySlope: 0.05,
   fuelRate: 10,
   timeOfDay: 3,
-  recentLoad: 30,
 };
 
 function inWindow(predictor: PredictorName, target: MatchTarget, run: MatchableRun): boolean {
@@ -43,8 +41,6 @@ function inWindow(predictor: PredictorName, target: MatchTarget, run: MatchableR
       return Math.abs(run.fuelRate - target.fuelRate) <= window;
     case "timeOfDay":
       return Math.abs(run.hourOfDay - target.hourOfDay) <= window;
-    case "recentLoad":
-      return Math.abs(run.recentLoad - target.recentLoad) <= window;
   }
 }
 

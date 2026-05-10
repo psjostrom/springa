@@ -26,11 +26,16 @@ export interface TomorrowWorkoutSummary {
 
 interface Props {
   workout: TomorrowWorkoutSummary;
-  currentBG: number;
+  /** null when no live CGM reading is available; we render a fallback label. */
+  currentBG: number | null;
+  /** "live" = real CGM reading, "fallback" = matched against typical 8.0 mmol/L. */
+  currentBGSource: "live" | "fallback";
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
 }
+
+const FALLBACK_START_BG = 8.0;
 
 const HYPO = 4.0;
 const MIN = 3.5;
@@ -71,11 +76,27 @@ function formatMatchDate(dateIso: string): string {
 export function TomorrowCard({
   workout,
   currentBG,
+  currentBGSource,
   recommendation,
   prediction,
   matches,
 }: Props) {
   const [matchesOpen, setMatchesOpen] = useState(false);
+  const liveBG = currentBGSource === "live" && currentBG != null ? currentBG : null;
+  // The matching engine targets 8.0 mmol/L when no live reading exists.
+  const ribbonStartBG = liveBG ?? FALLBACK_START_BG;
+  const bgMeta =
+    liveBG == null
+      ? `no live BG · matching against typical ${FALLBACK_START_BG.toFixed(1)} mmol/L start`
+      : `current BG ${liveBG.toFixed(1)}`;
+
+  // Three different counts can diverge silently: post-context filtering reduces
+  // prediction.during.matchCount below matches.length, and
+  // recommendation.matchCountAtRate is a per-fuel-rate subset of that. Surface
+  // the gap rather than render three numbers in three places.
+  const predictionMatchCount = prediction?.during.matchCount ?? 0;
+  const totalMatches = matches.length;
+  const showsPostGap = totalMatches > predictionMatchCount;
 
   return (
     <div
@@ -89,8 +110,7 @@ export function TomorrowCard({
       </div>
       <div className="mt-1 text-base font-bold text-text">{workout.name}</div>
       <div className="text-xs text-muted">
-        ~{workout.durationMin} min · {workout.distanceKm} km · target HR {workout.targetHRRange} · current BG{" "}
-        {currentBG.toFixed(1)}
+        ~{workout.durationMin} min · {workout.distanceKm} km · target HR {workout.targetHRRange} · {bgMeta}
       </div>
 
       {/* DURING */}
@@ -100,11 +120,11 @@ export function TomorrowCard({
             <FuelHeadline
               value={String(recommendation.fuelRate)}
               unit="g/h"
-              meta={`${recommendation.matchCountAtRate} matching runs · ${prediction.during.confidence}`}
+              meta={`${recommendation.matchCountAtRate} runs at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
             />
 
             <Ribbon
-              label={`Predicted end BG · starting at ${currentBG.toFixed(1)}`}
+              label={`Predicted end BG · starting at ${ribbonStartBG.toFixed(1)}`}
               p10={prediction.during.p10EndBG}
               median={prediction.during.medianEndBG}
               p90={prediction.during.p90EndBG}
@@ -112,7 +132,7 @@ export function TomorrowCard({
             />
 
             <p className="text-xs text-text mt-3 leading-snug">
-              <strong>{prediction.during.hypoCount} of {prediction.during.matchCount}</strong>{" "}
+              <strong>{prediction.during.hypoCount} of {predictionMatchCount}</strong>{" "}
               matching past runs ended below 4.0. The recommended rate keeps the predicted 10th
               percentile end BG at {recommendation.predictedP10EndBG.toFixed(1)}.
             </p>
@@ -125,8 +145,14 @@ export function TomorrowCard({
               className="mt-2 text-xs text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded"
               aria-expanded={matchesOpen}
             >
-              {matchesOpen ? "Hide" : "Show"} {matches.length} matching runs
+              {matchesOpen ? "Hide" : "Show"} {predictionMatchCount} matching runs
             </button>
+
+            {showsPostGap && (
+              <p className="text-[11px] text-muted mt-1 leading-snug">
+                Showing {totalMatches} matches; {predictionMatchCount} have post-run data used for predictions.
+              </p>
+            )}
 
             {matchesOpen && matches.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs">
