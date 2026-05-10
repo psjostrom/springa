@@ -6,7 +6,6 @@ import type { InsulinContext } from "./insulinContext";
 import type { FitnessInsights } from "./fitness";
 import { formatPace, formatDuration } from "./format";
 import { formatRunLine } from "./runLine";
-import { DEFAULT_LTHR, DEFAULT_MAX_HR } from "./constants";
 import { buildZoneBlock, buildProfileLine } from "./zoneText";
 
 function ratingLabel(rating: "good" | "ok" | "bad"): string {
@@ -29,16 +28,22 @@ export function buildRunAnalysisPrompt(params: {
   crossRunPatterns?: string;
 }): { system: string; user: string } {
   const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns } = params;
-  const lthr = params.lthr ?? DEFAULT_LTHR;
-  const maxHr = params.maxHr ?? DEFAULT_MAX_HR;
+  const lthr = params.lthr;
+  const maxHr = params.maxHr;
   const easyMaxBpm = params.hrZones[1];
+
+  const runnerProfileLines: string[] = [
+    "Type 1 Diabetic, insulin pump OFF for all runs (zero insulin delivery)",
+  ];
+  if (lthr != null && maxHr != null) {
+    runnerProfileLines.push(buildProfileLine(lthr, maxHr));
+  }
+  runnerProfileLines.push("Target start BG: ~10 mmol/L");
 
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 
 Runner profile:
-- Type 1 Diabetic, insulin pump OFF for all runs (zero insulin delivery)
-- ${buildProfileLine(lthr, maxHr)}
-- Target start BG: ~10 mmol/L
+${runnerProfileLines.map((line) => `- ${line}`).join("\n")}
 
 CRITICAL T1D physiology:
 - Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise.
@@ -58,14 +63,14 @@ Data integrity:
 - Never fabricate numbers or percentages.
 - If Athlete Feedback is provided, incorporate their observations and fuel notes into the analysis. Their firsthand experience is important context.
 
-Pace zones:
+${lthr != null && maxHr != null ? `Pace zones:
 ${buildZoneBlock(lthr, maxHr, undefined, params.hrZones)}
 
 Category expectations:
 - "easy"/"long" → Z2 entire time. Avg HR >${easyMaxBpm} = too hard.
 - "interval" → reps target Z4 (or Z5 for hills/strides), warmup/cooldown Z2, recovery walks Z1. IMPORTANT: for intervals, judge HR performance ONLY by rep compliance (actual Z4 time / expected rep time), NOT by % of total run time. Z4 as % of total time will always be low because warmup, cooldown, and walk recovery are by design not Z4. Z3 time during reps is normal HR ramp-up.
 - "race" → race pace blocks Z3, easy Z2.
-If avg HR doesn't match category, call it out.
+If avg HR doesn't match category, call it out.` : "HR zones not provided — analysis below skips HR-band reasoning."}
 
 Output format (bullet points only, max 150 words):
 

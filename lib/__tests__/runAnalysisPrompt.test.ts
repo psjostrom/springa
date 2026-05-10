@@ -242,7 +242,7 @@ describe("buildRunAnalysisPrompt", () => {
   });
 
   it("system prompt contains pace zones, LTHR, and T1D safety rules", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones, lthr: 168, maxHr: 189 });
 
     expect(system).toContain("LTHR 168 bpm, Max HR 189 bpm");
     expect(system).toContain("114-140 bpm");
@@ -252,7 +252,7 @@ describe("buildRunAnalysisPrompt", () => {
   });
 
   it("system prompt explains category-to-zone mapping", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones });
+    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones, lthr: 168, maxHr: 189 });
 
     expect(system).toContain("\"easy\"/\"long\" → Z2 entire time");
     expect(system).toContain("Avg HR >140 = too hard");
@@ -277,5 +277,31 @@ describe("buildRunAnalysisPrompt", () => {
 
     expect(system).toContain("Starting below 9 is a risk factor");
     expect(system).toContain("Below 8 is a serious concern");
+  });
+
+  describe("omit-on-missing HR", () => {
+    it("does not include LTHR or MaxHR text when not provided", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+      });
+
+      expect(system).not.toMatch(/168/);
+      expect(system).not.toMatch(/189/);
+      expect(system).toContain("HR zones not provided");
+    });
+
+    it("includes HR-band text when LTHR and MaxHR provided", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        lthr: 170,
+        maxHr: 195,
+      });
+
+      expect(system).not.toContain("HR zones not provided");
+      expect(system).toContain("170");
+      expect(system).toContain("195");
+    });
   });
 });
