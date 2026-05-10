@@ -242,14 +242,68 @@ describe("buildRunAnalysisPrompt", () => {
     expect(user).not.toContain("## HR Zone Compliance");
   });
 
-  it("system prompt contains pace zones, LTHR, and T1D safety rules", () => {
-    const { system } = buildRunAnalysisPrompt({ event: makeEvent(), hrZones: defaultHrZones, lthr: 168, maxHr: 189 });
+  describe("pump status in system prompt", () => {
+    it("states pump OFF when pumpDuringRuns is off", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        lthr: 168,
+        maxHr: 189,
+        pumpDuringRuns: "off"
+      });
 
-    expect(system).toContain("LTHR 168 bpm, Max HR 189 bpm");
-    expect(system).toContain("114-140 bpm");
-    expect(system).toContain("pump OFF");
-    expect(system).toContain("NEVER suggest reducing carbs");
-    expect(system).toContain("More carbs = slower drop");
+      expect(system).toContain("Insulin pump OFF for all runs (zero insulin delivery)");
+      expect(system).toContain("Pump OFF = zero insulin");
+    });
+
+    it("states pump ON when pumpDuringRuns is on", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        pumpDuringRuns: "on"
+      });
+
+      expect(system).toContain("Insulin pump remains ON during runs (basal still active)");
+      expect(system).toContain("Pump ON = basal insulin still working");
+      expect(system).toContain("BG drop comes from BOTH exercise glucose uptake AND insulin action");
+    });
+
+    it("states pump varies when pumpDuringRuns is mixed", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        pumpDuringRuns: "mixed"
+      });
+
+      expect(system).toContain("Pump usage during runs varies (sometimes ON, sometimes OFF)");
+      expect(system).toContain("Pump status varies between runs");
+      expect(system).toContain("Check IOB and pump state per-run");
+    });
+
+    it("omits pump claim when pumpDuringRuns is unset", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones
+      });
+
+      expect(system).toContain("Type 1 Diabetic.");
+      expect(system).not.toContain("pump OFF");
+      expect(system).not.toContain("pump ON");
+      expect(system).not.toContain("Pump status varies");
+    });
+
+    it("includes other T1D safety rules regardless of pump status", () => {
+      const { system } = buildRunAnalysisPrompt({
+        event: makeEvent(),
+        hrZones: defaultHrZones,
+        lthr: 168,
+        maxHr: 189
+      });
+
+      expect(system).toContain("NEVER suggest reducing carbs");
+      expect(system).toContain("More carbs = slower drop");
+      expect(system).toContain("Higher intensity = more glucose uptake = faster BG drop");
+    });
   });
 
   it("system prompt explains category-to-zone mapping", () => {

@@ -31,15 +31,23 @@ export function buildRunAnalysisPrompt(params: {
   bgModelSummary?: string;
   crossRunPatterns?: string;
   pastRuns?: RunForFloorAnalysis[];
+  pumpDuringRuns?: "on" | "off" | "mixed";
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns, pastRuns } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns, pastRuns, pumpDuringRuns } = params;
   const lthr = params.lthr;
   const maxHr = params.maxHr;
   const easyMaxBpm = params.hrZones[1];
 
-  const runnerProfileLines: string[] = [
-    "Type 1 Diabetic, insulin pump OFF for all runs (zero insulin delivery)",
-  ];
+  const runnerProfileLines: string[] = [];
+  if (pumpDuringRuns === "off") {
+    runnerProfileLines.push("Type 1 Diabetic. Insulin pump OFF for all runs (zero insulin delivery).");
+  } else if (pumpDuringRuns === "on") {
+    runnerProfileLines.push("Type 1 Diabetic. Insulin pump remains ON during runs (basal still active).");
+  } else if (pumpDuringRuns === "mixed") {
+    runnerProfileLines.push("Type 1 Diabetic. Pump usage during runs varies (sometimes ON, sometimes OFF).");
+  } else {
+    runnerProfileLines.push("Type 1 Diabetic.");
+  }
   if (lthr != null && maxHr != null) {
     runnerProfileLines.push(buildProfileLine(lthr, maxHr));
   }
@@ -55,8 +63,8 @@ Runner profile:
 ${runnerProfileLines.map((line) => `- ${line}`).join("\n")}
 
 CRITICAL T1D physiology:
-- Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise.
-- Higher intensity = more glucose uptake = faster BG drop.
+${pumpDuringRuns === "off" ? "- Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise." : pumpDuringRuns === "on" ? "- Pump ON = basal insulin still working. BG drop comes from BOTH exercise glucose uptake AND insulin action — risk of compounding hypos is high." : pumpDuringRuns === "mixed" ? "- Pump status varies between runs. Check IOB and pump state per-run when reasoning about BG drop drivers." : ""}
+${pumpDuringRuns ? "- " : ""}Higher intensity = more glucose uptake = faster BG drop.
 - Carbs are the ONLY tool to slow/reverse BG drops. More carbs = slower drop.
 - NEVER suggest reducing carbs to prevent BG dropping. That is backwards and dangerous.
 - Hypo (<3.9 mmol/L) is the primary safety risk.

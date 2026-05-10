@@ -39,6 +39,7 @@ interface RunAnalysisContextResult {
   bgModelSummary?: string;
   crossRunPatterns?: string;
   pastRuns?: RunForFloorAnalysis[];
+  pumpDuringRuns?: "on" | "off" | "mixed";
 }
 
 export async function buildRunAnalysisContext(
@@ -48,11 +49,13 @@ export async function buildRunAnalysisContext(
 
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 
-  const [rawRows, profile, patterns, wellnessEntries] = await Promise.all([
+  const { getUserSettings } = await import("@/lib/settings");
+  const [rawRows, profile, patterns, wellnessEntries, settings] = await Promise.all([
     getRecentAnalyzedRuns(email),
     fetchAthleteProfile(intervalsApiKey),
     getBGPatterns(email),
     fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
+    getUserSettings(email),
   ]);
 
   // Enrich history rows with glucose from Nightscout
@@ -118,5 +121,6 @@ export async function buildRunAnalysisContext(
     bgModelSummary,
     crossRunPatterns: patterns?.patternsText,
     pastRuns,
+    pumpDuringRuns: settings.pumpDuringRuns,
   };
 }
