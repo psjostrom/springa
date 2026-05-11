@@ -226,7 +226,9 @@ function getTargetHRRange(
 function activityToMatchableRun(
   activity: CachedActivity,
 ): MatchableRun | null {
-  const startBG = activity.runBGContext?.pre?.startBG;
+  // Prefer the server-computed pre.startBG. Fall back to first glucose sample
+  // for legacy rows that pre-date server-side runBGContext computation.
+  const startBG = activity.runBGContext?.pre?.startBG ?? activity.glucose?.[0]?.value ?? null;
   const endBG = endBGFromActivity(activity);
   if (startBG == null || endBG == null) return null;
 

@@ -218,7 +218,7 @@ export function TomorrowCard({
           </>
         ) : (
           <div className="text-xs text-muted py-2">
-            No matching history yet — log a few interval runs and predictions will appear here.
+            No matching history yet — log a few {WORKOUT_CATEGORY_LABEL[workout.category].toLowerCase()} runs and predictions will appear here.
           </div>
         )}
       </PhaseSection>
@@ -256,7 +256,7 @@ export function TomorrowCard({
           </>
         ) : (
           <div className="text-xs text-muted py-2">
-            No matching history yet — predictions for the after phase will appear once enough runs are logged.
+            No matching history yet — predictions for the after phase will appear once enough {WORKOUT_CATEGORY_LABEL[workout.category].toLowerCase()} runs are logged.
           </div>
         )}
       </PhaseSection>

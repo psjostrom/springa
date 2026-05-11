@@ -545,11 +545,12 @@ export function IntelScreen() {
   // Widgets that live on Overview only — excluded from the Deep Dive widget loop
   const OVERVIEW_ONLY = new Set<WidgetKey>(["readiness", "phase-tracker"]);
 
-  // Curated subset for Overview (preserves current order)
+  // Curated subset for Overview. "tomorrow" leads — it's the actionable card
+  // (next workout + fuel rate + predicted BG) and belongs at the top.
   const OVERVIEW_KEYS: WidgetKey[] = [
+    "tomorrow",
     "readiness",
     "phase-tracker",
-    "tomorrow",
     "fitness-chart",
     "volume-trend",
     "bg-categories",

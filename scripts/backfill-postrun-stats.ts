@@ -1,3 +1,11 @@
+/**
+ * Historical migration: populates run_bg_context for activity_streams rows
+ * that exist in DB but never received server-side context computation.
+ *
+ * Going forward (post 2026-05-11), saveActivityStreams computes runBGContext
+ * at ingest time, so this script should not be needed for activities synced
+ * after that date. Kept around as a one-time tool for legacy rows.
+ */
 import { createClient } from "@libsql/client";
 import {
   computePreRunContext,

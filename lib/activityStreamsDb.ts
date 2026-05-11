@@ -1,6 +1,7 @@
 import { db } from "./db";
 import type { WorkoutCategory } from "./types";
 import type { RunBGContext } from "./runBGContext";
+import { computeRunBGContextForActivity } from "./runBGContext";
 import { getWorkoutCategory } from "./constants";
 
 /** What's stored in the activity_streams DB table — no glucose. */
@@ -66,14 +67,70 @@ export async function getActivityStreams(
   });
 }
 
+/**
+ * Persist activity streams. The client never owns `runBGContext` — it's
+ * computed server-side from BG readings (local bg_readings, falling back to
+ * Scout). Existing rows whose hr+glucose payload hasn't changed keep their
+ * stored context to avoid recomputing on every save.
+ */
 export async function saveActivityStreams(
   email: string,
   data: CachedActivity[],
 ): Promise<void> {
+  // 1. Pre-load existing rows for the activities we're about to save so we can
+  //    skip recomputation when the incoming hr/glucose payload matches.
+  const existing = new Map<
+    string,
+    { runBGContext: string | null; hrLen: number; glucoseLen: number }
+  >();
+  if (data.length > 0) {
+    const placeholders = data.map(() => "?").join(",");
+    const result = await db().execute({
+      sql: `SELECT activity_id, run_bg_context, hr, glucose FROM activity_streams
+            WHERE email = ? AND activity_id IN (${placeholders})`,
+      args: [email, ...data.map((a) => a.activityId)],
+    });
+    for (const row of result.rows) {
+      const hr = row.hr ? (JSON.parse(row.hr as string) as unknown[]) : [];
+      const glucose = row.glucose ? (JSON.parse(row.glucose as string) as unknown[]) : [];
+      existing.set(row.activity_id as string, {
+        runBGContext: (row.run_bg_context as string | null) ?? null,
+        hrLen: hr.length,
+        glucoseLen: glucose.length,
+      });
+    }
+  }
+
+  // 2. For each incoming activity, decide whether to reuse the existing
+  //    context (cheap) or recompute via fresh BG-reading lookup (slower).
+  const contexts = await Promise.all(
+    data.map(async (a) => {
+      const prev = existing.get(a.activityId);
+      const incomingHrLen = a.hr.length;
+      const incomingGlucoseLen = a.glucose?.length ?? 0;
+      if (
+        prev?.runBGContext &&
+        prev.hrLen === incomingHrLen &&
+        prev.glucoseLen === incomingGlucoseLen
+      ) {
+        return prev.runBGContext; // reuse stored JSON string
+      }
+      const ctx = await computeRunBGContextForActivity(email, {
+        activityId: a.activityId,
+        runStartMs: a.runStartMs,
+        hr: a.hr,
+        category: a.category,
+        name: a.name,
+      });
+      return ctx ? JSON.stringify(ctx) : null;
+    }),
+  );
+
+  // 3. Single batched DELETE + INSERT.
   await db().batch(
     [
       { sql: "DELETE FROM activity_streams WHERE email = ?", args: [email] },
-      ...data.map((a) => ({
+      ...data.map((a, i) => ({
         sql: `INSERT INTO activity_streams (email, activity_id, name, run_start_ms, fuel_rate, hr, run_bg_context, pace, cadence, altitude, activity_date, distance, raw_time, glucose)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
@@ -83,7 +140,7 @@ export async function saveActivityStreams(
           a.runStartMs ?? null,
           a.fuelRate ?? null,
           JSON.stringify(a.hr),
-          a.runBGContext ? JSON.stringify(a.runBGContext) : null,
+          contexts[i],
           a.pace && a.pace.length > 0 ? JSON.stringify(a.pace) : null,
           a.cadence && a.cadence.length > 0 ? JSON.stringify(a.cadence) : null,
           a.altitude && a.altitude.length > 0 ? JSON.stringify(a.altitude) : null,

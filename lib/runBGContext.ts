@@ -3,6 +3,9 @@ import type { CalendarEvent } from "./types";
 import type { WorkoutCategory } from "./types";
 import { linearRegression } from "./math";
 import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
+import { db } from "./db";
+import { getUserCredentials } from "./credentials";
+import { fetchBGFromNS } from "./nightscout";
 
 // --- Types ---
 
@@ -321,4 +324,101 @@ export function buildRunBGContexts(
   }
 
   return map;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Server-side ingest-time computation
+// ────────────────────────────────────────────────────────────────────────────
+
+interface IngestActivity {
+  activityId: string;
+  runStartMs?: number;
+  hr: { time: number; value: number }[];
+  category: WorkoutCategory;
+  name?: string;
+}
+
+/**
+ * Fetch BG readings for a run window. Tries local bg_readings first; falls
+ * back to Nightscout (Scout) using the user's credentials. Returns sorted
+ * ascending. Returns empty array if no data is available.
+ */
+async function fetchReadingsForWindow(
+  email: string,
+  startWindow: number,
+  endWindow: number,
+): Promise<BGReading[]> {
+  // 1. Local bg_readings (Glooko import data; legacy)
+  try {
+    const local = await db().execute({
+      sql: `SELECT ts, mmol FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC`,
+      args: [email, startWindow, endWindow],
+    });
+    if (local.rows.length > 0) {
+      return local.rows.map((r) => ({
+        sgv: 0,
+        mmol: r.mmol as number,
+        ts: r.ts as number,
+        direction: "NONE",
+        delta: 0,
+      }));
+    }
+  } catch {
+    // Table may not exist in some test environments — fall through to NS.
+  }
+
+  // 2. Nightscout fallback (Scout)
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) return [];
+
+  try {
+    const nsReadings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+      since: startWindow,
+      until: endWindow,
+      count: 1000,
+    });
+    // NS returns newest-first; downstream expects ascending.
+    return [...nsReadings].sort((a, b) => a.ts - b.ts);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Compute runBGContext for a single activity at ingest time. Returns null when
+ * inputs are insufficient (no runStartMs, no hr) or no BG readings are
+ * available in the window.
+ */
+export async function computeRunBGContextForActivity(
+  email: string,
+  activity: IngestActivity,
+): Promise<RunBGContext | null> {
+  if (activity.runStartMs == null || activity.hr.length === 0) return null;
+
+  const lastHrTime = activity.hr[activity.hr.length - 1].time; // minutes from start
+  const runEndMs = activity.runStartMs + lastHrTime * 60_000;
+
+  const startWindow = activity.runStartMs - PRE_STABILITY_WINDOW_MS;
+  const endWindow = runEndMs + POST_WINDOW_MS;
+
+  const readings = await fetchReadingsForWindow(email, startWindow, endWindow);
+  if (readings.length === 0) return null;
+
+  const pre = computePreRunContext(readings, activity.runStartMs);
+  const post = computePostRunContext(readings, runEndMs);
+  if (!pre && !post) return null;
+
+  let totalBGImpact: number | null = null;
+  if (pre && post) {
+    const bg2hAfter = closestReading(readings, runEndMs + POST_WINDOW_MS);
+    if (bg2hAfter) totalBGImpact = bg2hAfter.mmol - pre.startBG;
+  }
+
+  return {
+    activityId: activity.activityId,
+    category: activity.category,
+    pre,
+    post,
+    totalBGImpact,
+  };
 }
