@@ -28,18 +28,12 @@ export interface TomorrowWorkoutSummary {
 
 interface Props {
   workout: TomorrowWorkoutSummary;
-  /** null when no live CGM reading is available; we render a fallback label. */
-  currentBG: number | null;
-  /** "live" = real CGM reading, "fallback" = matched against typical 8.0 mmol/L. */
-  currentBGSource: "live" | "fallback";
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
   matchPredictors: PredictorName[];
   matchRelaxed: boolean;
 }
-
-const FALLBACK_START_BG = 8.0;
 
 const HYPO = 4.0;
 const MIN = 3.5;
@@ -88,8 +82,6 @@ function formatPredictorList(predictors: PredictorName[]): string {
 
 export function TomorrowCard({
   workout,
-  currentBG,
-  currentBGSource,
   recommendation,
   prediction,
   matches,
@@ -97,13 +89,6 @@ export function TomorrowCard({
   matchRelaxed,
 }: Props) {
   const [matchesOpen, setMatchesOpen] = useState(false);
-  const liveBG = currentBGSource === "live" && currentBG != null ? currentBG : null;
-  // The matching engine targets 8.0 mmol/L when no live reading exists.
-  const ribbonStartBG = liveBG ?? FALLBACK_START_BG;
-  const bgMeta =
-    liveBG == null
-      ? `no live BG · matching against typical ${FALLBACK_START_BG.toFixed(1)} mmol/L start`
-      : `current BG ${liveBG.toFixed(1)}`;
 
   // Three different counts can diverge silently: post-context filtering reduces
   // prediction.during.matchCount below matches.length, and
@@ -125,7 +110,7 @@ export function TomorrowCard({
       </div>
       <div className="mt-1 text-base font-bold text-text">{workout.name}</div>
       <div className="text-xs text-muted">
-        ~{workout.durationMin} min · {workout.distanceKm} km · target HR {workout.targetHRRange} · {bgMeta}
+        ~{workout.durationMin} min · {workout.distanceKm} km · target HR {workout.targetHRRange}
       </div>
 
       {/* DURING */}
@@ -145,7 +130,11 @@ export function TomorrowCard({
             )}
 
             <Ribbon
-              label={`Predicted end BG · starting at ${ribbonStartBG.toFixed(1)}`}
+              label={
+                recommendation
+                  ? `Predicted end BG · typical ${WORKOUT_CATEGORY_LABEL[workout.category]} at ${recommendation.fuelRate} g/h`
+                  : `Predicted end BG · typical ${WORKOUT_CATEGORY_LABEL[workout.category]}`
+              }
               p10={prediction.during.p10EndBG}
               median={prediction.during.medianEndBG}
               p90={prediction.during.p90EndBG}

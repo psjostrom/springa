@@ -34,7 +34,6 @@ import {
   bgModelLoadingAtom,
   bgModelProgressAtom,
   cachedActivitiesAtom,
-  currentBGAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
   widgetLayoutAtom,
@@ -195,7 +194,6 @@ export function IntelScreen() {
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const bgModelProgress = useAtomValue(bgModelProgressAtom);
   const cachedActivities = useAtomValue(cachedActivitiesAtom);
-  const currentBG = useAtomValue(currentBGAtom);
 
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const wellnessLoading = useAtomValue(wellnessLoadingAtom);
@@ -414,11 +412,12 @@ export function IntelScreen() {
     [cachedActivities, events, settings],
   );
 
-  // Tomorrow is light — re-runs cheaply on every CGM tick (every 5 min) so the
-  // displayed fuel recommendation reflects the live BG without redoing history.
+  // Tomorrow no longer depends on live BG — recomputes only when activities,
+  // events, or settings change. The card is a planning view, not a pre-run
+  // readiness view; live BG belongs in the topbar/prerun screen.
   const tomorrowData = useMemo(
-    () => buildTomorrowData(cachedActivities, events, settings ?? {}, currentBG),
-    [cachedActivities, events, settings, currentBG],
+    () => buildTomorrowData(cachedActivities, events, settings ?? {}),
+    [cachedActivities, events, settings],
   );
 
   const intelData = useMemo(

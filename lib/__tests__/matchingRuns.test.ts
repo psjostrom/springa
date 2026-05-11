@@ -87,4 +87,39 @@ describe("findMatchingRuns", () => {
     expect(result.matches.length).toBe(5);
     expect(result.usedPredictors).toEqual([]);
   });
+
+  it("treats target.startBG === null as 'skip startBG filter'", () => {
+    // 12 runs spread across BG values that would normally fail the ±2.0 startBG window.
+    // With startBG=null in target, all category runs survive that filter.
+    const history = Array.from({ length: 12 }, (_, i) =>
+      mk({
+        category: "interval",
+        date: `2026-04-${String(i + 1).padStart(2, "0")}`,
+        activityId: `s${i}`,
+        startBG: 5 + i * 0.7, // 5.0 .. 12.7 — far outside any single ±2.0 window
+        fuelRate: 60,
+        hourOfDay: 7,
+      }),
+    );
+    const result = findMatchingRuns({ ...target, startBG: null }, history);
+    // All 12 are in category, all match fuelRate/timeOfDay; cap is 10 most recent.
+    expect(result.matches.length).toBe(10);
+  });
+
+  it("omits 'startBG' from usedPredictors when target.startBG is null", () => {
+    // Same 12-run setup as above so startBG would normally rank as a predictor.
+    const history = Array.from({ length: 12 }, (_, i) =>
+      mk({
+        category: "interval",
+        date: `2026-04-${String(i + 1).padStart(2, "0")}`,
+        activityId: `s${i}`,
+        startBG: 5 + i * 0.7,
+        fuelRate: 60,
+        hourOfDay: 7,
+        wentHypo: i % 2 === 0,
+      }),
+    );
+    const result = findMatchingRuns({ ...target, startBG: null }, history);
+    expect(result.usedPredictors).not.toContain("startBG");
+  });
 });

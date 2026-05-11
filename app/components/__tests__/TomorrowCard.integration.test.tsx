@@ -14,8 +14,6 @@ const sample = {
     distanceKm: 7,
     targetHRRange: "152-158 bpm",
   },
-  currentBG: 8.5 as number | null,
-  currentBGSource: "live" as const,
   recommendation: {
     fuelRate: 60,
     basis: "evidence" as const,
@@ -47,7 +45,7 @@ const sample = {
     { activityId: "x1", date: "2026-04-30", startBG: 8.6, endBG: 4.8, fuelRate: 60 },
     { activityId: "x2", date: "2026-04-23", startBG: 11.7, endBG: 9.1, fuelRate: 60 },
   ],
-  matchPredictors: ["startBG", "fuelRate"] as PredictorName[],
+  matchPredictors: ["fuelRate"] as PredictorName[],
   matchRelaxed: false,
 };
 
@@ -116,12 +114,6 @@ describe("TomorrowCard", () => {
     expect(screen.getByText(/Showing 9 matches; 8 have post-run data/i)).toBeInTheDocument();
   });
 
-  it("renders fallback BG label when no live reading is available", () => {
-    render(<TomorrowCard {...sample} currentBG={null} currentBGSource="fallback" />);
-    expect(screen.getByText(/no live BG/i)).toBeInTheDocument();
-    expect(screen.getByText(/typical 8\.0 mmol\/L start/i)).toBeInTheDocument();
-  });
-
   it("renders prediction without fuel rec when recommendation is null", () => {
     render(<TomorrowCard {...sample} recommendation={null} />);
     expect(screen.getByText(/no fuel rate recorded for these matches/i)).toBeInTheDocument();
@@ -135,9 +127,9 @@ describe("TomorrowCard", () => {
 
   it("shows matching predictor explainer when predictors are used", () => {
     render(
-      <TomorrowCard {...sample} matchPredictors={["startBG", "fuelRate"]} matchRelaxed={false} />,
+      <TomorrowCard {...sample} matchPredictors={["fuelRate", "timeOfDay"]} matchRelaxed={false} />,
     );
-    expect(screen.getByText(/Matched on similar starting BG and fuel rate/i)).toBeInTheDocument();
+    expect(screen.getByText(/Matched on similar fuel rate and time of day/i)).toBeInTheDocument();
   });
 
   it("shows relaxed filter label when matchRelaxed is true", () => {
@@ -150,5 +142,26 @@ describe("TomorrowCard", () => {
   it("shows nothing when no predictors are used and match is not relaxed", () => {
     render(<TomorrowCard {...sample} matchPredictors={[]} matchRelaxed={false} />);
     expect(screen.queryByText(/Matched on/i)).not.toBeInTheDocument();
+  });
+
+  it("ribbon label names the typical category and recommended fuel rate", () => {
+    render(<TomorrowCard {...sample} />);
+    expect(
+      screen.getByText(/Predicted end BG · typical Interval \/ Club at 60 g\/h/i),
+    ).toBeInTheDocument();
+  });
+
+  it("ribbon label drops the fuel-rate suffix when no recommendation exists", () => {
+    render(<TomorrowCard {...sample} recommendation={null} />);
+    expect(
+      screen.getByText(/Predicted end BG · typical Interval \/ Club$/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render any 'current BG' or 'starting at' framing", () => {
+    render(<TomorrowCard {...sample} />);
+    expect(screen.queryByText(/current BG/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/starting at/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no live BG/i)).not.toBeInTheDocument();
   });
 });

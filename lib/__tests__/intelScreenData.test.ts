@@ -125,7 +125,7 @@ describe("buildIntelScreenData", () => {
       hrZones: [120, 140, 160, 175, 190],
     };
 
-    const result = buildIntelScreenData(activities, events, settings, 7.5, new Date("2026-04-07T12:00:00Z"));
+    const result = buildIntelScreenData(activities, events, settings, new Date("2026-04-07T12:00:00Z"));
 
     // duringStats
     expect(result.duringStats.easy).not.toBeNull();
@@ -159,8 +159,6 @@ describe("buildIntelScreenData", () => {
     expect(result.tomorrow?.workout.category).toBe("easy");
     expect(result.tomorrow?.workout.distanceKm).toBe(6);
     expect(result.tomorrow?.workout.targetHRRange).toContain("Z2");
-    expect(result.tomorrow?.currentBG).toBe(7.5);
-    expect(result.tomorrow?.currentBGSource).toBe("live");
     // matches array exists (may be empty when no soft predictors hit)
     expect(Array.isArray(result.tomorrow?.matches)).toBe(true);
     expect(Array.isArray(result.tomorrow?.matchPredictors)).toBe(true);
@@ -168,7 +166,7 @@ describe("buildIntelScreenData", () => {
   });
 
   it("returns null tomorrow when no future planned events", () => {
-    const result = buildIntelScreenData([], [], {}, null, new Date("2026-04-01T00:00:00Z"));
+    const result = buildIntelScreenData([], [], {}, new Date("2026-04-01T00:00:00Z"));
     expect(result.tomorrow).toBeNull();
     expect(result.distance.longestRun).toBeNull();
     expect(result.duringStats.easy).toBeNull();
@@ -209,11 +207,43 @@ describe("buildIntelScreenData", () => {
     expect(result.afterStats.easy).toBeNull();
   });
 
-  it("flags currentBGSource as fallback and surfaces null currentBG when no live reading", () => {
+  it("tomorrow data does not depend on a currentBG input (signature-level)", () => {
+    // After dropping currentBG from the signature, building twice with the same
+    // inputs is trivially equal. This test exists to lock in the signature
+    // contract: no currentBG arg, and no currentBG/currentBGSource on the result.
+    const activities: CachedActivity[] = Array.from({ length: 12 }, (_, i) =>
+      makeActivity({
+        activityId: `e${i}`,
+        category: "easy",
+        activityDate: `2026-04-${String(i + 1).padStart(2, "0")}`,
+        runStartMs: new Date(`2026-04-${String(i + 1).padStart(2, "0")}T07:00:00Z`).getTime(),
+        glucose: [
+          { time: 0, value: 5 + i * 0.5 },
+          { time: 60, value: 4 + i * 0.4 },
+        ],
+        runBGContext: {
+          activityId: `e${i}`,
+          category: "easy",
+          pre: { startBG: 5 + i * 0.5, entrySlope30m: 0, entryStability: 0.5, readingCount: 6 },
+          post: {
+            endBG: 4 + i * 0.4,
+            recoveryDrop30m: 0,
+            nadirPostRun: 4 + i * 0.4,
+            timeToStable: 30,
+            postRunHypo: false,
+            readingCount: 6,
+            peak30m: 5 + i * 0.5,
+            spike30m: 0.5,
+            peak60mAboveEnd: 1.0,
+          },
+          totalBGImpact: -1,
+        },
+      }),
+    );
     const events: CalendarEvent[] = [
       {
-        id: "e-future",
-        date: new Date("2026-04-08T07:00:00Z"),
+        id: "future",
+        date: new Date("2026-04-15T07:00:00Z"),
         name: "W02 Easy",
         description: "",
         type: "planned",
@@ -222,9 +252,13 @@ describe("buildIntelScreenData", () => {
         duration: 2100,
       },
     ];
-    const tomorrow = buildTomorrowData([], events, {}, null, new Date("2026-04-07T12:00:00Z"));
-    expect(tomorrow).not.toBeNull();
-    expect(tomorrow?.currentBG).toBeNull();
-    expect(tomorrow?.currentBGSource).toBe("fallback");
+
+    const a = buildTomorrowData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
+    const b = buildTomorrowData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
+
+    expect(a).toEqual(b);
+    expect(a?.matchPredictors).not.toContain("startBG");
+    expect(a).not.toHaveProperty("currentBG");
+    expect(a).not.toHaveProperty("currentBGSource");
   });
 });

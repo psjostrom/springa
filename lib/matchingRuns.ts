@@ -4,7 +4,7 @@ import type { WorkoutCategory } from "./types";
 
 export interface MatchTarget {
   category: WorkoutCategory;
-  startBG: number;
+  startBG: number | null;
   fuelRate: number | null;
   hourOfDay: number;
   entrySlope?: number | null;
@@ -33,6 +33,7 @@ function inWindow(predictor: PredictorName, target: MatchTarget, run: MatchableR
   const window = SOFT_WINDOWS[predictor];
   switch (predictor) {
     case "startBG":
+      if (target.startBG == null) return true;
       return Math.abs(run.startBG - target.startBG) <= window;
     case "entrySlope":
       if (run.entrySlope == null || target.entrySlope == null) return true;
@@ -54,7 +55,9 @@ export function findMatchingRuns(target: MatchTarget, history: MatchableRun[]): 
   const ranked = rankPredictors(sameCategory)
     .filter((p) => p.sampleCount >= 10)
     .slice(0, 3);
-  let usedPredictors: PredictorName[] = ranked.map((p) => p.predictor);
+  let usedPredictors: PredictorName[] = ranked
+    .map((p) => p.predictor)
+    .filter((p) => !(p === "startBG" && target.startBG == null));
   const startedWithPredictors = usedPredictors.length > 0;
 
   const sorted = [...sameCategory].sort((a, b) => (a.date < b.date ? 1 : -1));

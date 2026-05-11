@@ -38,10 +38,6 @@ export type PredictorName = "startBG" | "entrySlope" | "fuelRate" | "timeOfDay";
 
 export interface TomorrowData {
   workout: TomorrowWorkoutSummary;
-  /** null when no live CGM reading is available; UI should label this clearly. */
-  currentBG: number | null;
-  /** "live" = real CGM reading, "fallback" = no live reading, matched against typical 8.0 mmol/L. */
-  currentBGSource: "live" | "fallback";
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
   matches: TomorrowMatchSummary[];
@@ -70,7 +66,6 @@ const CATEGORIES: WorkoutCategory[] = ["easy", "long", "interval"];
 const HYPO = 4.0;
 const BIG_REBOUND_THRESHOLD = 2.0;
 const DEFAULT_FUEL_RATE = 60;
-const FALLBACK_START_BG = 8.0;
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -285,7 +280,6 @@ function buildTomorrow(
   activities: CachedActivity[],
   events: CalendarEvent[],
   settings: UserSettings,
-  currentBG: number | null,
   reference: Date,
 ): TomorrowData | null {
   const next = pickNextPlannedRun(events, reference);
@@ -294,17 +288,12 @@ function buildTomorrow(
   const category: WorkoutCategory =
     next.category === "race" ? "long" : (next.category as WorkoutCategory);
 
-  // Internal target uses 8.0 (Riddell 2017 mid-consensus) when no live CGM reading
-  // exists — that's a reasonable anchor for finding similar past runs. The UI is
-  // told via currentBGSource that we don't actually have a live reading.
-  const currentBGSource: TomorrowData["currentBGSource"] = currentBG == null ? "fallback" : "live";
-  const startBG = currentBG ?? FALLBACK_START_BG;
   const fuelRate = next.fuelRate ?? DEFAULT_FUEL_RATE;
   const hourOfDay = next.date.getHours();
 
   const target: MatchTarget = {
     category,
-    startBG,
+    startBG: null,
     fuelRate,
     hourOfDay,
     entrySlope: null,
@@ -356,8 +345,6 @@ function buildTomorrow(
       distanceKm,
       targetHRRange,
     },
-    currentBG: currentBG,
-    currentBGSource,
     recommendation,
     prediction,
     matches: matchesSummary,
@@ -421,28 +408,27 @@ export function buildHistoryData(
 }
 
 /**
- * Light tomorrow-only computation. Re-runs cheaply on each CGM tick because
- * the heavy history pass is memoized separately by callers.
+ * Tomorrow-only computation. Pure function of activities, events, and settings —
+ * does not depend on live BG. The Tomorrow card is a planning view, not a
+ * pre-run readiness view.
  */
 export function buildTomorrowData(
   activities: CachedActivity[],
   events: CalendarEvent[],
   settings: UserSettings,
-  currentBG: number | null,
   reference: Date = new Date(),
 ): TomorrowData | null {
-  return buildTomorrow(activities, events, settings, currentBG, reference);
+  return buildTomorrow(activities, events, settings, reference);
 }
 
 export function buildIntelScreenData(
   activities: CachedActivity[],
   events: CalendarEvent[],
   settings: UserSettings,
-  currentBG: number | null,
   reference: Date = new Date(),
 ): IntelScreenData {
   return {
     ...buildHistoryData(activities, events, settings),
-    tomorrow: buildTomorrowData(activities, events, settings, currentBG, reference),
+    tomorrow: buildTomorrowData(activities, events, settings, reference),
   };
 }
