@@ -55,6 +55,12 @@ const WORKOUT_DESCRIPTION = [
   "",
 ].join("\n");
 
+// Description duration is 56 min. The expected gram total is computed from
+// description + fuelRate ALONE — never from any duration field. We assert this
+// exact value so a regression that re-introduces a duration-based fallback
+// produces a different (wrong) number and fails loudly.
+const EXPECTED_GRAMS = 56;
+
 async function insertCreds() {
   // current_ability_dist + current_ability_secs give the user a thresholdPace,
   // which the pipeline gate requires before computing any prescription. Without
@@ -81,6 +87,13 @@ async function insertCreds() {
   });
 }
 
+// moving_time fields are deliberately set to values that DO NOT match the
+// description's 56-minute duration. The canonical calc must ignore these
+// completely. If a regression re-introduces a duration-based fallback, the
+// resulting gram total will be 75g (4500s × 60 ÷ 3600) pre-pairing or 130g
+// (7800s × 60 ÷ 3600) post-pairing — both differ from the anchored 56g and
+// the test will fail loudly. The original 97g vs 135g production bug had
+// this exact shape: planned moving_time was 8656s, actual was 6139s.
 const plannedEventBase = {
   id: PLANNED_EVENT_ID,
   category: "WORKOUT",
@@ -88,7 +101,7 @@ const plannedEventBase = {
   name: "W13 Easy",
   description: WORKOUT_DESCRIPTION,
   carbs_per_hour: FUEL_RATE_GH,
-  moving_time: 3360,
+  moving_time: 4500,
 };
 
 const pairedActivity = {
@@ -98,7 +111,7 @@ const pairedActivity = {
   start_date: "2026-05-10T08:00:00Z",
   start_date_local: "2026-05-10T10:00:00",
   distance: 8000,
-  moving_time: 3360,
+  moving_time: 7800,
   average_hr: 142,
   paired_event_id: PLANNED_EVENT_ID,
 };
@@ -120,10 +133,11 @@ function preRunHandlers() {
 }
 
 function postRunHandlers() {
-  // Post-run: Intervals.icu has paired the activity to the event. Per the run-
-  // feedback route comment, intervals.icu also overwrites event.moving_time with
-  // the activity's actual time after pairing — simulate that to prove the
-  // canonical calc is robust against it.
+  // Post-run: Intervals.icu has paired the activity to the event AND, per the
+  // run-feedback route comment, overwrites event.moving_time with the activity's
+  // actual time. We propagate that overwrite (4500s → 7800s) so any code path
+  // that secretly reads moving_time will see a different value pre-run and
+  // post-run — and the parity assertion will catch the regression.
   const pairedEvent = {
     ...plannedEventBase,
     moving_time: pairedActivity.moving_time,
@@ -179,7 +193,9 @@ describe("Prescribed carbs parity — full user journey", () => {
     const planned = preRunEvents.find((e) => e.type === "planned");
     expect(planned).toBeDefined();
     const plannedGrams = planned?.prescribedCarbsG ?? null;
-    expect(plannedGrams).not.toBeNull();
+    // Anchor to the description-derived value. If the calc collapses to a
+    // constant or starts reading moving_time, the number will differ.
+    expect(plannedGrams).toBe(EXPECTED_GRAMS);
 
     // Step 2 — activity completes and intervals.icu auto-pairs it. Calendar
     // fetch now returns the workout as a completed event, NOT a planned one.
@@ -215,9 +231,10 @@ describe("Prescribed carbs parity — full user journey", () => {
     };
 
     // The whole point of the change: every stage of the journey reports the
-    // same gram total for the same workout.
-    expect(completedGrams).toBe(plannedGrams);
-    expect(feedback.prescribedCarbsG).toBe(plannedGrams);
+    // same gram total for the same workout — and that gram total comes from
+    // the description, not from any duration field.
+    expect(completedGrams).toBe(EXPECTED_GRAMS);
+    expect(feedback.prescribedCarbsG).toBe(EXPECTED_GRAMS);
   });
 
   it("displays the same prescribed grams on the feedback page that the calendar planned event reported", async () => {
@@ -231,9 +248,9 @@ describe("Prescribed carbs parity — full user journey", () => {
       type: string;
       prescribedCarbsG?: number | null;
     }[];
-    const expectedGrams = preRunEvents.find((e) => e.type === "planned")
+    const plannedGrams = preRunEvents.find((e) => e.type === "planned")
       ?.prescribedCarbsG;
-    expect(expectedGrams).toBeTypeOf("number");
+    expect(plannedGrams).toBe(EXPECTED_GRAMS);
 
     server.resetHandlers();
     server.use(
@@ -246,7 +263,7 @@ describe("Prescribed carbs parity — full user journey", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(`Prescribed: ${expectedGrams!}g`),
+        screen.getByText(`Prescribed: ${EXPECTED_GRAMS}g`),
       ).toBeInTheDocument();
     });
   });

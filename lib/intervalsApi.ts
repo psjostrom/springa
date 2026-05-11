@@ -408,7 +408,7 @@ export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
   endDate: Date,
-  context: WorkoutEstimationContext = {},
+  context: WorkoutEstimationContext,
 ): Promise<CalendarEvent[]> {
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
@@ -434,7 +434,7 @@ async function fetchCalendarDataInner(
   apiKey: string,
   oldest: string,
   newest: string,
-  context: WorkoutEstimationContext = {},
+  context: WorkoutEstimationContext,
 ): Promise<CalendarDataResult> {
   const auth = authHeader(apiKey);
 

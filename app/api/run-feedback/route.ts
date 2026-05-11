@@ -54,22 +54,21 @@ async function findMatchingEvent(
     );
     if (!res.ok) return { prescribedCarbsG: null, eventId: null };
     const events = (await res.json()) as IntervalsEvent[];
+    // Authoritative-only by design. The calendar pipeline uses the broader
+    // findWorkoutEventMatch because it ALSO drives the fire-and-forget auto-
+    // pairing (it needs to guess so it can pair). Feedback is per-activity and
+    // conservative: better to show "no prescription" briefly than to display a
+    // wrong number based on a name+day guess that may not survive the next
+    // pairing pass.
     const planned = findAuthoritativeWorkoutEventMatch(activity, events);
     if (!planned) return { prescribedCarbsG: null, eventId: null };
 
-    // Without calibration the description parser falls back to literal pace
-    // midpoints and inflates the gram total. Match the calendar pipeline gate
-    // so both paths return null for uncalibrated users (parity preserved).
-    const hasCalibration =
-      context.paceTable != null || context.thresholdPace != null;
     return {
-      prescribedCarbsG: hasCalibration
-        ? calculateCanonicalPlannedPrescription(
-            planned.description,
-            planned.carbs_per_hour,
-            context,
-          )
-        : null,
+      prescribedCarbsG: calculateCanonicalPlannedPrescription(
+        planned.description,
+        planned.carbs_per_hour,
+        context,
+      ),
       eventId: planned.id,
     };
   } catch (err) {

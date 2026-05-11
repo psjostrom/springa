@@ -16,7 +16,7 @@ describe("processPlannedEvents race classification", () => {
       },
     ];
 
-    const planned = processPlannedEvents(events, new Map(), new Set());
+    const planned = processPlannedEvents(events, new Map(), new Set(), {});
 
     expect(planned).toHaveLength(1);
     expect(planned[0].type).toBe("planned");
@@ -37,7 +37,7 @@ describe("processPlannedEvents race classification", () => {
       },
     ];
 
-    const planned = processPlannedEvents(events, new Map(), new Set());
+    const planned = processPlannedEvents(events, new Map(), new Set(), {});
 
     expect(planned).toHaveLength(1);
     expect(planned[0].type).toBe("race");
