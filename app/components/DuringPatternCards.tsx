@@ -65,7 +65,7 @@ function Card({
         <span data-testid="during-card-name" className={`text-sm font-bold ${NAME_COLOR[cat]}`}>
           {WORKOUT_CATEGORY_LABEL[cat]}
         </span>
-        <span className="text-xs text-muted">{stats.runCount} runs</span>
+        <span className="text-xs text-muted">{stats.runCount} run{stats.runCount === 1 ? "" : "s"}</span>
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-2xl font-extrabold tabular-nums">{stats.medianEndBG.toFixed(1)}</span>

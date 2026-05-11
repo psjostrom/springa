@@ -136,11 +136,11 @@ export function TomorrowCard({
               <FuelHeadline
                 value={String(recommendation.fuelRate)}
                 unit="g/h"
-                meta={`${recommendation.matchCountAtRate} runs at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
+                meta={`${recommendation.matchCountAtRate} run${recommendation.matchCountAtRate === 1 ? "" : "s"} at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
               />
             ) : (
               <div className="text-xs text-muted py-2">
-                No fuel rate recorded for these matches — based on {predictionMatchCount} runs without fuel data.
+                No fuel rate recorded for these matches — based on {predictionMatchCount} run{predictionMatchCount === 1 ? "" : "s"} without fuel data.
               </div>
             )}
 
@@ -154,7 +154,7 @@ export function TomorrowCard({
 
             <p className="text-xs text-text mt-3 leading-snug">
               <strong>{prediction.during.hypoCount} of {predictionMatchCount}</strong>{" "}
-              matching past runs ended below 4.0.
+              matching past run{predictionMatchCount === 1 ? "" : "s"} ended below 4.0.
               {recommendation && (
                 <> The recommended rate keeps the predicted 10th percentile end BG at {recommendation.predictedP10EndBG.toFixed(1)}.</>
               )}
@@ -169,7 +169,7 @@ export function TomorrowCard({
                 className="text-xs text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded"
                 aria-expanded={matchesOpen}
               >
-                {matchesOpen ? "Hide" : "Show"} {predictionMatchCount} matching runs
+                {matchesOpen ? "Hide" : "Show"} {predictionMatchCount} matching run{predictionMatchCount === 1 ? "" : "s"}
               </button>
 
               {matchPredictors.length > 0 && !matchRelaxed && (
@@ -187,7 +187,7 @@ export function TomorrowCard({
 
             {showsPostGap && (
               <p className="text-[11px] text-muted mt-1 leading-snug">
-                Showing {totalMatches} matches; {predictionMatchCount} have post-run data used for predictions.
+                Showing {totalMatches} match{totalMatches === 1 ? "" : "es"}; {predictionMatchCount} {predictionMatchCount === 1 ? "has" : "have"} post-run data used for predictions.
               </p>
             )}
 
@@ -230,7 +230,7 @@ export function TomorrowCard({
             <FuelHeadline
               value={`+${prediction.after.medianRebound.toFixed(1)}`}
               unit="mmol/L typical peak"
-              meta={`${prediction.after.matchCount} past ${WORKOUT_CATEGORY_LABEL[workout.category]}s · range +${prediction.after.p10Rebound.toFixed(1)} to +${prediction.after.p90Rebound.toFixed(1)}`}
+              meta={`${prediction.after.matchCount} past ${WORKOUT_CATEGORY_LABEL[workout.category]}${prediction.after.matchCount === 1 ? "" : "s"} · range +${prediction.after.p10Rebound.toFixed(1)} to +${prediction.after.p90Rebound.toFixed(1)}`}
               valueClass="text-warning"
             />
 
@@ -246,7 +246,7 @@ export function TomorrowCard({
               <strong>
                 {prediction.after.bigReboundCount} of {prediction.after.matchCount}
               </strong>{" "}
-              recent {WORKOUT_CATEGORY_LABEL[workout.category]}s rebounded &gt; +2.0 mmol/L within one hour.{" "}
+              recent {WORKOUT_CATEGORY_LABEL[workout.category]}{prediction.after.matchCount === 1 ? "" : "s"} rebounded &gt; +2.0 mmol/L within one hour.{" "}
               <strong>Likely chain:</strong> rebound → correction bolus →{" "}
               {prediction.after.lateHypoCount} of {prediction.after.matchCount} late-hypo within 2 h.
             </p>

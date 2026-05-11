@@ -19,7 +19,6 @@ import {
   bgModelLoadingAtom,
   bgModelProgressAtom,
   bgActivityNamesAtom,
-  runBGContextsAtom,
   cachedActivitiesAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
@@ -97,13 +96,13 @@ export function useHydrateStore() {
       setCurrentBG, setTrend, setTrendSlope, setLastUpdate, setReadings]);
 
   // ─── Run Data / BG Model ──────────────────────────────
+  // runBGContextsAtom is derived from cachedActivitiesAtom — no manual sync.
   const settings = useAtomValue(settingsAtom);
-  const runData = useRunData(true, cal.events, bg.readings, settings?.diabetesMode);
+  const runData = useRunData(true, cal.events, settings?.diabetesMode);
   const setBgModel = useSetAtom(bgModelAtom);
   const setBgModelLoading = useSetAtom(bgModelLoadingAtom);
   const setBgModelProgress = useSetAtom(bgModelProgressAtom);
   const setBgActivityNames = useSetAtom(bgActivityNamesAtom);
-  const setRunBGContexts = useSetAtom(runBGContextsAtom);
   const setCachedActivities = useSetAtom(cachedActivitiesAtom);
 
   useEffect(() => {
@@ -111,12 +110,11 @@ export function useHydrateStore() {
     setBgModelLoading(runData.bgModelLoading);
     setBgModelProgress(runData.bgModelProgress);
     setBgActivityNames(runData.bgActivityNames);
-    setRunBGContexts(runData.runBGContexts);
     setCachedActivities(runData.cachedActivities);
   }, [runData.bgModel, runData.bgModelLoading, runData.bgModelProgress,
-      runData.bgActivityNames, runData.runBGContexts, runData.cachedActivities,
+      runData.bgActivityNames, runData.cachedActivities,
       setBgModel, setBgModelLoading, setBgModelProgress,
-      setBgActivityNames, setRunBGContexts, setCachedActivities]);
+      setBgActivityNames, setCachedActivities]);
 
   // ─── IOB (Insulin on Board) ────────────────────────────
   const diabetesMode = settings?.diabetesMode ?? false;

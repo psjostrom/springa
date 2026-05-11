@@ -1,6 +1,9 @@
 import type { CachedActivity } from "./activityStreamsDb";
 
-const LS_KEY = "bgcache_v6";
+// v7: adds peak60mAboveEnd to runBGContext.post (PR #192). Bumping the key
+// forces a refetch so existing users pick up the backfilled field instead of
+// silently rendering empty AfterPatternCards.
+const LS_KEY = "bgcache_v7";
 
 export function readLocalCache(): CachedActivity[] {
   try {

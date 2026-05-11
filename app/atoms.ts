@@ -96,8 +96,24 @@ export const bgModelProgressAtom = atom<{ done: number; total: number }>({
   total: 0,
 });
 export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
-export const runBGContextsAtom = atom<Map<string, RunBGContext>>(new Map());
 export const cachedActivitiesAtom = atom<EnrichedActivity[]>([]);
+
+// Derived: server-persisted runBGContext on each cached activity is the single
+// source of truth (saveActivityStreams populates it, the backfill script seeds
+// legacy rows). Consumers that need a Map<activityId, RunBGContext> for lookup
+// derive it from the cache rather than recomputing from a smaller live CGM
+// readings window — that path drifted from the cache and silently dropped
+// historical context (most visibly: Coach's recovery-pattern summary).
+export const runBGContextsAtom = atom<Map<string, RunBGContext>>((get) => {
+  const cached = get(cachedActivitiesAtom);
+  const map = new Map<string, RunBGContext>();
+  for (const activity of cached) {
+    if (activity.runBGContext) {
+      map.set(activity.activityId, activity.runBGContext);
+    }
+  }
+  return map;
+});
 
 // ─── Wellness ────────────────────────────────────────────────
 

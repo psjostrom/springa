@@ -61,7 +61,7 @@ function Card({
         <span className="text-sm font-bold">
           {WORKOUT_CATEGORY_LABEL[cat]}
         </span>
-        <span className="text-xs text-muted">{stats.runCount} runs</span>
+        <span className="text-xs text-muted">{stats.runCount} run{stats.runCount === 1 ? "" : "s"}</span>
       </div>
       <div className="flex items-baseline gap-2 mb-2">
         <span className="text-2xl font-extrabold text-warning tabular-nums">

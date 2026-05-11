@@ -128,7 +128,7 @@ describe("useStreamCache BG fetch", () => {
     expect(cached.glucose![0].value).toBeCloseTo(8.0, 0);
 
     // Should also be persisted to localStorage
-    const persisted = JSON.parse(store.get("bgcache_v6") ?? "[]");
+    const persisted = JSON.parse(store.get("bgcache_v7") ?? "[]");
     expect(persisted).toHaveLength(1);
     expect(persisted[0].glucose).toBeDefined();
   });
@@ -147,7 +147,7 @@ describe("useStreamCache BG fetch", () => {
     expect(result.current.cached[0].glucose).toBeUndefined();
 
     // Should NOT be persisted — will be retried on next load
-    const persisted = JSON.parse(store.get("bgcache_v6") ?? "[]");
+    const persisted = JSON.parse(store.get("bgcache_v7") ?? "[]");
     expect(persisted).toHaveLength(0);
   });
 
@@ -255,7 +255,7 @@ describe("useStreamCache BG fetch", () => {
 
   it("preserves unrelated persisted cache rows when syncing a subset of runs", async () => {
     const remoteSavePayloads: CachedActivity[][] = [];
-    store.set("bgcache_v6", JSON.stringify([makeCachedActivity("act-2")]));
+    store.set("bgcache_v7", JSON.stringify([makeCachedActivity("act-2")]));
 
     server.use(
       http.get("/api/bg-cache", () => HttpResponse.json([])),
@@ -295,7 +295,7 @@ describe("useStreamCache BG fetch", () => {
 
     expect(remoteSavePayloads[0].map((entry) => entry.activityId).sort()).toEqual(["act-1", "act-2"]);
 
-    const persisted = JSON.parse(store.get("bgcache_v6") ?? "[]") as CachedActivity[];
+    const persisted = JSON.parse(store.get("bgcache_v7") ?? "[]") as CachedActivity[];
     expect(persisted.map((entry) => entry.activityId).sort()).toEqual(["act-1", "act-2"]);
   });
 
