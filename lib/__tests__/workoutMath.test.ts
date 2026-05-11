@@ -65,7 +65,7 @@ describe("prescribed carbs after activity pairing", () => {
       moving_time: 97 * 60, // Intervals.icu copies actual time here after pairing
     };
 
-    const { calendarEvents } = processActivities([activity], [event]);
+    const { calendarEvents } = processActivities([activity], [event], {});
     const completed = calendarEvents.find((e) => e.activityId === "act-paired");
 
     expect(completed).toBeDefined();
@@ -89,7 +89,7 @@ describe("prescribed carbs in planned events", () => {
       carbs_per_hour: 60,
     };
 
-    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    const [planned] = processPlannedEvents([event], new Map(), new Set(), {});
     expect(prescribedCarbs(planned.description, planned.fuelRate)).toBe(65);
   });
 
@@ -103,7 +103,7 @@ describe("prescribed carbs in planned events", () => {
       carbs_per_hour: 60,
     };
 
-    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    const [planned] = processPlannedEvents([event], new Map(), new Set(), {});
     expect(prescribedCarbs(planned.description, planned.fuelRate)).toBeNull();
   });
 
@@ -116,7 +116,7 @@ describe("prescribed carbs in planned events", () => {
       description,
     };
 
-    const [planned] = processPlannedEvents([event], new Map(), new Set());
+    const [planned] = processPlannedEvents([event], new Map(), new Set(), {});
     expect(prescribedCarbs(planned.description, planned.fuelRate)).toBeNull();
   });
 });

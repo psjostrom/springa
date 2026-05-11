@@ -76,7 +76,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-02-01"), new Date("2026-02-28"), {});
     expect(result.length).toBeGreaterThan(0);
     const completed = result.filter((e) => e.type === "completed");
     const planned = result.filter((e) => e.type === "planned");
@@ -113,7 +113,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-03-01"), new Date("2026-03-31"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-03-01"), new Date("2026-03-31"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
   });
@@ -126,7 +126,7 @@ describe("fetchCalendarData", () => {
     );
 
     await expect(
-      fetchCalendarData("test-api-key-error", new Date("2026-01-01"), new Date("2026-01-31")),
+      fetchCalendarData("test-api-key-error", new Date("2026-01-01"), new Date("2026-01-31"), {}),
     ).rejects.toThrow();
   });
 
@@ -159,7 +159,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-04-01"), new Date("2026-04-30"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-04-01"), new Date("2026-04-30"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
     expect(result[0].description).toContain("FUEL PER 10: 8g");
@@ -193,7 +193,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-05-01"), new Date("2026-05-31"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-05-01"), new Date("2026-05-31"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
     expect(result[0].description).toContain("FUEL PER 10: 8g");
@@ -227,7 +227,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-06-01"), new Date("2026-06-30"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-06-01"), new Date("2026-06-30"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
     expect(result[0].description).toContain("Easy run.");
@@ -261,7 +261,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2026-07-01"), new Date("2026-07-31"));
+    const result = await fetchCalendarData("test-api-key", new Date("2026-07-01"), new Date("2026-07-31"), {});
     expect(result.length).toBe(2);
     expect(result.filter((e) => e.type === "completed").length).toBe(1);
     expect(result.filter((e) => e.type === "planned").length).toBe(1);
@@ -298,7 +298,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-key", new Date("2026-08-01"), new Date("2026-08-31"));
+    const result = await fetchCalendarData("test-key", new Date("2026-08-01"), new Date("2026-08-31"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("completed");
     expect(result[0].carbsIngested).toBe(55);
@@ -335,7 +335,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-key", new Date("2026-09-01"), new Date("2026-09-30"));
+    const result = await fetchCalendarData("test-key", new Date("2026-09-01"), new Date("2026-09-30"), {});
     expect(result.length).toBe(1);
     // Pipeline does not fall back to a computed prescription. CarbsWidget computes
     // planned via prescribedCarbs(description, fuelRate, paceTable, threshold) and
@@ -364,7 +364,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-key", new Date("2026-10-01"), new Date("2026-10-31"));
+    const result = await fetchCalendarData("test-key", new Date("2026-10-01"), new Date("2026-10-31"), {});
     expect(result.length).toBe(1);
     expect(result[0].fuelRate).toBe(48);
   });
@@ -387,7 +387,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-key", new Date("2026-11-01"), new Date("2026-11-30"));
+    const result = await fetchCalendarData("test-key", new Date("2026-11-01"), new Date("2026-11-30"), {});
     expect(result.length).toBe(1);
     expect(result[0].fuelRate).toBeNull();
   });
@@ -410,7 +410,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key-race", new Date("2026-06-01"), new Date("2026-06-30"));
+    const result = await fetchCalendarData("test-api-key-race", new Date("2026-06-01"), new Date("2026-06-30"), {});
     expect(result.length).toBe(1);
     expect(result[0].type).toBe("race");
   });
@@ -444,7 +444,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    await fetchCalendarData("test-api-key", new Date("2026-12-01"), new Date("2026-12-31"));
+    await fetchCalendarData("test-api-key", new Date("2026-12-01"), new Date("2026-12-31"), {});
 
     // Wait for fire-and-forget pair call to arrive at MSW
     await vi.waitFor(() => {
@@ -485,7 +485,7 @@ describe("fetchCalendarData", () => {
       }),
     );
 
-    const result = await fetchCalendarData("test-api-key", new Date("2027-01-01"), new Date("2027-01-31"));
+    const result = await fetchCalendarData("test-api-key", new Date("2027-01-01"), new Date("2027-01-31"), {});
     expect(result.length).toBe(1);
     expect(result[0].name).toBe("Easy Run");
   });
@@ -562,7 +562,6 @@ describe("uploadToIntervals", () => {
 
     const result = await uploadToIntervals("test-key", events);
     expect(result.count).toBe(1);
-    expect(result.staleDeletedEventIds).toEqual([100]);
     expect(callOrder).toEqual(["list", "upload", "delete:100"]);
     expect(capturedDeleteEventIds).toEqual(["100"]);
   });

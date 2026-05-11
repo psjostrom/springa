@@ -17,10 +17,7 @@ import type { WorkoutEstimationContext } from "@/lib/workoutMath";
 import { getUserSettings } from "@/lib/settings";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
 import { findAuthoritativeWorkoutEventMatch } from "@/lib/workoutEventMatching";
-import {
-  loadWorkoutEventPrescriptions,
-  calculateCanonicalPlannedPrescription,
-} from "@/lib/workoutPrescriptions";
+import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
@@ -33,14 +30,12 @@ function shiftDateString(dateStr: string, dayOffset: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Find the matching WORKOUT event for this activity date and compute prescribed carbs
- *  from the description (the prescription). Never derive from event time fields —
- *  Intervals.icu overwrites those with actual run time after pairing.
- *
- *  The full workout estimation context must come from the same resolver the UI uses —
- *  otherwise the post-run screen drifts from the pre-run prescription. */
+/** Find the matching WORKOUT event for this activity and compute prescribed carbs
+ *  using the SAME inputs the calendar pipeline uses pre-run: the planned event's
+ *  description + carbs_per_hour + workout context. No duration field is involved —
+ *  Intervals.icu overwrites planned event time fields with actuals after pairing,
+ *  so reading them post-run would diverge from the pre-run estimate. */
 async function findMatchingEvent(
-  email: string,
   apiKey: string,
   activity: IntervalsActivity,
   context: WorkoutEstimationContext,
@@ -59,26 +54,19 @@ async function findMatchingEvent(
     );
     if (!res.ok) return { prescribedCarbsG: null, eventId: null };
     const events = (await res.json()) as IntervalsEvent[];
+    // Authoritative-only by design. The calendar pipeline uses the broader
+    // findWorkoutEventMatch because it ALSO drives the fire-and-forget auto-
+    // pairing (it needs to guess so it can pair). Feedback is per-activity and
+    // conservative: better to show "no prescription" briefly than to display a
+    // wrong number based on a name+day guess that may not survive the next
+    // pairing pass.
     const planned = findAuthoritativeWorkoutEventMatch(activity, events);
     if (!planned) return { prescribedCarbsG: null, eventId: null };
 
-    const eventId = String(planned.id);
-    const stored = await loadWorkoutEventPrescriptions(email, [eventId]);
-    if (stored.has(eventId)) {
-      return {
-        prescribedCarbsG: stored.get(eventId)?.prescribedCarbsG ?? null,
-        eventId: planned.id,
-      };
-    }
-
-    // No stored prescription: return null rather than lazy backfill.
-    // No stored prescription (pre-PR run): compute a read-only best-effort fallback
-    // using the activity's actual duration. This does NOT write to DB.
     return {
       prescribedCarbsG: calculateCanonicalPlannedPrescription(
         planned.description,
         planned.carbs_per_hour,
-        activity.moving_time ?? null,
         context,
       ),
       eventId: planned.id,
@@ -188,7 +176,7 @@ export async function GET(req: Request) {
     );
 
     const { prescribedCarbsG, eventId: matchedEventId } =
-      await findMatchingEvent(email, apiKey, activity, workoutContext);
+      await findMatchingEvent(apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
@@ -230,7 +218,7 @@ export async function GET(req: Request) {
     );
 
     const { prescribedCarbsG, eventId: matchedEventId } =
-      await findMatchingEvent(email, apiKey, activity, workoutContext);
+      await findMatchingEvent(apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.

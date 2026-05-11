@@ -9,6 +9,8 @@ import { getWorkoutCategory } from "./constants";
 import { nonEmpty } from "./format";
 import { categoryFromExternalId } from "./paceInsight";
 import { findWorkoutEventMatch } from "./workoutEventMatching";
+import { calculateCanonicalPlannedPrescription } from "./workoutPrescriptions";
+import type { WorkoutEstimationContext } from "./workoutMath";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -71,10 +73,16 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
   };
 }
 
-/** Convert completed run activities into CalendarEvents and track auto-pair candidates. */
+/** Convert completed run activities into CalendarEvents and track auto-pair candidates.
+ *  Derives prescribedCarbsG inline from the matched planned event's description + fuelRate
+ *  + context, identical to the planned-event path — guaranteeing pre-run and post-run show
+ *  the same number for the same workout. Pass `{}` only when prescribed carbs aren't
+ *  needed (tests, snapshot scripts) — that path produces prescribedCarbsG: null for every
+ *  event by design. */
 export function processActivities(
   activities: IntervalsActivity[],
   events: IntervalsEvent[],
+  context: WorkoutEstimationContext,
 ): {
   calendarEvents: CalendarEvent[];
   activityMap: Map<string, CalendarEvent>;
@@ -146,10 +154,23 @@ export function processActivities(
       matchingEvent?.description ?? activity.description ?? "";
 
     const fuelRate = matchingEvent?.carbs_per_hour ?? null;
-    // carbsIngested: only from the activity itself. Pipeline never falls back to a
-    // computed prescription — the display layer derives the planned total via
-    // prescribedCarbs() with full pace context and uses it as a fallback there.
     const carbsIngested = activity.carbs_ingested ?? null;
+
+    // Description-only prescription. We never read event.moving_time / duration here
+    // because Intervals.icu overwrites those with actual run time after pairing — using
+    // them post-run would diverge from the pre-run estimate. Description + fuelRate +
+    // context is the same pre-run and post-run, so the gram total is too.
+    // Calibration gate lives inside calculateCanonicalPlannedPrescription.
+    //
+    // Use matchingEvent.description directly (NOT the merged `description` above):
+    // processPlannedEvents only sees the event's description, so feeding the same
+    // input here keeps the planned and completed paths perfectly symmetric. If the
+    // matched event has no description, we have no prescription to make.
+    const prescribedCarbsG = calculateCanonicalPlannedPrescription(
+      matchingEvent?.description ?? "",
+      fuelRate,
+      context,
+    );
 
     const category = categoryFromExternalId(matchingEvent?.external_id) ?? getWorkoutCategory(activity.name);
 
@@ -174,6 +195,7 @@ export function processActivities(
         : undefined,
       zoneTimes,
       fuelRate,
+      prescribedCarbsG,
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
       rating: nonEmpty(activity.Rating),
@@ -189,11 +211,16 @@ export function processActivities(
   return { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds };
 }
 
-/** Convert planned/upcoming workout events into CalendarEvents (excluding already-completed ones). */
+/** Convert planned/upcoming workout events into CalendarEvents (excluding already-completed ones).
+ *  Derives prescribedCarbsG inline from description + fuelRate + context — same call
+ *  signature and inputs as the completed-event path, so the same workout produces the
+ *  same gram total before and after the run. See processActivities for why event time
+ *  fields are deliberately not consulted. */
 export function processPlannedEvents(
   events: IntervalsEvent[],
   activityMap: Map<string, CalendarEvent>,
   fallbackClaimedEventIds: Set<number>,
+  context: WorkoutEstimationContext,
 ): CalendarEvent[] {
   const calendarEvents: CalendarEvent[] = [];
 
@@ -217,6 +244,13 @@ export function processPlannedEvents(
     const category = extCategory ?? (isRace ? "race" : getWorkoutCategory(name));
 
     const eventFuelRate = event.carbs_per_hour ?? null;
+    // Same canonical call as processActivities — see comment there for why
+    // event time fields are deliberately not passed.
+    const prescribedCarbsG = calculateCanonicalPlannedPrescription(
+      eventDesc,
+      eventFuelRate,
+      context,
+    );
 
     calendarEvents.push({
       id: `event-${event.id}`,
@@ -228,6 +262,7 @@ export function processPlannedEvents(
       distance: event.distance ?? 0,
       duration: event.moving_time ?? event.duration ?? event.elapsed_time,
       fuelRate: eventFuelRate,
+      prescribedCarbsG,
     });
   }
 
