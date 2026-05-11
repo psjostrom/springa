@@ -36,9 +36,16 @@ interface Props {
 }
 
 const HYPO = 4.0;
-const MIN = 3.5;
-const MAX = 14.0;
-const SPAN = MAX - MIN;
+
+// Per-variant scales. End BG (during) clusters 4-10 with safety zones, so a
+// fixed 3.5-14 scale lets the gradient mean the same thing across runs.
+// Peak BG (after) routinely exceeds 14 (post-run rebounds of 4-8 mmol/L on
+// top of an end BG of 7-10), so it gets a wider scale to avoid clamping
+// values into the right edge.
+const SCALES: Record<"during" | "after", { min: number; max: number }> = {
+  during: { min: 3.5, max: 14.0 },
+  after: { min: 4.0, max: 20.0 },
+};
 
 const PREDICTOR_LABELS: Record<PredictorName, string> = {
   startBG: "starting BG",
@@ -54,8 +61,8 @@ const LEVER_LINES: Record<WorkoutCategory, string> = {
   easy: "Reconnect pump within 5 min of stop · keep recovery snack small · let the exercise effect finish before correcting.",
 };
 
-function pct(value: number): number {
-  return Math.max(0, Math.min(100, ((value - MIN) / SPAN) * 100));
+function pctOnScale(value: number, min: number, max: number): number {
+  return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 }
 
 function parseLocalDate(dateIso: string): Date {
@@ -308,9 +315,10 @@ function Ribbon({
   p90: number;
   variant: "during" | "after";
 }) {
-  const leftPct = pct(p10);
-  const rightPct = 100 - pct(p90);
-  const medianPct = pct(median);
+  const { min, max } = SCALES[variant];
+  const p10Pct = pctOnScale(p10, min, max);
+  const medianPct = pctOnScale(median, min, max);
+  const p90Pct = pctOnScale(p90, min, max);
   const gradient =
     variant === "during"
       ? "bg-gradient-to-r from-error/20 via-success/15 to-warning/20"
@@ -324,7 +332,7 @@ function Ribbon({
       <div className={`relative h-6 rounded-md ${gradient} border border-border-subtle`}>
         <div
           className="absolute top-1 bottom-1 bg-text/15 rounded-sm"
-          style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
+          style={{ left: `${p10Pct}%`, right: `${100 - p90Pct}%` }}
         />
         <div
           className="absolute top-0 bottom-0 w-0.5 bg-text"
@@ -332,20 +340,44 @@ function Ribbon({
           aria-hidden
         />
       </div>
-      <div className="flex justify-between text-[10px] text-muted mt-1 tabular-nums">
-        <span className="text-error">
-          <span className="text-muted font-normal">low </span>
-          {p10.toFixed(1)}
-        </span>
-        <span className="text-text font-bold">
-          <span className="text-muted font-normal">typical </span>
-          {median.toFixed(1)}
-        </span>
-        <span>
-          <span className="text-muted font-normal">high </span>
-          {p90.toFixed(1)}
-        </span>
+      {/* Labels positioned at their data values so each label sits directly
+          under the visual element it names (low → pill left edge, typical →
+          line, high → pill right edge). */}
+      <div className="relative h-4 mt-1 text-[10px] tabular-nums">
+        <RibbonLabel pct={p10Pct} valueClass="text-error" prefix="low" value={p10} />
+        <RibbonLabel pct={medianPct} valueClass="text-text font-bold" prefix="typical" value={median} />
+        <RibbonLabel pct={p90Pct} valueClass="text-muted" prefix="high" value={p90} />
       </div>
     </div>
+  );
+}
+
+/**
+ * Position a label under the bar at the given percentage. Center-aligns at the
+ * value position, but anchors flush left/right when the value is near an edge
+ * so the label never overflows the bar.
+ */
+function RibbonLabel({
+  pct,
+  valueClass,
+  prefix,
+  value,
+}: {
+  pct: number;
+  valueClass: string;
+  prefix: string;
+  value: number;
+}) {
+  const style: React.CSSProperties =
+    pct < 8
+      ? { left: 0 }
+      : pct > 92
+      ? { right: 0 }
+      : { left: `${pct}%`, transform: "translateX(-50%)" };
+  return (
+    <span className={`absolute whitespace-nowrap ${valueClass}`} style={style}>
+      <span className="text-muted font-normal">{prefix} </span>
+      {value.toFixed(1)}
+    </span>
   );
 }
