@@ -1,7 +1,7 @@
 /**
- * One-time migration: add profile-related columns to user_settings.
+ * One-time migration: add pump_during_runs column to user_settings.
  *
- * Run: npx tsx --env-file=.env.local scripts/migrate-profile-fields.ts
+ * Run: npx tsx --env-file=.env.local scripts/migrate-pump-during-runs.ts
  */
 import { createClient } from "@libsql/client";
 
@@ -16,13 +16,6 @@ async function main() {
   const db = createClient({ url, authToken: token });
 
   const alterStatements = [
-    "ALTER TABLE user_settings ADD COLUMN dob TEXT",
-    "ALTER TABLE user_settings ADD COLUMN weight_kg REAL",
-    "ALTER TABLE user_settings ADD COLUMN height_cm REAL",
-    "ALTER TABLE user_settings ADD COLUMN t1d_since_year INTEGER",
-    "ALTER TABLE user_settings ADD COLUMN pump_model TEXT",
-    "ALTER TABLE user_settings ADD COLUMN cgm_model TEXT",
-    "ALTER TABLE user_settings ADD COLUMN loop_system TEXT",
     "ALTER TABLE user_settings ADD COLUMN pump_during_runs TEXT",
   ];
 

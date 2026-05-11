@@ -48,13 +48,6 @@ CREATE TABLE IF NOT EXISTS user_settings (
   pace_suggestion_dismissed_at INTEGER,
   hr_zones TEXT,  -- JSON array of 5 HR zone boundary values, cached from Intervals.icu profile
   max_hr   INTEGER, -- cached from Intervals.icu profile; used when hr_zones not set
-  dob               TEXT,
-  weight_kg         REAL,
-  height_cm         REAL,
-  t1d_since_year    INTEGER,
-  pump_model        TEXT,
-  cgm_model         TEXT,
-  loop_system       TEXT,
   pump_during_runs  TEXT
 );
 

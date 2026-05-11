@@ -1,4 +1,4 @@
-import { format, subDays, addDays, startOfDay, differenceInYears, parseISO } from "date-fns";
+import { format, subDays, addDays, startOfDay } from "date-fns";
 import type { CalendarEvent, WorkoutCategory } from "./types";
 import { summarizeBGModel } from "./bgModel";
 import type { BGResponseModel } from "./bgModel";
@@ -28,13 +28,6 @@ interface CoachContext {
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
   profile?: {
-    dob?: string;
-    weightKg?: number;
-    heightCm?: number;
-    t1dSinceYear?: number;
-    pumpModel?: string;
-    cgmModel?: string;
-    loopSystem?: string;
     pumpDuringRuns?: "on" | "off" | "mixed";
     vo2max?: number;
     thresholdPaceMinPerKm?: number;
@@ -226,16 +219,6 @@ function buildRoleLine(race?: CoachContext["race"]): string {
   return `${base} Preparing for ${race.name}${distancePart}${datePart}.`;
 }
 
-function computeAge(dob?: string): number | null {
-  if (!dob) return null;
-  try {
-    const years = differenceInYears(new Date(), parseISO(dob));
-    return years > 0 && years < 150 ? years : null;
-  } catch {
-    return null;
-  }
-}
-
 function buildRunnerProfileSection(
   profile: CoachContext["profile"],
   derived: CoachContext["derived"],
@@ -243,15 +226,7 @@ function buildRunnerProfileSection(
 ): string {
   const bullets: string[] = [];
 
-  // Demographics: age + body
-  const age = computeAge(profile?.dob);
-  const demographics: string[] = [];
-  if (age != null) demographics.push(`Age ${age}`);
-  if (profile?.weightKg != null) demographics.push(`${profile.weightKg}kg`);
-  if (profile?.heightCm != null) demographics.push(`${profile.heightCm}cm`);
-  if (demographics.length > 0) bullets.push(`- ${demographics.join(", ")}.`);
-
-  // Performance metrics
+  // Performance metrics (from intervals.icu)
   const perf: string[] = [];
   if (profile?.thresholdPaceMinPerKm != null) {
     perf.push(`LT Pace ${formatPace(profile.thresholdPaceMinPerKm)}/km`);
@@ -272,20 +247,8 @@ function buildRunnerProfileSection(
   }
   if (history.length > 0) bullets.push(`- ${history.join(". ")}.`);
 
-  // T1D + equipment
-  const t1dParts: string[] = [];
-  const sinceClause = profile?.t1dSinceYear ? ` (since ${profile.t1dSinceYear})` : "";
-  t1dParts.push(`Type 1 Diabetic${sinceClause}.`);
-  const equipment: string[] = [];
-  if (profile?.pumpModel) equipment.push(`${profile.pumpModel} pump`);
-  if (profile?.cgmModel) equipment.push(profile.cgmModel);
-  if (profile?.loopSystem) equipment.push(profile.loopSystem);
-  if (equipment.length > 0) {
-    t1dParts.push(`${equipment.join(" + ")}.`);
-  }
-  bullets.push(`- ${t1dParts.join(" ")}`);
-
-  // Pump-during-runs preference
+  // T1D + pump-during-runs preference
+  bullets.push(`- Type 1 Diabetic.`);
   if (profile?.pumpDuringRuns) {
     bullets.push(`- Pump during runs: ${profile.pumpDuringRuns}.`);
   }

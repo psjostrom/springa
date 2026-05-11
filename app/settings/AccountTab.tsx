@@ -20,6 +20,7 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState("");
   const [insulinType, setInsulinType] = useState(settings.insulinType ?? "fiasp");
+  const [pumpDuringRuns, setPumpDuringRuns] = useState<"on" | "off" | "mixed" | "">(settings.pumpDuringRuns ?? "");
   const [intervalsApiKey, setIntervalsApiKey] = useState("");
   const [intervalsConnected, setIntervalsConnected] = useState(settings.intervalsConnected ?? false);
   const [intervalsValidating, setIntervalsValidating] = useState(false);
@@ -121,6 +122,11 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
 
       if (insulinType !== (settings.insulinType ?? "fiasp")) {
         updates.insulinType = insulinType;
+      }
+
+      const newPumpDuringRuns = pumpDuringRuns === "" ? undefined : pumpDuringRuns;
+      if (newPumpDuringRuns !== settings.pumpDuringRuns) {
+        updates.pumpDuringRuns = newPumpDuringRuns;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -283,8 +289,9 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
 
             {/* Insulin Type */}
             <div>
-              <label className="block text-xs text-muted mb-1">Rapid-acting insulin</label>
+              <label htmlFor="insulinType" className="block text-xs text-muted mb-1">Rapid-acting insulin</label>
               <select
+                id="insulinType"
                 value={insulinType}
                 onChange={(e) => { setInsulinType(e.target.value); }}
                 className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent text-sm"
@@ -294,6 +301,25 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
                 ))}
               </select>
               <p className="text-xs text-muted mt-1">Used for IOB decay calculation</p>
+            </div>
+
+            {/* Pump during runs */}
+            <div>
+              <label htmlFor="pumpDuringRuns" className="block text-xs text-muted mb-1">
+                Pump during runs
+              </label>
+              <select
+                id="pumpDuringRuns"
+                value={pumpDuringRuns}
+                onChange={(e) => { setPumpDuringRuns(e.target.value as "" | "on" | "off" | "mixed"); }}
+                className="w-full px-3 py-2 border border-border rounded-lg text-text bg-surface-alt focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent text-sm"
+              >
+                <option value="">Not set</option>
+                <option value="on">On</option>
+                <option value="off">Off</option>
+                <option value="mixed">Mixed</option>
+              </select>
+              <p className="text-xs text-muted mt-1">Affects how the coach reasons about basal insulin during runs</p>
             </div>
           </div>
         )}

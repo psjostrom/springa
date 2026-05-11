@@ -26,13 +26,6 @@ interface UseCoachDataOptions {
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
   profile?: {
-    dob?: string;
-    weightKg?: number;
-    heightCm?: number;
-    t1dSinceYear?: number;
-    pumpModel?: string;
-    cgmModel?: string;
-    loopSystem?: string;
     pumpDuringRuns?: "on" | "off" | "mixed";
     vo2max?: number;
     thresholdPaceMinPerKm?: number;

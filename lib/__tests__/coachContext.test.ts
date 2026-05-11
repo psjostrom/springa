@@ -778,13 +778,6 @@ describe("coach prompt — omit on missing", () => {
     expect(out).toContain("Järfälla - W11 Long (14km)");
   });
 
-  it("does not contain Age 40, 80kg, 185cm hardcoded", () => {
-    const out = buildSystemPrompt(baseCtx);
-    expect(out).not.toMatch(/Age 40/);
-    expect(out).not.toMatch(/80kg/);
-    expect(out).not.toMatch(/185cm/);
-  });
-
   it("does not contain LT Pace 4:53/km or VO2max 49 hardcoded", () => {
     const out = buildSystemPrompt(baseCtx);
     expect(out).not.toMatch(/LT Pace 4:53/);
@@ -866,7 +859,7 @@ describe("coach prompt — pre-exercise BG references", () => {
   it("never references the removed targetStartBG profile field", () => {
     const out = buildSystemPrompt({
       ...baseCtx,
-      profile: { weightKg: 80 },
+      profile: { pumpDuringRuns: "off" },
     });
     expect(out).not.toMatch(/Target start BG/i);
   });

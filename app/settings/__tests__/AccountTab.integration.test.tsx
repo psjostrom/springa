@@ -132,8 +132,8 @@ describe("AccountTab Diabetes Mode", () => {
     const { onSave } = renderTab({ diabetesMode: true, insulinType: "fiasp" });
 
     // Change insulin type
-    const select = screen.getByRole("combobox");
-    await user.selectOptions(select, "novorapid");
+    const insulinSelect = screen.getByLabelText(/rapid-acting insulin/i);
+    await user.selectOptions(insulinSelect, "novorapid");
 
     // Save
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -142,6 +142,29 @@ describe("AccountTab Diabetes Mode", () => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
           insulinType: "novorapid",
+        }),
+      );
+    });
+  });
+
+  it("renders existing pumpDuringRuns value when diabetes mode is on", () => {
+    renderTab({ diabetesMode: true, pumpDuringRuns: "off" });
+    expect(screen.getByLabelText(/pump during runs/i)).toHaveValue("off");
+  });
+
+  it("changes pumpDuringRuns and saves", async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderTab({ diabetesMode: true, pumpDuringRuns: "on" });
+
+    const pumpSelect = screen.getByLabelText(/pump during runs/i);
+    await user.selectOptions(pumpSelect, "off");
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pumpDuringRuns: "off",
         }),
       );
     });

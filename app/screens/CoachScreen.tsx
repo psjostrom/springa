@@ -60,13 +60,6 @@ export function CoachScreen() {
 
   const profile = useMemo(
     () => ({
-      dob: settings?.dob,
-      weightKg: settings?.weightKg,
-      heightCm: settings?.heightCm,
-      t1dSinceYear: settings?.t1dSinceYear,
-      pumpModel: settings?.pumpModel,
-      cgmModel: settings?.cgmModel,
-      loopSystem: settings?.loopSystem,
       pumpDuringRuns: settings?.pumpDuringRuns,
       vo2max: settings?.vo2max,
       thresholdPaceMinPerKm: settings?.thresholdPaceMinPerKm,
