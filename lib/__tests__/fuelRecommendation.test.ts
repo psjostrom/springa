@@ -66,4 +66,13 @@ describe("recommendFuelRate", () => {
     expect(rec?.fuelRate).toBe(60);
     expect(rec?.basis).toBe("evidence");
   });
+
+  it("returns null when all matches have fuelRate: null", () => {
+    const matches: MatchableRunWithPost[] = [
+      { activityId: "1", date: "2026-04-01", category: "easy", startBG: 8, entrySlope: null, fuelRate: null, hourOfDay: 7, endBG: 5.0, wentHypo: false, peak60mAboveEnd: 1, postRunHypo: false },
+      { activityId: "2", date: "2026-04-02", category: "easy", startBG: 8, entrySlope: null, fuelRate: null, hourOfDay: 7, endBG: 5.5, wentHypo: false, peak60mAboveEnd: 1, postRunHypo: false },
+      { activityId: "3", date: "2026-04-03", category: "easy", startBG: 8, entrySlope: null, fuelRate: null, hourOfDay: 7, endBG: 6.0, wentHypo: false, peak60mAboveEnd: 1, postRunHypo: false },
+    ];
+    expect(recommendFuelRate(matches, 4.5)).toBeNull();
+  });
 });

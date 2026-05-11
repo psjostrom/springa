@@ -15,7 +15,9 @@ vi.mock("@libsql/client", async (importOriginal) => {
 });
 
 import { SCHEMA_DDL } from "../db";
-import { getRunAnalysis, hashRunAnalysisContext, saveRunAnalysis } from "../runAnalysisDb";
+import { getRunAnalysis, hashRunAnalysisContext, saveRunAnalysis, buildRunHistory } from "../runAnalysisDb";
+import type { EnrichedActivity } from "../activityStreamsDb";
+import type { IntervalsActivity } from "../types";
 
 const EMAIL = "test@example.com";
 const ACTIVITY_ID = "act-1";
@@ -46,5 +48,62 @@ describe("runAnalysisDb context-aware cache", () => {
     await saveRunAnalysis(EMAIL, ACTIVITY_ID, "Full analysis", hashRunAnalysisContext("context-a"));
 
     await expect(getRunAnalysis(EMAIL, ACTIVITY_ID, hashRunAnalysisContext("context-b"))).resolves.toBeNull();
+  });
+});
+
+describe("buildRunHistory", () => {
+  it("sets wentHypo to true when any glucose reading is below 4.0", () => {
+    const row: EnrichedActivity = {
+      activityId: "123",
+      category: "easy",
+      fuelRate: 60,
+      hr: [{ time: 0, value: 150 }],
+      glucose: [
+        { time: 0, value: 7.0 },
+        { time: 5, value: 5.5 },
+        { time: 10, value: 3.8 },
+        { time: 15, value: 4.2 },
+      ],
+      activityDate: "2026-04-01",
+    };
+    const activityMap = new Map<string, IntervalsActivity>();
+    const result = buildRunHistory([row], activityMap);
+    expect(result).toHaveLength(1);
+    expect(result[0].bgSummary.wentHypo).toBe(true);
+  });
+
+  it("sets wentHypo to false when all glucose readings are >= 4.0", () => {
+    const row: EnrichedActivity = {
+      activityId: "123",
+      category: "easy",
+      fuelRate: 60,
+      hr: [{ time: 0, value: 150 }],
+      glucose: [
+        { time: 0, value: 7.0 },
+        { time: 5, value: 5.5 },
+        { time: 10, value: 4.0 },
+        { time: 15, value: 4.2 },
+      ],
+      activityDate: "2026-04-01",
+    };
+    const activityMap = new Map<string, IntervalsActivity>();
+    const result = buildRunHistory([row], activityMap);
+    expect(result).toHaveLength(1);
+    expect(result[0].bgSummary.wentHypo).toBe(false);
+  });
+
+  it("sets wentHypo to false when no glucose stream exists", () => {
+    const row: EnrichedActivity = {
+      activityId: "123",
+      category: "easy",
+      fuelRate: 60,
+      hr: [{ time: 0, value: 150 }],
+      glucose: undefined,
+      activityDate: "2026-04-01",
+    };
+    const activityMap = new Map<string, IntervalsActivity>();
+    const result = buildRunHistory([row], activityMap);
+    expect(result).toHaveLength(1);
+    expect(result[0].bgSummary.wentHypo).toBe(false);
   });
 });

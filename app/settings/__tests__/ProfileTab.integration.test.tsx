@@ -1,13 +1,27 @@
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ProfileTab } from "../ProfileTab";
+import { useState } from "react";
+import type { UserSettings } from "@/lib/settings";
+
+function HarnessProfile({ initial }: { initial: Partial<UserSettings> }) {
+  const [settings, setSettings] = useState(initial);
+  return (
+    <ProfileTab
+      settings={settings}
+      onSave={async (partial: Partial<UserSettings>) => {
+        setSettings((s: Partial<UserSettings>) => ({ ...s, ...partial }));
+      }}
+    />
+  );
+}
 
 describe("ProfileTab", () => {
   it("renders existing profile values from settings", () => {
     render(
-      <ProfileTab
-        settings={{
+      <HarnessProfile
+        initial={{
           dob: "1985-06-12",
           weightKg: 80,
           heightCm: 175,
@@ -20,7 +34,6 @@ describe("ProfileTab", () => {
           loopSystem: "Loop 3",
           pumpDuringRuns: "off",
         }}
-        onSave={vi.fn()}
       />,
     );
     expect(screen.getByLabelText(/date of birth/i)).toHaveValue("1985-06-12");
@@ -36,59 +49,47 @@ describe("ProfileTab", () => {
     expect(screen.getByLabelText(/pump during runs/i)).toHaveValue("off");
   });
 
-  it("saves edited values via onSave", async () => {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy in test
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<ProfileTab settings={{ weightKg: 80 }} onSave={onSave} />);
+  it("updates input value after saving edited weight", async () => {
+    render(<HarnessProfile initial={{ weightKg: 80 }} />);
     await userEvent.clear(screen.getByLabelText(/weight/i));
     await userEvent.type(screen.getByLabelText(/weight/i), "82");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalled();
+      expect(screen.getByText(/saved/i)).toBeInTheDocument();
     });
-    const saved = onSave.mock.calls[0][0];
-    expect(saved.weightKg).toBe(82);
+    expect(screen.getByLabelText(/weight/i)).toHaveValue(82);
   });
 
   it("does not require any field — saves with empty values", async () => {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy in test
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<ProfileTab settings={{}} onSave={onSave} />);
+    render(<HarnessProfile initial={{}} />);
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalled();
+      expect(screen.getByText(/saved/i)).toBeInTheDocument();
     });
   });
 
-  it("supports pumpDuringRuns enum select", async () => {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy in test
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<ProfileTab settings={{}} onSave={onSave} />);
+  it("supports pumpDuringRuns enum select and reflects new value after save", async () => {
+    render(<HarnessProfile initial={{}} />);
     await userEvent.selectOptions(screen.getByLabelText(/pump during runs/i), "off");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalled();
+      expect(screen.getByText(/saved/i)).toBeInTheDocument();
     });
-    expect(onSave.mock.calls[0][0].pumpDuringRuns).toBe("off");
+    expect(screen.getByLabelText(/pump during runs/i)).toHaveValue("off");
   });
 
-  it("clears number field to undefined when emptied", async () => {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy in test
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<ProfileTab settings={{ weightKg: 80 }} onSave={onSave} />);
+  it("clears number field when emptied and shows empty after save", async () => {
+    render(<HarnessProfile initial={{ weightKg: 80 }} />);
     await userEvent.clear(screen.getByLabelText(/weight/i));
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalled();
+      expect(screen.getByText(/saved/i)).toBeInTheDocument();
     });
-    const saved = onSave.mock.calls[0][0];
-    expect(saved.weightKg).toBeUndefined();
+    expect(screen.getByLabelText(/weight/i)).toHaveValue(null);
   });
 
   it("shows Saved status after successful save", async () => {
-    // eslint-disable-next-line no-restricted-syntax -- callback spy in test
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<ProfileTab settings={{}} onSave={onSave} />);
+    render(<HarnessProfile initial={{}} />);
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
       expect(screen.getByText(/saved/i)).toBeInTheDocument();

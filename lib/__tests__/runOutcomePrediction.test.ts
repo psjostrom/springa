@@ -61,4 +61,16 @@ describe("predictRunOutcome", () => {
     expect(predictRunOutcome(Array.from({ length: 6 }, () => mk(5, 1)))!.during.confidence).toBe("medium");
     expect(predictRunOutcome(Array.from({ length: 12 }, () => mk(5, 1)))!.during.confidence).toBe("high");
   });
+
+  it("sets confidence to medium when exactly 4 matches", () => {
+    const matches = [mk(5, 1), mk(5, 2), mk(5, 3), mk(5, 4)];
+    const out = predictRunOutcome(matches)!;
+    expect(out.during.confidence).toBe("medium");
+  });
+
+  it("sets confidence to high when exactly 10 matches", () => {
+    const matches = Array.from({ length: 10 }, () => mk(5, 1));
+    const out = predictRunOutcome(matches)!;
+    expect(out.during.confidence).toBe("high");
+  });
 });

@@ -28,8 +28,8 @@ const sampleStats = {
 
 describe("DuringPatternCards", () => {
   it("orders cards by hypo rate descending — interval first", () => {
-    const { container } = render(<DuringPatternCards stats={sampleStats} />);
-    const headings = container.querySelectorAll("[data-testid='during-card-name']");
+    render(<DuringPatternCards stats={sampleStats} />);
+    const headings = screen.getAllByTestId("during-card-name");
     expect(headings[0].textContent).toMatch(/interval/i);
     expect(headings[1].textContent).toMatch(/easy/i);
     expect(headings[2].textContent).toMatch(/long/i);
@@ -49,10 +49,10 @@ describe("DuringPatternCards", () => {
   });
 
   it("renders only categories with non-null stats", () => {
-    const { container } = render(
+    render(
       <DuringPatternCards stats={{ ...sampleStats, long: null }} />,
     );
-    const headings = container.querySelectorAll("[data-testid='during-card-name']");
+    const headings = screen.getAllByTestId("during-card-name");
     expect(headings.length).toBe(2);
   });
 });

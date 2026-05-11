@@ -68,6 +68,27 @@ describe("resolveLayout", () => {
     });
     expect(layout.hiddenWidgets).toEqual(["pace-zones"]);
   });
+
+  it("strips removed keys and appends new keys in default position", () => {
+    const saved = [
+      "bg-start-level" as WidgetKey,
+      "phase-tracker",
+      "bg-entry-slope" as WidgetKey,
+      "volume-trend",
+      "bg-time-decay" as WidgetKey,
+      "bg-patterns" as WidgetKey,
+    ];
+    const layout = resolveLayout({ widgetOrder: saved, hiddenWidgets: [] });
+    expect(layout.widgetOrder).not.toContain("bg-start-level");
+    expect(layout.widgetOrder).not.toContain("bg-entry-slope");
+    expect(layout.widgetOrder).not.toContain("bg-time-decay");
+    expect(layout.widgetOrder).not.toContain("bg-patterns");
+    expect(layout.widgetOrder).toContain("phase-tracker");
+    expect(layout.widgetOrder).toContain("volume-trend");
+    expect(layout.widgetOrder).toContain("tomorrow");
+    expect(layout.widgetOrder).toContain("bg-after");
+    expect(layout.widgetOrder).toContain("distance-readiness");
+  });
 });
 
 describe("moveWidget", () => {

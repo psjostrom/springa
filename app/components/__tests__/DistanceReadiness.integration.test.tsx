@@ -12,8 +12,9 @@ describe("DistanceReadiness", () => {
     );
     expect(screen.getByText(/Järfälla - W11 Long \(14km\)/)).toBeInTheDocument();
     expect(screen.getByText(/2026-04-22/)).toBeInTheDocument();
-    // 14, 16, 2 should all appear as stat values
-    expect(screen.getAllByText(/14|16|2/).length).toBeGreaterThan(0);
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(screen.getByText("16")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
   });
 
   it("returns null when no longest run available", () => {
@@ -38,15 +39,16 @@ describe("DistanceReadiness", () => {
     expect(screen.queryByText(/Gap$/)).not.toBeInTheDocument();
   });
 
-  it("renders the progress bar marker at the correct position when race is set", () => {
-    const { container } = render(
+  it("shows both longest run and race text when race is set", () => {
+    render(
       <DistanceReadiness
         longestRun={{ distanceKm: 14, name: "Foo", dateISO: "2026-04-22" }}
         race={{ name: "EcoTrail", distanceKm: 16, date: "2026-06-13" }}
       />,
     );
-    // Progress bar should exist (any element with width style)
-    const bars = container.querySelectorAll('[style*="width"]');
-    expect(bars.length).toBeGreaterThan(0);
+    expect(screen.getByText("Foo")).toBeInTheDocument();
+    expect(screen.getByText(/EcoTrail/)).toBeInTheDocument();
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(screen.getByText("16")).toBeInTheDocument();
   });
 });
