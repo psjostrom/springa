@@ -187,11 +187,11 @@ Forward BG simulation for race rehearsal. 5-min time-stepping glucose forecast u
 
 ### Cross-Run BG Pattern Surfacing
 
-Phase 1: 34-column enriched run table, AI analysis via Claude Sonnet, cached in SQLite with staleness tracking. Displayed in `BGResponsePanel` on Intel screen.
+Phase 1: 34-column enriched run table, AI analysis via Claude Sonnet, cached in SQLite with staleness tracking. Displayed in `DuringPatternCards`, `AfterPatternCards`, and `TomorrowCard` on Intel screen.
 
 Phase 2a: Pattern text fed into all three AI consumers — adapt notes, run analysis, and coach chat — via `getBGPatterns()` -> `patternsText` appended to prompts. Each consumer weaves relevant patterns into its output rather than listing them mechanically.
 
-**Implementation:** `lib/bgPatterns.ts` (enrichment + prompt), `lib/bgPatternsDb.ts` (storage), `app/api/bg-patterns/route.ts` (endpoint), `BGResponsePanel.tsx` (display). AI integration: `lib/adaptPlanPrompt.ts`, `lib/runAnalysisPrompt.ts`, `app/api/chat/route.ts`.
+**Implementation:** `lib/bgPatterns.ts` (enrichment + prompt), `lib/bgPatternsDb.ts` (storage), `app/api/bg-patterns/route.ts` (endpoint), `DuringPatternCards.tsx`, `AfterPatternCards.tsx`, `TomorrowCard.tsx` (display). AI integration: `lib/adaptPlanPrompt.ts`, `lib/runAnalysisPrompt.ts`, `app/api/chat/route.ts`.
 
 ### Ref Overhaul — Replace Refs With State-Driven Data Flow
 
@@ -223,7 +223,7 @@ Category-based BG response analysis across easy/long/interval runs. 5-min slidin
 
 Target fuel rates computed from BG model regression/extrapolation. Auto-applied as defaults when generating plans. Shown as informational targets in Intel tab with confidence indicators and current-vs-target comparison.
 
-**Implementation:** `bgModel.ts` (targetFuelRates), `PlannerScreen.tsx` (fuelDefault), `BGResponsePanel.tsx` (display).
+**Implementation:** `bgModel.ts` (targetFuelRates), `PlannerScreen.tsx` (fuelDefault), `DuringPatternCards.tsx` and `AfterPatternCards.tsx` (display).
 
 ### Live CGM via xDrip
 

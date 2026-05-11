@@ -52,6 +52,8 @@ function Card({
 }) {
   return (
     <div
+      role="region"
+      aria-label={WORKOUT_CATEGORY_LABEL[cat]}
       data-testid={`after-card-${cat}`}
       className={`bg-surface border rounded-xl p-3 ${isDominant ? "border-warning/40" : "border-border"}`}
     >

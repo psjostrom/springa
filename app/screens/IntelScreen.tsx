@@ -57,7 +57,6 @@ import { activityToCalendarEvent } from "@/lib/calendarPipeline";
 import { getThresholdPace } from "@/lib/paceTable";
 import { TabBar } from "../components/TabBar";
 import { VolumeCompact } from "../components/VolumeCompact";
-import { PacePBs } from "../components/PacePBs";
 import { PhaseTracker } from "../components/PhaseTracker";
 import { VolumeTrendChart } from "../components/VolumeTrendChart";
 import { FitnessChart } from "../components/FitnessChart";
@@ -76,7 +75,6 @@ import { EventModal } from "../components/EventModal";
 import { WidgetLoadingCard } from "../components/WidgetLoadingCard";
 import { EmptyState } from "../components/EmptyState";
 import { useActivityStream } from "../hooks/useActivityStream";
-import { usePaceCurves } from "../hooks/usePaceCurves";
 import { mergeStreamData } from "@/lib/enrichEvents";
 import { estimateWorkoutDistance, estimatePlanEventDistance, getPlanWeekContext, getWeekIdx } from "@/lib/workoutMath";
 import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
@@ -355,8 +353,6 @@ export function IntelScreen() {
 
   const insights = fitnessData.length > 0 ? computeInsights(fitnessData, events) : null;
 
-  const { data: paceCurveData } = usePaceCurves("all");
-
   const thresholdPace = getThresholdPace(settings?.currentAbilityDist, settings?.currentAbilitySecs);
 
   // Plan is deterministic — separate memo to avoid regenerating on every events change
@@ -549,6 +545,19 @@ export function IntelScreen() {
   // Widgets that live on Overview only — excluded from the Deep Dive widget loop
   const OVERVIEW_ONLY = new Set<WidgetKey>(["readiness", "phase-tracker"]);
 
+  // Curated subset for Overview (preserves current order)
+  const OVERVIEW_KEYS: WidgetKey[] = [
+    "readiness",
+    "phase-tracker",
+    "tomorrow",
+    "fitness-chart",
+    "volume-trend",
+    "bg-categories",
+    "bg-after",
+    "distance-readiness",
+    "pace-curves",
+  ];
+
   const firstVisibleKey = editMode
     ? widgetLayout.widgetOrder.find((k) => !OVERVIEW_ONLY.has(k))
     : widgetLayout.widgetOrder.find(
@@ -568,21 +577,7 @@ export function IntelScreen() {
 
         {activeTab === "overview" && (hasCompletedRuns || eventsLoading) && (
           <div className="space-y-6">
-            {/* Phase Tracker */}
-            <div>
-              <WidgetHeading widgetKey="phase-tracker" meta={widgetMeta["phase-tracker"]} />
-              <PhaseTracker phaseName={phaseName} currentWeek={currentWeek} totalWeeks={totalWeeks} progress={progress} raceDate={raceDate} includeBasePhase={settings?.includeBasePhase} />
-            </div>
-
-            {/* Readiness */}
-            {(wellnessLoading || wellnessEntries.length > 0) && (
-              <div>
-                <WidgetHeading widgetKey="readiness" meta={widgetMeta.readiness} />
-                {wellnessLoading ? <WidgetLoadingCard label="Loading wellness data..." /> : <ReadinessPanel entries={wellnessEntries} />}
-              </div>
-            )}
-
-            {/* Pace Suggestion */}
+            {/* Pace Suggestion (shown above widget loop when present) */}
             {paceSuggestion && (
               <div className="space-y-2">
                 <PaceSuggestionCard
@@ -600,7 +595,7 @@ export function IntelScreen() {
               <p className="text-xs text-red-400">{paceAcceptError}</p>
             )}
 
-            {/* Volume Compact */}
+            {/* Volume Compact (shown above widget loop when present) */}
             {currentWeekVolume && (
               <div>
                 <WidgetHeading widgetKey="volume-trend" meta={null} />
@@ -608,50 +603,18 @@ export function IntelScreen() {
               </div>
             )}
 
-            {/* Tomorrow */}
-            {intelData.tomorrow && (
-              <div>
-                <WidgetHeading widgetKey="tomorrow" meta={null} />
-                <TomorrowCard {...intelData.tomorrow} />
-              </div>
-            )}
+            {/* Widget loop */}
+            {OVERVIEW_KEYS.map((key) => {
+              const render = widgetRenderMap[key];
+              if (!render) return null;
 
-            {/* During the run */}
-            {bgModelLoading ? (
-              <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
-            ) : duringRunCount > 0 ? (
-              <div>
-                <WidgetHeading widgetKey="bg-categories" meta={widgetMeta["bg-categories"]} />
-                <DuringPatternCards stats={intelData.duringStats} />
-              </div>
-            ) : null}
-
-            {/* After the run */}
-            {afterRunCount > 0 && (
-              <div>
-                <WidgetHeading widgetKey="bg-after" meta={widgetMeta["bg-after"]} />
-                <AfterPatternCards stats={intelData.afterStats} />
-              </div>
-            )}
-
-            {/* Distance readiness */}
-            {intelData.distance.longestRun && (
-              <div>
-                <WidgetHeading widgetKey="distance-readiness" meta={null} />
-                <DistanceReadiness
-                  longestRun={intelData.distance.longestRun}
-                  race={intelData.distance.race}
-                />
-              </div>
-            )}
-
-            {/* Pace PBs */}
-            {paceCurveData && paceCurveData.bestEfforts.length > 0 && (
-              <div>
-                <WidgetHeading widgetKey="pace-curves" meta={null} />
-                <PacePBs bestEfforts={paceCurveData.bestEfforts} longestRun={paceCurveData.longestRun} onActivitySelect={setSelectedActivityId} />
-              </div>
-            )}
+              return (
+                <div key={key}>
+                  <WidgetHeading widgetKey={key} meta={widgetMeta[key]} />
+                  {render()}
+                </div>
+              );
+            })}
           </div>
         )}
 

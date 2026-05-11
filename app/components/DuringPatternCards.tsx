@@ -56,6 +56,8 @@ function Card({
   const hypoPct = Math.round((stats.hypoCount / stats.runCount) * 100);
   return (
     <div
+      role="region"
+      aria-label={WORKOUT_CATEGORY_LABEL[cat]}
       data-testid={`during-card-${cat}`}
       className={`bg-surface border rounded-xl p-3 ${isWorst && hypoPct >= 5 ? "border-error/40" : "border-border"}`}
     >
@@ -98,7 +100,7 @@ function DotStrip({ endBGs }: { endBGs: number[] }) {
         const color = bg < HYPO ? "bg-error" : bg > HIGH ? "bg-warning" : "bg-success";
         return (
           <span
-            key={i}
+            key={`${i}-${bg}`}
             className={`absolute top-1/2 w-2 h-2 rounded-full -translate-x-1/2 -translate-y-1/2 ${color}`}
             style={{ left: `${left}%` }}
           />

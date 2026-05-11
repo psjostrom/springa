@@ -329,7 +329,7 @@ function buildTomorrow(
   const prediction = predictRunOutcome(matchesWithPost);
   const recommendation = recommendFuelRate(matchesWithPost);
 
-  // Build summary list for the UI (uses base matches so it works even when post-context is missing).
+  // Build summary list for the UI from base matches (more entries than the post-context subset used for predictions). UI surfaces both counts so the runner sees which subset drives each piece.
   const matchesSummary: TomorrowMatchSummary[] = matches.map((m) => ({
     activityId: m.activityId,
     date: m.date,
