@@ -97,7 +97,9 @@ async function main() {
   const newest = new Date();
   newest.setMonth(newest.getMonth() + 2);
   console.log("Fetching calendar (activities + events via calendarPipeline)...");
-  const rawEvents = await fetchCalendarData(apiKey, oldest, newest);
+  // Demo snapshot scrubs PII from real data — prescribedCarbsG isn't read, so
+  // pass an empty context. The canonical calc returns null for every event.
+  const rawEvents = await fetchCalendarData(apiKey, oldest, newest, {});
   const now = new Date();
   const calendarEvents = rawEvents.filter((e) => {
     if (e.type === "planned" && new Date(e.date) < now) return false;

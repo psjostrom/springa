@@ -17,6 +17,7 @@ import {
   processPlannedEvents,
   type CalendarDataResult,
 } from "./calendarPipeline";
+import type { WorkoutEstimationContext } from "./workoutMath";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
@@ -411,11 +412,12 @@ export async function fetchCalendarData(
   apiKey: string,
   startDate: Date,
   endDate: Date,
+  context: WorkoutEstimationContext,
 ): Promise<CalendarEvent[]> {
   const oldest = format(startDate, "yyyy-MM-dd");
   const newest = format(endDate, "yyyy-MM-dd");
 
-  const { events, autoPairs } = await fetchCalendarDataInner(apiKey, oldest, newest);
+  const { events, autoPairs } = await fetchCalendarDataInner(apiKey, oldest, newest, context);
 
   // Fire-and-forget: don't block calendar load on pairing.
   // Pairing is best-effort - failures are logged but don't affect the user.
@@ -436,6 +438,7 @@ async function fetchCalendarDataInner(
   apiKey: string,
   oldest: string,
   newest: string,
+  context: WorkoutEstimationContext,
 ): Promise<CalendarDataResult> {
   const auth = authHeader(apiKey);
 
@@ -457,9 +460,14 @@ async function fetchCalendarDataInner(
   const events: IntervalsEvent[] = eventsRes.ok ? ((await eventsRes.json()) as IntervalsEvent[]) : [];
 
   const { calendarEvents, activityMap, autoPairs, fallbackClaimedEventIds } =
-    processActivities(activities, events);
+    processActivities(activities, events, context);
 
-  const plannedEvents = processPlannedEvents(events, activityMap, fallbackClaimedEventIds);
+  const plannedEvents = processPlannedEvents(
+    events,
+    activityMap,
+    fallbackClaimedEventIds,
+    context,
+  );
 
   const allEvents = [...calendarEvents, ...plannedEvents];
   allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -544,7 +552,7 @@ export async function deleteActivity(
 export async function uploadToIntervals(
   apiKey: string,
   events: WorkoutEvent[],
-): Promise<{ count: number; staleDeletedEventIds: number[] }> {
+): Promise<{ count: number }> {
   const auth = authHeader(apiKey);
   const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
@@ -587,8 +595,6 @@ export async function uploadToIntervals(
         !nextExternalIds.has(event.external_id),
     );
 
-    const staleDeletedEventIds: number[] = [];
-
     for (const staleEvent of staleEvents) {
       try {
         const deleteRes = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(staleEvent.id))}`, {
@@ -597,15 +603,13 @@ export async function uploadToIntervals(
         });
         if (!deleteRes.ok) {
           console.error(`Delete failed for event ${staleEvent.id} with status ${deleteRes.status}`);
-        } else {
-          staleDeletedEventIds.push(staleEvent.id);
         }
       } catch (deleteError) {
         console.error(`Error deleting stale event ${staleEvent.id}:`, deleteError);
       }
     }
 
-    return { count: payload.length, staleDeletedEventIds };
+    return { count: payload.length };
   } catch (error) {
     console.error("Upload failed:", error);
     throw error;

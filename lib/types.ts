@@ -157,9 +157,10 @@ export interface CalendarEvent {
   streamData?: StreamData;
   glucose?: DataPoint[]; // from CGM readings, not from Intervals streams
   fuelRate?: number | null; // g/h (planned rate, matches carbs_per_hour)
-  // Canonical prescribed total for the paired/planned workout event.
-  // This is frozen from the planned workout before pairing so post-run screens can
-  // reuse the exact same prescription instead of recalculating from actual run data.
+  // Canonical prescribed total for the workout. Derived live by the pipeline
+  // from description + fuelRate + workout context — never read from a duration
+  // field, so the value is identical pre-run (planned event) and post-run
+  // (completed activity paired to the same event).
   prescribedCarbsG?: number | null;
   carbsIngested?: number | null; // actual carbs consumed (from activity)
   preRunCarbsG?: number | null; // pre-run carbs grams (from Intervals.icu custom field)

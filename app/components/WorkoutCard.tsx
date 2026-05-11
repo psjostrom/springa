@@ -23,6 +23,7 @@ import {
   createWorkoutEstimationContext,
   resolveWorkoutMetrics,
 } from "@/lib/workoutMath";
+import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
 
 interface WorkoutCardProps {
   description: string;
@@ -117,8 +118,19 @@ export function WorkoutCard({
   );
   const estDuration = metrics.duration;
   const estDistance = metrics.distance;
-  // Use provided prescribedCarbsG if available (frozen from plan time), otherwise use computed value.
-  const totalCarbs = prescribedCarbsG ?? metrics.prescribedCarbsG ?? null;
+  // Prefer the prop (set by the calendar pipeline using the user's server-side
+  // workout context) and fall back to the locally-computed value for sites that
+  // render the card without a CalendarEvent — e.g., the workout preview before
+  // sync, where no event exists yet. Both branches go through
+  // calculateCanonicalPlannedPrescription so the calibration gate applies
+  // identically — without it, an uncalibrated user would see an inflated
+  // fallback-pace estimate where the rest of the app shows nothing.
+  const localTotal = useMemo(
+    () =>
+      calculateCanonicalPlannedPrescription(description, fuelRate, workoutContext),
+    [description, fuelRate, workoutContext],
+  );
+  const totalCarbs = prescribedCarbsG ?? localTotal;
   const sections = useMemo(
     () =>
       parseWorkoutStructure(description, lthr, hrZones ?? [], racePacePerKm),
