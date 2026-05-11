@@ -7,6 +7,11 @@ import {
 import type { BGReading } from "../lib/cgm";
 import type { WorkoutCategory } from "../lib/types";
 import { getWorkoutCategory } from "../lib/constants";
+import { getUserCredentials } from "../lib/credentials";
+import { fetchBGFromNS } from "../lib/nightscout";
+
+/** Small delay between NS fetches to avoid hammering Scout. */
+const NS_DELAY_MS = 100;
 
 interface ActivityRow {
   activity_id: string;
@@ -31,6 +36,12 @@ async function main() {
 
   console.log(`Backfilling run_bg_context for ${email}...`);
 
+  // Lazy-load NS credentials once at startup
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds?.nightscoutSecret) {
+    console.log("Warning: No Nightscout credentials found. Falling back to local bg_readings only.");
+  }
+
   // 1. Find activities missing run_bg_context
   const result = await db.execute({
     sql: `SELECT activity_id, name, run_start_ms, fuel_rate, hr, glucose
@@ -49,6 +60,8 @@ async function main() {
 
   let updated = 0;
   let skipped = 0;
+  let fromLocal = 0;
+  let fromNS = 0;
 
   for (const row of activities) {
     const { activity_id, name, run_start_ms, hr } = row;
@@ -79,13 +92,35 @@ async function main() {
       args: [email, startWindow, endWindow],
     });
 
-    const readings: BGReading[] = readingsResult.rows.map((r) => ({
+    let readings: BGReading[] = readingsResult.rows.map((r) => ({
       ts: r.ts as number,
       mmol: r.mmol as number,
     }));
 
-    if (readings.length === 0) {
-      console.log(`${activity_id}: No BG readings in window, skipping`);
+    let source: "local" | "ns" | "none" = "local";
+
+    // Fallback to NS if local readings are empty
+    if (readings.length === 0 && creds?.nightscoutUrl && creds?.nightscoutSecret) {
+      try {
+        const nsReadings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
+          since: startWindow,
+          until: endWindow,
+        });
+        readings = nsReadings.map((r) => ({ ts: r.ts, mmol: r.mmol }));
+        source = nsReadings.length > 0 ? "ns" : "none";
+        if (nsReadings.length > 0) {
+          await new Promise((resolve) => setTimeout(resolve, NS_DELAY_MS));
+        }
+      } catch (err) {
+        console.log(`${activity_id}: NS fetch failed: ${err instanceof Error ? err.message : err}`);
+        source = "none";
+      }
+    } else if (readings.length === 0) {
+      source = "none";
+    }
+
+    if (source === "none") {
+      console.log(`${activity_id}: No BG readings in window (local or NS), skipping`);
       skipped++;
       continue;
     }
@@ -128,12 +163,14 @@ async function main() {
       args: [JSON.stringify(runBGContext), email, activity_id],
     });
 
-    console.log(`${activity_id}: Updated (cat=${category}, pre=${!!pre}, post=${!!post})`);
+    console.log(`${activity_id}: Updated (cat=${category}, pre=${!!pre}, post=${!!post}) [${source}]`);
     updated++;
+    if (source === "local") fromLocal++;
+    if (source === "ns") fromNS++;
   }
 
   console.log("");
-  console.log(`Updated ${updated} of ${activities.length} activities. ${skipped} skipped (no readings / no context).`);
+  console.log(`Updated ${updated} of ${activities.length} activities. ${skipped} skipped. (${fromNS} from NS, ${fromLocal} from local)`);
 }
 
 main()
