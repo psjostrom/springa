@@ -164,4 +164,12 @@ describe("TomorrowCard", () => {
     expect(screen.queryByText(/starting at/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no live BG/i)).not.toBeInTheDocument();
   });
+
+  it("labels the ribbon endpoints with low/typical/high", () => {
+    render(<TomorrowCard {...sample} />);
+    // Both during and after ribbons render these three labels — multiple matches expected.
+    expect(screen.getAllByText(/low/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/typical/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/high/i).length).toBeGreaterThan(0);
+  });
 });

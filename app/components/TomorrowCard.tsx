@@ -333,9 +333,18 @@ function Ribbon({
         />
       </div>
       <div className="flex justify-between text-[10px] text-muted mt-1 tabular-nums">
-        <span className="text-error">{p10.toFixed(1)}</span>
-        <span className="text-text font-bold">{median.toFixed(1)}</span>
-        <span>{p90.toFixed(1)}</span>
+        <span className="text-error">
+          <span className="text-muted font-normal">low </span>
+          {p10.toFixed(1)}
+        </span>
+        <span className="text-text font-bold">
+          <span className="text-muted font-normal">typical </span>
+          {median.toFixed(1)}
+        </span>
+        <span>
+          <span className="text-muted font-normal">high </span>
+          {p90.toFixed(1)}
+        </span>
       </div>
     </div>
   );
