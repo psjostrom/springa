@@ -105,8 +105,12 @@ async function main() {
         const nsReadings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
           since: startWindow,
           until: endWindow,
+          count: 1000, // 4h window @ 5-min cadence ≈ 48 readings; safety headroom
         });
-        readings = nsReadings.map((r) => ({ ts: r.ts, mmol: r.mmol }));
+        // NS returns newest-first; computePreRunContext expects ascending order.
+        readings = nsReadings
+          .map((r) => ({ ts: r.ts, mmol: r.mmol }))
+          .sort((a, b) => a.ts - b.ts);
         source = nsReadings.length > 0 ? "ns" : "none";
         if (nsReadings.length > 0) {
           await new Promise((resolve) => setTimeout(resolve, NS_DELAY_MS));
