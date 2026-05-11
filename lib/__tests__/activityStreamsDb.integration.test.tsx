@@ -144,6 +144,71 @@ describe("saveActivityStreams preserves run_bg_context", () => {
     expect(loaded[0].runBGContext).toEqual(seededContext);
   });
 
+  it("preserves existing run_bg_context when recompute returns null (lengths differ)", async () => {
+    // Arrange: seed a row with a populated runBGContext.
+    const seededContext = {
+      activityId: "act-5",
+      category: "easy",
+      pre: { entrySlope30m: -0.05, entryStability: 0.4, startBG: 7.5, readingCount: 6 },
+      post: {
+        recoveryDrop30m: -0.3,
+        nadirPostRun: 6.8,
+        timeToStable: 12,
+        postRunHypo: false,
+        endBG: 7.0,
+        readingCount: 25,
+        peak30m: 7.2,
+        spike30m: 0.2,
+        peak60mAboveEnd: 0.5,
+      },
+      totalBGImpact: -0.5,
+    };
+    const oldHr = [
+      { time: 0, value: 120 },
+      { time: 30, value: 145 },
+    ];
+    const oldGlucose = [
+      { time: 0, value: 7.5 },
+      { time: 30, value: 7.0 },
+    ];
+
+    await holder.db.execute({
+      sql: `INSERT INTO activity_streams (email, activity_id, name, run_start_ms, fuel_rate, hr, run_bg_context, glucose)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        EMAIL,
+        "act-5",
+        "Easy Run",
+        1_700_000_000_000,
+        48,
+        JSON.stringify(oldHr),
+        JSON.stringify(seededContext),
+        JSON.stringify(oldGlucose),
+      ],
+    });
+
+    // Act: save with a longer hr stream → triggers recompute. No NS creds and
+    // no local bg_readings means the recompute path returns null. Without the
+    // fix, that null would overwrite the seededContext.
+    const newHr = [...oldHr, { time: 60, value: 130 }];
+    const incoming: CachedActivity = {
+      activityId: "act-5",
+      name: "Easy Run",
+      category: "easy",
+      fuelRate: 48,
+      hr: newHr,
+      glucose: oldGlucose,
+      runStartMs: 1_700_000_000_000,
+      activityDate: "2026-04-15",
+    };
+    await saveActivityStreams(EMAIL, [incoming]);
+
+    // Assert: stored runBGContext is preserved, not wiped.
+    const loaded = await getActivityStreams(EMAIL);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].runBGContext).toEqual(seededContext);
+  });
+
   it("ignores client-sent runBGContext entirely (server is the only owner)", async () => {
     // No prior row, no NS credentials, no local bg_readings — server-side
     // computation will return null, so the saved context must be null even

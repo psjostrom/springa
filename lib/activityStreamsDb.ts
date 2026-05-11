@@ -122,7 +122,10 @@ export async function saveActivityStreams(
         category: a.category,
         name: a.name,
       });
-      return ctx ? JSON.stringify(ctx) : null;
+      // Preserve prior context when recompute yields nothing — overwriting with
+      // null wipes data that's still valid (e.g. when bg_readings is sparse for
+      // the new window or NS is briefly unreachable).
+      return ctx ? JSON.stringify(ctx) : (prev?.runBGContext ?? null);
     }),
   );
 
