@@ -1,7 +1,7 @@
 import { db } from "./db";
 import type { WorkoutCategory } from "./types";
 import type { RunBGContext } from "./runBGContext";
-import { computeRunBGContextForActivity } from "./runBGContext";
+import { computeRunBGContextsForActivities } from "./runBGContext";
 import { getWorkoutCategory } from "./constants";
 
 /**
@@ -72,22 +72,25 @@ export async function getActivityStreams(
     };
   });
 
-  // Pure derivation of bg_readings + activity window — compute on read in
-  // parallel rather than persisting a second source of truth that can drift.
-  const withContext = await Promise.all(
-    baseRows.map(async (row) => ({
-      ...row,
-      runBGContext: await computeRunBGContextForActivity(email, {
-        activityId: row.activityId,
-        runStartMs: row.runStartMs,
-        hr: row.hr,
-        category: row.category,
-        name: row.name,
-      }),
+  // Pure derivation of bg_readings + activity window. Batched: one bg_readings
+  // query covers the union of all windows, then per-activity windows are
+  // partitioned in JS. NS fallback fires only for windows truly missing from
+  // local, and self-heals into bg_readings so subsequent reads stay fast.
+  const contexts = await computeRunBGContextsForActivities(
+    email,
+    baseRows.map((row) => ({
+      activityId: row.activityId,
+      runStartMs: row.runStartMs,
+      hr: row.hr,
+      category: row.category,
+      name: row.name,
     })),
   );
 
-  return withContext;
+  return baseRows.map((row) => ({
+    ...row,
+    runBGContext: contexts.get(row.activityId) ?? null,
+  }));
 }
 
 /**

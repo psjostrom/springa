@@ -5,7 +5,7 @@ import { linearRegression } from "./math";
 import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
 import { db } from "./db";
 import { getUserCredentials } from "./credentials";
-import { fetchBGFromNS } from "./nightscout";
+import { fetchBGFromNS, fetchBGBatchFromNS } from "./nightscout";
 
 // --- Types ---
 
@@ -421,4 +421,105 @@ export async function computeRunBGContextForActivity(
     post,
     totalBGImpact,
   };
+}
+
+/**
+ * Compute runBGContext for many activities at once. Fetches BG readings for
+ * the union of all activity windows from Scout via the multi-window batch
+ * endpoint (one round trip, trimmed `ts`+`mmol` payload), then partitions
+ * per-activity windows in JS.
+ *
+ * Returns a Map keyed by activityId. Activities with no data, no NS
+ * credentials, or insufficient inputs (no `runStartMs` / empty `hr`) map to
+ * null.
+ */
+export async function computeRunBGContextsForActivities(
+  email: string,
+  activities: IngestActivity[],
+): Promise<Map<string, RunBGContext | null>> {
+  const out = new Map<string, RunBGContext | null>();
+
+  const valid = activities
+    .map((a) => {
+      if (a.runStartMs == null || a.hr.length === 0) return null;
+      const lastHrTime = a.hr[a.hr.length - 1].time;
+      const runEndMs = a.runStartMs + lastHrTime * 60_000;
+      return {
+        activity: a,
+        runStartMs: a.runStartMs,
+        runEndMs,
+        windowStart: a.runStartMs - PRE_STABILITY_WINDOW_MS,
+        windowEnd: runEndMs + POST_WINDOW_MS,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
+
+  // Activities with insufficient inputs map to null up front.
+  for (const a of activities) {
+    if (a.runStartMs == null || a.hr.length === 0) out.set(a.activityId, null);
+  }
+
+  if (valid.length === 0) return out;
+
+  const creds = await getUserCredentials(email);
+  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) {
+    for (const v of valid) out.set(v.activity.activityId, null);
+    return out;
+  }
+
+  // One Scout round trip for all windows.
+  let trimmed: { ts: number; mmol: number }[] = [];
+  try {
+    trimmed = await fetchBGBatchFromNS(
+      creds.nightscoutUrl,
+      creds.nightscoutSecret,
+      valid.map((v) => ({ since: v.windowStart, until: v.windowEnd })),
+    );
+  } catch {
+    // Network or auth failure — every activity gets null context.
+    for (const v of valid) out.set(v.activity.activityId, null);
+    return out;
+  }
+
+  // Hydrate trimmed readings into the BGReading shape the compute helpers
+  // expect. The `sgv`/`direction`/`delta` fields aren't used by pre/post
+  // computation (they read `mmol` and `ts`) but the type requires them.
+  const allReadings: BGReading[] = trimmed.map((r) => ({
+    sgv: 0,
+    mmol: r.mmol,
+    ts: r.ts,
+    direction: "NONE",
+    delta: 0,
+  }));
+
+  for (const { activity, runStartMs, runEndMs, windowStart, windowEnd } of valid) {
+    const readings = findReadingsInWindow(allReadings, windowStart, windowEnd);
+    if (readings.length === 0) {
+      out.set(activity.activityId, null);
+      continue;
+    }
+
+    const pre = computePreRunContext(readings, runStartMs);
+    const post = computePostRunContext(readings, runEndMs);
+    if (!pre && !post) {
+      out.set(activity.activityId, null);
+      continue;
+    }
+
+    let totalBGImpact: number | null = null;
+    if (pre && post) {
+      const bg2hAfter = closestReading(readings, runEndMs + POST_WINDOW_MS);
+      if (bg2hAfter) totalBGImpact = bg2hAfter.mmol - pre.startBG;
+    }
+
+    out.set(activity.activityId, {
+      activityId: activity.activityId,
+      category: activity.category,
+      pre,
+      post,
+      totalBGImpact,
+    });
+  }
+
+  return out;
 }

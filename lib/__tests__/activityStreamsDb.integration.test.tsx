@@ -15,11 +15,16 @@ vi.mock("@libsql/client", async (importOriginal) => {
   return { ...actual, createClient: () => holder.db };
 });
 
+import { http, HttpResponse } from "msw";
+import { server } from "./msw/server";
 import { getActivityStreams, saveActivityStreams } from "../activityStreamsDb";
 import type { CachedActivity } from "../activityStreamsDb";
 import { SCHEMA_DDL } from "../db";
+import { updateCredentials } from "../credentials";
 
 const EMAIL = "test@test.com";
+const NS_URL = "https://scout.test";
+const NS_SECRET = "test-secret";
 
 describe("activityStreamsDb glucose persistence", () => {
   beforeAll(async () => {
@@ -72,33 +77,47 @@ describe("activityStreamsDb glucose persistence", () => {
   });
 });
 
-describe("getActivityStreams computes runBGContext on read", () => {
+describe("getActivityStreams computes runBGContext on read via Scout batch", () => {
   beforeAll(async () => {
     await holder.db.executeMultiple(SCHEMA_DDL);
-    // bg_readings is not in SCHEMA_DDL (managed by Scout/Strimma in production);
-    // create it here so the read path can query without throwing.
-    await holder.db.execute(
-      `CREATE TABLE IF NOT EXISTS bg_readings (
-        email TEXT NOT NULL,
-        ts INTEGER NOT NULL,
-        mmol REAL NOT NULL,
-        PRIMARY KEY (email, ts)
-      )`,
-    );
   });
 
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM activity_streams");
     await holder.db.execute("DELETE FROM user_settings");
-    await holder.db.execute("DELETE FROM bg_readings");
   });
 
-  it("returns null runBGContext when bg_readings has no data for the window", async () => {
-    // Save an activity with no bg_readings present. Recompute returns null;
-    // the read path surfaces null without crashing.
+  it("returns null runBGContext when no NS credentials are configured", async () => {
     await saveActivityStreams(EMAIL, [
       {
-        activityId: "act-no-bg",
+        activityId: "act-no-creds",
+        name: "Easy Run",
+        category: "easy",
+        fuelRate: 48,
+        hr: [
+          { time: 0, value: 120 },
+          { time: 30, value: 145 },
+        ],
+        runStartMs: 1_700_000_000_000,
+        activityDate: "2026-04-15",
+      },
+    ]);
+
+    // No user_settings row → no creds → no Scout call → context is null.
+    const loaded = await getActivityStreams(EMAIL);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].runBGContext).toBeNull();
+  });
+
+  it("returns null runBGContext when Scout has no readings for the window", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, () => HttpResponse.json({ readings: [] })),
+    );
+
+    await saveActivityStreams(EMAIL, [
+      {
+        activityId: "act-empty",
         name: "Easy Run",
         category: "easy",
         fuelRate: 48,
@@ -116,49 +135,113 @@ describe("getActivityStreams computes runBGContext on read", () => {
     expect(loaded[0].runBGContext).toBeNull();
   });
 
-  it("computes runBGContext from bg_readings on read (not from a stored column)", async () => {
-    // Seed bg_readings around a 30-minute run window with a clear declining trend.
-    const runStartMs = 1_700_000_000_000;
-    const runDurationMin = 30;
-    const runEndMs = runStartMs + runDurationMin * 60_000;
-    const fiveMinMs = 5 * 60_000;
+  it("computes runBGContext from a single batched Scout call covering all activity windows", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
 
-    // 60 min before through 2h after, sample every 5 min, declining BG.
-    const readings: { ts: number; mmol: number }[] = [];
-    for (let ts = runStartMs - 60 * 60_000; ts <= runEndMs + 2 * 60 * 60_000; ts += fiveMinMs) {
-      const elapsedMin = (ts - runStartMs) / 60_000;
-      const mmol = 8.0 - 0.05 * elapsedMin;
-      readings.push({ ts, mmol: Math.max(4.0, mmol) });
-    }
-    for (const r of readings) {
-      await holder.db.execute({
-        sql: "INSERT INTO bg_readings (email, ts, mmol) VALUES (?, ?, ?)",
-        args: [EMAIL, r.ts, r.mmol],
-      });
-    }
+    // Two activities at different times. Each gets its own 3.5h window.
+    const runAStart = 1_700_000_000_000;
+    const runADurMin = 30;
+    const runAEnd = runAStart + runADurMin * 60_000;
+
+    const runBStart = runAStart + 7 * 24 * 60 * 60 * 1000; // one week later
+    const runBDurMin = 60;
+    const runBEnd = runBStart + runBDurMin * 60_000;
+
+    // Build a flat readings response covering BOTH windows. 5-min cadence,
+    // declining trend during each run.
+    const buildReadings = (startMs: number, endMs: number, baseBG: number) => {
+      const out: { ts: number; mmol: number }[] = [];
+      for (let ts = startMs - 60 * 60_000; ts <= endMs + 2 * 60 * 60_000; ts += 5 * 60_000) {
+        const elapsedMin = (ts - startMs) / 60_000;
+        const mmol = Math.max(4.0, baseBG - 0.05 * elapsedMin);
+        out.push({ ts, mmol });
+      }
+      return out;
+    };
+    const readings = [
+      ...buildReadings(runAStart, runAEnd, 8.0),
+      ...buildReadings(runBStart, runBEnd, 9.0),
+    ].sort((a, b) => a.ts - b.ts);
+
+    interface BatchBody { windows: { since: number; until: number }[] }
+    let batchCallCount = 0;
+    const captured: { body?: BatchBody } = {};
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, async ({ request }) => {
+        batchCallCount++;
+        captured.body = (await request.json()) as BatchBody;
+        return HttpResponse.json({ readings });
+      }),
+    );
 
     await saveActivityStreams(EMAIL, [
       {
-        activityId: "act-with-bg",
+        activityId: "act-a",
+        name: "Easy A",
+        category: "easy",
+        fuelRate: 48,
+        hr: [
+          { time: 0, value: 120 },
+          { time: runADurMin, value: 145 },
+        ],
+        runStartMs: runAStart,
+        activityDate: "2026-04-15",
+      },
+      {
+        activityId: "act-b",
+        name: "Easy B",
+        category: "easy",
+        fuelRate: 50,
+        hr: [
+          { time: 0, value: 120 },
+          { time: runBDurMin, value: 145 },
+        ],
+        runStartMs: runBStart,
+        activityDate: "2026-04-22",
+      },
+    ]);
+
+    const loaded = await getActivityStreams(EMAIL);
+    expect(loaded).toHaveLength(2);
+
+    // Single Scout call for both activities (the whole point of the batch).
+    expect(batchCallCount).toBe(1);
+    expect(captured.body?.windows).toHaveLength(2);
+
+    const a = loaded.find((x) => x.activityId === "act-a");
+    const b = loaded.find((x) => x.activityId === "act-b");
+    expect(a?.runBGContext).not.toBeNull();
+    expect(a?.runBGContext?.pre?.startBG).toBeCloseTo(8.0, 0);
+    expect(a?.runBGContext?.post?.endBG).toBeCloseTo(8.0 - 0.05 * runADurMin, 0);
+    expect(b?.runBGContext).not.toBeNull();
+    expect(b?.runBGContext?.pre?.startBG).toBeCloseTo(9.0, 0);
+    expect(b?.runBGContext?.post?.endBG).toBeCloseTo(9.0 - 0.05 * runBDurMin, 0);
+  });
+
+  it("returns null contexts when the Scout call fails", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, () => new HttpResponse(null, { status: 500 })),
+    );
+
+    await saveActivityStreams(EMAIL, [
+      {
+        activityId: "act-fail",
         name: "Easy Run",
         category: "easy",
         fuelRate: 48,
         hr: [
           { time: 0, value: 120 },
-          { time: runDurationMin, value: 145 },
+          { time: 30, value: 145 },
         ],
-        runStartMs,
+        runStartMs: 1_700_000_000_000,
         activityDate: "2026-04-15",
       },
     ]);
 
     const loaded = await getActivityStreams(EMAIL);
     expect(loaded).toHaveLength(1);
-    const ctx = loaded[0].runBGContext;
-    expect(ctx).not.toBeNull();
-    expect(ctx?.pre?.startBG).toBeCloseTo(8.0, 0);
-    expect(ctx?.post?.endBG).toBeCloseTo(8.0 - 0.05 * runDurationMin, 0);
-    expect(ctx?.post?.peak60mAboveEnd).toBeDefined();
+    expect(loaded[0].runBGContext).toBeNull();
   });
 
   it("ignores client-sent runBGContext entirely (server never persists it)", async () => {
@@ -181,7 +264,7 @@ describe("getActivityStreams computes runBGContext on read", () => {
       },
     ]);
 
-    // No bg_readings → recomputed context is null. The forged 999s never land.
+    // No NS creds set → no Scout call → context is null. The forged 999s never land.
     const loaded = await getActivityStreams(EMAIL);
     expect(loaded).toHaveLength(1);
     expect(loaded[0].runBGContext).toBeNull();

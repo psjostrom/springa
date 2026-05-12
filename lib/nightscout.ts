@@ -128,6 +128,38 @@ export async function fetchBGFromNS(
 }
 
 /**
+ * Fetch BG entries for many disjoint windows in one round trip via Scout's
+ * `/api/v1/entries/batch` endpoint (a Scout superset of NS — vanilla NS
+ * servers don't have this). Returns a flat sorted-ASC array of trimmed
+ * readings (`ts`, `mmol` only). Callers partition per window using
+ * `findReadingsInWindow` if they need per-window slices.
+ */
+export async function fetchBGBatchFromNS(
+  nsUrl: string,
+  apiSecret: string,
+  windows: { since: number; until: number }[],
+): Promise<Pick<BGReading, "ts" | "mmol">[]> {
+  if (windows.length === 0) return [];
+
+  const url = new URL("/api/v1/entries/batch", normalizeNSUrl(nsUrl));
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "api-secret": apiSecret,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ windows }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Nightscout batch fetch failed: ${response.status} ${response.statusText}`);
+  }
+
+  const json = (await response.json()) as { readings?: { ts: number; mmol: number }[] };
+  return json.readings ?? [];
+}
+
+/**
  * Fetch treatments from Nightscout.
  */
 export async function fetchTreatmentsFromNS(
