@@ -127,7 +127,7 @@ function buildDuringStats(
     );
     if (inCat.length === 0) continue;
 
-    const endBGs: number[] = [];
+    const endBGs: { bg: number; date: string }[] = [];
     let hypoCount = 0;
     let totalDropPerHr = 0;
     let dropSamples = 0;
@@ -135,7 +135,7 @@ function buildDuringStats(
     for (const a of inCat) {
       const end = endBGFromActivity(a);
       if (end == null) continue;
-      endBGs.push(end);
+      endBGs.push({ bg: end, date: a.activityDate ?? "" });
       if ((a.glucose ?? []).some((g) => g.value < HYPO)) hypoCount++;
 
       const start = startBGFromActivity(a);
@@ -150,7 +150,7 @@ function buildDuringStats(
 
     out[cat] = {
       runCount: endBGs.length,
-      medianEndBG: median(endBGs),
+      medianEndBG: median(endBGs.map((e) => e.bg)),
       endBGs,
       hypoCount,
       avgDropPerHr: dropSamples > 0 ? totalDropPerHr / dropSamples : 0,

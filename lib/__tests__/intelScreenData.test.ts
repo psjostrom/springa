@@ -261,4 +261,29 @@ describe("buildIntelScreenData", () => {
     expect(a).not.toHaveProperty("currentBG");
     expect(a).not.toHaveProperty("currentBGSource");
   });
+
+  it("populates endBGs with { bg, date } drawn from the source activity", () => {
+    const activities: CachedActivity[] = [
+      makeActivity({
+        activityId: "a1",
+        category: "easy",
+        activityDate: "2026-04-15",
+        glucose: [
+          { time: 0, value: 8.0 },
+          { time: 30, value: 6.5 },
+          { time: 60, value: 5.2 },
+        ],
+      }),
+    ];
+    const result = buildIntelScreenData(
+      activities,
+      [],
+      {},
+      new Date("2026-04-16T07:00:00Z"),
+    );
+    const easy = result.duringStats.easy;
+    expect(easy?.endBGs.length).toBe(1);
+    expect(easy?.endBGs[0]).toEqual({ bg: 5.2, date: "2026-04-15" });
+  });
+
 });
