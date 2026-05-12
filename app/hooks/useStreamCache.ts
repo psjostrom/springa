@@ -59,12 +59,24 @@ function mergeCaches(
   fallback: CachedActivity[],
 ): CachedActivity[] {
   const merged = new Map<string, CachedActivity>();
+  const fallbackMap = new Map(fallback.map((e) => [e.activityId, e]));
 
   for (const entry of fallback) {
     merged.set(entry.activityId, entry);
   }
   for (const entry of preferred) {
-    merged.set(entry.activityId, entry);
+    // `preferred` wins for stream data (HR/pace/cadence/etc) since those are
+    // expensive to refetch from Intervals.icu. But `runBGContext` is computed
+    // fresh by the server on every read (from Scout via the batch endpoint),
+    // so when the server returns a value, it's more current than whatever
+    // localStorage saved earlier. Fall back to the persisted value only when
+    // the server returned null/undefined — this avoids wiping known-good
+    // context on a transient Scout outage.
+    const fallbackEntry = fallbackMap.get(entry.activityId);
+    const fallbackCtx = fallbackEntry?.runBGContext;
+    merged.set(entry.activityId, fallbackEntry
+      ? { ...entry, runBGContext: fallbackCtx ?? entry.runBGContext ?? null }
+      : entry);
   }
 
   return [...merged.values()].sort(compareCachedActivity);

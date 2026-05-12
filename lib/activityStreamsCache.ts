@@ -1,11 +1,29 @@
 import type { CachedActivity } from "./activityStreamsDb";
 
-// v7: adds peak60mAboveEnd to runBGContext.post (PR #192). Bumping the key
-// forces a refetch so existing users pick up the backfilled field instead of
-// silently rendering empty AfterPatternCards.
-const LS_KEY = "bgcache_v7";
+// v8: runBGContext is now computed server-side on every read (Scout batch
+// endpoint) instead of being persisted to activity_streams.run_bg_context.
+// Older localStorage rows lack runBGContext entirely, and the merge prefers
+// localStorage — so without bumping, stale rows mask the freshly-computed
+// server context and the Tomorrow card renders "No matching history" until
+// localStorage gets manually wiped.
+const LS_KEY = "bgcache_v8";
+const STALE_LS_KEYS = ["bgcache_v7", "bgcache_v6", "bgcache_v5"];
+
+/** Drop old cache versions so they don't keep eating localStorage quota.
+ *  The full payload is several MB; one stale copy can exhaust the per-origin
+ *  budget and cause silent setItem failures on the current key. */
+function evictStaleVersions(): void {
+  for (const k of STALE_LS_KEYS) {
+    try {
+      if (localStorage.getItem(k) != null) localStorage.removeItem(k);
+    } catch {
+      // localStorage may be unavailable in SSR/test contexts.
+    }
+  }
+}
 
 export function readLocalCache(): CachedActivity[] {
+  evictStaleVersions();
   try {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? (JSON.parse(raw) as CachedActivity[]) : [];
@@ -15,10 +33,15 @@ export function readLocalCache(): CachedActivity[] {
 }
 
 export function writeLocalCache(data: CachedActivity[]): void {
+  evictStaleVersions();
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(data));
-  } catch {
-    // quota exceeded — non-critical
+  } catch (err) {
+    // Quota exceeded is the most likely failure (each entry carries hr/pace/
+    // glucose JSON arrays so the full payload is multiple MB). Surface it so
+    // we notice — silent failure here means the next reload still hits the
+    // server cold instead of hydrating from localStorage.
+    console.warn("[bgcache] writeLocalCache failed:", err instanceof Error ? err.message : err);
   }
 }
 
