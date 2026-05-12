@@ -4,6 +4,7 @@ import {
   moveWidget,
   toggleWidget,
   DEFAULT_ORDER,
+  DEFAULT_WIDGETS,
   type WidgetKey,
 } from "../widgetRegistry";
 
@@ -136,5 +137,12 @@ describe("toggleWidget", () => {
     const original: WidgetKey[] = ["pace-zones"];
     toggleWidget(original, "pace-zones");
     expect(original).toEqual(["pace-zones"]);
+  });
+});
+
+describe("DEFAULT_WIDGETS labels", () => {
+  it("labels the tomorrow widget as 'Upcoming'", () => {
+    const def = DEFAULT_WIDGETS.find((w) => w.key === "tomorrow");
+    expect(def?.label).toBe("Upcoming");
   });
 });

@@ -21,7 +21,7 @@ export interface WidgetDef {
 export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "readiness", label: "Readiness" },
   { key: "phase-tracker", label: "Training Progress" },
-  { key: "tomorrow", label: "Tomorrow" },
+  { key: "tomorrow", label: "Upcoming" },
   { key: "fitness-chart", label: "Fitness / Fatigue / Form" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
