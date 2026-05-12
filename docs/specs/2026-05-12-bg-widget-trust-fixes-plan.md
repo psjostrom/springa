@@ -10,7 +10,7 @@
 
 **Spec:** `docs/specs/2026-05-12-bg-widget-trust-fixes.md`
 
-**Project rules note:** Per Per's CLAUDE.md, commits require explicit consent ("commit", "cp"). The "Commit" steps below show the message to use, but never run without his explicit go-ahead per task.
+**Project rules note:** Per project CLAUDE.md, commits require explicit user consent ("commit", "cp"). The "Commit" steps below show the message to use, but never run without explicit go-ahead per task.
 
 ---
 
@@ -87,7 +87,7 @@ Expected: PASS — new test green, all existing tests still green.
 Run: `npm run dev`
 Visit the Intel tab; the widget chrome above the next-run card now reads `UPCOMING` instead of `TOMORROW`.
 
-- [ ] **Step 6: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 6: Commit (after explicit go-ahead)**
 
 ```bash
 git add lib/widgetRegistry.ts lib/__tests__/widgetRegistry.test.ts
@@ -194,7 +194,7 @@ Expected: PASS — both new tests green, all existing tests still green.
 Run: `npm run dev`
 Visit the Intel tab. On the Upcoming card's AFTER ribbon, the `low <value>` text is now muted gray; `high <value>` is red. DURING ribbon unchanged.
 
-- [ ] **Step 6: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 6: Commit (after explicit go-ahead)**
 
 ```bash
 git add app/components/TomorrowCard.tsx app/components/__tests__/TomorrowCard.integration.test.tsx
@@ -379,7 +379,7 @@ Expected: PASS — new shape test green, fixture-using tests green.
 Run: `npx tsc --noEmit`
 Expected: clean. If any file fails on `endBGs` access, update it to read `.bg`. (Grep confirmed only `DuringPatternCards.tsx` and `intelScreenData.ts` use this field, so there should be none.)
 
-- [ ] **Step 8: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 8: Commit (after explicit go-ahead)**
 
 ```bash
 git add app/components/DuringPatternCards.tsx lib/intelScreenData.ts \
@@ -467,7 +467,7 @@ Expected: PASS — new test green, all existing tests still green.
 Run: `npm run dev`
 Visit the Intel tab. Each "During the Run" category card now shows `hypo <4.0` (red, left) and `high >10.0` (warning, right) below the strip.
 
-- [ ] **Step 6: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 6: Commit (after explicit go-ahead)**
 
 ```bash
 git add app/components/DuringPatternCards.tsx app/components/__tests__/DuringPatternCards.integration.test.tsx
@@ -702,7 +702,7 @@ Expected: PASS — all unit, integration, and flow tests green.
 Run: `npm run dev`
 Visit the Intel tab. Hover a dot in any "During the Run" category card → small floating tooltip above the strip shows `Apr 23 · 7.8 mmol/L`. Move the cursor away → tooltip disappears. Tab through the dots with the keyboard → focus ring + tooltip appear. On mobile (responsive view), tap a dot → tooltip; tap elsewhere → tooltip hides.
 
-- [ ] **Step 9: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 9: Commit (after explicit go-ahead)**
 
 ```bash
 git add app/components/DuringPatternCards.tsx app/components/__tests__/DuringPatternCards.integration.test.tsx
@@ -827,7 +827,7 @@ function pickNextPlannedRun(events: CalendarEvent[], reference: Date): CalendarE
 Run: `npm test -- lib/__tests__/intelScreenData.test.ts`
 Expected: PASS — both new tests green, all existing tests still green.
 
-- [ ] **Step 5: Commit (after Per's explicit go-ahead)**
+- [ ] **Step 5: Commit (after explicit go-ahead)**
 
 ```bash
 git add lib/intelScreenData.ts lib/__tests__/intelScreenData.test.ts

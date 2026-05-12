@@ -24,9 +24,11 @@ export function useRunData(
     [sharedEvents],
   );
 
-  // 2. Stream cache — server-persisted activities (with runBGContext when sugar
-  //    mode was on at save time). The cache is the single source of truth.
-  const { cached: cachedActivities, loading, progress } = useStreamCache(enabled, completedRuns);
+  // 2. Stream cache — server-persisted HR/pace/cadence streams plus a
+  //    server-recomputed runBGContext per activity (from bg_readings via
+  //    Scout's batch endpoint). Single source of truth on the client.
+  const { cached: cachedActivities, loading, progress, bgContextStatus } =
+    useStreamCache(enabled, completedRuns);
 
   const skipBG = diabetesMode === false;
 
@@ -51,5 +53,6 @@ export function useRunData(
     bgModelProgress: progress,
     bgActivityNames,
     cachedActivities,
+    bgContextStatus,
   };
 }

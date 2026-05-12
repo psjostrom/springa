@@ -17,7 +17,11 @@ vi.mock("@libsql/client", async (importOriginal) => {
 
 import { http, HttpResponse } from "msw";
 import { server } from "./msw/server";
-import { getActivityStreams, saveActivityStreams } from "../activityStreamsDb";
+import {
+  getActivityStreams,
+  getActivityStreamsWithStatus,
+  saveActivityStreams,
+} from "../activityStreamsDb";
 import type { CachedActivity } from "../activityStreamsDb";
 import { SCHEMA_DDL } from "../db";
 import { updateCredentials } from "../credentials";
@@ -242,6 +246,66 @@ describe("getActivityStreams computes runBGContext on read via Scout batch", () 
     const loaded = await getActivityStreams(EMAIL);
     expect(loaded).toHaveLength(1);
     expect(loaded[0].runBGContext).toBeNull();
+  });
+
+  it("returns bgContextStatus 'no-credentials' when no NS configured", async () => {
+    await saveActivityStreams(EMAIL, [
+      {
+        activityId: "act-x",
+        category: "easy",
+        fuelRate: null,
+        hr: [{ time: 0, value: 120 }],
+        runStartMs: 1_700_000_000_000,
+      },
+    ]);
+    const result = await getActivityStreamsWithStatus(EMAIL);
+    expect(result.bgContextStatus).toBe("no-credentials");
+  });
+
+  it("returns bgContextStatus 'upstream-error' when the Scout batch call fails", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, () => new HttpResponse(null, { status: 500 })),
+    );
+    await saveActivityStreams(EMAIL, [
+      {
+        activityId: "act-fail",
+        category: "easy",
+        fuelRate: null,
+        hr: [{ time: 0, value: 120 }, { time: 30, value: 140 }],
+        runStartMs: 1_700_000_000_000,
+      },
+    ]);
+    const result = await getActivityStreamsWithStatus(EMAIL);
+    expect(result.bgContextStatus).toBe("upstream-error");
+    expect(result.activities[0].runBGContext).toBeNull();
+  });
+
+  it("returns bgContextStatus 'no-input' when there are no activities to compute", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
+    const result = await getActivityStreamsWithStatus(EMAIL);
+    expect(result.bgContextStatus).toBe("no-input");
+    expect(result.activities).toHaveLength(0);
+  });
+
+  it("returns bgContextStatus 'ok' on a successful Scout batch call", async () => {
+    await updateCredentials(EMAIL, { nightscoutUrl: NS_URL, nightscoutSecret: NS_SECRET });
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, () =>
+        HttpResponse.json({ readings: [] }),
+      ),
+    );
+    await saveActivityStreams(EMAIL, [
+      {
+        activityId: "act-ok",
+        category: "easy",
+        fuelRate: null,
+        hr: [{ time: 0, value: 120 }, { time: 30, value: 140 }],
+        runStartMs: 1_700_000_000_000,
+      },
+    ]);
+    const result = await getActivityStreamsWithStatus(EMAIL);
+    expect(result.bgContextStatus).toBe("ok");
   });
 
   it("ignores client-sent runBGContext entirely (server never persists it)", async () => {

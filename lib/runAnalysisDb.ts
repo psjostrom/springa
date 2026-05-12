@@ -4,6 +4,7 @@ import { getWorkoutCategory } from "./constants";
 import type { CachedActivity, EnrichedActivity } from "./activityStreamsDb";
 import type { CalendarEvent, IntervalsActivity } from "./types";
 import { nonEmpty } from "./format";
+import { getActivityStartBG, getActivityEndBG } from "./activityBG";
 
 const CONTEXT_HASH_PREFIX = "[[springa-run-analysis-context:";
 
@@ -112,7 +113,7 @@ export function buildRunHistory(
   return rows.map((row) => {
     const { glucose, hr, activityId, category, activityDate } = row;
 
-    const endBG = glucose?.length ? glucose[glucose.length - 1].value : null;
+    const endBG = getActivityEndBG(row);
     const avgHRFromStream = hr.length > 0
       ? Math.round(hr.reduce((sum, point) => sum + point.value, 0) / hr.length)
       : null;
@@ -156,7 +157,7 @@ export function buildRunHistory(
       feedbackComment: nonEmpty(activity?.FeedbackComment),
     };
 
-    const startBG = glucose?.length ? glucose[0].value : 0;
+    const startBG = getActivityStartBG(row) ?? 0;
     const wentHypo = (glucose ?? []).some((g) => g.value < 4.0);
 
     return {

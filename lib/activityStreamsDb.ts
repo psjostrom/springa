@@ -1,16 +1,15 @@
 import { db } from "./db";
 import type { WorkoutCategory } from "./types";
-import type { RunBGContext } from "./runBGContext";
+import type { BGContextStatus, RunBGContext } from "./runBGContext";
 import { computeRunBGContextsForActivities } from "./runBGContext";
 import { getWorkoutCategory } from "./constants";
 
 /**
  * Activity stream data returned to consumers.
  *
- * `runBGContext` is computed on read from `bg_readings` (with NS fallback) —
- * it is never persisted. The legacy `run_bg_context` column on the table is
- * dead and will be dropped in a follow-up migration. See TODO.md ("Architecture:
- * stored-derived columns") for the rationale.
+ * `runBGContext` is computed on read by `computeRunBGContextsForActivities`,
+ * which fetches the union of all activity windows from Scout in one batch
+ * round trip and partitions per-activity. Never persisted on `activity_streams`.
  */
 export interface CachedActivity {
   activityId: string;
@@ -31,10 +30,21 @@ export interface CachedActivity {
 
 export type EnrichedActivity = CachedActivity;
 
-export async function getActivityStreams(
+export interface GetActivityStreamsResult {
+  activities: CachedActivity[];
+  bgContextStatus: BGContextStatus;
+}
+
+/**
+ * Variant of `getActivityStreams` that also returns the upstream BG-context
+ * status so callers (e.g. the bg-cache route) can surface Scout outages in
+ * the UI instead of pretending the user has no history. Most callers don't
+ * need this — use `getActivityStreams` and discard the status.
+ */
+export async function getActivityStreamsWithStatus(
   email: string,
   options?: { since?: Date },
-): Promise<CachedActivity[]> {
+): Promise<GetActivityStreamsResult> {
   const { since } = options ?? {};
   // When `since` is specified, rows with NULL activity_date are excluded (legacy data).
   // Pass no `since` to get all rows including legacy.
@@ -72,11 +82,9 @@ export async function getActivityStreams(
     };
   });
 
-  // Pure derivation of bg_readings + activity window. Batched: one bg_readings
-  // query covers the union of all windows, then per-activity windows are
-  // partitioned in JS. NS fallback fires only for windows truly missing from
-  // local, and self-heals into bg_readings so subsequent reads stay fast.
-  const contexts = await computeRunBGContextsForActivities(
+  // Pure derivation: one Scout batch round trip covers the union of all
+  // activity windows, then per-activity windows are partitioned in JS.
+  const { contexts, status } = await computeRunBGContextsForActivities(
     email,
     baseRows.map((row) => ({
       activityId: row.activityId,
@@ -87,17 +95,32 @@ export async function getActivityStreams(
     })),
   );
 
-  return baseRows.map((row) => ({
-    ...row,
-    runBGContext: contexts.get(row.activityId) ?? null,
-  }));
+  return {
+    activities: baseRows.map((row) => ({
+      ...row,
+      runBGContext: contexts.get(row.activityId) ?? null,
+    })),
+    bgContextStatus: status,
+  };
 }
 
 /**
- * Persist activity streams. `runBGContext` is not stored — it's a derivation
- * of `bg_readings` and is computed on read by `getActivityStreams`. The
- * `run_bg_context` column in the schema is dead and will be dropped in a
- * follow-up migration.
+ * Backwards-compatible wrapper that returns just the activities (drops the
+ * upstream status). Existing callers (cron, simulate, workout-estimation,
+ * tests) don't need to render the Scout outage banner; only the bg-cache
+ * route does, and it uses `getActivityStreamsWithStatus` directly.
+ */
+export async function getActivityStreams(
+  email: string,
+  options?: { since?: Date },
+): Promise<CachedActivity[]> {
+  const { activities } = await getActivityStreamsWithStatus(email, options);
+  return activities;
+}
+
+/**
+ * Persist activity streams. `runBGContext` is not stored — it's recomputed on
+ * every read by `getActivityStreams`.
  */
 export async function saveActivityStreams(
   email: string,

@@ -38,6 +38,14 @@ export function getWeekIdx(date: Date, planStartMonday: Date): number {
 export interface WorkoutEstimationContext {
   paceTable?: PaceTable;
   thresholdPace?: number;
+  /**
+   * IANA timezone of the user (e.g. "Europe/Stockholm"). Used to parse
+   * timezone-naive timestamps from Intervals.icu (`event.start_date_local`)
+   * into the correct UTC instant. When omitted, callers fall back to
+   * `resolveTimezone()`'s default to keep server-environment-dependent
+   * parsing out of the workout pipeline.
+   */
+  timezone?: string;
 }
 
 export interface WorkoutMetricDuration {

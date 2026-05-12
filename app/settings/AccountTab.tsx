@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { LogOut, Bell, ExternalLink } from "lucide-react";
 import type { UserSettings } from "@/lib/settings";
@@ -21,6 +21,15 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
   const [connectionError, setConnectionError] = useState("");
   const [insulinType, setInsulinType] = useState(settings.insulinType ?? "fiasp");
   const [pumpDuringRuns, setPumpDuringRuns] = useState<"on" | "off" | "mixed" | "">(settings.pumpDuringRuns ?? "");
+
+  // Settings hydrate in two phases: the parent mounts AccountTab with whatever
+  // is in the atom now, then the enriched `/api/settings` fetch lands and
+  // updates the atom. Without this, our local copy of `pumpDuringRuns` would
+  // stay frozen at the initial (often empty) value, and Save would write the
+  // stale local value back over the fresh DB value.
+  useEffect(() => {
+    setPumpDuringRuns(settings.pumpDuringRuns ?? "");
+  }, [settings.pumpDuringRuns]);
   const [intervalsApiKey, setIntervalsApiKey] = useState("");
   const [intervalsConnected, setIntervalsConnected] = useState(settings.intervalsConnected ?? false);
   const [intervalsValidating, setIntervalsValidating] = useState(false);

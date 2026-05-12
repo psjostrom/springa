@@ -8,6 +8,7 @@ import {
   writeLocalCache,
   fetchBGCache,
   saveBGCacheRemote,
+  type FetchBGCacheResult,
 } from "@/lib/activityStreamsCache";
 import type { CachedActivity } from "@/lib/activityStreamsDb";
 import type { CalendarEvent, IntervalsStream, DataPoint } from "@/lib/types";
@@ -238,6 +239,8 @@ async function loadUncachedRuns(
   return { entries, bgFailedIds };
 }
 
+export type BGContextStatusOrUnknown = FetchBGCacheResult["bgContextStatus"] | "unknown";
+
 export function useStreamCache(
   enabled: boolean,
   runs: CompletedRun[],
@@ -247,6 +250,10 @@ export function useStreamCache(
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(EMPTY_PROGRESS);
+  // "unknown" until the first reconcile completes. Consumers gate banners on
+  // explicit failure states, not on this initial value.
+  const [bgContextStatus, setBgContextStatus] =
+    useState<BGContextStatusOrUnknown>("unknown");
   const runCacheKey = buildRunCacheKey(runs);
   const cached = useMemo(
     () => buildVisibleCache(runs, persistedCache, sessionCache),
@@ -256,8 +263,10 @@ export function useStreamCache(
   const reconcileCache = useEffectEvent(async (signal: AbortSignal) => {
     setLoading(true);
     try {
-      const remoteCached = await fetchBGCache();
+      const remote = await fetchBGCache();
       if (signal.aborted) return;
+      setBgContextStatus(remote.bgContextStatus);
+      const remoteCached = remote.activities;
 
       const mergedPersisted = mergeCaches(persistedCache, remoteCached);
       const mergedPersistedMap = new Map(
@@ -336,5 +345,5 @@ export function useStreamCache(
     };
   }, [enabled, hydrated, runCacheKey]);
 
-  return { cached, loading, progress };
+  return { cached, loading, progress, bgContextStatus };
 }

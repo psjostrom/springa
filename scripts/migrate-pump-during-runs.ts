@@ -1,5 +1,12 @@
 /**
- * One-time migration: add pump_during_runs column to user_settings.
+ * Schema migration for PR #192:
+ *   1. Add `user_settings.pump_during_runs` (NULL = "user has not yet chosen";
+ *      AccountTab UI prompts the user to pick on/off/mixed). Intentional
+ *      nullable: this is a real product state, not a backfill candidate.
+ *   2. Drop the dead `activity_streams.run_bg_context` column. After this PR,
+ *      `runBGContext` is computed on every read of `getActivityStreams` from
+ *      the Scout batch endpoint — the column was never read or written by
+ *      production code on the new path.
  *
  * Run: npx tsx --env-file=.env.local scripts/migrate-pump-during-runs.ts
  */
@@ -15,22 +22,31 @@ async function main() {
 
   const db = createClient({ url, authToken: token });
 
-  const alterStatements = [
-    "ALTER TABLE user_settings ADD COLUMN pump_during_runs TEXT",
+  const statements = [
+    {
+      sql: "ALTER TABLE user_settings ADD COLUMN pump_during_runs TEXT",
+      // SQLite treats "duplicate column" as fatal; swallow it on reruns.
+      idempotentError: "duplicate column",
+    },
+    {
+      sql: "ALTER TABLE activity_streams DROP COLUMN run_bg_context",
+      // SQLite reports "no such column" when the drop has already run.
+      idempotentError: "no such column",
+    },
   ];
 
-  let added = 0;
+  let applied = 0;
   let skipped = 0;
 
-  for (const sql of alterStatements) {
+  for (const { sql, idempotentError } of statements) {
     try {
       await db.execute(sql);
       console.log(`OK: ${sql}`);
-      added++;
+      applied++;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("duplicate column")) {
-        console.log(`SKIP (already exists): ${sql}`);
+      if (msg.includes(idempotentError)) {
+        console.log(`SKIP (already applied): ${sql}`);
         skipped++;
       } else {
         throw err;
@@ -39,7 +55,7 @@ async function main() {
   }
 
   console.log(
-    `Migration complete. Added ${added} column(s), skipped ${skipped}.`,
+    `Migration complete. Applied ${applied}, skipped ${skipped}.`,
   );
 }
 

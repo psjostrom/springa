@@ -1,11 +1,14 @@
 import type { CachedActivity } from "./activityStreamsDb";
+import type { BGContextStatus } from "./runBGContext";
 
-// v8: runBGContext is now computed server-side on every read (Scout batch
-// endpoint) instead of being persisted to activity_streams.run_bg_context.
-// Older localStorage rows lack runBGContext entirely, and the merge prefers
-// localStorage — so without bumping, stale rows mask the freshly-computed
-// server context and the Tomorrow card renders "No matching history" until
-// localStorage gets manually wiped.
+// v8: runBGContext moved from "persisted on activity_streams" to
+// "server-computed on every read of getActivityStreams from Scout's batch
+// endpoint". Two protections layer here:
+//   1. `useStreamCache.mergeCaches` prefers the server's runBGContext over
+//      the cached one (so a fresh server compute always wins).
+//   2. Bumping the cache key forces clients to drop entries that pre-date
+//      this PR's schema. Belt-and-suspenders against any other field shape
+//      drift between v7 and v8 the merge wouldn't catch.
 const LS_KEY = "bgcache_v8";
 const STALE_LS_KEYS = ["bgcache_v7", "bgcache_v6", "bgcache_v5"];
 
@@ -45,13 +48,35 @@ export function writeLocalCache(data: CachedActivity[]): void {
   }
 }
 
-export async function fetchBGCache(): Promise<CachedActivity[]> {
+export interface FetchBGCacheResult {
+  activities: CachedActivity[];
+  /**
+   * Why activities[*].runBGContext might be null:
+   *  - "ok" / "no-input"   → Scout responded; null contexts are real (no readings in window)
+   *  - "upstream-error"    → Scout request threw — show banner, predictions are stale
+   *  - "no-credentials"    → Nightscout not connected — show settings link
+   *  - "fetch-error"       → /api/bg-cache itself failed — local-only fallback
+   */
+  bgContextStatus: BGContextStatus | "fetch-error";
+}
+
+export async function fetchBGCache(): Promise<FetchBGCacheResult> {
   try {
     const res = await fetch("/api/bg-cache");
-    if (!res.ok) return [];
-    return (await res.json()) as CachedActivity[];
+    if (!res.ok) return { activities: [], bgContextStatus: "fetch-error" };
+    const json = (await res.json()) as
+      | { activities: CachedActivity[]; bgContextStatus: BGContextStatus }
+      | CachedActivity[];
+    // Backwards compatibility: pre-PR-#192 the route returned a bare array.
+    // After the rename the route returns the structured shape. Both still
+    // hit prod briefly during the rolling deploy; treat the legacy shape as
+    // "ok" so we don't trigger the banner on the legacy path.
+    if (Array.isArray(json)) {
+      return { activities: json, bgContextStatus: "ok" };
+    }
+    return { activities: json.activities, bgContextStatus: json.bgContextStatus };
   } catch {
-    return [];
+    return { activities: [], bgContextStatus: "fetch-error" };
   }
 }
 

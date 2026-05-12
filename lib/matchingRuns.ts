@@ -55,10 +55,14 @@ export function findMatchingRuns(target: MatchTarget, history: MatchableRun[]): 
   const ranked = rankPredictors(sameCategory)
     .filter((p) => p.sampleCount >= 10)
     .slice(0, 3);
+  // Drop startBG when the target has none — that's not a relaxation, it's that
+  // the target never had a startBG to match against. The actual "relaxed" flag
+  // measures how many predictors were dropped by the loop below.
   let usedPredictors: PredictorName[] = ranked
     .map((p) => p.predictor)
     .filter((p) => !(p === "startBG" && target.startBG == null));
-  const startedWithPredictors = usedPredictors.length > 0;
+  const initialPredictorCount = usedPredictors.length;
+  const startedWithPredictors = initialPredictorCount > 0;
 
   const sorted = [...sameCategory].sort((a, b) => (a.date < b.date ? 1 : -1));
 
@@ -67,13 +71,13 @@ export function findMatchingRuns(target: MatchTarget, history: MatchableRun[]): 
       usedPredictors.every((p) => inWindow(p, target, r)),
     );
     if (passing.length >= 4) {
-      const relaxed = usedPredictors.length < ranked.length;
+      const relaxed = usedPredictors.length < initialPredictorCount;
       return { matches: passing.slice(0, 10), usedPredictors, relaxed };
     }
     usedPredictors = usedPredictors.slice(0, -1);
   }
 
-  // No soft filters left — return all category matches, up to 10 most recent
-  // If we started with predictors and dropped them all, this is relaxed
+  // No soft filters left — return all category matches, up to 10 most recent.
+  // If we started with predictors and dropped them all, this is relaxed.
   return { matches: sorted.slice(0, 10), usedPredictors: [], relaxed: startedWithPredictors };
 }

@@ -12,12 +12,13 @@ import { getLongestRun } from "./runProfile";
 import { findMatchingRuns } from "./matchingRuns";
 import { predictRunOutcome } from "./runOutcomePrediction";
 import { recommendFuelRate } from "./fuelRecommendation";
+import { getActivityStartBG, getActivityEndBG } from "./activityBG";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public types
 // ────────────────────────────────────────────────────────────────────────────
 
-export interface TomorrowMatchSummary {
+export interface UpcomingMatchSummary {
   activityId: string;
   date: string;
   startBG: number;
@@ -25,7 +26,7 @@ export interface TomorrowMatchSummary {
   fuelRate: number | null;
 }
 
-export interface TomorrowWorkoutSummary {
+export interface UpcomingWorkoutSummary {
   name: string;
   date: string;
   timeOfDay: string;
@@ -37,11 +38,11 @@ export interface TomorrowWorkoutSummary {
 
 export type PredictorName = "startBG" | "entrySlope" | "fuelRate" | "timeOfDay";
 
-export interface TomorrowData {
-  workout: TomorrowWorkoutSummary;
+export interface UpcomingData {
+  workout: UpcomingWorkoutSummary;
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
-  matches: TomorrowMatchSummary[];
+  matches: UpcomingMatchSummary[];
   matchPredictors: PredictorName[];
   matchRelaxed: boolean;
 }
@@ -56,7 +57,7 @@ export interface IntelHistoryData {
 }
 
 export interface IntelScreenData extends IntelHistoryData {
-  tomorrow: TomorrowData | null;
+  upcoming: UpcomingData | null;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -79,23 +80,6 @@ function median(values: number[]): number {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
     : sorted[mid];
-}
-
-function endBGFromActivity(activity: CachedActivity): number | null {
-  // Prefer the post-run endBG already computed by RunBGContext.
-  const postEnd = activity.runBGContext?.post?.endBG;
-  if (postEnd != null) return postEnd;
-  const glucose = activity.glucose;
-  if (!glucose || glucose.length === 0) return null;
-  return glucose[glucose.length - 1].value;
-}
-
-function startBGFromActivity(activity: CachedActivity): number | null {
-  const preStart = activity.runBGContext?.pre?.startBG;
-  if (preStart != null) return preStart;
-  const glucose = activity.glucose;
-  if (!glucose || glucose.length === 0) return null;
-  return glucose[0].value;
 }
 
 function durationHoursFromGlucose(glucose: { time: number; value: number }[]): number {
@@ -134,12 +118,12 @@ function buildDuringStats(
     let dropSamples = 0;
 
     for (const a of inCat) {
-      const end = endBGFromActivity(a);
+      const end = getActivityEndBG(a);
       if (end == null) continue;
       endBGs.push({ bg: end, date: a.activityDate ?? "", activityId: a.activityId });
       if ((a.glucose ?? []).some((g) => g.value < HYPO)) hypoCount++;
 
-      const start = startBGFromActivity(a);
+      const start = getActivityStartBG(a);
       const hours = durationHoursFromGlucose(a.glucose ?? []);
       if (start != null && hours > 0) {
         totalDropPerHr += (start - end) / hours;
@@ -180,8 +164,9 @@ function buildAfterStats(
     for (const a of withPost) {
       const post = a.runBGContext?.post;
       if (!post) continue;
-      // Legacy run_bg_context rows pre-date peak60mAboveEnd (Task 8). Treat as
-      // missing-after-data so they don't pollute medians or undercount rebounds.
+      // Skip rows where post-run readings didn't include the 60-min window —
+      // we can't tell rebound vs no-rebound, so excluding them keeps the median
+      // honest.
       if (post.peak60mAboveEnd == null) continue;
       rebounds.push(post.peak60mAboveEnd);
       if (post.peak60mAboveEnd > BIG_REBOUND_THRESHOLD) bigReboundCount++;
@@ -201,7 +186,7 @@ function buildAfterStats(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// tomorrow
+// upcoming
 // ────────────────────────────────────────────────────────────────────────────
 
 function getTargetHRRange(
@@ -222,10 +207,8 @@ function getTargetHRRange(
 function activityToMatchableRun(
   activity: CachedActivity,
 ): MatchableRun | null {
-  // Prefer the server-computed pre.startBG. Fall back to first glucose sample
-  // for legacy rows that pre-date server-side runBGContext computation.
-  const startBG = activity.runBGContext?.pre?.startBG ?? activity.glucose?.[0]?.value ?? null;
-  const endBG = endBGFromActivity(activity);
+  const startBG = getActivityStartBG(activity);
+  const endBG = getActivityEndBG(activity);
   if (startBG == null || endBG == null) return null;
 
   const wentHypo =
@@ -256,7 +239,7 @@ function activityWithPost(
 ): MatchableRunWithPost | null {
   const post = activity.runBGContext?.post;
   if (!post) return null;
-  // Legacy rows pre-date peak60mAboveEnd; exclude them from prediction inputs.
+  // Without 60-min post-run readings we can't predict rebound — skip.
   if (post.peak60mAboveEnd == null) return null;
   return {
     ...base,
@@ -281,12 +264,12 @@ function pickNextPlannedRun(events: CalendarEvent[], reference: Date): CalendarE
   return future[0] ?? null;
 }
 
-function buildTomorrow(
+function buildUpcoming(
   activities: CachedActivity[],
   events: CalendarEvent[],
   settings: UserSettings,
   reference: Date,
-): TomorrowData | null {
+): UpcomingData | null {
   const next = pickNextPlannedRun(events, reference);
   if (!next) return null;
   // Race events default to "long" matching for prediction.
@@ -326,7 +309,7 @@ function buildTomorrow(
   const recommendation = recommendFuelRate(matchesWithPost);
 
   // Build summary list for the UI from base matches (more entries than the post-context subset used for predictions). UI surfaces both counts so the runner sees which subset drives each piece.
-  const matchesSummary: TomorrowMatchSummary[] = matches.map((m) => ({
+  const matchesSummary: UpcomingMatchSummary[] = matches.map((m) => ({
     activityId: m.activityId,
     date: m.date,
     startBG: m.startBG,
@@ -413,17 +396,17 @@ export function buildHistoryData(
 }
 
 /**
- * Tomorrow-only computation. Pure function of activities, events, and settings —
- * does not depend on live BG. The Tomorrow card is a planning view, not a
+ * Upcoming-only computation. Pure function of activities, events, and settings —
+ * does not depend on live BG. The Upcoming card is a planning view, not a
  * pre-run readiness view.
  */
-export function buildTomorrowData(
+export function buildUpcomingData(
   activities: CachedActivity[],
   events: CalendarEvent[],
   settings: UserSettings,
   reference: Date = new Date(),
-): TomorrowData | null {
-  return buildTomorrow(activities, events, settings, reference);
+): UpcomingData | null {
+  return buildUpcoming(activities, events, settings, reference);
 }
 
 export function buildIntelScreenData(
@@ -434,6 +417,6 @@ export function buildIntelScreenData(
 ): IntelScreenData {
   return {
     ...buildHistoryData(activities, events, settings),
-    tomorrow: buildTomorrowData(activities, events, settings, reference),
+    upcoming: buildUpcomingData(activities, events, settings, reference),
   };
 }

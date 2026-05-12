@@ -6,6 +6,7 @@ import {
   validateNSConnection,
   fetchBGFromNS,
   fetchTreatmentsFromNS,
+  fetchBGBatchFromNS,
 } from "../nightscout";
 
 const TEST_NS_URL = "https://test.nightscout.local";
@@ -257,5 +258,71 @@ describe("fetchTreatmentsFromNS", () => {
       duration: 30,
       created_at: "2021-12-20T13:00:00.000Z",
     });
+  });
+});
+
+describe("fetchBGBatchFromNS", () => {
+  it("returns [] without making a request when windows is empty", async () => {
+    let requested = false;
+    server.use(
+      http.post(`${TEST_NS_URL}/api/v1/entries/batch`, () => {
+        requested = true;
+        return HttpResponse.json({ readings: [{ ts: 1, mmol: 5 }] });
+      }),
+    );
+    const out = await fetchBGBatchFromNS(TEST_NS_URL, TEST_API_SECRET, []);
+    expect(out).toEqual([]);
+    expect(requested).toBe(false);
+  });
+
+  it("posts windows in JSON body with api-secret header and returns readings", async () => {
+    let capturedBody: { windows?: { since: number; until: number }[] } = {};
+    let capturedSecret: string | null = null;
+    server.use(
+      http.post(`${TEST_NS_URL}/api/v1/entries/batch`, async ({ request }) => {
+        capturedBody = (await request.json()) as typeof capturedBody;
+        capturedSecret = request.headers.get("api-secret");
+        return HttpResponse.json({
+          readings: [
+            { ts: 100, mmol: 6.5 },
+            { ts: 200, mmol: 5.8 },
+          ],
+        });
+      }),
+    );
+    const out = await fetchBGBatchFromNS(TEST_NS_URL, TEST_API_SECRET, [
+      { since: 50, until: 150 },
+      { since: 180, until: 250 },
+    ]);
+    expect(capturedBody.windows).toEqual([
+      { since: 50, until: 150 },
+      { since: 180, until: 250 },
+    ]);
+    expect(capturedSecret).toBe(TEST_API_SECRET);
+    expect(out).toEqual([
+      { ts: 100, mmol: 6.5 },
+      { ts: 200, mmol: 5.8 },
+    ]);
+  });
+
+  it("returns [] when the response omits the readings field", async () => {
+    server.use(
+      http.post(`${TEST_NS_URL}/api/v1/entries/batch`, () => HttpResponse.json({})),
+    );
+    const out = await fetchBGBatchFromNS(TEST_NS_URL, TEST_API_SECRET, [
+      { since: 0, until: 1 },
+    ]);
+    expect(out).toEqual([]);
+  });
+
+  it("throws with the status code when the server responds with a non-ok status", async () => {
+    server.use(
+      http.post(`${TEST_NS_URL}/api/v1/entries/batch`, () =>
+        new HttpResponse(null, { status: 502, statusText: "Bad Gateway" }),
+      ),
+    );
+    await expect(
+      fetchBGBatchFromNS(TEST_NS_URL, TEST_API_SECRET, [{ since: 0, until: 1 }]),
+    ).rejects.toThrow(/502/);
   });
 });

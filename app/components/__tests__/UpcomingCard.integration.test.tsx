@@ -1,7 +1,7 @@
 import { render, screen } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
-import { TomorrowCard } from "../TomorrowCard";
+import { UpcomingCard } from "../UpcomingCard";
 import type { PredictorName } from "@/lib/intelScreenData";
 
 const sample = {
@@ -49,9 +49,9 @@ const sample = {
   matchRelaxed: false,
 };
 
-describe("TomorrowCard", () => {
+describe("UpcomingCard", () => {
   it("renders workout name, recommended fuel, predicted end BG range", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(screen.getByText(/W14 Long Intervals/)).toBeInTheDocument();
     expect(screen.getAllByText(/60/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/5\.8/).length).toBeGreaterThan(0);
@@ -61,14 +61,14 @@ describe("TomorrowCard", () => {
   });
 
   it("toggles matching runs list", async () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(screen.queryByText(/Apr 30/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /matching runs/i }));
     expect(screen.getByText(/Apr 30/)).toBeInTheDocument();
   });
 
   it("shows after-section rebound prediction with levers", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(screen.getAllByText(/\+3\.0/).length).toBeGreaterThan(0);
     expect(screen.getByText(/8 of 11/)).toBeInTheDocument();
     expect(screen.getByText(/reconnect pump/i)).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe("TomorrowCard", () => {
 
   it("shows 'no matching history yet' when prediction is null", () => {
     render(
-      <TomorrowCard
+      <UpcomingCard
         {...sample}
         prediction={null}
         recommendation={null}
@@ -89,14 +89,14 @@ describe("TomorrowCard", () => {
   });
 
   it("labels the fuel chip with the per-rate subset count, not the overall total", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     // Sample has matchCountAtRate=8, fuelRate=60 — meta should mention the per-rate subset.
     expect(screen.getByText(/8 runs at 60 g\/h/i)).toBeInTheDocument();
   });
 
   it("surfaces the gap when more matches exist than have post-run data", () => {
     render(
-      <TomorrowCard
+      <UpcomingCard
         {...sample}
         matches={[
           ...sample.matches,
@@ -115,7 +115,7 @@ describe("TomorrowCard", () => {
   });
 
   it("renders prediction without fuel rec when recommendation is null", () => {
-    render(<TomorrowCard {...sample} recommendation={null} />);
+    render(<UpcomingCard {...sample} recommendation={null} />);
     expect(screen.getByText(/no fuel rate recorded for these matches/i)).toBeInTheDocument();
     expect(screen.getByText(/8 runs without fuel data/i)).toBeInTheDocument();
     // Prediction blocks should still be visible.
@@ -127,46 +127,46 @@ describe("TomorrowCard", () => {
 
   it("shows matching predictor explainer when predictors are used", () => {
     render(
-      <TomorrowCard {...sample} matchPredictors={["fuelRate", "timeOfDay"]} matchRelaxed={false} />,
+      <UpcomingCard {...sample} matchPredictors={["fuelRate", "timeOfDay"]} matchRelaxed={false} />,
     );
     expect(screen.getByText(/Matched on similar fuel rate and time of day/i)).toBeInTheDocument();
   });
 
   it("shows relaxed filter label when matchRelaxed is true", () => {
-    render(<TomorrowCard {...sample} matchPredictors={[]} matchRelaxed={true} />);
+    render(<UpcomingCard {...sample} matchPredictors={[]} matchRelaxed={true} />);
     expect(
       screen.getByText(/Matched on category only — relaxed soft filters to find enough runs/i),
     ).toBeInTheDocument();
   });
 
   it("shows nothing when no predictors are used and match is not relaxed", () => {
-    render(<TomorrowCard {...sample} matchPredictors={[]} matchRelaxed={false} />);
+    render(<UpcomingCard {...sample} matchPredictors={[]} matchRelaxed={false} />);
     expect(screen.queryByText(/Matched on/i)).not.toBeInTheDocument();
   });
 
   it("ribbon label names the typical category and recommended fuel rate", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(
       screen.getByText(/Predicted end BG · typical Interval \/ Club at 60 g\/h/i),
     ).toBeInTheDocument();
   });
 
   it("ribbon label drops the fuel-rate suffix when no recommendation exists", () => {
-    render(<TomorrowCard {...sample} recommendation={null} />);
+    render(<UpcomingCard {...sample} recommendation={null} />);
     expect(
       screen.getByText(/Predicted end BG · typical Interval \/ Club$/i),
     ).toBeInTheDocument();
   });
 
   it("does not render any 'current BG' or 'starting at' framing", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(screen.queryByText(/current BG/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/starting at/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no live BG/i)).not.toBeInTheDocument();
   });
 
   it("labels the ribbon endpoints with low/typical/high", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     // Both during and after ribbons render these three labels — multiple matches expected.
     expect(screen.getAllByText(/low/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/typical/i).length).toBeGreaterThan(0);
@@ -174,7 +174,7 @@ describe("TomorrowCard", () => {
   });
 
   it("AFTER ribbon labels low value as muted and high value as error", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     const low = screen.getByTestId("ribbon-after-low");
     const high = screen.getByTestId("ribbon-after-high");
     expect(low).toHaveClass("text-muted");
@@ -184,7 +184,7 @@ describe("TomorrowCard", () => {
   });
 
   it("DURING ribbon keeps low value as error and high value as muted", () => {
-    render(<TomorrowCard {...sample} />);
+    render(<UpcomingCard {...sample} />);
     expect(screen.getByTestId("ribbon-during-low")).toHaveClass("text-error");
     expect(screen.getByTestId("ribbon-during-high")).toHaveClass("text-muted");
   });

@@ -1,9 +1,16 @@
 import type { MatchableRun } from "./matchingRuns";
 
 export interface MatchableRunWithPost extends MatchableRun {
-  peak60mAboveEnd: number;     // from RunBGContext.post (Task 8)
+  peak60mAboveEnd: number;     // from RunBGContext.post — guaranteed defined here (intelScreenData filters out activities lacking it)
   postRunHypo: boolean;        // from RunBGContext.post
 }
+
+/**
+ * Below this floor the p10/p50/p90 quantiles collapse onto the same one or two
+ * samples — a quantitative ribbon would be misleading. Callers that hit this
+ * gate get null; the UI shows "no matching history yet".
+ */
+const MIN_PREDICTION_MATCHES = 3;
 
 export interface PredictedOutcome {
   during: {
@@ -37,7 +44,7 @@ function quantile(arr: number[], q: number): number {
 }
 
 export function predictRunOutcome(matches: MatchableRunWithPost[]): PredictedOutcome | null {
-  if (matches.length === 0) return null;
+  if (matches.length < MIN_PREDICTION_MATCHES) return null;
 
   const ends = matches.map((m) => m.endBG);
   const peaks = matches.map((m) => m.peak60mAboveEnd);

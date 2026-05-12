@@ -10,7 +10,7 @@
 
 **Spec:** `docs/specs/2026-05-11-tomorrow-card-startbg-fix.md`
 
-**Project rules note:** Per Per's CLAUDE.md, commits require explicit consent ("commit", "cp"). The "Commit" steps below show the message to use, but never run without his explicit go-ahead per task.
+**Project rules note:** Per project CLAUDE.md, commits require explicit user consent ("commit", "cp"). The "Commit" steps below show the message to use, but never run without explicit go-ahead per task.
 
 ---
 
@@ -786,7 +786,7 @@ Run `npm run dev` and check the Intel tab:
 
 - [ ] **Step 4: Final task close-out**
 
-Once all the above pass, the bug is fixed. If Per gives the go-ahead, push to dev for mobile preview:
+Once all the above pass, the bug is fixed. With explicit go-ahead, push to dev for mobile preview:
 
 ```bash
 git push origin worktree-bg-fuel-trust-redesign:dev

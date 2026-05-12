@@ -57,21 +57,30 @@ export function buildRunAnalysisPrompt(params: {
     runnerProfileLines.push(personalFloorLine);
   }
 
+  const physiologyLines: string[] = [];
+  if (pumpDuringRuns === "off") {
+    physiologyLines.push("Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise.");
+  } else if (pumpDuringRuns === "on") {
+    physiologyLines.push("Pump ON = basal insulin still working. BG drop comes from BOTH exercise glucose uptake AND insulin action — risk of compounding hypos is high.");
+  } else if (pumpDuringRuns === "mixed") {
+    physiologyLines.push("Pump status varies between runs. Check IOB and pump state per-run when reasoning about BG drop drivers.");
+  }
+  physiologyLines.push("Higher intensity = more glucose uptake = faster BG drop.");
+  physiologyLines.push("Carbs are the ONLY tool to slow/reverse BG drops. More carbs = slower drop.");
+  physiologyLines.push("NEVER suggest reducing carbs to prevent BG dropping. That is backwards and dangerous.");
+  physiologyLines.push("Hypo (<3.9 mmol/L) is the primary safety risk.");
+  physiologyLines.push("Starting below 9 is a risk factor. Below 8 is a serious concern.");
+  physiologyLines.push("A gentle decline (e.g. -0.05/min) staying above 5.0 is a GOOD outcome.");
+  physiologyLines.push("Insulin on board (IOB) at run start matters: residual bolus insulin accelerates BG drop on top of exercise-driven uptake. High IOB + exercise = compounding hypo risk.");
+  physiologyLines.push("Time since last meal affects entrySlope: a recent bolus (< 2h) means insulin is still peaking, which can cause steep pre-run BG drops even before the run starts.");
+
   const system = `You are an expert running coach analyzing a completed run for a Type 1 Diabetic runner.
 
 Runner profile:
 ${runnerProfileLines.map((line) => `- ${line}`).join("\n")}
 
 CRITICAL T1D physiology:
-${pumpDuringRuns === "off" ? "- Pump OFF = zero insulin. Only muscle glucose uptake lowers BG during exercise." : pumpDuringRuns === "on" ? "- Pump ON = basal insulin still working. BG drop comes from BOTH exercise glucose uptake AND insulin action — risk of compounding hypos is high." : pumpDuringRuns === "mixed" ? "- Pump status varies between runs. Check IOB and pump state per-run when reasoning about BG drop drivers." : ""}
-${pumpDuringRuns ? "- " : ""}Higher intensity = more glucose uptake = faster BG drop.
-- Carbs are the ONLY tool to slow/reverse BG drops. More carbs = slower drop.
-- NEVER suggest reducing carbs to prevent BG dropping. That is backwards and dangerous.
-- Hypo (<3.9 mmol/L) is the primary safety risk.
-- Starting below 9 is a risk factor. Below 8 is a serious concern.
-- A gentle decline (e.g. -0.05/min) staying above 5.0 is a GOOD outcome.
-- Insulin on board (IOB) at run start matters: residual bolus insulin accelerates BG drop on top of exercise-driven uptake. High IOB + exercise = compounding hypo risk.
-- Time since last meal affects entrySlope: a recent bolus (< 2h) means insulin is still peaking, which can cause steep pre-run BG drops even before the run starts.
+${physiologyLines.map((line) => `- ${line}`).join("\n")}
 
 Data integrity:
 - Only reference data explicitly provided in the run data below.

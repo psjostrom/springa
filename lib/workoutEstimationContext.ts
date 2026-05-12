@@ -47,10 +47,13 @@ export async function getUserWorkoutEstimationContext(
   settings?: UserSettings,
 ): Promise<WorkoutEstimationContext> {
   const resolvedSettings = settings ?? (await getUserSettings(email));
-  const context = createWorkoutEstimationContext({
-    currentAbilityDist: resolvedSettings.currentAbilityDist,
-    currentAbilitySecs: resolvedSettings.currentAbilitySecs,
-  });
+  const context: WorkoutEstimationContext = {
+    ...createWorkoutEstimationContext({
+      currentAbilityDist: resolvedSettings.currentAbilityDist,
+      currentAbilitySecs: resolvedSettings.currentAbilitySecs,
+    }),
+    timezone: resolvedSettings.timezone,
+  };
 
   if (!intervalsApiKey) return context;
 

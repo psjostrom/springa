@@ -64,11 +64,13 @@ describe("/api/bg/runs", () => {
     const w2End = w2Start + 45 * 60 * 1000;
 
     server.use(
-      http.get(`${NS_URL}/api/v1/entries.json`, () => {
-        return HttpResponse.json([
-          { sgv: 180, date: w1Start + 5 * 60 * 1000, direction: "Flat", delta: 0 },
-          { sgv: 162, date: w2Start + 10 * 60 * 1000, direction: "Flat", delta: 0 },
-        ]);
+      http.post(`${NS_URL}/api/v1/entries/batch`, () => {
+        return HttpResponse.json({
+          readings: [
+            { ts: w1Start + 5 * 60 * 1000, mmol: 10.0 },
+            { ts: w2Start + 10 * 60 * 1000, mmol: 9.0 },
+          ],
+        });
       }),
     );
 
@@ -91,11 +93,13 @@ describe("/api/bg/runs", () => {
     const end = start + 60 * 60 * 1000;
 
     server.use(
-      http.get(`${NS_URL}/api/v1/entries.json`, () => {
-        return HttpResponse.json([
-          { sgv: 162, date: start + 10 * 60 * 1000, direction: "Flat", delta: 0 },
-          { sgv: 180, date: start + 5 * 60 * 1000, direction: "Flat", delta: 0 },
-        ]);
+      http.post(`${NS_URL}/api/v1/entries/batch`, () => {
+        return HttpResponse.json({
+          readings: [
+            { ts: start + 10 * 60 * 1000, mmol: 9.0 },
+            { ts: start + 5 * 60 * 1000, mmol: 10.0 },
+          ],
+        });
       }),
     );
 
@@ -106,6 +110,34 @@ describe("/api/bg/runs", () => {
 
     expect(json.readings["act-1"]).toHaveLength(2);
     expect(json.readings["act-1"][0].ts).toBeLessThan(json.readings["act-1"][1].ts);
+  });
+
+  it("forwards each window separately to the Scout batch endpoint (no min/max collapse)", async () => {
+    await insertCredentials();
+    let capturedWindows: { since: number; until: number }[] = [];
+    server.use(
+      http.post(`${NS_URL}/api/v1/entries/batch`, async ({ request }) => {
+        const body = (await request.json()) as { windows: { since: number; until: number }[] };
+        capturedWindows = body.windows;
+        return HttpResponse.json({ readings: [] });
+      }),
+    );
+
+    const w1Start = 1_700_000_000_000;
+    const w1End = w1Start + 30 * 60 * 1000;
+    const w2Start = w1End + 60 * 60 * 1000;
+    const w2End = w2Start + 45 * 60 * 1000;
+
+    await POST(makeRequest([
+      { activityId: "act-1", start: w1Start, end: w1End },
+      { activityId: "act-2", start: w2Start, end: w2End },
+    ]));
+
+    expect(capturedWindows).toHaveLength(2);
+    expect(capturedWindows[0].since).toBeLessThan(w1Start);
+    expect(capturedWindows[0].until).toBeGreaterThan(w1End);
+    expect(capturedWindows[1].since).toBeLessThan(w2Start);
+    expect(capturedWindows[1].until).toBeGreaterThan(w2End);
   });
 
   it("returns 400 for missing windows", async () => {

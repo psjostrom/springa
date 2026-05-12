@@ -1,5 +1,5 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { getActivityStreams, saveActivityStreams, type CachedActivity } from "@/lib/activityStreamsDb";
+import { getActivityStreamsWithStatus, saveActivityStreams, type CachedActivity } from "@/lib/activityStreamsDb";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -12,8 +12,11 @@ export async function GET() {
   }
 
   try {
-    const cache = await getActivityStreams(email);
-    return NextResponse.json(cache);
+    const { activities, bgContextStatus } = await getActivityStreamsWithStatus(email);
+    // Return both the activities and an upstream status so the client can
+    // distinguish "Scout outage → predictions paused" from "user genuinely
+    // has no history yet". See `BGContextStatus` in lib/runBGContext.ts.
+    return NextResponse.json({ activities, bgContextStatus });
   } catch (err) {
     console.error("Failed to load BG cache:", err);
     return NextResponse.json({ error: "Failed to load BG cache" }, { status: 500 });

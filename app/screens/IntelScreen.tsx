@@ -34,6 +34,7 @@ import {
   bgModelLoadingAtom,
   bgModelProgressAtom,
   cachedActivitiesAtom,
+  bgContextStatusAtom,
   wellnessEntriesAtom,
   wellnessLoadingAtom,
   widgetLayoutAtom,
@@ -63,7 +64,7 @@ import { FitnessInsightsPanel } from "../components/FitnessInsightsPanel";
 import { DuringPatternCards } from "../components/DuringPatternCards";
 import { AfterPatternCards } from "../components/AfterPatternCards";
 import { DistanceReadiness } from "../components/DistanceReadiness";
-import { TomorrowCard } from "../components/TomorrowCard";
+import { UpcomingCard } from "../components/UpcomingCard";
 import { BGScatterChart } from "../components/BGScatterChart";
 import { PaceCalibrationCard } from "../components/PaceCalibrationCard";
 import { PaceSuggestionCard } from "../components/PaceSuggestionCard";
@@ -80,14 +81,14 @@ import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
-import { buildHistoryData, buildTomorrowData } from "@/lib/intelScreenData";
+import { buildHistoryData, buildUpcomingData } from "@/lib/intelScreenData";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
 
 const ICON_MAP: Record<WidgetKey, LucideIcon> = {
   readiness: Battery,
   "phase-tracker": Route,
-  tomorrow: Sunrise,
+  upcoming: Sunrise,
   "fitness-chart": Activity,
   "volume-trend": BarChart3,
   "pace-zones": Gauge,
@@ -194,6 +195,7 @@ export function IntelScreen() {
   const bgModelLoading = useAtomValue(bgModelLoadingAtom);
   const bgModelProgress = useAtomValue(bgModelProgressAtom);
   const cachedActivities = useAtomValue(cachedActivitiesAtom);
+  const bgContextStatus = useAtomValue(bgContextStatusAtom);
 
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const wellnessLoading = useAtomValue(wellnessLoadingAtom);
@@ -232,11 +234,16 @@ export function IntelScreen() {
 
   // Fetch old activity if not in events array
   useEffect(() => {
-    const existsInEvents = selectedActivityId
-      ? events.some((e) => e.activityId === selectedActivityId)
-      : true;
-
-    if (!selectedActivityId || existsInEvents) {
+    if (!selectedActivityId) {
+      // Closing the modal — drop the previous fetched event so it doesn't
+      // briefly flash if the user reopens a different activity.
+      setFetchedEvent(null);
+      setIsFetchingEvent(false);
+      return;
+    }
+    const existsInEvents = events.some((e) => e.activityId === selectedActivityId);
+    if (existsInEvents) {
+      setIsFetchingEvent(false);
       return;
     }
 
@@ -244,11 +251,14 @@ export function IntelScreen() {
     let cancelled = false;
     setIsFetchingEvent(true);
     void fetchActivity(selectedActivityId).then((activity) => {
+      // Always clear the loading state — even on cancel, the next fetch will
+      // set it true again. Without this, a quick selection switch leaves the
+      // modal stuck on the loader forever.
+      setIsFetchingEvent(false);
       if (cancelled) return;
       if (activity) {
         setFetchedEvent(activityToCalendarEvent(activity));
       }
-      setIsFetchingEvent(false);
     });
     return () => { cancelled = true; };
   }, [selectedActivityId, events]);
@@ -412,32 +422,27 @@ export function IntelScreen() {
     [cachedActivities, events, settings],
   );
 
-  // Tomorrow no longer depends on live BG — recomputes only when activities,
+  // Upcoming no longer depends on live BG — recomputes only when activities,
   // events, or settings change. The card is a planning view, not a pre-run
   // readiness view; live BG belongs in the topbar/prerun screen.
-  const tomorrowData = useMemo(
-    () => buildTomorrowData(cachedActivities, events, settings ?? {}),
+  const upcomingData = useMemo(
+    () => buildUpcomingData(cachedActivities, events, settings ?? {}),
     [cachedActivities, events, settings],
   );
 
-  const intelData = useMemo(
-    () => ({ ...historyData, tomorrow: tomorrowData }),
-    [historyData, tomorrowData],
-  );
-
   const duringRunCount = useMemo(() => {
-    return Object.values(intelData.duringStats).reduce(
+    return Object.values(historyData.duringStats).reduce(
       (sum, s) => sum + (s?.runCount ?? 0),
       0,
     );
-  }, [intelData.duringStats]);
+  }, [historyData.duringStats]);
 
   const afterRunCount = useMemo(() => {
-    return Object.values(intelData.afterStats).reduce(
+    return Object.values(historyData.afterStats).reduce(
       (sum, s) => sum + (s?.runCount ?? 0),
       0,
     );
-  }, [intelData.afterStats]);
+  }, [historyData.afterStats]);
 
   // Per-widget contextual meta (shown after heading)
   const widgetMeta: Partial<WidgetMeta> = {
@@ -482,8 +487,14 @@ export function IntelScreen() {
         includeBasePhase={settings?.includeBasePhase}
       />
     ),
-    tomorrow: ((tomorrow) =>
-      tomorrow ? () => <TomorrowCard {...tomorrow} /> : null)(intelData.tomorrow),
+    // While the activity cache is hydrating, the matching engine has nothing
+    // to draw from — for a returning user that briefly looks like "no
+    // matching history". Show a loading card until the cache lands so the
+    // user can tell hydration apart from real "no data yet".
+    upcoming: bgModelLoading
+      ? () => <WidgetLoadingCard label="Loading run history..." />
+      : ((upcoming) =>
+          upcoming ? () => <UpcomingCard {...upcoming} /> : null)(upcomingData),
     "fitness-chart": fitnessChartRenderer,
     "volume-trend": () => (
       <VolumeTrendChart
@@ -508,16 +519,18 @@ export function IntelScreen() {
     "bg-categories": bgModelLoading
       ? () => <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
       : duringRunCount > 0
-        ? () => <DuringPatternCards stats={intelData.duringStats} onActivitySelect={setSelectedActivityId} />
+        ? () => <DuringPatternCards stats={historyData.duringStats} onActivitySelect={setSelectedActivityId} />
         : null,
-    "bg-after": afterRunCount > 0
-      ? () => <AfterPatternCards stats={intelData.afterStats} />
-      : null,
-    "distance-readiness": intelData.distance.longestRun
+    "bg-after": bgModelLoading
+      ? () => <WidgetLoadingCard label={`Analyzing post-run BG... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
+      : afterRunCount > 0
+        ? () => <AfterPatternCards stats={historyData.afterStats} />
+        : null,
+    "distance-readiness": historyData.distance.longestRun
       ? () => (
           <DistanceReadiness
-            longestRun={intelData.distance.longestRun}
-            race={intelData.distance.race}
+            longestRun={historyData.distance.longestRun}
+            race={historyData.distance.race}
           />
         )
       : null,
@@ -544,10 +557,10 @@ export function IntelScreen() {
   // Widgets that live on Overview only — excluded from the Deep Dive widget loop
   const OVERVIEW_ONLY = new Set<WidgetKey>(["readiness", "phase-tracker"]);
 
-  // Curated subset for Overview. "tomorrow" leads — it's the actionable card
+  // Curated subset for Overview. "upcoming" leads — it's the actionable card
   // (next workout + fuel rate + predicted BG) and belongs at the top.
   const OVERVIEW_KEYS: WidgetKey[] = [
-    "tomorrow",
+    "upcoming",
     "readiness",
     "phase-tracker",
     "fitness-chart",
@@ -564,10 +577,41 @@ export function IntelScreen() {
         (k) => !OVERVIEW_ONLY.has(k) && !widgetLayout.hiddenWidgets.includes(k) && widgetRenderMap[k] != null,
       );
 
+  // BG-context banner. Surfaces upstream failures (Scout outage, missing
+  // credentials, /api/bg-cache failure) so a Scout outage doesn't silently
+  // collapse to "no matching history yet" for a returning user with months of
+  // data. Suppressed during the initial "unknown" state and on success.
+  let bgContextBanner: { message: string; tone: "warning" | "info" } | null = null;
+  if (bgContextStatus === "upstream-error" || bgContextStatus === "fetch-error") {
+    bgContextBanner = {
+      message: "BG history is offline — predictions paused until your CGM source is reachable again. Existing cached values are still shown.",
+      tone: "warning",
+    };
+  } else if (bgContextStatus === "no-credentials") {
+    bgContextBanner = {
+      message: "Connect Nightscout in Settings → Account to enable BG-aware predictions.",
+      tone: "info",
+    };
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-bg">
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         <TabBar tabs={INTEL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {bgContextBanner && (
+          <div
+            role="status"
+            data-testid="bg-context-banner"
+            className={`rounded-xl border px-3 py-2 text-xs ${
+              bgContextBanner.tone === "warning"
+                ? "border-warning/40 bg-warning/10 text-warning"
+                : "border-border bg-surface text-muted"
+            }`}
+          >
+            {bgContextBanner.message}
+          </div>
+        )}
 
         {activeTab === "overview" && !hasCompletedRuns && !eventsLoading && (
           <EmptyState message="Complete your first run to unlock training insights">
@@ -710,7 +754,7 @@ export function IntelScreen() {
             {afterRunCount > 0 && (
               <div>
                 <WidgetHeading widgetKey="bg-after" meta={widgetMeta["bg-after"]} />
-                <AfterPatternCards stats={intelData.afterStats} />
+                <AfterPatternCards stats={historyData.afterStats} />
               </div>
             )}
             {bgModel && (

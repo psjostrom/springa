@@ -11,6 +11,7 @@ import { categoryFromExternalId } from "./paceInsight";
 import { findWorkoutEventMatch } from "./workoutEventMatching";
 import { calculateCanonicalPlannedPrescription } from "./workoutPrescriptions";
 import type { WorkoutEstimationContext } from "./workoutMath";
+import { localToUtcMs, resolveTimezone } from "./timezone";
 
 /** Intervals.icu custom fields can't be null — 0 means "not set". */
 function nonZero(v: number | undefined): number | null {
@@ -235,7 +236,13 @@ export function processPlannedEvents(
     }
 
     const name = event.name ?? "";
-    const eventDate = parseISO(event.start_date_local);
+    // start_date_local is a timezone-naive string (e.g. "2026-05-17T12:00:00").
+    // parseISO interprets it as the JS engine's local time, which on Vercel is
+    // UTC and on a developer laptop is local — so the same payload could
+    // produce different Date values across environments. Resolve through the
+    // user's timezone instead. (processActivities uses start_date which has a
+    // Z suffix and so doesn't have this problem.)
+    const eventDate = new Date(localToUtcMs(event.start_date_local, resolveTimezone(context.timezone)));
     const eventDesc = event.description ?? "";
 
     const extCategory = categoryFromExternalId(event.external_id);

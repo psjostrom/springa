@@ -8,7 +8,7 @@ import type { FuelRecommendation } from "@/lib/fuelRecommendation";
 import type { PredictorName } from "@/lib/intelScreenData";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 
-export interface TomorrowMatchSummary {
+export interface UpcomingMatchSummary {
   activityId: string;
   date: string;
   startBG: number;
@@ -16,7 +16,7 @@ export interface TomorrowMatchSummary {
   fuelRate: number | null;
 }
 
-export interface TomorrowWorkoutSummary {
+export interface UpcomingWorkoutSummary {
   name: string;
   date: string; // ISO yyyy-MM-dd
   timeOfDay: string; // e.g. "06:30"
@@ -27,10 +27,10 @@ export interface TomorrowWorkoutSummary {
 }
 
 interface Props {
-  workout: TomorrowWorkoutSummary;
+  workout: UpcomingWorkoutSummary;
   recommendation: FuelRecommendation | null;
   prediction: PredictedOutcome | null;
-  matches: TomorrowMatchSummary[];
+  matches: UpcomingMatchSummary[];
   matchPredictors: PredictorName[];
   matchRelaxed: boolean;
 }
@@ -92,7 +92,7 @@ function formatPredictorList(predictors: PredictorName[]): string {
   return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
-export function TomorrowCard({
+export function UpcomingCard({
   workout,
   recommendation,
   prediction,
@@ -112,7 +112,7 @@ export function TomorrowCard({
 
   return (
     <div
-      data-testid="tomorrow-card"
+      data-testid="upcoming-card"
       className="bg-surface border border-border-subtle rounded-2xl p-4 mb-3 bg-gradient-to-b from-brand/5 to-transparent"
     >
       {/* HEADER */}
@@ -130,11 +130,18 @@ export function TomorrowCard({
         {prediction ? (
           <>
             {recommendation ? (
-              <FuelHeadline
-                value={String(recommendation.fuelRate)}
-                unit="g/h"
-                meta={`${recommendation.matchCountAtRate} run${recommendation.matchCountAtRate === 1 ? "" : "s"} at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
-              />
+              <>
+                <FuelHeadline
+                  value={String(recommendation.fuelRate)}
+                  unit="g/h"
+                  meta={`${recommendation.matchCountAtRate} run${recommendation.matchCountAtRate === 1 ? "" : "s"} at ${recommendation.fuelRate} g/h · ${prediction.during.confidence} overall`}
+                />
+                {recommendation.basis === "limited-evidence" && (
+                  <p className="mt-1 text-[11px] text-warning leading-snug">
+                    Limited evidence: no tested rate kept the predicted low end above {(4.5).toFixed(1)} mmol/L. Try +10 g/h next time and watch for late hypos.
+                  </p>
+                )}
+              </>
             ) : (
               <div className="text-xs text-muted py-2">
                 No fuel rate recorded for these matches — based on {predictionMatchCount} run{predictionMatchCount === 1 ? "" : "s"} without fuel data.
@@ -155,7 +162,7 @@ export function TomorrowCard({
 
             <p className="text-xs text-text mt-3 leading-snug">
               <strong>{prediction.during.hypoCount} of {predictionMatchCount}</strong>{" "}
-              matching past run{predictionMatchCount === 1 ? "" : "s"} ended below 4.0.
+              matching past run{predictionMatchCount === 1 ? "" : "s"} hit a hypo (during the run or within 2 h after).
               {recommendation && (
                 <> The recommended rate keeps the predicted 10th percentile end BG at {recommendation.predictedP10EndBG.toFixed(1)}.</>
               )}

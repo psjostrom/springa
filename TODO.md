@@ -37,28 +37,18 @@
 
 Survey of `activity_streams` columns identified two violations — pure derivations of locally-owned data, persisted in a way that can drift, get wiped, or require backfill on shape changes.
 
-### `activity_streams.run_bg_context` — fixing in PR #192
-Pre/post BG stats computed from `bg_readings` for an activity's window. Pure function of source data we own. Failure mode (observed): `saveActivityStreams` recomputed on every save and wrote `null` if recompute failed (sparse `bg_readings`, NS unreachable). One reload could wipe context on dozens of activities.
-
-Fix: stop storing. `getActivityStreams` computes per-activity context on read via the existing `computeRunBGContextForActivity` helper. Column stays in the schema until the next migration but is no longer read or written.
+### `activity_streams.run_bg_context` — fixed in PR #192
+Pre/post BG stats are computed on every read by `computeRunBGContextsForActivities` from Scout's batch endpoint. Column dropped from `SCHEMA_DDL` and from the live DB by `scripts/migrate-pump-during-runs.ts`. The corresponding `scripts/backfill-postrun-stats.ts` was deleted.
 
 ### `activity_streams.glucose` — TODO (next PR)
 Glucose values aligned to HR sample timestamps via `alignHRWithBG(hr, bgReadings, runStartMs)`. Pure derivation of `bg_readings` + `hr` column. Same anti-pattern; same failure mode possible. Currently computed client-side in `useStreamCache.loadUncachedRuns` and shipped to the server, which stores it as JSON.
 
 Fix shape: drop the column, compute alignment on demand. Consumer is mainly `EventModal`'s BG chart — could fetch raw `bg_readings` for the activity's window and align in the chart component, or include alignment in the on-read computation if needed elsewhere.
 
-### Schema cleanup (after PR #192 ships)
-Both columns can be dropped from the schema once the application has been running on the new code for a release cycle. Safe to leave as dead columns in the meantime.
-
 ```sql
--- Run after PR #192 ships and the new code has been deployed for ≥1 day
-ALTER TABLE activity_streams DROP COLUMN run_bg_context;
 -- Run after the glucose follow-up ships
 ALTER TABLE activity_streams DROP COLUMN glucose;
 ```
 
-### Obsolete migration scripts (after schema cleanup)
-- `scripts/backfill-postrun-stats.ts` — populated `run_bg_context`. Becomes a no-op once the column is dropped. Delete.
-
 ### `bgcache_v*` localStorage version pattern
-`lib/activityStreamsCache.ts:LS_KEY = "bgcache_v7"`. Each schema change to the cached shape requires bumping this string and effectively wiping client localStorage caches. Once derived data is computed on read, the cache becomes purely a perf optimization for the response and any stale data is corrected on next refetch. Consider whether the version string is still needed at all post-fix.
+`lib/activityStreamsCache.ts:LS_KEY = "bgcache_v8"`. Each schema change to the cached shape requires bumping this string and effectively wiping client localStorage caches. Once all derived data is computed on read, the cache becomes purely a perf optimization for the response and any stale data is corrected on next refetch. Consider whether the version string is still needed at all post-fix.

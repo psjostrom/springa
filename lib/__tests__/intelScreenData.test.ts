@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildIntelScreenData,
   buildHistoryData,
-  buildTomorrowData,
+  buildUpcomingData,
 } from "../intelScreenData";
 import type { CachedActivity } from "../activityStreamsDb";
 import type { CalendarEvent } from "../types";
@@ -154,20 +154,20 @@ describe("buildIntelScreenData", () => {
     });
 
     // tomorrow
-    expect(result.tomorrow).not.toBeNull();
-    expect(result.tomorrow?.workout.name).toBe("W02 Easy");
-    expect(result.tomorrow?.workout.category).toBe("easy");
-    expect(result.tomorrow?.workout.distanceKm).toBe(6);
-    expect(result.tomorrow?.workout.targetHRRange).toContain("Z2");
+    expect(result.upcoming).not.toBeNull();
+    expect(result.upcoming?.workout.name).toBe("W02 Easy");
+    expect(result.upcoming?.workout.category).toBe("easy");
+    expect(result.upcoming?.workout.distanceKm).toBe(6);
+    expect(result.upcoming?.workout.targetHRRange).toContain("Z2");
     // matches array exists (may be empty when no soft predictors hit)
-    expect(Array.isArray(result.tomorrow?.matches)).toBe(true);
-    expect(Array.isArray(result.tomorrow?.matchPredictors)).toBe(true);
-    expect(typeof result.tomorrow?.matchRelaxed).toBe("boolean");
+    expect(Array.isArray(result.upcoming?.matches)).toBe(true);
+    expect(Array.isArray(result.upcoming?.matchPredictors)).toBe(true);
+    expect(typeof result.upcoming?.matchRelaxed).toBe("boolean");
   });
 
   it("returns null tomorrow when no future planned events", () => {
     const result = buildIntelScreenData([], [], {}, new Date("2026-04-01T00:00:00Z"));
-    expect(result.tomorrow).toBeNull();
+    expect(result.upcoming).toBeNull();
     expect(result.distance.longestRun).toBeNull();
     expect(result.duringStats.easy).toBeNull();
     expect(result.afterStats.easy).toBeNull();
@@ -253,8 +253,8 @@ describe("buildIntelScreenData", () => {
       },
     ];
 
-    const a = buildTomorrowData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
-    const b = buildTomorrowData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
+    const a = buildUpcomingData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
+    const b = buildUpcomingData(activities, events, {}, new Date("2026-04-14T15:00:00Z"));
 
     expect(a).toEqual(b);
     expect(a?.matchPredictors).not.toContain("startBG");
@@ -314,7 +314,7 @@ describe("buildIntelScreenData", () => {
     ];
     const reference = new Date("2026-04-14T14:00:00Z"); // 4 hours after the planned start
     const result = buildIntelScreenData([], events, {}, reference);
-    expect(result.tomorrow?.workout.name).toBe("W14 Easy + Strides");
+    expect(result.upcoming?.workout.name).toBe("W14 Easy + Strides");
   });
 
   it("advances to the next day's planned run once the day rolls over", () => {
@@ -344,6 +344,6 @@ describe("buildIntelScreenData", () => {
     ];
     const reference = new Date("2026-04-15T07:00:00Z");
     const result = buildIntelScreenData([], events, {}, reference);
-    expect(result.tomorrow?.workout.name).toBe("W14 Club Run");
+    expect(result.upcoming?.workout.name).toBe("W14 Club Run");
   });
 });

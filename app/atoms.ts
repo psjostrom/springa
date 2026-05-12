@@ -98,12 +98,29 @@ export const bgModelProgressAtom = atom<{ done: number; total: number }>({
 export const bgActivityNamesAtom = atom<Map<string, string>>(new Map());
 export const cachedActivitiesAtom = atom<EnrichedActivity[]>([]);
 
-// Derived: server-persisted runBGContext on each cached activity is the single
-// source of truth (saveActivityStreams populates it, the backfill script seeds
-// legacy rows). Consumers that need a Map<activityId, RunBGContext> for lookup
-// derive it from the cache rather than recomputing from a smaller live CGM
-// readings window — that path drifted from the cache and silently dropped
-// historical context (most visibly: Coach's recovery-pattern summary).
+/**
+ * Upstream status of the last bg-cache fetch. "unknown" until the first
+ * reconcile completes; transitions to "ok" / "no-credentials" / "no-input" on
+ * success, or "upstream-error" / "fetch-error" when Scout (or our own
+ * /api/bg-cache route) is failing. IntelScreen reads this to render a banner
+ * so a Scout outage doesn't look like "user has no history".
+ */
+export type BGContextStatusAtomValue =
+  | "unknown"
+  | "ok"
+  | "no-input"
+  | "no-credentials"
+  | "upstream-error"
+  | "fetch-error";
+
+export const bgContextStatusAtom = atom<BGContextStatusAtomValue>("unknown");
+
+// Derived from `cachedActivities[].runBGContext`, which the server recomputes
+// on every read of `getActivityStreams` (Scout batch endpoint). Consumers that
+// need a Map<activityId, RunBGContext> for lookup derive it from the cache
+// rather than recomputing from a smaller live CGM readings window — that path
+// drifted from the cache and silently dropped historical context (most
+// visibly: Coach's recovery-pattern summary).
 export const runBGContextsAtom = atom<Map<string, RunBGContext>>((get) => {
   const cached = get(cachedActivitiesAtom);
   const map = new Map<string, RunBGContext>();

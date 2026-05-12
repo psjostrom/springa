@@ -1,6 +1,6 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
-import { fetchBGFromNS } from "@/lib/nightscout";
+import { fetchBGBatchFromNS } from "@/lib/nightscout";
 import { NextResponse } from "next/server";
 import type { BGReading } from "@/lib/cgm";
 
@@ -36,34 +36,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ readings: {} });
   }
 
-  try {
-    const minStart = Math.min(...windows.map((w) => w.start));
-    const maxEnd = Math.max(...windows.map((w) => w.end));
+  // Build per-window batch input. Padded by PADDING_MS on each side so
+  // alignment can use the closest reading even when the run starts/ends
+  // between two CGM samples.
+  const padded = windows.map((w) => ({
+    activityId: w.activityId,
+    windowStart: w.start - PADDING_MS,
+    windowEnd: w.end + PADDING_MS,
+  }));
 
-    const allReadings = await fetchBGFromNS(
+  let trimmed: { ts: number; mmol: number }[] = [];
+  try {
+    trimmed = await fetchBGBatchFromNS(
       creds.nightscoutUrl,
       creds.nightscoutSecret,
-      {
-        since: minStart - PADDING_MS,
-        until: maxEnd + PADDING_MS,
-        count: 50000,
-      },
+      padded.map((w) => ({ since: w.windowStart, until: w.windowEnd })),
     );
-
-    allReadings.sort((a, b) => a.ts - b.ts);
-
-    const result: Record<string, BGReading[]> = {};
-    for (const w of windows) {
-      const windowStart = w.start - PADDING_MS;
-      const windowEnd = w.end + PADDING_MS;
-      result[w.activityId] = allReadings.filter(
-        (r) => r.ts >= windowStart && r.ts <= windowEnd,
-      );
-    }
-
-    return NextResponse.json({ readings: result });
   } catch (err) {
-    console.error("[bg/runs] Failed to fetch from Nightscout:", err);
+    console.error("[bg/runs] Scout batch fetch failed:", err);
     return NextResponse.json({ readings: {} });
   }
+
+  // Hydrate trimmed payload (`ts`+`mmol`) back into BGReading shape. The
+  // sgv/direction/delta fields aren't read by `useStreamCache` consumers
+  // (alignment only needs ts and mmol), but the type contract requires them.
+  const allReadings: BGReading[] = trimmed.map((r) => ({
+    sgv: 0,
+    mmol: r.mmol,
+    ts: r.ts,
+    direction: "NONE",
+    delta: 0,
+  }));
+  allReadings.sort((a, b) => a.ts - b.ts);
+
+  const result: Record<string, BGReading[]> = {};
+  for (const w of padded) {
+    result[w.activityId] = allReadings.filter(
+      (r) => r.ts >= w.windowStart && r.ts <= w.windowEnd,
+    );
+  }
+
+  return NextResponse.json({ readings: result });
 }

@@ -86,9 +86,39 @@ describe("resolveLayout", () => {
     expect(layout.widgetOrder).not.toContain("bg-patterns");
     expect(layout.widgetOrder).toContain("phase-tracker");
     expect(layout.widgetOrder).toContain("volume-trend");
-    expect(layout.widgetOrder).toContain("tomorrow");
+    expect(layout.widgetOrder).toContain("upcoming");
     expect(layout.widgetOrder).toContain("bg-after");
     expect(layout.widgetOrder).toContain("distance-readiness");
+  });
+
+  it("migrates the legacy 'tomorrow' key to 'upcoming' in saved widgetOrder", () => {
+    const saved = ["phase-tracker", "tomorrow" as WidgetKey, "volume-trend"];
+    const layout = resolveLayout({ widgetOrder: saved });
+    expect(layout.widgetOrder).not.toContain("tomorrow");
+    expect(layout.widgetOrder.slice(0, 3)).toEqual([
+      "phase-tracker",
+      "upcoming",
+      "volume-trend",
+    ]);
+  });
+
+  it("migrates the legacy 'tomorrow' key to 'upcoming' in saved hiddenWidgets", () => {
+    const layout = resolveLayout({
+      widgetOrder: [...DEFAULT_ORDER],
+      hiddenWidgets: ["tomorrow" as WidgetKey, "pace-zones"],
+    });
+    expect(layout.hiddenWidgets).not.toContain("tomorrow");
+    expect(layout.hiddenWidgets).toContain("upcoming");
+    expect(layout.hiddenWidgets).toContain("pace-zones");
+  });
+
+  it("does not duplicate 'upcoming' when both legacy and new keys are saved", () => {
+    const saved = ["upcoming" as WidgetKey, "phase-tracker", "tomorrow" as WidgetKey];
+    const layout = resolveLayout({ widgetOrder: saved });
+    const upcomingIndices = layout.widgetOrder
+      .map((k, i) => (k === "upcoming" ? i : -1))
+      .filter((i) => i !== -1);
+    expect(upcomingIndices).toHaveLength(1);
   });
 });
 
@@ -141,8 +171,8 @@ describe("toggleWidget", () => {
 });
 
 describe("DEFAULT_WIDGETS labels", () => {
-  it("labels the tomorrow widget as 'Upcoming'", () => {
-    const def = DEFAULT_WIDGETS.find((w) => w.key === "tomorrow");
+  it("labels the upcoming widget as 'Upcoming'", () => {
+    const def = DEFAULT_WIDGETS.find((w) => w.key === "upcoming");
     expect(def?.label).toBe("Upcoming");
   });
 });

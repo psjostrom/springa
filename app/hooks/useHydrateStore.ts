@@ -16,6 +16,7 @@ import {
   lastBGUpdateAtom,
   readingsAtom,
   bgModelAtom,
+  bgContextStatusAtom,
   bgModelLoadingAtom,
   bgModelProgressAtom,
   bgActivityNamesAtom,
@@ -104,6 +105,7 @@ export function useHydrateStore() {
   const setBgModelProgress = useSetAtom(bgModelProgressAtom);
   const setBgActivityNames = useSetAtom(bgActivityNamesAtom);
   const setCachedActivities = useSetAtom(cachedActivitiesAtom);
+  const setBgContextStatus = useSetAtom(bgContextStatusAtom);
 
   useEffect(() => {
     setBgModel(runData.bgModel);
@@ -111,10 +113,11 @@ export function useHydrateStore() {
     setBgModelProgress(runData.bgModelProgress);
     setBgActivityNames(runData.bgActivityNames);
     setCachedActivities(runData.cachedActivities);
+    setBgContextStatus(runData.bgContextStatus);
   }, [runData.bgModel, runData.bgModelLoading, runData.bgModelProgress,
-      runData.bgActivityNames, runData.cachedActivities,
+      runData.bgActivityNames, runData.cachedActivities, runData.bgContextStatus,
       setBgModel, setBgModelLoading, setBgModelProgress,
-      setBgActivityNames, setCachedActivities]);
+      setBgActivityNames, setCachedActivities, setBgContextStatus]);
 
   // ─── IOB (Insulin on Board) ────────────────────────────
   const diabetesMode = settings?.diabetesMode ?? false;

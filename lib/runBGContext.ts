@@ -3,9 +3,8 @@ import type { CalendarEvent } from "./types";
 import type { WorkoutCategory } from "./types";
 import { linearRegression } from "./math";
 import { BG_HYPO, BG_STABLE_MIN, BG_STABLE_MAX } from "./constants";
-import { db } from "./db";
 import { getUserCredentials } from "./credentials";
-import { fetchBGFromNS, fetchBGBatchFromNS } from "./nightscout";
+import { fetchBGBatchFromNS } from "./nightscout";
 
 // --- Types ---
 
@@ -25,7 +24,7 @@ export interface PostRunContext {
   readingCount: number;
   peak30m: number; // max BG in 30m after end
   spike30m: number; // peak30m - endBG (positive = BG rose post-run)
-  peak60mAboveEnd?: number; // max(reading.mmol - endBG) within 60 min after run end; 0 if never rises above end. Optional because legacy rows pre-date Task 8.
+  peak60mAboveEnd?: number; // max(reading.mmol - endBG) within 60 min after run end; 0 when readings exist but BG never rose above end; undefined when no readings exist in that window (so downstream can distinguish "no data" from "no rebound observed").
 }
 
 export interface RunBGContext {
@@ -210,7 +209,9 @@ export function computePostRunContext(
     : endReading.mmol;
   const spike30m = Math.max(0, peak30m - endReading.mmol);
 
-  // Peak BG rise above end within 60 min
+  // Peak BG rise above end within 60 min. `undefined` when no readings exist in
+  // that window — distinguishes "no data" from "data shows zero rise" so
+  // downstream stats don't dilute medians with no-data rows.
   const within60 = findReadingsInWindow(
     readings,
     runEndMs,
@@ -218,7 +219,7 @@ export function computePostRunContext(
   );
   const peak60mAboveEnd = within60.length > 0
     ? Math.max(0, ...within60.map((r) => r.mmol - endReading.mmol))
-    : 0;
+    : undefined;
 
   // Nadir: lowest in 2h after
   const nadirPostRun = Math.min(...postReadings.map((r) => r.mmol));
@@ -327,7 +328,7 @@ export function buildRunBGContexts(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Server-side ingest-time computation
+// Server-side compute-on-read
 // ────────────────────────────────────────────────────────────────────────────
 
 interface IngestActivity {
@@ -339,88 +340,24 @@ interface IngestActivity {
 }
 
 /**
- * Fetch BG readings for a run window. Tries local bg_readings first; falls
- * back to Nightscout (Scout) using the user's credentials. Returns sorted
- * ascending. Returns empty array if no data is available.
+ * Status of a runBGContext compute pass. Distinguishes "no data" cases the UI
+ * needs to handle differently:
+ *
+ * - `ok`              — Scout responded; per-activity null contexts are real
+ *                       (window has no readings).
+ * - `upstream-error`  — Scout request threw (network, 4xx, 5xx). The UI should
+ *                       say "BG history is offline" instead of "no matching
+ *                       history yet".
+ * - `no-credentials`  — User hasn't connected Nightscout yet. The UI can route
+ *                       them to the settings page.
+ * - `no-input`        — No activities to compute (or all lacked runStartMs/hr);
+ *                       no Scout call was made.
  */
-async function fetchReadingsForWindow(
-  email: string,
-  startWindow: number,
-  endWindow: number,
-): Promise<BGReading[]> {
-  // 1. Local bg_readings (Glooko import data; legacy)
-  try {
-    const local = await db().execute({
-      sql: `SELECT ts, mmol FROM bg_readings WHERE email = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC`,
-      args: [email, startWindow, endWindow],
-    });
-    if (local.rows.length > 0) {
-      return local.rows.map((r) => ({
-        sgv: 0,
-        mmol: r.mmol as number,
-        ts: r.ts as number,
-        direction: "NONE",
-        delta: 0,
-      }));
-    }
-  } catch {
-    // Table may not exist in some test environments — fall through to NS.
-  }
+export type BGContextStatus = "ok" | "upstream-error" | "no-credentials" | "no-input";
 
-  // 2. Nightscout fallback (Scout)
-  const creds = await getUserCredentials(email);
-  if (!creds?.nightscoutUrl || !creds.nightscoutSecret) return [];
-
-  try {
-    const nsReadings = await fetchBGFromNS(creds.nightscoutUrl, creds.nightscoutSecret, {
-      since: startWindow,
-      until: endWindow,
-      count: 1000,
-    });
-    // NS returns newest-first; downstream expects ascending.
-    return [...nsReadings].sort((a, b) => a.ts - b.ts);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Compute runBGContext for a single activity at ingest time. Returns null when
- * inputs are insufficient (no runStartMs, no hr) or no BG readings are
- * available in the window.
- */
-export async function computeRunBGContextForActivity(
-  email: string,
-  activity: IngestActivity,
-): Promise<RunBGContext | null> {
-  if (activity.runStartMs == null || activity.hr.length === 0) return null;
-
-  const lastHrTime = activity.hr[activity.hr.length - 1].time; // minutes from start
-  const runEndMs = activity.runStartMs + lastHrTime * 60_000;
-
-  const startWindow = activity.runStartMs - PRE_STABILITY_WINDOW_MS;
-  const endWindow = runEndMs + POST_WINDOW_MS;
-
-  const readings = await fetchReadingsForWindow(email, startWindow, endWindow);
-  if (readings.length === 0) return null;
-
-  const pre = computePreRunContext(readings, activity.runStartMs);
-  const post = computePostRunContext(readings, runEndMs);
-  if (!pre && !post) return null;
-
-  let totalBGImpact: number | null = null;
-  if (pre && post) {
-    const bg2hAfter = closestReading(readings, runEndMs + POST_WINDOW_MS);
-    if (bg2hAfter) totalBGImpact = bg2hAfter.mmol - pre.startBG;
-  }
-
-  return {
-    activityId: activity.activityId,
-    category: activity.category,
-    pre,
-    post,
-    totalBGImpact,
-  };
+export interface ComputeRunBGContextsResult {
+  contexts: Map<string, RunBGContext | null>;
+  status: BGContextStatus;
 }
 
 /**
@@ -429,14 +366,13 @@ export async function computeRunBGContextForActivity(
  * endpoint (one round trip, trimmed `ts`+`mmol` payload), then partitions
  * per-activity windows in JS.
  *
- * Returns a Map keyed by activityId. Activities with no data, no NS
- * credentials, or insufficient inputs (no `runStartMs` / empty `hr`) map to
- * null.
+ * Returns the per-activity context map plus an upstream `status` flag so
+ * callers can distinguish a real "no readings" result from a Scout outage.
  */
 export async function computeRunBGContextsForActivities(
   email: string,
   activities: IngestActivity[],
-): Promise<Map<string, RunBGContext | null>> {
+): Promise<ComputeRunBGContextsResult> {
   const out = new Map<string, RunBGContext | null>();
 
   const valid = activities
@@ -459,12 +395,12 @@ export async function computeRunBGContextsForActivities(
     if (a.runStartMs == null || a.hr.length === 0) out.set(a.activityId, null);
   }
 
-  if (valid.length === 0) return out;
+  if (valid.length === 0) return { contexts: out, status: "no-input" };
 
   const creds = await getUserCredentials(email);
   if (!creds?.nightscoutUrl || !creds.nightscoutSecret) {
     for (const v of valid) out.set(v.activity.activityId, null);
-    return out;
+    return { contexts: out, status: "no-credentials" };
   }
 
   // One Scout round trip for all windows.
@@ -475,10 +411,16 @@ export async function computeRunBGContextsForActivities(
       creds.nightscoutSecret,
       valid.map((v) => ({ since: v.windowStart, until: v.windowEnd })),
     );
-  } catch {
-    // Network or auth failure — every activity gets null context.
+  } catch (err) {
+    // Network or auth failure — every activity gets null context. Log so the
+    // failure surfaces in production telemetry; the `upstream-error` status
+    // lets the UI distinguish this from "user genuinely has no history".
+    console.warn(
+      `[runBGContext] Scout batch fetch failed for ${email}; ${valid.length} activities will return null context.`,
+      err instanceof Error ? err.message : err,
+    );
     for (const v of valid) out.set(v.activity.activityId, null);
-    return out;
+    return { contexts: out, status: "upstream-error" };
   }
 
   // Hydrate trimmed readings into the BGReading shape the compute helpers
@@ -521,5 +463,5 @@ export async function computeRunBGContextsForActivities(
     });
   }
 
-  return out;
+  return { contexts: out, status: "ok" };
 }

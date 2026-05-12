@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import type { WorkoutCategory } from "@/lib/types";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
@@ -88,6 +88,14 @@ function Card({
   const hypoPct = Math.round((stats.hypoCount / stats.runCount) * 100);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending close timer if the card unmounts before the grace
+  // period elapses (e.g., parent re-renders mid-hover).
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
   const cancelClose = () => {
     if (closeTimerRef.current) {

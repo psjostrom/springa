@@ -3,7 +3,7 @@
 export type WidgetKey =
   | "readiness"
   | "phase-tracker"
-  | "tomorrow"
+  | "upcoming"
   | "fitness-chart"
   | "volume-trend"
   | "pace-zones"
@@ -21,7 +21,7 @@ export interface WidgetDef {
 export const DEFAULT_WIDGETS: readonly WidgetDef[] = [
   { key: "readiness", label: "Readiness" },
   { key: "phase-tracker", label: "Training Progress" },
-  { key: "tomorrow", label: "Upcoming" },
+  { key: "upcoming", label: "Upcoming" },
   { key: "fitness-chart", label: "Fitness / Fatigue / Form" },
   { key: "volume-trend", label: "Volume Trend" },
   { key: "pace-zones", label: "Pace Zones" },
@@ -47,8 +47,27 @@ export const DEFAULT_LAYOUT: WidgetLayout = {
 const VALID_KEYS = new Set<string>(DEFAULT_ORDER);
 
 /**
+ * Migrate legacy widget keys saved in user layouts to their current names.
+ * Lets us rename a key (registry + UI) without losing the user's saved
+ * position for that widget. Keep entries here forever — old layouts in the
+ * DB never get rewritten unless the user touches their layout.
+ */
+const LEGACY_KEY_MIGRATIONS: Record<string, WidgetKey> = {
+  tomorrow: "upcoming", // PR #192: widget label "Tomorrow" → "Upcoming", key followed in cleanup
+};
+
+function isValidWidgetKey(key: string): key is WidgetKey {
+  return VALID_KEYS.has(key);
+}
+
+function normalizeKey(raw: string): WidgetKey | null {
+  const migrated = LEGACY_KEY_MIGRATIONS[raw] ?? raw;
+  return isValidWidgetKey(migrated) ? migrated : null;
+}
+
+/**
  * Merge a saved layout with the current widget registry.
- * - Preserves saved order for keys that still exist
+ * - Preserves saved order for keys that still exist (migrating legacy keys)
  * - Appends new widgets not present in saved order
  * - Strips stale keys that no longer exist in the registry
  */
@@ -60,8 +79,15 @@ export function resolveLayout(saved?: {
     return { ...DEFAULT_LAYOUT, hiddenWidgets: [] };
   }
 
-  // Keep only valid keys, preserving saved order
-  const order = saved.widgetOrder.filter((k) => VALID_KEYS.has(k)) as WidgetKey[];
+  const seen = new Set<WidgetKey>();
+  const order: WidgetKey[] = [];
+  for (const raw of saved.widgetOrder) {
+    const k = normalizeKey(raw);
+    if (k && !seen.has(k)) {
+      order.push(k);
+      seen.add(k);
+    }
+  }
 
   // Append any new widgets not in saved order
   for (const key of DEFAULT_ORDER) {
@@ -70,7 +96,15 @@ export function resolveLayout(saved?: {
     }
   }
 
-  const hidden = (saved.hiddenWidgets ?? []).filter((k) => VALID_KEYS.has(k)) as WidgetKey[];
+  const hidden: WidgetKey[] = [];
+  const seenHidden = new Set<WidgetKey>();
+  for (const raw of saved.hiddenWidgets ?? []) {
+    const k = normalizeKey(raw);
+    if (k && !seenHidden.has(k)) {
+      hidden.push(k);
+      seenHidden.add(k);
+    }
+  }
 
   return { widgetOrder: order, hiddenWidgets: hidden };
 }
