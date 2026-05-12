@@ -156,6 +156,7 @@ describe("IntelScreen", () => {
         [calendarLoadingAtom, false],
         [calendarEventsAtom, []],
         [cachedActivitiesAtom, []],
+        [settingsAtom, { diabetesMode: true }],
         [bgContextStatusAtom, "upstream-error"],
       ],
     });
@@ -169,6 +170,7 @@ describe("IntelScreen", () => {
         [calendarLoadingAtom, false],
         [calendarEventsAtom, []],
         [cachedActivitiesAtom, []],
+        [settingsAtom, { diabetesMode: true }],
         [bgContextStatusAtom, "no-credentials"],
       ],
     });
@@ -183,11 +185,25 @@ describe("IntelScreen", () => {
           [calendarLoadingAtom, false],
           [calendarEventsAtom, []],
           [cachedActivitiesAtom, []],
+          [settingsAtom, { diabetesMode: true }],
           [bgContextStatusAtom, status],
         ],
       });
       expect(screen.queryByTestId("bg-context-banner")).not.toBeInTheDocument();
       unmount();
     }
+  });
+
+  it("hides the banner entirely when diabetes mode is off, even on upstream-error", () => {
+    render(<IntelScreen />, {
+      atomInits: [
+        [calendarLoadingAtom, false],
+        [calendarEventsAtom, []],
+        [cachedActivitiesAtom, []],
+        [settingsAtom, { diabetesMode: false }],
+        [bgContextStatusAtom, "upstream-error"],
+      ],
+    });
+    expect(screen.queryByTestId("bg-context-banner")).not.toBeInTheDocument();
   });
 });

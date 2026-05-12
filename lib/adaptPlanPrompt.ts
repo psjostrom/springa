@@ -17,7 +17,6 @@ interface PromptInput {
   hrZones: number[];
   paceTable?: PaceTable;
   feedbackByActivity?: Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>;
-  crossRunPatterns?: string;
 }
 
 /**
@@ -27,7 +26,7 @@ export function buildAdaptNotePrompt(input: PromptInput): {
   system: string;
   user: string;
 } {
-  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, maxHr, hrZones, paceTable, feedbackByActivity, crossRunPatterns } =
+  const { adapted, recentSameCategory, bgModel, insights, runBGContexts, lthr, maxHr, hrZones, paceTable, feedbackByActivity } =
     input;
 
   const system = `You are Coach — writing pre-workout notes for an experienced T1D runner (pump OFF, ${buildProfileLine(lthr, maxHr)}).
@@ -190,12 +189,6 @@ Rules:
         `Went hypo after: ${hypoCount} of ${categoryContexts.length} runs`,
       );
     }
-  }
-
-  if (crossRunPatterns) {
-    lines.push("");
-    lines.push("## Cross-Run BG Patterns");
-    lines.push(crossRunPatterns);
   }
 
   lines.push("");

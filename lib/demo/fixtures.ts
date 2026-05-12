@@ -15273,8 +15273,6 @@ export const insulinContextFixture = {
 
 export const bgCacheFixture: unknown[] = [];
 
-export const bgPatternsFixture = { patternsText: null };
-
 export const activityFixtures: Record<string, unknown> = {
   "i122525970": {
     "id": "i122525970",
@@ -123207,5 +123205,4 @@ export const fixtures: Record<string, unknown> = {
   "intervals/pace-curves": paceCurvesFixture,
   "insulin-context": insulinContextFixture,
   "bg-cache": bgCacheFixture,
-  "bg-patterns": bgPatternsFixture,
 };

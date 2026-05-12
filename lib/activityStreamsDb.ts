@@ -40,12 +40,18 @@ export interface GetActivityStreamsResult {
  * status so callers (e.g. the bg-cache route) can surface Scout outages in
  * the UI instead of pretending the user has no history. Most callers don't
  * need this — use `getActivityStreams` and discard the status.
+ *
+ * `withRunBGContext` (default true) controls whether the Scout batch fetch
+ * runs at all. Pass `false` from callers that don't read `runBGContext`
+ * (calendar pipeline, pace calibration, BG-model build) to skip the round
+ * trip — the batched Scout call is the bottleneck for large activity sets,
+ * and most callers never look at the field.
  */
 export async function getActivityStreamsWithStatus(
   email: string,
-  options?: { since?: Date },
+  options?: { since?: Date; withRunBGContext?: boolean },
 ): Promise<GetActivityStreamsResult> {
-  const { since } = options ?? {};
+  const { since, withRunBGContext = true } = options ?? {};
   // When `since` is specified, rows with NULL activity_date are excluded (legacy data).
   // Pass no `since` to get all rows including legacy.
   const sql = since
@@ -82,6 +88,16 @@ export async function getActivityStreamsWithStatus(
     };
   });
 
+  // Bypass Scout entirely when the caller doesn't need runBGContext. Status
+  // `no-input` matches the existing semantics ("no Scout call was made") so
+  // downstream consumers don't need to learn a new branch.
+  if (!withRunBGContext) {
+    return {
+      activities: baseRows.map((row) => ({ ...row, runBGContext: null })),
+      bgContextStatus: "no-input",
+    };
+  }
+
   // Pure derivation: one Scout batch round trip covers the union of all
   // activity windows, then per-activity windows are partitioned in JS.
   const { contexts, status } = await computeRunBGContextsForActivities(
@@ -112,7 +128,7 @@ export async function getActivityStreamsWithStatus(
  */
 export async function getActivityStreams(
   email: string,
-  options?: { since?: Date },
+  options?: { since?: Date; withRunBGContext?: boolean },
 ): Promise<CachedActivity[]> {
   const { activities } = await getActivityStreamsWithStatus(email, options);
   return activities;

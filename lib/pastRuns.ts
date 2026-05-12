@@ -1,6 +1,7 @@
 import type { RunForFloorAnalysis } from "./personalHypoFloor";
 import type { CachedActivity } from "./activityStreamsDb";
 import { getActivityStartBG } from "./activityBG";
+import { BG_HYPO } from "./constants";
 
 /**
  * Build RunForFloorAnalysis[] from CachedActivity[] (glucose-enriched activities).
@@ -16,7 +17,7 @@ export function buildPastRunsFromActivities(activities: CachedActivity[]): RunFo
     if (startBG == null || startBG <= 0) return [];
     return [{
       startBG,
-      wentHypo: glucose.some((g) => g.value < 4.0),
+      wentHypo: glucose.some((g) => g.value < BG_HYPO),
     }];
   });
 }

@@ -10,7 +10,6 @@ import type { BGResponseModel } from "@/lib/bgModel";
 import type { FitnessInsights } from "@/lib/fitness";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
-import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { getUserSettings } from "@/lib/settings";
 
 interface RequestBody {
@@ -95,8 +94,6 @@ export async function POST(req: Request) {
   // Check sugar mode — skip fuel adaptations when off
   const settings = await getUserSettings(email);
 
-  const patterns = settings.diabetesMode ? await getBGPatterns(email) : null;
-
   // Build feedback map from CalendarEvent custom fields
   const feedbackByActivity = new Map<string, { rating?: string; comment?: string; carbsG?: number; createdAt: number }>();
   for (const e of recentCompleted) {
@@ -146,7 +143,6 @@ export async function POST(req: Request) {
           maxHr,
           hrZones,
           paceTable,
-          crossRunPatterns: patterns?.patternsText,
         });
 
         try {

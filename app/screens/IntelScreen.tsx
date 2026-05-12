@@ -580,18 +580,22 @@ export function IntelScreen() {
   // BG-context banner. Surfaces upstream failures (Scout outage, missing
   // credentials, /api/bg-cache failure) so a Scout outage doesn't silently
   // collapse to "no matching history yet" for a returning user with months of
-  // data. Suppressed during the initial "unknown" state and on success.
+  // data. Suppressed during the initial "unknown" state, on success, and when
+  // the user has explicitly opted out of diabetes features (no point telling
+  // them to connect Nightscout if they don't want CGM in the first place).
   let bgContextBanner: { message: string; tone: "warning" | "info" } | null = null;
-  if (bgContextStatus === "upstream-error" || bgContextStatus === "fetch-error") {
-    bgContextBanner = {
-      message: "BG history is offline — predictions paused until your CGM source is reachable again. Existing cached values are still shown.",
-      tone: "warning",
-    };
-  } else if (bgContextStatus === "no-credentials") {
-    bgContextBanner = {
-      message: "Connect Nightscout in Settings → Account to enable BG-aware predictions.",
-      tone: "info",
-    };
+  if (diabetesMode) {
+    if (bgContextStatus === "upstream-error" || bgContextStatus === "fetch-error") {
+      bgContextBanner = {
+        message: "BG history is offline — predictions paused until your CGM source is reachable again. Existing cached values are still shown.",
+        tone: "warning",
+      };
+    } else if (bgContextStatus === "no-credentials") {
+      bgContextBanner = {
+        message: "Connect Nightscout in Settings → Account to enable BG-aware predictions.",
+        tone: "info",
+      };
+    }
   }
 
   return (

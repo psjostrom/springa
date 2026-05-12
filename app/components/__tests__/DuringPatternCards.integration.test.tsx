@@ -67,7 +67,9 @@ describe("DuringPatternCards", () => {
   it("renders hypo and high zone labels under each dot strip", () => {
     render(<DuringPatternCards stats={sampleStats} />);
     // Three category cards rendered → expect three of each zone label.
-    expect(screen.getAllByText(/hypo <4\.0/i).length).toBe(3);
+    // Threshold matches `BG_HYPO` from lib/constants — the medical (ADA)
+    // hypo definition, also used by post-run hypo detection.
+    expect(screen.getAllByText(/hypo <3\.9/i).length).toBe(3);
     expect(screen.getAllByText(/high >10\.0/i).length).toBe(3);
   });
 

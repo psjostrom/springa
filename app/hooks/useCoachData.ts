@@ -25,6 +25,7 @@ interface UseCoachDataOptions {
   lastUpdate?: Date | null;
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
+  bgContextStatus?: "unknown" | "ok" | "no-input" | "no-credentials" | "upstream-error" | "fetch-error";
   profile?: {
     pumpDuringRuns?: "on" | "off" | "mixed";
     vo2max?: number;
@@ -58,6 +59,7 @@ export function useCoachData({
   lastUpdate,
   readings,
   runBGContexts,
+  bgContextStatus,
   profile,
   race,
   derived,
@@ -85,6 +87,7 @@ export function useCoachData({
         lastUpdate,
         readings,
         runBGContexts,
+        bgContextStatus,
         profile,
         race,
         derived,

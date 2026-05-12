@@ -27,6 +27,10 @@ interface CoachContext {
   lastUpdate?: Date | null;
   readings?: BGReading[];
   runBGContexts?: Map<string, RunBGContext>;
+  // BG-history availability. When upstream-error / fetch-error, runBGContexts
+  // can be empty even though the user has months of history — the prompt
+  // should signal "outage" instead of letting the AI infer "no recovery data".
+  bgContextStatus?: "unknown" | "ok" | "no-input" | "no-credentials" | "upstream-error" | "fetch-error";
   profile?: {
     pumpDuringRuns?: "on" | "off" | "mixed";
     vo2max?: number;
@@ -274,9 +278,15 @@ function buildPaceZonesSection(ctx: CoachContext): string {
 export function buildSystemPrompt(ctx: CoachContext): string {
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const recoverySection = ctx.runBGContexts && ctx.runBGContexts.size > 0
-    ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
-    : "";
+  // When BG history is reachable, render the patterns. When it's offline, tell
+  // the AI explicitly so it doesn't hallucinate "no recovery data" for a user
+  // with months of cached history.
+  const bgOffline = ctx.bgContextStatus === "upstream-error" || ctx.bgContextStatus === "fetch-error";
+  const recoverySection = bgOffline
+    ? `\n\n## Post-Run Recovery Patterns\nBG history is currently offline (Scout / Nightscout unreachable). Recovery patterns are unavailable until the upstream comes back. Don't guess — tell the user the data is offline if they ask.`
+    : ctx.runBGContexts && ctx.runBGContexts.size > 0
+      ? `\n\n## Post-Run Recovery Patterns\n${summarizeRecoveryPatterns(ctx.runBGContexts)}`
+      : "";
 
   const roleLine = buildRoleLine(ctx.race);
   const runnerProfileSection = buildRunnerProfileSection(ctx.profile, ctx.derived, ctx.pastRuns);

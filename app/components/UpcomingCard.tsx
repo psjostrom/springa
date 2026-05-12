@@ -7,6 +7,7 @@ import type { PredictedOutcome } from "@/lib/runOutcomePrediction";
 import type { FuelRecommendation } from "@/lib/fuelRecommendation";
 import type { PredictorName } from "@/lib/intelScreenData";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
+import { BG_HYPO } from "@/lib/constants";
 
 export interface UpcomingMatchSummary {
   activityId: string;
@@ -34,8 +35,6 @@ interface Props {
   matchPredictors: PredictorName[];
   matchRelaxed: boolean;
 }
-
-const HYPO = 4.0;
 
 // Per-variant scales. End BG (during) clusters 4-10 with safety zones, so a
 // fixed 3.5-14 scale lets the gradient mean the same thing across runs.
@@ -212,7 +211,7 @@ export function UpcomingCard({
                       <strong>{m.startBG.toFixed(1)}</strong>
                       <span className="mx-1 text-muted">→</span>
                       <span className="text-muted">end</span>{" "}
-                      <strong className={m.endBG < HYPO ? "text-error" : ""}>
+                      <strong className={m.endBG < BG_HYPO ? "text-error" : ""}>
                         {m.endBG.toFixed(1)}
                       </strong>
                     </span>
@@ -314,6 +313,11 @@ function FuelHeadline({
   );
 }
 
+// Below this spread (mmol/L) p10/median/p90 land too close on the bar — the
+// three labels would overlap and become unreadable. Switch to a single
+// condensed range label instead.
+const TIGHT_RANGE_THRESHOLD = 0.6;
+
 function Ribbon({
   label,
   p10,
@@ -335,6 +339,7 @@ function Ribbon({
     variant === "during"
       ? "bg-gradient-to-r from-error/20 via-success/15 to-warning/20"
       : "bg-gradient-to-r from-success/15 via-warning/20 to-error/20";
+  const tightRange = p90 - p10 < TIGHT_RANGE_THRESHOLD;
 
   return (
     <div className="mt-3">
@@ -354,11 +359,26 @@ function Ribbon({
       </div>
       {/* Labels positioned at their data values so each label sits directly
           under the visual element it names (low → pill left edge, typical →
-          line, high → pill right edge). */}
+          line, high → pill right edge). When the predicted range is tight,
+          the three labels collide — collapse to a single condensed label
+          centered on the median. */}
       <div className="relative h-4 mt-1 text-[10px] tabular-nums">
-        <RibbonLabel testid={`ribbon-${variant}-low`}     pct={p10Pct}     valueClass={LABEL_COLORS[variant].low}     prefix="low"     value={p10} />
-        <RibbonLabel testid={`ribbon-${variant}-typical`} pct={medianPct}  valueClass={LABEL_COLORS[variant].typical} prefix="typical" value={median} />
-        <RibbonLabel testid={`ribbon-${variant}-high`}    pct={p90Pct}     valueClass={LABEL_COLORS[variant].high}    prefix="high"    value={p90} />
+        {tightRange ? (
+          <RibbonLabel
+            testid={`ribbon-${variant}-condensed`}
+            pct={medianPct}
+            valueClass={LABEL_COLORS[variant].typical}
+            prefix="typical"
+            value={median}
+            suffix={` (range ${p10.toFixed(1)}–${p90.toFixed(1)})`}
+          />
+        ) : (
+          <>
+            <RibbonLabel testid={`ribbon-${variant}-low`}     pct={p10Pct}     valueClass={LABEL_COLORS[variant].low}     prefix="low"     value={p10} />
+            <RibbonLabel testid={`ribbon-${variant}-typical`} pct={medianPct}  valueClass={LABEL_COLORS[variant].typical} prefix="typical" value={median} />
+            <RibbonLabel testid={`ribbon-${variant}-high`}    pct={p90Pct}     valueClass={LABEL_COLORS[variant].high}    prefix="high"    value={p90} />
+          </>
+        )}
       </div>
     </div>
   );
@@ -374,12 +394,14 @@ function RibbonLabel({
   valueClass,
   prefix,
   value,
+  suffix,
   testid,
 }: {
   pct: number;
   valueClass: string;
   prefix: string;
   value: number;
+  suffix?: string;
   testid?: string;
 }) {
   const style: React.CSSProperties =
@@ -392,6 +414,7 @@ function RibbonLabel({
     <span data-testid={testid} className={`absolute whitespace-nowrap ${valueClass}`} style={style}>
       <span className="text-muted font-normal">{prefix} </span>
       {value.toFixed(1)}
+      {suffix && <span className="text-muted font-normal">{suffix}</span>}
     </span>
   );
 }

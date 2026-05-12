@@ -433,6 +433,9 @@ export async function computeRunBGContextsForActivities(
     direction: "NONE",
     delta: 0,
   }));
+  // Defensive sort. `findReadingsInWindow` is binary search; an unsorted
+  // input silently returns wrong slices. Don't trust upstream ordering.
+  allReadings.sort((a, b) => a.ts - b.ts);
 
   for (const { activity, runStartMs, runEndMs, windowStart, windowEnd } of valid) {
     const readings = findReadingsInWindow(allReadings, windowStart, windowEnd);

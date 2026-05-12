@@ -529,8 +529,6 @@ export const insulinContextFixture = ${JSON.stringify({
 
 export const bgCacheFixture: unknown[] = [];
 
-export const bgPatternsFixture = { patternsText: null };
-
 export const activityFixtures: Record<string, unknown> = ${JSON.stringify(activityMap, null, 2)};
 
 export const streamFixtures: Record<string, unknown> = ${JSON.stringify(streamMap, null, 2)};
@@ -551,7 +549,6 @@ export const fixtures: Record<string, unknown> = {
   "intervals/pace-curves": paceCurvesFixture,
   "insulin-context": insulinContextFixture,
   "bg-cache": bgCacheFixture,
-  "bg-patterns": bgPatternsFixture,
 };
 `;
 

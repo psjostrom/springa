@@ -73,7 +73,6 @@ describe("/api/run-analysis", () => {
     await holder.db.execute("DELETE FROM run_analysis");
     await holder.db.execute("DELETE FROM user_settings");
     await holder.db.execute("DELETE FROM activity_streams");
-    await holder.db.execute("DELETE FROM bg_patterns");
     await holder.db.execute({
       sql: `INSERT INTO user_settings (email, diabetes_mode, intervals_api_key, timezone)
             VALUES (?, ?, ?, ?)`,

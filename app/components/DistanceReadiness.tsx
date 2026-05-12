@@ -30,12 +30,13 @@ export function DistanceReadiness({ longestRun, race }: Props) {
       <div className="grid grid-cols-3 gap-2 my-3">
         <Stat value={longestKmDisplay} label="Longest run" unit="km" />
         {raceKmDisplay != null && <Stat value={raceKmDisplay} label="Race" unit="km" accent="brand" />}
-        {gap != null && <Stat value={Math.round(gap)} label="Gap" unit="km" accent="success" />}
+        {gap != null && gap > 0 && <Stat value={Math.round(gap)} label="Gap" unit="km" accent="success" />}
       </div>
       {raceKmRaw != null && <ProgressBar pct={Math.min(100, (longestKmRaw / raceKmRaw) * 100)} />}
       <div className="text-xs text-muted pt-3 mt-3 border-t border-border">
         Longest run: <strong className="text-text">{longestRun.name}</strong> on {longestRun.dateISO}
-        {gap != null && <> — you&apos;re <strong className="text-text">{Math.round(gap)}km</strong> short of race distance.</>}
+        {gap != null && gap > 0 && <> — you&apos;re <strong className="text-text">{Math.round(gap)}km</strong> short of race distance.</>}
+        {gap != null && gap === 0 && <> — you&apos;ve reached race distance.</>}
       </div>
     </div>
   );

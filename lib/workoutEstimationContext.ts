@@ -64,7 +64,10 @@ export async function getUserWorkoutEstimationContext(
     resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
   const cachedMaxHr = resolvedSettings.maxHr ?? null;
 
-  const cachedActivities = await getActivityStreams(email);
+  // Pace calibration only reads hr/pace/activityDate; runBGContext is unused
+  // here. Skip the Scout batch round trip — every authenticated request that
+  // touches activity data otherwise pays for context this caller never reads.
+  const cachedActivities = await getActivityStreams(email, { withRunBGContext: false });
 
   if (cachedHrZones) {
     hrZones = cachedHrZones;

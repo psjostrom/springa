@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import type { WorkoutCategory } from "@/lib/types";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
+import { BG_HYPO } from "@/lib/constants";
 
 export interface CategoryStats {
   runCount: number;
@@ -24,7 +25,6 @@ const NAME_COLOR: Record<WorkoutCategory, string> = {
   interval: "text-warning",
 };
 
-const HYPO = 4.0;
 const HIGH = 10.0;
 const MIN = 3.5;
 const MAX = 14.0;
@@ -142,7 +142,7 @@ function Card({
       />
       <div className="grid grid-cols-2 gap-2 mt-3">
         <Tile
-          label="Hypo runs (min < 4.0)"
+          label={`Hypo runs (min < ${BG_HYPO.toFixed(1)})`}
           value={`${stats.hypoCount} of ${stats.runCount} · ${hypoPct}%`}
           danger={hypoPct >= 10}
         />
@@ -167,7 +167,7 @@ function DotStrip({
   cancelClose: () => void;
   onActivitySelect?: (activityId: string) => void;
 }) {
-  const hypoEnd = ((HYPO - MIN) / SPAN) * 100;
+  const hypoEnd = ((BG_HYPO - MIN) / SPAN) * 100;
   const highStart = ((HIGH - MIN) / SPAN) * 100;
 
   const hovered = hoveredIdx != null ? endBGs[hoveredIdx] : null;
@@ -193,15 +193,23 @@ function DotStrip({
           style={{ width: `${100 - highStart}%` }}
         />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-border-subtle" />
-        {endBGs.map(({ bg, date }, i) => {
+        {endBGs.map(({ bg, date, activityId }, i) => {
           const left = dotPosition(bg);
-          const color = bg < HYPO ? "bg-error" : bg > HIGH ? "bg-warning" : "bg-success";
+          const color = bg < BG_HYPO ? "bg-error" : bg > HIGH ? "bg-warning" : "bg-success";
           const dateLabel = date ? `${formatTooltipDate(date)} · ` : "";
           return (
             <button
-              key={`${i}-${bg}`}
+              // Stable per-run key so focus/tooltip state doesn't bind to the
+              // wrong run when endBGs reorders.
+              key={activityId}
               type="button"
+              // Visible 8px dot, but the tap target is a 32×32 wrapper button
+              // so mobile users can hit it without precision aiming. The dot
+              // is centered inside via grid.
               aria-label={`${dateLabel}${bg.toFixed(1)} mmol/L`}
+              onClick={() => {
+                if (onActivitySelect) onActivitySelect(activityId);
+              }}
               onMouseEnter={() => {
                 openTooltip(i);
               }}
@@ -214,15 +222,17 @@ function DotStrip({
               onBlur={() => {
                 scheduleClose();
               }}
-              className={`absolute top-1/2 w-2 h-2 rounded-full -translate-x-1/2 -translate-y-1/2 ${color} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40`}
+              className="absolute top-1/2 grid place-items-center w-8 h-8 -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
               style={{ left: `${left}%` }}
-            />
+            >
+              <span className={`block w-2 h-2 rounded-full ${color}`} aria-hidden />
+            </button>
           );
         })}
       </div>
       <div className="relative h-3 mt-1 text-[10px] tabular-nums">
-        <span className="absolute left-0 text-error">hypo &lt;4.0</span>
-        <span className="absolute right-0 text-warning">high &gt;10.0</span>
+        <span className="absolute left-0 text-error">hypo &lt;{BG_HYPO.toFixed(1)}</span>
+        <span className="absolute right-0 text-warning">high &gt;{HIGH.toFixed(1)}</span>
       </div>
     </div>
   );

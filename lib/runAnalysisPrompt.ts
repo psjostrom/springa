@@ -29,11 +29,10 @@ export function buildRunAnalysisPrompt(params: {
   hrZones: number[];
   fitnessInsights?: FitnessInsights | null;
   bgModelSummary?: string;
-  crossRunPatterns?: string;
   pastRuns?: RunForFloorAnalysis[];
   pumpDuringRuns?: "on" | "off" | "mixed";
 }): { system: string; user: string } {
-  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, crossRunPatterns, pastRuns, pumpDuringRuns } = params;
+  const { event, runBGContext, reportCard, insulinContext, history, historyFeedback, athleteFeedback, fitnessInsights, bgModelSummary, pastRuns, pumpDuringRuns } = params;
   const lthr = params.lthr;
   const maxHr = params.maxHr;
   const easyMaxBpm = params.hrZones[1];
@@ -287,12 +286,6 @@ Use mmol/L, km, /km. Second person ("You..."). No filler, no generic praise.`;
     lines.push("");
     lines.push("## BG Model (cross-run averages)");
     lines.push(bgModelSummary);
-  }
-
-  if (crossRunPatterns) {
-    lines.push("");
-    lines.push("## Cross-Run BG Patterns");
-    lines.push(crossRunPatterns);
   }
 
   lines.push("");

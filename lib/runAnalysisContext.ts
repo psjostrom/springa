@@ -4,7 +4,6 @@ import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
 import { enrichActivitiesWithGlucose } from "@/lib/activityStreamsEnrich";
 import { nonEmpty } from "@/lib/format";
 import { format, subDays } from "date-fns";
-import { getBGPatterns } from "@/lib/bgPatternsDb";
 import type { CalendarEvent, IntervalsActivity } from "@/lib/types";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { ReportCard } from "@/lib/reportCard";
@@ -37,7 +36,6 @@ interface RunAnalysisContextResult {
   hrZones: number[];
   fitnessInsights?: FitnessInsights | null;
   bgModelSummary?: string;
-  crossRunPatterns?: string;
   pastRuns?: RunForFloorAnalysis[];
   pumpDuringRuns?: "on" | "off" | "mixed";
 }
@@ -50,10 +48,9 @@ export async function buildRunAnalysisContext(
   console.log(`[RunAnalysis] Activity ${event.activityId}, run start: ${event.date.toISOString()}`);
 
   const { getUserSettings } = await import("@/lib/settings");
-  const [rawRows, profile, patterns, wellnessEntries, settings] = await Promise.all([
+  const [rawRows, profile, wellnessEntries, settings] = await Promise.all([
     getRecentAnalyzedRuns(email),
     fetchAthleteProfile(intervalsApiKey),
-    getBGPatterns(email),
     fetchWellnessData(intervalsApiKey, format(subDays(new Date(), 365), "yyyy-MM-dd"), format(new Date(), "yyyy-MM-dd")),
     getUserSettings(email),
   ]);
@@ -119,7 +116,6 @@ export async function buildRunAnalysisContext(
     hrZones: profile.hrZones ?? [],
     fitnessInsights,
     bgModelSummary,
-    crossRunPatterns: patterns?.patternsText,
     pastRuns,
     pumpDuringRuns: settings.pumpDuringRuns,
   };

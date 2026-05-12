@@ -238,16 +238,6 @@ export const handlers = [
     return HttpResponse.json({ analysis: "Test analysis." });
   }),
 
-  // GET bg-patterns (cached cross-run patterns)
-  http.get("/api/bg-patterns", () => {
-    return HttpResponse.json({ patterns: null, latestActivityId: null });
-  }),
-
-  // POST bg-patterns (discover/re-analyze patterns)
-  http.post("/api/bg-patterns", () => {
-    return HttpResponse.json({ patterns: "Test patterns.", latestActivityId: "a123" });
-  }),
-
   // GET insulin context (IOB polling in useHydrateStore)
   http.get("/api/insulin-context", () => {
     return HttpResponse.json({ iob: 0 });

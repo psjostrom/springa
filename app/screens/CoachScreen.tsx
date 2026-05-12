@@ -27,6 +27,7 @@ import {
   lastBGUpdateAtom,
   readingsAtom,
   runBGContextsAtom,
+  bgContextStatusAtom,
   diabetesModeAtom,
   cachedActivitiesAtom,
 } from "../atoms";
@@ -52,6 +53,7 @@ export function CoachScreen() {
   const lastUpdate = useAtomValue(lastBGUpdateAtom);
   const readings = useAtomValue(readingsAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
+  const bgContextStatus = useAtomValue(bgContextStatusAtom);
   const diabetesMode = useAtomValue(diabetesModeAtom);
   const cachedActivities = useAtomValue(cachedActivitiesAtom);
   const lthr = settings?.lthr;
@@ -105,6 +107,7 @@ export function CoachScreen() {
     lastUpdate,
     readings,
     runBGContexts,
+    bgContextStatus,
     profile,
     race,
     derived,
@@ -140,10 +143,12 @@ export function CoachScreen() {
 
   const chatBusy = status === "submitted" || status === "streaming";
 
-  // Auto-scroll on new messages
+  // Auto-scroll only when a new message starts — depending on `messages` (not
+  // `messages.length`) re-fires per streamed chunk, which fights the user if
+  // they scroll up to read a long reply.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length]);
 
   const handleSend = (text?: string) => {
     const msg = text ?? input;

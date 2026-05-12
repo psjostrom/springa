@@ -7,6 +7,10 @@
  *      `runBGContext` is computed on every read of `getActivityStreams` from
  *      the Scout batch endpoint — the column was never read or written by
  *      production code on the new path.
+ *   3. Drop the dead `bg_patterns` table. The only writer (the `/api/bg-patterns`
+ *      POST route, triggered by the removed `BGResponsePanel`) is gone, so the
+ *      table will only ever go stale from here on. Readers (chat / adapt-plan /
+ *      run-analysis) have been updated to drop the dependency.
  *
  * Run: npx tsx --env-file=.env.local scripts/migrate-pump-during-runs.ts
  */
@@ -32,6 +36,12 @@ async function main() {
       sql: "ALTER TABLE activity_streams DROP COLUMN run_bg_context",
       // SQLite reports "no such column" when the drop has already run.
       idempotentError: "no such column",
+    },
+    {
+      sql: "DROP TABLE IF EXISTS bg_patterns",
+      // IF EXISTS makes this idempotent on its own — the matcher is unused
+      // but kept for symmetry with the loop's contract.
+      idempotentError: "no such table",
     },
   ];
 

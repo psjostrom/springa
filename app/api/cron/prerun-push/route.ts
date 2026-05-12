@@ -112,7 +112,11 @@ export async function GET(req: Request) {
           }
         }
 
-        const cached = await getActivityStreams(email);
+        // The BG model only consumes glucose+HR — `runBGContext` isn't read,
+        // so skip the Scout batch fetch that `getActivityStreams` would
+        // otherwise trigger. `enrichActivitiesWithGlucose` then fires the
+        // single Scout call this cron actually needs.
+        const cached = await getActivityStreams(email, { withRunBGContext: false });
         const enriched = await enrichActivitiesWithGlucose(email, cached);
         bgModel = buildBGModelFromCached(enriched);
       }

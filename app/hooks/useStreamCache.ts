@@ -58,7 +58,14 @@ function serializeCache(entries: CachedActivity[]): string {
 function mergeCaches(
   preferred: CachedActivity[],
   fallback: CachedActivity[],
+  options: { trustServerNullContext?: boolean } = {},
 ): CachedActivity[] {
+  // `trustServerNullContext` controls what happens when fallback returns null
+  // for runBGContext. true = "server said no" is authoritative (e.g. status
+  // ok with empty window). false = treat null as "we couldn't ask" and keep
+  // cached value (e.g. upstream-error / no-credentials). Default true; the
+  // local-only second-pass merge has no upstream context to interpret.
+  const { trustServerNullContext = true } = options;
   const merged = new Map<string, CachedActivity>();
   const fallbackMap = new Map(fallback.map((e) => [e.activityId, e]));
 
@@ -67,17 +74,21 @@ function mergeCaches(
   }
   for (const entry of preferred) {
     // `preferred` wins for stream data (HR/pace/cadence/etc) since those are
-    // expensive to refetch from Intervals.icu. But `runBGContext` is computed
+    // expensive to refetch from Intervals.icu. `runBGContext` is computed
     // fresh by the server on every read (from Scout via the batch endpoint),
-    // so when the server returns a value, it's more current than whatever
-    // localStorage saved earlier. Fall back to the persisted value only when
-    // the server returned null/undefined — this avoids wiping known-good
-    // context on a transient Scout outage.
+    // so a non-null server value always wins. Null is ambiguous: "server
+    // genuinely has no readings in window" vs "server is offline" look the
+    // same — the caller's status flag tells us which.
     const fallbackEntry = fallbackMap.get(entry.activityId);
-    const fallbackCtx = fallbackEntry?.runBGContext;
-    merged.set(entry.activityId, fallbackEntry
-      ? { ...entry, runBGContext: fallbackCtx ?? entry.runBGContext ?? null }
-      : entry);
+    if (!fallbackEntry) {
+      merged.set(entry.activityId, entry);
+      continue;
+    }
+    const fallbackCtx = fallbackEntry.runBGContext;
+    const runBGContext = fallbackCtx ?? (
+      trustServerNullContext ? null : (entry.runBGContext ?? null)
+    );
+    merged.set(entry.activityId, { ...entry, runBGContext });
   }
 
   return [...merged.values()].sort(compareCachedActivity);
@@ -268,7 +279,13 @@ export function useStreamCache(
       setBgContextStatus(remote.bgContextStatus);
       const remoteCached = remote.activities;
 
-      const mergedPersisted = mergeCaches(persistedCache, remoteCached);
+      // Only trust server-null on the OK path. On upstream-error / fetch-error
+      // / no-credentials, a null context is "we couldn't ask" — keep whatever
+      // we'd already shown so a transient Scout outage doesn't blank out the
+      // BG-context UI.
+      const mergedPersisted = mergeCaches(persistedCache, remoteCached, {
+        trustServerNullContext: remote.bgContextStatus === "ok",
+      });
       const mergedPersistedMap = new Map(
         mergedPersisted.map((entry) => [entry.activityId, entry]),
       );

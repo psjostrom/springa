@@ -2,13 +2,11 @@ import { streamText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { formatAIError } from "@/lib/aiError";
-import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  let email: string;
   try {
-    email = await requireAuth();
+    await requireAuth();
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -36,17 +34,7 @@ export async function POST(req: Request) {
   }
   const { messages, context } = body;
 
-  // Check sugar mode — exclude BG patterns from coach context when off
-  const { getUserSettings } = await import("@/lib/settings");
-  const settings = await getUserSettings(email);
-
-  const patterns = settings.diabetesMode ? await getBGPatterns(email) : null;
-
-  let systemPrompt = context ?? "";
-  if (patterns?.patternsText) {
-    systemPrompt += `\n\n## Cross-Run BG Patterns\nThese are statistically validated patterns from the runner's completed runs. Cite relevant patterns when answering BG, fueling, or training questions.\n${patterns.patternsText}`;
-  }
-
+  const systemPrompt = context ?? "";
   const anthropic = createAnthropic({ apiKey });
 
   // Convert UI messages (parts format) to core messages (content format)

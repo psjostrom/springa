@@ -24,12 +24,29 @@ export function AccountTab({ email, settings, onSave }: AccountTabProps) {
 
   // Settings hydrate in two phases: the parent mounts AccountTab with whatever
   // is in the atom now, then the enriched `/api/settings` fetch lands and
-  // updates the atom. Without this, our local copy of `pumpDuringRuns` would
-  // stay frozen at the initial (often empty) value, and Save would write the
-  // stale local value back over the fresh DB value.
+  // updates the atom. Without these resyncs, the local copy would stay frozen
+  // at the initial (often empty) value, and Save would write the stale local
+  // value back over the fresh DB value. Every controlled-input field that
+  // mirrors a settings prop needs the same resync — anything missing here is
+  // the same bug waiting to happen the next time someone edits that field.
   useEffect(() => {
     setPumpDuringRuns(settings.pumpDuringRuns ?? "");
   }, [settings.pumpDuringRuns]);
+  useEffect(() => {
+    setDiabetesMode(settings.diabetesMode ?? false);
+  }, [settings.diabetesMode]);
+  useEffect(() => {
+    setNightscoutUrl(settings.nightscoutUrl ?? "");
+  }, [settings.nightscoutUrl]);
+  useEffect(() => {
+    setNightscoutConnected(settings.nightscoutConnected ?? false);
+  }, [settings.nightscoutConnected]);
+  useEffect(() => {
+    setInsulinType(settings.insulinType ?? "fiasp");
+  }, [settings.insulinType]);
+  useEffect(() => {
+    setIntervalsConnected(settings.intervalsConnected ?? false);
+  }, [settings.intervalsConnected]);
   const [intervalsApiKey, setIntervalsApiKey] = useState("");
   const [intervalsConnected, setIntervalsConnected] = useState(settings.intervalsConnected ?? false);
   const [intervalsValidating, setIntervalsValidating] = useState(false);

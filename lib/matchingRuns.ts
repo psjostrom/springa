@@ -41,8 +41,11 @@ function inWindow(predictor: PredictorName, target: MatchTarget, run: MatchableR
     case "fuelRate":
       if (run.fuelRate == null || target.fuelRate == null) return true;
       return Math.abs(run.fuelRate - target.fuelRate) <= window;
-    case "timeOfDay":
-      return Math.abs(run.hourOfDay - target.hourOfDay) <= window;
+    case "timeOfDay": {
+      // Modular distance — 23:00 and 02:00 are 3 hours apart, not 21.
+      const diff = Math.abs(run.hourOfDay - target.hourOfDay);
+      return Math.min(diff, 24 - diff) <= window;
+    }
   }
 }
 

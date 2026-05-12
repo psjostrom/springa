@@ -13,6 +13,7 @@ import { findMatchingRuns } from "./matchingRuns";
 import { predictRunOutcome } from "./runOutcomePrediction";
 import { recommendFuelRate } from "./fuelRecommendation";
 import { getActivityStartBG, getActivityEndBG } from "./activityBG";
+import { BG_HYPO } from "./constants";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -65,7 +66,6 @@ export interface IntelScreenData extends IntelHistoryData {
 // ────────────────────────────────────────────────────────────────────────────
 
 const CATEGORIES: WorkoutCategory[] = ["easy", "long", "interval"];
-const HYPO = 4.0;
 const BIG_REBOUND_THRESHOLD = 2.0;
 const DEFAULT_FUEL_RATE = 60;
 
@@ -121,7 +121,7 @@ function buildDuringStats(
       const end = getActivityEndBG(a);
       if (end == null) continue;
       endBGs.push({ bg: end, date: a.activityDate ?? "", activityId: a.activityId });
-      if ((a.glucose ?? []).some((g) => g.value < HYPO)) hypoCount++;
+      if ((a.glucose ?? []).some((g) => g.value < BG_HYPO)) hypoCount++;
 
       const start = getActivityStartBG(a);
       const hours = durationHoursFromGlucose(a.glucose ?? []);
@@ -213,7 +213,7 @@ function activityToMatchableRun(
 
   const wentHypo =
     (activity.runBGContext?.post?.postRunHypo ?? false) ||
-    (activity.glucose ?? []).some((g) => g.value < HYPO);
+    (activity.glucose ?? []).some((g) => g.value < BG_HYPO);
 
   let hourOfDay = 12;
   if (activity.runStartMs) {
