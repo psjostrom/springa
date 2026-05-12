@@ -47,6 +47,11 @@ const SCALES: Record<"during" | "after", { min: number; max: number }> = {
   after: { min: 4.0, max: 20.0 },
 };
 
+const LABEL_COLORS: Record<"during" | "after", { low: string; typical: string; high: string }> = {
+  during: { low: "text-error", typical: "text-text font-bold", high: "text-muted" },
+  after: { low: "text-muted", typical: "text-text font-bold", high: "text-error" },
+};
+
 const PREDICTOR_LABELS: Record<PredictorName, string> = {
   startBG: "starting BG",
   entrySlope: "entry trend",
@@ -344,9 +349,9 @@ function Ribbon({
           under the visual element it names (low → pill left edge, typical →
           line, high → pill right edge). */}
       <div className="relative h-4 mt-1 text-[10px] tabular-nums">
-        <RibbonLabel pct={p10Pct} valueClass="text-error" prefix="low" value={p10} />
-        <RibbonLabel pct={medianPct} valueClass="text-text font-bold" prefix="typical" value={median} />
-        <RibbonLabel pct={p90Pct} valueClass="text-muted" prefix="high" value={p90} />
+        <RibbonLabel testid={`ribbon-${variant}-low`}     pct={p10Pct}     valueClass={LABEL_COLORS[variant].low}     prefix="low"     value={p10} />
+        <RibbonLabel testid={`ribbon-${variant}-typical`} pct={medianPct}  valueClass={LABEL_COLORS[variant].typical} prefix="typical" value={median} />
+        <RibbonLabel testid={`ribbon-${variant}-high`}    pct={p90Pct}     valueClass={LABEL_COLORS[variant].high}    prefix="high"    value={p90} />
       </div>
     </div>
   );
@@ -362,11 +367,13 @@ function RibbonLabel({
   valueClass,
   prefix,
   value,
+  testid,
 }: {
   pct: number;
   valueClass: string;
   prefix: string;
   value: number;
+  testid?: string;
 }) {
   const style: React.CSSProperties =
     pct < 8
@@ -375,7 +382,7 @@ function RibbonLabel({
       ? { right: 0 }
       : { left: `${pct}%`, transform: "translateX(-50%)" };
   return (
-    <span className={`absolute whitespace-nowrap ${valueClass}`} style={style}>
+    <span data-testid={testid} className={`absolute whitespace-nowrap ${valueClass}`} style={style}>
       <span className="text-muted font-normal">{prefix} </span>
       {value.toFixed(1)}
     </span>

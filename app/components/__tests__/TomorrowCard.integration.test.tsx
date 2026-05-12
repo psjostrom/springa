@@ -172,4 +172,20 @@ describe("TomorrowCard", () => {
     expect(screen.getAllByText(/typical/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/high/i).length).toBeGreaterThan(0);
   });
+
+  it("AFTER ribbon labels low value as muted and high value as error", () => {
+    render(<TomorrowCard {...sample} />);
+    const low = screen.getByTestId("ribbon-after-low");
+    const high = screen.getByTestId("ribbon-after-high");
+    expect(low).toHaveClass("text-muted");
+    expect(low).not.toHaveClass("text-error");
+    expect(high).toHaveClass("text-error");
+    expect(high).not.toHaveClass("text-muted");
+  });
+
+  it("DURING ribbon keeps low value as error and high value as muted", () => {
+    render(<TomorrowCard {...sample} />);
+    expect(screen.getByTestId("ribbon-during-low")).toHaveClass("text-error");
+    expect(screen.getByTestId("ribbon-during-high")).toHaveClass("text-muted");
+  });
 });
