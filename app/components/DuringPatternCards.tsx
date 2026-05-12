@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { format } from "date-fns";
 import type { WorkoutCategory } from "@/lib/types";
 import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
@@ -8,13 +8,14 @@ import { WORKOUT_CATEGORY_LABEL } from "@/lib/workoutLabels";
 export interface CategoryStats {
   runCount: number;
   medianEndBG: number;
-  endBGs: { bg: number; date: string }[];
+  endBGs: { bg: number; date: string; activityId: string }[];
   hypoCount: number;
   avgDropPerHr: number;
 }
 
 interface Props {
   stats: Record<WorkoutCategory, CategoryStats | null>;
+  onActivitySelect?: (activityId: string) => void;
 }
 
 const NAME_COLOR: Record<WorkoutCategory, string> = {
@@ -28,6 +29,12 @@ const HIGH = 10.0;
 const MIN = 3.5;
 const MAX = 14.0;
 const SPAN = MAX - MIN;
+// Half-dot inset (percent) so 8px dots stay fully inside the strip on typical
+// widths (≥260px). Without this, dots at MIN/MAX render half outside the strip.
+const DOT_HALF_PCT = 1.5;
+// Grace period (ms) after the cursor leaves a dot before the tooltip closes.
+// Lets the cursor transit from dot to tooltip without losing the tooltip.
+const TOOLTIP_CLOSE_DELAY_MS = 100;
 
 function parseLocalDate(dateIso: string): Date {
   const [y, m, d] = dateIso.split("-").map(Number);
@@ -39,7 +46,12 @@ function formatTooltipDate(dateIso: string): string {
   return format(parseLocalDate(dateIso), "MMM d");
 }
 
-export function DuringPatternCards({ stats }: Props) {
+function dotPosition(bg: number): number {
+  const raw = ((bg - MIN) / SPAN) * 100;
+  return Math.max(DOT_HALF_PCT, Math.min(100 - DOT_HALF_PCT, raw));
+}
+
+export function DuringPatternCards({ stats, onActivitySelect }: Props) {
   const ordered = (Object.entries(stats) as [WorkoutCategory, CategoryStats | null][])
     .filter((entry): entry is [WorkoutCategory, CategoryStats] => entry[1] != null)
     .sort(
@@ -50,7 +62,13 @@ export function DuringPatternCards({ stats }: Props) {
   return (
     <div className="space-y-2">
       {ordered.map(([cat, s], i) => (
-        <Card key={cat} cat={cat} stats={s} isWorst={i === 0} />
+        <Card
+          key={cat}
+          cat={cat}
+          stats={s}
+          isWorst={i === 0}
+          onActivitySelect={onActivitySelect}
+        />
       ))}
     </div>
   );
@@ -60,13 +78,35 @@ function Card({
   cat,
   stats,
   isWorst,
+  onActivitySelect,
 }: {
   cat: WorkoutCategory;
   stats: CategoryStats;
   isWorst: boolean;
+  onActivitySelect?: (activityId: string) => void;
 }) {
   const hypoPct = Math.round((stats.hypoCount / stats.runCount) * 100);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+  const openTooltip = (idx: number) => {
+    cancelClose();
+    setHoveredIdx(idx);
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => {
+      setHoveredIdx(null);
+      closeTimerRef.current = null;
+    }, TOOLTIP_CLOSE_DELAY_MS);
+  };
+
   return (
     <div
       role="region"
@@ -84,7 +124,14 @@ function Card({
         <span className="text-2xl font-extrabold tabular-nums">{stats.medianEndBG.toFixed(1)}</span>
         <span className="text-xs text-muted">typical end BG (mmol/L)</span>
       </div>
-      <DotStrip endBGs={stats.endBGs} hoveredIdx={hoveredIdx} onHover={setHoveredIdx} />
+      <DotStrip
+        endBGs={stats.endBGs}
+        hoveredIdx={hoveredIdx}
+        openTooltip={openTooltip}
+        scheduleClose={scheduleClose}
+        cancelClose={cancelClose}
+        onActivitySelect={onActivitySelect}
+      />
       <div className="grid grid-cols-2 gap-2 mt-3">
         <Tile
           label="Hypo runs (min < 4.0)"
@@ -100,25 +147,36 @@ function Card({
 function DotStrip({
   endBGs,
   hoveredIdx,
-  onHover,
+  openTooltip,
+  scheduleClose,
+  cancelClose,
+  onActivitySelect,
 }: {
-  endBGs: { bg: number; date: string }[];
+  endBGs: { bg: number; date: string; activityId: string }[];
   hoveredIdx: number | null;
-  onHover: (idx: number | null) => void;
+  openTooltip: (idx: number) => void;
+  scheduleClose: () => void;
+  cancelClose: () => void;
+  onActivitySelect?: (activityId: string) => void;
 }) {
   const hypoEnd = ((HYPO - MIN) / SPAN) * 100;
   const highStart = ((HIGH - MIN) / SPAN) * 100;
 
   const hovered = hoveredIdx != null ? endBGs[hoveredIdx] : null;
-  const hoveredLeftPct =
-    hovered != null
-      ? Math.max(0, Math.min(100, ((hovered.bg - MIN) / SPAN) * 100))
-      : 0;
+  const hoveredLeftPct = hovered != null ? dotPosition(hovered.bg) : 0;
 
   return (
     <div className="relative my-2">
       {hovered && (
-        <DotTooltip bg={hovered.bg} date={hovered.date} leftPct={hoveredLeftPct} />
+        <DotTooltip
+          bg={hovered.bg}
+          date={hovered.date}
+          activityId={hovered.activityId}
+          leftPct={hoveredLeftPct}
+          onActivitySelect={onActivitySelect}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        />
       )}
       <div className="relative h-7 mt-5">
         <div className="absolute top-1 bottom-0 left-0 bg-error opacity-20" style={{ width: `${hypoEnd}%` }} />
@@ -128,7 +186,7 @@ function DotStrip({
         />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-border-subtle" />
         {endBGs.map(({ bg, date }, i) => {
-          const left = Math.max(0, Math.min(100, ((bg - MIN) / SPAN) * 100));
+          const left = dotPosition(bg);
           const color = bg < HYPO ? "bg-error" : bg > HIGH ? "bg-warning" : "bg-success";
           const dateLabel = date ? `${formatTooltipDate(date)} · ` : "";
           return (
@@ -137,16 +195,16 @@ function DotStrip({
               type="button"
               aria-label={`${dateLabel}${bg.toFixed(1)} mmol/L`}
               onMouseEnter={() => {
-                onHover(i);
+                openTooltip(i);
               }}
               onMouseLeave={() => {
-                onHover(null);
+                scheduleClose();
               }}
               onFocus={() => {
-                onHover(i);
+                openTooltip(i);
               }}
               onBlur={() => {
-                onHover(null);
+                scheduleClose();
               }}
               className={`absolute top-1/2 w-2 h-2 rounded-full -translate-x-1/2 -translate-y-1/2 ${color} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40`}
               style={{ left: `${left}%` }}
@@ -165,11 +223,19 @@ function DotStrip({
 function DotTooltip({
   bg,
   date,
+  activityId,
   leftPct,
+  onActivitySelect,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   bg: number;
   date: string;
+  activityId: string;
   leftPct: number;
+  onActivitySelect?: (activityId: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
 }) {
   const style: React.CSSProperties =
     leftPct < 8
@@ -178,15 +244,25 @@ function DotTooltip({
       ? { right: 0 }
       : { left: `${leftPct}%`, transform: "translateX(-50%)" };
   const dateLabel = date ? formatTooltipDate(date) : "";
+  const clickable = Boolean(onActivitySelect);
+  const text = `${dateLabel}${bg.toFixed(1)} mmol/L`;
   return (
-    <div
-      role="tooltip"
-      className="absolute top-0 z-10 px-2 py-0.5 bg-surface-alt border border-border-subtle rounded text-[10px] tabular-nums whitespace-nowrap pointer-events-none"
+    <button
+      type="button"
+      data-testid="dot-tooltip"
+      disabled={!clickable}
+      aria-label={clickable ? `Open ${text} run` : text}
+      onClick={() => {
+        if (onActivitySelect) onActivitySelect(activityId);
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={`absolute top-0 z-10 px-2 py-0.5 bg-surface-alt border border-border-subtle rounded text-[10px] tabular-nums whitespace-nowrap ${clickable ? "cursor-pointer hover:bg-border" : ""} disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40`}
       style={style}
     >
       {dateLabel && <span className="text-muted">{dateLabel} · </span>}
       <strong>{bg.toFixed(1)} mmol/L</strong>
-    </div>
+    </button>
   );
 }
 

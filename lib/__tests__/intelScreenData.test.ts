@@ -262,7 +262,7 @@ describe("buildIntelScreenData", () => {
     expect(a).not.toHaveProperty("currentBGSource");
   });
 
-  it("populates endBGs with { bg, date } drawn from the source activity", () => {
+  it("populates endBGs with { bg, date, activityId } drawn from the source activity", () => {
     const activities: CachedActivity[] = [
       makeActivity({
         activityId: "a1",
@@ -283,7 +283,7 @@ describe("buildIntelScreenData", () => {
     );
     const easy = result.duringStats.easy;
     expect(easy?.endBGs.length).toBe(1);
-    expect(easy?.endBGs[0]).toEqual({ bg: 5.2, date: "2026-04-15" });
+    expect(easy?.endBGs[0]).toEqual({ bg: 5.2, date: "2026-04-15", activityId: "a1" });
   });
 
   it("keeps today's planned run as 'next' even when its scheduled start has passed", () => {

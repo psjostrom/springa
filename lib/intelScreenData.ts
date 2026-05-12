@@ -128,7 +128,7 @@ function buildDuringStats(
     );
     if (inCat.length === 0) continue;
 
-    const endBGs: { bg: number; date: string }[] = [];
+    const endBGs: { bg: number; date: string; activityId: string }[] = [];
     let hypoCount = 0;
     let totalDropPerHr = 0;
     let dropSamples = 0;
@@ -136,7 +136,7 @@ function buildDuringStats(
     for (const a of inCat) {
       const end = endBGFromActivity(a);
       if (end == null) continue;
-      endBGs.push({ bg: end, date: a.activityDate ?? "" });
+      endBGs.push({ bg: end, date: a.activityDate ?? "", activityId: a.activityId });
       if ((a.glucose ?? []).some((g) => g.value < HYPO)) hypoCount++;
 
       const start = startBGFromActivity(a);

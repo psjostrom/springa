@@ -508,7 +508,7 @@ export function IntelScreen() {
     "bg-categories": bgModelLoading
       ? () => <WidgetLoadingCard label={`Analyzing BG response... ${bgModelProgress.done}/${bgModelProgress.total} runs`} />
       : duringRunCount > 0
-        ? () => <DuringPatternCards stats={intelData.duringStats} />
+        ? () => <DuringPatternCards stats={intelData.duringStats} onActivitySelect={setSelectedActivityId} />
         : null,
     "bg-after": afterRunCount > 0
       ? () => <AfterPatternCards stats={intelData.afterStats} />
