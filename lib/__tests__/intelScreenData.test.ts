@@ -286,4 +286,64 @@ describe("buildIntelScreenData", () => {
     expect(easy?.endBGs[0]).toEqual({ bg: 5.2, date: "2026-04-15" });
   });
 
+  it("keeps today's planned run as 'next' even when its scheduled start has passed", () => {
+    // Planned run today at 10:00; reference is today at 14:00. Earlier behavior
+    // would skip this event because 10:00 < 14:00 — but the runner hasn't done
+    // it yet, so it must stay surfaced until the day rolls over.
+    const events: CalendarEvent[] = [
+      {
+        id: "today",
+        date: new Date("2026-04-14T10:00:00Z"),
+        name: "W14 Easy + Strides",
+        description: "",
+        type: "planned",
+        category: "easy",
+        distance: 4000,
+        duration: 2400,
+      },
+      {
+        id: "thursday",
+        date: new Date("2026-04-16T16:30:00Z"),
+        name: "W14 Club Run",
+        description: "",
+        type: "planned",
+        category: "interval",
+        distance: 7000,
+        duration: 3000,
+      },
+    ];
+    const reference = new Date("2026-04-14T14:00:00Z"); // 4 hours after the planned start
+    const result = buildIntelScreenData([], events, {}, reference);
+    expect(result.tomorrow?.workout.name).toBe("W14 Easy + Strides");
+  });
+
+  it("advances to the next day's planned run once the day rolls over", () => {
+    // Same fixture as above, but reference is the next morning. Today's run
+    // (now yesterday) drops off; Thursday surfaces as next.
+    const events: CalendarEvent[] = [
+      {
+        id: "yesterday",
+        date: new Date("2026-04-14T10:00:00Z"),
+        name: "W14 Easy + Strides",
+        description: "",
+        type: "planned",
+        category: "easy",
+        distance: 4000,
+        duration: 2400,
+      },
+      {
+        id: "thursday",
+        date: new Date("2026-04-16T16:30:00Z"),
+        name: "W14 Club Run",
+        description: "",
+        type: "planned",
+        category: "interval",
+        distance: 7000,
+        duration: 3000,
+      },
+    ];
+    const reference = new Date("2026-04-15T07:00:00Z");
+    const result = buildIntelScreenData([], events, {}, reference);
+    expect(result.tomorrow?.workout.name).toBe("W14 Club Run");
+  });
 });

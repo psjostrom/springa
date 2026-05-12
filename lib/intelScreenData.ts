@@ -1,3 +1,4 @@
+import { startOfDay } from "date-fns";
 import type { CachedActivity } from "./activityStreamsDb";
 import type { CalendarEvent, WorkoutCategory } from "./types";
 import type { UserSettings } from "./settings";
@@ -265,11 +266,15 @@ function activityWithPost(
 }
 
 function pickNextPlannedRun(events: CalendarEvent[], reference: Date): CalendarEvent | null {
+  // Compare by start-of-day, not exact timestamp. A planned run at 10:00 today is
+  // still "upcoming" at 14:00 today if it hasn't been completed — it just slipped
+  // its scheduled time. Only when the day rolls over do we advance to the next run.
+  const dayCutoff = startOfDay(reference).getTime();
   const future = events
     .filter(
       (e) =>
         (e.type === "planned" || e.type === "race") &&
-        e.date.getTime() >= reference.getTime() &&
+        e.date.getTime() >= dayCutoff &&
         (e.category === "easy" || e.category === "long" || e.category === "interval" || e.category === "race"),
     )
     .sort((a, b) => a.date.getTime() - b.date.getTime());
