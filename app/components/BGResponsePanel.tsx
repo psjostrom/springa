@@ -96,7 +96,14 @@ function CategoryCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const color = CATEGORY_COLORS[response.category];
-  const rate = response.avgRate;
+  // Display median per-hour. Per-minute averages cancel positive/negative
+  // windows for stable runs, rounding to "-0.0 mmol/L /min" — useless.
+  // Median across windows × 60 keeps the unit a runner thinks in.
+  const ratePerHour = response.medianRate * 60;
+  const headlineColor =
+    ratePerHour > -1 ? "var(--color-success)"
+    : ratePerHour > -3 ? "var(--color-warning)"
+    : "var(--color-error)";
   const breakdown = expanded
     ? buildActivityBreakdown(observations, response.category, activityNames)
     : [];
@@ -113,11 +120,11 @@ function CategoryCard({
       <div className="flex items-baseline gap-1 mb-1">
         <span
           className="text-2xl font-bold tabular-nums"
-          style={{ color: rateColor(rate) }}
+          style={{ color: headlineColor }}
         >
-          {rate > 0 ? "+" : ""}{rate.toFixed(1)}
+          {ratePerHour > 0 ? "+" : ""}{ratePerHour.toFixed(1)}
         </span>
-        <span className="text-xs text-muted">mmol/L /min</span>
+        <span className="text-xs text-muted">mmol/hr</span>
       </div>
 
       <div className="text-xs text-muted">
