@@ -210,16 +210,27 @@ export interface TargetFuelResult {
 const EXTRAPOLATION_FACTOR = 60; // g/h per 1.0 mmol/L/min excess drop
 const ACCEPTABLE_DROP = -0.02; // mmol/L per min — a mild drop is normal during running
 const MIN_DROP_TO_SUGGEST = -0.05; // only suggest fuel increases beyond this threshold
-const MAX_FUEL_MULTIPLIER = 1.5; // cap target at 1.5× current fuel
-const MAX_FUEL_ABSOLUTE = 90; // absolute ceiling in g/h
+// Standard CHO titration step. Sports nutrition + gut-training literature uses
+// ~10 g/h increments to adapt SGLT1/GLUT5 transporter expression and avoid GI
+// distress (Costa et al. 2023 systematic review; Jeukendrup & Killer 2010).
+// "Rule of 15" (Riddell et al. 2017 consensus) for hypo rescue uses the same
+// magnitude. Used as both:
+//   1. minimum spread between tested fuel rates before regression is trusted
+//   2. maximum recommendation increment above current average per cycle
+const FUEL_STEP_GH = 10;
+const MAX_FUEL_ABSOLUTE = 90; // gut absorption ceiling (Jeukendrup; Burke et al.)
 const ACCEPTABLE_SPIKE = 2.0; // mmol/L post-run 30m peak above end BG
 const SPIKE_PENALTY_FACTOR = 4; // g/h per 1.0 mmol/L excess spike
 const MIN_POST_RUN_OBS = 5;
 const MIN_FUEL_RATE = 20; // g/h safety floor
 
+// Cap recommendations to one CHO titration step above current average use,
+// or the absolute gut-absorption ceiling — whichever is lower. The previous
+// MAX_FUEL_MULTIPLIER = 1.5 (50% jump per cycle) violated incremental-CHO
+// guidance: sudden CHO increases cause GI distress (Costa et al. 2023).
 function capFuel(target: number, current: number): number {
   const upperBound = current > 0
-    ? Math.min(current * MAX_FUEL_MULTIPLIER, MAX_FUEL_ABSOLUTE)
+    ? Math.min(current + FUEL_STEP_GH, MAX_FUEL_ABSOLUTE)
     : MAX_FUEL_ABSOLUTE;
   return Math.max(0, Math.round(Math.min(target, upperBound)));
 }
@@ -256,11 +267,21 @@ export function calculateTargetFuelRates(
     // Check if we have 2+ distinct fuel rates with 3+ observations each
     const qualifiedGroups = [...fuelGroups.entries()].filter(([, obs]) => obs.length >= 3);
 
+    // Spread guard: regression requires the tested fuel rates to differ by at
+    // least one CHO titration step. Below that, the slope fits noise, not
+    // signal — solving for "ideal drop" extrapolates absurd targets. Falls
+    // through to the extrapolation path which moves one step at a time.
+    const fuelRatesTested = qualifiedGroups.map(([fuel]) => fuel);
+    const fuelSpread = fuelRatesTested.length >= 2
+      ? Math.max(...fuelRatesTested) - Math.min(...fuelRatesTested)
+      : 0;
+    const useRegression = qualifiedGroups.length >= 2 && fuelSpread >= FUEL_STEP_GH;
+
     let target: number;
     let method: "regression" | "extrapolation";
     const confidence = getConfidence(catObs.length);
 
-    if (qualifiedGroups.length >= 2) {
+    if (useRegression) {
       // Regression: fuel rate (x) vs avg BG rate (y) per group
       const points = qualifiedGroups.map(([fuel, obs]) => {
         const groupRates = obs.map((o) => o.bgRate);
