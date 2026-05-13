@@ -27,11 +27,18 @@ const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   interval: "#fb923c",
 };
 
-function rateColor(rate: number): string {
-  if (rate > -0.5) return "var(--color-success)"; // green — stable
-  if (rate > -1.5) return "var(--color-warning)"; // yellow — moderate drop
-  return "var(--color-error)"; // red — fast drop
+// All rate displays in this panel use mmol/hr (= per-min × 60). The whole
+// model stores rates per-minute, but those magnitudes (-0.04 etc.) round to
+// zero at 1 decimal and the per-min thresholds these buttons used to use
+// (-0.5, -1.5) sit at -30 / -90 mmol/hr — physiologically unreachable, so
+// every dot rendered green. Keep the conversion at the display boundary.
+function rateColor(perHour: number): string {
+  if (perHour > -1) return "var(--color-success)"; // stable
+  if (perHour > -3) return "var(--color-warning)"; // moderate drop
+  return "var(--color-error)"; // fast drop
 }
+
+const perHour = (perMin: number): number => perMin * 60;
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {
@@ -96,14 +103,9 @@ function CategoryCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const color = CATEGORY_COLORS[response.category];
-  // Display median per-hour. Per-minute averages cancel positive/negative
-  // windows for stable runs, rounding to "-0.0 mmol/L /min" — useless.
-  // Median across windows × 60 keeps the unit a runner thinks in.
-  const ratePerHour = response.medianRate * 60;
-  const headlineColor =
-    ratePerHour > -1 ? "var(--color-success)"
-    : ratePerHour > -3 ? "var(--color-warning)"
-    : "var(--color-error)";
+  // Median across windows over avg: per-window slopes for stable runs cancel
+  // positive/negative and round to "-0.0" — useless. Median is robust.
+  const headlineRate = perHour(response.medianRate);
   const breakdown = expanded
     ? buildActivityBreakdown(observations, response.category, activityNames)
     : [];
@@ -120,9 +122,9 @@ function CategoryCard({
       <div className="flex items-baseline gap-1 mb-1">
         <span
           className="text-2xl font-bold tabular-nums"
-          style={{ color: headlineColor }}
+          style={{ color: rateColor(headlineRate) }}
         >
-          {ratePerHour > 0 ? "+" : ""}{ratePerHour.toFixed(1)}
+          {headlineRate > 0 ? "+" : ""}{headlineRate.toFixed(1)}
         </span>
         <span className="text-xs text-muted">mmol/hr</span>
       </div>
@@ -150,22 +152,25 @@ function CategoryCard({
 
       {expanded && breakdown.length > 0 && (
         <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-          {breakdown.map((b) => (
-            <div key={b.activityId} className="text-xs">
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-muted truncate flex-1">{b.name}</span>
-                <span
-                  className="tabular-nums font-medium flex-shrink-0"
-                  style={{ color: rateColor(b.avgRate) }}
-                >
-                  {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
-                </span>
+          {breakdown.map((b) => {
+            const rate = perHour(b.avgRate);
+            return (
+              <div key={b.activityId} className="text-xs">
+                <div className="flex items-baseline justify-between gap-1">
+                  <span className="text-muted truncate flex-1">{b.name}</span>
+                  <span
+                    className="tabular-nums font-medium flex-shrink-0"
+                    style={{ color: rateColor(rate) }}
+                  >
+                    {rate > 0 ? "+" : ""}{rate.toFixed(1)}
+                  </span>
+                </div>
+                <div className="text-muted">
+                  {b.sampleCount} samples{b.fuelRate != null ? ` · ${Math.round(b.fuelRate)} g/h` : ""}
+                </div>
               </div>
-              <div className="text-muted">
-                {b.sampleCount} samples{b.fuelRate != null ? ` · ${Math.round(b.fuelRate)} g/h` : ""}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -181,7 +186,7 @@ function SuggestionCard({ suggestion }: { suggestion: FuelSuggestion }) {
           {CATEGORY_LABELS[suggestion.category]}:
         </span>{" "}
         <span className="text-muted">
-          BG dropping {Math.abs(suggestion.avgDropRate).toFixed(2)} mmol/L/min{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
+          BG dropping {Math.abs(perHour(suggestion.avgDropRate)).toFixed(1)} mmol/hr{suggestion.currentAvgFuel != null ? ` at ${Math.round(suggestion.currentAvgFuel)} g/h` : ""}.
 
         </span>{" "}
         <span className="text-text font-medium">
@@ -367,23 +372,26 @@ export function BGPatternsPanel({ events }: { events?: CalendarEvent[] }) {
 export function StartingBGSection({ bands }: { bands: BGBandResponse[] }) {
   return (
     <div className="bg-surface rounded-lg border border-border overflow-hidden">
-        {bands.map((b) => (
-          <div
-            key={b.band}
-            className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
-          >
-            <span className="text-xs text-muted w-12">{b.band}</span>
-            <span
-              className="text-sm font-bold tabular-nums flex-1 text-right"
-              style={{ color: rateColor(b.avgRate) }}
+        {bands.map((b) => {
+          const rate = perHour(b.avgRate);
+          return (
+            <div
+              key={b.band}
+              className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
             >
-              {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
-            </span>
-            <span className="text-xs text-muted w-16 text-right">
-              {b.sampleCount} obs
-            </span>
-          </div>
-        ))}
+              <span className="text-xs text-muted w-12">{b.band}</span>
+              <span
+                className="text-sm font-bold tabular-nums flex-1 text-right"
+                style={{ color: rateColor(rate) }}
+              >
+                {rate > 0 ? "+" : ""}{rate.toFixed(1)}
+              </span>
+              <span className="text-xs text-muted w-16 text-right">
+                {b.sampleCount} obs
+              </span>
+            </div>
+          );
+        })}
     </div>
   );
 }
@@ -398,34 +406,39 @@ const SLOPE_LABELS: Record<string, string> = {
 export function EntrySlopeSection({ slopes }: { slopes: EntrySlopeResponse[] }) {
   return (
     <div className="bg-surface rounded-lg border border-border overflow-hidden">
-        {slopes.map((s) => (
-          <div
-            key={s.slope}
-            className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
-          >
-            <span className="text-xs text-muted w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
-            <span
-              className="text-sm font-bold tabular-nums flex-1 text-right"
-              style={{ color: rateColor(s.avgRate) }}
+        {slopes.map((s) => {
+          const rate = perHour(s.avgRate);
+          return (
+            <div
+              key={s.slope}
+              className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0"
             >
-              {s.avgRate > 0 ? "+" : ""}{s.avgRate.toFixed(1)}
-            </span>
-            <span className="text-xs text-muted w-16 text-right">
-              {s.sampleCount} obs
-            </span>
-          </div>
-        ))}
+              <span className="text-xs text-muted w-16">{SLOPE_LABELS[s.slope] ?? s.slope}</span>
+              <span
+                className="text-sm font-bold tabular-nums flex-1 text-right"
+                style={{ color: rateColor(rate) }}
+              >
+                {rate > 0 ? "+" : ""}{rate.toFixed(1)}
+              </span>
+              <span className="text-xs text-muted w-16 text-right">
+                {s.sampleCount} obs
+              </span>
+            </div>
+          );
+        })}
     </div>
   );
 }
 
 export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] }) {
-  const maxRate = Math.max(...buckets.map((b) => Math.abs(b.avgRate)), 0.1);
+  const rates = buckets.map((b) => perHour(b.avgRate));
+  const maxRate = Math.max(...rates.map(Math.abs), 1);
 
   return (
     <div className="bg-surface rounded-lg border border-border p-3 space-y-2">
-        {buckets.map((b) => {
-          const barWidth = (Math.abs(b.avgRate) / maxRate) * 100;
+        {buckets.map((b, i) => {
+          const rate = rates[i];
+          const barWidth = (Math.abs(rate) / maxRate) * 100;
           return (
             <div key={b.bucket} className="flex items-center gap-2">
               <span className="text-xs text-muted w-10 flex-shrink-0">{b.bucket}</span>
@@ -434,15 +447,15 @@ export function TimeDecaySection({ buckets }: { buckets: TimeBucketResponse[] })
                   className="h-full rounded"
                   style={{
                     width: `${barWidth}%`,
-                    backgroundColor: rateColor(b.avgRate),
+                    backgroundColor: rateColor(rate),
                   }}
                 />
               </div>
               <span
                 className="text-xs font-bold tabular-nums w-10 text-right flex-shrink-0"
-                style={{ color: rateColor(b.avgRate) }}
+                style={{ color: rateColor(rate) }}
               >
-                {b.avgRate > 0 ? "+" : ""}{b.avgRate.toFixed(1)}
+                {rate > 0 ? "+" : ""}{rate.toFixed(1)}
               </span>
             </div>
           );
