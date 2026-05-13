@@ -93,6 +93,20 @@ Phase 2a proved its value — the AI pattern analysis is consistently useful. Th
 
 Guided first-time setup flow. Currently a new user has to manually navigate settings and figure out which fields to fill. A wizard walks them through connecting Intervals.icu, configuring T1D parameters, setting up xDrip push, enabling push notifications, and generating their first plan — one step at a time.
 
+### Timezone-Correct Planned Events
+
+`processPlannedEvents` parses Intervals.icu's timezone-naive `start_date_local` with `parseISO`, which interprets the string in the server's local timezone. On Vercel (UTC) every non-UTC user gets the wrong UTC instant — a planned 06:30 Stockholm run lands at 06:30 UTC = 08:30 Stockholm.
+
+**Fix:** resolve through the user's IANA timezone via `localToUtcMs(start_date_local, settings.timezone)`. Plumb `timezone` through `WorkoutEstimationContext` so `app/api/intervals/calendar/route.ts` and the other authenticated callers pass it down.
+
+**Scope:** self-contained ~30-line PR. The activities path is already UTC-correct (uses `start_date` with the Z suffix); only planned events are broken.
+
+### BG-Context Status Banner
+
+When the upstream BG fetch fails (Scout outage, missing credentials, our own bg-cache route 5xx), the Intel screen silently renders empty predictions. The user infers "I have no history" from a collapsed prediction instead of "infrastructure is down."
+
+**Fix:** new `BGContextStatus` enum (`ok` / `upstream-error` / `no-credentials` / `no-input`) flowing from the Scout fetch in `lib/runBGContext.ts` → `getActivityStreamsWithStatus` → `/api/bg-cache` → atom → IntelScreen banner. Each state gets distinct copy: "Connect Nightscout in Settings → Account..." vs "BG history is offline — predictions paused until your CGM source is reachable again."
+
 ---
 
 ## Parked
@@ -128,6 +142,30 @@ Aggregate glucose behavior per workout segment type across runs. The BG model cu
 **Implementation:** Extend `bgModel.ts` — store per-segment BG stats (drop rate, min, start/end) alongside existing `BGObservation[]`, aggregate by segment type across runs. Feed aggregated segment patterns to AI consumers alongside existing category-level BG model data.
 
 **Parked:** Too few mixed-segment long runs to aggregate. Revisit when race pace sandwich long runs reach ~10+ completions.
+
+### Server-Owned `runBGContext` via Scout Batch
+
+`runBGContext` is currently persisted on `activity_streams` and patched whenever the column gets wiped (sparse `bg_readings`, NS unreachable, cache merge order). Every patch is a new failure mode.
+
+**Cleaner shape:** drop the column. `getActivityStreams` computes context on every read by batching one Scout request across all activity windows and partitioning per-activity in JS. Single source of truth, no merge logic, no zombie state.
+
+**Why parked:** high blast radius — touches `activityStreamsDb`, the bg-cache route, the localStorage cache key (needs a version bump to evict stale entries that lack runBGContext fields), and any consumer that reads the persisted column. Worth doing as a focused PR after the other work settles.
+
+### Personal Hypo Floor
+
+Per-runner BG threshold below which hypos cluster, computed from history (≥10 runs and ≥2 hypos required). Combined with the international consensus (Riddell 2017, 7-10 mmol/L) in pre-run readiness and both AI prompts (coach + run-analysis).
+
+**Inputs:** `(startBG, wentHypo)` pairs from completed runs, where `wentHypo = (post.postRunHypo ?? false) || glucose.some(g => g.value < BG_HYPO)`. Output: a `dangerFloor` (BG below which historical hypo rate is high) and an `alwaysSafeFloor` (BG above which hypos haven't occurred).
+
+**Why parked:** useful but not the highest-leverage feature. Requires the hypo-detection path to be honest first — easy to undercount hypos by ignoring the post-run window.
+
+### Pump-During-Runs Setting
+
+`lib/coachContext.ts` and `lib/runAnalysisPrompt.ts` both hardcode "All runs are pump-off." This is true for the current user but bakes a physiology assumption into the AI prompt that isn't true for every Springa user.
+
+**Fix:** add `pump_during_runs` to `user_settings` (`on | off | mixed | null`, NULL = "user has not yet picked"). Account tab control. Prompts read the setting and adapt their physiology reasoning (zero-insulin vs basal-still-working vs check-IOB-per-run) instead of asserting pump-off as fact.
+
+**Why parked:** multi-user concern, not a bug for the current user. Bundle with other multi-user prompt-cleanup work when it surfaces.
 
 ---
 
