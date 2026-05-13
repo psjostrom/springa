@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import type { BGResponseModel, BGObservation, FuelSuggestion, CategoryBGResponse, BGBandResponse, TimeBucketResponse, TargetFuelResult, EntrySlopeResponse } from "@/lib/bgModel";
 import { suggestFuelAdjustments } from "@/lib/bgModel";
 import type { CalendarEvent, WorkoutCategory } from "@/lib/types";
+import { perHour, rateColor } from "@/lib/bgRateDisplay";
 interface BGResponsePanelProps {
   model: BGResponseModel;
   activityNames?: Map<string, string>;
@@ -26,19 +27,6 @@ const CATEGORY_COLORS: Record<WorkoutCategory, string> = {
   long: "var(--color-warning)",
   interval: "#fb923c",
 };
-
-// All rate displays in this panel use mmol/hr (= per-min × 60). The whole
-// model stores rates per-minute, but those magnitudes (-0.04 etc.) round to
-// zero at 1 decimal and the per-min thresholds these buttons used to use
-// (-0.5, -1.5) sit at -30 / -90 mmol/hr — physiologically unreachable, so
-// every dot rendered green. Keep the conversion at the display boundary.
-function rateColor(perHour: number): string {
-  if (perHour > -1) return "var(--color-success)"; // stable
-  if (perHour > -3) return "var(--color-warning)"; // moderate drop
-  return "var(--color-error)"; // fast drop
-}
-
-const perHour = (perMin: number): number => perMin * 60;
 
 function confidenceBadge(confidence: "low" | "medium" | "high") {
   const styles = {

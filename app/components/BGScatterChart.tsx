@@ -12,6 +12,7 @@ import {
 import type { BGResponseModel } from "@/lib/bgModel";
 import { CRASH_DROP_RATE } from "@/lib/constants";
 import type { WorkoutCategory } from "@/lib/types";
+import { perHour } from "@/lib/bgRateDisplay";
 
 interface BGScatterChartProps {
   model: BGResponseModel;
@@ -59,7 +60,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
       const jitter = ((i % 7) - 3) * 0.04;
       scatterData.push({
         x: baseX + jitter,
-        y: Number(obs.bgRate.toFixed(2)),
+        y: Number(perHour(obs.bgRate).toFixed(1)),
         category: cat,
       });
     }
@@ -68,7 +69,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
     if (response) {
       avgMarkers.push({
         x: baseX,
-        y: Number(response.avgRate.toFixed(2)),
+        y: Number(perHour(response.avgRate).toFixed(1)),
         category: cat,
       });
     }
@@ -99,7 +100,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                 axisLine={{ stroke: "var(--color-border)" }}
                 tickLine={false}
                 label={{
-                  value: "mmol/L /min",
+                  value: "mmol/hr",
                   angle: -90,
                   position: "insideLeft",
                   style: { fill: "var(--color-muted)", fontSize: 10 },
@@ -130,7 +131,7 @@ export function BGScatterChart({ model }: BGScatterChartProps) {
                   const d = (props.payload[0] as { payload: { category: WorkoutCategory; y: number } }).payload;
                   return (
                     <div className="bg-surface border border-border rounded px-2 py-1 text-xs text-muted">
-                      {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/L/5m
+                      {CATEGORY_LABELS[d.category]}: {d.y > 0 ? "+" : ""}{d.y} mmol/hr
                     </div>
                   );
                 }}
