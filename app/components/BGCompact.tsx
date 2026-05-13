@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CategoryBGResponse } from "@/lib/bgModel";
 import type { WorkoutCategory } from "@/lib/types";
+import { perHour, rateColor, rateLabel } from "@/lib/bgRateDisplay";
 
 interface BGCompactProps {
   categories: CategoryBGResponse[];
@@ -14,18 +15,6 @@ const LABELS: Record<WorkoutCategory, string> = {
   interval: "Interval",
 };
 
-function rateColor(rate: number): string {
-  if (rate > -0.5) return "var(--color-success)";
-  if (rate > -1.5) return "var(--color-warning)";
-  return "var(--color-error)";
-}
-
-function rateLabel(rate: number): string {
-  if (rate > -0.5) return "Stable";
-  if (rate > -1.5) return "Moderate";
-  return "Fast drop";
-}
-
 const CONFIDENCE_LABELS: Record<"low" | "medium" | "high", string> = {
   low: "Low confidence",
   medium: "Medium confidence",
@@ -33,6 +22,8 @@ const CONFIDENCE_LABELS: Record<"low" | "medium" | "high", string> = {
 };
 
 function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: () => void }) {
+  const avgPerHour = perHour(cat.avgRate);
+  const medianPerHour = perHour(cat.medianRate);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -48,14 +39,14 @@ function CategoryPopover({ cat, onClose }: { cat: CategoryBGResponse; onClose: (
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted">BG drop rate</span>
-            <span className="font-semibold" style={{ color: rateColor(cat.avgRate) }}>
-              {cat.avgRate.toFixed(2)} /5m
+            <span className="text-muted">Avg drop rate</span>
+            <span className="font-semibold" style={{ color: rateColor(avgPerHour) }}>
+              {avgPerHour > 0 ? "+" : ""}{avgPerHour.toFixed(1)} mmol/hr
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted">Median rate</span>
-            <span className="text-text">{cat.medianRate.toFixed(3)} /min</span>
+            <span className="text-text">{medianPerHour > 0 ? "+" : ""}{medianPerHour.toFixed(1)} mmol/hr</span>
           </div>
           {cat.avgFuelRate != null && (
             <div className="flex justify-between">
@@ -89,34 +80,40 @@ export function BGCompact({ categories }: BGCompactProps) {
   return (
     <div className="bg-surface rounded-xl border border-border p-4 space-y-3">
       <div className="grid grid-cols-3 gap-2">
-        {categories.map((cat) => (
-          <button
-            key={cat.category}
-            type="button"
-            onClick={() => { setSelectedCat(cat); }}
-            className="bg-surface-alt rounded-xl border border-border p-3 text-center transition-colors active:bg-border"
-          >
-            <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">{LABELS[cat.category]}</div>
-            <div className="flex items-center justify-center gap-1.5 mb-0.5">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: rateColor(cat.avgRate) }}
-              />
-              <span
-                className="text-lg font-bold tabular-nums"
-                style={{ color: rateColor(cat.avgRate) }}
-              >
-                {cat.avgRate.toFixed(1)}
-              </span>
-            </div>
-            <div className="text-xs" style={{ color: rateColor(cat.avgRate) }}>
-              {rateLabel(cat.avgRate)}
-            </div>
-            {cat.avgFuelRate != null && (
-              <div className="text-xs text-muted mt-1">{Math.round(cat.avgFuelRate)} g/h</div>
-            )}
-          </button>
-        ))}
+        {categories.map((cat) => {
+          // Median over avg: per-window slopes for stable runs cancel and
+          // round to "-0.0" — useless. Median is robust.
+          const rate = perHour(cat.medianRate);
+          return (
+            <button
+              key={cat.category}
+              type="button"
+              onClick={() => { setSelectedCat(cat); }}
+              className="bg-surface-alt rounded-xl border border-border p-3 text-center transition-colors active:bg-border"
+            >
+              <div className="text-xs text-muted uppercase tracking-wider font-semibold mb-1">{LABELS[cat.category]}</div>
+              <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: rateColor(rate) }}
+                />
+                <span
+                  className="text-lg font-bold tabular-nums"
+                  style={{ color: rateColor(rate) }}
+                >
+                  {rate > 0 ? "+" : ""}{rate.toFixed(1)}
+                </span>
+                <span className="text-[10px] text-muted">mmol/hr</span>
+              </div>
+              <div className="text-xs" style={{ color: rateColor(rate) }}>
+                {rateLabel(rate)}
+              </div>
+              {cat.avgFuelRate != null && (
+                <div className="text-xs text-muted mt-1">{Math.round(cat.avgFuelRate)} g/h</div>
+              )}
+            </button>
+          );
+        })}
       </div>
       {selectedCat && (
         <CategoryPopover cat={selectedCat} onClose={() => { setSelectedCat(null); }} />

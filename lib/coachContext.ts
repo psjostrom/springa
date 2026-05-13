@@ -183,6 +183,15 @@ function summarizeLiveBG(ctx: CoachContext): string {
   return lines.join("\n");
 }
 
+function longestCompletedRunKm(events: CalendarEvent[]): number | null {
+  let max = 0;
+  for (const e of events) {
+    if (e.type !== "completed") continue;
+    if (typeof e.distance === "number" && e.distance > max) max = e.distance;
+  }
+  return max > 0 ? max : null;
+}
+
 function summarizeFitness(insights: FitnessInsights | null): string {
   if (!insights) return "Fitness data not loaded.";
   return [
@@ -203,11 +212,13 @@ export function buildSystemPrompt(ctx: CoachContext): string {
   const raceDateStr = ctx.raceDate ?? "2026-06-13";
   const lthr = ctx.lthr ?? DEFAULT_LTHR;
   const maxHr = ctx.maxHr ?? DEFAULT_MAX_HR;
+  const longestKm = longestCompletedRunKm(ctx.events);
+  const longestPart = longestKm != null ? ` Longest distance: ${Math.round(longestKm)}km.` : "";
   return `You are the AI running coach inside Springa, a training app for a Type 1 Diabetic runner preparing for EcoTrail 16km (${raceDateStr}).
 
 ## Runner Profile
 - Age 40, 80kg, 185cm. ${buildProfileLine(lthr, maxHr)}, LT Pace 4:53/km, VO2max 49.
-- Restarted running ~8 months ago. Longest distance: 10km. Currently 3-4x/week.
+- Restarted running ~8 months ago.${longestPart} Currently 3-4x/week.
 - Type 1 Diabetic (since 2009). Ypsomed pump + CamAPS FX + Dexcom G6.
 - All runs are pump-off. Target start BG ~10 mmol/L.
 

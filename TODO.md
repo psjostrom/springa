@@ -18,6 +18,7 @@
 
 ## Tech Debt
 
+- [ ] **`activity_streams.glucose` is a derived cache.** HR-aligned glucose values are computed from `bg_readings` + `hr` (same shape as the deferred `run_bg_context` derivation — see IDEAS.md "Server-Owned `runBGContext` via Scout Batch"). Currently aligned client-side in `useStreamCache.loadUncachedRuns` and shipped server-side for storage. Same anti-pattern. Fix: drop the column, compute alignment on demand alongside the runBGContext rework. After both are gone, revisit whether the `bgcache_v*` localStorage versioning is still needed — it exists to evict caches on derived-shape changes.
 - [x] ~~**page.tsx is doing too many things.**~~ Migrated to Jotai atoms. Screens read data from atoms via `useAtomValue`, page.tsx is layout + routing only. `useHydrateStore` bridges existing hooks to atoms. IntelScreen went from 28 props to zero.
 - [x] ~~**`updateWidgetLayoutAtom` swallows fetch errors.**~~ Debounced PUT now checks `res.ok` and catches network errors. Failures surface via `widgetSaveErrorAtom`, shown in IntelScreen edit mode. Clears on next successful save.
 
