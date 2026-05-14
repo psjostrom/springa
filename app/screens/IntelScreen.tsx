@@ -379,7 +379,6 @@ export function IntelScreen() {
     let totalRuns = 0;
     for (const pe of planEvents) {
       if (getWeekIdx(pe.start_date_local, planStartMonday) !== currentWeekIdx) continue;
-      if (/bonus|optional/i.test(pe.name)) continue;
       targetKm += estimatePlanEventDistance(pe, paceTable, thresholdPace);
       totalRuns++;
     }

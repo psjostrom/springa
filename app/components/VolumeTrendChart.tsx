@@ -34,8 +34,6 @@ interface WeekData {
   week: string;
   completed: number;
   planned: number;
-  plannedOptional: number;
-  plannedTotal: number;
   isCurrent: boolean;
 }
 
@@ -62,8 +60,6 @@ export function VolumeTrendChart({
       week: `W${String(i + 1).padStart(2, "0")}`,
       completed: 0,
       planned: 0,
-      plannedOptional: 0,
-      plannedTotal: 0,
       isCurrent: i === currentWeekIdx,
     }));
 
@@ -84,13 +80,7 @@ export function VolumeTrendChart({
     for (const pe of planEvents) {
       const weekIdx = getWeekIdx(pe.start_date_local, planStartMonday);
       if (weekIdx < 0 || weekIdx >= totalWeeks) continue;
-      const km = estimatePlanEventDistance(pe, paceTable, thresholdPace);
-      const isOptional = /bonus|optional/i.test(pe.name);
-      if (isOptional) {
-        weeks[weekIdx].plannedOptional += km;
-      } else {
-        weeks[weekIdx].planned += km;
-      }
+      weeks[weekIdx].planned += estimatePlanEventDistance(pe, paceTable, thresholdPace);
     }
 
     // Completed distances from actual API data
@@ -101,12 +91,10 @@ export function VolumeTrendChart({
       weeks[weekIdx].completed += estimateWorkoutDistance(event, paceTable, thresholdPace);
     }
 
-    // Compute totals and round
+    // Round
     for (const w of weeks) {
       w.completed = Math.round(w.completed * 10) / 10;
       w.planned = Math.round(w.planned * 10) / 10;
-      w.plannedOptional = Math.round(w.plannedOptional * 10) / 10;
-      w.plannedTotal = Math.round((w.planned + w.plannedOptional) * 10) / 10;
     }
 
     return { weeks, currentWeekIdx };
@@ -135,12 +123,6 @@ export function VolumeTrendChart({
               data={data.weeks}
               margin={{ top: 5, right: 5, bottom: 0, left: 0 }}
             >
-              <XAxis
-                xAxisId="plannedTotal"
-                dataKey="week"
-                hide
-                padding={{ left: 2, right: 2 }}
-              />
               <XAxis
                 xAxisId="planned"
                 dataKey="week"
@@ -174,11 +156,7 @@ export function VolumeTrendChart({
                   return (
                     <div className="rounded-lg border border-border bg-surface text-text shadow-lg text-xs px-3 py-2">
                       <div className="font-medium mb-1">Week {weekNum}</div>
-                      <div className="text-muted">Planned : {d.planned} km</div>
-                      {d.plannedOptional > 0 && (
-                        <div className="text-muted">Optional : {d.plannedOptional} km</div>
-                      )}
-                      <div className="text-text">Total : {d.plannedTotal} km</div>
+                      <div className="text-text">Planned : {d.planned} km</div>
                       {d.completed > 0 && (
                         <>
                           <div className="border-t border-border my-1.5" />
@@ -199,16 +177,7 @@ export function VolumeTrendChart({
                     strokeWidth={1.5}
                   />
                 )}
-              {/* Optional: full height (planned + optional), rendered behind */}
-              <Bar
-                xAxisId="plannedTotal"
-                dataKey="plannedTotal"
-                fill="var(--color-muted)"
-                fillOpacity={0.25}
-                radius={2}
-                maxBarSize={14}
-              />
-              {/* Planned: mandatory only, rendered on top */}
+              {/* Planned, rendered behind */}
               <Bar
                 xAxisId="planned"
                 dataKey="planned"
@@ -236,10 +205,6 @@ export function VolumeTrendChart({
           <span className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-sm bg-chart-primary/40" />
             Planned
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted/40" />
-            Optional
           </span>
         </div>
     </div>

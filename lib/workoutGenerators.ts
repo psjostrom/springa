@@ -318,12 +318,12 @@ const generateFreeRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
-  const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
+  const notes = "Free run. 1 hour, no rules — easy or hard, your call.";
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
-    description: createSimpleWorkoutText(s("30m", "z2"), notes),
+    description: createSimpleWorkoutText(s("60m", "z1"), notes),
     external_id: `free-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,

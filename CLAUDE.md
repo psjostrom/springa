@@ -131,13 +131,12 @@ To ensure the generated text is parsed correctly by the workout builder and disp
 - **Descriptions:** Clean workout text only — no `FUEL PER 10:` or `PUMP` prefixes. Notes/flavor text goes before the Warmup section.
 - **Workout Naming:** Format is `W{weekNum} {Type}` (e.g., `W01 Easy`, `W05 Long (12km)`, `W12 Short-Intervals`). No suffix.
   - Long runs MUST contain "Long" (e.g., `W05 Long (12km)`). DO NOT use "LR".
-  - Saturday runs MUST include "Bonus" in the name (e.g., `W03 Bonus Easy`). The session type can vary, but must leave energy for Sunday's long run.
 
 ## Fuel Taper System
 
 Extended cooldowns serve as a "stop fueling" signal. The Garmin watch vibrates on step transitions — when the runner hears "Cooldown," that's the last fuel. No more carbs after that.
 
-- **Easy runs / Bonus:** 15m cooldown (~2 km at 7:00/km)
+- **Easy runs:** 15m cooldown (~2 km at 7:00/km)
 - **Long runs:** 2km cooldown
 - **Easy + Strides:** 15m cooldown
 - **Intervals:** No taper (5m CD unchanged). Interval spikes are hormonal, not carb absorption.

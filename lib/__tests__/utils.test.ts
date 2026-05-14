@@ -540,8 +540,8 @@ Cooldown
     expect(segments[0].estimated).toBe(false);
   });
 
-  it("parses bonus run single-step workout", () => {
-    const desc = `The Saturday bonus. Just a gift to future you.
+  it("parses single-step workout with notes", () => {
+    const desc = `Easy free-form session. Just a gift to future you.
 
 - 45m 68-83% LTHR (115-140 bpm) intensity=active
 `;
@@ -966,8 +966,8 @@ Cooldown
     expect(sections[0].steps[0].bpmRange).toBe("115-140 bpm");
   });
 
-  it("parses single-step workout with bonus run notes", () => {
-    const desc = `The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens.
+  it("parses single-step workout with multi-sentence notes", () => {
+    const desc = `Easy free-form session. Let's be honest — there's maybe a 20% chance this actually happens.
 
 - 45m 68-83% LTHR (115-140 bpm) intensity=active
 `;
@@ -1077,13 +1077,13 @@ Warmup
   });
 
   it("extracts multi-line notes from single-step workout", () => {
-    const desc = `The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.
+    const desc = `Easy free-form session. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.
 
 - 45m 68-83% LTHR (115-140 bpm) intensity=active
 `;
 
     expect(extractNotes(desc)).toBe(
-      "The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
+      "Easy free-form session. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them.",
     );
   });
 

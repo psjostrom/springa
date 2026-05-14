@@ -207,7 +207,7 @@ describe("fetchCalendarData", () => {
             id: "456",
             start_date: "2026-06-10T10:00:00",
             start_date_local: "2026-06-10T10:00:00",
-            name: "Järfälla - W03 Bonus Easy",
+            name: "Järfälla - W03 Easy",
             type: "Run",
             distance: 6352,
             moving_time: 3200,
@@ -220,7 +220,7 @@ describe("fetchCalendarData", () => {
             id: 999,
             category: "WORKOUT",
             start_date_local: "2026-06-10T12:00:00",
-            name: "W03 Bonus Easy",
+            name: "W03 Easy",
             description: "Easy run.",
           },
         ]);
