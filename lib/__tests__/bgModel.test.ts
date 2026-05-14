@@ -562,22 +562,65 @@ describe("calculateTargetFuelRates", () => {
     expect(result[0].category).toBe("easy");
   });
 
-  it("uses regression with 2+ distinct fuel rates with 3+ obs each", () => {
+  it("uses regression with 2+ distinct fuel rates with 3+ obs each and ≥10 g/h spread", () => {
     const obs: BGObservation[] = [
       // Fuel 30 → high drop
       ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.2, fuelRate: 30 })),
-      // Fuel 60 → low drop
+      // Fuel 60 → low drop (spread = 30 g/h, well above the 10 g/h guard)
       ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.05, fuelRate: 60 })),
     ];
 
     const result = calculateTargetFuelRates(obs);
     expect(result).toHaveLength(1);
     expect(result[0].method).toBe("regression");
-    // slope = ((-0.05)-(-0.2))/(60-30) = 0.15/30 = 0.005
+    // slope = ((-0.05)-(-0.2))/(60-30) = 0.005
     // intercept = -0.2 - 0.005*30 = -0.35
-    // Solve for y = -0.02: x = (-0.02-(-0.35))/0.005 = 0.33/0.005 = 66
-    // Cap: min(66, avgFuel 45 * 1.5 = 67.5, 90) = 66
-    expect(result[0].targetFuelRate).toBe(66);
+    // Raw target: x at y=-0.02 → x = (-0.02-(-0.35))/0.005 = 66
+    // Step cap: min(currentAvg 45 + 10, 90) = 55
+    // Final: min(66, 55) = 55
+    expect(result[0].targetFuelRate).toBe(55);
+  });
+
+  it("falls back to extrapolation when fuel-rate spread is below the titration step", () => {
+    // Per-observed bug: 4 g/h spread between qualified groups, regression
+    // fits noise across that narrow window and extrapolates absurd targets
+    // (143 g/h capped to 90). Spread guard pushes to extrapolation instead.
+    const obs: BGObservation[] = [
+      ...Array.from({ length: 5 }, () => makeObs({ bgRate: -0.07, fuelRate: 60 })),
+      ...Array.from({ length: 5 }, () => makeObs({ bgRate: -0.07, fuelRate: 62 })),
+      ...Array.from({ length: 5 }, () => makeObs({ bgRate: -0.07, fuelRate: 64 })),
+    ];
+
+    const result = calculateTargetFuelRates(obs);
+    expect(result).toHaveLength(1);
+    expect(result[0].method).toBe("extrapolation");
+    // excessDrop = 0.05, target = 62 + 0.05*60 = 65, cap = min(65, 62+10) = 65
+    expect(result[0].targetFuelRate).toBe(65);
+  });
+
+  it("uses regression at the spread boundary (exactly one titration step)", () => {
+    // Pin the boundary: spread of exactly FUEL_STEP_GH qualifies for regression.
+    // Guards against a future flip from `>=` to `>`.
+    const obs: BGObservation[] = [
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.2, fuelRate: 50 })),
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.05, fuelRate: 60 })),
+    ];
+
+    const result = calculateTargetFuelRates(obs);
+    expect(result).toHaveLength(1);
+    expect(result[0].method).toBe("regression");
+  });
+
+  it("step cap limits recommendation to current average + 10 g/h", () => {
+    // Single fuel rate at 30 g/h with very high drop should not jump 50% per cycle
+    const obs: BGObservation[] = Array.from({ length: 5 }, () =>
+      makeObs({ bgRate: -0.5, fuelRate: 30 }),
+    );
+
+    const result = calculateTargetFuelRates(obs);
+    expect(result).toHaveLength(1);
+    // Raw extrapolation: 30 + 0.48*60 = 58.8, but step cap pulls to 30+10 = 40
+    expect(result[0].targetFuelRate).toBe(40);
   });
 
   it("clamps target fuel rate to >= 0", () => {
@@ -648,6 +691,28 @@ describe("calculateTargetFuelRates with spike penalty", () => {
     // SPIKE_PENALTY_FACTOR = 4, excess = 3.0, penalty = 12 g/h
     expect(easy!.spikeAdjustment).toBe(12);
     expect(easy!.targetFuelRate).toBeLessThan(60);
+  });
+
+  it("subtracts spike penalty from raw target before the step cap clamps", () => {
+    // Pins cap-vs-penalty ordering. With raw target above the step cap,
+    // penalty subtracts from the raw target first, then the cap clamps.
+    // Cap-then-penalty would give 62 (70 - 8); penalty-then-cap gives 70.
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 6 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 60,
+      spike30m: 4.0, // (4.0 - 2.0) * 4 = 8 g/h penalty
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    // Raw extrapolation: 60 + (0.4 - 0.02) * 60 = 82.8
+    // After penalty: 82.8 - 8 = 74.8. Step cap: min(74.8, 70) = 70.
+    expect(easy!.spikeAdjustment).toBe(8);
+    expect(easy!.targetFuelRate).toBe(70);
   });
 
   it("skips penalty when fewer than MIN_POST_RUN_OBS spikes", () => {
