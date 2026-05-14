@@ -4780,7 +4780,7 @@ export const calendarFixture = [
   {
     "id": "activity-i128242258",
     "date": "2026-02-27T14:21:52.000Z",
-    "name": "W13 Bonus Easy",
+    "name": "W13 Easy",
     "description": "\n\n\nWarmup\n- Warmup 10m 66-78% LTHR (110-132 bpm) intensity=warmup\n\nMain set\n- Easy 30m 66-78% LTHR (110-132 bpm) intensity=active\n\nCooldown\n- Cooldown 5m 66-78% LTHR (110-132 bpm) intensity=cooldown",
     "type": "completed",
     "category": "easy",
@@ -24256,7 +24256,7 @@ export const activityFixtures: Record<string, unknown> = {
     "elapsed_time": 2797,
     "icu_weighted_avg_watts": null,
     "carbs_used": null,
-    "name": "Järfälla - W03 Bonus Easy eco16",
+    "name": "Järfälla - W03 Easy eco16",
     "description": null,
     "start_date": "2026-02-27T14:21:52Z",
     "distance": 6352.11,

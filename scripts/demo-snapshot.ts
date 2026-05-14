@@ -150,6 +150,7 @@ async function main() {
     name = name.replace(/\s*-\s*\d+km\s+.*$/, ""); // "- 6km Easy Run ("
     name = name.replace(/\s*-\s*Tempo.*$/, ""); // "- Tempo 2-1 (5.5km)"
     name = name.replace(/\s*\(Optional\)/i, "");
+    name = name.replace(/\s*\bBonus\b\s*/i, " ").trim();
 
     // If nothing meaningful left, use category
     if (!name.trim() || name.trim().length < 3) {

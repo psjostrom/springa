@@ -277,22 +277,3 @@ Cooldown
 ```
 
 Note: Easy + Strides keeps the warmup/cooldown structure because strides are in a different HR zone (Z5). The 15m cooldown is the fuel taper signal.
-
-### Example G: Bonus Easy
-
-**Name:** `W03 Bonus Easy eco16`
-**fuelRate:** `48` (g/h → `carbs_per_hour: 48`)
-**Description (threshold ≈ 5:30/km):**
-
-```text
-The Saturday bonus. Let's be honest — there's maybe a 20% chance this actually happens. If your legs say no, listen to them. If they say yes, enjoy 20 easy minutes with zero expectations. No pace, no plan. Just a gift to future you.
-
-Warmup
-- Warmup 10m 6:15-18:20/km Pace intensity=warmup
-
-Main set
-- 20m 6:15-18:20/km Pace intensity=active
-
-Cooldown
-- Cooldown 15m 6:15-18:20/km Pace intensity=cooldown
-```

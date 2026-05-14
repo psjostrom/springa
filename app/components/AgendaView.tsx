@@ -41,7 +41,6 @@ function msUntilNextMidnight(): number {
 function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
   if (isMissed) return "border-l-error";
   if (event.type === "completed") return "border-l-success";
-  if (event.type === "race") return "border-l-brand";
   return "border-l-brand";
 }
 
