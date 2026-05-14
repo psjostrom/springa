@@ -107,6 +107,27 @@ When the upstream BG fetch fails (Scout outage, missing credentials, our own bg-
 
 **Fix:** new `BGContextStatus` enum (`ok` / `upstream-error` / `no-credentials` / `no-input`) flowing from the Scout fetch in `lib/runBGContext.ts` → `getActivityStreamsWithStatus` → `/api/bg-cache` → atom → IntelScreen banner. Each state gets distinct copy: "Connect Nightscout in Settings → Account..." vs "BG history is offline — predictions paused until your CGM source is reachable again."
 
+### Phase-Aware Fuel Modeling
+
+`calculateTargetFuelRates` averages BG drop rate across the entire run, then prescribes fuel by it. But per-time-bucket data (verified against 67 real activities) shows two distinct phases:
+
+| Bucket | Easy | Long |
+|---|---|---|
+| 0-15 min | -1.78 mmol/hr | -2.67 |
+| 15-30 min | -3.23 | -3.47 |
+| 30-45 min | -2.13 | **-0.75** |
+| 45+ min | -1.69 | -0.71 |
+
+CHO ingested at minute 10 enters the bloodstream around minute 25 (gastric emptying + intestinal absorption ~15 min). Drop rate clearly attenuates after that — most dramatically on Long runs where the drop nearly stops in the 30-45 bucket.
+
+**The problem:** Easy runs (median 44 min) spend ~70% of their time in the pre-fuel window. Long runs (median 76 min) spend ~40%. So the average drop rate Easy reports is dominated by pre-fuel kinetics that **no amount of fuel during the run will fix** — that drop is a function of insulin, glycogen, and hydration, not fuel rate.
+
+**Today's behavior:** model sees "Easy drops fast" → recommends more fuel → extra CHO piles up post-run instead of helping in-run → post-run hyper risk. Directionally wrong for short runs.
+
+**Fix:** restrict fuel-rate optimization to observations with `relativeMinute >= 25` (or some configurable post-fuel threshold). The pre-fuel window becomes a constant baseline, not a fuel-tunable signal. Side benefit: the per-category recommendation becomes physiologically interpretable ("at fuel X, post-fuel drop is Y") instead of a blended average.
+
+**Open questions:** (1) right threshold — 20 min? 25? configurable? (2) how to surface the pre-fuel constant to the runner — accept it, or tackle it via timing/insulin/start-BG instead? (3) does pre-fuel drop correlate with start BG or entry slope (in which case it could feed pre-run readiness)?
+
 ---
 
 ## Parked
