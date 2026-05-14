@@ -225,9 +225,8 @@ const MIN_POST_RUN_OBS = 5;
 const MIN_FUEL_RATE = 20; // g/h safety floor
 
 // Cap recommendations to one CHO titration step above current average use,
-// or the absolute gut-absorption ceiling — whichever is lower. The previous
-// MAX_FUEL_MULTIPLIER = 1.5 (50% jump per cycle) violated incremental-CHO
-// guidance: sudden CHO increases cause GI distress (Costa et al. 2023).
+// or the absolute gut-absorption ceiling — whichever is lower. Sudden CHO
+// increases cause GI distress (Costa et al. 2023).
 function capFuel(target: number, current: number): number {
   const upperBound = current > 0
     ? Math.min(current + FUEL_STEP_GH, MAX_FUEL_ABSOLUTE)
@@ -269,8 +268,7 @@ export function calculateTargetFuelRates(
 
     // Spread guard: regression requires the tested fuel rates to differ by at
     // least one CHO titration step. Below that, the slope fits noise, not
-    // signal — solving for "ideal drop" extrapolates absurd targets. Falls
-    // through to the extrapolation path which moves one step at a time.
+    // signal — solving for "ideal drop" extrapolates absurd targets.
     const fuelRatesTested = qualifiedGroups.map(([fuel]) => fuel);
     const fuelSpread = fuelRatesTested.length >= 2
       ? Math.max(...fuelRatesTested) - Math.min(...fuelRatesTested)

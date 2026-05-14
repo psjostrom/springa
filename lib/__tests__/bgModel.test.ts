@@ -598,6 +598,19 @@ describe("calculateTargetFuelRates", () => {
     expect(result[0].targetFuelRate).toBe(65);
   });
 
+  it("uses regression at the spread boundary (exactly one titration step)", () => {
+    // Pin the boundary: spread of exactly FUEL_STEP_GH qualifies for regression.
+    // Guards against a future flip from `>=` to `>`.
+    const obs: BGObservation[] = [
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.2, fuelRate: 50 })),
+      ...Array.from({ length: 3 }, () => makeObs({ bgRate: -0.05, fuelRate: 60 })),
+    ];
+
+    const result = calculateTargetFuelRates(obs);
+    expect(result).toHaveLength(1);
+    expect(result[0].method).toBe("regression");
+  });
+
   it("step cap limits recommendation to current average + 10 g/h", () => {
     // Single fuel rate at 30 g/h with very high drop should not jump 50% per cycle
     const obs: BGObservation[] = Array.from({ length: 5 }, () =>
@@ -678,6 +691,28 @@ describe("calculateTargetFuelRates with spike penalty", () => {
     // SPIKE_PENALTY_FACTOR = 4, excess = 3.0, penalty = 12 g/h
     expect(easy!.spikeAdjustment).toBe(12);
     expect(easy!.targetFuelRate).toBeLessThan(60);
+  });
+
+  it("subtracts spike penalty from raw target before the step cap clamps", () => {
+    // Pins cap-vs-penalty ordering. With raw target above the step cap,
+    // penalty subtracts from the raw target first, then the cap clamps.
+    // Cap-then-penalty would give 62 (70 - 8); penalty-then-cap gives 70.
+    const obs = Array.from({ length: 10 }, (_, i) =>
+      makeObs({ bgRate: -0.4, fuelRate: 60, activityId: `a${i}` }),
+    );
+    const spikes: PostRunSpikeData[] = Array.from({ length: 6 }, (_, i) => ({
+      activityId: `a${i}`,
+      category: "easy" as const,
+      fuelRate: 60,
+      spike30m: 4.0, // (4.0 - 2.0) * 4 = 8 g/h penalty
+    }));
+    const results = calculateTargetFuelRates(obs, spikes);
+    const easy = results.find((r) => r.category === "easy");
+    expect(easy).toBeDefined();
+    // Raw extrapolation: 60 + (0.4 - 0.02) * 60 = 82.8
+    // After penalty: 82.8 - 8 = 74.8. Step cap: min(74.8, 70) = 70.
+    expect(easy!.spikeAdjustment).toBe(8);
+    expect(easy!.targetFuelRate).toBe(70);
   });
 
   it("skips penalty when fewer than MIN_POST_RUN_OBS spikes", () => {
