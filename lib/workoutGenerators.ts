@@ -318,7 +318,7 @@ const generateFreeRun = (
   if (isSameDay(date, ctx.raceDate)) return null;
 
   const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
-  const notes = "Free run — no structure, no pressure. Run easy for however long feels right. This is bonus volume, not a test.";
+  const notes = "Free run — no structure, no rules. Run however long, however hard you want.";
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),

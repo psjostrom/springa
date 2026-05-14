@@ -177,7 +177,6 @@ function buildEasyStructure(duration: number | undefined): string {
  * "W12 Short Intervals" → "speed-12"
  * "W05 Long (12km)" → "long-5"
  * "W01 Easy" → "easy-1"
- * "W03 Bonus Easy" → "bonus-3"
  * "W05 Club Run" → "club-5"
  * "RACE DAY" → "race"
  *
@@ -200,7 +199,6 @@ export function reconstructExternalId(
 
   // Classify by workout type keywords
   if (/\bLong\b/i.test(name)) return `long-${week}`;
-  if (/\bBonus\b/i.test(name)) return `bonus-${week}`;
   if (/Short.?Intervals|Hills|Long.?Intervals|Distance.?Intervals|Race.?Pace.?Intervals/i.test(name)) {
     return `speed-${week}`;
   }

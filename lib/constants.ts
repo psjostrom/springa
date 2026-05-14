@@ -135,7 +135,6 @@ export function getWorkoutCategory(
   if (lowerName.includes("club")) return "interval";
   if (
     lowerName.includes("easy") ||
-    lowerName.includes("bonus") ||
     lowerName.includes("strides")
   )
     return "easy";

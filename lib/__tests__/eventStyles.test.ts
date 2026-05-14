@@ -39,13 +39,6 @@ describe("getEventStyle", () => {
     vi.useRealTimers();
   });
 
-  it("returns bonus style with muted border", () => {
-    vi.useFakeTimers({ now: new Date("2026-02-28T12:00:00") });
-    const style = getEventStyle(makeEvent({ type: "planned", category: "easy", name: "Bonus Easy eco16" }));
-    expect(style).toContain("border-subtle");
-    vi.useRealTimers();
-  });
-
   it("returns missed style with error border and reduced opacity", () => {
     vi.useFakeTimers({ now: new Date("2026-03-10T12:00:00") });
     const style = getEventStyle(makeEvent({ type: "planned", date: new Date("2026-03-08") }));

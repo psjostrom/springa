@@ -42,7 +42,6 @@ function getLeftBorderColor(event: CalendarEvent, isMissed: boolean): string {
   if (isMissed) return "border-l-error";
   if (event.type === "completed") return "border-l-success";
   if (event.type === "race") return "border-l-brand";
-  if (/bonus|optional/i.test(event.name)) return "border-l-border-subtle";
   return "border-l-brand";
 }
 

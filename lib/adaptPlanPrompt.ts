@@ -46,7 +46,7 @@ Keep sentences short and punchy. No run-on sentences. No filler. Use mmol/L, g/h
 Examples of good notes:
 
 Easy run:
-"Bonus easy 45 minutes — your last two easy runs averaged 7:15/km at 138 bpm, right in the pocket.
+"Easy 45 minutes — your last two easy runs averaged 7:15/km at 138 bpm, right in the pocket.
 
 Fuel holds at **60 g/h** — BG stayed flat on both Mar 14 and Mar 17, starting at 8.1 and finishing at 7.9, so no reason to change."
 
