@@ -1,10 +1,11 @@
 import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
+import { capturedPutPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
 import type { CalendarEvent } from "@/lib/types";
 import { calendarEventsAtom } from "../../atoms";
 import { EventModal } from "../EventModal";
@@ -81,6 +82,7 @@ describe("EventModal race event", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -95,6 +97,7 @@ describe("EventModal race event", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -112,6 +115,7 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
         hrZones={[...TEST_HR_ZONES]}
         lthr={TEST_LTHR}
       />,
@@ -132,6 +136,7 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -154,6 +159,7 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
         isLoadingStreamData
       />,
     );
@@ -177,6 +183,7 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
         isLoadingStreamData={false}
       />,
     );
@@ -199,6 +206,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -222,6 +230,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -245,6 +254,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -265,6 +275,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -278,6 +289,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -291,6 +303,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -308,6 +321,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -334,6 +348,7 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
       { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
@@ -376,6 +391,7 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -398,6 +414,7 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -426,6 +443,7 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -463,6 +481,7 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -490,6 +509,7 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -510,6 +530,7 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -541,6 +562,7 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -585,6 +607,7 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
@@ -608,5 +631,113 @@ describe("EventModal run analysis", () => {
 
     // New analysis should be displayed
     expect(screen.getByText("New analysis")).toBeInTheDocument();
+  });
+});
+
+describe("EventModal By Feel toggle", () => {
+  const PACE_DESCRIPTION = [
+    "Easy run with strides.",
+    "",
+    "Warmup",
+    "- Warmup 10m 30-88% pace intensity=warmup",
+    "",
+    "Main set",
+    "- Easy 20m 30-88% pace intensity=active",
+    "",
+    "Strides 4x",
+    "- Stride 20s intensity=active",
+    "- Walk 1m intensity=rest",
+    "",
+    "Cooldown",
+    "- Cooldown 15m 30-88% pace intensity=cooldown",
+    "",
+  ].join("\n");
+
+  const plannedWithPace: CalendarEvent = {
+    id: "event-100",
+    date: new Date("2099-03-10T14:00:00"),
+    name: "W02 Easy + Strides",
+    description: PACE_DESCRIPTION,
+    type: "planned",
+    category: "easy",
+    fuelRate: 60,
+  };
+
+  afterEach(() => {
+    resetCaptures();
+    server.resetHandlers();
+  });
+
+  it("strips pace targets and updates name when toggled", async () => {
+    const onUpdated = vi.fn();
+    render(
+      <EventModal
+        event={plannedWithPace}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={onUpdated}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("By Feel"));
+
+    await waitFor(() => {
+      expect(capturedPutPayload).not.toBeNull();
+    });
+
+    const body = capturedPutPayload!.body as { name: string; description: string };
+    expect(body.name).toBe("W02 Easy + Strides By Feel");
+    expect(body.description).not.toContain("% pace");
+    expect(body.description).toContain("Warmup 10m intensity=warmup");
+    expect(body.description).toContain("Stride 20s intensity=active");
+
+    expect(onUpdated).toHaveBeenCalledWith("event-100", {
+      name: "W02 Easy + Strides By Feel",
+      description: expect.not.stringContaining("% pace"),
+    });
+  });
+
+  it("shows error on API failure", async () => {
+    server.use(
+      http.put("/api/intervals/events/:eventId", () => {
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={plannedWithPace}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={noop}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("By Feel"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to update workout/i)).toBeInTheDocument();
+    });
+  });
+
+  it("hides By Feel button when event is already by feel", () => {
+    const byFeelEvent: CalendarEvent = {
+      ...plannedWithPace,
+      name: "W02 Easy + Strides By Feel",
+    };
+
+    render(
+      <EventModal
+        event={byFeelEvent}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={noop}
+      />,
+    );
+
+    expect(screen.queryByText("By Feel")).not.toBeInTheDocument();
   });
 });

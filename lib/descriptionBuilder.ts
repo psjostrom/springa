@@ -65,6 +65,15 @@ export function createWorkoutText(
   return lines.join("\n");
 }
 
+/** Strip pace targets from all step lines, leaving duration/note/intensity intact.
+ *  Turns a structured workout into a "by feel" version the watch won't nag about. */
+export function stripPaceTargets(description: string): string {
+  return description.replace(
+    / \d{1,2}:\d{2}-\d{1,2}:\d{2}\/km Pace| \d+-\d+% pace/g,
+    "",
+  );
+}
+
 /** Build a single-step workout description (no warmup/cooldown structure). */
 export function createSimpleWorkoutText(
   step: string,

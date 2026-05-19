@@ -107,10 +107,11 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
   z5:   { min: null, max: null },
 };
 
-/** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it. */
-function createStepMaker(thresholdPace?: number) {
+/** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it.
+ *  When byFeel is true, all zones resolve to null paces — steps keep names/durations but no targets. */
+function createStepMaker(thresholdPace?: number, byFeel?: boolean) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const pct = HM_ZONE_DEFAULTS[zone];
+    const pct = byFeel ? { min: null, max: null } : HM_ZONE_DEFAULTS[zone];
     const step = formatPaceStep(
       duration,
       pct.min,
@@ -152,7 +153,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "z2", "Warmup");
@@ -249,7 +250,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -317,7 +318,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const notes = "Free run. 1 hour, no rules — easy or hard, your call.";
 
   return {
@@ -337,7 +338,7 @@ const generateLongRun = (
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
-    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY`,
@@ -352,7 +353,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -449,6 +450,7 @@ export interface PlanConfig {
   clubType?: string;
   currentAbilitySecs?: number;
   currentAbilityDist?: number;
+  byFeel?: boolean;
 }
 
 export function buildContext(config: PlanConfig): PlanContext {
@@ -483,6 +485,7 @@ export function buildContext(config: PlanConfig): PlanContext {
     clubDay: config.clubDay,
     clubType: config.clubType,
     paceTable,
+    byFeel: config.byFeel,
   };
 }
 

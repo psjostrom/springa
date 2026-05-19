@@ -648,6 +648,18 @@ describe("generateSingleWorkout", () => {
       expect(event!.name).toContain("Easy");
     }
   });
+
+  it("byFeel strips all pace targets from generated workouts", () => {
+    const byFeelConfig = { ...config, byFeel: true };
+    const categories: OnDemandCategory[] = ["easy", "quality", "long"];
+    for (const cat of categories) {
+      const event = generateSingleWorkout(cat, buildThursday, byFeelConfig);
+      if (!event) continue;
+      expect(event.description).not.toMatch(/\d+:\d+-\d+:\d+\/km Pace/);
+      expect(event.description).not.toMatch(/\d+-\d+% pace/);
+      expect(event.description).toContain("intensity=");
+    }
+  });
 });
 
 describe("suggestCategory", () => {

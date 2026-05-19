@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatPaceStep, createWorkoutText } from "../descriptionBuilder";
+import { formatPaceStep, createWorkoutText, stripPaceTargets } from "../descriptionBuilder";
 
 describe("formatPaceStep", () => {
   it("formats a pace step with min-max percentage (no threshold)", () => {
@@ -64,5 +64,71 @@ describe("createWorkoutText with pace steps", () => {
     expect(result).toContain("/km Pace");
     expect(result).not.toContain("LTHR");
     expect(result).not.toContain("bpm");
+  });
+});
+
+describe("stripPaceTargets", () => {
+  it("strips absolute pace targets", () => {
+    const input = "- Warmup 10m 6:49-20:00/km Pace intensity=warmup";
+    expect(stripPaceTargets(input)).toBe("- Warmup 10m intensity=warmup");
+  });
+
+  it("strips percentage pace targets", () => {
+    const input = "- Easy 35m 30-88% pace intensity=active";
+    expect(stripPaceTargets(input)).toBe("- Easy 35m intensity=active");
+  });
+
+  it("leaves no-target steps unchanged", () => {
+    const input = "- Walk 1m intensity=rest";
+    expect(stripPaceTargets(input)).toBe("- Walk 1m intensity=rest");
+  });
+
+  it("handles multi-section description", () => {
+    const input = [
+      "Hill reps build strength.",
+      "",
+      "Warmup",
+      "- Warmup 10m 6:49-20:00/km Pace intensity=warmup",
+      "",
+      "Main set 6x",
+      "- Uphill 2m intensity=active",
+      "- Downhill 3m 30-88% pace intensity=rest",
+      "",
+      "Cooldown",
+      "- Cooldown 5m 6:49-20:00/km Pace intensity=cooldown",
+      "",
+    ].join("\n");
+
+    const result = stripPaceTargets(input);
+    expect(result).not.toContain("/km Pace");
+    expect(result).not.toContain("% pace");
+    expect(result).toContain("Warmup 10m intensity=warmup");
+    expect(result).toContain("Downhill 3m intensity=rest");
+    expect(result).toContain("Uphill 2m intensity=active");
+    expect(result).toContain("Hill reps build strength.");
+  });
+
+  it("handles strides description with mixed target/no-target steps", () => {
+    const input = [
+      "Warmup",
+      "- Warmup 10m 30-88% pace intensity=warmup",
+      "",
+      "Main set",
+      "- Easy 20m 30-88% pace intensity=active",
+      "",
+      "Strides 4x",
+      "- Stride 20s intensity=active",
+      "- Walk 1m intensity=rest",
+      "",
+      "Cooldown",
+      "- Cooldown 15m 30-88% pace intensity=cooldown",
+      "",
+    ].join("\n");
+
+    const result = stripPaceTargets(input);
+    expect(result).not.toContain("% pace");
+    expect(result).toContain("Stride 20s intensity=active");
+    expect(result).toContain("Walk 1m intensity=rest");
+    expect(result).toContain("Warmup 10m intensity=warmup");
   });
 });

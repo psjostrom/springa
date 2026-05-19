@@ -161,6 +161,12 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
     );
   };
 
+  const handleEventUpdated = (eventId: string, patch: { name: string; description: string }) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === eventId ? { ...e, ...patch } : e)),
+    );
+  };
+
   // Handle delete from modal (planned events or completed activities)
   const handleDeleteEvent = async (eventId: string) => {
     // Best-effort Google Calendar sync
@@ -397,6 +403,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
           onClose={closeWorkoutModal}
           onDateSaved={handleDateSaved}
           onDelete={handleDeleteEvent}
+          onEventUpdated={handleEventUpdated}
           isLoadingStreamData={isLoadingStreamData}
           runBGContexts={runBGContexts}
           paceTable={paceTable}

@@ -9,6 +9,8 @@ import { updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
+import { isByFeel, addByFeel } from "@/lib/byFeel";
+import { stripPaceTargets } from "@/lib/descriptionBuilder";
 import { getEventStatusBadge } from "@/lib/eventStyles";
 import { useCurrentBG } from "../hooks/useCurrentBG";
 import { currentTsbAtom, currentIobAtom } from "../atoms";
@@ -29,7 +31,8 @@ type EditMode =
   | { kind: "saving-date"; editDate: string }
   | { kind: "confirming-delete" }
   | { kind: "deleting" }
-  | { kind: "replacing" };
+  | { kind: "replacing" }
+  | { kind: "toggling-by-feel" };
 
 interface ModalState {
   editMode: EditMode;
@@ -47,6 +50,9 @@ type ModalAction =
   | { type: "DELETE" }
   | { type: "DELETE_FAILED"; error: string }
   | { type: "START_REPLACE" }
+  | { type: "TOGGLE_BY_FEEL" }
+  | { type: "BY_FEEL_DONE" }
+  | { type: "BY_FEEL_FAILED"; error: string }
   | { type: "CANCEL" }
   | { type: "RESET" }
   | { type: "START_CLOSING" };
@@ -76,6 +82,12 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       return { ...state, editMode: { kind: "confirming-delete" }, error: action.error };
     case "START_REPLACE":
       return { ...state, editMode: { kind: "replacing" }, error: null };
+    case "TOGGLE_BY_FEEL":
+      return { ...state, editMode: { kind: "toggling-by-feel" }, error: null };
+    case "BY_FEEL_DONE":
+      return INITIAL_MODAL_STATE;
+    case "BY_FEEL_FAILED":
+      return { ...state, editMode: { kind: "idle" }, error: action.error };
     case "CANCEL":
       return { ...state, editMode: { kind: "idle" }, error: null };
     case "RESET":
@@ -90,6 +102,7 @@ interface EventModalProps {
   onClose: () => void;
   onDateSaved: (eventId: string, newDate: Date) => void;
   onDelete: (eventId: string) => Promise<void>;
+  onEventUpdated: (eventId: string, patch: { name: string; description: string }) => void;
   /** Only relevant for completed events — shows a spinner while stream data loads. */
   isLoadingStreamData?: boolean;
   runBGContexts?: Map<string, RunBGContext>;
@@ -106,6 +119,7 @@ export function EventModal({
   onClose,
   onDateSaved,
   onDelete,
+  onEventUpdated,
   isLoadingStreamData,
   runBGContexts,
   paceTable,
@@ -185,6 +199,25 @@ export function EventModal({
     }
   };
 
+  const toggleByFeel = async () => {
+    const numericId = parseEventId(selectedEvent.id);
+    if (isNaN(numericId)) return;
+
+    dispatch({ type: "TOGGLE_BY_FEEL" });
+    try {
+      const newName = addByFeel(selectedEvent.name);
+      const newDescription = stripPaceTargets(selectedEvent.description);
+      await updateEvent(numericId, { name: newName, description: newDescription });
+      onEventUpdated(selectedEvent.id, { name: newName, description: newDescription });
+      dispatch({ type: "BY_FEEL_DONE" });
+    } catch (err) {
+      console.error("Failed to toggle by feel:", err);
+      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+    }
+  };
+
+  const byFeel = isByFeel(selectedEvent.name);
+
   return (
     <div
       className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${state.isClosing ? "bg-black/0" : "bg-black/70"}`}
@@ -226,10 +259,19 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {editMode.kind === "idle" && (
+            {(editMode.kind === "idle" || editMode.kind === "toggling-by-feel") && (
               <>
                 {selectedEvent.type === "planned" && (
                   <>
+                    {!byFeel && (
+                      <button
+                        onClick={() => { void toggleByFeel(); }}
+                        disabled={editMode.kind === "toggling-by-feel"}
+                        className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
+                      >
+                        {editMode.kind === "toggling-by-feel" ? "Saving..." : "By Feel"}
+                      </button>
+                    )}
                     <button
                       onClick={() => { dispatch({ type: "START_REPLACE" }); }}
                       className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"

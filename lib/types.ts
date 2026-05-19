@@ -7,6 +7,7 @@ export interface WorkoutEvent {
   type: "Run";
   fuelRate?: number; // g/h (carbs per hour)
   distance?: number; // km (first-class; generators populate this for long runs)
+  byFeel?: boolean;
 }
 
 export interface AnalysisResult {
@@ -48,6 +49,7 @@ export interface PlanContext {
   clubType?: string;
   /** Pace table derived from current ability. Null = effort-based mode (no pace targets). */
   paceTable: import("./paceTable").PaceTableResult | null;
+  byFeel?: boolean;
 }
 
 export interface IntervalsActivity {

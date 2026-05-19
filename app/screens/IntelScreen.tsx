@@ -722,6 +722,7 @@ export function IntelScreen() {
             onClose={handleCloseModal}
             onDateSaved={() => { /* no-op: PB modal */ }}
             onDelete={() => Promise.resolve() /* no-op: PB modal */}
+            onEventUpdated={() => { /* no-op: PB modal */ }}
             isLoadingStreamData={isLoadingStreamData}
             runBGContexts={runBGContexts}
             paceTable={paceTable}
