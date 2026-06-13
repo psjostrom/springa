@@ -38,7 +38,7 @@ function baseSettings(overrides?: Partial<UserSettings>): UserSettings {
     longRunDay: 0,
     raceName: "EcoTrail",
     raceDist: 16,
-    raceDate: "2026-06-13",
+    raceDate: "2027-06-13",
     intervalsConnected: true,
     hrZones: [120, 140, 155, 170, 185],
     lthr: 170,

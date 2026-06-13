@@ -18,7 +18,7 @@ function getEligibleEvents(
   now: number,
 ): EligibleEvent[] {
   return events.filter((e) => {
-    if (e.type !== "planned") return false;
+    if (e.type !== "planned" && e.type !== "race") return false;
     const diff = e.date.getTime() - now;
     return diff >= -12 * 60 * 60 * 1000 && diff <= MAX_DAYS_AHEAD * 24 * 60 * 60 * 1000;
   });
@@ -26,7 +26,7 @@ function getEligibleEvents(
 
 /**
  * Fetch SMHI forecast once, then compute clothing recommendations
- * for all planned events within the next 3 days.
+ * for all planned/race events within the next 3 days.
  */
 export function useWeather(
   events: { id: string; date: Date; type: string; category: string }[],
