@@ -5,6 +5,25 @@ import { getDay } from "date-fns";
 import { getWeekIdx, prescribedCarbs } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function futureSaturday(weeksAhead = 52): string {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + weeksAhead * 7);
+  while (date.getDay() !== 6) {
+    date.setDate(date.getDate() + 1);
+  }
+  return formatDate(date);
+}
+
+const TEST_RACE_DATE = futureSaturday();
+
 describe("assignDayRoles", () => {
   it("assigns long + easy for 2-day schedule (no speed)", () => {
     const roles = assignDayRoles([2, 0], 0); // Tue + Sun, long on Sun
@@ -58,7 +77,7 @@ describe("assignDayRoles", () => {
 describe("generatePlan", () => {
   const defaultConfig: PlanConfig = {
     bgModel: null,
-    raceDateStr: "2026-06-13",
+    raceDateStr: TEST_RACE_DATE,
     raceDist: 16,
     totalWeeks: 12,
     startKm: 8,
@@ -74,7 +93,7 @@ describe("generatePlan", () => {
 
   // Use a far-future race date so all 12 weeks are generated regardless of today's date
   function generateFull(overrides: Partial<PlanConfig> = {}) {
-    return generate({ raceDateStr: "2027-06-12", ...overrides });
+    return generate({ raceDateStr: TEST_RACE_DATE, ...overrides });
   }
 
 
@@ -119,7 +138,7 @@ describe("generatePlan", () => {
 
   it("generates club run when clubDay is configured", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
     });
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
@@ -134,7 +153,7 @@ describe("generatePlan", () => {
 
   it("generates club runs with parseable duration for carb totals", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
     });
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
@@ -148,7 +167,7 @@ describe("generatePlan", () => {
 
   it("emits club runs with no pace prescription and quality-rate fuel", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
     });
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
@@ -226,7 +245,7 @@ describe("generatePlan", () => {
 
   it("all events have clean time (12:00 for runs, 18:30 for club)", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [2, 4, 6, 0], longRunDay: 0, clubDay: 4, clubType: "speed",
     });
     for (const event of plan) {
@@ -257,7 +276,7 @@ describe("generatePlan", () => {
 
   it("respects custom runDays scheduling", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [1, 3, 6], longRunDay: 6, // Mon/Wed/Sat, long=Sat
     });
     for (const event of plan) {
@@ -268,7 +287,7 @@ describe("generatePlan", () => {
 
   it("assigns long runs to the configured longRunDay", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [2, 5, 6], longRunDay: 6, // Tue/Fri/Sat, long=Sat
     });
     const longRuns = plan.filter((e) => e.external_id.includes("long-"));
@@ -411,7 +430,7 @@ describe("generatePlan", () => {
   });
 
   it("on-demand quality sessions have 5m cooldown", () => {
-    const onDemandConfig: PlanConfig = { ...defaultConfig, raceDateStr: "2027-06-12" };
+    const onDemandConfig: PlanConfig = { ...defaultConfig, raceDateStr: TEST_RACE_DATE };
     const ctx = buildContext(onDemandConfig);
     const buildThursday = new Date(ctx.planStartMonday);
     buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
@@ -468,7 +487,7 @@ describe("generatePlan", () => {
   it("derives paceTable from currentAbility", () => {
     const events = generatePlan({
       bgModel: null,
-      raceDateStr: "2026-08-01",
+      raceDateStr: TEST_RACE_DATE,
       raceDist: 16,
       totalWeeks: 16,
       startKm: 8,
@@ -485,7 +504,7 @@ describe("generatePlan", () => {
   it("falls back to % pace when ability is not set", () => {
     const plan = generatePlan({
       bgModel: null,
-      raceDateStr: "2027-06-12",
+      raceDateStr: TEST_RACE_DATE,
       raceDist: 16,
       totalWeeks: 12,
       startKm: 8,
@@ -501,7 +520,7 @@ describe("generatePlan", () => {
   it("generates correct absolute paces for race pace steps", () => {
     const plan = generatePlan({
       bgModel: null,
-      raceDateStr: "2027-06-12",
+      raceDateStr: TEST_RACE_DATE,
       raceDist: 21.0975,
       totalWeeks: 12,
       startKm: 8,
@@ -525,7 +544,7 @@ describe("generatePlan", () => {
   it("easy run steps use absolute pace format with wide range (allows walking)", () => {
     const events = generatePlan({
       bgModel: null,
-      raceDateStr: "2026-08-01",
+      raceDateStr: TEST_RACE_DATE,
       raceDist: 21.0975,
       totalWeeks: 16,
       startKm: 8,
@@ -542,7 +561,7 @@ describe("generatePlan", () => {
 
   it("generates free runs for 5+ day schedules", () => {
     const plan = generatePlan({
-      ...defaultConfig, raceDateStr: "2027-06-12",
+      ...defaultConfig, raceDateStr: TEST_RACE_DATE,
       runDays: [1, 2, 3, 5, 0], longRunDay: 0,
     });
     const freeRuns = plan.filter((e) => e.external_id.includes("free-"));
@@ -556,7 +575,7 @@ describe("generatePlan", () => {
 describe("generateSingleWorkout", () => {
   const config: PlanConfig = {
     bgModel: null,
-    raceDateStr: "2027-06-12",
+    raceDateStr: TEST_RACE_DATE,
     raceDist: 16,
     totalWeeks: 12,
     startKm: 8,
@@ -651,7 +670,7 @@ describe("generateSingleWorkout", () => {
 });
 
 describe("suggestCategory", () => {
-  const ctx = buildContext({ bgModel: null, raceDateStr: "2027-06-12", raceDist: 16, totalWeeks: 12, startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES] });
+  const ctx = buildContext({ bgModel: null, raceDateStr: TEST_RACE_DATE, raceDist: 16, totalWeeks: 12, startKm: 8, lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES] });
 
   it("suggests long on Sunday (legacy fallback)", () => {
     const sunday = new Date(ctx.planStartMonday);
@@ -702,4 +721,3 @@ describe("suggestCategory", () => {
     }
   });
 });
-

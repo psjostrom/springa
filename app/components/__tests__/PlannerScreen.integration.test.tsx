@@ -32,13 +32,22 @@ function PlannerAutoAdaptHarness({
   return <PlannerScreen autoAdapt={autoAdapt} />;
 }
 
+function futureRaceDate(): string {
+  const raceDate = new Date();
+  raceDate.setDate(raceDate.getDate() + 18 * 7);
+  const year = raceDate.getFullYear();
+  const month = String(raceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(raceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function baseSettings(overrides?: Partial<UserSettings>): UserSettings {
   return {
     runDays: [2, 5, 0],
     longRunDay: 0,
     raceName: "EcoTrail",
     raceDist: 16,
-    raceDate: "2027-06-13",
+    raceDate: futureRaceDate(),
     intervalsConnected: true,
     hrZones: [120, 140, 155, 170, 185],
     lthr: 170,
