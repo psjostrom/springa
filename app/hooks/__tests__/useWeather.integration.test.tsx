@@ -87,4 +87,23 @@ describe("useWeather", () => {
       expect(result.current.has("planned-1")).toBe(true);
     });
   });
+
+  it("adds clothing recommendations for race day events", async () => {
+    vi.setSystemTime(new Date("2026-04-23T08:00:00Z"));
+
+    const events = [
+      {
+        id: "race-1",
+        date: new Date("2026-04-23T13:00:00Z"),
+        type: "race",
+        category: "race",
+      },
+    ];
+
+    const { result } = renderHook(() => useWeather(events, 0));
+
+    await waitFor(() => {
+      expect(result.current.has("race-1")).toBe(true);
+    });
+  });
 });

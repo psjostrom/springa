@@ -1,4 +1,4 @@
-import { APICallError } from "@ai-sdk/provider";
+import { APICallError } from "ai";
 
 export function formatAIError(err: unknown): { message: string; status: number } {
   if (APICallError.isInstance(err)) {

@@ -4,6 +4,9 @@ import { sampleActivities, sampleEvents, sampleStreams } from "./fixtures";
 import type { CalendarEvent } from "../../types";
 import { resolveWorkoutMetrics } from "../../workoutMath";
 
+const SMHI_URL =
+  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/18.07/lat/59.28/data.json";
+
 /** Convert raw Intervals.icu fixtures to CalendarEvent format for proxy route mocks. */
 function fixtureCalendarEvents(): CalendarEvent[] {
   const events: CalendarEvent[] = [];
@@ -83,8 +86,37 @@ export function resetCaptures() {
   capturedAthletePayload = null;
 }
 
+function smhiForecastResponse() {
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  return {
+    createdTime: now.toISOString(),
+    referenceTime: now.toISOString(),
+    geometry: { type: "Point", coordinates: [[18.07, 59.28]] },
+    timeSeries: Array.from({ length: 96 }, (_, i) => {
+      const time = new Date(now);
+      time.setHours(now.getHours() + i);
+      return {
+        time: time.toISOString(),
+        data: {
+          air_temperature: 8,
+          wind_speed: 3,
+          wind_speed_of_gust: 5,
+          precipitation_amount_mean: 0,
+          predominant_precipitation_type_at_surface: 0,
+        },
+      };
+    }),
+  };
+}
+
 export const handlers = [
   // --- External Intervals.icu API (used by server-side route handlers) ---
+
+  // SMHI weather forecast (used by clothing recommendations in CalendarView)
+  http.get(SMHI_URL, () => {
+    return HttpResponse.json(smhiForecastResponse());
+  }),
 
   // GET activities
   http.get(`${API_BASE}/athlete/0/activities`, () => {
