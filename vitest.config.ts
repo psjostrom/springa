@@ -19,7 +19,7 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["**/*.test.ts"],
-          exclude: ["**/node_modules/**", ".claude/**", "**/*.flow.test.ts", "**/*.integration.test.tsx"],
+          exclude: ["**/node_modules/**", ".claude/**", ".Codex/**", "**/*.flow.test.ts", "**/*.integration.test.tsx"],
           setupFiles: ["./lib/__tests__/msw/setup.ts"],
         },
       },
@@ -28,7 +28,7 @@ export default defineConfig({
         test: {
           name: "flow",
           include: ["**/*.flow.test.ts"],
-          exclude: ["**/node_modules/**", ".claude/**"],
+          exclude: ["**/node_modules/**", ".claude/**", ".Codex/**"],
           setupFiles: ["./lib/__tests__/msw/setup.ts"],
         },
       },
@@ -37,7 +37,7 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["**/*.integration.test.tsx"],
-          exclude: ["**/node_modules/**", ".claude/**"],
+          exclude: ["**/node_modules/**", ".claude/**", ".Codex/**"],
           environment: "jsdom",
           setupFiles: [
             "./lib/__tests__/msw/setup.ts",
