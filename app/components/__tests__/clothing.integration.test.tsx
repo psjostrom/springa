@@ -54,7 +54,6 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -72,7 +71,6 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
       />,
     );
@@ -89,7 +87,6 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -110,7 +107,6 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -132,7 +128,6 @@ describe("EventModal clothing recommendation", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -152,7 +147,6 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -180,7 +174,6 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -199,7 +192,6 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,
@@ -223,7 +215,6 @@ describe("full weather-to-clothing flow", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
 
         clothing={clothing}
       />,

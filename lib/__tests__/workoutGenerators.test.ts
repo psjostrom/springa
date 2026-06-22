@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
-import { getWeekIdx, prescribedCarbs } from "../workoutMath";
+import { estimateWorkoutDescriptionDistance, getWeekIdx, prescribedCarbs } from "../workoutMath";
 import { TEST_HR_ZONES, TEST_LTHR, TEST_GOAL_TIME } from "./testConstants";
 
 function formatDate(date: Date): string {
@@ -586,6 +586,8 @@ describe("generateSingleWorkout", () => {
   const ctx = buildContext(config);
   const buildThursday = new Date(ctx.planStartMonday);
   buildThursday.setDate(buildThursday.getDate() + 4 * 7 + 3);
+  const buildSunday = new Date(ctx.planStartMonday);
+  buildSunday.setDate(buildSunday.getDate() + 4 * 7 + 6);
 
   it("returns a workout for each category", () => {
     const categories: OnDemandCategory[] = ["easy", "quality", "long", "club"];
@@ -595,6 +597,53 @@ describe("generateSingleWorkout", () => {
       expect(event!.type).toBe("Run");
       expect(event!.description.length).toBeGreaterThan(0);
     }
+  });
+
+  it("byFeel strips targets while preserving distance and fuel math", () => {
+    const byFeelConfig = { ...config, byFeel: true };
+
+    const easyEvent = generateSingleWorkout("easy", buildThursday, byFeelConfig);
+    const qualityEvent = generateSingleWorkout("quality", buildThursday, byFeelConfig);
+    const longEvent = generateSingleWorkout("long", buildSunday, byFeelConfig);
+
+    expect(easyEvent).not.toBeNull();
+    expect(qualityEvent).not.toBeNull();
+    expect(longEvent).not.toBeNull();
+
+    for (const event of [easyEvent!, qualityEvent!, longEvent!]) {
+      expect(event.description).not.toContain("/km Pace");
+      expect(event.description).not.toContain("% pace");
+      expect(event.description).not.toContain("% LTHR");
+      expect(event.description).toContain("intensity=");
+    }
+
+    expect(longEvent!.description).toMatch(/- Warmup 1km intensity=warmup/);
+    expect(longEvent!.description).toMatch(/- Cooldown 2km intensity=cooldown/);
+    expect(longEvent!.distance).toBeGreaterThan(0);
+    expect(estimateWorkoutDescriptionDistance(longEvent!.description)).toEqual({
+      km: longEvent!.distance,
+      estimated: false,
+    });
+    expect(longEvent!.distance).toBe(12);
+    expect(prescribedCarbs(longEvent!.description, longEvent!.fuelRate)).toBe(87);
+  });
+
+  it("byFeel keeps race-day long targetless with exact distance", () => {
+    const byFeelConfig = { ...config, byFeel: true };
+    const raceDate = new Date(`${config.raceDateStr}T12:00:00`);
+    const event = generateSingleWorkout("long", raceDate, byFeelConfig);
+
+    expect(event).not.toBeNull();
+    expect(event!.name).toBe("RACE DAY");
+    expect(event!.description).toContain(`- Race ${config.raceDist}km intensity=active`);
+    expect(event!.description).not.toContain("/km Pace");
+    expect(event!.description).not.toContain("% pace");
+    expect(event!.description).not.toContain("% LTHR");
+    expect(event!.description).toContain("intensity=");
+    expect(estimateWorkoutDescriptionDistance(event!.description)).toEqual({
+      km: config.raceDist,
+      estimated: false,
+    });
   });
 
   it("uses the requested date for on-demand generation", () => {
@@ -665,18 +714,6 @@ describe("generateSingleWorkout", () => {
       const event = generateSingleWorkout("quality", week1Thursday, baseConfig);
       expect(event).not.toBeNull();
       expect(event!.name).toContain("Easy");
-    }
-  });
-
-  it("byFeel strips all pace targets from generated workouts", () => {
-    const byFeelConfig = { ...config, byFeel: true };
-    const categories: OnDemandCategory[] = ["easy", "quality", "long"];
-    for (const cat of categories) {
-      const event = generateSingleWorkout(cat, buildThursday, byFeelConfig);
-      if (!event) continue;
-      expect(event.description).not.toMatch(/\d+:\d+-\d+:\d+\/km Pace/);
-      expect(event.description).not.toMatch(/\d+-\d+% pace/);
-      expect(event.description).toContain("intensity=");
     }
   });
 });

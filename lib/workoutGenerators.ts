@@ -107,8 +107,7 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
   z5:   { min: null, max: null },
 };
 
-/** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it.
- *  When byFeel is true, all zones resolve to null paces — steps keep names/durations but no targets. */
+/** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it. */
 function createStepMaker(thresholdPace?: number, byFeel?: boolean) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
     const pct = byFeel ? { min: null, max: null } : HM_ZONE_DEFAULTS[zone];
@@ -442,6 +441,7 @@ export interface PlanConfig {
   startKm: number;
   lthr: number;
   hrZones: number[];
+  byFeel?: boolean;
   includeBasePhase?: boolean;
   diabetesMode?: boolean;
   runDays?: number[];
@@ -450,7 +450,6 @@ export interface PlanConfig {
   clubType?: string;
   currentAbilitySecs?: number;
   currentAbilityDist?: number;
-  byFeel?: boolean;
 }
 
 export function buildContext(config: PlanConfig): PlanContext {
@@ -468,6 +467,7 @@ export function buildContext(config: PlanConfig): PlanContext {
     fuelInterval: getCurrentFuelRate("interval", config.bgModel, config.diabetesMode),
     fuelLong: getCurrentFuelRate("long", config.bgModel, config.diabetesMode),
     fuelEasy: getCurrentFuelRate("easy", config.bgModel, config.diabetesMode),
+    byFeel: config.byFeel,
     raceDate,
     raceDist: config.raceDist,
     totalWeeks: config.totalWeeks,
@@ -485,7 +485,6 @@ export function buildContext(config: PlanConfig): PlanContext {
     clubDay: config.clubDay,
     clubType: config.clubType,
     paceTable,
-    byFeel: config.byFeel,
   };
 }
 

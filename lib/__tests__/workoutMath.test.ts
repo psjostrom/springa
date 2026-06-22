@@ -1,7 +1,26 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { prescribedCarbs } from "../workoutMath";
+import {
+  estimateWorkoutDuration,
+  estimateWorkoutDistance,
+  estimatePlanEventDistance,
+  prescribedCarbs,
+} from "../workoutMath";
 import { processActivities, processPlannedEvents } from "../calendarPipeline";
-import type { IntervalsActivity, IntervalsEvent } from "../types";
+import type {
+  IntervalsActivity,
+  IntervalsEvent,
+  PaceTable,
+  CalendarEvent,
+  WorkoutEvent,
+} from "../types";
+
+const KNOWN_PACE_TABLE: PaceTable = {
+  z1: null,
+  z2: { zone: "z2", avgPace: 6.0, sampleCount: 10 },
+  z3: { zone: "z3", avgPace: 5.0, sampleCount: 8 },
+  z4: { zone: "z4", avgPace: 4.5, sampleCount: 5 },
+  z5: { zone: "z5", avgPace: 4.0, sampleCount: 3 },
+};
 
 let originalConsoleLog: typeof console.log;
 
@@ -141,5 +160,71 @@ describe("prescribedCarbs — wide easy zone with threshold", () => {
     const carbs = prescribedCarbs(desc, 60, undefined, 5.5);
     expect(carbs).toBeGreaterThan(50);
     expect(carbs).toBeLessThan(65);
+  });
+});
+
+describe("targetless km prescriptions with a pace table", () => {
+  it("uses z3 pace for targetless race distance when estimating duration and carbs", () => {
+    const desc = `- Race 16km intensity=active`;
+
+    expect(estimateWorkoutDuration(desc, KNOWN_PACE_TABLE)).toEqual({
+      minutes: 80,
+      estimated: true,
+    });
+    expect(prescribedCarbs(desc, 60, KNOWN_PACE_TABLE)).toBe(80);
+  });
+
+  it("uses z3 pace for targetless race-pace distance when estimating duration and carbs", () => {
+    const desc = `- Race Pace 4km intensity=active`;
+
+    expect(estimateWorkoutDuration(desc, KNOWN_PACE_TABLE)).toEqual({
+      minutes: 20,
+      estimated: true,
+    });
+    expect(prescribedCarbs(desc, 60, KNOWN_PACE_TABLE)).toBe(20);
+  });
+});
+
+describe("estimateWorkoutDistance with no-pace steps", () => {
+  it("uses zone-specific pace for structured no-pace race steps", () => {
+    const event: CalendarEvent = {
+      id: "distance-no-pace",
+      date: new Date(),
+      name: "W01 By feel",
+      description: `Warmup
+- Race 60m intensity=active
+`,
+      type: "planned",
+      category: "easy",
+    };
+
+    expect(estimateWorkoutDistance(event, KNOWN_PACE_TABLE)).toBeCloseTo(12, 1);
+  });
+
+  it("returns 0 for explicit free-only workouts", () => {
+    const event: CalendarEvent = {
+      id: "distance-free-only",
+      date: new Date(),
+      name: "W01 By feel",
+      description: `- Free 60m intensity=active`,
+      type: "planned",
+      category: "easy",
+    };
+
+    expect(estimateWorkoutDistance(event, KNOWN_PACE_TABLE)).toBe(0);
+  });
+});
+
+describe("estimatePlanEventDistance", () => {
+  it("returns 0 for explicit free-only workouts", () => {
+    const event: WorkoutEvent = {
+      start_date_local: new Date(),
+      name: "W01 By feel",
+      description: `- Free 60m intensity=active`,
+      external_id: "test",
+      type: "Run",
+    };
+
+    expect(estimatePlanEventDistance(event, KNOWN_PACE_TABLE)).toBe(0);
   });
 });

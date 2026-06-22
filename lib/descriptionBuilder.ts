@@ -1,5 +1,24 @@
 import { formatPace, pctToMinPerKm } from "./format";
 
+const SUPPORTED_NO_PACE_LABELS = new Set([
+  "Cooldown",
+  "Downhill",
+  "Easy",
+  "Fast",
+  "Free",
+  "Hard",
+  "Interval",
+  "Race",
+  "Race Pace",
+  "Recovery",
+  "Stride",
+  "Tempo",
+  "Threshold",
+  "Uphill",
+  "Walk",
+  "Warmup",
+]);
+
 /** Format a single workout step line with LTHR zone and BPM range. */
 export function formatStep(
   duration: string,
@@ -65,13 +84,61 @@ export function createWorkoutText(
   return lines.join("\n");
 }
 
-/** Strip pace targets from all step lines, leaving duration/note/intensity intact.
- *  Turns a structured workout into a "by feel" version the watch won't nag about. */
-export function stripPaceTargets(description: string): string {
-  return description.replace(
-    / \d{1,2}:\d{2}-\d{1,2}:\d{2}\/km Pace| \d+-\d+% pace/g,
-    "",
-  );
+/** Strip pace and HR targets from step lines while keeping labels and tags. */
+export function stripWorkoutTargets(description: string): string {
+  let currentSection = "";
+
+  return description
+    .split("\n")
+    .map((line) => {
+      if (!line.startsWith("- ")) {
+        if (line.trim()) currentSection = line.trim();
+        return line;
+      }
+
+      return stripStepTargets(line, currentSection);
+    })
+    .join("\n");
+}
+
+function stripStepTargets(line: string, currentSection: string): string {
+  const hrMatch =
+    /^- (.*?)(\d+(?:\.\d+)?(?:km|m|s)) (\d+)-(\d+)%\s*LTHR(?:\s*\([^)]+\))?((?:\s+.*)?)$/.exec(
+      line,
+    );
+
+  if (hrMatch) {
+    const [, label, duration, min, max, suffix = ""] = hrMatch;
+    const existingLabel = label.trim();
+    const supportedLabel = SUPPORTED_NO_PACE_LABELS.has(existingLabel)
+      ? existingLabel
+      : null;
+    const resolvedLabel =
+      supportedLabel ??
+      deriveHrEffortLabel(currentSection, line, Number(min), Number(max));
+    return `- ${resolvedLabel} ${duration}${suffix}`;
+  }
+
+  return line
+    .replace(/\s+\d{1,2}:\d{2}-\d{1,2}:\d{2}\/km Pace/g, "")
+    .replace(/\s+\d+-\d+% pace/g, "");
+}
+
+function deriveHrEffortLabel(
+  currentSection: string,
+  line: string,
+  minPct: number,
+  maxPct: number,
+): string {
+  const intensity = /(?:^|\s)intensity=(\w+)/.exec(line)?.[1];
+
+  if (currentSection === "Warmup" || intensity === "warmup") return "Warmup";
+  if (currentSection === "Cooldown" || intensity === "cooldown") return "Cooldown";
+  if (intensity === "rest") return "Easy";
+
+  if (maxPct <= 83) return "Easy";
+  if (minPct >= 89) return "Fast";
+  return "Race Pace";
 }
 
 /** Build a single-step workout description (no warmup/cooldown structure). */

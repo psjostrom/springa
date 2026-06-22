@@ -5,9 +5,14 @@ import { formatPace, pctToMinPerKm } from "./format";
 // --- PACE LOOKUP ---
 
 /** Safe accessor for FALLBACK_PACE_TABLE entries (z2-z5 populated, z1 is null).
- *  Returns the zone's avgPace or a conservative 7.25 min/km default if the zone has no entry. */
+ *  Returns the zone's avgPace or a conservative fallback if the zone has no entry. */
 function fallbackPace(zone: ZoneName): number {
+  if (zone === "z1") return 12;
   return FALLBACK_PACE_TABLE[zone]?.avgPace ?? 7.25;
+}
+
+export function paceForZone(zone: ZoneName, table?: PaceTable): number {
+  return table?.[zone]?.avgPace ?? fallbackPace(zone);
 }
 
 export function paceForIntensity(
@@ -47,7 +52,7 @@ export function classifyPacePct(avgPct: number): ZoneName {
 }
 
 const NO_PACE_STEP_LABEL_PATTERN =
-  "Walk|Downhill|Stride|Uphill|Fast|Interval|Race Pace|Easy|Warmup|Cooldown|Free";
+  "Walk|Downhill|Recovery|Stride|Uphill|Threshold|Tempo|Hard|Fast|Interval|Race Pace|Race|Easy|Warmup|Cooldown|Free";
 
 function isSectionHeaderLine(line: string): boolean {
   if (line === "Warmup" || line === "Cooldown") return true;
@@ -273,13 +278,13 @@ export function parseWorkoutStructure(
   const sections: WorkoutSection[] = [];
   // HR-based: "- Warmup 10m 68-83% LTHR (115-140 bpm)"
   const hrStepPattern =
-    /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
+    /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Recovery|Easy|Tempo|Threshold|Hard|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))\s+(\d+)-(\d+)%\s*LTHR\s*\(([^)]+)\)/;
   // Pace-based: "- Warmup 10m 85-94% pace intensity=warmup"
   const paceStepPattern =
-    /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
+    /^-\s*(?:(Uphill|Downhill|Walk|Recovery|Easy|Tempo|Threshold|Hard|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+)-(\d+)%\s*pace)?/;
   // Absolute pace: "- Warmup 10m 6:15-7:52/km Pace intensity=warmup"
   const absPaceStepPattern =
-    /^-\s*(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
+    /^-\s*(?:(Uphill|Downhill|Walk|Recovery|Easy|Tempo|Threshold|Hard|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?(\d+(?:\.\d+)?(?:s|m|km))(?:\s+(\d+:\d+)-(\d+:\d+)\/km\s*Pace)?/;
   // Free: "- Free 60m intensity=active" — duration only, no pace target.
   const freeStepPattern = new RegExp(
     `^-\\s*(?:(${NO_PACE_STEP_LABEL_PATTERN})\\s+)?(\\d+(?:\\.\\d+)?(?:s|m|km))(?:\\s+intensity=\\w+)?\\s*$`,
@@ -425,7 +430,7 @@ export function extractStepTotals(description: string): Record<string, number> {
   // Match HR-based ("X-Y% LTHR"), pace-based ("X-Y% pace"), and absolute pace ("M:SS-M:SS/km Pace") steps.
   // Note: Free steps don't have pace/HR specs, so they won't match. Label list is symmetric with parseWorkoutStructure.
   const stepPattern =
-    /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Easy|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
+    /^-\s*(?:(?:PUMP.*?|FUEL PER 10:\s*\d+g(?:\s+TOTAL:\s*\d+g)?)\s+)?(?:(Uphill|Downhill|Walk|Recovery|Easy|Tempo|Threshold|Hard|Race Pace|Race|Interval|Fast|Stride|Free|Warmup|Cooldown)\s+)?\d+(?:\.\d+)?(?:s|m|km)\s+(?:\d+-\d+%|\d+:\d+-\d+:\d+\/km\s*Pace)/;
 
   const sectionPattern =
     /(?:^|\n)(Warmup|Main set(?:\s+\d+x)?|Strides\s+\d+x|Cooldown)/gm;
@@ -467,6 +472,7 @@ export interface WorkoutSegment {
   estimated: boolean; // true if duration was converted from km using pace estimates
   km: number | null; // original km value if distance-based, null if time-based
   noPace?: boolean; // true for effort-based steps with no pace target (e.g. "Free 60m")
+  canEstimateDistance?: boolean; // false when the targetless step is explicitly unknowable (e.g. "Free 60m")
   zone?: ZoneName; // explicit zone, set when classifyPacePct can't recover it (no-pace steps; covers z1)
 }
 
@@ -475,11 +481,16 @@ export interface WorkoutSegment {
 const NO_PACE_ZONE_BY_LABEL: Record<string, ZoneName> = {
   Walk: "z1",
   Downhill: "z1",
+  Recovery: "z1",
   Stride: "z5",
   Uphill: "z5",
+  Threshold: "z4",
+  Tempo: "z3",
+  Hard: "z4",
   Fast: "z4",
   Interval: "z4",
   "Race Pace": "z3",
+  Race: "z3",
   Easy: "z2",
   Warmup: "z2",
   Cooldown: "z2",
@@ -494,7 +505,7 @@ function zoneForNoPaceLabel(label?: string): ZoneName {
  *  segments so the bar's height calc (intensity → height) renders sensibly. */
 const ZONE_TYPICAL_INTENSITY: Record<ZoneName, number> = {
   z1: 60,
-  z2: 80,
+  z2: 79,
   z3: 100,
   z4: 108,
   z5: 115,
@@ -506,10 +517,11 @@ function toMinutes(
   unit: string,
   avgPercent: number,
   table?: PaceTable,
+  zone?: ZoneName,
 ): { minutes: number; estimated: boolean; km: number | null } {
   if (unit === "km") {
     return {
-      minutes: value * paceForIntensity(avgPercent, table),
+      minutes: value * (zone ? paceForZone(zone, table) : paceForIntensity(avgPercent, table)),
       estimated: true,
       km: value,
     };
@@ -593,14 +605,21 @@ function parseSectionSegments(
       const label = np[1];
       const value = parseFloat(np[2]);
       const unit = np[3];
-      const duration = unit === "s" ? value / 60 : value;
       const zone = zoneForNoPaceLabel(label);
+      const conv = toMinutes(
+        value,
+        unit,
+        ZONE_TYPICAL_INTENSITY[zone],
+        table,
+        zone,
+      );
       segments.push({
-        duration,
+        duration: conv.minutes,
         intensity: ZONE_TYPICAL_INTENSITY[zone],
-        estimated: false,
-        km: null,
+        estimated: conv.estimated,
+        km: conv.km,
         noPace: true,
+        canEstimateDistance: label !== "Free",
         zone,
       });
     }

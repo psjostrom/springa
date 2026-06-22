@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
+import { fireEvent, render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
@@ -57,8 +57,39 @@ const baseCompleted: CalendarEvent = {
   },
 };
 
+const LONG_RUN_PACE_DESCRIPTION = `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- 1km 6:15-18:20/km Pace intensity=warmup
+
+Main set
+- Easy 3km 6:15-18:20/km Pace intensity=active
+- Race Pace 3km 5:24-5:33/km Pace intensity=active
+- Easy 3km 6:15-18:20/km Pace intensity=active
+
+Cooldown
+- 2km 6:15-18:20/km Pace intensity=cooldown`;
+
+const basePlannedLong: CalendarEvent = {
+  id: "event-101",
+  date: new Date("2099-03-16T08:00:00"),
+  name: "W05 Long (12km)",
+  description: LONG_RUN_PACE_DESCRIPTION,
+  type: "planned",
+  category: "long",
+  fuelRate: 60,
+};
+
 const noop = () => {};
 const noopAsync = async () => {};
+
+function createDeferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 // Real race descriptions follow the workout-step format so the strip can derive a
 // total. The previous fixture used a free-text "Race day!" string and relied on a
@@ -82,7 +113,6 @@ describe("EventModal race event", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -97,7 +127,6 @@ describe("EventModal race event", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -115,7 +144,6 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
         hrZones={[...TEST_HR_ZONES]}
         lthr={TEST_LTHR}
       />,
@@ -136,7 +164,6 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -159,7 +186,6 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
         isLoadingStreamData
       />,
     );
@@ -183,13 +209,406 @@ describe("EventModal workout card", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
         isLoadingStreamData={false}
       />,
     );
 
     await user.click(screen.getByText("Deep Dive"));
     expect(screen.queryByText("Heart Rate Zones")).toBeNull();
+  });
+});
+
+describe("EventModal By Feel toggle", () => {
+  afterEach(() => {
+    server.resetHandlers();
+    resetCaptures();
+  });
+
+  it("updates a planned pace workout, strips pace targets, and notifies the parent", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+    const googleSyncRequests: unknown[] = [];
+
+    server.use(
+      http.post("/api/google-calendar-sync", async ({ request }) => {
+        googleSyncRequests.push(await request.json());
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={onEventUpdated}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(capturedPutPayload).not.toBeNull();
+    });
+
+    const expectedPatch = {
+      name: "W05 Long (12km) By Feel",
+      description: `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- 1km intensity=warmup
+
+Main set
+- Easy 3km intensity=active
+- Race Pace 3km intensity=active
+- Easy 3km intensity=active
+
+Cooldown
+- 2km intensity=cooldown`,
+    };
+
+    expect(capturedPutPayload!.url).toContain("/api/intervals/events/101");
+    expect(capturedPutPayload!.body).toEqual(expectedPatch);
+    expect(onEventUpdated).toHaveBeenCalledWith("event-101", expectedPatch);
+    await waitFor(() => {
+      expect(googleSyncRequests).toEqual([
+        {
+          action: "update",
+          eventName: "W05 Long (12km)",
+          eventDate: "2099-03-16",
+          event: {
+            name: "W05 Long (12km) By Feel",
+            description: expectedPatch.description,
+            startLocal: "2099-03-16T08:00:00",
+            fuelRate: 60,
+          },
+        },
+      ]);
+    });
+  });
+
+  it("updates a planned HR workout and strips heart rate targets", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <EventModal
+        event={basePlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(capturedPutPayload).not.toBeNull();
+    });
+
+    expect(capturedPutPayload!.body).toEqual({
+      name: "W02 Hills By Feel",
+      description: `Hill reps build strength and power.
+
+Warmup
+- Warmup 10m
+
+Main set 6x
+- Uphill 2m
+- Downhill 3m
+
+Cooldown
+- Cooldown 5m`,
+    });
+  });
+
+  it("shows an error and keeps the action area visible when the update fails", async () => {
+    const user = userEvent.setup();
+    let googleSyncCalls = 0;
+
+    server.use(
+      http.put("/api/intervals/events/101", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+      http.post("/api/google-calendar-sync", () => {
+        googleSyncCalls += 1;
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
+    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+    expect(googleSyncCalls).toBe(0);
+  });
+
+  it("shows a disabled Saving... button while the by-feel update is pending", async () => {
+    const user = userEvent.setup();
+    const request = createDeferred();
+
+    server.use(
+      http.put("/api/intervals/events/101", async () => {
+        await request.promise;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+
+    request.resolve();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+  });
+
+  it("blocks conflicting actions and close while the by-feel update is pending", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const request = createDeferred();
+
+    server.use(
+      http.put("/api/intervals/events/101", async () => {
+        await request.promise;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    const { container } = render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={onClose}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const replaceButton = screen.getByRole("button", { name: "Replace" });
+    const editButton = screen.getByRole("button", { name: "Edit" });
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    const closeButton = screen.getByRole("button", { name: "Close" });
+
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    expect(replaceButton).toBeDisabled();
+    expect(editButton).toBeDisabled();
+    expect(deleteButton).toBeDisabled();
+    expect(closeButton).toBeDisabled();
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText("Delete this workout?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Replacing")).not.toBeInTheDocument();
+
+    request.resolve();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+  });
+
+  it("ignores Escape while the by-feel update is pending, then closes once the save finishes", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const request = createDeferred();
+
+    server.use(
+      http.put("/api/intervals/events/101", async () => {
+        await request.promise;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={onClose}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await user.keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    request.resolve();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    await user.keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the updated name and stripped description in modal state after a successful by-feel save without a parent patch callback", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.getByText("5:24-5:33 /km")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.queryByText("5:24-5:33 /km")).not.toBeInTheDocument();
+  });
+
+  it("keeps the local by-feel patch after saving the date without a parent patch callback", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    fireEvent.change(screen.getByDisplayValue("2099-03-16T08:00"), {
+      target: { value: "2099-03-17T09:30" },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+  });
+
+  it("resets the local by-feel patch when the modal switches to a different event", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    rerender(
+      <EventModal
+        event={basePlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "W02 Hills" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
+    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+    expect(screen.getByText(/112-132 bpm/)).toBeInTheDocument();
+  });
+
+  it("shows the exact update failure message for a malformed planned event id", async () => {
+    const user = userEvent.setup();
+    const malformedEvent: CalendarEvent = {
+      ...basePlannedLong,
+      id: "planned-oops",
+    };
+
+    render(
+      <EventModal
+        event={malformedEvent}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
+    expect(capturedPutPayload).toBeNull();
+  });
+
+  it("hides the button for workouts already marked by feel and for completed runs", () => {
+    const alreadyByFeel: CalendarEvent = {
+      ...basePlannedLong,
+      id: "event-102",
+      name: "W05 Long (12km) By Feel",
+    };
+
+    const { rerender } = render(
+      <EventModal
+        event={alreadyByFeel}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+
+    rerender(
+      <EventModal
+        event={baseCompleted}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
   });
 });
 
@@ -206,7 +625,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -230,7 +648,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -254,7 +671,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -275,7 +691,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -289,7 +704,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -303,7 +717,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -321,7 +734,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -348,7 +760,6 @@ describe("EventModal feedback", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
       { atomInits: [[calendarEventsAtom, [completedWithActivity]]] },
     );
@@ -391,7 +802,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -414,7 +824,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -443,7 +852,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -481,7 +889,6 @@ describe("EventModal pre-run carbs for planned events", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -509,7 +916,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -530,7 +936,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -562,7 +967,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -607,7 +1011,6 @@ describe("EventModal run analysis", () => {
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
-        onEventUpdated={noop}
       />,
     );
 
@@ -631,113 +1034,5 @@ describe("EventModal run analysis", () => {
 
     // New analysis should be displayed
     expect(screen.getByText("New analysis")).toBeInTheDocument();
-  });
-});
-
-describe("EventModal By Feel toggle", () => {
-  const PACE_DESCRIPTION = [
-    "Easy run with strides.",
-    "",
-    "Warmup",
-    "- Warmup 10m 30-88% pace intensity=warmup",
-    "",
-    "Main set",
-    "- Easy 20m 30-88% pace intensity=active",
-    "",
-    "Strides 4x",
-    "- Stride 20s intensity=active",
-    "- Walk 1m intensity=rest",
-    "",
-    "Cooldown",
-    "- Cooldown 15m 30-88% pace intensity=cooldown",
-    "",
-  ].join("\n");
-
-  const plannedWithPace: CalendarEvent = {
-    id: "event-100",
-    date: new Date("2099-03-10T14:00:00"),
-    name: "W02 Easy + Strides",
-    description: PACE_DESCRIPTION,
-    type: "planned",
-    category: "easy",
-    fuelRate: 60,
-  };
-
-  afterEach(() => {
-    resetCaptures();
-    server.resetHandlers();
-  });
-
-  it("strips pace targets and updates name when toggled", async () => {
-    const onUpdated = vi.fn();
-    render(
-      <EventModal
-        event={plannedWithPace}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-        onEventUpdated={onUpdated}
-      />,
-    );
-
-    await userEvent.click(screen.getByText("By Feel"));
-
-    await waitFor(() => {
-      expect(capturedPutPayload).not.toBeNull();
-    });
-
-    const body = capturedPutPayload!.body as { name: string; description: string };
-    expect(body.name).toBe("W02 Easy + Strides By Feel");
-    expect(body.description).not.toContain("% pace");
-    expect(body.description).toContain("Warmup 10m intensity=warmup");
-    expect(body.description).toContain("Stride 20s intensity=active");
-
-    expect(onUpdated).toHaveBeenCalledWith("event-100", {
-      name: "W02 Easy + Strides By Feel",
-      description: expect.not.stringContaining("% pace"),
-    });
-  });
-
-  it("shows error on API failure", async () => {
-    server.use(
-      http.put("/api/intervals/events/:eventId", () => {
-        return new HttpResponse(null, { status: 500 });
-      }),
-    );
-
-    render(
-      <EventModal
-        event={plannedWithPace}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-        onEventUpdated={noop}
-      />,
-    );
-
-    await userEvent.click(screen.getByText("By Feel"));
-
-    await waitFor(() => {
-      expect(screen.getByText(/failed to update workout/i)).toBeInTheDocument();
-    });
-  });
-
-  it("hides By Feel button when event is already by feel", () => {
-    const byFeelEvent: CalendarEvent = {
-      ...plannedWithPace,
-      name: "W02 Easy + Strides By Feel",
-    };
-
-    render(
-      <EventModal
-        event={byFeelEvent}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-        onEventUpdated={noop}
-      />,
-    );
-
-    expect(screen.queryByText("By Feel")).not.toBeInTheDocument();
   });
 });
