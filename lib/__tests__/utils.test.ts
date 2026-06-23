@@ -1556,6 +1556,23 @@ describe("parseWorkoutStructure — free format", () => {
       bpmRange: "",
     });
   });
+
+  it("ignores note text when choosing the workout format for stripped free steps", () => {
+    const desc = `Notes mention 66-78% LTHR, but the workout is free-form.
+
+Main set
+- Free 60m intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(1);
+    expect(sections[0].steps[0]).toMatchObject({
+      label: "Free",
+      duration: "60m",
+      bpmRange: "",
+    });
+  });
 });
 
 describe("parseWorkoutSegments — wide easy zone duration estimate", () => {

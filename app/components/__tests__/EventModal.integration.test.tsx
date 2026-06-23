@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@/lib/__tests__/test-utils";
+import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
@@ -89,6 +89,45 @@ function createDeferred() {
     resolve = resolvePromise;
   });
   return { promise, resolve };
+}
+
+function StatefulEventModalHarness({
+  initialEvent = basePlannedLong,
+  onClose = noop,
+  onDelete = noopAsync,
+  onDateSaved = noop,
+  onEventUpdated,
+}: {
+  initialEvent?: CalendarEvent;
+  onClose?: () => void;
+  onDelete?: (eventId: string) => Promise<void>;
+  onDateSaved?: (eventId: string, newDate: Date) => void;
+  onEventUpdated?: (
+    eventId: string,
+    patch: Partial<Pick<CalendarEvent, "name" | "description">>,
+  ) => void;
+}) {
+  const [event, setEvent] = React.useState(initialEvent);
+
+  return (
+    <EventModal
+      event={event}
+      onClose={onClose}
+      onDelete={onDelete}
+      onDateSaved={(eventId, newDate) => {
+        setEvent((prev) => (prev.id === eventId ? { ...prev, date: newDate } : prev));
+        onDateSaved(eventId, newDate);
+      }}
+      onEventUpdated={
+        onEventUpdated
+          ? (eventId, patch) => {
+              setEvent((prev) => (prev.id === eventId ? { ...prev, ...patch } : prev));
+              onEventUpdated(eventId, patch);
+            }
+          : undefined
+      }
+    />
+  );
 }
 
 // Real race descriptions follow the workout-step format so the strip can derive a
@@ -237,13 +276,7 @@ describe("EventModal By Feel toggle", () => {
     );
 
     render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-        onEventUpdated={onEventUpdated}
-      />,
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -286,18 +319,14 @@ Cooldown
         },
       ]);
     });
+    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
   });
 
   it("updates a planned HR workout and strips heart rate targets", async () => {
     const user = userEvent.setup();
 
     render(
-      <EventModal
-        event={basePlanned}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness initialEvent={basePlanned} onEventUpdated={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -337,12 +366,7 @@ Cooldown
     );
 
     render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -353,29 +377,26 @@ Cooldown
     expect(googleSyncCalls).toBe(0);
   });
 
-  it("shows a disabled Saving... button while the by-feel update is pending", async () => {
+  it("shows a disabled Saving... button while the required Google rename is pending", async () => {
     const user = userEvent.setup();
     const request = createDeferred();
 
     server.use(
-      http.put("/api/intervals/events/101", async () => {
+      http.post("/api/google-calendar-sync", async () => {
         await request.promise;
-        return new HttpResponse(null, { status: 200 });
+        return HttpResponse.json({ synced: true });
       }),
     );
 
     render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
 
     expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
 
     request.resolve();
 
@@ -384,25 +405,21 @@ Cooldown
     });
   });
 
-  it("blocks conflicting actions and close while the by-feel update is pending", async () => {
+  it("waits for the required Google rename before publishing the patch or unlocking conflicting actions", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
+    const onEventUpdated = vi.fn();
     const request = createDeferred();
 
     server.use(
-      http.put("/api/intervals/events/101", async () => {
+      http.post("/api/google-calendar-sync", async () => {
         await request.promise;
-        return new HttpResponse(null, { status: 200 });
+        return HttpResponse.json({ synced: true });
       }),
     );
 
     const { container } = render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={onClose}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness onClose={onClose} onEventUpdated={onEventUpdated} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -413,6 +430,7 @@ Cooldown
     const closeButton = screen.getByRole("button", { name: "Close" });
 
     expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    expect(onEventUpdated).not.toHaveBeenCalled();
     expect(replaceButton).toBeDisabled();
     expect(editButton).toBeDisabled();
     expect(deleteButton).toBeDisabled();
@@ -427,29 +445,29 @@ Cooldown
     request.resolve();
 
     await waitFor(() => {
+      expect(onEventUpdated).toHaveBeenCalledTimes(1);
       expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
     });
+    expect(replaceButton).not.toBeDisabled();
+    expect(editButton).not.toBeDisabled();
+    expect(deleteButton).not.toBeDisabled();
+    expect(closeButton).not.toBeDisabled();
   });
 
-  it("ignores Escape while the by-feel update is pending, then closes once the save finishes", async () => {
+  it("ignores Escape while the required Google rename is pending, then closes once the save finishes", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const request = createDeferred();
 
     server.use(
-      http.put("/api/intervals/events/101", async () => {
+      http.post("/api/google-calendar-sync", async () => {
         await request.promise;
-        return new HttpResponse(null, { status: 200 });
+        return HttpResponse.json({ synced: true });
       }),
     );
 
     render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={onClose}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness onClose={onClose} onEventUpdated={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -468,96 +486,6 @@ Cooldown
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the updated name and stripped description in modal state after a successful by-feel save without a parent patch callback", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
-    );
-
-    expect(screen.getByText("5:24-5:33 /km")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    });
-
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
-    expect(screen.queryByText("5:24-5:33 /km")).not.toBeInTheDocument();
-  });
-
-  it("keeps the local by-feel patch after saving the date without a parent patch callback", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-
-    fireEvent.change(screen.getByDisplayValue("2099-03-16T08:00"), {
-      target: { value: "2099-03-17T09:30" },
-    });
-
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    });
-
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
-  });
-
-  it("resets the local by-feel patch when the modal switches to a different event", async () => {
-    const user = userEvent.setup();
-
-    const { rerender } = render(
-      <EventModal
-        event={basePlannedLong}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    });
-
-    rerender(
-      <EventModal
-        event={basePlanned}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "W02 Hills" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
-    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
-    expect(screen.getByText(/112-132 bpm/)).toBeInTheDocument();
-  });
-
   it("shows the exact update failure message for a malformed planned event id", async () => {
     const user = userEvent.setup();
     const malformedEvent: CalendarEvent = {
@@ -566,12 +494,7 @@ Cooldown
     };
 
     render(
-      <EventModal
-        event={malformedEvent}
-        onClose={noop}
-        onDateSaved={noop}
-        onDelete={noopAsync}
-      />,
+      <StatefulEventModalHarness initialEvent={malformedEvent} onEventUpdated={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
@@ -581,7 +504,31 @@ Cooldown
     expect(capturedPutPayload).toBeNull();
   });
 
-  it("hides the button for workouts already marked by feel and for completed runs", () => {
+  it("shows the sync error and does not publish the patch when Google rename fails", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+
+    server.use(
+      http.post("/api/google-calendar-sync", () => {
+        return HttpResponse.json({ synced: false, error: "rename failed" });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
+    expect(onEventUpdated).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
+    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+  });
+
+  it("hides the button without a parent update callback, for workouts already marked by feel, and for completed runs", () => {
     const alreadyByFeel: CalendarEvent = {
       ...basePlannedLong,
       id: "event-102",
@@ -589,6 +536,17 @@ Cooldown
     };
 
     const { rerender } = render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+
+    rerender(
       <EventModal
         event={alreadyByFeel}
         onClose={noop}

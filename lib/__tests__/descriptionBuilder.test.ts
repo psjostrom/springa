@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatPaceStep, createWorkoutText, stripWorkoutTargets } from "../descriptionBuilder";
+import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 
 describe("formatPaceStep", () => {
   it("formats a pace step with min-max percentage (no threshold)", () => {
@@ -91,6 +92,13 @@ describe("stripWorkoutTargets", () => {
   it("strips bare unlabeled HR targets and adds a derived label", () => {
     const input = "- 20m 78-89% LTHR intensity=active";
     expect(stripWorkoutTargets(input)).toBe("- Race Pace 20m intensity=active");
+  });
+
+  it("uses real HR boundaries to keep unlabeled 77-84% LTHR steps Easy", () => {
+    const input = "- 20m 77-84% LTHR intensity=active";
+    expect(stripWorkoutTargets(input, TEST_LTHR, [...TEST_HR_ZONES])).toBe(
+      "- Easy 20m intensity=active",
+    );
   });
 
   it("still strips parenthetical HR targets", () => {

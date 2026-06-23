@@ -2,13 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { useAtomValue } from "jotai";
 import { CalendarView } from "../CalendarView";
 import type { CalendarEvent } from "@/lib/types";
 import "@/lib/__tests__/setup-dom";
 import { server } from "@/lib/__tests__/msw/server";
 import { capturedPutPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
-import { calendarEventsAtom } from "../../atoms";
 
 function futurePlannedEvent(): CalendarEvent {
   return {
@@ -30,16 +28,6 @@ Cooldown
 - 2km 6:15-18:20/km Pace intensity=cooldown`,
     category: "easy",
   };
-}
-
-function CalendarEventsProbe() {
-  const events = useAtomValue(calendarEventsAtom);
-  const firstEvent = events.at(0);
-  return (
-    <output data-testid="calendar-events-probe">
-      {firstEvent ? `${firstEvent.name}\n${firstEvent.description}` : "empty"}
-    </output>
-  );
 }
 
 describe("CalendarView", () => {
@@ -77,7 +65,7 @@ describe("CalendarView", () => {
     });
   });
 
-  it("keeps the parent event patch local to CalendarView and syncs Google Calendar for By Feel", async () => {
+  it("keeps the successful By Feel patch in CalendarView and syncs Google Calendar", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync });
     const googleSyncRequests: unknown[] = [];
 
@@ -91,26 +79,17 @@ describe("CalendarView", () => {
     window.history.replaceState(null, "", "/?workout=event-123");
 
     render(
-      <>
-        <CalendarEventsProbe />
-        <CalendarView
-          initialEvents={[futurePlannedEvent()]}
-          isLoadingInitial={false}
-          initialError={null}
-        />
-      </>,
-      { atomInits: [[calendarEventsAtom, [futurePlannedEvent()]]] },
+      <CalendarView
+        initialEvents={[futurePlannedEvent()]}
+        isLoadingInitial={false}
+        initialError={null}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("calendar-events-probe")).toHaveTextContent("W05 Easy + Strides By Feel");
-      expect(screen.getByTestId("calendar-events-probe")).toHaveTextContent("Long run with a 3km race pace block sandwiched in the middle.");
     });
 
     expect(capturedPutPayload?.body).toEqual({
@@ -160,10 +139,12 @@ Cooldown
       expect(screen.queryByRole("heading", { name: "W05 Easy + Strides By Feel" })).not.toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("W05 Easy + Strides By Feel"));
+    const updatedEvent = await screen.findByText("W05 Easy + Strides By Feel");
+    await user.click(updatedEvent);
 
     expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.queryByText("5:24-5:33 /km")).not.toBeInTheDocument();
     expect(googleSyncRequests).toHaveLength(1);
   });
 });

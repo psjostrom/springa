@@ -38,10 +38,6 @@ interface ModalState {
   editMode: EditMode;
   error: string | null;
   isClosing: boolean;
-  eventPatch: {
-    eventId: string;
-    patch: Partial<Pick<CalendarEvent, "name" | "description">>;
-  } | null;
 }
 
 type ModalAction =
@@ -51,11 +47,7 @@ type ModalAction =
   | { type: "DATE_SAVED" }
   | { type: "DATE_SAVE_FAILED"; error: string }
   | { type: "TOGGLE_BY_FEEL" }
-  | {
-      type: "BY_FEEL_DONE";
-      eventId: string;
-      patch: Partial<Pick<CalendarEvent, "name" | "description">>;
-    }
+  | { type: "BY_FEEL_DONE" }
   | { type: "BY_FEEL_FAILED"; error: string }
   | { type: "CONFIRM_DELETE" }
   | { type: "DELETE" }
@@ -69,7 +61,6 @@ const INITIAL_MODAL_STATE: ModalState = {
   editMode: { kind: "idle" },
   error: null,
   isClosing: false,
-  eventPatch: null,
 };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
@@ -95,10 +86,7 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
     case "TOGGLE_BY_FEEL":
       return { ...state, editMode: { kind: "toggling-by-feel" }, error: null };
     case "BY_FEEL_DONE":
-      return {
-        ...INITIAL_MODAL_STATE,
-        eventPatch: { eventId: action.eventId, patch: action.patch },
-      };
+      return INITIAL_MODAL_STATE;
     case "BY_FEEL_FAILED":
       return { ...state, editMode: { kind: "idle" }, error: action.error };
     case "CONFIRM_DELETE":
@@ -138,8 +126,6 @@ interface EventModalProps {
   ) => void;
 }
 
-const noopEventUpdated = () => undefined;
-
 export function EventModal({
   event,
   onClose,
@@ -153,12 +139,10 @@ export function EventModal({
   lthr,
   clothing,
   racePacePerKm,
-  onEventUpdated = noopEventUpdated,
+  onEventUpdated,
 }: EventModalProps) {
   const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
-  const effectiveSelectedEvent = state.eventPatch?.eventId === event.id
-    ? { ...event, ...state.eventPatch.patch }
-    : event;
+  const effectiveSelectedEvent = event;
 
   // Extract values from discriminated union for JSX convenience
   const { editMode } = state;
@@ -183,7 +167,10 @@ export function EventModal({
     const target = bgModel.targetFuelRates.find((t) => t.category === workoutCategory);
     return target?.targetFuelRate ?? null;
   })();
-  const canToggleByFeel = effectiveSelectedEvent.type === "planned" && !isByFeel(effectiveSelectedEvent.name);
+  const canToggleByFeel =
+    effectiveSelectedEvent.type === "planned" &&
+    !isByFeel(effectiveSelectedEvent.name) &&
+    onEventUpdated != null;
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -243,6 +230,10 @@ export function EventModal({
   };
 
   const toggleByFeel = async () => {
+    if (!onEventUpdated) {
+      return;
+    }
+
     const numericId = parseEventId(effectiveSelectedEvent.id);
     if (isNaN(numericId)) {
       dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
@@ -251,14 +242,18 @@ export function EventModal({
 
     const patch = {
       name: addByFeel(effectiveSelectedEvent.name),
-      description: stripWorkoutTargets(effectiveSelectedEvent.description),
+      description: stripWorkoutTargets(
+        effectiveSelectedEvent.description,
+        lthr,
+        hrZones,
+      ),
     };
 
     dispatch({ type: "TOGGLE_BY_FEEL" });
     try {
       await updateEvent(numericId, patch);
 
-      void syncToGoogleCalendar("update", {
+      await syncToGoogleCalendar("update", {
         eventName: effectiveSelectedEvent.name,
         eventDate: format(effectiveSelectedEvent.date, "yyyy-MM-dd"),
         event: {
@@ -267,10 +262,10 @@ export function EventModal({
           startLocal: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm:ss"),
           ...(effectiveSelectedEvent.fuelRate != null && { fuelRate: effectiveSelectedEvent.fuelRate }),
         },
-      });
+      }, { required: true });
 
       onEventUpdated(effectiveSelectedEvent.id, patch);
-      dispatch({ type: "BY_FEEL_DONE", eventId: effectiveSelectedEvent.id, patch });
+      dispatch({ type: "BY_FEEL_DONE" });
     } catch (err) {
       console.error("Failed to update workout:", err);
       dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });

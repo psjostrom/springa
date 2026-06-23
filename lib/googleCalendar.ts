@@ -144,7 +144,10 @@ export async function findGoogleEvent(
     `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?q=${encodeURIComponent(name)}&timeMin=${encodeURIComponent(dayStart)}&timeMax=${encodeURIComponent(dayEnd)}&singleEvents=true`,
     { headers: authHeaders(accessToken) },
   );
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to look up Google Calendar event: ${res.status} ${text}`);
+  }
 
   const data = (await res.json()) as { items?: { id: string; summary: string }[] };
   const match = data.items?.find((e) => e.summary === name);
@@ -195,7 +198,8 @@ export async function updateGoogleEvent(
     },
   );
   if (!res.ok) {
-    console.warn(`Failed to update Google Calendar event ${googleEventId}: ${res.status}`);
+    const text = await res.text();
+    throw new Error(`Failed to update Google Calendar event ${googleEventId}: ${res.status} ${text}`);
   }
 }
 
@@ -311,14 +315,42 @@ export async function syncToGoogleCalendar(
     eventDate?: string;
     event?: SyncEvent;
   },
+  options?: { required?: boolean },
 ): Promise<void> {
+  const requestUrl = typeof window === "undefined"
+    ? "http://localhost/api/google-calendar-sync"
+    : new URL("/api/google-calendar-sync", window.location.origin).toString();
+
   try {
-    await fetch("/api/google-calendar-sync", {
+    const res = await fetch(requestUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...payload }),
     });
+
+    if (!options?.required) {
+      return;
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Google Calendar sync failed (${res.status}): ${text}`);
+    }
+
+    const data = (await res.json()) as {
+      synced?: boolean;
+      error?: string;
+      reason?: string;
+    };
+
+    if (data.synced === false && data.reason === "no-token") return;
+    if (data.synced !== true) {
+      throw new Error(data.error ?? "Google Calendar sync did not confirm success.");
+    }
   } catch (e) {
+    if (options?.required) {
+      throw e;
+    }
     console.warn("Google Calendar sync failed:", e);
   }
 }

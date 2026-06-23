@@ -263,15 +263,17 @@ export function parseWorkoutStructure(
   racePacePerKm?: number,
 ): WorkoutSection[] {
   if (!description) return [];
-  const isPaceFormat = description.includes("% pace");
-  const isAbsolutePace = description.includes("/km Pace");
-  const isHrFormat = description.includes("% LTHR");
+  const stepLines = description.split("\n").filter((line) => line.startsWith("- "));
+  const isAbsolutePace = stepLines.some((line) => line.includes("/km Pace"));
+  const isPaceFormat = !isAbsolutePace && stepLines.some((line) => line.includes("% pace"));
+  const isHrFormat =
+    !isAbsolutePace && !isPaceFormat && stepLines.some((line) => line.includes("% LTHR"));
   // Free format: step lines with no pace AND no HR markers (e.g. "- Free 60m intensity=active").
   const isFreeFormat =
     !isPaceFormat &&
     !isAbsolutePace &&
     !isHrFormat &&
-    /^-\s+\S/m.test(description);
+    stepLines.length > 0;
   if (!isPaceFormat && !isAbsolutePace && !isFreeFormat && hrZones.length !== 5)
     return [];
 

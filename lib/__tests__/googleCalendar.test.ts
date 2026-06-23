@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { http, HttpResponse } from "msw";
 import {
   getGoogleAccessToken,
   ensureSpringaCalendar,
@@ -9,14 +10,20 @@ import {
   updateGoogleEvent,
   deleteGoogleEvent,
   formatEventDescription,
+  syncToGoogleCalendar,
 } from "../googleCalendar";
 import type { SyncEvent } from "../googleCalendar";
 import type { WorkoutEvent } from "../types";
 import { capturedGoogleCalendarEvents, capturedGoogleDeletedEventIds } from "./msw/handlers";
+import { server } from "./msw/server";
 
 // Set env vars needed by getGoogleAccessToken
 process.env.GOOGLE_CLIENT_ID = "test-client-id";
 process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
+
+afterEach(() => {
+  server.resetHandlers();
+});
 
 describe("getGoogleAccessToken", () => {
   it("exchanges refresh token for access token", async () => {
@@ -103,6 +110,18 @@ describe("findGoogleEvent", () => {
     const id = await findGoogleEvent("mock-access-token", "cal-id", "W01 Easy", "2026-04-01");
     expect(id).toBe("gcal-event-1");
   });
+
+  it("throws when the lookup request fails", async () => {
+    server.use(
+      http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+    );
+
+    await expect(
+      findGoogleEvent("mock-access-token", "cal-id", "W01 Easy", "2026-04-01"),
+    ).rejects.toThrow("Failed to look up Google Calendar event");
+  });
 });
 
 describe("updateGoogleEvent", () => {
@@ -110,6 +129,18 @@ describe("updateGoogleEvent", () => {
     await expect(
       updateGoogleEvent("mock-access-token", "cal-id", "gcal-event-1", { summary: "Updated" }),
     ).resolves.toBeUndefined();
+  });
+
+  it("throws when the patch request fails", async () => {
+    server.use(
+      http.patch("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events/:eventId", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+    );
+
+    await expect(
+      updateGoogleEvent("mock-access-token", "cal-id", "gcal-event-1", { summary: "Updated" }),
+    ).rejects.toThrow("Failed to update Google Calendar event");
   });
 });
 
@@ -164,5 +195,79 @@ describe("formatEventDescription", () => {
     };
     const desc = formatEventDescription(event);
     expect(desc).not.toContain("Fuel:");
+  });
+});
+
+describe("syncToGoogleCalendar", () => {
+  it("requires an affirmative synced response for required flows", async () => {
+    server.use(
+      http.post("http://localhost/api/google-calendar-sync", () => {
+        return HttpResponse.json({});
+      }),
+    );
+
+    await expect(
+      syncToGoogleCalendar(
+        "update",
+        {
+          eventName: "W01 Easy",
+          eventDate: "2026-04-01",
+          event: {
+            name: "W01 Easy By Feel",
+            description: "Warmup\n- 10m intensity=warmup",
+            startLocal: "2026-04-01T12:00:00",
+          },
+        },
+        { required: true },
+      ),
+    ).rejects.toThrow("did not confirm success");
+  });
+
+  it("awaits and surfaces synced:false errors for required flows", async () => {
+    server.use(
+      http.post("http://localhost/api/google-calendar-sync", () => {
+        return HttpResponse.json({ synced: false, error: "rename failed" });
+      }),
+    );
+
+    await expect(
+      syncToGoogleCalendar(
+        "update",
+        {
+          eventName: "W01 Easy",
+          eventDate: "2026-04-01",
+          event: {
+            name: "W01 Easy By Feel",
+            description: "Warmup\n- 10m intensity=warmup",
+            startLocal: "2026-04-01T12:00:00",
+          },
+        },
+        { required: true },
+      ),
+    ).rejects.toThrow("rename failed");
+  });
+
+  it("treats no-token as a valid skip for required flows", async () => {
+    server.use(
+      http.post("http://localhost/api/google-calendar-sync", () => {
+        return HttpResponse.json({ synced: false, reason: "no-token" });
+      }),
+    );
+
+    await expect(
+      syncToGoogleCalendar(
+        "update",
+        {
+          eventName: "W01 Easy",
+          eventDate: "2026-04-01",
+          event: {
+            name: "W01 Easy By Feel",
+            description: "Warmup\n- 10m intensity=warmup",
+            startLocal: "2026-04-01T12:00:00",
+          },
+        },
+        { required: true },
+      ),
+    ).resolves.toBeUndefined();
   });
 });

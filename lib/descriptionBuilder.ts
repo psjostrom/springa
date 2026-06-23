@@ -1,4 +1,5 @@
-import { formatPace, pctToMinPerKm } from "./format";
+import { classifyHR, DEFAULT_LTHR } from "./constants";
+import { formatPace, getZoneLabel, pctToMinPerKm } from "./format";
 
 const SUPPORTED_NO_PACE_LABELS = new Set([
   "Cooldown",
@@ -85,7 +86,11 @@ export function createWorkoutText(
 }
 
 /** Strip pace and HR targets from step lines while keeping labels and tags. */
-export function stripWorkoutTargets(description: string): string {
+export function stripWorkoutTargets(
+  description: string,
+  lthr = DEFAULT_LTHR,
+  hrZones: number[] = [],
+): string {
   let currentSection = "";
 
   return description
@@ -96,12 +101,17 @@ export function stripWorkoutTargets(description: string): string {
         return line;
       }
 
-      return stripStepTargets(line, currentSection);
+      return stripStepTargets(line, currentSection, lthr, hrZones);
     })
     .join("\n");
 }
 
-function stripStepTargets(line: string, currentSection: string): string {
+function stripStepTargets(
+  line: string,
+  currentSection: string,
+  lthr: number,
+  hrZones: number[],
+): string {
   const hrMatch =
     /^- (.*?)(\d+(?:\.\d+)?(?:km|m|s)) (\d+)-(\d+)%\s*LTHR(?:\s*\([^)]+\))?((?:\s+.*)?)$/.exec(
       line,
@@ -115,7 +125,14 @@ function stripStepTargets(line: string, currentSection: string): string {
       : null;
     const resolvedLabel =
       supportedLabel ??
-      deriveHrEffortLabel(currentSection, line, Number(min), Number(max));
+      deriveHrEffortLabel(
+        currentSection,
+        line,
+        Number(min),
+        Number(max),
+        lthr,
+        hrZones,
+      );
     return `- ${resolvedLabel} ${duration}${suffix}`;
   }
 
@@ -129,6 +146,8 @@ function deriveHrEffortLabel(
   line: string,
   minPct: number,
   maxPct: number,
+  lthr: number,
+  hrZones: number[],
 ): string {
   const intensity = /(?:^|\s)intensity=(\w+)/.exec(line)?.[1];
 
@@ -136,9 +155,22 @@ function deriveHrEffortLabel(
   if (currentSection === "Cooldown" || intensity === "cooldown") return "Cooldown";
   if (intensity === "rest") return "Easy";
 
+  if (isValidHrZones(lthr, hrZones)) {
+    const midpointHr = lthr * ((minPct + maxPct) / 200);
+    return getZoneLabel(classifyHR(midpointHr, hrZones));
+  }
+
   if (maxPct <= 83) return "Easy";
   if (minPct >= 89) return "Fast";
   return "Race Pace";
+}
+
+function isValidHrZones(lthr: number, hrZones: number[]): boolean {
+  return (
+    Number.isFinite(lthr) &&
+    hrZones.length === 5 &&
+    hrZones.every((zone) => Number.isFinite(zone))
+  );
 }
 
 /** Build a single-step workout description (no warmup/cooldown structure). */
