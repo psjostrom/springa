@@ -172,4 +172,29 @@ describe("/api/google-calendar-sync update", () => {
     const patched = capturedGooglePatchedEvents[0].body as Record<string, unknown>;
     expect(patched.end).toEqual({ dateTime: "2026-04-26T12:48:00", timeZone: "Europe/Stockholm" });
   });
+
+  it("does not report success when the matching Google event is missing", async () => {
+    await insertGoogleCreds();
+
+    server.use(
+      http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", () => {
+        return HttpResponse.json({ items: [] });
+      }),
+    );
+
+    const res = await POST(makeUpdateRequest({
+      name: "W11 Long By Feel",
+      description: "- Easy 60m intensity=active",
+      startLocal: "2026-04-26T12:00:00",
+      fuelRate: 60,
+    }));
+    expect(res.status).toBe(200);
+
+    await expect(res.json()).resolves.toEqual({
+      synced: false,
+      reason: "not-found",
+      error: "Google Calendar event not found.",
+    });
+    expect(capturedGooglePatchedEvents).toHaveLength(0);
+  });
 });

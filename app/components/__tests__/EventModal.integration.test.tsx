@@ -1,10 +1,11 @@
 import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
+import { capturedPutPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
 import type { CalendarEvent } from "@/lib/types";
 import { calendarEventsAtom } from "../../atoms";
 import { EventModal } from "../EventModal";
@@ -56,8 +57,78 @@ const baseCompleted: CalendarEvent = {
   },
 };
 
+const LONG_RUN_PACE_DESCRIPTION = `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- 1km 6:15-18:20/km Pace intensity=warmup
+
+Main set
+- Easy 3km 6:15-18:20/km Pace intensity=active
+- Race Pace 3km 5:24-5:33/km Pace intensity=active
+- Easy 3km 6:15-18:20/km Pace intensity=active
+
+Cooldown
+- 2km 6:15-18:20/km Pace intensity=cooldown`;
+
+const basePlannedLong: CalendarEvent = {
+  id: "event-101",
+  date: new Date("2099-03-16T08:00:00"),
+  name: "W05 Long (12km)",
+  description: LONG_RUN_PACE_DESCRIPTION,
+  type: "planned",
+  category: "long",
+  fuelRate: 60,
+};
+
 const noop = () => {};
 const noopAsync = async () => {};
+
+function createDeferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+function StatefulEventModalHarness({
+  initialEvent = basePlannedLong,
+  onClose = noop,
+  onDelete = noopAsync,
+  onDateSaved = noop,
+  onEventUpdated,
+}: {
+  initialEvent?: CalendarEvent;
+  onClose?: () => void;
+  onDelete?: (eventId: string) => Promise<void>;
+  onDateSaved?: (eventId: string, newDate: Date) => void;
+  onEventUpdated?: (
+    eventId: string,
+    patch: Partial<Pick<CalendarEvent, "name" | "description">>,
+  ) => void;
+}) {
+  const [event, setEvent] = React.useState(initialEvent);
+
+  return (
+    <EventModal
+      event={event}
+      onClose={onClose}
+      onDelete={onDelete}
+      onDateSaved={(eventId, newDate) => {
+        setEvent((prev) => (prev.id === eventId ? { ...prev, date: newDate } : prev));
+        onDateSaved(eventId, newDate);
+      }}
+      onEventUpdated={
+        onEventUpdated
+          ? (eventId, patch) => {
+              setEvent((prev) => (prev.id === eventId ? { ...prev, ...patch } : prev));
+              onEventUpdated(eventId, patch);
+            }
+          : undefined
+      }
+    />
+  );
+}
 
 // Real race descriptions follow the workout-step format so the strip can derive a
 // total. The previous fixture used a free-text "Race day!" string and relied on a
@@ -183,6 +254,307 @@ describe("EventModal workout card", () => {
 
     await user.click(screen.getByText("Deep Dive"));
     expect(screen.queryByText("Heart Rate Zones")).toBeNull();
+  });
+});
+
+describe("EventModal By Feel toggle", () => {
+  afterEach(() => {
+    server.resetHandlers();
+    resetCaptures();
+  });
+
+  it("updates a planned pace workout, strips pace targets, and notifies the parent", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+    const googleSyncRequests: unknown[] = [];
+
+    server.use(
+      http.post("/api/google-calendar-sync", async ({ request }) => {
+        googleSyncRequests.push(await request.json());
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(capturedPutPayload).not.toBeNull();
+    });
+
+    const expectedPatch = {
+      name: "W05 Long (12km) By Feel",
+      description: `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- Warmup 1km intensity=warmup
+
+Main set
+- Easy 3km intensity=active
+- Race Pace 3km intensity=active
+- Easy 3km intensity=active
+
+Cooldown
+- Cooldown 2km intensity=cooldown`,
+    };
+
+    expect(capturedPutPayload!.url).toContain("/api/intervals/events/101");
+    expect(capturedPutPayload!.body).toEqual(expectedPatch);
+    expect(onEventUpdated).toHaveBeenCalledWith("event-101", expectedPatch);
+    await waitFor(() => {
+      expect(googleSyncRequests).toEqual([
+        {
+          action: "update",
+          eventName: "W05 Long (12km)",
+          eventDate: "2099-03-16",
+          event: {
+            name: "W05 Long (12km) By Feel",
+            description: expectedPatch.description,
+            startLocal: "2099-03-16T08:00:00",
+            fuelRate: 60,
+          },
+        },
+      ]);
+    });
+    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+  });
+
+  it("updates a planned HR workout and strips heart rate targets", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <StatefulEventModalHarness initialEvent={basePlanned} onEventUpdated={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(capturedPutPayload).not.toBeNull();
+    });
+
+    expect(capturedPutPayload!.body).toEqual({
+      name: "W02 Hills By Feel",
+      description: `Hill reps build strength and power.
+
+Warmup
+- Warmup 10m
+
+Main set 6x
+- Uphill 2m
+- Downhill 3m
+
+Cooldown
+- Cooldown 5m`,
+    });
+  });
+
+  it("shows an error and keeps the action area visible when the update fails", async () => {
+    const user = userEvent.setup();
+    let googleSyncCalls = 0;
+
+    server.use(
+      http.put("/api/intervals/events/101", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+      http.post("/api/google-calendar-sync", () => {
+        googleSyncCalls += 1;
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
+    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+    expect(googleSyncCalls).toBe(0);
+  });
+
+  it("publishes the Intervals patch while the Google rename is still pending", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+    const request = createDeferred();
+
+    server.use(
+      http.post("/api/google-calendar-sync", async () => {
+        await request.promise;
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(onEventUpdated).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
+
+    request.resolve();
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+
+  it("unlocks conflicting actions after the Intervals patch succeeds", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onEventUpdated = vi.fn();
+    const request = createDeferred();
+
+    server.use(
+      http.post("/api/google-calendar-sync", async () => {
+        await request.promise;
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    const { container } = render(
+      <StatefulEventModalHarness onClose={onClose} onEventUpdated={onEventUpdated} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(onEventUpdated).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+    const replaceButton = screen.getByRole("button", { name: "Replace" });
+    const editButton = screen.getByRole("button", { name: "Edit" });
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    const closeButton = screen.getByRole("button", { name: "Close" });
+
+    expect(replaceButton).not.toBeDisabled();
+    expect(editButton).not.toBeDisabled();
+    expect(deleteButton).not.toBeDisabled();
+    expect(closeButton).not.toBeDisabled();
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    request.resolve();
+  });
+
+  it("allows closing after the Intervals patch succeeds even while Google rename is pending", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const request = createDeferred();
+
+    server.use(
+      http.post("/api/google-calendar-sync", async () => {
+        await request.promise;
+        return HttpResponse.json({ synced: true });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onClose={onClose} onEventUpdated={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+
+    await user.keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    request.resolve();
+  });
+
+  it("shows the exact update failure message for a malformed planned event id", async () => {
+    const user = userEvent.setup();
+    const malformedEvent: CalendarEvent = {
+      ...basePlannedLong,
+      id: "planned-oops",
+    };
+
+    render(
+      <StatefulEventModalHarness initialEvent={malformedEvent} onEventUpdated={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
+    expect(capturedPutPayload).toBeNull();
+  });
+
+  it("keeps the Intervals patch and shows a Google sync error when Google rename fails", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+
+    server.use(
+      http.post("/api/google-calendar-sync", () => {
+        return HttpResponse.json({ synced: false, error: "rename failed" });
+      }),
+    );
+
+    render(
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "By Feel" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Workout saved, but Google Calendar did not update.");
+    expect(onEventUpdated).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+  });
+
+  it("hides the button without a parent update callback, for workouts already marked by feel, and for completed runs", () => {
+    const alreadyByFeel: CalendarEvent = {
+      ...basePlannedLong,
+      id: "event-102",
+      name: "W05 Long (12km) By Feel",
+    };
+
+    const { rerender } = render(
+      <EventModal
+        event={basePlannedLong}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+
+    rerender(
+      <EventModal
+        event={alreadyByFeel}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+
+    rerender(
+      <EventModal
+        event={baseCompleted}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
   });
 });
 

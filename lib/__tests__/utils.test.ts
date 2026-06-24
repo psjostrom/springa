@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { stripWorkoutTargets } from "../descriptionBuilder";
 import {
   parseWorkoutZones,
   parseWorkoutSegments,
@@ -824,6 +825,19 @@ Cooldown
     };
     expect(estimateWorkoutDistance(event)).toBe(0);
   });
+
+  it("returns 0 for explicit free-only workouts", () => {
+    const event: CalendarEvent = {
+      id: "5",
+      date: new Date(),
+      name: "W01 By feel",
+      description: `- Free 60m intensity=active`,
+      type: "planned",
+      category: "easy",
+    };
+
+    expect(estimateWorkoutDistance(event, FAST_TABLE)).toBe(0);
+  });
 });
 
 describe("parseWorkoutStructure", () => {
@@ -1417,6 +1431,30 @@ describe("parseWorkoutStructure — absolute pace format", () => {
     expect(sections).toHaveLength(3);
     expect(sections[0].steps[0].zone).toBe("z2");
   });
+
+  it("uses targetless effort labels for no-pace steps inside absolute pace workouts", () => {
+    const desc = `Warmup
+- 10m 6:15-7:52/km Pace intensity=warmup
+
+Main set
+- Recovery 2m intensity=rest
+- Tempo 3m intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones, ABS_PACE_THRESHOLD);
+    expect(sections[1].steps[0]).toMatchObject({
+      label: "Recovery",
+      duration: "2m",
+      zone: "z1",
+      bpmRange: "",
+    });
+    expect(sections[1].steps[1]).toMatchObject({
+      label: "Tempo",
+      duration: "3m",
+      zone: "z3",
+      bpmRange: "",
+    });
+  });
 });
 
 describe("parseWorkoutSegments — absolute pace format", () => {
@@ -1518,6 +1556,47 @@ describe("parseWorkoutStructure — free format", () => {
     expect(step.duration).toBe("16km");
     expect(step.bpmRange).toBe("5:32-5:43 /km");
   });
+
+  it("parses stripped threshold and recovery steps with legacy labels", () => {
+    const desc = [
+      "Main set",
+      stripWorkoutTargets("- Threshold 0.8km 89-99% LTHR (151-168 bpm) intensity=active"),
+      stripWorkoutTargets("- Recovery 1.5m 66-78% LTHR intensity=rest"),
+    ].join("\n");
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(2);
+    expect(sections[0].steps[0]).toMatchObject({
+      label: "Threshold",
+      duration: "0.8km",
+      zone: "z4",
+      bpmRange: "",
+    });
+    expect(sections[0].steps[1]).toMatchObject({
+      label: "Recovery",
+      duration: "1.5m",
+      zone: "z1",
+      bpmRange: "",
+    });
+  });
+
+  it("ignores note text when choosing the workout format for stripped free steps", () => {
+    const desc = `Notes mention 66-78% LTHR, but the workout is free-form.
+
+Main set
+- Free 60m intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].steps).toHaveLength(1);
+    expect(sections[0].steps[0]).toMatchObject({
+      label: "Free",
+      duration: "60m",
+      bpmRange: "",
+    });
+  });
 });
 
 describe("parseWorkoutSegments — wide easy zone duration estimate", () => {
@@ -1545,6 +1624,75 @@ describe("parseWorkoutSegments — no-pace step (free format)", () => {
     expect(segments[0].noPace).toBe(true);
     expect(segments[0].estimated).toBe(false);
     expect(segments[0].zone).toBe("z2"); // Free defaults to easy effort
+  });
+
+  it("parses a targetless race distance as z3", () => {
+    const segments = parseWorkoutSegments(`- Race 16km intensity=active`);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].km).toBe(16);
+    expect(segments[0].estimated).toBe(true);
+    expect(segments[0].noPace).toBe(true);
+    expect(segments[0].zone).toBe("z3");
+  });
+
+  it("uses the explicit zone pace for targetless race and race-pace km steps", () => {
+    const race = parseWorkoutSegments(`- Race 16km intensity=active`, FAST_TABLE);
+    const racePace = parseWorkoutSegments(
+      `- Race Pace 4km intensity=active`,
+      FAST_TABLE,
+    );
+
+    expect(race).toHaveLength(1);
+    expect(racePace).toHaveLength(1);
+    expect(race[0].zone).toBe("z3");
+    expect(racePace[0].zone).toBe("z3");
+    expect(race[0].duration).toBeCloseTo(80, 3);
+    expect(racePace[0].duration).toBeCloseTo(20, 3);
+  });
+
+  it("uses explicit z4 and z5 paces for targetless fast and uphill km steps", () => {
+    const fast = parseWorkoutSegments(`- Fast 1km intensity=active`, FAST_TABLE);
+    const uphill = parseWorkoutSegments(
+      `- Uphill 1km intensity=active`,
+      FAST_TABLE,
+    );
+
+    expect(fast).toHaveLength(1);
+    expect(uphill).toHaveLength(1);
+    expect(fast[0].zone).toBe("z4");
+    expect(uphill[0].zone).toBe("z5");
+    expect(fast[0].duration).toBeCloseTo(4.5, 3);
+    expect(uphill[0].duration).toBeCloseTo(4, 3);
+  });
+
+  it("parses stripped unlabeled middle-band HR steps as race pace", () => {
+    const desc = stripWorkoutTargets(`- 1.5m 78-89% LTHR intensity=active`);
+    const segments = parseWorkoutSegments(desc, FAST_TABLE);
+
+    expect(desc).toBe("- Race Pace 1.5m intensity=active");
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      duration: 1.5,
+      noPace: true,
+      zone: "z3",
+      estimated: false,
+      km: null,
+    });
+  });
+
+  it("parses stripped unlabeled hard-band HR steps as fast", () => {
+    const desc = stripWorkoutTargets(`- 0.8km 89-99% LTHR intensity=active`);
+    const segments = parseWorkoutSegments(desc, FAST_TABLE);
+
+    expect(desc).toBe("- Fast 0.8km intensity=active");
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      noPace: true,
+      zone: "z4",
+      estimated: true,
+      km: 0.8,
+    });
+    expect(segments[0].duration).toBeCloseTo(3.6, 3);
   });
 
   it("parses seconds unit", () => {
@@ -1590,6 +1738,28 @@ Cooldown
     expect(walk?.noPace).toBe(true);
     expect(walk?.duration).toBe(1); // 1m
   });
+
+  it("preserves km and estimates duration for stripped long-run steps", () => {
+    const desc = `Long run by feel.
+
+Warmup
+- Warmup 1km intensity=warmup
+
+Main set
+- Easy 5km intensity=active
+
+Cooldown
+- Cooldown 2km intensity=cooldown
+`;
+    const segments = parseWorkoutSegments(desc);
+    expect(segments).toHaveLength(3);
+    expect(segments.map((s) => s.km)).toEqual([1, 5, 2]);
+    expect(segments.every((s) => s.noPace)).toBe(true);
+    expect(segments.every((s) => s.estimated)).toBe(true);
+    expect(segments[0].duration).toBeCloseTo(7.25, 2);
+    expect(segments[1].duration).toBeCloseTo(36.25, 2);
+    expect(segments[2].duration).toBeCloseTo(14.5, 2);
+  });
 });
 
 describe("estimateWorkoutDescriptionDistance — no-pace segments", () => {
@@ -1598,5 +1768,79 @@ describe("estimateWorkoutDescriptionDistance — no-pace segments", () => {
 `;
     const dist = estimateWorkoutDescriptionDistance(desc);
     expect(dist).toBeNull();
+  });
+
+  it("estimates distance for structured targetless easy steps", () => {
+    const desc = `Warmup
+- Warmup 10m intensity=warmup
+
+Main set
+- 35m intensity=active
+
+Cooldown
+- Cooldown 15m intensity=cooldown
+`;
+
+    expect(estimateWorkoutDescriptionDistance(desc, FAST_TABLE)).toEqual({
+      km: 10,
+      estimated: true,
+    });
+  });
+
+  it("uses the walk zone pace for structured no-pace walk steps", () => {
+    const desc = `Warmup
+- Walk 60m intensity=rest
+`;
+
+    expect(estimateWorkoutDescriptionDistance(desc, FAST_TABLE)).toEqual({
+      km: 5,
+      estimated: true,
+    });
+  });
+
+  it("uses the race zone pace for structured no-pace race steps", () => {
+    const desc = `Warmup
+- Race 60m intensity=active
+`;
+
+    expect(estimateWorkoutDescriptionDistance(desc, FAST_TABLE)).toEqual({
+      km: 12,
+      estimated: true,
+    });
+  });
+
+  it("uses the fast zone pace for structured no-pace fast steps", () => {
+    const desc = `Warmup
+- Fast 60m intensity=active
+`;
+
+    expect(estimateWorkoutDescriptionDistance(desc, FAST_TABLE)).toEqual({
+      km: 13.3,
+      estimated: true,
+    });
+  });
+
+  it("uses the conservative walk pace for targetless walk km steps", () => {
+    const segments = parseWorkoutSegments(`- Walk 1km intensity=rest`, FAST_TABLE);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].noPace).toBe(true);
+    expect(segments[0].km).toBe(1);
+    expect(segments[0].duration).toBe(12);
+  });
+
+  it("returns exact distance for stripped all-km by-feel workouts", () => {
+    const desc = `Warmup
+- Warmup 1km intensity=warmup
+
+Main set
+- Easy 5km intensity=active
+
+Cooldown
+- Cooldown 2km intensity=cooldown
+`;
+    expect(estimateWorkoutDescriptionDistance(desc)).toEqual({
+      km: 8,
+      estimated: false,
+    });
   });
 });

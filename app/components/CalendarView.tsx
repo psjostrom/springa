@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useSetAtom } from "jotai";
-import { switchTabAtom } from "../atoms";
+import { patchCalendarEventAtom, switchTabAtom } from "../atoms";
 import { useModalURL } from "../hooks/useModalURL";
 import { useActivityStream } from "../hooks/useActivityStream";
 import { mergeStreamData } from "@/lib/enrichEvents";
@@ -53,6 +53,7 @@ type CalendarViewMode = "month" | "week" | "agenda";
 
 export function CalendarView({ initialEvents, isLoadingInitial, initialError, onRetryLoad, runBGContexts, paceTable, bgModel, hrZones, lthr, warmthPreference, racePacePerKm }: CalendarViewProps) {
   const setSwitchTab = useSetAtom(switchTabAtom);
+  const patchCalendarEvent = useSetAtom(patchCalendarEventAtom);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedWeek, setSelectedWeek] = useState(new Date());
@@ -142,22 +143,20 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
   const openWorkoutModal = (event: CalendarEvent) => { modal.open(event.id); };
   const closeWorkoutModal = modal.close;
 
-  // Handle Escape key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedEventId) {
-        closeWorkoutModal();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => { window.removeEventListener("keydown", handleEscape); };
-  }, [selectedEventId, closeWorkoutModal]);
-
   // Handle date save from modal
   const handleDateSaved = (eventId: string, newDate: Date) => {
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, date: newDate } : e)),
+    );
+  };
+
+  const handleEventUpdated = (
+    eventId: string,
+    patch: Partial<Pick<CalendarEvent, "name" | "description">>,
+  ) => {
+    patchCalendarEvent({ id: eventId, patch });
+    setEvents((prev) =>
+      prev.map((e) => (e.id === eventId ? { ...e, ...patch } : e)),
     );
   };
 
@@ -405,6 +404,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
           lthr={lthr}
           clothing={clothingMap.get(enrichedSelectedEvent.id)}
           racePacePerKm={racePacePerKm}
+          onEventUpdated={handleEventUpdated}
         />
       )}
 

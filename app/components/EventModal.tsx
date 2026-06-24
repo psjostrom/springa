@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 import { format, isToday } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { useAtomValue } from "jotai";
@@ -10,6 +10,8 @@ import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId, formatPace } from "@/lib/format";
 import { getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
+import { addByFeel, isByFeel } from "@/lib/byFeel";
+import { stripWorkoutTargets } from "@/lib/descriptionBuilder";
 import { useCurrentBG } from "../hooks/useCurrentBG";
 import { currentTsbAtom, currentIobAtom } from "../atoms";
 import { WorkoutCard } from "./WorkoutCard";
@@ -27,6 +29,7 @@ type EditMode =
   | { kind: "idle" }
   | { kind: "editing-date"; editDate: string }
   | { kind: "saving-date"; editDate: string }
+  | { kind: "toggling-by-feel" }
   | { kind: "confirming-delete" }
   | { kind: "deleting" }
   | { kind: "replacing" };
@@ -43,6 +46,9 @@ type ModalAction =
   | { type: "SAVE_DATE" }
   | { type: "DATE_SAVED" }
   | { type: "DATE_SAVE_FAILED"; error: string }
+  | { type: "TOGGLE_BY_FEEL" }
+  | { type: "BY_FEEL_DONE" }
+  | { type: "BY_FEEL_FAILED"; error: string }
   | { type: "CONFIRM_DELETE" }
   | { type: "DELETE" }
   | { type: "DELETE_FAILED"; error: string }
@@ -51,7 +57,11 @@ type ModalAction =
   | { type: "RESET" }
   | { type: "START_CLOSING" };
 
-const INITIAL_MODAL_STATE: ModalState = { editMode: { kind: "idle" }, error: null, isClosing: false };
+const INITIAL_MODAL_STATE: ModalState = {
+  editMode: { kind: "idle" },
+  error: null,
+  isClosing: false,
+};
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
@@ -64,10 +74,21 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       if (state.editMode.kind !== "editing-date") return state;
       return { ...state, editMode: { kind: "saving-date", editDate: state.editMode.editDate } };
     case "DATE_SAVED":
-      return INITIAL_MODAL_STATE;
+      return {
+        ...state,
+        editMode: { kind: "idle" },
+        error: null,
+        isClosing: false,
+      };
     case "DATE_SAVE_FAILED":
       if (state.editMode.kind !== "saving-date") return state;
       return { ...state, editMode: { kind: "editing-date", editDate: state.editMode.editDate }, error: action.error };
+    case "TOGGLE_BY_FEEL":
+      return { ...state, editMode: { kind: "toggling-by-feel" }, error: null };
+    case "BY_FEEL_DONE":
+      return INITIAL_MODAL_STATE;
+    case "BY_FEEL_FAILED":
+      return { ...state, editMode: { kind: "idle" }, error: action.error };
     case "CONFIRM_DELETE":
       return { ...state, editMode: { kind: "confirming-delete" }, error: null };
     case "DELETE":
@@ -99,10 +120,14 @@ interface EventModalProps {
   lthr?: number;
   clothing?: ClothingRec;
   racePacePerKm?: number;
+  onEventUpdated?: (
+    eventId: string,
+    patch: Partial<Pick<CalendarEvent, "name" | "description">>,
+  ) => void;
 }
 
 export function EventModal({
-  event: selectedEvent,
+  event,
   onClose,
   onDateSaved,
   onDelete,
@@ -114,21 +139,24 @@ export function EventModal({
   lthr,
   clothing,
   racePacePerKm,
+  onEventUpdated,
 }: EventModalProps) {
   const [state, dispatch] = useReducer(modalReducer, INITIAL_MODAL_STATE);
+  const effectiveSelectedEvent = event;
 
   // Extract values from discriminated union for JSX convenience
   const { editMode } = state;
   const editDate = editMode.kind === "editing-date" || editMode.kind === "saving-date" ? editMode.editDate : "";
+  const isTogglingByFeel = editMode.kind === "toggling-by-feel";
 
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
   const currentTsb = useAtomValue(currentTsbAtom);
   const currentIob = useAtomValue(currentIobAtom);
-  const showReadiness = !selectedEvent.activityId && isToday(selectedEvent.date) && currentBG != null;
-  const isUpcomingWorkout = selectedEvent.type !== "completed";
+  const showReadiness = !effectiveSelectedEvent.activityId && isToday(effectiveSelectedEvent.date) && currentBG != null;
+  const isUpcomingWorkout = effectiveSelectedEvent.type !== "completed";
   const workoutCategory = (() => {
-    const raw = getWorkoutCategory(selectedEvent.name);
+    const raw = getWorkoutCategory(effectiveSelectedEvent.name);
     return raw === "other" ? "easy" : raw;
   })();
 
@@ -139,22 +167,38 @@ export function EventModal({
     const target = bgModel.targetFuelRates.find((t) => t.category === workoutCategory);
     return target?.targetFuelRate ?? null;
   })();
+  const canToggleByFeel =
+    effectiveSelectedEvent.type === "planned" &&
+    !isByFeel(effectiveSelectedEvent.name) &&
+    onEventUpdated != null;
 
   useEffect(() => {
     dispatch({ type: "RESET" });
-  }, [selectedEvent.id]);
+  }, [event.id]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
+    if (isTogglingByFeel) return;
     dispatch({ type: "START_CLOSING" });
     if (window.innerWidth >= 640) {
       onClose(); // No animation on desktop
     }
     // On mobile, onClose fires via onAnimationEnd on the panel
-  };
+  }, [isTogglingByFeel, onClose]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => { window.removeEventListener("keydown", handleEscape); };
+  }, [handleClose]);
 
   const saveEventEdit = async () => {
     if (!editDate) return;
-    const numericId = parseEventId(selectedEvent.id);
+    const numericId = parseEventId(effectiveSelectedEvent.id);
     if (isNaN(numericId)) return;
 
     dispatch({ type: "SAVE_DATE" });
@@ -166,18 +210,18 @@ export function EventModal({
 
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("update", {
-        eventName: selectedEvent.name,
-        eventDate: format(selectedEvent.date, "yyyy-MM-dd"),
+        eventName: effectiveSelectedEvent.name,
+        eventDate: format(effectiveSelectedEvent.date, "yyyy-MM-dd"),
         event: {
-          name: selectedEvent.name,
-          description: selectedEvent.description,
+          name: effectiveSelectedEvent.name,
+          description: effectiveSelectedEvent.description,
           startLocal: newDateLocal,
-          ...(selectedEvent.fuelRate != null && { fuelRate: selectedEvent.fuelRate }),
+          ...(effectiveSelectedEvent.fuelRate != null && { fuelRate: effectiveSelectedEvent.fuelRate }),
         },
       });
 
       const newDate = new Date(newDateLocal);
-      onDateSaved(selectedEvent.id, newDate);
+      onDateSaved(effectiveSelectedEvent.id, newDate);
       dispatch({ type: "DATE_SAVED" });
     } catch (err) {
       console.error("Failed to update event:", err);
@@ -185,10 +229,65 @@ export function EventModal({
     }
   };
 
+  const toggleByFeel = async () => {
+    if (!onEventUpdated) {
+      return;
+    }
+
+    const numericId = parseEventId(effectiveSelectedEvent.id);
+    if (isNaN(numericId)) {
+      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      return;
+    }
+
+    const patch = {
+      name: addByFeel(effectiveSelectedEvent.name),
+      description: stripWorkoutTargets(
+        effectiveSelectedEvent.description,
+        lthr,
+        hrZones,
+        racePacePerKm,
+      ),
+    };
+
+    dispatch({ type: "TOGGLE_BY_FEEL" });
+    try {
+      await updateEvent(numericId, patch);
+    } catch (err) {
+      console.error("Failed to update workout:", err);
+      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      return;
+    }
+
+    onEventUpdated(effectiveSelectedEvent.id, patch);
+    dispatch({ type: "BY_FEEL_DONE" });
+
+    try {
+      await syncToGoogleCalendar("update", {
+        eventName: effectiveSelectedEvent.name,
+        eventDate: format(effectiveSelectedEvent.date, "yyyy-MM-dd"),
+        event: {
+          name: patch.name,
+          description: patch.description,
+          startLocal: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm:ss"),
+          ...(effectiveSelectedEvent.fuelRate != null && { fuelRate: effectiveSelectedEvent.fuelRate }),
+        },
+      }, { required: true });
+    } catch (err) {
+      console.error("Failed to sync workout to Google Calendar:", err);
+      dispatch({
+        type: "BY_FEEL_FAILED",
+        error: "Workout saved, but Google Calendar did not update.",
+      });
+    }
+  };
+
   return (
     <div
       className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${state.isClosing ? "bg-black/0" : "bg-black/70"}`}
-      onClick={handleClose}
+      onClick={() => {
+        if (!isTogglingByFeel) handleClose();
+      }}
     >
       <div
         className={`bg-surface rounded-t-2xl sm:rounded-xl px-3 py-4 sm:p-6 w-full sm:max-w-3xl shadow-xl shadow-brand/10 border-t sm:border border-border max-h-[92vh] overflow-y-auto ${state.isClosing ? "animate-slide-down" : "animate-slide-up"}`}
@@ -208,16 +307,16 @@ export function EventModal({
               </div>
             ) : (
               <div className="text-sm text-muted mb-1">
-                {format(selectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
+                {format(effectiveSelectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
                   locale: enGB,
                 })}
               </div>
             )}
             <h3 className="text-lg sm:text-xl font-bold text-text">
-              {selectedEvent.name}
+              {effectiveSelectedEvent.name}
             </h3>
             {(() => {
-              const badge = getEventStatusBadge(selectedEvent);
+              const badge = getEventStatusBadge(effectiveSelectedEvent);
               return (
                 <div className={`inline-block px-2 py-1 rounded text-sm font-medium mt-2 ${badge.className}`}>
                   {badge.label}
@@ -226,27 +325,48 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {editMode.kind === "idle" && (
+            {(editMode.kind === "idle" || editMode.kind === "toggling-by-feel") && (
               <>
-                {selectedEvent.type === "planned" && (
+                {effectiveSelectedEvent.type === "planned" && (
                   <>
+                    {canToggleByFeel && (
+                      <button
+                        onClick={() => { void toggleByFeel(); }}
+                        disabled={editMode.kind === "toggling-by-feel"}
+                        className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
+                      >
+                        {editMode.kind === "toggling-by-feel" ? "Saving..." : "By Feel"}
+                      </button>
+                    )}
                     <button
-                      onClick={() => { dispatch({ type: "START_REPLACE" }); }}
-                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"
+                      onClick={() => {
+                        if (isTogglingByFeel) return;
+                        dispatch({ type: "START_REPLACE" });
+                      }}
+                      disabled={isTogglingByFeel}
+                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                     >
                       Replace
                     </button>
                     <button
-                      onClick={() => { dispatch({ type: "START_EDIT_DATE", date: format(selectedEvent.date, "yyyy-MM-dd'T'HH:mm") }); }}
-                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition"
+                      onClick={() => {
+                        if (isTogglingByFeel) return;
+                        dispatch({ type: "START_EDIT_DATE", date: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm") });
+                      }}
+                      disabled={isTogglingByFeel}
+                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                     >
                       Edit
                     </button>
                   </>
                 )}
                 <button
-                  onClick={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
-                  className="px-3 py-1.5 text-sm bg-tint-error hover:bg-border text-text rounded-lg transition"
+                  onClick={() => {
+                    if (isTogglingByFeel) return;
+                    dispatch({ type: "CONFIRM_DELETE" });
+                  }}
+                  disabled={isTogglingByFeel}
+                  className="px-3 py-1.5 text-sm bg-tint-error hover:bg-border text-text rounded-lg transition disabled:opacity-50"
                 >
                   Delete
                 </button>
@@ -258,7 +378,7 @@ export function EventModal({
                 <button
                   onClick={() => {
                     dispatch({ type: "DELETE" });
-                    void onDelete(selectedEvent.id).catch(() => {
+                    void onDelete(effectiveSelectedEvent.id).catch(() => {
                       dispatch({ type: "DELETE_FAILED", error: "Failed to delete event. Please try again." });
                     });
                   }}
@@ -296,7 +416,9 @@ export function EventModal({
             )}
             <button
               onClick={handleClose}
-              className="text-muted hover:text-text text-xl"
+              aria-label="Close"
+              disabled={isTogglingByFeel}
+              className="text-muted hover:text-text text-xl disabled:opacity-50"
             >
               ✕
             </button>
@@ -304,16 +426,16 @@ export function EventModal({
         </div>
 
         {state.error && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-text text-sm">
+          <div role="alert" className="mb-3 px-3 py-2 rounded-lg bg-tint-error text-text text-sm">
             {state.error}
           </div>
         )}
 
         {editMode.kind === "replacing" && (
           <WorkoutGenerator
-            date={selectedEvent.date}
-            existingEventId={parseEventId(selectedEvent.id)}
-            existingEventName={selectedEvent.name}
+            date={effectiveSelectedEvent.date}
+            existingEventId={parseEventId(effectiveSelectedEvent.id)}
+            existingEventName={effectiveSelectedEvent.name}
             onGenerated={handleClose}
             onCancel={() => { dispatch({ type: "CANCEL" }); }}
           />
@@ -331,8 +453,8 @@ export function EventModal({
           />
         )}
 
-        {editMode.kind !== "replacing" && !selectedEvent.activityId && isUpcomingWorkout && (
-          <PreRunCarbsInput eventId={selectedEvent.id} />
+        {editMode.kind !== "replacing" && !effectiveSelectedEvent.activityId && isUpcomingWorkout && (
+          <PreRunCarbsInput eventId={effectiveSelectedEvent.id} />
         )}
 
         {editMode.kind !== "replacing" && clothing && isUpcomingWorkout && (
@@ -342,45 +464,45 @@ export function EventModal({
           </div>
         )}
 
-        {editMode.kind !== "replacing" && selectedEvent.description && isUpcomingWorkout && (
-          <WorkoutCard description={selectedEvent.description} fuelRate={selectedEvent.fuelRate} prescribedCarbsG={selectedEvent.prescribedCarbsG} fuelRateNote={modelFuelRate != null && modelFuelRate !== selectedEvent.fuelRate ? "plan" : undefined} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
-            <WorkoutStructureBar description={selectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} thresholdPace={racePacePerKm} />
+        {editMode.kind !== "replacing" && effectiveSelectedEvent.description && isUpcomingWorkout && (
+          <WorkoutCard description={effectiveSelectedEvent.description} fuelRate={effectiveSelectedEvent.fuelRate} prescribedCarbsG={effectiveSelectedEvent.prescribedCarbsG} fuelRateNote={modelFuelRate != null && modelFuelRate !== effectiveSelectedEvent.fuelRate ? "plan" : undefined} paceTable={paceTable} hrZones={hrZones} lthr={lthr} racePacePerKm={racePacePerKm}>
+            <WorkoutStructureBar description={effectiveSelectedEvent.description} maxHeight={48} hrZones={hrZones} lthr={lthr} thresholdPace={racePacePerKm} />
           </WorkoutCard>
         )}
 
-        {selectedEvent.type === "completed" && (
+        {effectiveSelectedEvent.type === "completed" && (
           <>
             {/* Primary stats strip */}
             <div className="bg-surface-alt rounded-lg px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
-              {selectedEvent.distance && (
+              {effectiveSelectedEvent.distance && (
                 <div>
                   <div className="text-muted text-sm">Distance</div>
                   <div className="font-semibold text-text">
-                    {(selectedEvent.distance / 1000).toFixed(2)} km
+                    {(effectiveSelectedEvent.distance / 1000).toFixed(2)} km
                   </div>
                 </div>
               )}
-              {selectedEvent.duration && (
+              {effectiveSelectedEvent.duration && (
                 <div>
                   <div className="text-muted text-sm">Duration</div>
                   <div className="font-semibold text-text">
-                    {Math.floor(selectedEvent.duration / 60)} min
+                    {Math.floor(effectiveSelectedEvent.duration / 60)} min
                   </div>
                 </div>
               )}
-              {selectedEvent.pace && (
+              {effectiveSelectedEvent.pace && (
                 <div>
                   <div className="text-muted text-sm">Pace</div>
                   <div className="font-semibold text-text">
-                    {formatPace(selectedEvent.pace)} /km
+                    {formatPace(effectiveSelectedEvent.pace)} /km
                   </div>
                 </div>
               )}
-              {selectedEvent.avgHr && (
+              {effectiveSelectedEvent.avgHr && (
                 <div>
                   <div className="text-muted text-sm">Avg HR</div>
                   <div className="font-semibold text-text">
-                    {selectedEvent.avgHr} bpm
+                    {effectiveSelectedEvent.avgHr} bpm
                   </div>
                 </div>
               )}
@@ -389,9 +511,9 @@ export function EventModal({
             {/* Tabbed widget system */}
             <WidgetTabs
               widgetProps={{
-                event: selectedEvent,
+                event: effectiveSelectedEvent,
                 isLoadingStreamData,
-                runBGContext: selectedEvent.activityId ? runBGContexts?.get(selectedEvent.activityId) : undefined,
+                runBGContext: effectiveSelectedEvent.activityId ? runBGContexts?.get(effectiveSelectedEvent.activityId) : undefined,
                 bgModel,
                 paceTable,
                 hrZones,

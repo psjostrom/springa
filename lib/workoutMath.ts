@@ -8,6 +8,7 @@ import type { CalendarEvent, WorkoutEvent, PaceTable } from "./types";
 import {
   parseWorkoutSegments,
   paceForIntensity,
+  paceForZone,
   type WorkoutSegment,
 } from "./descriptionParser";
 import { DEFAULT_WORKOUT_DURATION_MINUTES } from "./constants";
@@ -126,11 +127,14 @@ function resolveWorkoutDistance(
       totalKm += segment.km;
       continue;
     }
-    if (segment.noPace) continue;
+    if (segment.noPace && segment.canEstimateDistance === false) continue;
 
     hasTimeBasedSegment = true;
-    totalKm +=
-      segment.duration / paceForIntensity(segment.intensity, context.paceTable);
+    const pace =
+      segment.noPace && segment.zone
+        ? paceForZone(segment.zone, context.paceTable)
+        : paceForIntensity(segment.intensity, context.paceTable);
+    totalKm += segment.duration / pace;
   }
 
   if (totalKm <= 0) return null;
@@ -138,6 +142,15 @@ function resolveWorkoutDistance(
     km: Math.round(totalKm * 10) / 10,
     estimated: hasTimeBasedSegment,
   };
+}
+
+function isExplicitFreeOnlyWorkout(segments: WorkoutSegment[]): boolean {
+  return (
+    segments.length > 0 &&
+    segments.every(
+      (segment) => segment.noPace && segment.canEstimateDistance === false,
+    )
+  );
 }
 
 export function resolveWorkoutMetrics(
@@ -253,6 +266,7 @@ export function estimateWorkoutDistance(
     context,
   );
   if (resolved.distance) return resolved.distance.km;
+  if (isExplicitFreeOnlyWorkout(resolved.segments)) return 0;
 
   const pace =
     event.category === "interval"
@@ -283,6 +297,7 @@ export function estimatePlanEventDistance(
     context,
   );
   if (resolved.distance) return resolved.distance.km;
+  if (isExplicitFreeOnlyWorkout(resolved.segments)) return 0;
 
   const isInterval =
     /interval|hills|short|long intervals|distance intervals|race pace/i.test(

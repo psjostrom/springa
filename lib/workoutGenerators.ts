@@ -108,9 +108,9 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
 };
 
 /** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it. */
-function createStepMaker(thresholdPace?: number) {
+function createStepMaker(thresholdPace?: number, byFeel?: boolean) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const pct = HM_ZONE_DEFAULTS[zone];
+    const pct = byFeel ? { min: null, max: null } : HM_ZONE_DEFAULTS[zone];
     const step = formatPaceStep(
       duration,
       pct.min,
@@ -152,7 +152,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const wu = s("10m", "z2", "Warmup");
@@ -249,7 +249,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -317,13 +317,13 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const notes = "Free run. 1 hour, no rules — easy or hard, your call.";
 
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
-    description: createSimpleWorkoutText(s("60m", "z1"), notes),
+    description: createSimpleWorkoutText(s("60m", "z1", "Free"), notes),
     external_id: `free-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,
@@ -337,7 +337,7 @@ const generateLongRun = (
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
-    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY`,
@@ -352,7 +352,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm);
+  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -441,6 +441,7 @@ export interface PlanConfig {
   startKm: number;
   lthr: number;
   hrZones: number[];
+  byFeel?: boolean;
   includeBasePhase?: boolean;
   diabetesMode?: boolean;
   runDays?: number[];
@@ -466,6 +467,7 @@ export function buildContext(config: PlanConfig): PlanContext {
     fuelInterval: getCurrentFuelRate("interval", config.bgModel, config.diabetesMode),
     fuelLong: getCurrentFuelRate("long", config.bgModel, config.diabetesMode),
     fuelEasy: getCurrentFuelRate("easy", config.bgModel, config.diabetesMode),
+    byFeel: config.byFeel,
     raceDate,
     raceDist: config.raceDist,
     totalWeeks: config.totalWeeks,

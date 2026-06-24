@@ -77,8 +77,9 @@ describe("getGoogleCalendarContext", () => {
       }),
     );
 
-    const ctx = await getGoogleCalendarContext(EMAIL);
-    expect(ctx).toBeNull();
+    await expect(getGoogleCalendarContext(EMAIL)).rejects.toThrow(
+      "Google token exchange failed",
+    );
 
     // Verify the token was cleared in DB
     const row = await holder.db.execute({
@@ -102,8 +103,9 @@ describe("getGoogleCalendarContext", () => {
       }),
     );
 
-    const ctx = await getGoogleCalendarContext(EMAIL);
-    expect(ctx).toBeNull();
+    await expect(getGoogleCalendarContext(EMAIL)).rejects.toThrow(
+      "Google token exchange failed",
+    );
 
     // Verify the token was NOT cleared in DB
     const row = await holder.db.execute({

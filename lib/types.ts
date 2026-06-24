@@ -32,6 +32,7 @@ export interface PlanContext {
   fuelInterval: number;
   fuelLong: number;
   fuelEasy: number;
+  byFeel?: boolean;
   raceDate: Date;
   raceDist: number;
 
