@@ -323,7 +323,7 @@ const generateFreeRun = (
   return {
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
-    description: createSimpleWorkoutText(s("60m", "z1"), notes),
+    description: createSimpleWorkoutText(s("60m", "z1", "Free"), notes),
     external_id: `free-${wp.weekNum}-${date.getDay()}`,
     type: "Run",
     fuelRate: ctx.fuelEasy,

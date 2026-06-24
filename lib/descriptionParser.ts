@@ -345,8 +345,7 @@ export function parseWorkoutStructure(
           bpmRange: `${formatPace(fastPace)}-${formatPace(slowPace)} /km`,
         };
       }
-      const zone: ZoneName = m[1] === "Walk" ? "z1" : "z5";
-      return { label, duration, zone, bpmRange: "" };
+      return { label, duration, zone: zoneForNoPaceLabel(m[1]), bpmRange: "" };
     }
 
     if (isPaceFormat) {
@@ -361,8 +360,7 @@ export function parseWorkoutStructure(
         return { label, duration, zone, bpmRange: detail };
       }
       // Effort-based step (walk, strides) — no pace target
-      const zone: ZoneName = m[1] === "Walk" ? "z1" : "z5";
-      return { label, duration, zone, bpmRange: "" };
+      return { label, duration, zone: zoneForNoPaceLabel(m[1]), bpmRange: "" };
     }
 
     // HR-based: groups 3,4 are LTHR %, group 5 is bpm range

@@ -79,6 +79,23 @@ describe("stripWorkoutTargets", () => {
     expect(stripWorkoutTargets(input)).toBe("- Easy 35m intensity=active");
   });
 
+  it("adds a derived label when stripping unlabeled percentage pace targets", () => {
+    const input = "- 5m 106-111% pace intensity=active";
+    expect(stripWorkoutTargets(input)).toBe("- Interval 5m intensity=active");
+  });
+
+  it("replaces unsupported pace labels with a derived parseable label", () => {
+    const input = "- Tempo Block 5m 106-111% pace intensity=active";
+    expect(stripWorkoutTargets(input)).toBe("- Interval 5m intensity=active");
+  });
+
+  it("uses threshold pace to derive labels when stripping unlabeled absolute pace targets", () => {
+    const input = "- 5m 4:57-5:11/km Pace intensity=active";
+    expect(stripWorkoutTargets(input, TEST_LTHR, [...TEST_HR_ZONES], 5.5)).toBe(
+      "- Interval 5m intensity=active",
+    );
+  });
+
   it("strips HR targets", () => {
     const input = "- Downhill 3m 66-78% LTHR (112-132 bpm) intensity=rest";
     expect(stripWorkoutTargets(input)).toBe("- Downhill 3m intensity=rest");

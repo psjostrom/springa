@@ -246,13 +246,23 @@ export function EventModal({
         effectiveSelectedEvent.description,
         lthr,
         hrZones,
+        racePacePerKm,
       ),
     };
 
     dispatch({ type: "TOGGLE_BY_FEEL" });
     try {
       await updateEvent(numericId, patch);
+    } catch (err) {
+      console.error("Failed to update workout:", err);
+      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      return;
+    }
 
+    onEventUpdated(effectiveSelectedEvent.id, patch);
+    dispatch({ type: "BY_FEEL_DONE" });
+
+    try {
       await syncToGoogleCalendar("update", {
         eventName: effectiveSelectedEvent.name,
         eventDate: format(effectiveSelectedEvent.date, "yyyy-MM-dd"),
@@ -263,12 +273,12 @@ export function EventModal({
           ...(effectiveSelectedEvent.fuelRate != null && { fuelRate: effectiveSelectedEvent.fuelRate }),
         },
       }, { required: true });
-
-      onEventUpdated(effectiveSelectedEvent.id, patch);
-      dispatch({ type: "BY_FEEL_DONE" });
     } catch (err) {
-      console.error("Failed to update workout:", err);
-      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      console.error("Failed to sync workout to Google Calendar:", err);
+      dispatch({
+        type: "BY_FEEL_FAILED",
+        error: "Workout saved, but Google Calendar did not update.",
+      });
     }
   };
 

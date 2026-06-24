@@ -568,6 +568,8 @@ describe("generatePlan", () => {
     expect(freeRuns.length).toBeGreaterThan(0);
     for (const run of freeRuns) {
       expect(run.name).toContain("Free Run");
+      expect(run.description).toContain("- Free 60m intensity=active");
+      expect(estimateWorkoutDescriptionDistance(run.description)).toBeNull();
     }
   });
 });

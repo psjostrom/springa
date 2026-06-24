@@ -290,7 +290,7 @@ describe("EventModal By Feel toggle", () => {
       description: `Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
-- 1km intensity=warmup
+- Warmup 1km intensity=warmup
 
 Main set
 - Easy 3km intensity=active
@@ -298,7 +298,7 @@ Main set
 - Easy 3km intensity=active
 
 Cooldown
-- 2km intensity=cooldown`,
+- Cooldown 2km intensity=cooldown`,
     };
 
     expect(capturedPutPayload!.url).toContain("/api/intervals/events/101");
@@ -377,8 +377,9 @@ Cooldown
     expect(googleSyncCalls).toBe(0);
   });
 
-  it("shows a disabled Saving... button while the required Google rename is pending", async () => {
+  it("publishes the Intervals patch while the Google rename is still pending", async () => {
     const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
     const request = createDeferred();
 
     server.use(
@@ -389,23 +390,25 @@ Cooldown
     );
 
     render(
-      <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
+      <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
 
-    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
-    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
+    await waitFor(() => {
+      expect(onEventUpdated).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
 
     request.resolve();
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).toBeNull();
     });
   });
 
-  it("waits for the required Google rename before publishing the patch or unlocking conflicting actions", async () => {
+  it("unlocks conflicting actions after the Intervals patch succeeds", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onEventUpdated = vi.fn();
@@ -424,37 +427,27 @@ Cooldown
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
 
+    await waitFor(() => {
+      expect(onEventUpdated).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    });
     const replaceButton = screen.getByRole("button", { name: "Replace" });
     const editButton = screen.getByRole("button", { name: "Edit" });
     const deleteButton = screen.getByRole("button", { name: "Delete" });
     const closeButton = screen.getByRole("button", { name: "Close" });
 
-    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
-    expect(onEventUpdated).not.toHaveBeenCalled();
-    expect(replaceButton).toBeDisabled();
-    expect(editButton).toBeDisabled();
-    expect(deleteButton).toBeDisabled();
-    expect(closeButton).toBeDisabled();
-
-    await user.click(container.firstElementChild as HTMLElement);
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByText("Delete this workout?")).not.toBeInTheDocument();
-    expect(screen.queryByText("Replacing")).not.toBeInTheDocument();
-
-    request.resolve();
-
-    await waitFor(() => {
-      expect(onEventUpdated).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    });
     expect(replaceButton).not.toBeDisabled();
     expect(editButton).not.toBeDisabled();
     expect(deleteButton).not.toBeDisabled();
     expect(closeButton).not.toBeDisabled();
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    request.resolve();
   });
 
-  it("ignores Escape while the required Google rename is pending, then closes once the save finishes", async () => {
+  it("allows closing after the Intervals patch succeeds even while Google rename is pending", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const request = createDeferred();
@@ -471,11 +464,6 @@ Cooldown
     );
 
     await user.click(screen.getByRole("button", { name: "By Feel" }));
-    await user.keyboard("{Escape}");
-
-    expect(onClose).not.toHaveBeenCalled();
-
-    request.resolve();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
@@ -484,6 +472,7 @@ Cooldown
     await user.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    request.resolve();
   });
 
   it("shows the exact update failure message for a malformed planned event id", async () => {
@@ -504,7 +493,7 @@ Cooldown
     expect(capturedPutPayload).toBeNull();
   });
 
-  it("shows the sync error and does not publish the patch when Google rename fails", async () => {
+  it("keeps the Intervals patch and shows a Google sync error when Google rename fails", async () => {
     const user = userEvent.setup();
     const onEventUpdated = vi.fn();
 
@@ -521,11 +510,10 @@ Cooldown
     await user.click(screen.getByRole("button", { name: "By Feel" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
-    expect(onEventUpdated).not.toHaveBeenCalled();
-    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeNull();
-    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+    expect(alert).toHaveTextContent("Workout saved, but Google Calendar did not update.");
+    expect(onEventUpdated).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
   });
 
   it("hides the button without a parent update callback, for workouts already marked by feel, and for completed runs", () => {

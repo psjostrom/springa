@@ -59,10 +59,15 @@ export async function POST(req: Request) {
 
     if (body.action === "update" && body.eventName && body.eventDate && body.event) {
       const googleEventId = await findGoogleEvent(ctx.accessToken, ctx.calendarId, body.eventName, body.eventDate);
-      if (googleEventId) {
-        const updates = buildGoogleCalendarEventPayload(body.event, ctx.timezone, workoutContext);
-        await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
+      if (!googleEventId) {
+        return NextResponse.json({
+          synced: false,
+          reason: "not-found",
+          error: "Google Calendar event not found.",
+        });
       }
+      const updates = buildGoogleCalendarEventPayload(body.event, ctx.timezone, workoutContext);
+      await updateGoogleEvent(ctx.accessToken, ctx.calendarId, googleEventId, updates);
       return NextResponse.json({ synced: true });
     }
 

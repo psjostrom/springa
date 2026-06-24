@@ -266,7 +266,7 @@ export async function getGoogleCalendarContext(
       await updateGoogleRefreshToken(email, null);
     }
     console.error("Google token exchange failed:", msg);
-    return null;
+    throw err instanceof Error ? err : new Error(msg);
   }
 
   const calendarId = await ensureSpringaCalendar(accessToken, creds.calendarId, creds.timezone);

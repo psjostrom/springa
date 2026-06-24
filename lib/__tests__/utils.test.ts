@@ -1431,6 +1431,30 @@ describe("parseWorkoutStructure — absolute pace format", () => {
     expect(sections).toHaveLength(3);
     expect(sections[0].steps[0].zone).toBe("z2");
   });
+
+  it("uses targetless effort labels for no-pace steps inside absolute pace workouts", () => {
+    const desc = `Warmup
+- 10m 6:15-7:52/km Pace intensity=warmup
+
+Main set
+- Recovery 2m intensity=rest
+- Tempo 3m intensity=active
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones, ABS_PACE_THRESHOLD);
+    expect(sections[1].steps[0]).toMatchObject({
+      label: "Recovery",
+      duration: "2m",
+      zone: "z1",
+      bpmRange: "",
+    });
+    expect(sections[1].steps[1]).toMatchObject({
+      label: "Tempo",
+      duration: "3m",
+      zone: "z3",
+      bpmRange: "",
+    });
+  });
 });
 
 describe("parseWorkoutSegments — absolute pace format", () => {
