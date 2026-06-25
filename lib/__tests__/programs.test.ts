@@ -4,6 +4,7 @@ import type { UserSettings } from "@/lib/settings";
 import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
+  buildProgramConfigKeyFromSettings,
   getProgramWeeks,
   isProgramFinished,
   validateNewProgramDraft,
@@ -90,6 +91,21 @@ describe("validateNewProgramDraft", () => {
     expect(validateNewProgramDraft(validDraft, now)).toBeNull();
   });
 
+  it("accepts the default 12-week race date it creates", () => {
+    const draft = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 12,
+      startKm: 8,
+    }, now);
+
+    expect(draft.raceDate).toBe("2026-09-16");
+    expect(validateNewProgramDraft(draft, now)).toBeNull();
+  });
+
   it("rejects too-soon race dates", () => {
     expect(validateNewProgramDraft({ ...validDraft, raceDate: "2026-08-01" }, now)).toBe(
       "Race date must be at least 12 weeks away.",
@@ -140,5 +156,39 @@ describe("buildProgramConfigKey", () => {
       startKm: 8,
       includeBasePhase: true,
     });
+  });
+
+  it("uses the same canonical key for a draft and the saved settings it writes", () => {
+    const draftKey = buildProgramConfigKey({
+      raceName: "",
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: undefined,
+      clubType: undefined,
+      totalWeeks: 18,
+      startKm: 8,
+      includeBasePhase: false,
+    });
+
+    const settingsKey = buildProgramConfigKeyFromSettings({
+      raceName: null as unknown as string,
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [0, 2, 4],
+      longRunDay: 0,
+      clubDay: null as unknown as number,
+      clubType: null as unknown as string,
+      totalWeeks: 18,
+      startKm: 8,
+      includeBasePhase: false,
+    });
+
+    expect(draftKey).toBe(settingsKey);
   });
 });

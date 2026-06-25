@@ -67,7 +67,7 @@ export function ActionBar({
 					</div>
 					<button
 						onClick={onUpload}
-						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-brand hover:bg-brand-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
+						className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-brand-btn hover:bg-brand-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 					>
 						<RotateCcw size={16} /> Retry
 					</button>
@@ -113,7 +113,7 @@ export function ActionBar({
 			</div>
 			<button
 				onClick={onUpload}
-				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-brand hover:bg-brand-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
+				className="flex items-center gap-2 text-white px-4 py-2 md:px-6 md:py-2 rounded-md font-bold text-sm md:text-base bg-brand-btn hover:bg-brand-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300"
 			>
 				<UploadCloud size={18} /> {actionLabel}
 			</button>

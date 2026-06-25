@@ -18,6 +18,7 @@ import { getThresholdPace } from "@/lib/paceTable";
 import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
+  buildProgramConfigKeyFromSettings,
   isProgramFinished,
   toSettingsUpdate,
   validateNewProgramDraft,
@@ -38,6 +39,7 @@ import {
   bgModelAtom,
   paceTableAtom,
   enrichedEventsAtom,
+  calendarLoadingAtom,
   wellnessEntriesAtom,
   runBGContextsAtom,
   calendarReloadAtom,
@@ -60,6 +62,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const diabetesMode = useAtomValue(diabetesModeAtom);
   const paceTable = useAtomValue(paceTableAtom);
   const calendarEvents = useAtomValue(enrichedEventsAtom);
+  const calendarLoading = useAtomValue(calendarLoadingAtom);
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
@@ -84,22 +87,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   // Config panel state
   const [configExpanded, setConfigExpanded] = useState(false);
 
-  const currentConfigKey = settings
-    ? JSON.stringify({
-        runDays: [...(settings.runDays ?? [])].sort((a, b) => a - b),
-        longRunDay: settings.longRunDay,
-        clubDay: settings.clubDay,
-        clubType: settings.clubType,
-        raceDate: settings.raceDate,
-        raceDist: settings.raceDist,
-        raceName: settings.raceName,
-        currentAbilitySecs: settings.currentAbilitySecs,
-        currentAbilityDist: settings.currentAbilityDist,
-        totalWeeks: settings.totalWeeks,
-        startKm: settings.startKm,
-        includeBasePhase: settings.includeBasePhase ?? false,
-      })
-    : null;
+  const currentConfigKey = settings ? buildProgramConfigKeyFromSettings(settings) : null;
 
   const scheduleChanged = lastGeneratedConfig != null && currentConfigKey != null && currentConfigKey !== lastGeneratedConfig;
 
@@ -110,7 +98,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     (e) => e.type === "planned" && e.date >= today,
   );
   const programFinished = settings
-    ? isProgramFinished(settings, calendarEvents)
+    ? !calendarLoading && isProgramFinished(settings, calendarEvents)
     : false;
 
   // Adapt state
@@ -247,8 +235,6 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
     setIsUploading(true);
     try {
-      await updateSettings(toSettingsUpdate(newProgramDraft));
-
       const abilityChanged =
         newProgramDraft.currentAbilitySecs !== settings.currentAbilitySecs ||
         newProgramDraft.currentAbilityDist !== settings.currentAbilityDist;
@@ -265,6 +251,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         });
         if (!res.ok) throw new Error("Failed to push threshold pace");
       }
+
+      await updateSettings(toSettingsUpdate(newProgramDraft));
 
       const count = await uploadPlan(planEvents);
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
@@ -477,7 +465,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             <button
               type="button"
               onClick={beginNewProgram}
-              className="px-4 py-2 bg-brand text-white rounded-lg font-bold text-sm hover:bg-brand-hover transition shadow-lg shadow-brand/20"
+              className="px-4 py-2 bg-brand-btn text-white rounded-lg font-bold text-sm hover:bg-brand-hover transition shadow-lg shadow-brand/20"
             >
               Start New Program
             </button>
@@ -561,7 +549,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               readyTitle={newProgramMode === "preview" ? "Ready to start?" : undefined}
               readyDescription={
                 newProgramMode === "preview"
-                  ? `${planEvents.length} workouts will replace future Springa-generated workouts. Completed runs and other calendar items are kept.`
+                  ? `${planEvents.length} workouts will replace future workouts on your Springa calendars. Completed runs are kept.`
                   : undefined
               }
               actionLabel={newProgramMode === "preview" ? "Start Program" : undefined}

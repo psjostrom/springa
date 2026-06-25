@@ -30,6 +30,49 @@ function sortDays(days: number[]): number[] {
   return [...days].sort((a, b) => a - b);
 }
 
+type ProgramConfigSource = Pick<
+  UserSettings,
+  | "raceName"
+  | "raceDist"
+  | "raceDate"
+  | "currentAbilityDist"
+  | "currentAbilitySecs"
+  | "runDays"
+  | "longRunDay"
+  | "clubDay"
+  | "clubType"
+  | "totalWeeks"
+  | "startKm"
+  | "includeBasePhase"
+>;
+
+function normalizeString(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed;
+}
+
+function normalizeOptional<T>(value: T | null | undefined): T | null {
+  return value ?? null;
+}
+
+function buildCanonicalProgramConfigKey(source: ProgramConfigSource): string {
+  return JSON.stringify({
+    raceName: normalizeString(source.raceName),
+    raceDist: normalizeOptional(source.raceDist),
+    raceDate: normalizeOptional(source.raceDate),
+    currentAbilityDist: normalizeOptional(source.currentAbilityDist),
+    currentAbilitySecs: normalizeOptional(source.currentAbilitySecs),
+    runDays: sortDays(source.runDays ?? []),
+    longRunDay: normalizeOptional(source.longRunDay),
+    clubDay: normalizeOptional(source.clubDay),
+    clubType: normalizeString(source.clubType),
+    totalWeeks: normalizeOptional(source.totalWeeks),
+    startKm: normalizeOptional(source.startKm),
+    includeBasePhase: source.includeBasePhase ?? false,
+  });
+}
+
 export function isProgramFinished(
   settings: Pick<UserSettings, "raceDate"> | null | undefined,
   events: CalendarEvent[],
@@ -49,7 +92,7 @@ export function getProgramWeeks(raceDate: string, now = new Date()): number {
 }
 
 function getWeeksUntilRace(raceDate: string, now = new Date()): number {
-  return differenceInWeeks(parseISO(raceDate), now);
+  return differenceInWeeks(startOfDay(parseISO(raceDate)), startOfDay(now));
 }
 
 export function buildDefaultNewProgramDraft(
@@ -122,20 +165,11 @@ export function validateNewProgramDraft(
 }
 
 export function buildProgramConfigKey(draft: NewProgramDraft): string {
-  return JSON.stringify({
-    raceName: draft.raceName.trim(),
-    raceDist: draft.raceDist,
-    raceDate: draft.raceDate,
-    currentAbilityDist: draft.currentAbilityDist,
-    currentAbilitySecs: draft.currentAbilitySecs,
-    runDays: sortDays(draft.runDays),
-    longRunDay: draft.longRunDay,
-    clubDay: draft.clubDay,
-    clubType: draft.clubType,
-    totalWeeks: draft.totalWeeks,
-    startKm: draft.startKm,
-    includeBasePhase: draft.includeBasePhase,
-  });
+  return buildCanonicalProgramConfigKey(draft);
+}
+
+export function buildProgramConfigKeyFromSettings(settings: ProgramConfigSource): string {
+  return buildCanonicalProgramConfigKey(settings);
 }
 
 export function toSettingsUpdate(draft: NewProgramDraft): Partial<UserSettings> {

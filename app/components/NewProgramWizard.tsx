@@ -82,6 +82,16 @@ export function NewProgramWizard({
     update({ clubDay: firstNonLong ?? draft.runDays[0], clubType: "varies" });
   };
 
+  const updateClubType = (clubType: string) => {
+    const patch: Partial<NewProgramDraft> = { clubType };
+    if (clubType === "long" && draft.clubDay != null) {
+      patch.longRunDay = draft.clubDay;
+    } else if (draft.clubType === "long" && clubType !== "long") {
+      patch.longRunDay = draft.runDays.find((day) => day !== draft.clubDay);
+    }
+    update(patch);
+  };
+
   return (
     <section className="bg-surface border border-brand rounded-xl p-4 md:p-5 space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -159,7 +169,7 @@ export function NewProgramWizard({
               }}
               className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
                 draft.currentAbilityDist === km
-                  ? "border-brand bg-brand/10 text-brand"
+                  ? "border-brand-btn bg-brand-btn text-white"
                   : "border-border text-muted hover:border-brand hover:text-brand"
               }`}
             >
@@ -196,7 +206,7 @@ export function NewProgramWizard({
               onClick={() => { toggleDay(index); }}
               className={`py-2 rounded-lg text-xs font-semibold transition ${
                 draft.runDays.includes(index)
-                  ? "bg-brand text-white"
+                  ? "bg-brand-btn text-white"
                   : "border border-border text-muted hover:border-brand hover:text-brand"
               }`}
             >
@@ -215,7 +225,7 @@ export function NewProgramWizard({
                 onClick={() => { update({ longRunDay: index }); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   draft.longRunDay === index
-                    ? "bg-brand text-white"
+                    ? "bg-brand-btn text-white"
                     : "border border-border text-muted hover:border-brand hover:text-brand"
                 }`}
               >
@@ -256,7 +266,7 @@ export function NewProgramWizard({
                     onClick={() => { update({ clubDay: index }); }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                       draft.clubDay === index
-                        ? "bg-brand text-white"
+                        ? "bg-brand-btn text-white"
                         : "border border-border text-muted hover:border-brand hover:text-brand"
                     }`}
                   >
@@ -269,10 +279,10 @@ export function NewProgramWizard({
                   <button
                     key={value}
                     type="button"
-                    onClick={() => { update({ clubType: value }); }}
+                    onClick={() => { updateClubType(value); }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                       draft.clubType === value
-                        ? "bg-brand text-white"
+                        ? "bg-brand-btn text-white"
                         : "border border-border text-muted hover:border-brand hover:text-brand"
                     }`}
                   >
@@ -348,7 +358,7 @@ export function NewProgramWizard({
         <button
           type="button"
           onClick={onPreview}
-          className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20"
+          className="flex-1 py-2 bg-brand-btn text-white rounded-lg font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20"
         >
           Preview plan
         </button>

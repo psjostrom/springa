@@ -8,6 +8,7 @@ import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import {
   settingsAtom,
   calendarEventsAtom,
+  calendarLoadingAtom,
   bgModelAtom,
 } from "@/app/atoms";
 import type { UserSettings } from "@/lib/settings";
@@ -192,12 +193,26 @@ describe("PlannerScreen", () => {
       atomInits: [
         [settingsAtom, completedProgramSettings()],
         [calendarEventsAtom, []],
+        [calendarLoadingAtom, false],
         [bgModelAtom, null],
       ],
     });
 
     expect(screen.getByText("EcoTrail is complete.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start New Program" })).toBeInTheDocument();
+  });
+
+  it("does not show the complete-program banner while calendar events are loading", () => {
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [calendarLoadingAtom, true],
+        [bgModelAtom, null],
+      ],
+    });
+
+    expect(screen.queryByText("EcoTrail is complete.")).not.toBeInTheDocument();
   });
 
   it("previews a new program without saving settings or uploading workouts", async () => {
@@ -224,7 +239,7 @@ describe("PlannerScreen", () => {
 
     expect(screen.getByText("Ready to start?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Program" })).toBeInTheDocument();
-    expect(screen.getByText(/will replace future Springa-generated workouts/i)).toBeInTheDocument();
+    expect(screen.getByText(/will replace future workouts on your Springa calendars/i)).toBeInTheDocument();
     expect(capturedUploadPayload).toHaveLength(0);
     expect(capturedSettingsBody).toBeNull();
   });
@@ -290,6 +305,46 @@ describe("PlannerScreen", () => {
         includeBasePhase: false,
       }),
     );
+  });
+
+  it("retries threshold pace sync after a failed new-program start", async () => {
+    const user = userEvent.setup();
+    resetCaptures();
+    let thresholdCalls = 0;
+    server.use(
+      http.put("/api/intervals/threshold-pace", async () => {
+        thresholdCalls += 1;
+        if (thresholdCalls === 1) {
+          return HttpResponse.json({ error: "temporary failure" }, { status: 502 });
+        }
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.click(screen.getByRole("button", { name: "5K" }));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+    await user.click(screen.getByRole("button", { name: "Start Program" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to push threshold pace")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Started new program with \d+ workouts/)).toBeInTheDocument();
+    });
+    expect(thresholdCalls).toBe(2);
+    expect(capturedUploadPayload.length).toBeGreaterThan(0);
   });
 
   it("keeps pending auto-adapt after the URL flag is stripped before bgModel loads", async () => {

@@ -102,4 +102,36 @@ describe("NewProgramWizard", () => {
     await user.click(screen.getAllByRole("button", { name: "Sun" })[0]);
     expect(onDraftChange).not.toHaveBeenCalled();
   });
+
+  it("makes a long club run the long run day", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+
+    render(<WizardHarness onPreview={onPreview} />);
+
+    await user.click(screen.getByRole("switch", { name: "Club run" }));
+    await user.click(screen.getByRole("button", { name: "Long run" }));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(onPreview).toHaveBeenCalledWith({
+      ...initialDraft,
+      clubDay: 2,
+      clubType: "long",
+      longRunDay: 2,
+    });
+  });
+
+  it("uses passing contrast classes for selected controls and primary action", async () => {
+    const user = userEvent.setup();
+
+    render(<WizardHarness />);
+
+    expect(screen.getByRole("button", { name: "Preview plan" })).toHaveClass("bg-brand-btn");
+    await user.click(screen.getByRole("switch", { name: "Club run" }));
+    expect(
+      screen.getAllByRole("button", { name: "Tue" }).some((button) =>
+        button.className.includes("bg-brand-btn"),
+      ),
+    ).toBe(true);
+  });
 });
