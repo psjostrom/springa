@@ -15,6 +15,7 @@ import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
 import "@/lib/__tests__/setup-dom";
 import { server } from "@/lib/__tests__/msw/server";
+import { capturedUploadPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
 
 function PlannerAutoAdaptHarness({
   autoAdapt,
@@ -53,6 +54,19 @@ function baseSettings(overrides?: Partial<UserSettings>): UserSettings {
     lthr: 170,
     ...overrides,
   };
+}
+
+function completedProgramSettings(overrides?: Partial<UserSettings>): UserSettings {
+  return baseSettings({
+    raceName: "EcoTrail",
+    raceDate: "2026-06-13",
+    raceDist: 16,
+    currentAbilityDist: 10,
+    currentAbilitySecs: 3300,
+    totalWeeks: 18,
+    startKm: 8,
+    ...overrides,
+  });
 }
 
 function futurePlannedEvent(overrides?: Partial<CalendarEvent>): CalendarEvent {
@@ -171,6 +185,111 @@ describe("PlannerScreen", () => {
     expect(screen.getByText("3 days/wk")).toBeInTheDocument();
     expect(screen.getByText(/long: sun/i)).toBeInTheDocument();
     expect(screen.getByText(/EcoTrail 16km/)).toBeInTheDocument();
+  });
+
+  it("shows a start new program banner after the race is complete", () => {
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    expect(screen.getByText("EcoTrail is complete.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start New Program" })).toBeInTheDocument();
+  });
+
+  it("previews a new program without saving settings or uploading workouts", async () => {
+    const user = userEvent.setup();
+    resetCaptures();
+    let capturedSettingsBody: unknown = null;
+    server.use(
+      http.put("/api/settings", async ({ request }) => {
+        capturedSettingsBody = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText("Ready to start?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Program" })).toBeInTheDocument();
+    expect(screen.getByText(/will replace future Springa-generated workouts/i)).toBeInTheDocument();
+    expect(capturedUploadPayload).toHaveLength(0);
+    expect(capturedSettingsBody).toBeNull();
+  });
+
+  it("blocks preview when the new race date is too soon", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+
+    const dateInput = container.querySelector("#new-program-race-date");
+    if (!dateInput) throw new Error("new program date input missing");
+    await user.clear(dateInput);
+    await user.type(dateInput, "2026-08-01");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText("Race date must be at least 12 weeks away.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Program" })).not.toBeInTheDocument();
+  });
+
+  it("saves settings and uploads workouts when starting the previewed program", async () => {
+    const user = userEvent.setup();
+    resetCaptures();
+    let capturedSettingsBody: Record<string, unknown> | null = null;
+    server.use(
+      http.put("/api/settings", async ({ request }) => {
+        capturedSettingsBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.type(screen.getByLabelText("Race name"), "Stockholm Half");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+    await user.click(screen.getByRole("button", { name: "Start Program" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Started new program with \d+ workouts/)).toBeInTheDocument();
+    });
+
+    expect(capturedUploadPayload.length).toBeGreaterThan(0);
+    expect(capturedSettingsBody).toEqual(
+      expect.objectContaining({
+        raceName: "Stockholm Half",
+        raceDist: 16,
+        currentAbilityDist: 10,
+        currentAbilitySecs: 3300,
+        startKm: 8,
+        includeBasePhase: false,
+      }),
+    );
   });
 
   it("keeps pending auto-adapt after the URL flag is stripped before bgModel loads", async () => {
