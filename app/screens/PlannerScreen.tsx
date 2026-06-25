@@ -14,11 +14,22 @@ import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
 import { generatePlan } from "@/lib/workoutGenerators";
 import { wellnessToFitnessData, computeInsights } from "@/lib/fitness";
+import { getThresholdPace } from "@/lib/paceTable";
+import {
+  buildDefaultNewProgramDraft,
+  buildProgramConfigKey,
+  buildProgramConfigKeyFromSettings,
+  isProgramFinished,
+  toSettingsUpdate,
+  validateNewProgramDraft,
+  type NewProgramDraft,
+} from "@/lib/programs";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
 import { PlannerSummaryBar } from "../components/PlannerSummaryBar";
 import { PlannerConfigPanel } from "../components/PlannerConfigPanel";
+import { NewProgramWizard } from "../components/NewProgramWizard";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -28,6 +39,7 @@ import {
   bgModelAtom,
   paceTableAtom,
   enrichedEventsAtom,
+  calendarLoadingAtom,
   wellnessEntriesAtom,
   runBGContextsAtom,
   calendarReloadAtom,
@@ -41,6 +53,8 @@ interface PlannerScreenProps {
   autoAdapt?: boolean;
 }
 
+type NewProgramMode = "closed" | "editing" | "preview";
+
 export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const connected = useAtomValue(intervalsConnectedAtom);
   const bgModel = useAtomValue(bgModelAtom);
@@ -48,6 +62,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const diabetesMode = useAtomValue(diabetesModeAtom);
   const paceTable = useAtomValue(paceTableAtom);
   const calendarEvents = useAtomValue(enrichedEventsAtom);
+  const calendarLoading = useAtomValue(calendarLoadingAtom);
   const wellnessEntries = useAtomValue(wellnessEntriesAtom);
   const runBGContexts = useAtomValue(runBGContextsAtom);
   const calendarReload = useSetAtom(calendarReloadAtom);
@@ -65,20 +80,16 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [newProgramMode, setNewProgramMode] = useState<NewProgramMode>("closed");
+  const [newProgramDraft, setNewProgramDraft] = useState<NewProgramDraft | null>(null);
+  const [newProgramError, setNewProgramError] = useState<string | null>(null);
 
   // Config panel state
   const [configExpanded, setConfigExpanded] = useState(false);
 
-  const currentConfigKey = JSON.stringify({
-    runDays: settings?.runDays,
-    longRunDay: settings?.longRunDay,
-    clubDay: settings?.clubDay,
-    clubType: settings?.clubType,
-    raceDate: settings?.raceDate,
-    raceDist: settings?.raceDist,
-  });
+  const currentConfigKey = settings ? buildProgramConfigKeyFromSettings(settings) : null;
 
-  const scheduleChanged = lastGeneratedConfig != null && currentConfigKey !== lastGeneratedConfig;
+  const scheduleChanged = lastGeneratedConfig != null && currentConfigKey != null && currentConfigKey !== lastGeneratedConfig;
 
   // hasUploadedPlan: calendar has future planned events (plan was uploaded)
   const today = new Date();
@@ -86,6 +97,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const hasUploadedPlan = calendarEvents.some(
     (e) => e.type === "planned" && e.date >= today,
   );
+  const programFinished = settings
+    ? !calendarLoading && isProgramFinished(settings, calendarEvents)
+    : false;
 
   // Adapt state
   const [isAdapting, setIsAdapting] = useState(false);
@@ -97,6 +111,65 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const [pendingAutoAdapt, setPendingAutoAdapt] = useState(Boolean(autoAdapt));
 
   const chartData = useWeeklyVolumeData(planEvents);
+
+  const beginNewProgram = () => {
+    if (!settings) return;
+    setNewProgramDraft(buildDefaultNewProgramDraft(settings));
+    setNewProgramMode("editing");
+    setNewProgramError(null);
+    setStatusMsg("");
+    setPlanEvents([]);
+  };
+
+  const cancelNewProgram = () => {
+    setNewProgramDraft(null);
+    setNewProgramMode("closed");
+    setNewProgramError(null);
+    setPlanEvents([]);
+  };
+
+  const previewNewProgram = () => {
+    if (!settings || !newProgramDraft) return;
+
+    const error = validateNewProgramDraft(newProgramDraft);
+    if (error) {
+      setNewProgramError(error);
+      return;
+    }
+    if (!connected) {
+      setNewProgramError("Intervals.icu not connected.");
+      return;
+    }
+    if (settings.hrZones?.length !== 5) {
+      setNewProgramError("HR zones not synced from Intervals.icu.");
+      return;
+    }
+
+    const events = generatePlan({
+      bgModel: bgModel ?? null,
+      raceDateStr: newProgramDraft.raceDate,
+      raceDist: newProgramDraft.raceDist,
+      totalWeeks: newProgramDraft.totalWeeks,
+      startKm: newProgramDraft.startKm,
+      lthr,
+      hrZones: settings.hrZones,
+      includeBasePhase: newProgramDraft.includeBasePhase,
+      diabetesMode,
+      runDays: newProgramDraft.runDays,
+      longRunDay: newProgramDraft.longRunDay ?? 0,
+      clubDay: newProgramDraft.clubDay,
+      clubType: newProgramDraft.clubType,
+      currentAbilitySecs: newProgramDraft.currentAbilitySecs,
+      currentAbilityDist: newProgramDraft.currentAbilityDist,
+    });
+
+    const todayFilter = new Date();
+    todayFilter.setHours(0, 0, 0, 0);
+    setPlanEvents(events.filter((e) => e.start_date_local >= todayFilter));
+    setNewProgramError(null);
+    setStatusMsg("");
+    setNewProgramMode("preview");
+  };
 
   const handleGenerate = () => {
     if (!connected) {
@@ -143,6 +216,51 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       // Best-effort Google Calendar sync
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
       calendarReload();
+    } catch (e) {
+      setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setIsUploading(false);
+  };
+
+  const handleStartNewProgram = async () => {
+    if (!settings || !newProgramDraft) return;
+    if (planEvents.length === 0) {
+      setStatusMsg("Error: Preview a program before starting it");
+      return;
+    }
+    if (!connected) {
+      setStatusMsg("Error: Intervals.icu not connected");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const abilityChanged =
+        newProgramDraft.currentAbilitySecs !== settings.currentAbilitySecs ||
+        newProgramDraft.currentAbilityDist !== settings.currentAbilityDist;
+      const threshold = getThresholdPace(
+        newProgramDraft.currentAbilityDist,
+        newProgramDraft.currentAbilitySecs,
+      );
+
+      if (abilityChanged && threshold && settings.intervalsConnected) {
+        const res = await fetch("/api/intervals/threshold-pace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paceMinPerKm: threshold }),
+        });
+        if (!res.ok) throw new Error("Failed to push threshold pace");
+      }
+
+      await updateSettings(toSettingsUpdate(newProgramDraft));
+
+      const count = await uploadPlan(planEvents);
+      void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
+      calendarReload();
+      setLastGeneratedConfig(buildProgramConfigKey(newProgramDraft));
+      setStatusMsg(`Started new program with ${count} workouts.`);
+      setNewProgramMode("closed");
+      setNewProgramDraft(null);
     } catch (e) {
       setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -320,7 +438,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         {settings && (
           configExpanded ? (
             <PlannerConfigPanel
-              key={currentConfigKey}
+              key={currentConfigKey ?? "settings"}
               settings={settings}
               onSave={handleSettingsSave}
               onDone={() => { setConfigExpanded(false); }}
@@ -334,8 +452,48 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           )
         )}
 
+        {programFinished && newProgramMode === "closed" && (
+          <div className="bg-surface border border-success/30 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-text">
+                {settings?.raceName ? `${settings.raceName} is complete.` : "Your program is complete."}
+              </p>
+              <p className="text-xs text-muted mt-0.5">
+                Start a fresh plan for the next race without repeating account setup.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={beginNewProgram}
+              className="px-4 py-2 bg-brand-btn text-white rounded-lg font-bold text-sm hover:bg-brand-hover transition shadow-lg shadow-brand/20"
+            >
+              Start New Program
+            </button>
+          </div>
+        )}
+
+        {settings && newProgramMode === "closed" && !programFinished && (
+          <button
+            type="button"
+            onClick={beginNewProgram}
+            className="w-full py-2.5 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"
+          >
+            Start New Program
+          </button>
+        )}
+
+        {newProgramMode === "editing" && newProgramDraft && (
+          <NewProgramWizard
+            draft={newProgramDraft}
+            validationError={newProgramError}
+            onDraftChange={setNewProgramDraft}
+            onCancel={cancelNewProgram}
+            onPreview={previewNewProgram}
+          />
+        )}
+
         {/* Schedule Changed Banner */}
-        {scheduleChanged && hasUploadedPlan && (
+        {newProgramMode === "closed" && scheduleChanged && hasUploadedPlan && (
           <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-warning text-sm">Schedule changed</span>
             <button
@@ -348,7 +506,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* State 1: No plan — show Generate button */}
-        {planEvents.length === 0 && !hasUploadedPlan && (
+        {newProgramMode === "closed" && planEvents.length === 0 && !hasUploadedPlan && (
           <>
             <button
               onClick={handleGenerate}
@@ -369,7 +527,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* State 3: Uploaded plan exists, no local preview */}
-        {planEvents.length === 0 && hasUploadedPlan && !scheduleChanged && (
+        {newProgramMode === "closed" && planEvents.length === 0 && hasUploadedPlan && !scheduleChanged && (
           <button
             onClick={handleGenerate}
             className="w-full py-3 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"
@@ -386,8 +544,18 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               workoutCount={planEvents.length}
               isUploading={isUploading}
               statusMsg={statusMsg}
-              onUpload={() => { void handleUpload(); }}
+              onUpload={() => { void (newProgramMode === "preview" ? handleStartNewProgram() : handleUpload()); }}
               onViewCalendar={() => { setSwitchTab("calendar"); }}
+              readyTitle={newProgramMode === "preview" ? "Ready to start?" : undefined}
+              readyDescription={
+                newProgramMode === "preview"
+                  ? `${planEvents.length} workouts will replace future workouts on your Springa calendars. Completed runs are kept.`
+                  : undefined
+              }
+              actionLabel={newProgramMode === "preview" ? "Start Program" : undefined}
+              uploadingTitle={newProgramMode === "preview" ? "Starting program..." : undefined}
+              uploadingDescription={newProgramMode === "preview" ? "Saving settings and syncing workouts" : undefined}
+              completeTitle={newProgramMode === "preview" ? "Program started" : undefined}
             />
             <WorkoutList events={planEvents} />
           </>

@@ -56,7 +56,7 @@ export const updateSettingsAtom = atom(
 // ─── Calendar ────────────────────────────────────────────────
 
 export const calendarEventsAtom = atom<CalendarEvent[]>([]);
-export const calendarLoadingAtom = atom(false);
+export const calendarLoadingAtom = atom(true);
 export const calendarErrorAtom = atom<string | null>(null);
 // Write-only atom that triggers SWR revalidation for calendar data.
 // Uses SWR's global mutate with the same key as useSharedCalendarData.
