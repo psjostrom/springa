@@ -22,24 +22,24 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@libsql/client": "^0.17.3",
+    "@libsql/client": "^0.17.4",
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.91",
     "babel-plugin-react-compiler": "^1.0.0",
     "cheerio": "^1.2.0",
     "date-fns": "^4.4.0",
     "jotai": "^2.20.1",
-    "lucide-react": "^1.17.0",
-    "mapbox-gl": "^3.24.0",
+    "lucide-react": "^1.21.0",
+    "mapbox-gl": "^3.25.0",
     "next": "16.2.9",
     "next-auth": "^5.0.0-beta.31",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-map-gl": "^8.1.1",
     "react-markdown": "^10.1.0",
-    "recharts": "^3.8.1",
+    "recharts": "^3.9.0",
     "remark-gfm": "^4.0.1",
-    "swr": "^2.4.1",
+    "swr": "^2.4.2",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -51,7 +51,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
     "husky": "^9.1.7",
@@ -59,6 +59,6 @@
     "msw": "^2.14.6",
     "tailwindcss": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }
