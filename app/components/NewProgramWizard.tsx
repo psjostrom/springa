@@ -1,7 +1,7 @@
 "use client";
 
 import type { NewProgramDraft } from "@/lib/programs";
-import { MIN_NEW_PROGRAM_WEEKS } from "@/lib/programs";
+import { getProgramWeeks } from "@/lib/programs";
 import {
   DISTANCE_OPTIONS,
   getDefaultGoalTime,
@@ -147,7 +147,12 @@ export function NewProgramWizard({
               id="new-program-race-date"
               type="date"
               value={draft.raceDate}
-              onChange={(e) => { update({ raceDate: e.target.value }); }}
+              onChange={(e) => {
+                update({
+                  raceDate: e.target.value,
+                  totalWeeks: getProgramWeeks(e.target.value),
+                });
+              }}
               className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
@@ -297,35 +302,19 @@ export function NewProgramWizard({
 
       <div className="border-t border-border pt-4 space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Plan options</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="new-program-total-weeks" className="block text-xs text-muted mb-1">
-              Total weeks
-            </label>
-            <input
-              id="new-program-total-weeks"
-              type="number"
-              min={MIN_NEW_PROGRAM_WEEKS}
-              max={30}
-              value={draft.totalWeeks || ""}
-              onChange={(e) => { update({ totalWeeks: numberFromInput(e.target.value) }); }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
-          <div>
-            <label htmlFor="new-program-start-km" className="block text-xs text-muted mb-1">
-              Start km
-            </label>
-            <input
-              id="new-program-start-km"
-              type="number"
-              min={2}
-              max={30}
-              value={draft.startKm || ""}
-              onChange={(e) => { update({ startKm: numberFromInput(e.target.value) }); }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-          </div>
+        <div>
+          <label htmlFor="new-program-start-km" className="block text-xs text-muted mb-1">
+            Start km
+          </label>
+          <input
+            id="new-program-start-km"
+            type="number"
+            min={2}
+            max={30}
+            value={draft.startKm || ""}
+            onChange={(e) => { update({ startKm: numberFromInput(e.target.value) }); }}
+            className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          />
         </div>
         <label className="flex items-start gap-3">
           <input

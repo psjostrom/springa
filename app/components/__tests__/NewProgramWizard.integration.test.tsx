@@ -3,7 +3,7 @@ import { render, screen } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { NewProgramWizard } from "../NewProgramWizard";
-import type { NewProgramDraft } from "@/lib/programs";
+import { getProgramWeeks, type NewProgramDraft } from "@/lib/programs";
 import "@/lib/__tests__/setup-dom";
 
 const initialDraft: NewProgramDraft = {
@@ -57,6 +57,7 @@ describe("NewProgramWizard", () => {
     expect(screen.getByText("Schedule")).toBeInTheDocument();
     expect(screen.getByDisplayValue("16")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-10-28")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Total weeks")).not.toBeInTheDocument();
   });
 
   it("updates race name and calls preview with the changed draft", async () => {
@@ -71,6 +72,23 @@ describe("NewProgramWizard", () => {
     expect(onPreview).toHaveBeenCalledWith({
       ...initialDraft,
       raceName: "Stockholm Half",
+    });
+  });
+
+  it("derives plan length from the selected race date", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+
+    render(<WizardHarness onPreview={onPreview} />);
+
+    await user.clear(screen.getByLabelText("Race date"));
+    await user.type(screen.getByLabelText("Race date"), "2027-06-29");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(onPreview).toHaveBeenCalledWith({
+      ...initialDraft,
+      raceDate: "2027-06-29",
+      totalWeeks: getProgramWeeks("2027-06-29"),
     });
   });
 

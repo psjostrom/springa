@@ -8,6 +8,7 @@ import {
 } from "date-fns";
 import type { UserSettings } from "./settings";
 import type { CalendarEvent } from "./types";
+import { getDefaultGoalTime } from "./paceTable";
 
 export interface NewProgramDraft {
   raceName: string;
@@ -88,7 +89,10 @@ export function isProgramFinished(
 }
 
 export function getProgramWeeks(raceDate: string, now = new Date()): number {
-  return Math.max(MIN_NEW_PROGRAM_WEEKS, differenceInWeeks(parseISO(raceDate), now));
+  return Math.max(
+    MIN_NEW_PROGRAM_WEEKS,
+    differenceInWeeks(startOfDay(parseISO(raceDate)), startOfDay(now)),
+  );
 }
 
 function getWeeksUntilRace(raceDate: string, now = new Date()): number {
@@ -107,12 +111,15 @@ export function buildDefaultNewProgramDraft(
       ? 0
       : runDays[runDays.length - 1];
 
+  const currentAbilityDist = settings.currentAbilityDist ?? settings.raceDist ?? 10;
+  const currentAbilitySecs = settings.currentAbilitySecs ?? getDefaultGoalTime(currentAbilityDist, "intermediate");
+
   return {
     raceName: "",
     raceDist: settings.raceDist ?? 16,
     raceDate: format(addWeeks(now, totalWeeks), "yyyy-MM-dd"),
-    currentAbilityDist: settings.currentAbilityDist ?? settings.raceDist ?? 10,
-    currentAbilitySecs: settings.currentAbilitySecs ?? 0,
+    currentAbilityDist,
+    currentAbilitySecs,
     runDays,
     longRunDay: fallbackLongRunDay,
     clubDay: settings.clubDay,

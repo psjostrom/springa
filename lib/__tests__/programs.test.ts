@@ -74,6 +74,20 @@ describe("buildDefaultNewProgramDraft", () => {
     expect(draft.totalWeeks).toBe(18);
     expect(draft.startKm).toBe(8);
   });
+
+  it("fills missing current fitness time from the saved fitness distance", () => {
+    const draft = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 18,
+      startKm: 8,
+    }, now);
+
+    expect(draft.currentAbilityDist).toBe(10);
+    expect(draft.currentAbilitySecs).toBeGreaterThan(0);
+  });
 });
 
 describe("validateNewProgramDraft", () => {
