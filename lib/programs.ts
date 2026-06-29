@@ -25,7 +25,8 @@ export interface NewProgramDraft {
   includeBasePhase: boolean;
 }
 
-export const MIN_NEW_PROGRAM_WEEKS = 12;
+export const MIN_NEW_PROGRAM_WEEKS = 10;
+export const RECOMMENDED_NEW_PROGRAM_WEEKS = 12;
 
 function sortDays(days: number[]): number[] {
   return [...days].sort((a, b) => a - b);
@@ -99,6 +100,27 @@ function getWeeksUntilRace(raceDate: string, now = new Date()): number {
   return differenceInWeeks(startOfDay(parseISO(raceDate)), startOfDay(now));
 }
 
+export function getNewProgramTimelineWarning(
+  draft: Pick<NewProgramDraft, "raceDate">,
+  now = new Date(),
+): string | null {
+  if (!draft.raceDate) return null;
+
+  const weeksUntilRace = getWeeksUntilRace(draft.raceDate, now);
+  if (
+    weeksUntilRace < MIN_NEW_PROGRAM_WEEKS ||
+    weeksUntilRace >= RECOMMENDED_NEW_PROGRAM_WEEKS
+  ) {
+    return null;
+  }
+
+  return [
+    `This is a compressed ${weeksUntilRace}-week plan.`,
+    "It will not be as good as a 12-week plan, and the first weeks may feel abrupt.",
+    "Use it only if the race is close to your current fitness.",
+  ].join(" ");
+}
+
 export function buildDefaultNewProgramDraft(
   settings: UserSettings,
   now = new Date(),
@@ -112,7 +134,8 @@ export function buildDefaultNewProgramDraft(
       : runDays[runDays.length - 1];
 
   const currentAbilityDist = settings.currentAbilityDist ?? settings.raceDist ?? 10;
-  const currentAbilitySecs = settings.currentAbilitySecs ?? getDefaultGoalTime(currentAbilityDist, "intermediate");
+  const currentAbilitySecs = settings.currentAbilitySecs
+    ?? getDefaultGoalTime(currentAbilityDist, "intermediate");
 
   return {
     raceName: "",

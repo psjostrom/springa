@@ -1,7 +1,7 @@
 "use client";
 
 import type { NewProgramDraft } from "@/lib/programs";
-import { getProgramWeeks } from "@/lib/programs";
+import { getNewProgramTimelineWarning, getProgramWeeks } from "@/lib/programs";
 import {
   DISTANCE_OPTIONS,
   getDefaultGoalTime,
@@ -48,6 +48,7 @@ export function NewProgramWizard({
     ? getSliderRange(draft.currentAbilityDist)
     : null;
   const hasClub = draft.clubDay != null;
+  const timelineWarning = getNewProgramTimelineWarning(draft);
 
   const update = (patch: Partial<NewProgramDraft>) => {
     onDraftChange({ ...draft, ...patch });
@@ -333,6 +334,13 @@ export function NewProgramWizard({
       {validationError && (
         <div className="bg-tint-error border border-error/20 rounded-lg px-3 py-2">
           <p className="text-sm text-error">{validationError}</p>
+        </div>
+      )}
+
+      {timelineWarning && (
+        <div className="bg-tint-warning border-2 border-warning/50 rounded-lg px-4 py-3">
+          <p className="text-sm font-bold text-text">Compressed plan</p>
+          <p className="text-sm text-text mt-1">{timelineWarning}</p>
         </div>
       )}
 

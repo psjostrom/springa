@@ -34,13 +34,17 @@ function PlannerAutoAdaptHarness({
   return <PlannerScreen autoAdapt={autoAdapt} />;
 }
 
-function futureRaceDate(): string {
+function dateWeeksFromNow(weeks: number): string {
   const raceDate = new Date();
-  raceDate.setDate(raceDate.getDate() + 18 * 7);
+  raceDate.setDate(raceDate.getDate() + weeks * 7);
   const year = raceDate.getFullYear();
   const month = String(raceDate.getMonth() + 1).padStart(2, "0");
   const day = String(raceDate.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function futureRaceDate(): string {
+  return dateWeeksFromNow(18);
 }
 
 function baseSettings(overrides?: Partial<UserSettings>): UserSettings {
@@ -280,11 +284,36 @@ describe("PlannerScreen", () => {
     const dateInput = container.querySelector("#new-program-race-date");
     if (!dateInput) throw new Error("new program date input missing");
     await user.clear(dateInput);
-    await user.type(dateInput, "2026-08-01");
+    await user.type(dateInput, dateWeeksFromNow(9));
     await user.click(screen.getByRole("button", { name: "Preview plan" }));
 
-    expect(screen.getByText("Race date must be at least 12 weeks away.")).toBeInTheDocument();
+    expect(screen.getByText("Race date must be at least 10 weeks away.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start Program" })).not.toBeInTheDocument();
+  });
+
+  it("allows previewing a compressed 10-week new program with a warning", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+
+    const dateInput = container.querySelector("#new-program-race-date");
+    if (!dateInput) throw new Error("new program date input missing");
+    await user.clear(dateInput);
+    await user.type(dateInput, dateWeeksFromNow(10));
+
+    expect(screen.getByText("Compressed plan")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText("Ready to start?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Program" })).toBeInTheDocument();
+    expect(screen.queryByText("Race date must be at least 10 weeks away.")).not.toBeInTheDocument();
   });
 
   it("saves settings and uploads workouts when starting the previewed program", async () => {

@@ -5,6 +5,7 @@ import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
   buildProgramConfigKeyFromSettings,
+  getNewProgramTimelineWarning,
   getProgramWeeks,
   isProgramFinished,
   validateNewProgramDraft,
@@ -43,8 +44,8 @@ describe("isProgramFinished", () => {
 });
 
 describe("getProgramWeeks", () => {
-  it("counts calendar weeks until the race with a 12 week minimum", () => {
-    expect(getProgramWeeks("2026-08-01", now)).toBe(12);
+  it("counts calendar weeks until the race with a 10 week minimum", () => {
+    expect(getProgramWeeks("2026-08-01", now)).toBe(10);
     expect(getProgramWeeks("2026-11-01", now)).toBeGreaterThan(12);
   });
 });
@@ -122,8 +123,14 @@ describe("validateNewProgramDraft", () => {
 
   it("rejects too-soon race dates", () => {
     expect(validateNewProgramDraft({ ...validDraft, raceDate: "2026-08-01" }, now)).toBe(
-      "Race date must be at least 12 weeks away.",
+      "Race date must be at least 10 weeks away.",
     );
+  });
+
+  it("accepts a compressed 10-week race date", () => {
+    const draft = { ...validDraft, raceDate: "2026-09-02", totalWeeks: 10 };
+
+    expect(validateNewProgramDraft(draft, now)).toBeNull();
   });
 
   it("rejects schedules without a long run day", () => {
@@ -136,6 +143,20 @@ describe("validateNewProgramDraft", () => {
     expect(validateNewProgramDraft({ ...validDraft, runDays: [0] }, now)).toBe(
       "Pick at least two run days.",
     );
+  });
+});
+
+describe("getNewProgramTimelineWarning", () => {
+  it("warns for a compressed timeline below the recommended 12 weeks", () => {
+    expect(getNewProgramTimelineWarning({ raceDate: "2026-09-02" }, now)).toContain(
+      "compressed 10-week",
+    );
+  });
+
+  it("does not warn for a 12-week or longer timeline", () => {
+    expect(
+      getNewProgramTimelineWarning({ raceDate: "2026-09-16" }, now),
+    ).toBeNull();
   });
 });
 

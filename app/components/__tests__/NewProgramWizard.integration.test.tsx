@@ -19,6 +19,15 @@ const initialDraft: NewProgramDraft = {
   includeBasePhase: false,
 };
 
+function dateWeeksFromNow(weeks: number): string {
+  const raceDate = new Date();
+  raceDate.setDate(raceDate.getDate() + weeks * 7);
+  const year = raceDate.getFullYear();
+  const month = String(raceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(raceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function WizardHarness({
   validationError = null,
   onPreview = () => {},
@@ -93,9 +102,24 @@ describe("NewProgramWizard", () => {
   });
 
   it("shows validation errors from Planner", () => {
-    render(<WizardHarness validationError="Race date must be at least 12 weeks away." />);
+    render(<WizardHarness validationError="Race date must be at least 10 weeks away." />);
 
-    expect(screen.getByText("Race date must be at least 12 weeks away.")).toBeInTheDocument();
+    expect(screen.getByText("Race date must be at least 10 weeks away.")).toBeInTheDocument();
+  });
+
+  it("shows a prominent warning for compressed timelines", () => {
+    render(
+      <NewProgramWizard
+        draft={{ ...initialDraft, raceDate: dateWeeksFromNow(10), totalWeeks: 10 }}
+        validationError={null}
+        onDraftChange={() => {}}
+        onCancel={() => {}}
+        onPreview={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Compressed plan")).toBeInTheDocument();
+    expect(screen.getByText(/will not be as good as a 12-week plan/i)).toBeInTheDocument();
   });
 
   it("does not allow removing the final run day", async () => {
