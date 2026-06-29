@@ -8,6 +8,7 @@ import {
   getSliderRange,
 } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
+import { supportsBasePhase } from "@/lib/periodization";
 
 interface NewProgramWizardProps {
   draft: NewProgramDraft;
@@ -49,6 +50,8 @@ export function NewProgramWizard({
     : null;
   const hasClub = draft.clubDay != null;
   const timelineWarning = getNewProgramTimelineWarning(draft);
+  const basePhaseSupported = supportsBasePhase(draft.totalWeeks);
+  const includeBasePhase = basePhaseSupported && draft.includeBasePhase;
 
   const update = (patch: Partial<NewProgramDraft>) => {
     onDraftChange({ ...draft, ...patch });
@@ -149,9 +152,11 @@ export function NewProgramWizard({
               type="date"
               value={draft.raceDate}
               onChange={(e) => {
+                const totalWeeks = getProgramWeeks(e.target.value);
                 update({
                   raceDate: e.target.value,
-                  totalWeeks: getProgramWeeks(e.target.value),
+                  totalWeeks,
+                  includeBasePhase: supportsBasePhase(totalWeeks) && draft.includeBasePhase,
                 });
               }}
               className="w-full px-3 py-2 border border-border rounded-lg text-text bg-bg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
@@ -320,13 +325,18 @@ export function NewProgramWizard({
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
-            checked={draft.includeBasePhase}
+            checked={includeBasePhase}
+            disabled={!basePhaseSupported}
             onChange={(e) => { update({ includeBasePhase: e.target.checked }); }}
             className="mt-1 accent-brand"
           />
           <span>
             <span className="block text-sm font-semibold text-text">Include base phase</span>
-            <span className="block text-xs text-muted">Adds easy-only weeks before the build phase.</span>
+            <span className="block text-xs text-muted">
+              {basePhaseSupported
+                ? "Adds easy-only weeks before the build phase."
+                : "Base phase is not available for compressed plans."}
+            </span>
           </span>
         </label>
       </div>
@@ -339,8 +349,8 @@ export function NewProgramWizard({
 
       {timelineWarning && (
         <div className="bg-tint-warning border-2 border-warning/50 rounded-lg px-4 py-3">
-          <p className="text-sm font-bold text-text">Compressed plan</p>
-          <p className="text-sm text-text mt-1">{timelineWarning}</p>
+          <p className="text-sm font-bold text-text">{timelineWarning.title}</p>
+          <p className="text-sm text-text mt-1">{timelineWarning.message}</p>
         </div>
       )}
 

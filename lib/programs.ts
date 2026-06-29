@@ -1,6 +1,6 @@
 import {
   addWeeks,
-  differenceInWeeks,
+  differenceInCalendarWeeks,
   format,
   isBefore,
   parseISO,
@@ -9,6 +9,7 @@ import {
 import type { UserSettings } from "./settings";
 import type { CalendarEvent } from "./types";
 import { getDefaultGoalTime } from "./paceTable";
+import { MIN_NORMAL_PLAN_WEEKS, supportsBasePhase } from "./periodization";
 
 export interface NewProgramDraft {
   raceName: string;
@@ -25,8 +26,13 @@ export interface NewProgramDraft {
   includeBasePhase: boolean;
 }
 
-export const MIN_NEW_PROGRAM_WEEKS = 10;
+export const MIN_NEW_PROGRAM_WEEKS = 8;
 export const RECOMMENDED_NEW_PROGRAM_WEEKS = 12;
+
+export interface NewProgramTimelineWarning {
+  title: string;
+  message: string;
+}
 
 function sortDays(days: number[]): number[] {
   return [...days].sort((a, b) => a - b);
@@ -90,23 +96,27 @@ export function isProgramFinished(
 }
 
 export function getProgramWeeks(raceDate: string, now = new Date()): number {
-  return Math.max(
-    MIN_NEW_PROGRAM_WEEKS,
-    differenceInWeeks(startOfDay(parseISO(raceDate)), startOfDay(now)),
-  );
+  const trainingWeeks = getTrainingWeeksUntilRace(raceDate, now);
+  if (!Number.isFinite(trainingWeeks)) return MIN_NEW_PROGRAM_WEEKS;
+  return Math.max(MIN_NEW_PROGRAM_WEEKS, trainingWeeks);
 }
 
-function getWeeksUntilRace(raceDate: string, now = new Date()): number {
-  return differenceInWeeks(startOfDay(parseISO(raceDate)), startOfDay(now));
+function getTrainingWeeksUntilRace(raceDate: string, now = new Date()): number {
+  return differenceInCalendarWeeks(
+    startOfDay(parseISO(raceDate)),
+    startOfDay(now),
+    { weekStartsOn: 1 },
+  ) + 1;
 }
 
 export function getNewProgramTimelineWarning(
   draft: Pick<NewProgramDraft, "raceDate">,
   now = new Date(),
-): string | null {
+): NewProgramTimelineWarning | null {
   if (!draft.raceDate) return null;
 
-  const weeksUntilRace = getWeeksUntilRace(draft.raceDate, now);
+  const weeksUntilRace = getTrainingWeeksUntilRace(draft.raceDate, now);
+  if (!Number.isFinite(weeksUntilRace)) return null;
   if (
     weeksUntilRace < MIN_NEW_PROGRAM_WEEKS ||
     weeksUntilRace >= RECOMMENDED_NEW_PROGRAM_WEEKS
@@ -114,11 +124,25 @@ export function getNewProgramTimelineWarning(
     return null;
   }
 
-  return [
-    `This is a compressed ${weeksUntilRace}-week plan.`,
-    "It will not be as good as a 12-week plan, and the first weeks may feel abrupt.",
-    "Use it only if the race is close to your current fitness.",
-  ].join(" ");
+  if (weeksUntilRace < MIN_NORMAL_PLAN_WEEKS) {
+    return {
+      title: "Very compressed plan",
+      message: [
+        `This is ${weeksUntilRace}-week race prep, not a full build.`,
+        "There is one race rehearsal, a shorter taper, and less margin if a week goes sideways.",
+        "Use it only if the race is close to your current fitness.",
+      ].join(" "),
+    };
+  }
+
+  return {
+    title: "Compressed plan",
+    message: [
+      `This is a compressed ${weeksUntilRace}-week plan.`,
+      "It will not be as good as a 12-week plan, and the first weeks may feel abrupt.",
+      "Use it only if the race is close to your current fitness.",
+    ].join(" "),
+  };
 }
 
 export function buildDefaultNewProgramDraft(
@@ -149,7 +173,7 @@ export function buildDefaultNewProgramDraft(
     clubType: settings.clubType,
     totalWeeks,
     startKm: settings.startKm ?? 8,
-    includeBasePhase: settings.includeBasePhase ?? false,
+    includeBasePhase: supportsBasePhase(totalWeeks) && (settings.includeBasePhase ?? false),
   };
 }
 
@@ -163,7 +187,7 @@ export function validateNewProgramDraft(
   if (!draft.raceDate) {
     return "Pick a race date.";
   }
-  if (getWeeksUntilRace(draft.raceDate, now) < MIN_NEW_PROGRAM_WEEKS) {
+  if (getTrainingWeeksUntilRace(draft.raceDate, now) < MIN_NEW_PROGRAM_WEEKS) {
     return `Race date must be at least ${MIN_NEW_PROGRAM_WEEKS} weeks away.`;
   }
   if (!draft.currentAbilityDist || draft.currentAbilityDist <= 0) {
@@ -215,6 +239,6 @@ export function toSettingsUpdate(draft: NewProgramDraft): Partial<UserSettings> 
     clubType: draft.clubType,
     totalWeeks: draft.totalWeeks,
     startKm: draft.startKm,
-    includeBasePhase: draft.includeBasePhase,
+    includeBasePhase: supportsBasePhase(draft.totalWeeks) && draft.includeBasePhase,
   };
 }

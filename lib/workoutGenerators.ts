@@ -1,6 +1,7 @@
 import {
   addDays,
   addWeeks,
+  startOfDay,
   startOfWeek,
   parseISO,
   isBefore,
@@ -14,7 +15,12 @@ import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
 import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
-import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
+import {
+  getPhaseBoundaries,
+  isRecoveryWeek as isRecoveryWeekFn,
+  supportsBasePhase,
+  type PhaseBoundaries,
+} from "./periodization";
 import { getWeekIdx } from "./workoutMath";
 
 export type OnDemandCategory = "easy" | "quality" | "long" | "club";
@@ -454,6 +460,8 @@ export interface PlanConfig {
 
 export function buildContext(config: PlanConfig): PlanContext {
   const raceDate = parseISO(config.raceDateStr);
+  const includeBasePhase = supportsBasePhase(config.totalWeeks)
+    && (config.includeBasePhase ?? false);
 
   let paceTable: PaceTableResult | null = null;
   if (config.currentAbilitySecs && config.currentAbilityDist) {
@@ -474,8 +482,8 @@ export function buildContext(config: PlanConfig): PlanContext {
     startKm: config.startKm,
     lthr: config.lthr,
     hrZones: config.hrZones,
-    includeBasePhase: config.includeBasePhase ?? false,
-    boundaries: getPhaseBoundaries(config.totalWeeks, config.includeBasePhase ?? false),
+    includeBasePhase,
+    boundaries: getPhaseBoundaries(config.totalWeeks, includeBasePhase),
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(config.totalWeeks - 1),
@@ -560,11 +568,12 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
 
 export function generatePlan(config: PlanConfig): WorkoutEvent[] {
   const ctx = buildContext(config);
-  const today = new Date();
+  const today = startOfDay(new Date());
   return Array.from({ length: config.totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
-    if (isBefore(addDays(weekStart, 7), today)) return [];
-    return generateWeekEvents(ctx, i, weekStart);
+    return generateWeekEvents(ctx, i, weekStart).filter((event) =>
+      !isBefore(event.start_date_local, today),
+    );
   });
 }
 

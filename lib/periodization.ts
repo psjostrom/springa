@@ -1,7 +1,9 @@
 // Phase boundary logic — pure functions shared by UI and workout generators.
 
-/** Minimum total weeks for a valid plan. Ensures at least 4 build weeks (one full 3:1 cycle). */
-export const MIN_PLAN_WEEKS = 10;
+/** Minimum total weeks for a valid compressed race-prep plan. */
+export const MIN_PLAN_WEEKS = 8;
+export const MIN_NORMAL_PLAN_WEEKS = 10;
+export const MIN_WEEKS_WITH_BASE_PHASE = 11;
 
 
 export type PhaseName = "Base" | "Build" | "Race Test" | "Taper" | "Race Week";
@@ -26,6 +28,14 @@ export interface PhaseDefinition {
   focus: string[];
 }
 
+export function isCompressedPlan(totalWeeks: number): boolean {
+  return totalWeeks >= MIN_PLAN_WEEKS && totalWeeks < MIN_NORMAL_PLAN_WEEKS;
+}
+
+export function supportsBasePhase(totalWeeks: number): boolean {
+  return totalWeeks >= MIN_WEEKS_WITH_BASE_PHASE;
+}
+
 /**
  * Compute phase boundaries for a plan of `totalWeeks` length.
  *
@@ -41,6 +51,19 @@ export function getPhaseBoundaries(totalWeeks: number, includeBasePhase = false)
     throw new Error(`Plan must be at least ${MIN_PLAN_WEEKS} weeks (got ${totalWeeks})`);
   }
 
+  if (isCompressedPlan(totalWeeks)) {
+    return {
+      baseEnd: 0,
+      buildStart: 1,
+      buildEnd: totalWeeks - 3,
+      raceTestStart: totalWeeks - 2,
+      raceTestEnd: totalWeeks - 2,
+      taperStart: totalWeeks - 1,
+      taperEnd: totalWeeks - 1,
+      raceWeek: totalWeeks,
+    };
+  }
+
   const raceWeek = totalWeeks;
   const taperEnd = totalWeeks - 1;
   const taperStart = totalWeeks - 2;
@@ -48,7 +71,7 @@ export function getPhaseBoundaries(totalWeeks: number, includeBasePhase = false)
   const raceTestStart = raceTestEnd - 1;
 
   let baseEnd: number;
-  if (includeBasePhase) {
+  if (includeBasePhase && supportsBasePhase(totalWeeks)) {
     baseEnd = Math.min(3, Math.max(2, Math.floor(totalWeeks * 0.17)));
   } else {
     baseEnd = 0;
@@ -80,6 +103,7 @@ export function isRecoveryWeek(weekNum: number, totalWeeks: number, includeBaseP
 /** Build the full list of phase definitions for the popover UI. */
 export function getPhaseDefinitions(totalWeeks: number, includeBasePhase = false): PhaseDefinition[] {
   const b = getPhaseBoundaries(totalWeeks, includeBasePhase);
+  const compressed = isCompressedPlan(totalWeeks);
 
   const phases: PhaseDefinition[] = [];
 
@@ -118,13 +142,22 @@ export function getPhaseDefinitions(totalWeeks: number, includeBasePhase = false
       displayName: "Race Test Phase",
       startWeek: b.raceTestStart,
       endWeek: b.raceTestEnd,
-      description: "Two shots at race distance. Same kit, same fuel, same pump setup as race day. If the first one goes sideways, you get another attempt.",
-      focus: [
-        "Full race distance at easy pace",
-        "Fueling strategy validation",
-        "BG protocol rehearsal (x2)",
-        "Gear and logistics check",
-      ],
+      description: compressed
+        ? "One race-specific rehearsal. Same kit, same fuel, same pump setup as race day."
+        : "Two shots at race distance. Same kit, same fuel, same pump setup as race day. If the first one goes sideways, you get another attempt.",
+      focus: compressed
+        ? [
+            "One race-specific rehearsal",
+            "Fueling strategy validation",
+            "BG protocol check",
+            "Gear and logistics check",
+          ]
+        : [
+            "Full race distance at easy pace",
+            "Fueling strategy validation",
+            "BG protocol rehearsal (x2)",
+            "Gear and logistics check",
+          ],
     },
   );
 

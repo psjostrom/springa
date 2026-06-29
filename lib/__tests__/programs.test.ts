@@ -44,9 +44,13 @@ describe("isProgramFinished", () => {
 });
 
 describe("getProgramWeeks", () => {
-  it("counts calendar weeks until the race with a 10 week minimum", () => {
-    expect(getProgramWeeks("2026-08-01", now)).toBe(10);
+  it("counts Monday-based training weeks until the race with an 8-week minimum", () => {
+    expect(getProgramWeeks("2026-08-01", now)).toBe(8);
     expect(getProgramWeeks("2026-11-01", now)).toBeGreaterThan(12);
+  });
+
+  it("counts Stockholm Half from June 29 as a 9-week training block", () => {
+    expect(getProgramWeeks("2026-08-29", new Date("2026-06-29T10:00:00"))).toBe(9);
   });
 });
 
@@ -123,12 +127,18 @@ describe("validateNewProgramDraft", () => {
 
   it("rejects too-soon race dates", () => {
     expect(validateNewProgramDraft({ ...validDraft, raceDate: "2026-08-01" }, now)).toBe(
-      "Race date must be at least 10 weeks away.",
+      "Race date must be at least 8 weeks away.",
     );
   });
 
+  it("accepts a very compressed 8-week race date", () => {
+    const draft = { ...validDraft, raceDate: "2026-08-10", totalWeeks: 8 };
+
+    expect(validateNewProgramDraft(draft, now)).toBeNull();
+  });
+
   it("accepts a compressed 10-week race date", () => {
-    const draft = { ...validDraft, raceDate: "2026-09-02", totalWeeks: 10 };
+    const draft = { ...validDraft, raceDate: "2026-08-24", totalWeeks: 10 };
 
     expect(validateNewProgramDraft(draft, now)).toBeNull();
   });
@@ -147,10 +157,18 @@ describe("validateNewProgramDraft", () => {
 });
 
 describe("getNewProgramTimelineWarning", () => {
-  it("warns for a compressed timeline below the recommended 12 weeks", () => {
-    expect(getNewProgramTimelineWarning({ raceDate: "2026-09-02" }, now)).toContain(
-      "compressed 10-week",
-    );
+  it("warns strongly for a very compressed 8-9 week timeline", () => {
+    expect(getNewProgramTimelineWarning({ raceDate: "2026-08-10" }, now)).toEqual({
+      title: "Very compressed plan",
+      message: expect.stringContaining("race prep"),
+    });
+  });
+
+  it("warns for a compressed 10-11 week timeline", () => {
+    expect(getNewProgramTimelineWarning({ raceDate: "2026-08-24" }, now)).toEqual({
+      title: "Compressed plan",
+      message: expect.stringContaining("12-week plan"),
+    });
   });
 
   it("does not warn for a 12-week or longer timeline", () => {

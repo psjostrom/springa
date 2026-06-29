@@ -36,8 +36,13 @@ describe("PlanTab totalWeeks validation", () => {
   });
 
   it("Save is enabled when totalWeeks meets minimum", async () => {
-    renderTab({ totalWeeks: 12 });
+    renderTab({ totalWeeks: 8 });
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("explains that 8-9 week plans are compressed race prep", () => {
+    renderTab({ totalWeeks: 8 });
+    expect(screen.getByText(/8-9 week plans are compressed race prep/i)).toBeInTheDocument();
   });
 
   it("calls onSave when totalWeeks is valid and changed", async () => {

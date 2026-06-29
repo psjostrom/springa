@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
+import {
+  generateFullPlan,
+  generatePlan,
+  generateSingleWorkout,
+  suggestCategory,
+  buildContext,
+  getWeekPhase,
+  assignDayRoles,
+} from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { estimateWorkoutDescriptionDistance, getWeekIdx, prescribedCarbs } from "../workoutMath";
@@ -19,6 +27,15 @@ function futureSaturday(weeksAhead = 52): string {
   while (date.getDay() !== 6) {
     date.setDate(date.getDate() + 1);
   }
+  return formatDate(date);
+}
+
+function dateInTrainingWeek(weeks: number): string {
+  const date = new Date();
+  const day = date.getDay();
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + offsetToMonday + (weeks - 1) * 7 + 5);
   return formatDate(date);
 }
 
@@ -383,6 +400,50 @@ describe("generatePlan", () => {
       expect(match).not.toBeNull();
       expect(parseInt(match![1], 10)).toBe(16);
     }
+  });
+
+  it("generates one race test and one taper week for an 8-week compressed plan", () => {
+    const plan = generateFull({
+      totalWeeks: 8,
+      raceDateStr: futureSaturday(60),
+      includeBasePhase: true,
+    });
+
+    expect(plan.filter((e) => e.name.includes("RACE DAY"))).toHaveLength(1);
+    expect(plan.filter((e) => e.name.includes("[RACE TEST]"))).toHaveLength(1);
+    expect(plan.filter((e) => e.name.includes("[TAPER]"))).toHaveLength(1);
+    expect(plan.some((e) => e.description.includes("Base phase"))).toBe(false);
+  });
+
+  it("starts 9-week compressed plans in the current week and filters past dates", () => {
+    const config: PlanConfig = {
+      ...defaultConfig,
+      raceDateStr: dateInTrainingWeek(9),
+      totalWeeks: 9,
+      runDays: [1, 2, 3, 4, 5, 6, 0],
+      longRunDay: 0,
+    };
+    const ctx = buildContext(config);
+    const today = new Date();
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+
+    expect(getWeekIdx(today, ctx.planStartMonday)).toBe(0);
+    expect(generatePlan(config).every((event) => event.start_date_local >= todayStart)).toBe(true);
+  });
+
+  it("keeps all weeks in full 9-week compressed plans for analysis", () => {
+    const plan = generateFullPlan({
+      ...defaultConfig,
+      raceDateStr: dateInTrainingWeek(9),
+      totalWeeks: 9,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+    });
+
+    const longRuns = plan.filter((event) => event.external_id.startsWith("long-"));
+    expect(longRuns).toHaveLength(8);
+    expect(plan.filter((event) => event.name.includes("RACE DAY"))).toHaveLength(1);
   });
 
   // --- EASY RUN FORMAT ---

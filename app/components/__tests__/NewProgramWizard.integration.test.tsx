@@ -28,14 +28,27 @@ function dateWeeksFromNow(weeks: number): string {
   return `${year}-${month}-${day}`;
 }
 
+function dateInTrainingWeek(weeks: number): string {
+  const raceDate = new Date();
+  const day = raceDate.getDay();
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  raceDate.setDate(raceDate.getDate() + offsetToMonday + (weeks - 1) * 7 + 5);
+  const year = raceDate.getFullYear();
+  const month = String(raceDate.getMonth() + 1).padStart(2, "0");
+  const dayOfMonth = String(raceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${dayOfMonth}`;
+}
+
 function WizardHarness({
+  initial = initialDraft,
   validationError = null,
   onPreview = () => {},
 }: {
+  initial?: NewProgramDraft;
   validationError?: string | null;
   onPreview?: (draft: NewProgramDraft) => void;
 }) {
-  const [draft, setDraft] = useState(initialDraft);
+  const [draft, setDraft] = useState(initial);
 
   return (
     <NewProgramWizard
@@ -102,9 +115,9 @@ describe("NewProgramWizard", () => {
   });
 
   it("shows validation errors from Planner", () => {
-    render(<WizardHarness validationError="Race date must be at least 10 weeks away." />);
+    render(<WizardHarness validationError="Race date must be at least 8 weeks away." />);
 
-    expect(screen.getByText("Race date must be at least 10 weeks away.")).toBeInTheDocument();
+    expect(screen.getByText("Race date must be at least 8 weeks away.")).toBeInTheDocument();
   });
 
   it("shows a prominent warning for compressed timelines", () => {
@@ -120,6 +133,62 @@ describe("NewProgramWizard", () => {
 
     expect(screen.getByText("Compressed plan")).toBeInTheDocument();
     expect(screen.getByText(/will not be as good as a 12-week plan/i)).toBeInTheDocument();
+  });
+
+  it("shows a strong warning for very compressed timelines", () => {
+    render(
+      <NewProgramWizard
+        draft={{ ...initialDraft, raceDate: dateInTrainingWeek(9), totalWeeks: 9 }}
+        validationError={null}
+        onDraftChange={() => {}}
+        onCancel={() => {}}
+        onPreview={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Very compressed plan")).toBeInTheDocument();
+    expect(screen.getByText(/race prep, not a full build/i)).toBeInTheDocument();
+  });
+
+  it("disables base phase for compressed timelines", () => {
+    render(
+      <NewProgramWizard
+        draft={{
+          ...initialDraft,
+          raceDate: dateInTrainingWeek(9),
+          totalWeeks: 9,
+          includeBasePhase: true,
+        }}
+        validationError={null}
+        onDraftChange={() => {}}
+        onCancel={() => {}}
+        onPreview={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /include base phase/i })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /include base phase/i })).not.toBeChecked();
+    expect(screen.getByText("Base phase is not available for compressed plans.")).toBeInTheDocument();
+  });
+
+  it("forces base phase off when the selected race date is compressed", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+    const initial = { ...initialDraft, includeBasePhase: true };
+
+    render(<WizardHarness initial={initial} onPreview={onPreview} />);
+
+    const raceDate = dateInTrainingWeek(9);
+    await user.clear(screen.getByLabelText("Race date"));
+    await user.type(screen.getByLabelText("Race date"), raceDate);
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(onPreview).toHaveBeenCalledWith({
+      ...initial,
+      raceDate,
+      totalWeeks: getProgramWeeks(raceDate),
+      includeBasePhase: false,
+    });
   });
 
   it("does not allow removing the final run day", async () => {

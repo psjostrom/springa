@@ -43,6 +43,17 @@ function dateWeeksFromNow(weeks: number): string {
   return `${year}-${month}-${day}`;
 }
 
+function dateInTrainingWeek(weeks: number): string {
+  const raceDate = new Date();
+  const day = raceDate.getDay();
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  raceDate.setDate(raceDate.getDate() + offsetToMonday + (weeks - 1) * 7 + 5);
+  const year = raceDate.getFullYear();
+  const month = String(raceDate.getMonth() + 1).padStart(2, "0");
+  const dayOfMonth = String(raceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${dayOfMonth}`;
+}
+
 function futureRaceDate(): string {
   return dateWeeksFromNow(18);
 }
@@ -284,10 +295,10 @@ describe("PlannerScreen", () => {
     const dateInput = container.querySelector("#new-program-race-date");
     if (!dateInput) throw new Error("new program date input missing");
     await user.clear(dateInput);
-    await user.type(dateInput, dateWeeksFromNow(9));
+    await user.type(dateInput, dateInTrainingWeek(7));
     await user.click(screen.getByRole("button", { name: "Preview plan" }));
 
-    expect(screen.getByText("Race date must be at least 10 weeks away.")).toBeInTheDocument();
+    expect(screen.getByText("Race date must be at least 8 weeks away.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start Program" })).not.toBeInTheDocument();
   });
 
@@ -306,14 +317,43 @@ describe("PlannerScreen", () => {
     const dateInput = container.querySelector("#new-program-race-date");
     if (!dateInput) throw new Error("new program date input missing");
     await user.clear(dateInput);
-    await user.type(dateInput, dateWeeksFromNow(10));
+    await user.type(dateInput, dateInTrainingWeek(10));
 
     expect(screen.getByText("Compressed plan")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Preview plan" }));
 
     expect(screen.getByText("Ready to start?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Program" })).toBeInTheDocument();
-    expect(screen.queryByText("Race date must be at least 10 weeks away.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Race date must be at least 8 weeks away.")).not.toBeInTheDocument();
+  });
+
+  it("allows previewing a very compressed Stockholm Half-style program", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.type(screen.getByLabelText("Race name"), "Stockholm Half Marathon");
+    await user.clear(screen.getByLabelText("km"));
+    await user.type(screen.getByLabelText("km"), "22");
+
+    const dateInput = container.querySelector("#new-program-race-date");
+    if (!dateInput) throw new Error("new program date input missing");
+    await user.clear(dateInput);
+    await user.type(dateInput, dateInTrainingWeek(9));
+
+    expect(screen.getByText("Very compressed plan")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText("Ready to start?")).toBeInTheDocument();
+    expect(screen.getByText(/Stockholm Half Marathon 22km/)).toBeInTheDocument();
+    expect(screen.queryByText(/EcoTrail 16km/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Race date must be at least 8 weeks away.")).not.toBeInTheDocument();
   });
 
   it("saves settings and uploads workouts when starting the previewed program", async () => {
