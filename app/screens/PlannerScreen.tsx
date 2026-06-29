@@ -88,6 +88,12 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const [configExpanded, setConfigExpanded] = useState(false);
 
   const currentConfigKey = settings ? buildProgramConfigKeyFromSettings(settings) : null;
+  const summarySettings = settings && newProgramDraft && newProgramMode !== "closed"
+    ? {
+        ...settings,
+        ...toSettingsUpdate(newProgramDraft),
+      }
+    : settings;
 
   const scheduleChanged = lastGeneratedConfig != null && currentConfigKey != null && currentConfigKey !== lastGeneratedConfig;
 
@@ -435,18 +441,18 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             <div className="h-5 bg-border rounded w-2/3" />
           </div>
         )}
-        {settings && (
+        {summarySettings && (
           configExpanded ? (
             <PlannerConfigPanel
               key={currentConfigKey ?? "settings"}
-              settings={settings}
+              settings={summarySettings}
               onSave={handleSettingsSave}
               onDone={() => { setConfigExpanded(false); }}
             />
           ) : (
             <PlannerSummaryBar
-              settings={settings}
-              hasPlan={hasUploadedPlan}
+              settings={summarySettings}
+              hasPlan={newProgramMode === "preview" ? planEvents.length > 0 : hasUploadedPlan}
               onEdit={() => { setConfigExpanded(true); }}
             />
           )

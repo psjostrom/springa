@@ -244,6 +244,27 @@ describe("PlannerScreen", () => {
     expect(capturedSettingsBody).toBeNull();
   });
 
+  it("shows the new race in the planner summary during preview", async () => {
+    const user = userEvent.setup();
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.type(screen.getByLabelText("Race name"), "Stockholm Half Marathon");
+    await user.clear(screen.getByLabelText("km"));
+    await user.type(screen.getByLabelText("km"), "22");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText(/Stockholm Half Marathon 22km/)).toBeInTheDocument();
+    expect(screen.queryByText(/EcoTrail 16km/)).not.toBeInTheDocument();
+  });
+
   it("blocks preview when the new race date is too soon", async () => {
     const user = userEvent.setup();
     const { container } = render(<PlannerScreen />, {
