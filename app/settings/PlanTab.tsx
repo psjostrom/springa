@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
-import { MIN_PLAN_WEEKS } from "@/lib/periodization";
+import {
+  MIN_PLAN_WEEKS,
+  MIN_WEEKS_WITH_BASE_PHASE,
+  supportsBasePhase,
+} from "@/lib/periodization";
 
 interface PlanTabProps {
   settings: UserSettings;
@@ -38,7 +42,7 @@ export function PlanTab({ settings, onSave }: PlanTabProps) {
         updates.startKm = skVal;
       }
       // Force base phase off when weeks are too short to support it
-      const effectiveBasePhase = (twVal ?? 0) >= MIN_PLAN_WEEKS + 1 && includeBasePhase;
+      const effectiveBasePhase = supportsBasePhase(twVal ?? 0) && includeBasePhase;
       if (effectiveBasePhase !== (settings.includeBasePhase ?? false)) {
         updates.includeBasePhase = effectiveBasePhase;
       }
@@ -59,9 +63,8 @@ export function PlanTab({ settings, onSave }: PlanTabProps) {
   };
 
   // Base phase needs enough weeks for 2-3 base + 4 build + 5 fixed = 11 minimum
-  const minWeeksForBase = MIN_PLAN_WEEKS + 1;
   const weeksNum = typeof totalWeeks === "number" ? totalWeeks : 0;
-  const baseTooShort = weeksNum > 0 && weeksNum < minWeeksForBase;
+  const baseTooShort = weeksNum > 0 && !supportsBasePhase(weeksNum);
   const baseDisabled = baseTooShort;
 
   return (
@@ -83,7 +86,7 @@ export function PlanTab({ settings, onSave }: PlanTabProps) {
                 placeholder="18"
               />
               <p className="text-[10px] text-muted mt-1">
-                Min {MIN_PLAN_WEEKS}. Includes build, 2-week race test, 2-week taper, and race week.
+                Min {MIN_PLAN_WEEKS}. 8-9 week plans are compressed race prep; 10+ weeks use the normal structure.
               </p>
             </div>
             <div>
@@ -128,7 +131,7 @@ export function PlanTab({ settings, onSave }: PlanTabProps) {
             </label>
             <p className="text-xs text-muted mt-0.5 leading-relaxed">
               {baseDisabled
-                ? `Requires at least ${minWeeksForBase} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
+                ? `Requires at least ${MIN_WEEKS_WITH_BASE_PHASE} weeks. The base phase adds 2-3 easy-only weeks, and the plan still needs room for build, race test, taper, and race week.`
                 : "Adds 2-3 weeks of easy-only running at the start of the plan. Recommended if you're new to structured training or returning from a break."}
             </p>
           </div>

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { generatePlan, generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, assignDayRoles } from "../workoutGenerators";
+import {
+  generateFullPlan,
+  generatePlan,
+  generateSingleWorkout,
+  suggestCategory,
+  buildContext,
+  getWeekPhase,
+  assignDayRoles,
+} from "../workoutGenerators";
 import type { OnDemandCategory, DayRole, PlanConfig } from "../workoutGenerators";
 import { getDay } from "date-fns";
 import { estimateWorkoutDescriptionDistance, getWeekIdx, prescribedCarbs } from "../workoutMath";
@@ -19,6 +27,15 @@ function futureSaturday(weeksAhead = 52): string {
   while (date.getDay() !== 6) {
     date.setDate(date.getDate() + 1);
   }
+  return formatDate(date);
+}
+
+function dateInTrainingWeek(weeks: number): string {
+  const date = new Date();
+  const day = date.getDay();
+  const offsetToMonday = day === 0 ? -6 : 1 - day;
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + offsetToMonday + (weeks - 1) * 7 + 5);
   return formatDate(date);
 }
 
@@ -65,6 +82,13 @@ describe("assignDayRoles", () => {
     expect(roles.get(4)).toBe("club");
     const speedDays = [...roles.entries()].filter(([, r]) => r === "speed");
     expect(speedDays.length).toBe(1);
+  });
+
+  it("keeps a long club day as the long run role", () => {
+    const roles = assignDayRoles([2, 4, 0], 2, 2, "long");
+    expect(roles.get(2)).toBe("long");
+    const clubDays = [...roles.entries()].filter(([, r]) => r === "club");
+    expect(clubDays).toHaveLength(0);
   });
 
   it("no club run when clubDay is not set", () => {
@@ -187,6 +211,44 @@ describe("generatePlan", () => {
     const plan = generateFull();
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
     expect(clubRuns.length).toBe(0);
+  });
+
+  it("generates normal long runs and race day when the club day is the long run", () => {
+    const plan = generateFull({
+      runDays: [2, 4, 0],
+      longRunDay: 2,
+      clubDay: 2,
+      clubType: "long",
+    });
+
+    expect(plan.some((e) => e.name === "RACE DAY")).toBe(true);
+    expect(plan.filter((e) => e.external_id.includes("long-")).length).toBeGreaterThan(0);
+    expect(plan.filter((e) => e.external_id.includes("club-"))).toHaveLength(0);
+  });
+
+  it("keeps long runs when a non-long club day matches the saved long run day", () => {
+    const plan = generateFull({
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: 0,
+      clubType: "varies",
+    });
+
+    expect(plan.some((e) => e.name === "RACE DAY")).toBe(true);
+    expect(plan.filter((e) => e.external_id.startsWith("long-")).length).toBeGreaterThan(0);
+  });
+
+  it("namespaces generated external ids by race date", () => {
+    const firstPlan = generateFull({ raceDateStr: "2026-08-29" });
+    const secondPlan = generateFull({ raceDateStr: "2026-09-26" });
+
+    expect(firstPlan[0].external_id).toContain("2026-08-29");
+    expect(secondPlan[0].external_id).toContain("2026-09-26");
+    expect(firstPlan.map((event) => event.external_id)).not.toEqual(
+      secondPlan.map((event) => event.external_id),
+    );
+    expect(firstPlan.find((event) => event.name === "RACE DAY")?.external_id)
+      .toBe("race-2026-08-29");
   });
 
   it("generates speed sessions when no club covers speed", () => {
@@ -383,6 +445,50 @@ describe("generatePlan", () => {
       expect(match).not.toBeNull();
       expect(parseInt(match![1], 10)).toBe(16);
     }
+  });
+
+  it("generates one race test and one taper week for an 8-week compressed plan", () => {
+    const plan = generateFull({
+      totalWeeks: 8,
+      raceDateStr: futureSaturday(60),
+      includeBasePhase: true,
+    });
+
+    expect(plan.filter((e) => e.name.includes("RACE DAY"))).toHaveLength(1);
+    expect(plan.filter((e) => e.name.includes("[RACE TEST]"))).toHaveLength(1);
+    expect(plan.filter((e) => e.name.includes("[TAPER]"))).toHaveLength(1);
+    expect(plan.some((e) => e.description.includes("Base phase"))).toBe(false);
+  });
+
+  it("starts 9-week compressed plans in the current week and filters past dates", () => {
+    const config: PlanConfig = {
+      ...defaultConfig,
+      raceDateStr: dateInTrainingWeek(9),
+      totalWeeks: 9,
+      runDays: [1, 2, 3, 4, 5, 6, 0],
+      longRunDay: 0,
+    };
+    const ctx = buildContext(config);
+    const today = new Date();
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+
+    expect(getWeekIdx(today, ctx.planStartMonday)).toBe(0);
+    expect(generatePlan(config).every((event) => event.start_date_local >= todayStart)).toBe(true);
+  });
+
+  it("keeps all weeks in full 9-week compressed plans for analysis", () => {
+    const plan = generateFullPlan({
+      ...defaultConfig,
+      raceDateStr: dateInTrainingWeek(9),
+      totalWeeks: 9,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+    });
+
+    const longRuns = plan.filter((event) => event.external_id.startsWith("long-"));
+    expect(longRuns).toHaveLength(8);
+    expect(plan.filter((event) => event.name.includes("RACE DAY"))).toHaveLength(1);
   });
 
   // --- EASY RUN FORMAT ---

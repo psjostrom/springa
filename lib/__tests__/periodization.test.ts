@@ -3,6 +3,8 @@ import {
   getPhaseBoundaries,
   isRecoveryWeek,
   getPhaseDefinitions,
+  isCompressedPlan,
+  supportsBasePhase,
 } from "../periodization";
 
 describe("getPhaseBoundaries", () => {
@@ -54,14 +56,38 @@ describe("getPhaseBoundaries", () => {
     expect(b.baseEnd).toBeGreaterThanOrEqual(2);
   });
 
-  it("rejects plans shorter than MIN_PLAN_WEEKS", () => {
-    expect(() => getPhaseBoundaries(8, false)).toThrow("at least 10 weeks");
-    expect(() => getPhaseBoundaries(9, false)).toThrow("at least 10 weeks");
+  it("8-week compressed plan without base phase", () => {
+    const b = getPhaseBoundaries(8, false);
+    expect(b.baseEnd).toBe(0);
+    expect(b.buildStart).toBe(1);
+    expect(b.buildEnd).toBe(5);
+    expect(b.raceTestStart).toBe(6);
+    expect(b.raceTestEnd).toBe(6);
+    expect(b.taperStart).toBe(7);
+    expect(b.taperEnd).toBe(7);
+    expect(b.raceWeek).toBe(8);
   });
 
-  it("rejects plans where base phase leaves too few build weeks", () => {
-    // 10 weeks with base: 2 base + 3 build + 5 fixed = build too short
-    expect(() => getPhaseBoundaries(10, true)).toThrow("Build phase too short");
+  it("9-week compressed plan without base phase", () => {
+    const b = getPhaseBoundaries(9, false);
+    expect(b.baseEnd).toBe(0);
+    expect(b.buildStart).toBe(1);
+    expect(b.buildEnd).toBe(6);
+    expect(b.raceTestStart).toBe(7);
+    expect(b.raceTestEnd).toBe(7);
+    expect(b.taperStart).toBe(8);
+    expect(b.taperEnd).toBe(8);
+    expect(b.raceWeek).toBe(9);
+  });
+
+  it("rejects plans shorter than MIN_PLAN_WEEKS", () => {
+    expect(() => getPhaseBoundaries(7, false)).toThrow("at least 8 weeks");
+  });
+
+  it("ignores base phase when total weeks are too short to support it", () => {
+    expect(getPhaseBoundaries(8, true)).toEqual(getPhaseBoundaries(8, false));
+    expect(getPhaseBoundaries(9, true)).toEqual(getPhaseBoundaries(9, false));
+    expect(getPhaseBoundaries(10, true)).toEqual(getPhaseBoundaries(10, false));
   });
 
   it("accepts 10-week plan without base", () => {
@@ -85,6 +111,16 @@ describe("getPhaseBoundaries", () => {
     expect(b.taperEnd).toBe(10);
     expect(b.raceWeek).toBe(11);
     expect(b.buildEnd - b.buildStart + 1).toBe(4); // exactly one 3:1 cycle
+  });
+
+  it("reports compressed and base-phase support boundaries", () => {
+    expect(isCompressedPlan(8)).toBe(true);
+    expect(isCompressedPlan(9)).toBe(true);
+    expect(isCompressedPlan(10)).toBe(false);
+    expect(supportsBasePhase(8)).toBe(false);
+    expect(supportsBasePhase(9)).toBe(false);
+    expect(supportsBasePhase(10)).toBe(false);
+    expect(supportsBasePhase(11)).toBe(true);
   });
 });
 
@@ -127,6 +163,15 @@ describe("getPhaseDefinitions", () => {
     const phases = getPhaseDefinitions(18, true);
     expect(phases).toHaveLength(5);
     expect(phases[0].name).toBe("Base");
+  });
+
+  it("uses one-shot race test copy for compressed plans", () => {
+    const phases = getPhaseDefinitions(8, false);
+    const raceTest = phases.find((phase) => phase.name === "Race Test");
+    expect(raceTest?.startWeek).toBe(6);
+    expect(raceTest?.endWeek).toBe(6);
+    expect(raceTest?.description).toContain("One race-specific rehearsal");
+    expect(raceTest?.description).not.toContain("Two shots");
   });
 
   it("covers all weeks without gaps (no base)", () => {

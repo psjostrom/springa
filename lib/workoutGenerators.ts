@@ -1,6 +1,7 @@
 import {
   addDays,
   addWeeks,
+  startOfDay,
   startOfWeek,
   parseISO,
   isBefore,
@@ -14,7 +15,12 @@ import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
 import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
 import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
-import { getPhaseBoundaries, isRecoveryWeek as isRecoveryWeekFn, type PhaseBoundaries } from "./periodization";
+import {
+  getPhaseBoundaries,
+  isRecoveryWeek as isRecoveryWeekFn,
+  supportsBasePhase,
+  type PhaseBoundaries,
+} from "./periodization";
 import { getWeekIdx } from "./workoutMath";
 
 export type OnDemandCategory = "easy" | "quality" | "long" | "club";
@@ -32,16 +38,25 @@ export function assignDayRoles(
   const sorted = [...runDays].sort((a, b) => a - b);
 
   // 1. Long run (fall back to last run day if longRunDay not in runDays)
-  const effectiveLongRunDay = sorted.includes(longRunDay) ? longRunDay : sorted[sorted.length - 1];
+  const configuredLongRunDay = clubType === "long" && clubDay != null
+    ? clubDay
+    : longRunDay;
+  const effectiveLongRunDay = sorted.includes(configuredLongRunDay)
+    ? configuredLongRunDay
+    : sorted[sorted.length - 1];
   roles.set(effectiveLongRunDay, "long");
 
   // 2. Club run (if configured and in runDays)
-  if (clubDay != null && sorted.includes(clubDay)) {
+  const clubRoleAssigned = clubDay != null &&
+    clubType !== "long" &&
+    sorted.includes(clubDay) &&
+    clubDay !== effectiveLongRunDay;
+  if (clubRoleAssigned) {
     roles.set(clubDay, "club");
   }
 
   // 3. Speed — needed if 3+ days AND club doesn't cover speed
-  const clubCoversSpeed = clubDay != null && clubType === "speed";
+  const clubCoversSpeed = clubRoleAssigned && clubType === "speed";
   const remaining = sorted.filter((d) => !roles.has(d));
   if (remaining.length > 0 && sorted.length >= 3 && !clubCoversSpeed) {
     // Pick the day with maximum circular distance from long run
@@ -155,6 +170,7 @@ const generateQualityRun = (
   const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
+  const externalIdPrefix = externalId(ctx, "speed", wp.weekNum);
   const wu = s("10m", "z2", "Warmup");
   const cd = s("5m", "z2", "Cooldown");
 
@@ -181,7 +197,7 @@ const generateQualityRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `${prefixName} ${wp.isRaceTest ? "Easy [PRE-TEST]" : "Easy"}`,
       description: createSimpleWorkoutText(s(duration, "z2"), notes),
-      external_id: `speed-${wp.weekNum}`,
+      external_id: externalIdPrefix,
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -232,7 +248,7 @@ const generateQualityRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `${prefixName} ${label}`,
     description: createWorkoutText(wu, steps, cd, reps, notes),
-    external_id: `speed-${wp.weekNum}`,
+    external_id: externalIdPrefix,
     type: "Run",
     fuelRate: ctx.fuelInterval,
   };
@@ -287,7 +303,7 @@ const generateEasyRun = (
       start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name,
       description: lines.join("\n"),
-      external_id: `easy-${wp.weekNum}-${date.getDay()}`,
+      external_id: externalId(ctx, "easy", wp.weekNum, date.getDay()),
       type: "Run",
       fuelRate: ctx.fuelEasy,
     };
@@ -302,7 +318,7 @@ const generateEasyRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name,
     description: createWorkoutText(wu, [s(`${mainDuration}m`, "z2")], cd, 1, notes),
-    external_id: `easy-${wp.weekNum}-${date.getDay()}`,
+    external_id: externalId(ctx, "easy", wp.weekNum, date.getDay()),
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -324,7 +340,7 @@ const generateFreeRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Free Run`,
     description: createSimpleWorkoutText(s("60m", "z1", "Free"), notes),
-    external_id: `free-${wp.weekNum}-${date.getDay()}`,
+    external_id: externalId(ctx, "free", wp.weekNum, date.getDay()),
     type: "Run",
     fuelRate: ctx.fuelEasy,
   };
@@ -345,7 +361,7 @@ const generateLongRun = (
         s(`${ctx.raceDist}km`, "z3", "Race"),
         `Race day. ${ctx.raceDist}km at race effort. Start controlled, settle into rhythm, and fuel on schedule. Good luck!`,
       ),
-      external_id: `race`,
+      external_id: externalId(ctx, "race"),
       type: "Run",
       fuelRate: ctx.fuelLong,
     };
@@ -424,7 +440,7 @@ const generateLongRun = (
     start_date_local: set(date, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
     name: `W${wp.weekNum.toString().padStart(2, "0")} Long (${km}km)${type}`,
     description: createWorkoutText(wu, mainSteps, cd, 1, notes),
-    external_id: `long-${wp.weekNum}`,
+    external_id: externalId(ctx, "long", wp.weekNum),
     type: "Run",
     fuelRate: ctx.fuelLong,
     distance: km,
@@ -454,6 +470,8 @@ export interface PlanConfig {
 
 export function buildContext(config: PlanConfig): PlanContext {
   const raceDate = parseISO(config.raceDateStr);
+  const includeBasePhase = supportsBasePhase(config.totalWeeks)
+    && (config.includeBasePhase ?? false);
 
   let paceTable: PaceTableResult | null = null;
   if (config.currentAbilitySecs && config.currentAbilityDist) {
@@ -474,8 +492,8 @@ export function buildContext(config: PlanConfig): PlanContext {
     startKm: config.startKm,
     lthr: config.lthr,
     hrZones: config.hrZones,
-    includeBasePhase: config.includeBasePhase ?? false,
-    boundaries: getPhaseBoundaries(config.totalWeeks, config.includeBasePhase ?? false),
+    includeBasePhase,
+    boundaries: getPhaseBoundaries(config.totalWeeks, includeBasePhase),
     planStartMonday: addWeeks(
       startOfWeek(raceDate, { weekStartsOn: 1 }),
       -(config.totalWeeks - 1),
@@ -516,6 +534,10 @@ function dayToOffset(dayOfWeek: number): number {
   return dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 }
 
+function externalId(ctx: PlanContext, prefix: string, ...parts: (string | number)[]): string {
+  return [prefix, format(ctx.raceDate, "yyyy-MM-dd"), ...parts].join("-");
+}
+
 function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date): WorkoutEvent[] {
   const wp = getWeekPhase(ctx, weekIdx);
   const roles = assignDayRoles(ctx.runDays, ctx.longRunDay, ctx.clubDay, ctx.clubType);
@@ -545,7 +567,7 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
           date,
           wp,
           ctx.fuelInterval,
-          `club-${wp.weekNum}`,
+          externalId(ctx, "club", wp.weekNum),
         );
         break;
       case "free":
@@ -560,11 +582,12 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
 
 export function generatePlan(config: PlanConfig): WorkoutEvent[] {
   const ctx = buildContext(config);
-  const today = new Date();
+  const today = startOfDay(new Date());
   return Array.from({ length: config.totalWeeks }, (_, i) => i).flatMap((i) => {
     const weekStart = addWeeks(ctx.planStartMonday, i);
-    if (isBefore(addDays(weekStart, 7), today)) return [];
-    return generateWeekEvents(ctx, i, weekStart);
+    return generateWeekEvents(ctx, i, weekStart).filter((event) =>
+      !isBefore(event.start_date_local, today),
+    );
   });
 }
 
