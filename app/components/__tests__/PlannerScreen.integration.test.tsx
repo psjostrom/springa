@@ -101,6 +101,14 @@ function futurePlannedEvent(overrides?: Partial<CalendarEvent>): CalendarEvent {
   };
 }
 
+function pastPlannedEvent(overrides?: Partial<CalendarEvent>): CalendarEvent {
+  return futurePlannedEvent({
+    id: "past-event-123",
+    date: new Date("2026-06-20T08:00:00"),
+    ...overrides,
+  });
+}
+
 describe("PlannerScreen", () => {
   it("shows Generate Plan button and empty state when no plan exists", () => {
     render(<PlannerScreen />, {
@@ -216,6 +224,26 @@ describe("PlannerScreen", () => {
 
     expect(screen.getByText("EcoTrail is complete.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start New Program" })).toBeInTheDocument();
+  });
+
+  it("only shows the completion banner and fuel rates when the program is finished", () => {
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings({ diabetesMode: true })],
+        [calendarEventsAtom, [pastPlannedEvent()]],
+        [calendarLoadingAtom, false],
+        [bgModelAtom, null],
+      ],
+    });
+
+    expect(screen.getByText("EcoTrail is complete.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start New Program" })).toBeInTheDocument();
+    expect(screen.getByText(/Fuel rates/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Generate a plan to see your workouts/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Regenerate Plan" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Schedule changed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Adapt Upcoming")).not.toBeInTheDocument();
   });
 
   it("does not show the complete-program banner while calendar events are loading", () => {

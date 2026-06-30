@@ -55,6 +55,14 @@ interface PlannerScreenProps {
 }
 
 type NewProgramMode = "closed" | "editing" | "preview";
+type PlannerState =
+  | "new-program-editing"
+  | "new-program-preview"
+  | "finished"
+  | "generated-preview"
+  | "schedule-changed"
+  | "uploaded-plan"
+  | "no-plan";
 
 function toProgramSettingsSnapshot(settings: UserSettings): Partial<UserSettings> {
   return {
@@ -126,6 +134,15 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const programFinished = settings
     ? !calendarLoading && !calendarError && isProgramFinished(settings, calendarEvents)
     : false;
+  const plannerState: PlannerState = (() => {
+    if (newProgramMode === "editing") return "new-program-editing";
+    if (newProgramMode === "preview") return "new-program-preview";
+    if (programFinished) return "finished";
+    if (planEvents.length > 0) return "generated-preview";
+    if (scheduleChanged && hasUploadedPlan) return "schedule-changed";
+    if (hasUploadedPlan) return "uploaded-plan";
+    return "no-plan";
+  })();
 
   // Adapt state
   const [isAdapting, setIsAdapting] = useState(false);
@@ -328,7 +345,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   // --- Adapt ---
 
   const hasPlannedEvents = calendarEvents.some((e) => e.type === "planned");
-  const canAdapt = newProgramMode === "closed" && hasPlannedEvents;
+  const canAdapt = plannerState === "uploaded-plan" && hasPlannedEvents;
 
   const handleAdapt = async () => {
     if (!canAdapt) return;
@@ -508,7 +525,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           )
         )}
 
-        {programFinished && newProgramMode === "closed" && (
+        {plannerState === "finished" && (
           <div className="bg-surface border border-success/30 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-text">
@@ -549,7 +566,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* Schedule Changed Banner */}
-        {newProgramMode === "closed" && scheduleChanged && hasUploadedPlan && (
+        {plannerState === "schedule-changed" && (
           <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-warning text-sm">Schedule changed</span>
             <button
@@ -562,7 +579,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* State 1: No plan — show Generate button */}
-        {newProgramMode === "closed" && planEvents.length === 0 && !hasUploadedPlan && (
+        {plannerState === "no-plan" && (
           <>
             <button
               onClick={handleGenerate}
@@ -583,7 +600,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* State 3: Uploaded plan exists, no local preview */}
-        {newProgramMode === "closed" && planEvents.length === 0 && hasUploadedPlan && !scheduleChanged && (
+        {plannerState === "uploaded-plan" && (
           <button
             onClick={handleGenerate}
             className="w-full py-3 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"
@@ -593,7 +610,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         )}
 
         {/* State 2: Plan generated (preview) */}
-        {newProgramMode === "preview" && (
+        {plannerState === "new-program-preview" && (
           <div className="bg-surface-alt border border-border rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <span className="text-sm text-text">Reviewing new program preview</span>
             <div className="flex gap-2">
@@ -615,7 +632,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </div>
         )}
 
-        {planEvents.length > 0 && newProgramMode !== "editing" && (
+        {planEvents.length > 0 && plannerState !== "new-program-editing" && (
           <>
             <WeeklyVolumeChart data={chartData} />
             <ActionBar
