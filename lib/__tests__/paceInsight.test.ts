@@ -50,6 +50,10 @@ describe("categoryFromExternalId", () => {
     expect(categoryFromExternalId("speed-5")).toBe("interval");
   });
 
+  it("maps namespaced speed prefix to interval", () => {
+    expect(categoryFromExternalId("speed-2026-08-29-5")).toBe("interval");
+  });
+
   it("maps club prefix to interval", () => {
     expect(categoryFromExternalId("club-3")).toBe("interval");
   });
@@ -68,6 +72,10 @@ describe("categoryFromExternalId", () => {
 
   it("maps race prefix to race", () => {
     expect(categoryFromExternalId("race")).toBe("race");
+  });
+
+  it("maps namespaced race prefix to race", () => {
+    expect(categoryFromExternalId("race-2026-08-29")).toBe("race");
   });
 
   it("maps ondemand prefix to other", () => {

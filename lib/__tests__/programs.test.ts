@@ -7,6 +7,7 @@ import {
   buildProgramConfigKeyFromSettings,
   getNewProgramTimelineWarning,
   getProgramWeeks,
+  isProgramConfigKeyCurrent,
   isProgramFinished,
   validateNewProgramDraft,
 } from "../programs";
@@ -154,6 +155,17 @@ describe("validateNewProgramDraft", () => {
       "Pick at least two run days.",
     );
   });
+
+  it("rejects non-long club runs on the long run day", () => {
+    expect(
+      validateNewProgramDraft({
+        ...validDraft,
+        longRunDay: 0,
+        clubDay: 0,
+        clubType: "varies",
+      }, now),
+    ).toBe("Club run day must be different from long run day unless it is the long run.");
+  });
 });
 
 describe("getNewProgramTimelineWarning", () => {
@@ -196,7 +208,7 @@ describe("buildProgramConfigKey", () => {
     });
 
     expect(JSON.parse(key)).toEqual({
-      raceName: "Stockholm Half",
+      version: 2,
       raceDist: 21.0975,
       raceDate: "2026-10-28",
       currentAbilityDist: 10,
@@ -209,6 +221,27 @@ describe("buildProgramConfigKey", () => {
       startKm: 8,
       includeBasePhase: true,
     });
+  });
+
+  it("does not treat race name changes as generated-plan changes", () => {
+    const baseDraft = {
+      raceName: "EcoTrail",
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: undefined,
+      clubType: undefined,
+      totalWeeks: 18,
+      startKm: 8,
+      includeBasePhase: false,
+    };
+
+    expect(buildProgramConfigKey(baseDraft)).toBe(
+      buildProgramConfigKey({ ...baseDraft, raceName: "Stockholm Half" }),
+    );
   });
 
   it("uses the same canonical key for a draft and the saved settings it writes", () => {
@@ -243,5 +276,63 @@ describe("buildProgramConfigKey", () => {
     });
 
     expect(draftKey).toBe(settingsKey);
+  });
+
+  it("treats matching legacy generated config keys as current", () => {
+    const currentKey = buildProgramConfigKeyFromSettings({
+      raceName: "Stockholm Half",
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: undefined,
+      clubType: undefined,
+      totalWeeks: 18,
+      startKm: 8,
+      includeBasePhase: false,
+    });
+    const legacyKey = JSON.stringify({
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      raceDate: "2026-10-28",
+      raceDist: 16,
+    });
+
+    expect(isProgramConfigKeyCurrent(currentKey, legacyKey)).toBe(true);
+  });
+
+  it("compares unversioned extended config keys by generated-plan fields", () => {
+    const currentKey = buildProgramConfigKeyFromSettings({
+      raceName: "Stockholm Half",
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: undefined,
+      clubType: undefined,
+      totalWeeks: 18,
+      startKm: 8,
+      includeBasePhase: false,
+    });
+    const staleExtendedKey = JSON.stringify({
+      raceName: "EcoTrail",
+      raceDist: 16,
+      raceDate: "2026-10-28",
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: null,
+      clubType: null,
+      totalWeeks: 16,
+      startKm: 8,
+      includeBasePhase: false,
+    });
+
+    expect(isProgramConfigKeyCurrent(currentKey, staleExtendedKey)).toBe(false);
   });
 });

@@ -42,9 +42,9 @@ export function supportsBasePhase(totalWeeks: number): boolean {
  * Structure (18 weeks, no base): Build 1-13, Race Test 14-15, Taper 16-17, Race Week 18
  * Structure (18 weeks, with base): Base 1-3, Build 4-13, Race Test 14-15, Taper 16-17, Race Week 18
  *
- * Race test is always 2 weeks (T1D needs two shots at dress rehearsal).
- * Taper is always 2 weeks.
- * Build phase must be at least 4 weeks (one full 3:1 cycle).
+ * Normal plans keep 2 race-test weeks and 2 taper weeks.
+ * Compressed 8-9 week plans use 1 race-test week and 1 taper week.
+ * Build phase must be at least 4 weeks.
  */
 export function getPhaseBoundaries(totalWeeks: number, includeBasePhase = false): PhaseBoundaries {
   if (totalWeeks < MIN_PLAN_WEEKS) {

@@ -11,6 +11,8 @@ import type { CalendarEvent } from "./types";
 import { getDefaultGoalTime } from "./paceTable";
 import { MIN_NORMAL_PLAN_WEEKS, supportsBasePhase } from "./periodization";
 
+const PROGRAM_CONFIG_KEY_VERSION = 2;
+
 export interface NewProgramDraft {
   raceName: string;
   raceDist: number;
@@ -64,9 +66,9 @@ function normalizeOptional<T>(value: T | null | undefined): T | null {
   return value ?? null;
 }
 
-function buildCanonicalProgramConfigKey(source: ProgramConfigSource): string {
-  return JSON.stringify({
-    raceName: normalizeString(source.raceName),
+function buildCanonicalProgramConfig(source: ProgramConfigSource) {
+  return {
+    version: PROGRAM_CONFIG_KEY_VERSION,
     raceDist: normalizeOptional(source.raceDist),
     raceDate: normalizeOptional(source.raceDate),
     currentAbilityDist: normalizeOptional(source.currentAbilityDist),
@@ -78,7 +80,26 @@ function buildCanonicalProgramConfigKey(source: ProgramConfigSource): string {
     totalWeeks: normalizeOptional(source.totalWeeks),
     startKm: normalizeOptional(source.startKm),
     includeBasePhase: source.includeBasePhase ?? false,
+  };
+}
+
+function buildLegacyProgramConfigComparable(source: Partial<ProgramConfigSource>) {
+  return JSON.stringify({
+    runDays: sortDays(source.runDays ?? []),
+    longRunDay: normalizeOptional(source.longRunDay),
+    clubDay: normalizeOptional(source.clubDay),
+    clubType: normalizeString(source.clubType),
+    raceDate: normalizeOptional(source.raceDate),
+    raceDist: normalizeOptional(source.raceDist),
   });
+}
+
+function hasExtendedGeneratedFields(source: Partial<ProgramConfigSource>): boolean {
+  return "currentAbilityDist" in source ||
+    "currentAbilitySecs" in source ||
+    "totalWeeks" in source ||
+    "startKm" in source ||
+    "includeBasePhase" in source;
 }
 
 export function isProgramFinished(
@@ -208,6 +229,13 @@ export function validateNewProgramDraft(
   if (draft.clubDay != null && !draft.runDays.includes(draft.clubDay)) {
     return "Club run day must be one of your run days.";
   }
+  if (
+    draft.clubDay != null &&
+    draft.clubType !== "long" &&
+    draft.clubDay === draft.longRunDay
+  ) {
+    return "Club run day must be different from long run day unless it is the long run.";
+  }
   if (!draft.totalWeeks || draft.totalWeeks < MIN_NEW_PROGRAM_WEEKS) {
     return `Plan length must be at least ${MIN_NEW_PROGRAM_WEEKS} weeks.`;
   }
@@ -219,11 +247,33 @@ export function validateNewProgramDraft(
 }
 
 export function buildProgramConfigKey(draft: NewProgramDraft): string {
-  return buildCanonicalProgramConfigKey(draft);
+  return JSON.stringify(buildCanonicalProgramConfig(draft));
 }
 
 export function buildProgramConfigKeyFromSettings(settings: ProgramConfigSource): string {
-  return buildCanonicalProgramConfigKey(settings);
+  return JSON.stringify(buildCanonicalProgramConfig(settings));
+}
+
+export function isProgramConfigKeyCurrent(
+  currentKey: string | null,
+  storedKey: string | null,
+): boolean {
+  if (!currentKey || !storedKey) return false;
+  if (currentKey === storedKey) return true;
+
+  try {
+    const current = JSON.parse(currentKey) as Partial<ProgramConfigSource> & { version?: number };
+    const stored = JSON.parse(storedKey) as Partial<ProgramConfigSource> & { version?: number };
+    if (stored.version === PROGRAM_CONFIG_KEY_VERSION) return false;
+    if (hasExtendedGeneratedFields(stored)) {
+      return JSON.stringify({ ...current, version: undefined }) ===
+        JSON.stringify({ ...buildCanonicalProgramConfig(stored as ProgramConfigSource), version: undefined });
+    }
+
+    return buildLegacyProgramConfigComparable(current) === buildLegacyProgramConfigComparable(stored);
+  } catch {
+    return false;
+  }
 }
 
 export function toSettingsUpdate(draft: NewProgramDraft): Partial<UserSettings> {

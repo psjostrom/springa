@@ -226,6 +226,31 @@ describe("generatePlan", () => {
     expect(plan.filter((e) => e.external_id.includes("club-"))).toHaveLength(0);
   });
 
+  it("keeps long runs when a non-long club day matches the saved long run day", () => {
+    const plan = generateFull({
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      clubDay: 0,
+      clubType: "varies",
+    });
+
+    expect(plan.some((e) => e.name === "RACE DAY")).toBe(true);
+    expect(plan.filter((e) => e.external_id.startsWith("long-")).length).toBeGreaterThan(0);
+  });
+
+  it("namespaces generated external ids by race date", () => {
+    const firstPlan = generateFull({ raceDateStr: "2026-08-29" });
+    const secondPlan = generateFull({ raceDateStr: "2026-09-26" });
+
+    expect(firstPlan[0].external_id).toContain("2026-08-29");
+    expect(secondPlan[0].external_id).toContain("2026-09-26");
+    expect(firstPlan.map((event) => event.external_id)).not.toEqual(
+      secondPlan.map((event) => event.external_id),
+    );
+    expect(firstPlan.find((event) => event.name === "RACE DAY")?.external_id)
+      .toBe("race-2026-08-29");
+  });
+
   it("generates speed sessions when no club covers speed", () => {
     const plan = generateFull();
     const speedSessions = plan.filter((e) => e.external_id.includes("speed-"));

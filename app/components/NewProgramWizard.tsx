@@ -52,6 +52,14 @@ export function NewProgramWizard({
   const timelineWarning = getNewProgramTimelineWarning(draft);
   const basePhaseSupported = supportsBasePhase(draft.totalWeeks);
   const includeBasePhase = basePhaseSupported && draft.includeBasePhase;
+  const longRunDayOptions = DAYS.filter(({ index }) =>
+    draft.runDays.includes(index) &&
+    (draft.clubType === "long" || index !== draft.clubDay)
+  );
+  const clubDayOptions = DAYS.filter(({ index }) =>
+    draft.runDays.includes(index) &&
+    (draft.clubType === "long" || index !== draft.longRunDay)
+  );
 
   const update = (patch: Partial<NewProgramDraft>) => {
     onDraftChange({ ...draft, ...patch });
@@ -229,11 +237,17 @@ export function NewProgramWizard({
         <div>
           <p className="text-xs text-muted mb-1">Long run day</p>
           <div className="flex flex-wrap gap-1.5">
-            {DAYS.filter(({ index }) => draft.runDays.includes(index)).map(({ index, label }) => (
+            {longRunDayOptions.map(({ index, label }) => (
               <button
                 key={index}
                 type="button"
-                onClick={() => { update({ longRunDay: index }); }}
+                onClick={() => {
+                  update(
+                    draft.clubType === "long"
+                      ? { longRunDay: index, clubDay: index }
+                      : { longRunDay: index },
+                  );
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   draft.longRunDay === index
                     ? "bg-brand-btn text-white"
@@ -270,7 +284,7 @@ export function NewProgramWizard({
           {hasClub && (
             <div className="mt-2 space-y-2">
               <div className="flex flex-wrap gap-1.5">
-                {DAYS.filter(({ index }) => draft.runDays.includes(index)).map(({ index, label }) => (
+                {clubDayOptions.map(({ index, label }) => (
                   <button
                     key={index}
                     type="button"

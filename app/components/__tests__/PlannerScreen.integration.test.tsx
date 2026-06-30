@@ -580,7 +580,7 @@ describe("PlannerScreen", () => {
     expect(thresholdCalls).toBe(0);
   });
 
-  it("retries threshold pace sync after a failed new-program start", async () => {
+  it("treats threshold pace sync failure as non-blocking after starting a program", async () => {
     const user = userEvent.setup();
     resetCaptures();
     let thresholdCalls = 0;
@@ -608,15 +608,12 @@ describe("PlannerScreen", () => {
     await user.click(screen.getByRole("button", { name: "Start Program" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to push threshold pace")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Retry" }));
-
-    await waitFor(() => {
       expect(screen.getByText(/Started new program with \d+ workouts/)).toBeInTheDocument();
     });
-    expect(thresholdCalls).toBe(2);
+
+    expect(screen.getByText(/Threshold pace sync failed/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Program" })).not.toBeInTheDocument();
+    expect(thresholdCalls).toBe(1);
     expect(capturedUploadPayload.length).toBeGreaterThan(0);
   });
 

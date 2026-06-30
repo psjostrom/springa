@@ -19,6 +19,7 @@ import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
   buildProgramConfigKeyFromSettings,
+  isProgramConfigKeyCurrent,
   isProgramFinished,
   toSettingsUpdate,
   validateNewProgramDraft,
@@ -123,7 +124,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       }
     : settings;
 
-  const scheduleChanged = lastGeneratedConfig != null && currentConfigKey != null && currentConfigKey !== lastGeneratedConfig;
+  const scheduleChanged = lastGeneratedConfig != null &&
+    currentConfigKey != null &&
+    !isProgramConfigKeyCurrent(currentConfigKey, lastGeneratedConfig);
 
   // hasUploadedPlan: calendar has future planned events (plan was uploaded)
   const today = new Date();
@@ -316,19 +319,25 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         throw uploadError;
       }
 
+      let thresholdWarning = "";
       if (threshold && settings.intervalsConnected) {
-        const res = await fetch("/api/intervals/threshold-pace", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paceMinPerKm: threshold }),
-        });
-        if (!res.ok) throw new Error("Failed to push threshold pace");
+        try {
+          const res = await fetch("/api/intervals/threshold-pace", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paceMinPerKm: threshold }),
+          });
+          if (!res.ok) throw new Error("Failed to push threshold pace");
+        } catch (thresholdError) {
+          console.error("Threshold pace sync failed after new program start:", thresholdError);
+          thresholdWarning = " Threshold pace sync failed.";
+        }
       }
 
       void syncToGoogleCalendar("bulk-sync", { events: toSyncEvents(planEvents) });
       calendarReload();
       setLastGeneratedConfig(buildProgramConfigKey(newProgramDraft));
-      setStatusMsg(`Started new program with ${count} workouts.`);
+      setStatusMsg(`Started new program with ${count} workouts.${thresholdWarning}`);
       setNewProgramStarted(true);
       setNewProgramMode("closed");
       setNewProgramDraft(null);
@@ -617,7 +626,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               <button
                 type="button"
                 onClick={editNewProgramPreview}
-                className="px-3 py-1.5 border border-brand text-brand rounded-lg text-sm font-semibold hover:bg-brand/10 transition"
+                className="px-3 py-1.5 border border-brand text-text rounded-lg text-sm font-semibold hover:bg-brand/10 transition"
               >
                 Edit program
               </button>

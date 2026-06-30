@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/lib/__tests__/test-utils";
+import { render, screen, within } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { NewProgramWizard } from "../NewProgramWizard";
@@ -250,6 +250,20 @@ describe("NewProgramWizard", () => {
       clubType: "long",
       longRunDay: 4,
     });
+  });
+
+  it("does not offer the non-long club day as a long run day", async () => {
+    const user = userEvent.setup();
+
+    render(<WizardHarness />);
+
+    await user.click(screen.getByRole("switch", { name: "Club run" }));
+
+    const longRunSection = screen.getByText("Long run day").parentElement;
+    expect(longRunSection).not.toBeNull();
+    expect(
+      within(longRunSection!).queryByRole("button", { name: "Tue" }),
+    ).not.toBeInTheDocument();
   });
 
   it("uses passing contrast classes for selected controls and primary action", async () => {
