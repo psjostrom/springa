@@ -84,6 +84,13 @@ describe("assignDayRoles", () => {
     expect(speedDays.length).toBe(1);
   });
 
+  it("keeps a long club day as the long run role", () => {
+    const roles = assignDayRoles([2, 4, 0], 2, 2, "long");
+    expect(roles.get(2)).toBe("long");
+    const clubDays = [...roles.entries()].filter(([, r]) => r === "club");
+    expect(clubDays).toHaveLength(0);
+  });
+
   it("no club run when clubDay is not set", () => {
     const roles = assignDayRoles([2, 6, 0], 0);
     const clubDays = [...roles.entries()].filter(([, r]) => r === "club");
@@ -204,6 +211,19 @@ describe("generatePlan", () => {
     const plan = generateFull();
     const clubRuns = plan.filter((e) => e.external_id.includes("club-"));
     expect(clubRuns.length).toBe(0);
+  });
+
+  it("generates normal long runs and race day when the club day is the long run", () => {
+    const plan = generateFull({
+      runDays: [2, 4, 0],
+      longRunDay: 2,
+      clubDay: 2,
+      clubType: "long",
+    });
+
+    expect(plan.some((e) => e.name === "RACE DAY")).toBe(true);
+    expect(plan.filter((e) => e.external_id.includes("long-")).length).toBeGreaterThan(0);
+    expect(plan.filter((e) => e.external_id.includes("club-"))).toHaveLength(0);
   });
 
   it("generates speed sessions when no club covers speed", () => {

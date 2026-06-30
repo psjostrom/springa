@@ -9,6 +9,7 @@ import {
   settingsAtom,
   calendarEventsAtom,
   calendarLoadingAtom,
+  calendarErrorAtom,
   bgModelAtom,
 } from "@/app/atoms";
 import type { UserSettings } from "@/lib/settings";
@@ -230,6 +231,20 @@ describe("PlannerScreen", () => {
     expect(screen.queryByText("EcoTrail is complete.")).not.toBeInTheDocument();
   });
 
+  it("does not show the complete-program banner after a calendar error", () => {
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [calendarLoadingAtom, false],
+        [calendarErrorAtom, "Failed to fetch calendar"],
+        [bgModelAtom, null],
+      ],
+    });
+
+    expect(screen.queryByText("EcoTrail is complete.")).not.toBeInTheDocument();
+  });
+
   it("previews a new program without saving settings or uploading workouts", async () => {
     const user = userEvent.setup();
     resetCaptures();
@@ -257,6 +272,77 @@ describe("PlannerScreen", () => {
     expect(screen.getByText(/will replace future workouts on your Springa calendars/i)).toBeInTheDocument();
     expect(capturedUploadPayload).toHaveLength(0);
     expect(capturedSettingsBody).toBeNull();
+  });
+
+  it("does not expose the normal settings editor while a new program draft is open", async () => {
+    const user = userEvent.setup();
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("lets the user edit or cancel after previewing a new program", async () => {
+    const user = userEvent.setup();
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByRole("button", { name: "Edit program" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit program" }));
+
+    expect(screen.getByText("Start new program")).toBeInTheDocument();
+    expect(screen.queryByText("Ready to start?")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Program" })).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: "Cancel" })[0]);
+
+    expect(screen.queryByText("Start new program")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start New Program" })).toBeInTheDocument();
+  });
+
+  it("clears a new-program validation error when the draft changes", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+
+    const dateInput = container.querySelector("#new-program-race-date");
+    if (!dateInput) throw new Error("new program date input missing");
+    await user.clear(dateInput);
+    await user.type(dateInput, dateInTrainingWeek(7));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(screen.getByText("Race date must be at least 8 weeks away.")).toBeInTheDocument();
+
+    await user.clear(dateInput);
+    await user.type(dateInput, dateInTrainingWeek(9));
+
+    expect(screen.queryByText("Race date must be at least 8 weeks away.")).not.toBeInTheDocument();
   });
 
   it("shows the new race in the planner summary during preview", async () => {
@@ -397,6 +483,75 @@ describe("PlannerScreen", () => {
     );
   });
 
+  it("rolls settings back when starting a new program fails during workout upload", async () => {
+    const user = userEvent.setup();
+    const settingsBodies: Record<string, unknown>[] = [];
+    server.use(
+      http.put("/api/settings", async ({ request }) => {
+        settingsBodies.push(await request.json() as Record<string, unknown>);
+        return HttpResponse.json({ ok: true });
+      }),
+      http.post("/api/intervals/events/bulk", () => {
+        return HttpResponse.json({ error: "upload failed" }, { status: 502 });
+      }),
+    );
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.type(screen.getByLabelText("Race name"), "Stockholm Half");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+    await user.click(screen.getByRole("button", { name: "Start Program" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("upload failed")).toBeInTheDocument();
+    });
+
+    expect(settingsBodies.map((body) => body.raceName)).toEqual(["Stockholm Half", "EcoTrail"]);
+    expect(settingsBodies[1]).toEqual(expect.objectContaining({
+      raceDate: "2026-06-13",
+      raceDist: 16,
+    }));
+  });
+
+  it("does not push threshold pace when the new-program settings save fails", async () => {
+    const user = userEvent.setup();
+    let thresholdCalls = 0;
+    server.use(
+      http.put("/api/settings", () => {
+        return HttpResponse.json({ error: "settings unavailable" }, { status: 500 });
+      }),
+      http.put("/api/intervals/threshold-pace", () => {
+        thresholdCalls += 1;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, completedProgramSettings()],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+    await user.click(screen.getByRole("button", { name: "5K" }));
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+    await user.click(screen.getByRole("button", { name: "Start Program" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Settings save failed (500)")).toBeInTheDocument();
+    });
+    expect(thresholdCalls).toBe(0);
+  });
+
   it("retries threshold pace sync after a failed new-program start", async () => {
     const user = userEvent.setup();
     resetCaptures();
@@ -435,6 +590,24 @@ describe("PlannerScreen", () => {
     });
     expect(thresholdCalls).toBe(2);
     expect(capturedUploadPayload.length).toBeGreaterThan(0);
+  });
+
+  it("hides old-plan adaptation while drafting a new program", async () => {
+    const user = userEvent.setup();
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, baseSettings()],
+        [calendarEventsAtom, [futurePlannedEvent()]],
+        [bgModelAtom, null],
+      ],
+    });
+
+    expect(screen.getByText("Adapt Upcoming")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start New Program" }));
+
+    expect(screen.queryByText("Adapt Upcoming")).not.toBeInTheDocument();
   });
 
   it("keeps pending auto-adapt after the URL flag is stripped before bgModel loads", async () => {

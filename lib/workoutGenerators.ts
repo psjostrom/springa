@@ -38,11 +38,16 @@ export function assignDayRoles(
   const sorted = [...runDays].sort((a, b) => a - b);
 
   // 1. Long run (fall back to last run day if longRunDay not in runDays)
-  const effectiveLongRunDay = sorted.includes(longRunDay) ? longRunDay : sorted[sorted.length - 1];
+  const configuredLongRunDay = clubType === "long" && clubDay != null
+    ? clubDay
+    : longRunDay;
+  const effectiveLongRunDay = sorted.includes(configuredLongRunDay)
+    ? configuredLongRunDay
+    : sorted[sorted.length - 1];
   roles.set(effectiveLongRunDay, "long");
 
   // 2. Club run (if configured and in runDays)
-  if (clubDay != null && sorted.includes(clubDay)) {
+  if (clubDay != null && clubType !== "long" && sorted.includes(clubDay)) {
     roles.set(clubDay, "club");
   }
 

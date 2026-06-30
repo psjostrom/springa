@@ -232,6 +232,26 @@ describe("NewProgramWizard", () => {
     });
   });
 
+  it("keeps the long run day in sync when changing a long club day", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+
+    render(<WizardHarness onPreview={onPreview} />);
+
+    await user.click(screen.getByRole("switch", { name: "Club run" }));
+    await user.click(screen.getByRole("button", { name: "Long run" }));
+    const thuButtons = screen.getAllByRole("button", { name: "Thu" });
+    await user.click(thuButtons[thuButtons.length - 1]);
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(onPreview).toHaveBeenCalledWith({
+      ...initialDraft,
+      clubDay: 4,
+      clubType: "long",
+      longRunDay: 4,
+    });
+  });
+
   it("uses passing contrast classes for selected controls and primary action", async () => {
     const user = userEvent.setup();
 

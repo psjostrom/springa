@@ -274,7 +274,13 @@ export function NewProgramWizard({
                   <button
                     key={index}
                     type="button"
-                    onClick={() => { update({ clubDay: index }); }}
+                    onClick={() => {
+                      update(
+                        draft.clubType === "long"
+                          ? { clubDay: index, longRunDay: index }
+                          : { clubDay: index },
+                      );
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                       draft.clubDay === index
                         ? "bg-brand-btn text-white"

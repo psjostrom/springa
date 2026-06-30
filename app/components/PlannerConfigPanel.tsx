@@ -85,7 +85,12 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
 
   const handleClubDay = (day: number) => {
     setClubDay(day);
-    saveField({ clubDay: day }).catch(console.error);
+    const updates: Partial<UserSettings> = { clubDay: day };
+    if (clubType === "long") {
+      updates.longRunDay = day;
+      setLongRunDay(day);
+    }
+    saveField(updates).catch(console.error);
   };
 
   const handleClubType = (type: string) => {

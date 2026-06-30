@@ -4,7 +4,7 @@ import { differenceInWeeks, parseISO } from "date-fns";
 interface PlannerSummaryBarProps {
   settings: UserSettings;
   hasPlan: boolean;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -48,12 +48,14 @@ export function PlannerSummaryBar({ settings, hasPlan, onEdit }: PlannerSummaryB
           </>
         )}
       </div>
-      <button
-        onClick={onEdit}
-        className="text-brand text-sm font-medium shrink-0 hover:underline"
-      >
-        Edit
-      </button>
+      {onEdit && (
+        <button
+          onClick={onEdit}
+          className="text-brand text-sm font-medium shrink-0 hover:underline"
+        >
+          Edit
+        </button>
+      )}
     </div>
   );
 }
