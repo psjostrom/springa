@@ -2,7 +2,7 @@
 
 Workout generator and BG management system for a T1D runner targeting EcoTrail 16km (2026-06-13). Generates training plans that sync to Intervals.icu → Garmin Connect → Garmin Forerunner 970.
 
-Personal/medical data (runner profile, physiological metrics, T1D management, equipment) lives in `.Codex.local.md`.
+Personal/medical data (runner profile, physiological metrics, T1D management, equipment) lives in the local-only `AGENTS.local.md`. If that file exists, read it before work that touches training logic, BG logic, medical context, race planning, personal schedule, or equipment assumptions.
 
 ## Tech Stack
 
