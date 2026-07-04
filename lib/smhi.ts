@@ -12,7 +12,7 @@ export interface SMHIWeather {
   windGust: number;
   /** Precipitation in mm/h (mean) */
   precipitation: number;
-  /** Precipitation category: 0=none, 1=snow, 2=snow+rain, 3=rain, 4=drizzle, 5=freezing rain, 6=freezing drizzle */
+  /** Precipitation category: SMHI SNOW1g 0=none, 1=rain, 2=thunderstorm, 3=freezing rain, 4=mixed/ice, 5=snow, 6=wet snow, 7=rain+snow, 8=ice pellets, 9=graupel, 10=hail, 11=drizzle, 12=freezing drizzle */
   precipCategory: number;
   /** "Feels like" temperature accounting for wind chill */
   feelsLike: number;

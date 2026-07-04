@@ -142,9 +142,23 @@ describe("recommendClothing", () => {
   });
 
   describe("rain modifier", () => {
+    it.each([1, 2, 3, 11, 12])(
+      "treats SMHI SNOW1g code %i as rain",
+      (precipCategory) => {
+        const r = recommendClothing(
+          weather({ feelsLike: 12, precipCategory, precipitation: 1.0 }),
+          "easy",
+        );
+        expect(r.weather.isRain).toBe(true);
+        expect(r.weather.isSnow).toBe(false);
+        expect(r.accessories).toContain("Cap");
+        expect(r.upper).toContain("Light rain jacket");
+      },
+    );
+
     it("adds cap when raining", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 12, precipCategory: 3, precipitation: 1.5 }),
+        weather({ feelsLike: 12, precipCategory: 1, precipitation: 1.5 }),
         "easy",
       );
       expect(r.accessories).toContain("Cap");
@@ -152,7 +166,7 @@ describe("recommendClothing", () => {
 
     it("adds rain jacket when raining and no jacket already", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 12, precipCategory: 3, precipitation: 1.5 }),
+        weather({ feelsLike: 12, precipCategory: 1, precipitation: 1.5 }),
         "easy",
       );
       expect(r.upper).toContain("Light rain jacket");
@@ -169,7 +183,7 @@ describe("recommendClothing", () => {
 
     it("no rain effect when precipitation is 0", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 12, precipCategory: 3, precipitation: 0 }),
+        weather({ feelsLike: 12, precipCategory: 1, precipitation: 0 }),
         "easy",
       );
       expect(r.accessories).not.toContain("Cap");
@@ -177,18 +191,41 @@ describe("recommendClothing", () => {
 
     it("reports rain in weather summary", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 12, precipCategory: 4, precipitation: 0.5 }),
+        weather({ feelsLike: 12, precipCategory: 11, precipitation: 0.5 }),
         "easy",
       );
       expect(r.weather.isRain).toBe(true);
       expect(r.weather.isSnow).toBe(false);
     });
+
+    it("treats SMHI SNOW1g code 1 as rain, not snow", () => {
+      const r = recommendClothing(
+        weather({ feelsLike: 18, precipCategory: 1, precipitation: 0.1 }),
+        "easy",
+      );
+      expect(r.weather.isRain).toBe(true);
+      expect(r.weather.isSnow).toBe(false);
+      expect(r.accessories).not.toContain("Beanie");
+    });
   });
 
   describe("snow modifier", () => {
+    it.each([4, 5, 6, 7, 8, 9, 10])(
+      "treats SMHI SNOW1g code %i as snow-like winter precipitation",
+      (precipCategory) => {
+        const r = recommendClothing(
+          weather({ feelsLike: 7, precipCategory, precipitation: 1.0 }),
+          "easy",
+        );
+        expect(r.weather.isSnow).toBe(true);
+        expect(r.weather.isRain).toBe(false);
+        expect(r.accessories).toContain("Beanie");
+      },
+    );
+
     it("adds beanie when snowing and not already wearing one", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 7, precipCategory: 1, precipitation: 1.0 }),
+        weather({ feelsLike: 7, precipCategory: 5, precipitation: 1.0 }),
         "easy",
       );
       expect(r.accessories).toContain("Beanie");
@@ -197,7 +234,7 @@ describe("recommendClothing", () => {
     it("does not duplicate beanie when already cold enough for one", () => {
       // feelsLike -8 already gets beanie from cold
       const r = recommendClothing(
-        weather({ feelsLike: -8, precipCategory: 1, precipitation: 1.0 }),
+        weather({ feelsLike: -8, precipCategory: 5, precipitation: 1.0 }),
         "easy",
       );
       expect(r.accessories.filter((a) => a === "Beanie")).toHaveLength(1);
@@ -205,7 +242,7 @@ describe("recommendClothing", () => {
 
     it("reports snow in weather summary", () => {
       const r = recommendClothing(
-        weather({ feelsLike: 0, precipCategory: 2, precipitation: 0.5 }),
+        weather({ feelsLike: 0, precipCategory: 7, precipitation: 0.5 }),
         "easy",
       );
       expect(r.weather.isSnow).toBe(true);

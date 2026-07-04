@@ -21,13 +21,16 @@ function getIntensity(category: string): Intensity {
 }
 
 function isRain(precipCategory: number): boolean {
-  // 3=rain, 4=drizzle, 5=freezing rain, 6=freezing drizzle
-  return precipCategory >= 3;
+  // SMHI SNOW1g: 1=rain, 2=thunderstorm, 3=freezing rain,
+  // 11=drizzle, 12=freezing drizzle.
+  return [1, 2, 3, 11, 12].includes(precipCategory);
 }
 
 function isSnow(precipCategory: number): boolean {
-  // 1=snow, 2=snow+rain
-  return precipCategory === 1 || precipCategory === 2;
+  // SMHI SNOW1g frozen/winter precipitation:
+  // 4=mixed/ice, 5=snow, 6=wet snow, 7=rain and snow,
+  // 8=ice pellets, 9=graupel, 10=hail.
+  return [4, 5, 6, 7, 8, 9, 10].includes(precipCategory);
 }
 
 /**
