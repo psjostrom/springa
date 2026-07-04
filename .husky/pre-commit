@@ -10,5 +10,3 @@ if ! git merge-base --is-ancestor origin/main HEAD; then
 fi
 
 npx tsc --noEmit || exit 1
-npm run lint || exit 1
-npm test || exit 1

@@ -97,7 +97,7 @@ describe("EventModal clothing recommendation", () => {
 
   it("shows rain badge when raining", () => {
     const clothing = recommendClothing(
-      weather({ feelsLike: 12, precipCategory: 3, precipitation: 2.5 }),
+      weather({ feelsLike: 12, precipCategory: 1, precipitation: 2.5 }),
       "easy",
     );
 
@@ -118,7 +118,7 @@ describe("EventModal clothing recommendation", () => {
 
   it("shows snow badge when snowing", () => {
     const clothing = recommendClothing(
-      weather({ feelsLike: -2, precipCategory: 1, precipitation: 1.0 }),
+      weather({ feelsLike: -2, precipCategory: 5, precipitation: 1.0 }),
       "easy",
     );
 
@@ -236,4 +236,3 @@ describe("full weather-to-clothing flow", () => {
     expect(warm.lower).toEqual(["Shorts"]);
   });
 });
-
