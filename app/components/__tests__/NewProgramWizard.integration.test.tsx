@@ -17,6 +17,7 @@ const initialDraft: NewProgramDraft = {
   totalWeeks: 18,
   startKm: 8,
   includeBasePhase: false,
+  effortMetric: "pace",
 };
 
 function dateWeeksFromNow(weeks: number): string {

@@ -5,6 +5,7 @@ import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
   buildProgramConfigKeyFromSettings,
+  classifyProgramConfigDirty,
   getNewProgramTimelineWarning,
   getProgramWeeks,
   isProgramConfigKeyCurrent,
@@ -205,10 +206,11 @@ describe("buildProgramConfigKey", () => {
       totalWeeks: 18,
       startKm: 8,
       includeBasePhase: true,
+      effortMetric: "pace",
     });
 
     expect(JSON.parse(key)).toEqual({
-      version: 2,
+      version: 3,
       raceDist: 21.0975,
       raceDate: "2026-10-28",
       currentAbilityDist: 10,
@@ -220,6 +222,7 @@ describe("buildProgramConfigKey", () => {
       totalWeeks: 18,
       startKm: 8,
       includeBasePhase: true,
+      effortMetric: "pace",
     });
   });
 
@@ -237,6 +240,7 @@ describe("buildProgramConfigKey", () => {
       totalWeeks: 18,
       startKm: 8,
       includeBasePhase: false,
+      effortMetric: "pace" as const,
     };
 
     expect(buildProgramConfigKey(baseDraft)).toBe(
@@ -258,6 +262,7 @@ describe("buildProgramConfigKey", () => {
       totalWeeks: 18,
       startKm: 8,
       includeBasePhase: false,
+      effortMetric: "pace",
     });
 
     const settingsKey = buildProgramConfigKeyFromSettings({
@@ -273,6 +278,7 @@ describe("buildProgramConfigKey", () => {
       totalWeeks: 18,
       startKm: 8,
       includeBasePhase: false,
+      effortMetric: "pace",
     });
 
     expect(draftKey).toBe(settingsKey);
@@ -334,5 +340,70 @@ describe("buildProgramConfigKey", () => {
     });
 
     expect(isProgramConfigKeyCurrent(currentKey, staleExtendedKey)).toBe(false);
+  });
+
+  it("includes effortMetric in config key at version 3", () => {
+    const draft = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 18,
+      startKm: 8,
+    }, now);
+
+    expect(draft.effortMetric).toBe("pace");
+    const parsed = JSON.parse(buildProgramConfigKey({ ...draft, effortMetric: "hr" }));
+    expect(parsed.version).toBe(3);
+    expect(parsed.effortMetric).toBe("hr");
+  });
+
+  it("classifies metric-only change as target-only", () => {
+    const base = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 18,
+      startKm: 8,
+    }, now);
+    const a = buildProgramConfigKey(base);
+    const b = buildProgramConfigKey({ ...base, effortMetric: "feel" });
+
+    expect(classifyProgramConfigDirty(b, a)).toBe("target-only");
+  });
+
+  it("classifies runDays change as structural", () => {
+    const base = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 18,
+      startKm: 8,
+    }, now);
+    const a = buildProgramConfigKey(base);
+    const b = buildProgramConfigKey({ ...base, runDays: [1, 3, 5] });
+
+    expect(classifyProgramConfigDirty(b, a)).toBe("structural");
+  });
+
+  it("classifies mixed metric+days as structural", () => {
+    const base = buildDefaultNewProgramDraft({
+      raceDist: 16,
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+      runDays: [2, 4, 0],
+      longRunDay: 0,
+      totalWeeks: 18,
+      startKm: 8,
+    }, now);
+    const a = buildProgramConfigKey(base);
+    const b = buildProgramConfigKey({ ...base, effortMetric: "hr", runDays: [2, 4, 6] });
+
+    expect(classifyProgramConfigDirty(b, a)).toBe("structural");
   });
 });
