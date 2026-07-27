@@ -94,6 +94,35 @@ describe("reemitWorkoutDescription", () => {
       reemitWorkoutDescription("- not a valid step\n", "pace", ctx),
     ).toThrow(/Cannot re-emit workout step/);
   });
+
+  it("throws on near-miss target lines instead of frankenstein re-emit", () => {
+    // lowercase /km pace misses abs-pace regex (requires capital P)
+    expect(() =>
+      reemitWorkoutDescription(
+        "- Easy 35m 6:15-7:52/km pace intensity=active\n",
+        "hr",
+        ctx,
+      ),
+    ).toThrow(/Cannot re-emit workout step/);
+
+    // junk prefix before otherwise-valid absolute pace
+    expect(() =>
+      reemitWorkoutDescription(
+        "- Easy 35m approx 6:15-7:52/km Pace intensity=active\n",
+        "hr",
+        ctx,
+      ),
+    ).toThrow(/Cannot re-emit workout step/);
+
+    // % Pace (capital P) misses %-pace regex (requires lowercase pace)
+    expect(() =>
+      reemitWorkoutDescription(
+        "- Easy 35m 30-88% Pace intensity=active\n",
+        "hr",
+        ctx,
+      ),
+    ).toThrow(/Cannot re-emit workout step/);
+  });
 });
 
 describe("detectEffortMetric", () => {

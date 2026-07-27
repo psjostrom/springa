@@ -160,6 +160,10 @@ function parseStepLine(
     const [, rawLabel, duration, suffix = ""] = targetlessMatch;
     // Reject if "label" still contains a target-looking fragment (unparseable junk).
     if (/LTHR|\/km Pace|%\s*pace/i.test(rawLabel)) return null;
+    // Near-miss targets (e.g. lowercase /km pace, "% Pace") land here with the
+    // leftover text in suffix. Only allow empty / intensity= trailing tags —
+    // otherwise re-emit would prepend a new band and keep the junk (frankenstein).
+    if (!isAllowedTargetlessSuffix(suffix)) return null;
     const label = normalizeLabel(rawLabel);
     const zone =
       zoneFromLabel(label) ?? zoneFromContext(currentSection, suffix);
@@ -170,6 +174,12 @@ function parseStepLine(
   }
 
   return null;
+}
+
+function isAllowedTargetlessSuffix(suffix: string): boolean {
+  const trimmed = suffix.trim();
+  if (!trimmed) return true;
+  return /^(?:intensity=\w+\s*)+$/.test(trimmed);
 }
 
 function normalizeLabel(raw: string | undefined): string | undefined {
