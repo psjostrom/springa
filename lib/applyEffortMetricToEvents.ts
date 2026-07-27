@@ -73,7 +73,7 @@ export function findFuturePlannedEffortMetricMismatch(
   const today = startOfToday(now);
   for (const event of events) {
     if (event.type !== "planned" || event.date < today) continue;
-    const detected = detectEffortMetric(event.name, event.description ?? "");
+    const detected = detectEffortMetric(event.name, event.description);
     if (detected !== targetMetric) return detected;
   }
   return null;
