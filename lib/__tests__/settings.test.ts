@@ -135,6 +135,7 @@ describe("saveUserSettings", () => {
       onboardingComplete: true,
       insulinType: "fiasp",
       paceSuggestionDismissedAt: 1700000000000,
+      effortMetric: "hr",
     };
 
     for (const key of WRITABLE_SETTINGS_KEYS) {
