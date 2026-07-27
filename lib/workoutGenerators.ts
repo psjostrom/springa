@@ -11,8 +11,10 @@ import {
 } from "date-fns";
 import type { WorkoutEvent, PlanContext, SpeedSessionType, ZoneName } from "./types";
 import type { BGResponseModel } from "./bgModel";
-import { SPEED_ROTATION, SPEED_SESSION_LABELS } from "./constants";
-import { formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
+import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
+import { formatStep, formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
+import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
+import { addByFeel } from "./byFeel";
 import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
 import {
@@ -122,19 +124,46 @@ const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: num
   z5:   { min: null, max: null },
 };
 
-/** Partial application: captures threshold so each s(duration, zone, note) call doesn't repeat it. */
-function createStepMaker(thresholdPace?: number, byFeel?: boolean) {
+/** Partial application: captures threshold/metric so each s(duration, zone, note) call doesn't repeat them. */
+function createStepMaker(
+  thresholdPace: number | undefined,
+  effortMetric: EffortMetric,
+  hr?: { lthr: number; hrZones: number[] },
+) {
   return (duration: string, zone: ZoneName | "walk", note?: string) => {
-    const pct = byFeel ? { min: null, max: null } : HM_ZONE_DEFAULTS[zone];
-    const step = formatPaceStep(
-      duration,
-      pct.min,
-      pct.max,
-      note ?? (zone === "walk" ? "Walk" : undefined),
-      thresholdPace,
-    );
-    return `${step} intensity=${garminIntensity(zone, note)}`;
+    const label = note ?? (zone === "walk" ? "Walk" : undefined);
+    const intensity = `intensity=${garminIntensity(zone, note)}`;
+    const pct = HM_ZONE_DEFAULTS[zone];
+    const targetless = effortMetric === "feel" || pct.min == null || pct.max == null;
+
+    if (targetless) {
+      return `${formatPaceStep(duration, null, null, label, thresholdPace)} ${intensity}`;
+    }
+
+    if (effortMetric === "hr") {
+      if (!hr) throw new Error("HR effortMetric requires lthr and hrZones");
+      // walk/z1/z5 already targetless above — zone is ZoneName with a band
+      const band = resolveZoneBand(zone as ZoneName, hr.lthr, hr.hrZones);
+      return `${formatStep(duration, band.min, band.max, hr.lthr, label)} ${intensity}`;
+    }
+
+    return `${formatPaceStep(duration, pct.min, pct.max, label, thresholdPace)} ${intensity}`;
   };
+}
+
+function stepMakerFromContext(ctx: PlanContext) {
+  return createStepMaker(
+    ctx.paceTable?.hmEquivalentPacePerKm,
+    normalizeEffortMetric(ctx.effortMetric),
+    { lthr: ctx.lthr, hrZones: ctx.hrZones },
+  );
+}
+
+function applyEffortMetricName(ctx: PlanContext, event: WorkoutEvent): WorkoutEvent {
+  if (normalizeEffortMetric(ctx.effortMetric) === "feel") {
+    event.name = addByFeel(event.name);
+  }
+  return event;
 }
 
 function getSpeedSessionType(
@@ -167,7 +196,7 @@ const generateQualityRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
+  const s = stepMakerFromContext(ctx);
   const progress = weekIdx / ctx.totalWeeks;
   const prefixName = `W${wp.weekNum.toString().padStart(2, "0")}`;
   const externalIdPrefix = externalId(ctx, "speed", wp.weekNum);
@@ -265,7 +294,7 @@ const generateEasyRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
+  const s = stepMakerFromContext(ctx);
   const withStrides = easyIndex === 0 && weekIdx % 2 === 1 && !wp.isRaceWeek && !wp.isBase;
 
   // Ben Parkes pattern: easy runs start at 5k (~20m main) and build to 8k (~40m main) at peak
@@ -333,7 +362,7 @@ const generateFreeRun = (
     return null;
   if (isSameDay(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
+  const s = stepMakerFromContext(ctx);
   const notes = "Free run. 1 hour, no rules — easy or hard, your call.";
 
   return {
@@ -353,7 +382,7 @@ const generateLongRun = (
   wp: WeekPhase,
 ): WorkoutEvent | null => {
   if (wp.isRaceWeek) {
-    const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
+    const s = stepMakerFromContext(ctx);
     return {
       start_date_local: set(ctx.raceDate, { hours: 12, minutes: 0, seconds: 0, milliseconds: 0 }),
       name: `RACE DAY`,
@@ -368,7 +397,7 @@ const generateLongRun = (
   }
   if (!isBefore(date, ctx.raceDate)) return null;
 
-  const s = createStepMaker(ctx.paceTable?.hmEquivalentPacePerKm, ctx.byFeel);
+  const s = stepMakerFromContext(ctx);
 
   // Distance ramp uses build-relative index so base weeks don't inflate early distances
   const buildWeeks = wp.b.buildEnd - wp.b.buildStart + 1;
@@ -457,7 +486,7 @@ export interface PlanConfig {
   startKm: number;
   lthr: number;
   hrZones: number[];
-  byFeel?: boolean;
+  effortMetric?: EffortMetric;
   includeBasePhase?: boolean;
   diabetesMode?: boolean;
   runDays?: number[];
@@ -485,7 +514,7 @@ export function buildContext(config: PlanConfig): PlanContext {
     fuelInterval: getCurrentFuelRate("interval", config.bgModel, config.diabetesMode),
     fuelLong: getCurrentFuelRate("long", config.bgModel, config.diabetesMode),
     fuelEasy: getCurrentFuelRate("easy", config.bgModel, config.diabetesMode),
-    byFeel: config.byFeel,
+    effortMetric: normalizeEffortMetric(config.effortMetric),
     raceDate,
     raceDist: config.raceDist,
     totalWeeks: config.totalWeeks,
@@ -574,7 +603,7 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
         event = generateFreeRun(ctx, date, wp);
         break;
     }
-    if (event) events.push(event);
+    if (event) events.push(applyEffortMetricName(ctx, event));
   }
 
   return events;
@@ -650,16 +679,17 @@ export function generateSingleWorkout(
       event = generateLongRun(ctx, weekIdx, date, wp);
       break;
     case "club":
-      return buildClubRunEvent(
+      event = buildClubRunEvent(
         date,
         wp,
         ctx.fuelInterval,
         `ondemand-${format(date, "yyyy-MM-dd")}`,
       );
+      break;
   }
 
   if (!event) return null;
 
   event.external_id = `ondemand-${format(date, "yyyy-MM-dd")}`;
-  return event;
+  return applyEffortMetricName(ctx, event);
 }

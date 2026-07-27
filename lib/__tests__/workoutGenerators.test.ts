@@ -707,12 +707,40 @@ describe("generateSingleWorkout", () => {
     }
   });
 
-  it("byFeel strips targets while preserving distance and fuel math", () => {
-    const byFeelConfig = { ...config, byFeel: true };
+  it("effortMetric hr emits LTHR steps for easy main set", () => {
+    const event = generateSingleWorkout("easy", buildThursday, {
+      ...config,
+      effortMetric: "hr",
+    });
+    expect(event).not.toBeNull();
+    expect(event!.description).toMatch(/% LTHR \(\d+-\d+ bpm\)/);
+    expect(event!.description).not.toMatch(/\/km Pace|% pace/);
+    expect(event!.name).not.toMatch(/By Feel$/);
+  });
 
-    const easyEvent = generateSingleWorkout("easy", buildThursday, byFeelConfig);
-    const qualityEvent = generateSingleWorkout("quality", buildThursday, byFeelConfig);
-    const longEvent = generateSingleWorkout("long", buildSunday, byFeelConfig);
+  it("effortMetric feel strips targets and suffixes name", () => {
+    const event = generateSingleWorkout("easy", buildThursday, {
+      ...config,
+      effortMetric: "feel",
+    });
+    expect(event).not.toBeNull();
+    expect(event!.description).not.toMatch(/\/km Pace|% pace|% LTHR/);
+    expect(event!.description).toMatch(/intensity=/);
+    expect(event!.name.endsWith(" By Feel")).toBe(true);
+  });
+
+  it("effortMetric pace keeps current absolute or percent pace behavior", () => {
+    const event = generateSingleWorkout("easy", buildThursday, config);
+    expect(event).not.toBeNull();
+    expect(event!.description).toMatch(/\/km Pace|% pace/);
+  });
+
+  it("effortMetric feel strips targets while preserving distance and fuel math", () => {
+    const feelConfig = { ...config, effortMetric: "feel" as const };
+
+    const easyEvent = generateSingleWorkout("easy", buildThursday, feelConfig);
+    const qualityEvent = generateSingleWorkout("quality", buildThursday, feelConfig);
+    const longEvent = generateSingleWorkout("long", buildSunday, feelConfig);
 
     expect(easyEvent).not.toBeNull();
     expect(qualityEvent).not.toBeNull();
@@ -723,6 +751,7 @@ describe("generateSingleWorkout", () => {
       expect(event.description).not.toContain("% pace");
       expect(event.description).not.toContain("% LTHR");
       expect(event.description).toContain("intensity=");
+      expect(event.name.endsWith(" By Feel")).toBe(true);
     }
 
     expect(longEvent!.description).toMatch(/- Warmup 1km intensity=warmup/);
@@ -736,13 +765,13 @@ describe("generateSingleWorkout", () => {
     expect(prescribedCarbs(longEvent!.description, longEvent!.fuelRate)).toBe(87);
   });
 
-  it("byFeel keeps race-day long targetless with exact distance", () => {
-    const byFeelConfig = { ...config, byFeel: true };
+  it("effortMetric feel keeps race-day long targetless with exact distance", () => {
+    const feelConfig = { ...config, effortMetric: "feel" as const };
     const raceDate = new Date(`${config.raceDateStr}T12:00:00`);
-    const event = generateSingleWorkout("long", raceDate, byFeelConfig);
+    const event = generateSingleWorkout("long", raceDate, feelConfig);
 
     expect(event).not.toBeNull();
-    expect(event!.name).toBe("RACE DAY");
+    expect(event!.name).toBe("RACE DAY By Feel");
     expect(event!.description).toContain(`- Race ${config.raceDist}km intensity=active`);
     expect(event!.description).not.toContain("/km Pace");
     expect(event!.description).not.toContain("% pace");
