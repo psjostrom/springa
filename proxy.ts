@@ -31,6 +31,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Dev-only QA login (returns 404 when disabled) — must not require a session
+  if (nextUrl.pathname.startsWith("/api/qa/")) {
+    return NextResponse.next();
+  }
+
   // /demo must always pass through so the route handler can set the cookie
   if (nextUrl.pathname === "/demo") {
     return NextResponse.next();
