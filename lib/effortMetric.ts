@@ -1,3 +1,5 @@
+import { isByFeel } from "./byFeel";
+
 export type EffortMetric = "pace" | "hr" | "feel";
 
 const ALLOWED = new Set<EffortMetric>(["pace", "hr", "feel"]);
@@ -13,4 +15,15 @@ export function canUseHeartRateMetric(
   hrZones?: number[],
 ): boolean {
   return typeof lthr === "number" && lthr > 0 && hrZones?.length === 5;
+}
+
+/** Detect prescription metric from workout name + description markers. */
+export function detectEffortMetric(
+  name: string,
+  description: string,
+): EffortMetric {
+  if (isByFeel(name)) return "feel";
+  if (/%\s*LTHR/.test(description)) return "hr";
+  if (/\/km Pace|%\s*pace/.test(description)) return "pace";
+  return "feel";
 }

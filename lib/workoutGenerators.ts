@@ -24,6 +24,7 @@ import {
   type PhaseBoundaries,
 } from "./periodization";
 import { getWeekIdx } from "./workoutMath";
+import { HM_ZONE_DEFAULTS } from "./zoneTargets";
 
 export type OnDemandCategory = "easy" | "quality" | "long" | "club";
 export type DayRole = "long" | "speed" | "easy" | "club" | "free";
@@ -113,16 +114,6 @@ function garminIntensity(zone: ZoneName | "walk", note?: string): string {
   if (zone === "walk" || note === "Downhill") return "rest";
   return "active";
 }
-
-/** Pace percentages when no pace table is available. Easy uses 30% floor (allows walking). */
-const HM_ZONE_DEFAULTS: Record<ZoneName | "walk", { min: number | null; max: number | null }> = {
-  walk: { min: null, max: null },
-  z1:   { min: null, max: null },
-  z2:   { min: 30, max: 88 },
-  z3:   { min: 99, max: 102 },
-  z4:   { min: 106, max: 111 },
-  z5:   { min: null, max: null },
-};
 
 /** Partial application: captures threshold/metric so each s(duration, zone, note) call doesn't repeat them. */
 function createStepMaker(
