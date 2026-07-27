@@ -710,8 +710,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           />
         )}
 
-        {/* Schedule / targets changed banner */}
-        {plannerState === "schedule-changed" && (
+        {/* Schedule / targets changed banner — hidden while Done confirm modal owns the same choice */}
+        {plannerState === "schedule-changed" && configConfirmKind == null && (
           <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-warning text-sm">
               {scheduleDirtyKind === "target-only" ? "Targets changed" : "Schedule changed"}

@@ -744,6 +744,8 @@ describe("PlannerScreen", () => {
     expect(
       screen.getByText(/Update future workouts to match your new settings\?/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/targets changed/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update workouts/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^update$/i }));
 
@@ -819,6 +821,8 @@ describe("PlannerScreen", () => {
     expect(putCount).toBe(0);
     expect(screen.getByTestId("last-generated")).toHaveTextContent(lastKey);
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+    expect(screen.getByText(/targets changed/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update workouts/i })).toBeInTheDocument();
   });
 
   it("ability-only schedule-changed banner re-emits targets instead of regenerating", async () => {
