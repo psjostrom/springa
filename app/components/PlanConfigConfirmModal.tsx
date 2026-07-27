@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface PlanConfigConfirmModalProps {
   open: boolean;
   onConfirm: () => void;
@@ -13,6 +15,16 @@ export function PlanConfigConfirmModal({
   onDecline,
   busy = false,
 }: PlanConfigConfirmModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || busy) return;
+      onDecline();
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => { window.removeEventListener("keydown", handleEscape); };
+  }, [open, busy, onDecline]);
+
   if (!open) return null;
 
   return (

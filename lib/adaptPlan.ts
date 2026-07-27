@@ -183,10 +183,11 @@ function buildEasyStructure(
     let line: string;
     if (targetless) {
       line = formatPaceStep(stepDuration, null, null, note, ctx.thresholdPace);
-    } else if (metric === "hr") {
-      if (ctx.lthr == null || ctx.hrZones?.length !== 5) {
-        throw new Error("HR effortMetric requires lthr and hrZones");
-      }
+    } else if (
+      metric === "hr" &&
+      typeof ctx.lthr === "number" &&
+      ctx.hrZones?.length === 5
+    ) {
       const band = resolveZoneBand(zone, ctx.lthr, ctx.hrZones);
       line = formatStep(stepDuration, band.min, band.max, ctx.lthr, note);
     } else {

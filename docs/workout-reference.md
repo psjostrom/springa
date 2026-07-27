@@ -12,7 +12,7 @@ Plans and individual workouts can prescribe intensity by pace, heart rate, or fe
 
 - **Pace:** `10m 6:49-20:00/km Pace` (or `% pace` without ability)
 - **Heart rate:** `10m 68-83% LTHR (115-140 bpm)`
-- **Feel:** `Easy 10m` (no numeric target; name ends with ` By Feel`)
+- **Feel:** `Easy 10m` (no numeric target; name stays `W{weekNum} {Type}` with no metric suffix)
 
 ## Workout Types
 

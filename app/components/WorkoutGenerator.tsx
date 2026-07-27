@@ -8,7 +8,7 @@ import { getThresholdPace } from "@/lib/paceTable";
 import { generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, type OnDemandCategory, type PlanConfig } from "@/lib/workoutGenerators";
 import { replaceWorkout } from "@/lib/intervalsClient";
 import { getWeekIdx } from "@/lib/workoutMath";
-import { normalizeEffortMetric } from "@/lib/effortMetric";
+import { canUseHeartRateMetric, normalizeEffortMetric } from "@/lib/effortMetric";
 import type { WorkoutEvent } from "@/lib/types";
 import { WorkoutCard } from "./WorkoutCard";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -48,10 +48,19 @@ export function WorkoutGenerator({
   const paceTable = useAtomValue(paceTableAtom);
   const reloadCalendar = useSetAtom(calendarReloadAtom);
 
-  if (!settings?.raceDate || !settings.totalWeeks || !settings.lthr || !settings.hrZones?.length) {
+  if (!settings?.raceDate || !settings.totalWeeks || !settings.lthr) {
     return (
       <div className="text-sm text-muted py-4">
-        Plan settings required (race date, LTHR, HR zones).
+        Plan settings required (race date, LTHR).
+      </div>
+    );
+  }
+
+  const effortMetric = normalizeEffortMetric(settings.effortMetric);
+  if (effortMetric === "hr" && !canUseHeartRateMetric(settings.lthr, settings.hrZones)) {
+    return (
+      <div className="text-sm text-muted py-4">
+        Heart-rate plans need LTHR and five synced HR zones.
       </div>
     );
   }
@@ -63,9 +72,9 @@ export function WorkoutGenerator({
     totalWeeks: settings.totalWeeks,
     startKm: settings.startKm ?? 8,
     lthr: settings.lthr,
-    hrZones: settings.hrZones,
+    hrZones: settings.hrZones ?? [],
     includeBasePhase: settings.includeBasePhase,
-    effortMetric: normalizeEffortMetric(settings.effortMetric),
+    effortMetric,
     currentAbilitySecs: settings.currentAbilitySecs,
     currentAbilityDist: settings.currentAbilityDist,
     runDays: settings.runDays,
@@ -79,12 +88,17 @@ export function WorkoutGenerator({
     : "easy";
 
   const handlePickCategory = (category: OnDemandCategory) => {
-    const workout = generateSingleWorkout(category, date, planConfig);
-    if (!workout) {
-      setState({ step: "picking", error: "Date is outside the training plan." });
-      return;
+    try {
+      const workout = generateSingleWorkout(category, date, planConfig);
+      if (!workout) {
+        setState({ step: "picking", error: "Date is outside the training plan." });
+        return;
+      }
+      setState({ step: "previewing", workout, category });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate workout";
+      setState({ step: "picking", error: message });
     }
-    setState({ step: "previewing", workout, category });
   };
 
   const handleSync = async (workout: WorkoutEvent, category: OnDemandCategory) => {

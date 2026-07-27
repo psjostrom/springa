@@ -9,6 +9,7 @@ import type { WorkoutEvent } from "@/lib/types";
 import type { UserSettings } from "@/lib/settings";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
+import { mapWithConcurrency } from "@/lib/adaptPlan";
 import { uploadPlan, updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
@@ -28,7 +29,7 @@ import {
   type ProgramConfigDirtyKind,
 } from "@/lib/programs";
 import { buildFuturePlannedEffortPatches, formatBulkReemitStatus, resolveBulkEffortMetricTarget } from "@/lib/applyEffortMetricToEvents";
-import { normalizeEffortMetric } from "@/lib/effortMetric";
+import { canUseHeartRateMetric, normalizeEffortMetric } from "@/lib/effortMetric";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
@@ -214,7 +215,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setNewProgramError("Intervals.icu not connected.");
       return;
     }
-    if (settings.hrZones?.length !== 5) {
+    const effortMetric = normalizeEffortMetric(newProgramDraft.effortMetric);
+    if (effortMetric === "hr" && !canUseHeartRateMetric(lthr, settings.hrZones)) {
       setNewProgramError("HR zones not synced from Intervals.icu.");
       return;
     }
@@ -226,7 +228,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       totalWeeks: newProgramDraft.totalWeeks,
       startKm: newProgramDraft.startKm,
       lthr,
-      hrZones: settings.hrZones,
+      hrZones: settings.hrZones ?? [],
       includeBasePhase: newProgramDraft.includeBasePhase,
       diabetesMode,
       runDays: newProgramDraft.runDays,
@@ -235,7 +237,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: newProgramDraft.clubType,
       currentAbilitySecs: newProgramDraft.currentAbilitySecs,
       currentAbilityDist: newProgramDraft.currentAbilityDist,
-      effortMetric: normalizeEffortMetric(newProgramDraft.effortMetric),
+      effortMetric,
     });
 
     const todayFilter = new Date();
@@ -251,7 +253,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("Intervals.icu not connected");
       return;
     }
-    if (settings?.hrZones?.length !== 5) {
+    const effortMetric = normalizeEffortMetric(settings?.effortMetric);
+    if (effortMetric === "hr" && !canUseHeartRateMetric(lthr, settings?.hrZones)) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
@@ -262,16 +265,16 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       totalWeeks,
       startKm,
       lthr,
-      hrZones: settings.hrZones,
-      includeBasePhase: settings.includeBasePhase ?? false,
+      hrZones: settings?.hrZones ?? [],
+      includeBasePhase: settings?.includeBasePhase ?? false,
       diabetesMode,
-      runDays: settings.runDays,
-      longRunDay: settings.longRunDay ?? 0,
-      clubDay: settings.clubDay,
-      clubType: settings.clubType,
-      currentAbilitySecs: settings.currentAbilitySecs,
-      currentAbilityDist: settings.currentAbilityDist,
-      effortMetric: normalizeEffortMetric(settings.effortMetric),
+      runDays: settings?.runDays,
+      longRunDay: settings?.longRunDay ?? 0,
+      clubDay: settings?.clubDay,
+      clubType: settings?.clubType,
+      currentAbilitySecs: settings?.currentAbilitySecs,
+      currentAbilityDist: settings?.currentAbilityDist,
+      effortMetric,
     });
     const todayFilter = new Date();
     todayFilter.setHours(0, 0, 0, 0);
@@ -407,7 +410,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     let succeeded = 0;
     const allFailures = [...failures];
 
-    for (const patch of patches) {
+    await mapWithConcurrency(patches, 4, async (patch) => {
       try {
         await updateEvent(patch.numericId, {
           name: patch.name,
@@ -436,7 +439,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           error: err instanceof Error ? err.message : String(err),
         });
       }
-    }
+    });
 
     if (allFailures.length === 0) {
       setLastGeneratedConfig(buildProgramConfigKeyFromSettings(snapshot));
@@ -445,13 +448,18 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   const handleScheduleChangedAction = async () => {
-    if (!settings) return;
-    if (scheduleDirtyKind === "target-only") {
-      setStatusMsg("");
-      await applyTargetOnlyReemit(settings);
-      return;
+    if (!settings || configConfirmBusy) return;
+    setConfigConfirmBusy(true);
+    try {
+      if (scheduleDirtyKind === "target-only") {
+        setStatusMsg("");
+        await applyTargetOnlyReemit(settings);
+        return;
+      }
+      handleGenerate();
+    } finally {
+      setConfigConfirmBusy(false);
     }
-    handleGenerate();
   };
 
   const handleConfigConfirmUpdate = async () => {
@@ -709,8 +717,10 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               {scheduleDirtyKind === "target-only" ? "Targets changed" : "Schedule changed"}
             </span>
             <button
+              type="button"
+              disabled={configConfirmBusy}
               onClick={() => { void handleScheduleChangedAction(); }}
-              className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold"
+              className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold disabled:opacity-50"
             >
               {scheduleDirtyKind === "target-only" ? "Update workouts" : "Regenerate"}
             </button>

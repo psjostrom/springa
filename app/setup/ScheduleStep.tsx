@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
+import { canUseHeartRateMetric, normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
 import { EffortMetricSelect } from "../components/EffortMetricSelect";
 
 interface ScheduleStepProps {
@@ -39,9 +39,10 @@ export function ScheduleStep({
 }: ScheduleStepProps) {
   const [runDays, setRunDays] = useState<number[]>(initialDays);
   const [longRunDay, setLongRunDay] = useState<number | null>(initialLongDay ?? null);
-  const [effortMetric, setEffortMetric] = useState<EffortMetric>(
-    normalizeEffortMetric(initialEffortMetric),
-  );
+  const [effortMetric, setEffortMetric] = useState<EffortMetric>(() => {
+    const initial = normalizeEffortMetric(initialEffortMetric);
+    return initial === "hr" && !canUseHeartRateMetric(lthr, hrZones) ? "pace" : initial;
+  });
 
   const toggleDay = (day: number) => {
     let next: number[];
@@ -63,7 +64,9 @@ export function ScheduleStep({
   const handleNext = async () => {
     if (runDays.length < 2 || longRunDay === null) return;
 
-    const schedule = { runDays, longRunDay, effortMetric };
+    const resolvedMetric =
+      effortMetric === "hr" && !canUseHeartRateMetric(lthr, hrZones) ? "pace" : effortMetric;
+    const schedule = { runDays, longRunDay, effortMetric: resolvedMetric };
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

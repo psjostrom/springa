@@ -348,7 +348,7 @@ describe("EventModal effort metric select", () => {
     });
 
     const expectedPatch = {
-      name: "W05 Long (12km) By Feel",
+      name: "W05 Long (12km)",
       description: LONG_RUN_FEEL_DESCRIPTION,
     };
 
@@ -362,7 +362,7 @@ describe("EventModal effort metric select", () => {
           eventName: "W05 Long (12km)",
           eventDate: "2099-03-16",
           event: {
-            name: "W05 Long (12km) By Feel",
+            name: "W05 Long (12km)",
             description: expectedPatch.description,
             startLocal: "2099-03-16T08:00:00",
             fuelRate: 60,
@@ -370,7 +370,7 @@ describe("EventModal effort metric select", () => {
         },
       ]);
     });
-    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
   });
 
@@ -393,7 +393,7 @@ describe("EventModal effort metric select", () => {
     });
 
     expect(capturedPutPayload!.body).toEqual({
-      name: "W02 Hills By Feel",
+      name: "W02 Hills",
       description: `Hill reps build strength and power.
 
 Warmup
@@ -454,7 +454,7 @@ Cooldown
 
     await waitFor(() => {
       expect(onEventUpdated).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
     expect(screen.getByRole("combobox", { name: /effort metric/i })).not.toBeDisabled();
 
@@ -486,7 +486,7 @@ Cooldown
 
     await waitFor(() => {
       expect(onEventUpdated).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
     const replaceButton = screen.getByRole("button", { name: "Replace" });
     const editButton = screen.getByRole("button", { name: "Edit" });
@@ -523,7 +523,7 @@ Cooldown
     await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
 
     await user.keyboard("{Escape}");
@@ -569,7 +569,7 @@ Cooldown
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Workout saved, but Google Calendar did not update.");
     expect(onEventUpdated).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
   });
 

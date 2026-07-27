@@ -14,7 +14,7 @@
 
 - Default missing `effortMetric` → `"pace"` (backward compatible).
 - Walk / Uphill / Stride / Free / Downhill stay targetless in all metrics.
-- HR option requires synced `lthr` + `hrZones.length === 5`; otherwise disable with a short reason.
+- HR option requires LTHR and five synced HR zones; otherwise disable with a short reason.
 - Only rewrite **future planned** workouts; never completed or past-dated planned.
 - Metric-only updates re-emit structure in place; structural schedule/race changes use full regenerate.
 - Prefer resurrecting pre-pace-primary HR `makeStep` (`1ca0fab^`) over inventing new HR syntax.

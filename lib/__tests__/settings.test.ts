@@ -145,7 +145,7 @@ describe("saveUserSettings", () => {
       expect(
         result[key as keyof UserSettings],
         `"${key}" not handled by saveUserSettings — add it there and to WRITABLE_SETTINGS_KEYS`,
-      ).toBeDefined();
+      ).toEqual(testValues[key]);
     }
   });
 });

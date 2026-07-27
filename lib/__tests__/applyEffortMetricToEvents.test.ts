@@ -119,7 +119,7 @@ describe("buildFuturePlannedEffortPatches", () => {
 
     const { patches, failures } = buildFuturePlannedEffortPatches(events, "feel", ctx);
     expect(patches).toHaveLength(1);
-    expect(patches[0].name).toBe("W01 Easy By Feel");
+    expect(patches[0].name).toBe("W01 Easy");
     expect(failures).toHaveLength(1);
     expect(failures[0].id).toBe("event-11");
     expect(failures[0].error).toMatch(/Cannot re-emit/);
@@ -156,7 +156,7 @@ Cooldown
 
     expect(failures).toEqual([]);
     expect(patches).toHaveLength(2);
-    expect(patches[0].name).toBe("W01 Easy By Feel");
+    expect(patches[0].name).toBe("W01 Easy");
     expect(patches[0].description).not.toMatch(/\/km Pace|% LTHR|% pace/);
     expect(patches[1].name).toBe("W01 Long (10km)");
     expect(patches[1].description).toMatch(/\/km Pace/);

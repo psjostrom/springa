@@ -885,7 +885,7 @@ Cooldown
     });
 
     const feelPut = puts.find(
-      (p) => (p.body as { name: string }).name === "W01 Easy By Feel",
+      (p) => (p.body as { name: string }).name === "W01 Easy",
     );
     const pacePut = puts.find(
       (p) => (p.body as { name: string }).name === "W01 Long (10km)",

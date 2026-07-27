@@ -1,4 +1,4 @@
-import { addByFeel, removeByFeel } from "./byFeel";
+import { removeByFeel } from "./byFeel";
 import { resolveZoneBand, classifyHR, DEFAULT_LTHR } from "./constants";
 import { formatStep, formatPaceStep } from "./descriptionBuilder";
 import {
@@ -20,8 +20,6 @@ export interface ReemitContext {
   hrZones: number[];
   thresholdPace?: number;
 }
-
-const DURATION_RE = /\d+(?:\.\d+)?(?:km|m|s)/;
 
 const LABEL_TO_ZONE: Record<string, ZoneName | "walk"> = {
   Warmup: "z2",
@@ -50,7 +48,9 @@ interface ParsedStep {
 }
 
 export function reemitWorkoutName(name: string, target: EffortMetric): string {
-  return target === "feel" ? addByFeel(name) : removeByFeel(name);
+  void target;
+  // Feel no longer uses a name suffix; strip legacy " By Feel" on any metric switch.
+  return removeByFeel(name);
 }
 
 export function reemitWorkoutDescription(
@@ -170,8 +170,6 @@ function parseStepLine(
     const zone =
       zoneFromLabel(label) ?? zoneFromContext(currentSection, suffix);
     if (!zone) return null;
-    // Ensure duration token is the only duration-like token in the step core
-    if (!DURATION_RE.test(duration)) return null;
     return { label, duration, suffix, zone };
   }
 
@@ -233,7 +231,7 @@ function zoneFromAbsolutePace(
   slowPace: string,
   thresholdPace?: number,
 ): ZoneName | null {
-  if (!thresholdPace || !Number.isFinite(thresholdPace)) return "z2";
+  if (!thresholdPace || !Number.isFinite(thresholdPace)) return null;
   const avgPace = (parsePaceStr(fastPace) + parsePaceStr(slowPace)) / 2;
   const avgPct = (thresholdPace / avgPace) * 100;
   return zoneFromPacePct(avgPct);

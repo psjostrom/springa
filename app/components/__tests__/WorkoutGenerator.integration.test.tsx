@@ -142,7 +142,7 @@ describe("WorkoutGenerator", () => {
       expect(capturedUploadPayload.length).toBe(1);
     });
     const workout = capturedUploadPayload[0] as WorkoutEvent;
-    expect(workout.name).toMatch(/By Feel$/);
+    expect(workout.name).not.toMatch(/By Feel$/);
     expect(workout.description).not.toMatch(/% LTHR|\/km Pace|% pace/);
   });
 });

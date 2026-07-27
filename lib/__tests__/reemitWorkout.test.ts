@@ -147,9 +147,10 @@ describe("detectEffortMetric", () => {
 });
 
 describe("reemitWorkoutName", () => {
-  it("toggles By Feel suffix only", () => {
-    expect(reemitWorkoutName("W05 Easy", "feel")).toBe("W05 Easy By Feel");
+  it("strips legacy By Feel suffix and never adds it", () => {
+    expect(reemitWorkoutName("W05 Easy", "feel")).toBe("W05 Easy");
     expect(reemitWorkoutName("W05 Easy By Feel", "pace")).toBe("W05 Easy");
     expect(reemitWorkoutName("W05 Easy By Feel", "hr")).toBe("W05 Easy");
+    expect(reemitWorkoutName("W05 Easy By Feel", "feel")).toBe("W05 Easy");
   });
 });

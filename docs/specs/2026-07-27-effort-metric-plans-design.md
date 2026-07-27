@@ -59,7 +59,7 @@ type EffortMetric = "pace" | "hr" | "feel";
 | --- | --- | --- |
 | pace | no metric suffix | `/km Pace` or `% pace` |
 | hr | no metric suffix | `% LTHR (bpm)` via `formatStep` |
-| feel | `" By Feel"` suffix (`lib/byFeel.ts`) | label + duration + `intensity=` only |
+| feel | no metric suffix (strip legacy ` By Feel` if present) | label + duration + `intensity=` only |
 
 Detection for dropdown selected state: name suffix → feel; else description markers → pace or hr; else treat as feel/free.
 
@@ -71,7 +71,7 @@ Detection for dropdown selected state: name suffix → feel; else description ma
 - **hr:** `resolveZoneBand(zone, lthr, hrZones)` + `formatStep` (git-history path)
 - **feel:** null min/max (targetless), same as current `byFeel`
 
-Walk / strides / hills uphill / club free steps stay targetless in all modes.
+Walks, strides, club-free steps, hill workouts, and uphill segments stay targetless in all modes.
 
 Callers that must pass `effortMetric`:
 
@@ -82,7 +82,7 @@ Fuel rates, distances, and periodization are unchanged.
 
 ## Re-emit (structure-preserving conversion)
 
-Shared helper, e.g. `reemitWorkoutDescription(description, targetMetric, ctx) → description` (+ name helpers for feel suffix):
+Shared helper, e.g. `reemitWorkoutDescription(description, targetMetric, ctx) → description` (+ name helpers that strip legacy feel suffix):
 
 1. Parse structure (sections, durations, labels, repeats, `intensity=` tags).
 2. For each steppable line with a zone mapping, emit targets for `targetMetric` (or strip for feel).
@@ -118,7 +118,7 @@ Same three-option control. HR disabled without LTHR + `hrZones`.
 
 ### EventModal
 
-Replace **By Feel** button with dropdown: By Pace / By Heart Rate / By Feel. Planned only. Runs re-emit + `updateEvent` + optimistic calendar + Google sync. HR gated.
+Replace **By Feel** button with dropdown: By Pace / By Heart Rate / By Feel. **Future planned only** — past-dated planned workouts must not re-emit, call `updateEvent`, apply optimistic calendar patches, or sync to Google. Completed activities stay untouched. HR gated.
 
 ### Summary bar
 

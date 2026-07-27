@@ -137,25 +137,29 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   };
 
   const flushAndDone = async () => {
-    const raceUpdates = buildRaceUpdates();
-    const flush: Partial<UserSettings> = {
-      ...raceUpdates,
-      effortMetric,
-    };
-    await saveField(flush);
-    const snapshot: UserSettings = {
-      ...settings,
-      ...flush,
-      runDays,
-      longRunDay: effectiveLongRunDay,
-      clubDay: hasClub ? clubDay : undefined,
-      clubType: hasClub ? clubType : undefined,
-      raceName: raceName.trim() || undefined,
-      raceDist: raceDist === "" ? undefined : raceDist,
-      raceDate: raceDate || undefined,
-      effortMetric,
-    };
-    await onDone(snapshot);
+    try {
+      const raceUpdates = buildRaceUpdates();
+      const flush: Partial<UserSettings> = {
+        ...raceUpdates,
+        effortMetric,
+      };
+      await saveField(flush);
+      const snapshot: UserSettings = {
+        ...settings,
+        ...flush,
+        runDays,
+        longRunDay: effectiveLongRunDay,
+        clubDay: hasClub ? clubDay : undefined,
+        clubType: hasClub ? clubType : undefined,
+        raceName: raceName.trim() || undefined,
+        raceDist: raceDist === "" ? undefined : raceDist,
+        raceDate: raceDate || undefined,
+        effortMetric,
+      };
+      await onDone(snapshot);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Compute speed hint

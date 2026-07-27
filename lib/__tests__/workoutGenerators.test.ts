@@ -728,7 +728,7 @@ describe("generateSingleWorkout", () => {
     ).toThrow(/HR|zones/i);
   });
 
-  it("effortMetric feel strips targets and suffixes name", () => {
+  it("effortMetric feel strips targets without name suffix", () => {
     const event = generateSingleWorkout("easy", buildThursday, {
       ...config,
       effortMetric: "feel",
@@ -736,7 +736,7 @@ describe("generateSingleWorkout", () => {
     expect(event).not.toBeNull();
     expect(event!.description).not.toMatch(/\/km Pace|% pace|% LTHR/);
     expect(event!.description).toMatch(/intensity=/);
-    expect(event!.name.endsWith(" By Feel")).toBe(true);
+    expect(event!.name.endsWith(" By Feel")).toBe(false);
   });
 
   it("effortMetric pace keeps current absolute or percent pace behavior", () => {
@@ -761,7 +761,7 @@ describe("generateSingleWorkout", () => {
       expect(event.description).not.toContain("% pace");
       expect(event.description).not.toContain("% LTHR");
       expect(event.description).toContain("intensity=");
-      expect(event.name.endsWith(" By Feel")).toBe(true);
+      expect(event.name.endsWith(" By Feel")).toBe(false);
     }
 
     expect(longEvent!.description).toMatch(/- Warmup 1km intensity=warmup/);
@@ -781,7 +781,7 @@ describe("generateSingleWorkout", () => {
     const event = generateSingleWorkout("long", raceDate, feelConfig);
 
     expect(event).not.toBeNull();
-    expect(event!.name).toBe("RACE DAY By Feel");
+    expect(event!.name).toBe("RACE DAY");
     expect(event!.description).toContain(`- Race ${config.raceDist}km intensity=active`);
     expect(event!.description).not.toContain("/km Pace");
     expect(event!.description).not.toContain("% pace");

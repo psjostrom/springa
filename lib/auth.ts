@@ -53,11 +53,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
-      // Upsert: create user row if it doesn't exist (race-safe)
-      await db().execute({
-        sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
-        args: [user.email],
-      });
+      // QA Credentials authorize() already ensures the user_settings row exists.
+      if (account?.provider !== "qa") {
+        // Upsert: create user row if it doesn't exist (race-safe)
+        await db().execute({
+          sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
+          args: [user.email],
+        });
+      }
 
       // Store refresh token when Google provides one (on consent).
       // Wrapped in try/catch: safe to deploy before migration adds the column.

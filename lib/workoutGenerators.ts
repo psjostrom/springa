@@ -18,7 +18,7 @@ import {
   normalizeEffortMetric,
   type EffortMetric,
 } from "./effortMetric";
-import { addByFeel } from "./byFeel";
+import { removeByFeel } from "./byFeel";
 import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
 import {
@@ -160,10 +160,9 @@ function stepMakerFromContext(ctx: PlanContext) {
 }
 
 function applyEffortMetricName(ctx: PlanContext, event: WorkoutEvent): WorkoutEvent {
-  if (normalizeEffortMetric(ctx.effortMetric) === "feel") {
-    event.name = addByFeel(event.name);
-  }
-  return event;
+  if (normalizeEffortMetric(ctx.effortMetric) !== "feel") return event;
+  const name = removeByFeel(event.name);
+  return name === event.name ? event : { ...event, name };
 }
 
 function getSpeedSessionType(
@@ -609,6 +608,10 @@ function generateWeekEvents(ctx: PlanContext, weekIdx: number, weekStart: Date):
   return events;
 }
 
+/**
+ * Generate a full plan. When `effortMetric` is `"hr"`, requires LTHR + exactly five
+ * HR zones (`canUseHeartRateMetric`); otherwise step creation throws.
+ */
 export function generatePlan(config: PlanConfig): WorkoutEvent[] {
   const ctx = buildContext(config);
   const today = startOfDay(new Date());
@@ -652,8 +655,11 @@ export function suggestCategory(
   return "easy";
 }
 
-/** Generate a single workout for a given date and category, using the same
- *  plan context and phase logic as the full plan generator. */
+/**
+ * Generate a single workout for a given date and category, using the same
+ * plan context and phase logic as the full plan generator.
+ * When `effortMetric` is `"hr"`, requires LTHR + exactly five HR zones or throws.
+ */
 export function generateSingleWorkout(
   category: OnDemandCategory,
   date: Date,
