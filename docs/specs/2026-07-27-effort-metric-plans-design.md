@@ -59,7 +59,7 @@ type EffortMetric = "pace" | "hr" | "feel";
 | --- | --- | --- |
 | pace | no metric suffix | `/km Pace` or `% pace` |
 | hr | no metric suffix | `% LTHR (bpm)` via `formatStep` |
-| feel | no metric suffix (strip legacy ` By Feel` if present) | label + duration + `intensity=` only |
+| feel | no metric suffix (strip legacy `By Feel` if present) | label + duration + `intensity=` only |
 
 Detection for dropdown selected state: name suffix → feel; else description markers → pace or hr; else treat as feel/free.
 

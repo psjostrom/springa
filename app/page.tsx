@@ -73,9 +73,7 @@ function HomeContent() {
   const handleAbilityChanged = useCallback(async (newSecs: number, newDist: number) => {
     if (!settings) return;
     const effortMetric = normalizeEffortMetric(settings.effortMetric);
-    if (effortMetric === "hr") {
-      if (!canUseHeartRateMetric(settings.lthr, settings.hrZones)) return;
-    } else if (!settings.hrZones?.length) {
+    if (effortMetric === "hr" && !canUseHeartRateMetric(settings.lthr, settings.hrZones)) {
       return;
     }
 

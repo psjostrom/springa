@@ -105,15 +105,15 @@ describe("CalendarView", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Easy + Strides" })).toBeInTheDocument();
     });
     expect(screen.getByTestId("shared-calendar-event")).toHaveAttribute(
       "data-name",
-      "W05 Easy + Strides By Feel",
+      "W05 Easy + Strides",
     );
 
     expect(capturedPutPayload?.body).toEqual({
-      name: "W05 Easy + Strides By Feel",
+      name: "W05 Easy + Strides",
       description: `Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
@@ -134,7 +134,7 @@ Cooldown
           eventName: "W05 Easy + Strides",
           eventDate: "2026-02-16",
           event: {
-            name: "W05 Easy + Strides By Feel",
+            name: "W05 Easy + Strides",
             description: `Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
@@ -156,13 +156,13 @@ Cooldown
     await user.keyboard("{Escape}");
 
     await waitFor(() => {
-      expect(screen.queryByRole("heading", { name: "W05 Easy + Strides By Feel" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "W05 Easy + Strides" })).not.toBeInTheDocument();
     });
 
-    const updatedEvent = await screen.findByText("W05 Easy + Strides By Feel");
+    const updatedEvent = await screen.findByText("W05 Easy + Strides");
     await user.click(updatedEvent);
 
-    expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "W05 Easy + Strides" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
     expect(screen.queryByText("5:24-5:33 /km")).not.toBeInTheDocument();
     expect(googleSyncRequests).toHaveLength(1);
