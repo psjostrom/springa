@@ -783,6 +783,66 @@ describe("PlannerScreen", () => {
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
   });
 
+  it("Done after metric change still confirms when lastGeneratedConfig is missing", async () => {
+    const user = userEvent.setup();
+    const settings = baseSettings({
+      effortMetric: "pace",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+    });
+    const puts: { body: unknown }[] = [];
+
+    server.use(
+      http.put("/api/intervals/events/:eventId", async ({ request }) => {
+        puts.push({ body: await request.json() });
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <>
+        <PlannerScreen />
+        <LastGeneratedProbe />
+      </>,
+      {
+        atomInits: [
+          [settingsAtom, settings],
+          [calendarEventsAtom, [
+            futurePlannedEvent({
+              id: "event-501",
+              name: "W01 Easy",
+              description: EASY_PACE_DESC,
+            }),
+          ]],
+          [calendarLoadingAtom, false],
+          [bgModelAtom, null],
+          [lastGeneratedConfigAtom, null],
+        ],
+      },
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /effort metric/i }), "hr");
+    await user.click(screen.getByRole("button", { name: /done/i }));
+
+    expect(
+      screen.getByText(/Update future workouts to match your new settings\?/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/targets changed/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^update$/i }));
+
+    await waitFor(() => {
+      expect(puts).toHaveLength(1);
+    });
+    expect((puts[0].body as { description: string }).description).toMatch(/% LTHR/);
+    await waitFor(() => {
+      expect(screen.getByTestId("last-generated").textContent).toContain('"effortMetric":"hr"');
+    });
+  });
+
   it("Done decline keeps settings but leaves workouts unchanged", async () => {
     const user = userEvent.setup();
     const settings = baseSettings({

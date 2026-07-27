@@ -43,6 +43,7 @@ function startOfToday(now: Date): Date {
 /**
  * When plan effortMetric changed → force that metric on every future workout.
  * When only ability/threshold changed → preserve each workout's detected metric.
+ * When there is no lastGeneratedConfig baseline, force the snapshot metric.
  */
 export function resolveBulkEffortMetricTarget(
   snapshotEffortMetric: unknown,
@@ -57,6 +58,25 @@ export function resolveBulkEffortMetricTarget(
   } catch {
     return next;
   }
+}
+
+/**
+ * First future planned workout whose detected metric differs from `targetMetric`.
+ * Used when lastGeneratedConfig is missing (pre-feature / other browser).
+ * Returns the detected metric of that workout, or null if all match.
+ */
+export function findFuturePlannedEffortMetricMismatch(
+  events: CalendarEvent[],
+  targetMetric: EffortMetric,
+  now = new Date(),
+): EffortMetric | null {
+  const today = startOfToday(now);
+  for (const event of events) {
+    if (event.type !== "planned" || event.date < today) continue;
+    const detected = detectEffortMetric(event.name, event.description ?? "");
+    if (detected !== targetMetric) return detected;
+  }
+  return null;
 }
 
 export function formatBulkReemitStatus(

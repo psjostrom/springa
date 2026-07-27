@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFuturePlannedEffortPatches,
+  findFuturePlannedEffortMetricMismatch,
   formatBulkReemitStatus,
   resolveBulkEffortMetricTarget,
 } from "../applyEffortMetricToEvents";
@@ -190,6 +191,30 @@ describe("resolveBulkEffortMetricTarget", () => {
   it("uses per-workout when only ability changed", () => {
     const lastKey = JSON.stringify({ effortMetric: "pace", currentAbilitySecs: 3300 });
     expect(resolveBulkEffortMetricTarget("pace", lastKey)).toBe("per-workout");
+  });
+});
+
+describe("findFuturePlannedEffortMetricMismatch", () => {
+  it("returns detected metric when a future planned workout differs", () => {
+    const events = [
+      planned({
+        id: "event-1",
+        name: "W01 Easy",
+        description: easyPace,
+      }),
+    ];
+    expect(findFuturePlannedEffortMetricMismatch(events, "hr")).toBe("pace");
+  });
+
+  it("returns null when all future planned match the target", () => {
+    const events = [
+      planned({
+        id: "event-1",
+        name: "W01 Easy",
+        description: easyPace,
+      }),
+    ];
+    expect(findFuturePlannedEffortMetricMismatch(events, "pace")).toBeNull();
   });
 });
 

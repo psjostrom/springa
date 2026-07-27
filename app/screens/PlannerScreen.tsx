@@ -28,7 +28,7 @@ import {
   type NewProgramDraft,
   type ProgramConfigDirtyKind,
 } from "@/lib/programs";
-import { buildFuturePlannedEffortPatches, formatBulkReemitStatus, resolveBulkEffortMetricTarget } from "@/lib/applyEffortMetricToEvents";
+import { buildFuturePlannedEffortPatches, findFuturePlannedEffortMetricMismatch, formatBulkReemitStatus, resolveBulkEffortMetricTarget } from "@/lib/applyEffortMetricToEvents";
 import { canUseHeartRateMetric, normalizeEffortMetric } from "@/lib/effortMetric";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
@@ -371,9 +371,32 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   const handleConfigDone = (snapshot: UserSettings) => {
     const key = buildProgramConfigKeyFromSettings(snapshot);
-    const dirty = classifyProgramConfigDirty(key, lastGeneratedConfig);
     setConfigExpanded(false);
-    if (dirty === "none" || !hasUploadedPlan) {
+
+    if (!hasUploadedPlan) {
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+      return;
+    }
+
+    // Pre-feature / other-browser: no lastGeneratedConfig in localStorage.
+    // Compare live workouts to settings so metric Done still offers an update.
+    if (!lastGeneratedConfig) {
+      const metric = normalizeEffortMetric(snapshot.effortMetric);
+      const mismatch = findFuturePlannedEffortMetricMismatch(calendarEvents, metric);
+      if (!mismatch) {
+        setLastGeneratedConfig(key);
+        setConfigConfirmKind(null);
+        setPendingConfigSnapshot(null);
+        return;
+      }
+      setPendingConfigSnapshot(snapshot);
+      setConfigConfirmKind("target-only");
+      return;
+    }
+
+    const dirty = classifyProgramConfigDirty(key, lastGeneratedConfig);
+    if (dirty === "none") {
       setConfigConfirmKind(null);
       setPendingConfigSnapshot(null);
       return;
@@ -383,6 +406,22 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   const handleConfigConfirmDecline = () => {
+    // Seed a baseline from workout metrics so the yellow banner can still offer Update.
+    if (!lastGeneratedConfig && pendingConfigSnapshot) {
+      const metric = normalizeEffortMetric(pendingConfigSnapshot.effortMetric);
+      const baselineMetric = findFuturePlannedEffortMetricMismatch(
+        calendarEvents,
+        metric,
+      );
+      if (baselineMetric) {
+        setLastGeneratedConfig(
+          buildProgramConfigKeyFromSettings({
+            ...pendingConfigSnapshot,
+            effortMetric: baselineMetric,
+          }),
+        );
+      }
+    }
     setConfigConfirmKind(null);
     setPendingConfigSnapshot(null);
   };
