@@ -13,8 +13,7 @@
     "prepare": "husky",
     "db:query": "node --env-file=.env.local -e",
     "db:migrate:workout-prescriptions": "npx tsx --env-file=.env.local scripts/migrate-workout-event-prescriptions.ts",
-    "demo:snapshot": "npx tsx --env-file=.env.local scripts/demo-snapshot.ts",
-    "qa:login-url": "./scripts/print-qa-login-url.sh"
+    "demo:snapshot": "npx tsx --env-file=.env.local scripts/demo-snapshot.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.83",
