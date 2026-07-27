@@ -8,10 +8,14 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import { updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar } from "@/lib/googleCalendar";
 import { parseEventId, formatPace } from "@/lib/format";
-import { getWorkoutCategory } from "@/lib/constants";
+import { DEFAULT_LTHR, getWorkoutCategory } from "@/lib/constants";
 import { getEventStatusBadge } from "@/lib/eventStyles";
-import { addByFeel, isByFeel } from "@/lib/byFeel";
-import { stripWorkoutTargets } from "@/lib/descriptionBuilder";
+import {
+  canUseHeartRateMetric,
+  detectEffortMetric,
+  type EffortMetric,
+} from "@/lib/effortMetric";
+import { reemitWorkoutDescription, reemitWorkoutName } from "@/lib/reemitWorkout";
 import { useCurrentBG } from "../hooks/useCurrentBG";
 import { currentTsbAtom, currentIobAtom } from "../atoms";
 import { WorkoutCard } from "./WorkoutCard";
@@ -19,6 +23,7 @@ import { WorkoutStructureBar } from "./WorkoutStructureBar";
 import { PreRunReadiness } from "./PreRunReadiness";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
 import { ClothingRecommendation } from "./ClothingRecommendation";
+import { EffortMetricSelect } from "./EffortMetricSelect";
 import { WidgetTabs } from "./WidgetTabs";
 import { WorkoutGenerator } from "./WorkoutGenerator";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
@@ -29,7 +34,7 @@ type EditMode =
   | { kind: "idle" }
   | { kind: "editing-date"; editDate: string }
   | { kind: "saving-date"; editDate: string }
-  | { kind: "toggling-by-feel" }
+  | { kind: "changing-metric" }
   | { kind: "confirming-delete" }
   | { kind: "deleting" }
   | { kind: "replacing" };
@@ -46,9 +51,9 @@ type ModalAction =
   | { type: "SAVE_DATE" }
   | { type: "DATE_SAVED" }
   | { type: "DATE_SAVE_FAILED"; error: string }
-  | { type: "TOGGLE_BY_FEEL" }
-  | { type: "BY_FEEL_DONE" }
-  | { type: "BY_FEEL_FAILED"; error: string }
+  | { type: "CHANGE_METRIC" }
+  | { type: "METRIC_DONE" }
+  | { type: "METRIC_FAILED"; error: string }
   | { type: "CONFIRM_DELETE" }
   | { type: "DELETE" }
   | { type: "DELETE_FAILED"; error: string }
@@ -83,11 +88,11 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
     case "DATE_SAVE_FAILED":
       if (state.editMode.kind !== "saving-date") return state;
       return { ...state, editMode: { kind: "editing-date", editDate: state.editMode.editDate }, error: action.error };
-    case "TOGGLE_BY_FEEL":
-      return { ...state, editMode: { kind: "toggling-by-feel" }, error: null };
-    case "BY_FEEL_DONE":
+    case "CHANGE_METRIC":
+      return { ...state, editMode: { kind: "changing-metric" }, error: null };
+    case "METRIC_DONE":
       return INITIAL_MODAL_STATE;
-    case "BY_FEEL_FAILED":
+    case "METRIC_FAILED":
       return { ...state, editMode: { kind: "idle" }, error: action.error };
     case "CONFIRM_DELETE":
       return { ...state, editMode: { kind: "confirming-delete" }, error: null };
@@ -147,7 +152,7 @@ export function EventModal({
   // Extract values from discriminated union for JSX convenience
   const { editMode } = state;
   const editDate = editMode.kind === "editing-date" || editMode.kind === "saving-date" ? editMode.editDate : "";
-  const isTogglingByFeel = editMode.kind === "toggling-by-feel";
+  const isChangingMetric = editMode.kind === "changing-metric";
 
   // Pre-run readiness: show for today's planned events when BG is available
   const { currentBG, trend, trendSlope } = useCurrentBG();
@@ -167,23 +172,25 @@ export function EventModal({
     const target = bgModel.targetFuelRates.find((t) => t.category === workoutCategory);
     return target?.targetFuelRate ?? null;
   })();
-  const canToggleByFeel =
-    effectiveSelectedEvent.type === "planned" &&
-    !isByFeel(effectiveSelectedEvent.name) &&
-    onEventUpdated != null;
+  const showEffortMetricSelect =
+    effectiveSelectedEvent.type === "planned" && onEventUpdated != null;
+  const currentEffortMetric = detectEffortMetric(
+    effectiveSelectedEvent.name,
+    effectiveSelectedEvent.description,
+  );
 
   useEffect(() => {
     dispatch({ type: "RESET" });
   }, [event.id]);
 
   const handleClose = useCallback(() => {
-    if (isTogglingByFeel) return;
+    if (isChangingMetric) return;
     dispatch({ type: "START_CLOSING" });
     if (window.innerWidth >= 640) {
       onClose(); // No animation on desktop
     }
     // On mobile, onClose fires via onAnimationEnd on the panel
-  }, [isTogglingByFeel, onClose]);
+  }, [isChangingMetric, onClose]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -229,38 +236,42 @@ export function EventModal({
     }
   };
 
-  const toggleByFeel = async () => {
-    if (!onEventUpdated) {
-      return;
-    }
+  const applyEffortMetric = async (target: EffortMetric) => {
+    if (!onEventUpdated) return;
+    if (target === currentEffortMetric) return;
+    if (target === "hr" && !canUseHeartRateMetric(lthr, hrZones)) return;
 
     const numericId = parseEventId(effectiveSelectedEvent.id);
     if (isNaN(numericId)) {
-      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      dispatch({ type: "METRIC_FAILED", error: "Failed to update workout. Please try again." });
       return;
     }
 
-    const patch = {
-      name: addByFeel(effectiveSelectedEvent.name),
-      description: stripWorkoutTargets(
-        effectiveSelectedEvent.description,
-        lthr,
-        hrZones,
-        racePacePerKm,
-      ),
-    };
+    dispatch({ type: "CHANGE_METRIC" });
 
-    dispatch({ type: "TOGGLE_BY_FEEL" });
+    let patch: { name: string; description: string };
     try {
+      patch = {
+        name: reemitWorkoutName(effectiveSelectedEvent.name, target),
+        description: reemitWorkoutDescription(
+          effectiveSelectedEvent.description,
+          target,
+          {
+            lthr: lthr ?? DEFAULT_LTHR,
+            hrZones: hrZones ?? [],
+            thresholdPace: racePacePerKm,
+          },
+        ),
+      };
       await updateEvent(numericId, patch);
     } catch (err) {
       console.error("Failed to update workout:", err);
-      dispatch({ type: "BY_FEEL_FAILED", error: "Failed to update workout. Please try again." });
+      dispatch({ type: "METRIC_FAILED", error: "Failed to update workout. Please try again." });
       return;
     }
 
     onEventUpdated(effectiveSelectedEvent.id, patch);
-    dispatch({ type: "BY_FEEL_DONE" });
+    dispatch({ type: "METRIC_DONE" });
 
     try {
       await syncToGoogleCalendar("update", {
@@ -276,7 +287,7 @@ export function EventModal({
     } catch (err) {
       console.error("Failed to sync workout to Google Calendar:", err);
       dispatch({
-        type: "BY_FEEL_FAILED",
+        type: "METRIC_FAILED",
         error: "Workout saved, but Google Calendar did not update.",
       });
     }
@@ -286,7 +297,7 @@ export function EventModal({
     <div
       className={`fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center sm:p-4 transition-colors duration-250 ${state.isClosing ? "bg-black/0" : "bg-black/70"}`}
       onClick={() => {
-        if (!isTogglingByFeel) handleClose();
+        if (!isChangingMetric) handleClose();
       }}
     >
       <div
@@ -325,35 +336,35 @@ export function EventModal({
             })()}
           </div>
           <div className="flex items-center gap-2">
-            {(editMode.kind === "idle" || editMode.kind === "toggling-by-feel") && (
+            {(editMode.kind === "idle" || editMode.kind === "changing-metric") && (
               <>
                 {effectiveSelectedEvent.type === "planned" && (
                   <>
-                    {canToggleByFeel && (
-                      <button
-                        onClick={() => { void toggleByFeel(); }}
-                        disabled={editMode.kind === "toggling-by-feel"}
-                        className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
-                      >
-                        {editMode.kind === "toggling-by-feel" ? "Saving..." : "By Feel"}
-                      </button>
+                    {showEffortMetricSelect && (
+                      <EffortMetricSelect
+                        value={currentEffortMetric}
+                        onChange={(metric) => { void applyEffortMetric(metric); }}
+                        disabled={isChangingMetric}
+                        lthr={lthr}
+                        hrZones={hrZones}
+                      />
                     )}
                     <button
                       onClick={() => {
-                        if (isTogglingByFeel) return;
+                        if (isChangingMetric) return;
                         dispatch({ type: "START_REPLACE" });
                       }}
-                      disabled={isTogglingByFeel}
+                      disabled={isChangingMetric}
                       className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                     >
                       Replace
                     </button>
                     <button
                       onClick={() => {
-                        if (isTogglingByFeel) return;
+                        if (isChangingMetric) return;
                         dispatch({ type: "START_EDIT_DATE", date: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm") });
                       }}
-                      disabled={isTogglingByFeel}
+                      disabled={isChangingMetric}
                       className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
                     >
                       Edit
@@ -362,10 +373,10 @@ export function EventModal({
                 )}
                 <button
                   onClick={() => {
-                    if (isTogglingByFeel) return;
+                    if (isChangingMetric) return;
                     dispatch({ type: "CONFIRM_DELETE" });
                   }}
-                  disabled={isTogglingByFeel}
+                  disabled={isChangingMetric}
                   className="px-3 py-1.5 text-sm bg-tint-error hover:bg-border text-text rounded-lg transition disabled:opacity-50"
                 >
                   Delete
@@ -417,7 +428,7 @@ export function EventModal({
             <button
               onClick={handleClose}
               aria-label="Close"
-              disabled={isTogglingByFeel}
+              disabled={isChangingMetric}
               className="text-muted hover:text-text text-xl disabled:opacity-50"
             >
               ✕

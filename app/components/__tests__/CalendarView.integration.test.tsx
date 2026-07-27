@@ -73,7 +73,7 @@ describe("CalendarView", () => {
     });
   });
 
-  it("keeps the successful By Feel patch in CalendarView and syncs Google Calendar", async () => {
+  it("keeps the successful feel metric patch in CalendarView and syncs Google Calendar", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync });
     const googleSyncRequests: unknown[] = [];
     const event = futurePlannedEvent();
@@ -99,7 +99,10 @@ describe("CalendarView", () => {
       { atomInits: [[calendarEventsAtom, [event]]] },
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /effort metric/i }),
+      "feel",
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
@@ -114,7 +117,7 @@ describe("CalendarView", () => {
       description: `Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
-- Warmup 1km intensity=warmup
+- 1km intensity=warmup
 
 Main set
 - Easy 3km intensity=active
@@ -122,7 +125,7 @@ Main set
 - Easy 3km intensity=active
 
 Cooldown
-- Cooldown 2km intensity=cooldown`,
+- 2km intensity=cooldown`,
     });
     await waitFor(() => {
       expect(googleSyncRequests).toEqual([
@@ -135,7 +138,7 @@ Cooldown
             description: `Long run with a 3km race pace block sandwiched in the middle.
 
 Warmup
-- Warmup 1km intensity=warmup
+- 1km intensity=warmup
 
 Main set
 - Easy 3km intensity=active
@@ -143,7 +146,7 @@ Main set
 - Easy 3km intensity=active
 
 Cooldown
-- Cooldown 2km intensity=cooldown`,
+- 2km intensity=cooldown`,
             startLocal: "2026-02-16T08:00:00",
           },
         },
@@ -160,7 +163,7 @@ Cooldown
     await user.click(updatedEvent);
 
     expect(screen.getByRole("heading", { name: "W05 Easy + Strides By Feel" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
     expect(screen.queryByText("5:24-5:33 /km")).not.toBeInTheDocument();
     expect(googleSyncRequests).toHaveLength(1);
   });
