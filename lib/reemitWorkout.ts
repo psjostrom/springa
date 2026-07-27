@@ -14,11 +14,11 @@ import {
 
 export { detectEffortMetric };
 
-export type ReemitContext = {
+export interface ReemitContext {
   lthr: number;
   hrZones: number[];
   thresholdPace?: number;
-};
+}
 
 const DURATION_RE = /\d+(?:\.\d+)?(?:km|m|s)/;
 
@@ -41,12 +41,12 @@ const LABEL_TO_ZONE: Record<string, ZoneName | "walk"> = {
   Walk: "walk",
 };
 
-type ParsedStep = {
+interface ParsedStep {
   label: string | undefined;
   duration: string;
   suffix: string;
   zone: ZoneName | "walk";
-};
+}
 
 export function reemitWorkoutName(name: string, target: EffortMetric): string {
   return target === "feel" ? addByFeel(name) : removeByFeel(name);
@@ -148,9 +148,7 @@ function parseStepLine(
     const label = normalizeLabel(rawLabel);
     const zone =
       zoneFromLabel(label) ??
-      zoneFromPacePct((Number(min) + Number(max)) / 2) ??
-      zoneFromContext(currentSection, suffix);
-    if (!zone) return null;
+      zoneFromPacePct((Number(min) + Number(max)) / 2);
     return { label, duration, suffix, zone };
   }
 
@@ -184,7 +182,8 @@ function isAllowedTargetlessSuffix(suffix: string): boolean {
 
 function normalizeLabel(raw: string | undefined): string | undefined {
   const trimmed = raw?.trim();
-  return trimmed ? trimmed : undefined;
+  if (!trimmed) return undefined;
+  return trimmed;
 }
 
 function zoneFromLabel(label: string | undefined): ZoneName | "walk" | null {

@@ -7,7 +7,7 @@ import {
 } from "./reemitWorkout";
 import type { CalendarEvent } from "./types";
 
-export type EffortMetricEventPatch = {
+export interface EffortMetricEventPatch {
   id: string;
   numericId: number;
   name: string;
@@ -15,18 +15,18 @@ export type EffortMetricEventPatch = {
   previousName: string;
   date: Date;
   fuelRate?: number | null;
-};
+}
 
-export type EffortMetricPatchFailure = {
+export interface EffortMetricPatchFailure {
   id: string;
   name: string;
   error: string;
-};
+}
 
-export type EffortMetricPatchResult = {
+export interface EffortMetricPatchResult {
   patches: EffortMetricEventPatch[];
   failures: EffortMetricPatchFailure[];
-};
+}
 
 function startOfToday(now: Date): Date {
   const today = new Date(now);
