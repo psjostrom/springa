@@ -81,6 +81,7 @@ import { generateFullPlan, generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import { normalizeEffortMetric } from "@/lib/effortMetric";
 import type { CategoryBGResponse } from "@/lib/bgModel";
 
 const LABEL_MAP = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w.label]));
@@ -322,6 +323,7 @@ export function IntelScreen() {
         clubType: settings.clubType,
         currentAbilitySecs: paceSuggestion.suggestedAbilitySecs,
         currentAbilityDist: paceSuggestion.currentAbilityDist,
+        effortMetric: normalizeEffortMetric(settings.effortMetric),
       });
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -374,6 +376,7 @@ export function IntelScreen() {
       includeBasePhase: settings?.includeBasePhase ?? false,
       currentAbilitySecs: settings?.currentAbilitySecs,
       currentAbilityDist: settings?.currentAbilityDist,
+      effortMetric: normalizeEffortMetric(settings?.effortMetric),
     });
     let targetKm = 0;
     let totalRuns = 0;

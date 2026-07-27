@@ -232,6 +232,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: newProgramDraft.clubType,
       currentAbilitySecs: newProgramDraft.currentAbilitySecs,
       currentAbilityDist: newProgramDraft.currentAbilityDist,
+      effortMetric: normalizeEffortMetric(newProgramDraft.effortMetric),
     });
 
     const todayFilter = new Date();
@@ -267,6 +268,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: settings.clubType,
       currentAbilitySecs: settings.currentAbilitySecs,
       currentAbilityDist: settings.currentAbilityDist,
+      effortMetric: normalizeEffortMetric(settings.effortMetric),
     });
     const todayFilter = new Date();
     todayFilter.setHours(0, 0, 0, 0);

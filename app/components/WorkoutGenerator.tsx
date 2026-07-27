@@ -8,6 +8,7 @@ import { getThresholdPace } from "@/lib/paceTable";
 import { generateSingleWorkout, suggestCategory, buildContext, getWeekPhase, type OnDemandCategory, type PlanConfig } from "@/lib/workoutGenerators";
 import { replaceWorkout } from "@/lib/intervalsClient";
 import { getWeekIdx } from "@/lib/workoutMath";
+import { normalizeEffortMetric } from "@/lib/effortMetric";
 import type { WorkoutEvent } from "@/lib/types";
 import { WorkoutCard } from "./WorkoutCard";
 import { WorkoutStructureBar } from "./WorkoutStructureBar";
@@ -64,6 +65,10 @@ export function WorkoutGenerator({
     lthr: settings.lthr,
     hrZones: settings.hrZones,
     includeBasePhase: settings.includeBasePhase,
+    effortMetric: normalizeEffortMetric(settings.effortMetric),
+    currentAbilitySecs: settings.currentAbilitySecs,
+    currentAbilityDist: settings.currentAbilityDist,
+    runDays: settings.runDays,
   };
 
   // Compute suggested category from plan phase

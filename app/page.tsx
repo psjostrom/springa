@@ -36,6 +36,7 @@ import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import { normalizeEffortMetric } from "@/lib/effortMetric";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -98,6 +99,7 @@ function HomeContent() {
       clubType: settings.clubType,
       currentAbilitySecs: newSecs,
       currentAbilityDist: newDist,
+      effortMetric: normalizeEffortMetric(settings.effortMetric),
     });
     const today = new Date();
     today.setHours(0, 0, 0, 0);

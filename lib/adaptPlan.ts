@@ -1,10 +1,13 @@
-import type { CalendarEvent, WorkoutCategory, WorkoutEvent } from "./types";
+import type { CalendarEvent, WorkoutCategory, WorkoutEvent, ZoneName } from "./types";
 import type { BGResponseModel } from "./bgModel";
 import type { FitnessInsights } from "./fitness";
 import type { RunBGContext } from "./runBGContext";
-import { formatPaceStep, createWorkoutText } from "./descriptionBuilder";
+import { formatPaceStep, formatStep, createWorkoutText } from "./descriptionBuilder";
 import { extractStructure } from "./descriptionParser";
 import { getCurrentFuelRate, getFuelConfidence } from "./fuelRate";
+import { resolveZoneBand } from "./constants";
+import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
+import { HM_ZONE_DEFAULTS } from "./zoneTargets";
 
 // --- Types ---
 
@@ -33,6 +36,10 @@ export interface AdaptationInput {
   bgModel: BGResponseModel | null;
   insights: FitnessInsights;
   runBGContexts: Record<string, RunBGContext>;
+  effortMetric?: EffortMetric;
+  lthr?: number;
+  hrZones?: number[];
+  thresholdPace?: number;
 }
 
 /**
@@ -159,14 +166,38 @@ export function shouldSwapToEasy(
 
 /**
  * Build an easy-run structure as replacement for a swapped interval.
- * Uses the same formatPaceStep + createWorkoutText pipeline as workoutGenerators.
+ * Uses the same effort-metric branching as workoutGenerators createStepMaker.
  */
-function buildEasyStructure(duration: number | undefined): string {
+function buildEasyStructure(
+  duration: number | undefined,
+  metric: EffortMetric,
+  ctx: { lthr?: number; hrZones?: number[]; thresholdPace?: number },
+): string {
   const durationMin = duration ? Math.round(duration / 60) : 40;
   const mainMin = Math.max(durationMin - 15, 20);
-  const wu = `${formatPaceStep("10m", 85, 94, "Warmup")} intensity=warmup`;
-  const main = `${formatPaceStep(`${mainMin}m`, 85, 94, "Easy")} intensity=active`;
-  const cd = `${formatPaceStep("5m", 85, 94, "Cooldown")} intensity=cooldown`;
+  const zone: ZoneName = "z2";
+  const pct = HM_ZONE_DEFAULTS[zone];
+
+  const makeStep = (stepDuration: string, note: string, intensity: string) => {
+    const targetless = metric === "feel" || pct.min == null || pct.max == null;
+    let line: string;
+    if (targetless) {
+      line = formatPaceStep(stepDuration, null, null, note, ctx.thresholdPace);
+    } else if (metric === "hr") {
+      if (ctx.lthr == null || ctx.hrZones?.length !== 5) {
+        throw new Error("HR effortMetric requires lthr and hrZones");
+      }
+      const band = resolveZoneBand(zone, ctx.lthr, ctx.hrZones);
+      line = formatStep(stepDuration, band.min, band.max, ctx.lthr, note);
+    } else {
+      line = formatPaceStep(stepDuration, pct.min, pct.max, note, ctx.thresholdPace);
+    }
+    return `${line} intensity=${intensity}`;
+  };
+
+  const wu = makeStep("10m", "Warmup", "warmup");
+  const main = makeStep(`${mainMin}m`, "Easy", "active");
+  const cd = makeStep("5m", "Cooldown", "cooldown");
   return createWorkoutText(wu, [main], cd, 1).trim();
 }
 
@@ -216,6 +247,12 @@ export function reconstructExternalId(
  */
 export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
   const { upcomingEvents, bgModel, insights } = input;
+  const effortMetric = normalizeEffortMetric(input.effortMetric);
+  const stepCtx = {
+    lthr: input.lthr,
+    hrZones: input.hrZones,
+    thresholdPace: input.thresholdPace,
+  };
 
   return upcomingEvents.map((event) => {
     const changes: AdaptationChange[] = [];
@@ -236,7 +273,7 @@ export function applyAdaptations(input: AdaptationInput): AdaptedEvent[] {
     let swapped = false;
     if (swap && reason) {
       changes.push({ type: "swap", detail: reason });
-      finalStructure = buildEasyStructure(event.duration);
+      finalStructure = buildEasyStructure(event.duration, effortMetric, stepCtx);
       swapped = true;
     }
 
