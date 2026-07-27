@@ -13,7 +13,11 @@ import type { WorkoutEvent, PlanContext, SpeedSessionType, ZoneName } from "./ty
 import type { BGResponseModel } from "./bgModel";
 import { SPEED_ROTATION, SPEED_SESSION_LABELS, resolveZoneBand } from "./constants";
 import { formatStep, formatPaceStep, createWorkoutText, createSimpleWorkoutText } from "./descriptionBuilder";
-import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
+import {
+  canUseHeartRateMetric,
+  normalizeEffortMetric,
+  type EffortMetric,
+} from "./effortMetric";
 import { addByFeel } from "./byFeel";
 import { getPaceTable, type PaceTableResult } from "./paceTable";
 import { getCurrentFuelRate } from "./fuelRate";
@@ -132,7 +136,9 @@ function createStepMaker(
     }
 
     if (effortMetric === "hr") {
-      if (!hr) throw new Error("HR effortMetric requires lthr and hrZones");
+      if (!hr || !canUseHeartRateMetric(hr.lthr, hr.hrZones)) {
+        throw new Error("HR effortMetric requires LTHR and 5 HR zones");
+      }
       // walk/z1/z5 already targetless above — zone is ZoneName with a band
       const band = resolveZoneBand(zone as ZoneName, hr.lthr, hr.hrZones);
       return `${formatStep(duration, band.min, band.max, hr.lthr, label)} ${intensity}`;
@@ -143,10 +149,13 @@ function createStepMaker(
 }
 
 function stepMakerFromContext(ctx: PlanContext) {
+  const hr = canUseHeartRateMetric(ctx.lthr, ctx.hrZones)
+    ? { lthr: ctx.lthr, hrZones: ctx.hrZones }
+    : undefined;
   return createStepMaker(
     ctx.paceTable?.hmEquivalentPacePerKm,
     normalizeEffortMetric(ctx.effortMetric),
-    { lthr: ctx.lthr, hrZones: ctx.hrZones },
+    hr,
   );
 }
 

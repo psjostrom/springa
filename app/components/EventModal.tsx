@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer } from "react";
-import { format, isToday } from "date-fns";
+import { format, isToday, startOfDay } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { useAtomValue } from "jotai";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
@@ -173,7 +173,9 @@ export function EventModal({
     return target?.targetFuelRate ?? null;
   })();
   const showEffortMetricSelect =
-    effectiveSelectedEvent.type === "planned" && onEventUpdated != null;
+    effectiveSelectedEvent.type === "planned" &&
+    onEventUpdated != null &&
+    effectiveSelectedEvent.date >= startOfDay(new Date());
   const currentEffortMetric = detectEffortMetric(
     effectiveSelectedEvent.name,
     effectiveSelectedEvent.description,
@@ -238,6 +240,7 @@ export function EventModal({
 
   const applyEffortMetric = async (target: EffortMetric) => {
     if (!onEventUpdated) return;
+    if (effectiveSelectedEvent.date < startOfDay(new Date())) return;
     if (target === currentEffortMetric) return;
     if (target === "hr" && !canUseHeartRateMetric(lthr, hrZones)) return;
 

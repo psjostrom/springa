@@ -1,4 +1,8 @@
-import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
+import {
+  detectEffortMetric,
+  normalizeEffortMetric,
+  type EffortMetric,
+} from "./effortMetric";
 import { parseEventId } from "./format";
 import {
   reemitWorkoutDescription,
@@ -6,6 +10,8 @@ import {
   type ReemitContext,
 } from "./reemitWorkout";
 import type { CalendarEvent } from "./types";
+
+export type EffortMetricPatchTarget = EffortMetric | "per-workout";
 
 export interface EffortMetricEventPatch {
   id: string;
@@ -35,16 +41,48 @@ function startOfToday(now: Date): Date {
 }
 
 /**
+ * When plan effortMetric changed → force that metric on every future workout.
+ * When only ability/threshold changed → preserve each workout's detected metric.
+ */
+export function resolveBulkEffortMetricTarget(
+  snapshotEffortMetric: unknown,
+  lastGeneratedConfig: string | null,
+): EffortMetricPatchTarget {
+  const next = normalizeEffortMetric(snapshotEffortMetric);
+  if (!lastGeneratedConfig) return next;
+  try {
+    const stored = JSON.parse(lastGeneratedConfig) as { effortMetric?: unknown };
+    const prev = normalizeEffortMetric(stored.effortMetric);
+    return next === prev ? "per-workout" : next;
+  } catch {
+    return next;
+  }
+}
+
+export function formatBulkReemitStatus(
+  succeeded: number,
+  failures: { name: string }[],
+): string {
+  if (failures.length === 0) {
+    return succeeded > 0
+      ? `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}.`
+      : "";
+  }
+  const names = failures.map((f) => f.name).join(", ");
+  return `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}. ${failures.length} failed: ${names}.`;
+}
+
+/**
  * Build name/description patches for future planned events under a target effort metric.
  * Unparseable events are recorded as failures and skipped (no partial description write).
+ * Pass `"per-workout"` to re-emit each event using its detected metric (ability-only updates).
  */
 export function buildFuturePlannedEffortPatches(
   events: CalendarEvent[],
-  target: EffortMetric,
+  target: EffortMetricPatchTarget,
   ctx: ReemitContext,
   now = new Date(),
 ): EffortMetricPatchResult {
-  const metric = normalizeEffortMetric(target);
   const today = startOfToday(now);
   const patches: EffortMetricEventPatch[] = [];
   const failures: EffortMetricPatchFailure[] = [];
@@ -61,6 +99,11 @@ export function buildFuturePlannedEffortPatches(
       });
       continue;
     }
+
+    const metric =
+      target === "per-workout"
+        ? detectEffortMetric(event.name, event.description)
+        : normalizeEffortMetric(target);
 
     try {
       patches.push({

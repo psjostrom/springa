@@ -2,6 +2,7 @@ import { addByFeel, removeByFeel } from "./byFeel";
 import { resolveZoneBand, classifyHR, DEFAULT_LTHR } from "./constants";
 import { formatStep, formatPaceStep } from "./descriptionBuilder";
 import {
+  canUseHeartRateMetric,
   detectEffortMetric,
   type EffortMetric,
 } from "./effortMetric";
@@ -96,6 +97,9 @@ function reemitStepLine(
   }
 
   if (target === "hr") {
+    if (!canUseHeartRateMetric(ctx.lthr, ctx.hrZones)) {
+      throw new Error("HR effortMetric requires LTHR and 5 HR zones");
+    }
     const band = resolveZoneBand(zone as ZoneName, ctx.lthr, ctx.hrZones);
     return `- ${formatStep(duration, band.min, band.max, ctx.lthr, label)}${trailing}`;
   }

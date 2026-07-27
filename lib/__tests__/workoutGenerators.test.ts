@@ -718,6 +718,16 @@ describe("generateSingleWorkout", () => {
     expect(event!.name).not.toMatch(/By Feel$/);
   });
 
+  it("effortMetric hr without zones throws instead of emitting NaN bands", () => {
+    expect(() =>
+      generateSingleWorkout("easy", buildThursday, {
+        ...config,
+        effortMetric: "hr",
+        hrZones: [],
+      }),
+    ).toThrow(/HR|zones/i);
+  });
+
   it("effortMetric feel strips targets and suffixes name", () => {
     const event = generateSingleWorkout("easy", buildThursday, {
       ...config,

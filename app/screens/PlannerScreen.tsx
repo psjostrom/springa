@@ -27,8 +27,8 @@ import {
   type NewProgramDraft,
   type ProgramConfigDirtyKind,
 } from "@/lib/programs";
+import { buildFuturePlannedEffortPatches, formatBulkReemitStatus, resolveBulkEffortMetricTarget } from "@/lib/applyEffortMetricToEvents";
 import { normalizeEffortMetric } from "@/lib/effortMetric";
-import { buildFuturePlannedEffortPatches } from "@/lib/applyEffortMetricToEvents";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
@@ -137,6 +137,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const scheduleChanged = lastGeneratedConfig != null &&
     currentConfigKey != null &&
     !isProgramConfigKeyCurrent(currentConfigKey, lastGeneratedConfig);
+  const scheduleDirtyKind: ProgramConfigDirtyKind = scheduleChanged
+    ? classifyProgramConfigDirty(currentConfigKey, lastGeneratedConfig)
+    : "none";
 
   // hasUploadedPlan: calendar has future planned events (plan was uploaded)
   const today = new Date();
@@ -382,23 +385,27 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   };
 
   const applyTargetOnlyReemit = async (snapshot: UserSettings) => {
-    const metric = normalizeEffortMetric(snapshot.effortMetric);
+    const target = resolveBulkEffortMetricTarget(
+      snapshot.effortMetric,
+      lastGeneratedConfig,
+    );
     const thresholdPace = getThresholdPace(
       snapshot.currentAbilityDist,
       snapshot.currentAbilitySecs,
     );
     const { patches, failures } = buildFuturePlannedEffortPatches(
       calendarEvents,
-      metric,
+      target,
       {
         lthr: snapshot.lthr ?? DEFAULT_LTHR,
+        // Pass through as-is; reemit fails closed when HR is requested without zones.
         hrZones: snapshot.hrZones ?? [],
         thresholdPace,
       },
     );
 
     let succeeded = 0;
-    let failed = failures.length;
+    const allFailures = [...failures];
 
     for (const patch of patches) {
       try {
@@ -423,22 +430,28 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
         });
       } catch (err) {
         console.error("Failed to re-emit workout:", err);
-        failed += 1;
+        allFailures.push({
+          id: patch.id,
+          name: patch.previousName,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
-    if (failed === 0) {
+    if (allFailures.length === 0) {
       setLastGeneratedConfig(buildProgramConfigKeyFromSettings(snapshot));
-      setStatusMsg(
-        succeeded > 0
-          ? `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}.`
-          : "",
-      );
-    } else {
-      setStatusMsg(
-        `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}. ${failed} failed.`,
-      );
     }
+    setStatusMsg(formatBulkReemitStatus(succeeded, allFailures));
+  };
+
+  const handleScheduleChangedAction = async () => {
+    if (!settings) return;
+    if (scheduleDirtyKind === "target-only") {
+      setStatusMsg("");
+      await applyTargetOnlyReemit(settings);
+      return;
+    }
+    handleGenerate();
   };
 
   const handleConfigConfirmUpdate = async () => {
@@ -689,15 +702,17 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           />
         )}
 
-        {/* Schedule Changed Banner */}
+        {/* Schedule / targets changed banner */}
         {plannerState === "schedule-changed" && (
           <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-warning text-sm">Schedule changed</span>
+            <span className="text-warning text-sm">
+              {scheduleDirtyKind === "target-only" ? "Targets changed" : "Schedule changed"}
+            </span>
             <button
-              onClick={handleGenerate}
+              onClick={() => { void handleScheduleChangedAction(); }}
               className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold"
             >
-              Regenerate
+              {scheduleDirtyKind === "target-only" ? "Update workouts" : "Regenerate"}
             </button>
           </div>
         )}

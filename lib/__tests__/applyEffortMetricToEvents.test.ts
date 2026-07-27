@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildFuturePlannedEffortPatches } from "../applyEffortMetricToEvents";
+import {
+  buildFuturePlannedEffortPatches,
+  formatBulkReemitStatus,
+  resolveBulkEffortMetricTarget,
+} from "../applyEffortMetricToEvents";
 import { TEST_HR_ZONES, TEST_LTHR } from "./testConstants";
 import type { CalendarEvent } from "../types";
 
@@ -119,5 +123,87 @@ describe("buildFuturePlannedEffortPatches", () => {
     expect(failures).toHaveLength(1);
     expect(failures[0].id).toBe("event-11");
     expect(failures[0].error).toMatch(/Cannot re-emit/);
+  });
+
+  it("per-workout target preserves each event's detected metric", () => {
+    const feelDesc = `Warmup
+- Warmup 10m intensity=warmup
+
+Main set
+- Easy 35m intensity=active
+
+Cooldown
+- Cooldown 15m intensity=cooldown
+`;
+    const events = [
+      planned({
+        id: "event-1",
+        name: "W01 Easy By Feel",
+        description: feelDesc,
+      }),
+      planned({
+        id: "event-2",
+        name: "W01 Long (10km)",
+        description: easyPace,
+      }),
+    ];
+
+    const { patches, failures } = buildFuturePlannedEffortPatches(
+      events,
+      "per-workout",
+      ctx,
+    );
+
+    expect(failures).toEqual([]);
+    expect(patches).toHaveLength(2);
+    expect(patches[0].name).toBe("W01 Easy By Feel");
+    expect(patches[0].description).not.toMatch(/\/km Pace|% LTHR|% pace/);
+    expect(patches[1].name).toBe("W01 Long (10km)");
+    expect(patches[1].description).toMatch(/\/km Pace/);
+  });
+
+  it("records failure when forcing HR without valid zones", () => {
+    const events = [
+      planned({ id: "event-50", name: "W01 Easy", description: easyPace }),
+    ];
+
+    const { patches, failures } = buildFuturePlannedEffortPatches(
+      events,
+      "hr",
+      { lthr: TEST_LTHR, hrZones: [], thresholdPace: 5.5 },
+    );
+
+    expect(patches).toEqual([]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0].id).toBe("event-50");
+    expect(failures[0].name).toBe("W01 Easy");
+    expect(failures[0].error).toMatch(/HR|zones/i);
+  });
+});
+
+describe("resolveBulkEffortMetricTarget", () => {
+  it("forces plan metric when effortMetric changed", () => {
+    const lastKey = JSON.stringify({ effortMetric: "pace", currentAbilitySecs: 3300 });
+    expect(resolveBulkEffortMetricTarget("hr", lastKey)).toBe("hr");
+  });
+
+  it("uses per-workout when only ability changed", () => {
+    const lastKey = JSON.stringify({ effortMetric: "pace", currentAbilitySecs: 3300 });
+    expect(resolveBulkEffortMetricTarget("pace", lastKey)).toBe("per-workout");
+  });
+});
+
+describe("formatBulkReemitStatus", () => {
+  it("includes failed event names when any fail", () => {
+    expect(
+      formatBulkReemitStatus(1, [
+        { name: "W01 Easy" },
+        { name: "W01 Long (10km)" },
+      ]),
+    ).toBe("Updated 1 workout. 2 failed: W01 Easy, W01 Long (10km).");
+  });
+
+  it("omits failure list on full success", () => {
+    expect(formatBulkReemitStatus(2, [])).toBe("Updated 2 workouts.");
   });
 });

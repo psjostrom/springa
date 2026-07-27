@@ -65,6 +65,16 @@ describe("reemitWorkoutDescription", () => {
     expect(pace).toMatch(/\/km Pace|% pace/);
   });
 
+  it("throws when re-emitting to HR without valid LTHR zones", () => {
+    expect(() =>
+      reemitWorkoutDescription(easyPace, "hr", {
+        lthr: TEST_LTHR,
+        hrZones: [],
+        thresholdPace: 5.5,
+      }),
+    ).toThrow(/HR|zones/i);
+  });
+
   it("walk/uphill stay targetless in all modes", () => {
     const hills = `Main set 6x
 - Uphill 2m intensity=active

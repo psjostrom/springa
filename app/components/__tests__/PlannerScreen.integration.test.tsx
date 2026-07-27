@@ -821,6 +821,144 @@ describe("PlannerScreen", () => {
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
   });
 
+  it("ability-only schedule-changed banner re-emits targets instead of regenerating", async () => {
+    const user = userEvent.setup();
+    const generated = baseSettings({
+      effortMetric: "pace",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+    });
+    const lastKey = buildProgramConfigKeyFromSettings(generated);
+    const current = { ...generated, currentAbilitySecs: 3000 };
+    const puts: { body: unknown }[] = [];
+    resetCaptures();
+
+    server.use(
+      http.put("/api/intervals/events/:eventId", async ({ request }) => {
+        puts.push({ body: await request.json() });
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <>
+        <PlannerScreen />
+        <LastGeneratedProbe />
+      </>,
+      {
+        atomInits: [
+          [settingsAtom, current],
+          [calendarEventsAtom, [
+            futurePlannedEvent({
+              id: "event-401",
+              name: "W01 Easy By Feel",
+              description: `Warmup
+- Warmup 10m intensity=warmup
+
+Main set
+- Easy 35m intensity=active
+
+Cooldown
+- Cooldown 15m intensity=cooldown
+`,
+            }),
+            futurePlannedEvent({
+              id: "event-402",
+              name: "W01 Long (10km)",
+              description: EASY_PACE_DESC,
+            }),
+          ]],
+          [calendarLoadingAtom, false],
+          [bgModelAtom, null],
+          [lastGeneratedConfigAtom, lastKey],
+        ],
+      },
+    );
+
+    expect(screen.getByText(/targets changed/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /update workouts/i }));
+
+    await waitFor(() => {
+      expect(puts).toHaveLength(2);
+    });
+
+    const feelPut = puts.find(
+      (p) => (p.body as { name: string }).name === "W01 Easy By Feel",
+    );
+    const pacePut = puts.find(
+      (p) => (p.body as { name: string }).name === "W01 Long (10km)",
+    );
+    expect(feelPut).toBeDefined();
+    expect((feelPut!.body as { description: string }).description).not.toMatch(
+      /\/km Pace|% LTHR|% pace/,
+    );
+    expect(pacePut).toBeDefined();
+    expect((pacePut!.body as { description: string }).description).toMatch(/\/km Pace/);
+    expect(capturedUploadPayload).toEqual([]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("last-generated").textContent).not.toBe(lastKey);
+    });
+  });
+
+  it("target-only banner status names failed workouts and keeps lastGeneratedConfig", async () => {
+    const user = userEvent.setup();
+    const generated = baseSettings({
+      effortMetric: "pace",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+    });
+    const lastKey = buildProgramConfigKeyFromSettings(generated);
+    const current = { ...generated, currentAbilitySecs: 3000 };
+
+    server.use(
+      http.put("/api/intervals/events/:eventId", ({ params }) => {
+        if (String(params.eventId) === "501") {
+          return new HttpResponse(null, { status: 500 });
+        }
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <>
+        <PlannerScreen />
+        <LastGeneratedProbe />
+      </>,
+      {
+        atomInits: [
+          [settingsAtom, current],
+          [calendarEventsAtom, [
+            futurePlannedEvent({
+              id: "event-501",
+              name: "W01 Easy",
+              description: EASY_PACE_DESC,
+            }),
+            futurePlannedEvent({
+              id: "event-502",
+              name: "W01 Long (10km)",
+              description: EASY_PACE_DESC,
+            }),
+          ]],
+          [calendarLoadingAtom, false],
+          [bgModelAtom, null],
+          [lastGeneratedConfigAtom, lastKey],
+        ],
+      },
+    );
+
+    await user.click(screen.getByRole("button", { name: /update workouts/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed:.*W01 Easy/i)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("last-generated")).toHaveTextContent(lastKey);
+  });
+
   it("passes lthr and hrZones so New Program can enable By Heart Rate", async () => {
     const user = userEvent.setup();
 

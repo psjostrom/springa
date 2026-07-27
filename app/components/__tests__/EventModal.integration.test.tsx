@@ -616,6 +616,29 @@ Cooldown
 
     expect(screen.queryByRole("combobox", { name: /effort metric/i })).toBeNull();
   });
+
+  it("hides the effort metric select for past-dated planned workouts", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(8, 0, 0, 0);
+    const pastPlanned: CalendarEvent = {
+      ...basePlannedLong,
+      id: "event-past",
+      date: yesterday,
+    };
+
+    render(
+      <EventModal
+        event={pastPlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("combobox", { name: /effort metric/i })).toBeNull();
+  });
 });
 
 describe("EventModal feedback", () => {
