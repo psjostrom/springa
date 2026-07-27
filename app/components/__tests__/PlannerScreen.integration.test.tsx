@@ -187,6 +187,20 @@ describe("PlannerScreen", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides Regenerate Plan when config matches lastGeneratedConfig", () => {
+    const settings = baseSettings();
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, settings],
+        [calendarEventsAtom, [futurePlannedEvent()]],
+        [bgModelAtom, null],
+        [lastGeneratedConfigAtom, buildProgramConfigKeyFromSettings(settings)],
+      ],
+    });
+
+    expect(screen.queryByRole("button", { name: /regenerate plan/i })).not.toBeInTheDocument();
+  });
+
   it("toggles config panel: Edit opens it, Done closes it", async () => {
     const user = userEvent.setup();
 

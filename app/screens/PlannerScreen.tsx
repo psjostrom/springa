@@ -748,8 +748,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </div>
         )}
 
-        {/* State 3: Uploaded plan exists, no local preview */}
-        {plannerState === "uploaded-plan" && (
+        {/* Escape hatch: full regenerate only when we have no lastGenerated baseline */}
+        {plannerState === "uploaded-plan" &&
+          !(
+            lastGeneratedConfig != null &&
+            currentConfigKey != null &&
+            isProgramConfigKeyCurrent(currentConfigKey, lastGeneratedConfig)
+          ) && (
           <button
             onClick={handleGenerate}
             className="w-full py-3 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"
