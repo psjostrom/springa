@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { categoryFromExternalId, temperatureCorrectHr, computeCardiacCostTrend, generatePaceSuggestion } from "../paceInsight";
 import type { ZoneSegment } from "../paceCalibration";
 import type { CalendarEvent, BestEffort } from "../types";
@@ -152,17 +152,25 @@ describe("computeCardiacCostTrend", () => {
   });
 
   it("returns null when change is within noise range", () => {
-    const segments: ZoneSegment[] = [
-      z2Seg(140, 7.0, daysAgo(50)),
-      z2Seg(141, 7.0, daysAgo(46)),
-      z2Seg(139, 7.0, daysAgo(42)),
-      z2Seg(140, 7.0, daysAgo(38)),
-      z2Seg(140, 7.0, daysAgo(22)),
-      z2Seg(141, 7.0, daysAgo(18)),
-      z2Seg(139, 7.0, daysAgo(14)),
-      z2Seg(140, 7.0, daysAgo(10)),
-    ];
-    expect(computeCardiacCostTrend(segments)).toBeNull();
+    // Pin to winter so temperature correction is zero in both windows — flat HR
+    // must not look like a trend when June/July heat correction differs (~4%).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+    try {
+      const segments: ZoneSegment[] = [
+        z2Seg(140, 7.0, daysAgo(50)),
+        z2Seg(141, 7.0, daysAgo(46)),
+        z2Seg(139, 7.0, daysAgo(42)),
+        z2Seg(140, 7.0, daysAgo(38)),
+        z2Seg(140, 7.0, daysAgo(22)),
+        z2Seg(141, 7.0, daysAgo(18)),
+        z2Seg(139, 7.0, daysAgo(14)),
+        z2Seg(140, 7.0, daysAgo(10)),
+      ];
+      expect(computeCardiacCostTrend(segments)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("returns null with insufficient data in either window", () => {
