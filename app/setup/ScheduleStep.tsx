@@ -1,11 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
+import { EffortMetricSelect } from "../components/EffortMetricSelect";
 
 interface ScheduleStepProps {
   runDays: number[];
   longRunDay?: number;
-  onNext: (schedule: { runDays: number[]; longRunDay: number }) => void;
+  effortMetric?: EffortMetric;
+  lthr?: number;
+  hrZones?: number[];
+  onNext: (schedule: {
+    runDays: number[];
+    longRunDay: number;
+    effortMetric: EffortMetric;
+  }) => void;
   onBack: () => void;
 }
 
@@ -19,9 +28,20 @@ const DAYS = [
   { index: 0, label: "Sun" },
 ];
 
-export function ScheduleStep({ runDays: initialDays, longRunDay: initialLongDay, onNext, onBack }: ScheduleStepProps) {
+export function ScheduleStep({
+  runDays: initialDays,
+  longRunDay: initialLongDay,
+  effortMetric: initialEffortMetric,
+  lthr,
+  hrZones,
+  onNext,
+  onBack,
+}: ScheduleStepProps) {
   const [runDays, setRunDays] = useState<number[]>(initialDays);
   const [longRunDay, setLongRunDay] = useState<number | null>(initialLongDay ?? null);
+  const [effortMetric, setEffortMetric] = useState<EffortMetric>(
+    normalizeEffortMetric(initialEffortMetric),
+  );
 
   const toggleDay = (day: number) => {
     let next: number[];
@@ -43,7 +63,7 @@ export function ScheduleStep({ runDays: initialDays, longRunDay: initialLongDay,
   const handleNext = async () => {
     if (runDays.length < 2 || longRunDay === null) return;
 
-    const schedule = { runDays, longRunDay };
+    const schedule = { runDays, longRunDay, effortMetric };
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -112,6 +132,16 @@ export function ScheduleStep({ runDays: initialDays, longRunDay: initialLongDay,
           </div>
         </div>
       )}
+
+      <div className="space-y-2 mb-6">
+        <p className="text-sm font-semibold text-text">How should workouts prescribe effort?</p>
+        <EffortMetricSelect
+          value={effortMetric}
+          onChange={setEffortMetric}
+          lthr={lthr}
+          hrZones={hrZones}
+        />
+      </div>
 
       <div className="flex gap-3">
         <button

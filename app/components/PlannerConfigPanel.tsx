@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
+import { normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
+import { EffortMetricSelect } from "./EffortMetricSelect";
 
 interface PlannerConfigPanelProps {
   settings: UserSettings;
@@ -36,6 +38,9 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState<number | "">(settings.raceDist ?? "");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
+  const [effortMetric, setEffortMetric] = useState<EffortMetric>(
+    normalizeEffortMetric(settings.effortMetric),
+  );
 
   // When club type is "long", the club day IS the long run day
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
@@ -120,6 +125,10 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     // No need to re-push here — ability doesn't change from race config fields.
   };
 
+  const handleEffortMetric = (metric: EffortMetric) => {
+    setEffortMetric(metric);
+    saveField({ effortMetric: metric }).catch(console.error);
+  };
 
   // Compute speed hint
   const speedHintDay = (() => {
@@ -240,6 +249,19 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
             )}
           </div>
         )}
+      </div>
+
+      {/* Effort Metric */}
+      <div className="border-t border-border pt-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+          Effort Metric
+        </div>
+        <EffortMetricSelect
+          value={effortMetric}
+          onChange={handleEffortMetric}
+          lthr={settings.lthr}
+          hrZones={settings.hrZones}
+        />
       </div>
 
       {/* Race Goal */}
