@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { http, HttpResponse } from "msw";
 import { PlannerScreen } from "@/app/screens/PlannerScreen";
 import {
@@ -11,13 +11,31 @@ import {
   calendarLoadingAtom,
   calendarErrorAtom,
   bgModelAtom,
+  lastGeneratedConfigAtom,
 } from "@/app/atoms";
 import type { UserSettings } from "@/lib/settings";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { CalendarEvent } from "@/lib/types";
+import { buildProgramConfigKeyFromSettings } from "@/lib/programs";
 import "@/lib/__tests__/setup-dom";
 import { server } from "@/lib/__tests__/msw/server";
 import { capturedUploadPayload, resetCaptures } from "@/lib/__tests__/msw/handlers";
+import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
+
+const EASY_PACE_DESC = `Warmup
+- Warmup 10m 6:15-7:52/km Pace intensity=warmup
+
+Main set
+- Easy 35m 6:15-7:52/km Pace intensity=active
+
+Cooldown
+- Cooldown 15m 6:15-7:52/km Pace intensity=cooldown
+`;
+
+function LastGeneratedProbe() {
+  const last = useAtomValue(lastGeneratedConfigAtom);
+  return <div data-testid="last-generated">{last ?? "null"}</div>;
+}
 
 function PlannerAutoAdaptHarness({
   autoAdapt,
@@ -671,5 +689,150 @@ describe("PlannerScreen", () => {
       expect(capturedBodies).toHaveLength(1);
     });
     expect(screen.getByText(/Adapted 0 workouts/i)).toBeInTheDocument();
+  });
+
+  it("Done after metric change confirms and bulk re-emits future planned workouts", async () => {
+    const user = userEvent.setup();
+    const settings = baseSettings({
+      effortMetric: "pace",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+      currentAbilityDist: 10,
+      currentAbilitySecs: 3300,
+    });
+    const lastKey = buildProgramConfigKeyFromSettings(settings);
+    const puts: { url: string; body: unknown }[] = [];
+
+    server.use(
+      http.put("/api/intervals/events/:eventId", async ({ request }) => {
+        puts.push({ url: request.url, body: await request.json() });
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <>
+        <PlannerScreen />
+        <LastGeneratedProbe />
+      </>,
+      {
+        atomInits: [
+          [settingsAtom, settings],
+          [calendarEventsAtom, [
+            futurePlannedEvent({
+              id: "event-201",
+              name: "W01 Easy",
+              description: EASY_PACE_DESC,
+            }),
+            futurePlannedEvent({
+              id: "event-202",
+              name: "W01 Long (10km)",
+              description: EASY_PACE_DESC,
+            }),
+          ]],
+          [calendarLoadingAtom, false],
+          [bgModelAtom, null],
+          [lastGeneratedConfigAtom, lastKey],
+        ],
+      },
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /effort metric/i }), "hr");
+    await user.click(screen.getByRole("button", { name: /done/i }));
+
+    expect(
+      screen.getByText(/Update future workouts to match your new settings\?/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^update$/i }));
+
+    await waitFor(() => {
+      expect(puts).toHaveLength(2);
+    });
+
+    for (const put of puts) {
+      const body = put.body as { name: string; description: string };
+      expect(body.description).toMatch(/% LTHR \(\d+-\d+ bpm\)/);
+      expect(body.description).not.toMatch(/\/km Pace/);
+    }
+
+    await waitFor(() => {
+      const next = screen.getByTestId("last-generated").textContent;
+      expect(next).not.toBe(lastKey);
+      expect(next).toContain('"effortMetric":"hr"');
+    });
+
+    expect(screen.queryByText(/Update future workouts/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it("Done decline keeps settings but leaves workouts unchanged", async () => {
+    const user = userEvent.setup();
+    const settings = baseSettings({
+      effortMetric: "pace",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+    });
+    const lastKey = buildProgramConfigKeyFromSettings(settings);
+    let putCount = 0;
+
+    server.use(
+      http.put("/api/intervals/events/:eventId", () => {
+        putCount += 1;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+    render(
+      <>
+        <PlannerScreen />
+        <LastGeneratedProbe />
+      </>,
+      {
+        atomInits: [
+          [settingsAtom, settings],
+          [calendarEventsAtom, [
+            futurePlannedEvent({
+              id: "event-301",
+              name: "W01 Easy",
+              description: EASY_PACE_DESC,
+            }),
+          ]],
+          [calendarLoadingAtom, false],
+          [bgModelAtom, null],
+          [lastGeneratedConfigAtom, lastKey],
+        ],
+      },
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /effort metric/i }), "feel");
+    await user.click(screen.getByRole("button", { name: /done/i }));
+
+    expect(
+      screen.getByText(/Update future workouts to match your new settings\?/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /keep workouts/i }));
+
+    expect(putCount).toBe(0);
+    expect(screen.getByTestId("last-generated")).toHaveTextContent(lastKey);
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it("passes lthr and hrZones so New Program can enable By Heart Rate", async () => {
+    const user = userEvent.setup();
+
+    render(<PlannerScreen />, {
+      atomInits: [
+        [settingsAtom, baseSettings({ lthr: TEST_LTHR, hrZones: [...TEST_HR_ZONES] })],
+        [calendarEventsAtom, []],
+        [bgModelAtom, null],
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: /start new program/i }));
+    expect(screen.getByRole("option", { name: "By Heart Rate" })).not.toBeDisabled();
   });
 });

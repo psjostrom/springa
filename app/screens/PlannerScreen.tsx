@@ -19,18 +19,23 @@ import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
   buildProgramConfigKeyFromSettings,
+  classifyProgramConfigDirty,
   isProgramConfigKeyCurrent,
   isProgramFinished,
   toSettingsUpdate,
   validateNewProgramDraft,
   type NewProgramDraft,
+  type ProgramConfigDirtyKind,
 } from "@/lib/programs";
+import { normalizeEffortMetric } from "@/lib/effortMetric";
+import { buildFuturePlannedEffortPatches } from "@/lib/applyEffortMetricToEvents";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
 import { PlannerSummaryBar } from "../components/PlannerSummaryBar";
 import { PlannerConfigPanel } from "../components/PlannerConfigPanel";
 import { NewProgramWizard } from "../components/NewProgramWizard";
+import { PlanConfigConfirmModal } from "../components/PlanConfigConfirmModal";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -49,6 +54,7 @@ import {
   switchTabAtom,
   updateSettingsAtom,
   lastGeneratedConfigAtom,
+  patchCalendarEventAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -98,6 +104,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const updateSettings = useSetAtom(updateSettingsAtom);
   const lastGeneratedConfig = useAtomValue(lastGeneratedConfigAtom);
   const setLastGeneratedConfig = useSetAtom(lastGeneratedConfigAtom);
+  const patchCalendarEvent = useSetAtom(patchCalendarEventAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -115,6 +122,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   // Config panel state
   const [configExpanded, setConfigExpanded] = useState(false);
+  const [configConfirmKind, setConfigConfirmKind] = useState<ProgramConfigDirtyKind | null>(null);
+  const [configConfirmBusy, setConfigConfirmBusy] = useState(false);
+  const [pendingConfigSnapshot, setPendingConfigSnapshot] = useState<UserSettings | null>(null);
 
   const currentConfigKey = settings ? buildProgramConfigKeyFromSettings(settings) : null;
   const summarySettings = settings && newProgramDraft && newProgramMode !== "closed"
@@ -351,6 +361,100 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     await updateSettings(partial);
   };
 
+  const handleConfigDone = (snapshot: UserSettings) => {
+    const key = buildProgramConfigKeyFromSettings(snapshot);
+    const dirty = classifyProgramConfigDirty(key, lastGeneratedConfig);
+    setConfigExpanded(false);
+    if (dirty === "none" || !hasUploadedPlan) {
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+      return;
+    }
+    setPendingConfigSnapshot(snapshot);
+    setConfigConfirmKind(dirty);
+  };
+
+  const handleConfigConfirmDecline = () => {
+    setConfigConfirmKind(null);
+    setPendingConfigSnapshot(null);
+  };
+
+  const applyTargetOnlyReemit = async (snapshot: UserSettings) => {
+    const metric = normalizeEffortMetric(snapshot.effortMetric);
+    const thresholdPace = getThresholdPace(
+      snapshot.currentAbilityDist,
+      snapshot.currentAbilitySecs,
+    );
+    const { patches, failures } = buildFuturePlannedEffortPatches(
+      calendarEvents,
+      metric,
+      {
+        lthr: snapshot.lthr ?? DEFAULT_LTHR,
+        hrZones: snapshot.hrZones ?? [],
+        thresholdPace,
+      },
+    );
+
+    let succeeded = 0;
+    let failed = failures.length;
+
+    for (const patch of patches) {
+      try {
+        await updateEvent(patch.numericId, {
+          name: patch.name,
+          description: patch.description,
+        });
+        patchCalendarEvent({
+          id: patch.id,
+          patch: { name: patch.name, description: patch.description },
+        });
+        succeeded += 1;
+        void syncToGoogleCalendar("update", {
+          eventName: patch.previousName,
+          eventDate: format(patch.date, "yyyy-MM-dd"),
+          event: {
+            name: patch.name,
+            description: patch.description,
+            startLocal: format(patch.date, "yyyy-MM-dd'T'HH:mm:ss"),
+            ...(patch.fuelRate != null && { fuelRate: patch.fuelRate }),
+          },
+        });
+      } catch (err) {
+        console.error("Failed to re-emit workout:", err);
+        failed += 1;
+      }
+    }
+
+    if (failed === 0) {
+      setLastGeneratedConfig(buildProgramConfigKeyFromSettings(snapshot));
+      setStatusMsg(
+        succeeded > 0
+          ? `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}.`
+          : "",
+      );
+    } else {
+      setStatusMsg(
+        `Updated ${succeeded} workout${succeeded === 1 ? "" : "s"}. ${failed} failed.`,
+      );
+    }
+  };
+
+  const handleConfigConfirmUpdate = async () => {
+    if (!configConfirmKind || !pendingConfigSnapshot) return;
+    setConfigConfirmBusy(true);
+    try {
+      if (configConfirmKind === "structural") {
+        handleGenerate();
+      } else {
+        await applyTargetOnlyReemit(pendingConfigSnapshot);
+      }
+    } finally {
+      setConfigConfirmBusy(false);
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+    }
+  };
+
   // --- Adapt ---
 
   const hasPlannedEvents = calendarEvents.some((e) => e.type === "planned");
@@ -523,7 +627,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               key={currentConfigKey ?? "settings"}
               settings={summarySettings}
               onSave={handleSettingsSave}
-              onDone={() => { setConfigExpanded(false); }}
+              onDone={handleConfigDone}
             />
           ) : (
             <PlannerSummaryBar
@@ -533,6 +637,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             />
           )
         )}
+
+        <PlanConfigConfirmModal
+          open={configConfirmKind != null}
+          busy={configConfirmBusy}
+          onConfirm={() => { void handleConfigConfirmUpdate(); }}
+          onDecline={handleConfigConfirmDecline}
+        />
 
         {plannerState === "finished" && (
           <div className="bg-surface border border-success/30 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -564,13 +675,15 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </button>
         )}
 
-        {newProgramMode === "editing" && newProgramDraft && (
+        {newProgramMode === "editing" && newProgramDraft && settings && (
           <NewProgramWizard
             draft={newProgramDraft}
             validationError={newProgramError}
             onDraftChange={handleNewProgramDraftChange}
             onCancel={cancelNewProgram}
             onPreview={previewNewProgram}
+            lthr={lthr}
+            hrZones={settings.hrZones}
           />
         )}
 

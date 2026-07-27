@@ -8,7 +8,8 @@ import { EffortMetricSelect } from "./EffortMetricSelect";
 interface PlannerConfigPanelProps {
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
-  onDone: () => void;
+  /** Called after flushing race fields + effort metric. Receives a local settings snapshot. */
+  onDone: (snapshot: UserSettings) => void | Promise<void>;
 }
 
 const DAYS = [
@@ -112,12 +113,17 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     saveField(updates).catch(console.error);
   };
 
-  const handleRaceBlur = () => {
+  const buildRaceUpdates = (): Partial<UserSettings> => {
     const updates: Partial<UserSettings> = {};
     if (raceName.trim() !== (settings.raceName ?? "")) updates.raceName = raceName.trim();
     if (raceDate !== (settings.raceDate ?? "")) updates.raceDate = raceDate;
     const rdVal = raceDist === "" ? undefined : raceDist;
     if (rdVal !== settings.raceDist) updates.raceDist = rdVal;
+    return updates;
+  };
+
+  const handleRaceBlur = () => {
+    const updates = buildRaceUpdates();
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
@@ -128,6 +134,28 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const handleEffortMetric = (metric: EffortMetric) => {
     setEffortMetric(metric);
     saveField({ effortMetric: metric }).catch(console.error);
+  };
+
+  const flushAndDone = async () => {
+    const raceUpdates = buildRaceUpdates();
+    const flush: Partial<UserSettings> = {
+      ...raceUpdates,
+      effortMetric,
+    };
+    await saveField(flush);
+    const snapshot: UserSettings = {
+      ...settings,
+      ...flush,
+      runDays,
+      longRunDay: effectiveLongRunDay,
+      clubDay: hasClub ? clubDay : undefined,
+      clubType: hasClub ? clubType : undefined,
+      raceName: raceName.trim() || undefined,
+      raceDist: raceDist === "" ? undefined : raceDist,
+      raceDate: raceDate || undefined,
+      effortMetric,
+    };
+    await onDone(snapshot);
   };
 
   // Compute speed hint
@@ -310,7 +338,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       {/* Done */}
       <div className="flex justify-end">
         <button
-          onClick={() => { handleRaceBlur(); onDone(); }}
+          onClick={() => { void flushAndDone(); }}
           className="text-brand text-sm font-medium hover:underline"
         >
           Done
