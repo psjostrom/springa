@@ -5,6 +5,8 @@
   "scripts": {
     "setup-worktree": "./scripts/setup-worktree.sh",
     "qa:login-url": "./scripts/print-qa-login-url.sh",
+    "qa:overlay": "./scripts/qa-overlay.sh",
+    "qa:overlay:remove": "./scripts/qa-overlay.sh --remove",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

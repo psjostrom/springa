@@ -31,12 +31,43 @@ else
   echo ".env.local already exists, skipping"
 fi
 
-if [ -f "$WORKTREE_DIR/.env.local" ] && ! grep -q '^QA_AUTH_TOKEN=' "$WORKTREE_DIR/.env.local" 2>/dev/null; then
-  echo "" >> "$WORKTREE_DIR/.env.local"
-  echo "# Local agent QA login (see docs/qa-agent-browser.md) — set QA_AUTH_EMAIL to the dedicated QA Google account" >> "$WORKTREE_DIR/.env.local"
-  echo "QA_AUTH_TOKEN=$(openssl rand -hex 32)" >> "$WORKTREE_DIR/.env.local"
-  echo "QA_AUTH_EMAIL=" >> "$WORKTREE_DIR/.env.local"
-  echo "Added QA_AUTH_TOKEN placeholder — set QA_AUTH_EMAIL before using /api/qa/login"
+ENV_FILE="$WORKTREE_DIR/.env.local"
+
+ensure_env_key() {
+  local key="$1"
+  local value="$2"
+  local comment="$3"
+  if [[ ! -f "$ENV_FILE" ]]; then
+    return 0
+  fi
+  if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+    return 0
+  fi
+  {
+    echo ""
+    echo "$comment"
+    echo "${key}=${value}"
+  } >> "$ENV_FILE"
+  echo "Added ${key} to .env.local"
+}
+
+if [ -f "$ENV_FILE" ]; then
+  ensure_env_key "AUTH_URL" "http://localhost:3000" \
+    "# Dev Auth.js URL — must match the port you pass to next (see docs/qa-agent-browser.md)"
+  if ! grep -q '^QA_AUTH_TOKEN=' "$ENV_FILE" 2>/dev/null; then
+    ensure_env_key "QA_AUTH_TOKEN" "$(openssl rand -hex 32)" \
+      "# Local agent QA login (see docs/qa-agent-browser.md) — set QA_AUTH_EMAIL to the dedicated QA Google account"
+    ensure_env_key "QA_AUTH_EMAIL" "" \
+      "# Dedicated QA Google account email (never the owner prod email)"
+  elif ! grep -q '^QA_AUTH_EMAIL=' "$ENV_FILE" 2>/dev/null; then
+    ensure_env_key "QA_AUTH_EMAIL" "" \
+      "# Dedicated QA Google account email (never the owner prod email)"
+  fi
+fi
+
+if [[ -f "$WORKTREE_DIR/scripts/print-qa-login-url.sh" ]]; then
+  chmod +x "$WORKTREE_DIR/scripts/print-qa-login-url.sh"
 fi
 
 echo "Done!"
+echo "Before agent QA: set QA_AUTH_EMAIL in .env.local, then AUTH_URL=http://localhost:3000 npm run dev -- --port 3000"
