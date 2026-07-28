@@ -89,10 +89,12 @@ agent-browser open "$LOGIN_URL"
 Before any product clicks, confirm the session is the QA user:
 
 ```bash
-agent-browser eval "fetch('/api/settings').then(r=>r.json()).then(d=>({email:d.email,onboardingComplete:d.onboardingComplete}))"
+agent-browser eval "fetch('/api/auth/session').then(r=>r.json()).then(d=>({email:d?.user?.email||null}))"
 ```
 
 Expect `email` to equal `QA_AUTH_EMAIL` (case-insensitive). If it does not, **stop** — do not continue as the wrong user.
+
+(`/api/settings` does not include `email` in its JSON payload — use the session endpoint for identity.)
 
 ### Dismiss blocking UI
 

@@ -89,9 +89,13 @@ remove_overlay() {
 
   local f
   for f in "${TRACKED_FILES[@]}"; do
-    if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+    # Prefer restoring the pre-overlay HEAD version when the path existed on HEAD.
+    # Overlay may stage brand-new files into the index; those are not in HEAD, so
+    # `git checkout HEAD --` would fail under set -e and leave the tree dirty.
+    if git cat-file -e "HEAD:${f}" 2>/dev/null; then
       git checkout HEAD -- "$f"
-    elif [[ -e "$f" ]]; then
+    else
+      git rm -rf --ignore-unmatch --quiet -- "$f" 2>/dev/null || true
       rm -f "$f"
       # remove empty parents for new routes
       rmdir "$(dirname "$f")" 2>/dev/null || true
@@ -99,7 +103,7 @@ remove_overlay() {
     fi
   done
 
-  if [[ -f package.json ]] && git ls-files --error-unmatch package.json >/dev/null 2>&1; then
+  if git cat-file -e "HEAD:package.json" 2>/dev/null; then
     git checkout HEAD -- package.json
   fi
 
