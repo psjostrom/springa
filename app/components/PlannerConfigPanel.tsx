@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import type { UserSettings } from "@/lib/settings";
+import { normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
+import { EffortMetricSelect } from "./EffortMetricSelect";
 
 interface PlannerConfigPanelProps {
   settings: UserSettings;
   onSave: (partial: Partial<UserSettings>) => Promise<void>;
-  onDone: () => void;
+  /** Called after flushing race fields + effort metric. Receives a local settings snapshot. */
+  onDone: (snapshot: UserSettings) => void | Promise<void>;
 }
 
 const DAYS = [
@@ -36,6 +39,9 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
   const [raceName, setRaceName] = useState(settings.raceName ?? "");
   const [raceDist, setRaceDist] = useState<number | "">(settings.raceDist ?? "");
   const [raceDate, setRaceDate] = useState(settings.raceDate ?? "");
+  const [effortMetric, setEffortMetric] = useState<EffortMetric>(
+    normalizeEffortMetric(settings.effortMetric),
+  );
 
   // When club type is "long", the club day IS the long run day
   const effectiveLongRunDay = hasClub && clubType === "long" && clubDay != null ? clubDay : longRunDay;
@@ -107,12 +113,17 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     saveField(updates).catch(console.error);
   };
 
-  const handleRaceBlur = () => {
+  const buildRaceUpdates = (): Partial<UserSettings> => {
     const updates: Partial<UserSettings> = {};
     if (raceName.trim() !== (settings.raceName ?? "")) updates.raceName = raceName.trim();
     if (raceDate !== (settings.raceDate ?? "")) updates.raceDate = raceDate;
     const rdVal = raceDist === "" ? undefined : raceDist;
     if (rdVal !== settings.raceDist) updates.raceDist = rdVal;
+    return updates;
+  };
+
+  const handleRaceBlur = () => {
+    const updates = buildRaceUpdates();
     if (Object.keys(updates).length > 0) {
       saveField(updates).catch(console.error);
     }
@@ -120,6 +131,36 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
     // No need to re-push here — ability doesn't change from race config fields.
   };
 
+  const handleEffortMetric = (metric: EffortMetric) => {
+    setEffortMetric(metric);
+    saveField({ effortMetric: metric }).catch(console.error);
+  };
+
+  const flushAndDone = async () => {
+    try {
+      const raceUpdates = buildRaceUpdates();
+      const flush: Partial<UserSettings> = {
+        ...raceUpdates,
+        effortMetric,
+      };
+      await saveField(flush);
+      const snapshot: UserSettings = {
+        ...settings,
+        ...flush,
+        runDays,
+        longRunDay: effectiveLongRunDay,
+        clubDay: hasClub ? clubDay : undefined,
+        clubType: hasClub ? clubType : undefined,
+        raceName: raceName.trim() || undefined,
+        raceDist: raceDist === "" ? undefined : raceDist,
+        raceDate: raceDate || undefined,
+        effortMetric,
+      };
+      await onDone(snapshot);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Compute speed hint
   const speedHintDay = (() => {
@@ -242,6 +283,19 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
         )}
       </div>
 
+      {/* Effort Metric */}
+      <div className="border-t border-border pt-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+          Effort Metric
+        </div>
+        <EffortMetricSelect
+          value={effortMetric}
+          onChange={handleEffortMetric}
+          lthr={settings.lthr}
+          hrZones={settings.hrZones}
+        />
+      </div>
+
       {/* Race Goal */}
       <div className="border-t border-border pt-4">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Race Goal</div>
@@ -288,7 +342,7 @@ export function PlannerConfigPanel({ settings, onSave, onDone }: PlannerConfigPa
       {/* Done */}
       <div className="flex justify-end">
         <button
-          onClick={() => { handleRaceBlur(); onDone(); }}
+          onClick={() => { void flushAndDone(); }}
           className="text-brand text-sm font-medium hover:underline"
         >
           Done

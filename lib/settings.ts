@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
 
 // --- Types ---
 
@@ -19,6 +20,8 @@ export interface UserSettings {
   includeBasePhase?: boolean;
   /** Personal warmth preference: -2 (run very warm) to +2 (run very cold). Default 0. */
   warmthPreference?: number;
+  /** How workouts prescribe effort: pace, heart rate, or feel. Default pace. */
+  effortMetric?: EffortMetric;
 
   // Multi-user fields
   diabetesMode?: boolean;
@@ -65,6 +68,7 @@ export const WRITABLE_SETTINGS_KEYS = [
   "bgChartWindow",
   "includeBasePhase",
   "warmthPreference",
+  "effortMetric",
   "diabetesMode",
   "displayName",
   "runDays",
@@ -85,7 +89,7 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
                  bg_chart_window, include_base_phase, warmth_preference,
                  diabetes_mode, display_name, timezone, run_days, long_run_day, club_day, club_type,
                  onboarding_complete, intervals_api_key, nightscout_url, nightscout_secret, insulin_type,
-                 pace_suggestion_dismissed_at, hr_zones, max_hr
+                 pace_suggestion_dismissed_at, hr_zones, max_hr, effort_metric
           FROM user_settings WHERE email = ?`,
     args: [email],
   });
@@ -134,6 +138,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
   if (row.hr_zones)
     settings.hrZones = JSON.parse(row.hr_zones as string) as number[];
   if (row.max_hr != null) settings.maxHr = row.max_hr as number;
+  if (row.effort_metric)
+    settings.effortMetric = normalizeEffortMetric(row.effort_metric);
 
   // Derived boolean flag (actual credentials decrypted separately via getUserCredentials)
   settings.nightscoutConnected = !!(
@@ -248,6 +254,10 @@ export async function saveUserSettings(
   if (partial.maxHr !== undefined) {
     sets.push("max_hr = ?");
     args.push(partial.maxHr ?? null);
+  }
+  if (partial.effortMetric !== undefined) {
+    sets.push("effort_metric = ?");
+    args.push(partial.effortMetric ?? null);
   }
 
   if (sets.length > 0) {

@@ -97,6 +97,8 @@ function StatefulEventModalHarness({
   onDelete = noopAsync,
   onDateSaved = noop,
   onEventUpdated,
+  lthr,
+  hrZones,
 }: {
   initialEvent?: CalendarEvent;
   onClose?: () => void;
@@ -106,6 +108,8 @@ function StatefulEventModalHarness({
     eventId: string,
     patch: Partial<Pick<CalendarEvent, "name" | "description">>,
   ) => void;
+  lthr?: number;
+  hrZones?: number[];
 }) {
   const [event, setEvent] = React.useState(initialEvent);
 
@@ -114,6 +118,8 @@ function StatefulEventModalHarness({
       event={event}
       onClose={onClose}
       onDelete={onDelete}
+      lthr={lthr}
+      hrZones={hrZones}
       onDateSaved={(eventId, newDate) => {
         setEvent((prev) => (prev.id === eventId ? { ...prev, date: newDate } : prev));
         onDateSaved(eventId, newDate);
@@ -128,6 +134,27 @@ function StatefulEventModalHarness({
       }
     />
   );
+}
+
+const LONG_RUN_FEEL_DESCRIPTION = `Long run with a 3km race pace block sandwiched in the middle.
+
+Warmup
+- 1km intensity=warmup
+
+Main set
+- Easy 3km intensity=active
+- Race Pace 3km intensity=active
+- Easy 3km intensity=active
+
+Cooldown
+- 2km intensity=cooldown`;
+
+async function selectEffortMetric(
+  user: ReturnType<typeof userEvent.setup>,
+  value: "pace" | "hr" | "feel",
+) {
+  const select = screen.getByRole("combobox", { name: /effort metric/i });
+  await user.selectOptions(select, value);
 }
 
 // Real race descriptions follow the workout-step format so the strip can derive a
@@ -257,13 +284,48 @@ describe("EventModal workout card", () => {
   });
 });
 
-describe("EventModal By Feel toggle", () => {
+describe("EventModal effort metric select", () => {
   afterEach(() => {
     server.resetHandlers();
     resetCaptures();
   });
 
-  it("updates a planned pace workout, strips pace targets, and notifies the parent", async () => {
+  it("changes a planned workout from pace to HR via dropdown", async () => {
+    const user = userEvent.setup();
+    const onEventUpdated = vi.fn();
+
+    render(
+      <StatefulEventModalHarness
+        onEventUpdated={onEventUpdated}
+        lthr={TEST_LTHR}
+        hrZones={[...TEST_HR_ZONES]}
+      />,
+    );
+
+    await selectEffortMetric(user, "hr");
+
+    await waitFor(() => {
+      expect(capturedPutPayload?.body).toEqual(
+        expect.objectContaining({
+          name: "W05 Long (12km)",
+          description: expect.stringMatching(/% LTHR/),
+        }),
+      );
+    });
+    expect(onEventUpdated).toHaveBeenCalled();
+    expect(capturedPutPayload!.url).toContain("/api/intervals/events/101");
+  });
+
+  it("disables HR option when zones missing", async () => {
+    render(
+      <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
+    );
+
+    const hrOption = screen.getByRole("option", { name: /heart rate/i });
+    expect(hrOption).toBeDisabled();
+  });
+
+  it("updates a planned pace workout to feel, strips pace targets, and notifies the parent", async () => {
     const user = userEvent.setup();
     const onEventUpdated = vi.fn();
     const googleSyncRequests: unknown[] = [];
@@ -279,26 +341,15 @@ describe("EventModal By Feel toggle", () => {
       <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
       expect(capturedPutPayload).not.toBeNull();
     });
 
     const expectedPatch = {
-      name: "W05 Long (12km) By Feel",
-      description: `Long run with a 3km race pace block sandwiched in the middle.
-
-Warmup
-- Warmup 1km intensity=warmup
-
-Main set
-- Easy 3km intensity=active
-- Race Pace 3km intensity=active
-- Easy 3km intensity=active
-
-Cooldown
-- Cooldown 2km intensity=cooldown`,
+      name: "W05 Long (12km)",
+      description: LONG_RUN_FEEL_DESCRIPTION,
     };
 
     expect(capturedPutPayload!.url).toContain("/api/intervals/events/101");
@@ -311,7 +362,7 @@ Cooldown
           eventName: "W05 Long (12km)",
           eventDate: "2099-03-16",
           event: {
-            name: "W05 Long (12km) By Feel",
+            name: "W05 Long (12km)",
             description: expectedPatch.description,
             startLocal: "2099-03-16T08:00:00",
             fuelRate: 60,
@@ -319,39 +370,45 @@ Cooldown
         },
       ]);
     });
-    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
   });
 
-  it("updates a planned HR workout and strips heart rate targets", async () => {
+  it("updates a planned HR workout to feel and strips heart rate targets", async () => {
     const user = userEvent.setup();
 
     render(
-      <StatefulEventModalHarness initialEvent={basePlanned} onEventUpdated={vi.fn()} />,
+      <StatefulEventModalHarness
+        initialEvent={basePlanned}
+        onEventUpdated={vi.fn()}
+        lthr={TEST_LTHR}
+        hrZones={[...TEST_HR_ZONES]}
+      />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
       expect(capturedPutPayload).not.toBeNull();
     });
 
     expect(capturedPutPayload!.body).toEqual({
-      name: "W02 Hills By Feel",
+      name: "W02 Hills",
       description: `Hill reps build strength and power.
 
 Warmup
-- Warmup 10m
+- 10m
 
 Main set 6x
 - Uphill 2m
 - Downhill 3m
 
 Cooldown
-- Cooldown 5m`,
+- 5m`,
     });
   });
 
-  it("shows an error and keeps the action area visible when the update fails", async () => {
+  it("shows an error and keeps the select visible when the update fails", async () => {
     const user = userEvent.setup();
     let googleSyncCalls = 0;
 
@@ -369,11 +426,11 @@ Cooldown
       <StatefulEventModalHarness onEventUpdated={vi.fn()} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
-    expect(screen.getByRole("button", { name: "By Feel" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toBeInTheDocument();
     expect(googleSyncCalls).toBe(0);
   });
 
@@ -393,13 +450,13 @@ Cooldown
       <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
       expect(onEventUpdated).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
-    expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).not.toBeDisabled();
 
     request.resolve();
 
@@ -425,11 +482,11 @@ Cooldown
       <StatefulEventModalHarness onClose={onClose} onEventUpdated={onEventUpdated} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
       expect(onEventUpdated).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
     const replaceButton = screen.getByRole("button", { name: "Replace" });
     const editButton = screen.getByRole("button", { name: "Edit" });
@@ -463,10 +520,10 @@ Cooldown
       <StatefulEventModalHarness onClose={onClose} onEventUpdated={vi.fn()} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
 
     await user.keyboard("{Escape}");
@@ -486,7 +543,7 @@ Cooldown
       <StatefulEventModalHarness initialEvent={malformedEvent} onEventUpdated={vi.fn()} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Failed to update workout. Please try again.");
@@ -507,20 +564,21 @@ Cooldown
       <StatefulEventModalHarness onEventUpdated={onEventUpdated} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "By Feel" }));
+    await selectEffortMetric(user, "feel");
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Workout saved, but Google Calendar did not update.");
     expect(onEventUpdated).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("heading", { name: "W05 Long (12km) By Feel" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
   });
 
-  it("hides the button without a parent update callback, for workouts already marked by feel, and for completed runs", () => {
+  it("hides the select without a parent update callback and for completed runs; keeps it for by-feel planned", () => {
     const alreadyByFeel: CalendarEvent = {
       ...basePlannedLong,
       id: "event-102",
       name: "W05 Long (12km) By Feel",
+      description: LONG_RUN_FEEL_DESCRIPTION,
     };
 
     const { rerender } = render(
@@ -532,7 +590,7 @@ Cooldown
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /effort metric/i })).toBeNull();
 
     rerender(
       <EventModal
@@ -540,10 +598,11 @@ Cooldown
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("feel");
 
     rerender(
       <EventModal
@@ -551,10 +610,34 @@ Cooldown
         onClose={noop}
         onDateSaved={noop}
         onDelete={noopAsync}
+        onEventUpdated={noop}
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "By Feel" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /effort metric/i })).toBeNull();
+  });
+
+  it("hides the effort metric select for past-dated planned workouts", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(8, 0, 0, 0);
+    const pastPlanned: CalendarEvent = {
+      ...basePlannedLong,
+      id: "event-past",
+      date: yesterday,
+    };
+
+    render(
+      <EventModal
+        event={pastPlanned}
+        onClose={noop}
+        onDateSaved={noop}
+        onDelete={noopAsync}
+        onEventUpdated={noop}
+      />,
+    );
+
+    expect(screen.queryByRole("combobox", { name: /effort metric/i })).toBeNull();
   });
 });
 

@@ -6,12 +6,22 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
+import { normalizeEffortMetric, type EffortMetric } from "./effortMetric";
 import type { UserSettings } from "./settings";
 import type { CalendarEvent } from "./types";
 import { getDefaultGoalTime } from "./paceTable";
 import { MIN_NORMAL_PLAN_WEEKS, supportsBasePhase } from "./periodization";
 
-const PROGRAM_CONFIG_KEY_VERSION = 2;
+const PROGRAM_CONFIG_KEY_VERSION = 3;
+
+/** Fields that change workout targets/prescription without changing plan structure. */
+const TARGET_ONLY_KEYS = new Set([
+  "effortMetric",
+  "currentAbilityDist",
+  "currentAbilitySecs",
+]);
+
+export type ProgramConfigDirtyKind = "none" | "target-only" | "structural";
 
 export interface NewProgramDraft {
   raceName: string;
@@ -26,6 +36,7 @@ export interface NewProgramDraft {
   totalWeeks: number;
   startKm: number;
   includeBasePhase: boolean;
+  effortMetric: EffortMetric;
 }
 
 export const MIN_NEW_PROGRAM_WEEKS = 8;
@@ -54,6 +65,7 @@ type ProgramConfigSource = Pick<
   | "totalWeeks"
   | "startKm"
   | "includeBasePhase"
+  | "effortMetric"
 >;
 
 function normalizeString(value: string | null | undefined): string | null {
@@ -67,6 +79,7 @@ function normalizeOptional<T>(value: T | null | undefined): T | null {
 }
 
 function buildCanonicalProgramConfig(source: ProgramConfigSource) {
+  // Always emit effortMetric (default "pace") so missing pre-v3 fields compare equal to pace.
   return {
     version: PROGRAM_CONFIG_KEY_VERSION,
     raceDist: normalizeOptional(source.raceDist),
@@ -80,6 +93,7 @@ function buildCanonicalProgramConfig(source: ProgramConfigSource) {
     totalWeeks: normalizeOptional(source.totalWeeks),
     startKm: normalizeOptional(source.startKm),
     includeBasePhase: source.includeBasePhase ?? false,
+    effortMetric: normalizeEffortMetric(source.effortMetric),
   };
 }
 
@@ -195,6 +209,7 @@ export function buildDefaultNewProgramDraft(
     totalWeeks,
     startKm: settings.startKm ?? 8,
     includeBasePhase: supportsBasePhase(totalWeeks) && (settings.includeBasePhase ?? false),
+    effortMetric: normalizeEffortMetric(settings.effortMetric),
   };
 }
 
@@ -266,6 +281,7 @@ export function isProgramConfigKeyCurrent(
     const stored = JSON.parse(storedKey) as Partial<ProgramConfigSource> & { version?: number };
     if (stored.version === PROGRAM_CONFIG_KEY_VERSION) return false;
     if (hasExtendedGeneratedFields(stored)) {
+      // Rebuild stored through canonical so missing effortMetric ≡ "pace".
       return JSON.stringify({ ...current, version: undefined }) ===
         JSON.stringify({ ...buildCanonicalProgramConfig(stored as ProgramConfigSource), version: undefined });
     }
@@ -273,6 +289,49 @@ export function isProgramConfigKeyCurrent(
     return buildLegacyProgramConfigComparable(current) === buildLegacyProgramConfigComparable(stored);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Classify how a config-key change should be applied.
+ * Target-only: effortMetric / ability — re-emit targets in place.
+ * Structural: schedule/race/weeks/etc — full regenerate.
+ * Missing effortMetric vs "pace" is treated as equal (pre-v3 upgrade).
+ */
+export function classifyProgramConfigDirty(
+  currentKey: string | null,
+  storedKey: string | null,
+): ProgramConfigDirtyKind {
+  if (!currentKey || !storedKey) return "none";
+  if (isProgramConfigKeyCurrent(currentKey, storedKey)) return "none";
+
+  try {
+    const current = JSON.parse(currentKey) as Record<string, unknown>;
+    const stored = JSON.parse(storedKey) as Record<string, unknown>;
+    const keys = new Set([...Object.keys(current), ...Object.keys(stored)]);
+    let targetOnly = false;
+    let structural = false;
+
+    for (const key of keys) {
+      if (key === "version") continue;
+
+      const currentValue = key === "effortMetric"
+        ? normalizeEffortMetric(current[key])
+        : current[key];
+      const storedValue = key === "effortMetric"
+        ? normalizeEffortMetric(stored[key])
+        : stored[key];
+
+      if (JSON.stringify(currentValue) === JSON.stringify(storedValue)) continue;
+      if (TARGET_ONLY_KEYS.has(key)) targetOnly = true;
+      else structural = true;
+    }
+
+    if (structural) return "structural";
+    if (targetOnly) return "target-only";
+    return "none";
+  } catch {
+    return "structural";
   }
 }
 
@@ -290,5 +349,6 @@ export function toSettingsUpdate(draft: NewProgramDraft): Partial<UserSettings> 
     totalWeeks: draft.totalWeeks,
     startKm: draft.startKm,
     includeBasePhase: supportsBasePhase(draft.totalWeeks) && draft.includeBasePhase,
+    effortMetric: draft.effortMetric,
   };
 }

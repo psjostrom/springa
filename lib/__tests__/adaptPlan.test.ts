@@ -11,6 +11,7 @@ import { extractNotes, extractStructure } from "../descriptionParser";
 import type { FitnessInsights } from "../fitness";
 import type { CalendarEvent } from "../types";
 import type { BGResponseModel, TargetFuelResult } from "../bgModel";
+import { TEST_HR_ZONES, TEST_LTHR, TEST_ZONE_STRINGS } from "./testConstants";
 
 
 // --- Helpers ---
@@ -338,8 +339,49 @@ describe("applyAdaptations", () => {
     });
 
     expect(result[0].swapped).toBe(true);
-    expect(result[0].structure).toContain("85-94% pace");
+    expect(result[0].structure).toContain("30-88% pace");
     expect(result[0].changes.some((c) => c.type === "swap")).toBe(true);
+  });
+
+  it("swaps to easy with HR targets when effortMetric is hr", () => {
+    const events = [makeEvent()];
+    const bgModel = makeBGModel();
+    const insights = makeInsights({ currentTsb: -25 });
+
+    const result = applyAdaptations({
+      upcomingEvents: events,
+      bgModel,
+      insights,
+      runBGContexts: {},
+      effortMetric: "hr",
+      lthr: TEST_LTHR,
+      hrZones: [...TEST_HR_ZONES],
+    });
+
+    expect(result[0].swapped).toBe(true);
+    expect(result[0].structure).toContain(TEST_ZONE_STRINGS.easy);
+    expect(result[0].structure).not.toContain("% pace");
+    expect(result[0].structure).not.toMatch(/\/km Pace/);
+  });
+
+  it("swaps to easy targetless when effortMetric is feel", () => {
+    const events = [makeEvent()];
+    const bgModel = makeBGModel();
+    const insights = makeInsights({ currentTsb: -25 });
+
+    const result = applyAdaptations({
+      upcomingEvents: events,
+      bgModel,
+      insights,
+      runBGContexts: {},
+      effortMetric: "feel",
+    });
+
+    expect(result[0].swapped).toBe(true);
+    expect(result[0].structure).toContain("Warmup");
+    expect(result[0].structure).toContain("Easy");
+    expect(result[0].structure).toContain("Cooldown");
+    expect(result[0].structure).not.toMatch(/% pace|% LTHR|\/km Pace/);
   });
 
   it("applies both fuel and swap changes", () => {

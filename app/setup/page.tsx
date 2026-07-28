@@ -18,6 +18,7 @@ import { GoalStep } from "./GoalStep";
 import { AbilityStep } from "./AbilityStep";
 import { DiabetesStep } from "./DiabetesStep";
 import { DoneStep } from "./DoneStep";
+import { normalizeEffortMetric, type EffortMetric } from "@/lib/effortMetric";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
@@ -33,12 +34,15 @@ interface WizardData {
   raceDist: number;
   experience?: ExperienceLevel;
   maxHr?: number;
+  lthr?: number;
+  hrZones?: number[];
   sportSettingsId?: number;
   currentAbilitySecs?: number;
   currentAbilityDist?: number;
   diabetesMode: boolean;
   nightscoutUrl?: string;
   nightscoutSecret?: string;
+  effortMetric: EffortMetric;
 }
 
 export default function SetupPage() {
@@ -53,6 +57,7 @@ export default function SetupPage() {
     runDays: [],
     raceDist: 21.0975,
     diabetesMode: false,
+    effortMetric: "pace",
   });
 
   const updateData = (partial: Partial<WizardData>) => {
@@ -104,6 +109,7 @@ export default function SetupPage() {
         clubType: data.clubType,
         currentAbilitySecs: data.currentAbilitySecs,
         currentAbilityDist: data.currentAbilityDist,
+        effortMetric: normalizeEffortMetric(data.effortMetric),
       });
 
       const today = new Date();
@@ -135,6 +141,7 @@ export default function SetupPage() {
           currentAbilityDist: data.currentAbilityDist,
           raceDist: data.raceDist,
           raceDate,
+          effortMetric: normalizeEffortMetric(data.effortMetric),
         }),
       });
       if (!res.ok) {
@@ -194,6 +201,9 @@ export default function SetupPage() {
           <ScheduleStep
             runDays={data.runDays}
             longRunDay={data.longRunDay}
+            effortMetric={data.effortMetric}
+            lthr={data.lthr}
+            hrZones={data.hrZones}
             onNext={(schedule) => {
               updateData(schedule);
               setStep(5);

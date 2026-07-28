@@ -12,6 +12,8 @@ import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
 import { getBGPatterns } from "@/lib/bgPatternsDb";
 import { getUserSettings } from "@/lib/settings";
+import { normalizeEffortMetric } from "@/lib/effortMetric";
+import { getThresholdPace } from "@/lib/paceTable";
 
 interface RequestBody {
   upcomingEvents: CalendarEvent[];
@@ -117,6 +119,10 @@ export async function POST(req: Request) {
     bgModel: settings.diabetesMode ? bgModel : null,
     insights,
     runBGContexts: settings.diabetesMode ? runBGContexts : {},
+    effortMetric: normalizeEffortMetric(settings.effortMetric),
+    lthr,
+    hrZones,
+    thresholdPace: getThresholdPace(settings.currentAbilityDist, settings.currentAbilitySecs),
   });
 
   // 2. Generate AI notes in parallel (max 4)

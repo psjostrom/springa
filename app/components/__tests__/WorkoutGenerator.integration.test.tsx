@@ -1,13 +1,15 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@/lib/__tests__/test-utils";
+import { render, screen, waitFor } from "@/lib/__tests__/test-utils";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/lib/__tests__/msw/server";
+import { capturedUploadPayload } from "@/lib/__tests__/msw/handlers";
 import { settingsAtom } from "../../atoms";
 import { WorkoutGenerator } from "../WorkoutGenerator";
 import { TEST_HR_ZONES, TEST_LTHR } from "@/lib/__tests__/testConstants";
+import type { WorkoutEvent } from "@/lib/types";
 
 const settings = {
   intervalsConnected: true,
@@ -93,5 +95,54 @@ describe("WorkoutGenerator", () => {
     renderGenerator({ date: new Date("2020-01-01") });
     await user.click(screen.getByRole("button", { name: /easy/i }));
     expect(screen.getByText(/outside the training plan/i)).toBeInTheDocument();
+  });
+
+  it("uses plan effortMetric hr in generated preview", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutGenerator
+        date={buildThursday}
+        onGenerated={noop}
+        onCancel={noop}
+      />,
+      {
+        atomInits: [[settingsAtom, { ...settings, effortMetric: "hr" as const }]],
+      },
+    );
+    await user.click(screen.getByRole("button", { name: /easy/i }));
+    expect(screen.getByText(/Sync Workouts/i)).toBeInTheDocument();
+    expect(document.body.textContent).toMatch(/\d+-\d+ bpm/);
+    expect(document.body.textContent).not.toMatch(/\/km Pace|% pace/);
+    await user.click(screen.getByText("Sync Workouts"));
+    await waitFor(() => {
+      expect(capturedUploadPayload.length).toBe(1);
+    });
+    const workout = capturedUploadPayload[0] as WorkoutEvent;
+    expect(workout.description).toMatch(/% LTHR \(\d+-\d+ bpm\)/);
+    expect(workout.description).not.toMatch(/\/km Pace|% pace/);
+    expect(workout.name).not.toMatch(/By Feel$/);
+  });
+
+  it("uses plan effortMetric feel in generated preview", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutGenerator
+        date={buildThursday}
+        onGenerated={noop}
+        onCancel={noop}
+      />,
+      {
+        atomInits: [[settingsAtom, { ...settings, effortMetric: "feel" as const }]],
+      },
+    );
+    await user.click(screen.getByRole("button", { name: /easy/i }));
+    expect(document.body.textContent).not.toMatch(/% LTHR|\/km Pace|% pace/);
+    await user.click(screen.getByText("Sync Workouts"));
+    await waitFor(() => {
+      expect(capturedUploadPayload.length).toBe(1);
+    });
+    const workout = capturedUploadPayload[0] as WorkoutEvent;
+    expect(workout.name).not.toMatch(/By Feel$/);
+    expect(workout.description).not.toMatch(/% LTHR|\/km Pace|% pace/);
   });
 });
