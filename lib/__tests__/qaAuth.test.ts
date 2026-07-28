@@ -34,13 +34,13 @@ describe("isLocalQaAllowed", () => {
   });
 
   it("blocks springa.run NEXTAUTH_URL when AUTH_URL unset", () => {
-    const { AUTH_URL: _a, ...rest } = base;
-    expect(
-      isLocalQaAllowed({
-        ...rest,
-        NEXTAUTH_URL: "https://springa.run",
-      }),
-    ).toBe(false);
+    const envWithoutAuthUrl: NodeJS.ProcessEnv = {
+      NODE_ENV: base.NODE_ENV,
+      QA_AUTH_TOKEN: base.QA_AUTH_TOKEN,
+      QA_AUTH_EMAIL: base.QA_AUTH_EMAIL,
+      NEXTAUTH_URL: "https://springa.run",
+    };
+    expect(isLocalQaAllowed(envWithoutAuthUrl)).toBe(false);
   });
 
   it("blocks missing token or email", () => {
