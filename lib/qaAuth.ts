@@ -6,7 +6,7 @@ import { timingSafeEqual } from "crypto";
  */
 
 function isSpringaHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  const host = hostname.toLowerCase().replace(/\.+$/, "");
   return host === "springa.run" || host.endsWith(".springa.run");
 }
 

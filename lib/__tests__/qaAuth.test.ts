@@ -40,6 +40,15 @@ describe("isLocalQaAllowed", () => {
     ).toBe(false);
   });
 
+  it("blocks springa.run hosts with a trailing DNS dot", () => {
+    expect(
+      isLocalQaAllowed({ ...base, AUTH_URL: "https://springa.run." }),
+    ).toBe(false);
+    expect(
+      isLocalQaAllowed({ ...base, AUTH_URL: "https://preview.springa.run." }),
+    ).toBe(false);
+  });
+
   it("blocks springa.run NEXTAUTH_URL when AUTH_URL unset", () => {
     const envWithoutAuthUrl: NodeJS.ProcessEnv = {
       NODE_ENV: base.NODE_ENV,
