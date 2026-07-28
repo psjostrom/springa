@@ -1,5 +1,5 @@
 import { signIn } from "@/lib/auth";
-import { isLocalQaAllowed, verifyQaToken } from "@/lib/qaAuth";
+import { isLocalQaAllowed, safeQaRedirect, verifyQaToken } from "@/lib/qaAuth";
 import { NextResponse } from "next/server";
 
 /**
@@ -20,11 +20,7 @@ export async function GET(request: Request) {
   }
 
   const redirectTo = url.searchParams.get("redirectTo") ?? "/";
-  // Safe relative redirects only
-  const safeRedirect =
-    redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? redirectTo
-      : "/";
+  const safeRedirect = safeQaRedirect(redirectTo, url.origin);
 
   await signIn("qa", { token, redirectTo: safeRedirect });
 }

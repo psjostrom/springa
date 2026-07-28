@@ -3,6 +3,7 @@ import {
   isLocalQaAllowed,
   verifyQaToken,
   getQaAuthEmail,
+  safeQaRedirect,
 } from "../qaAuth";
 
 const base = {
@@ -49,9 +50,56 @@ describe("isLocalQaAllowed", () => {
     expect(isLocalQaAllowed(envWithoutAuthUrl)).toBe(false);
   });
 
+  it("blocks when NEXTAUTH_URL is springa.run even if AUTH_URL is local", () => {
+    expect(
+      isLocalQaAllowed({
+        ...base,
+        AUTH_URL: "http://localhost:3000",
+        NEXTAUTH_URL: "https://www.springa.run",
+      }),
+    ).toBe(false);
+  });
+
+  it("blocks springa.run hosts that include URL userinfo", () => {
+    expect(
+      isLocalQaAllowed({
+        ...base,
+        AUTH_URL: "https://user:pass@preview.springa.run/path",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects malformed AUTH_URL", () => {
+    expect(isLocalQaAllowed({ ...base, AUTH_URL: "not a url" })).toBe(false);
+  });
+
   it("blocks missing token or email", () => {
     expect(isLocalQaAllowed({ ...base, QA_AUTH_TOKEN: "" })).toBe(false);
     expect(isLocalQaAllowed({ ...base, QA_AUTH_EMAIL: undefined })).toBe(false);
+  });
+});
+
+describe("safeQaRedirect", () => {
+  const origin = "http://localhost:3000";
+
+  it("preserves same-origin relative redirects", () => {
+    expect(safeQaRedirect("/planner", origin)).toBe("/planner");
+    expect(safeQaRedirect("/x?y=1#z", origin)).toBe("/x?y=1#z");
+  });
+
+  it("rejects backslashes including decoded %5C", () => {
+    // URLSearchParams.get already decodes %5C → \
+    expect(safeQaRedirect("/\\evil", origin)).toBe("/");
+    expect(safeQaRedirect("/%5Cevil", origin)).toBe("/");
+  });
+
+  it("rejects protocol-relative and absolute external URLs", () => {
+    expect(safeQaRedirect("//evil.example", origin)).toBe("/");
+    expect(safeQaRedirect("https://evil.example/", origin)).toBe("/");
+  });
+
+  it("falls back to / for empty or invalid input", () => {
+    expect(safeQaRedirect("", origin)).toBe("/");
   });
 });
 

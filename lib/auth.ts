@@ -9,6 +9,18 @@ import {
   verifyQaToken,
 } from "./qaAuth";
 
+async function ensureUserSettings(email: string): Promise<void> {
+  await db().execute({
+    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
+    args: [email],
+  });
+}
+
+function isMissingGoogleRefreshTokenColumn(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /no such column:\s*google_refresh_token/i.test(msg);
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Google({
@@ -39,10 +51,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = getQaAuthEmail();
         if (!email) return null;
 
-        await db().execute({
-          sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
-          args: [email],
-        });
+        await ensureUserSettings(email);
 
         return { id: email, email, name: "QA Session" };
       },
@@ -53,17 +62,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
-      // QA Credentials authorize() already ensures the user_settings row exists.
-      if (account?.provider !== "qa") {
-        // Upsert: create user row if it doesn't exist (race-safe)
-        await db().execute({
-          sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
-          args: [user.email],
-        });
-      }
+      await ensureUserSettings(user.email);
 
       // Store refresh token when Google provides one (on consent).
-      // Wrapped in try/catch: safe to deploy before migration adds the column.
+      // Missing-column errors are tolerated so deploys work before migration.
       if (account?.refresh_token) {
         try {
           const encKey = getEncryptionKey();
@@ -71,8 +73,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             sql: "UPDATE user_settings SET google_refresh_token = ? WHERE email = ?",
             args: [encrypt(account.refresh_token, encKey), user.email],
           });
-        } catch {
-          // Column may not exist yet if migration hasn't run
+        } catch (err) {
+          if (!isMissingGoogleRefreshTokenColumn(err)) throw err;
         }
       }
 

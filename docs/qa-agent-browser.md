@@ -122,7 +122,7 @@ agent-browser close
 - `lib/qaAuth.ts` — allow / verify helpers
 - `lib/auth.ts` — Credentials provider `qa`
 - `app/api/qa/login/route.ts` — login entry
-- `proxy.ts` — allows `/api/qa/*` without an existing session (checked before the demo cookie rewrite)
+- `proxy.ts` — allows `/api/qa/login` without an existing session (checked before the demo cookie rewrite)
 - `scripts/print-qa-login-url.sh` — builds login URL (`npm run qa:login-url`)
 - `scripts/qa-overlay.sh` — temporary QA auth on another branch (`--remove` to restore)
 - `scripts/setup-worktree.sh` — copies `.env.local`, seeds `AUTH_URL` + `QA_AUTH_*`

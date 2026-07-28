@@ -4,11 +4,15 @@
 set -euo pipefail
 
 WORKTREE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-MAIN_REPO="$(cd "$WORKTREE_DIR" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's|/\.git$||')" || true
-if [[ -z "$MAIN_REPO" || "$MAIN_REPO" == "$WORKTREE_DIR" ]]; then
-  # Fallback: parent of .claude/worktrees/<name> or .Codex/worktrees/<name>
+MAIN_REPO=""
+if MAIN_REPO="$(cd "$WORKTREE_DIR" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's|/\.git$||')"; then
+  :
+fi
+if [[ -z "$MAIN_REPO" ]]; then
+  # Fallback only when git metadata lookup failed (e.g. .claude/worktrees/<name>)
   MAIN_REPO="$(cd "$WORKTREE_DIR/../../.." && pwd)"
 fi
+# When MAIN_REPO == WORKTREE_DIR we are already on the main checkout — keep it.
 
 echo "Setting up worktree: $WORKTREE_DIR"
 echo "Source: $MAIN_REPO"

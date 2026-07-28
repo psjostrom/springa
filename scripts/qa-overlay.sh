@@ -13,7 +13,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-MARKER="$ROOT/.git/qa-overlay-active"
+MARKER="$(git rev-parse --git-path qa-overlay-active)"
+if [[ "$MARKER" != /* ]]; then
+  MARKER="$ROOT/$MARKER"
+fi
 DEFAULT_REF="feature/agent-qa-auth"
 
 TRACKED_FILES=(
@@ -24,6 +27,11 @@ TRACKED_FILES=(
   proxy.ts
   scripts/print-qa-login-url.sh
   docs/qa-agent-browser.md
+)
+
+AFFECTED_PATHS=(
+  "${TRACKED_FILES[@]}"
+  package.json
 )
 
 ensure_qa_login_script() {
@@ -41,6 +49,33 @@ console.log("Patched package.json scripts.qa:login-url (do not commit with a pro
 NODE
 }
 
+read_marker_ref() {
+  QA_OVERLAY_REF=""
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      QA_OVERLAY_REF=*)
+        QA_OVERLAY_REF="${line#QA_OVERLAY_REF=}"
+        ;;
+    esac
+  done < "$MARKER"
+}
+
+refuse_if_affected_dirty() {
+  local dirty=0
+  local f
+  for f in "${AFFECTED_PATHS[@]}"; do
+    if [[ -n "$(git status --porcelain --untracked-files=all -- "$f" 2>/dev/null || true)" ]]; then
+      echo "Refusing QA overlay: '$f' has local changes (tracked or untracked)." >&2
+      dirty=1
+    fi
+  done
+  if [[ "$dirty" -ne 0 ]]; then
+    echo "Clean those paths (or commit/stash), then retry. No files were modified." >&2
+    exit 1
+  fi
+}
+
 remove_overlay() {
   if [[ ! -f "$MARKER" ]]; then
     echo "No active QA overlay marker at $MARKER — nothing to remove."
@@ -48,10 +83,7 @@ remove_overlay() {
     exit 0
   fi
 
-  # shellcheck disable=SC1090
-  # Marker is a simple KEY=value file we wrote.
-  # shellcheck source=/dev/null
-  source "$MARKER"
+  read_marker_ref
 
   echo "Removing QA overlay from ref: ${QA_OVERLAY_REF:-unknown}"
 
@@ -92,9 +124,7 @@ if ! git rev-parse --verify "$REF" >/dev/null 2>&1; then
   fi
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "Warning: working tree is already dirty. Overlay will overwrite the listed QA files." >&2
-fi
+refuse_if_affected_dirty
 
 echo "Overlaying QA auth from $REF onto $(pwd)"
 echo "Do NOT commit these changes into a product feature PR."

@@ -31,6 +31,37 @@ if [[ -n "${AUTH_FROM_FILE:-}" ]]; then
   BASE="$AUTH_FROM_FILE"
 fi
 
+HOST="$(
+  QA_BASE="$BASE" python3 - <<'PY'
+import os
+from urllib.parse import urlparse
+raw = os.environ["QA_BASE"]
+try:
+    host = (urlparse(raw).hostname or "").lower()
+except Exception:
+    raise SystemExit(2)
+if not host:
+    raise SystemExit(2)
+print(host)
+PY
+)" || {
+  echo "Invalid AUTH_URL/NEXTAUTH_URL (cannot parse host): $BASE" >&2
+  exit 1
+}
+
+case "$HOST" in
+  localhost|127.0.0.1|::1)
+    ;;
+  springa.run|*.springa.run)
+    echo "Refusing to print QA login URL for host '$HOST' (springa.run blocked)." >&2
+    exit 1
+    ;;
+  *)
+    echo "Refusing to print QA login URL for host '$HOST' (local hosts only)." >&2
+    exit 1
+    ;;
+esac
+
 if [[ -z "${TOKEN:-}" || -z "${EMAIL:-}" ]]; then
   echo "Add QA_AUTH_TOKEN and QA_AUTH_EMAIL to .env.local (see docs/qa-agent-browser.md)." >&2
   exit 1

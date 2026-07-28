@@ -5,15 +5,49 @@ import { timingSafeEqual } from "crypto";
  * NEVER enable against production Vercel or springa.run AUTH_URL.
  */
 
+function isSpringaHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "springa.run" || host.endsWith(".springa.run");
+}
+
+/**
+ * Same-origin relative redirects only.
+ * Rejects protocol-relative URLs, backslashes (incl. decoded %5C), and external origins.
+ */
+export function safeQaRedirect(
+  redirectTo: string,
+  requestOrigin: string,
+): string {
+  if (!redirectTo || redirectTo.includes("\\") || /%5c/i.test(redirectTo)) {
+    return "/";
+  }
+  if (!redirectTo.startsWith("/") || redirectTo.startsWith("//")) return "/";
+  try {
+    const origin = new URL(requestOrigin).origin;
+    const candidate = new URL(redirectTo, origin);
+    if (candidate.origin !== origin) return "/";
+    const path = `${candidate.pathname}${candidate.search}${candidate.hash}`;
+    if (path.includes("\\") || /%5c/i.test(path)) return "/";
+    return path;
+  } catch {
+    return "/";
+  }
+}
+
 export function isLocalQaAllowed(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   if (env.VERCEL_ENV === "production") return false;
   if (env.NODE_ENV !== "development") return false;
 
-  const authUrl = env.AUTH_URL ?? env.NEXTAUTH_URL ?? "";
-  if (authUrl && /(?:^|\/\/)(?:[\w-]+\.)*springa\.run\b/i.test(authUrl)) {
-    return false;
+  for (const raw of [env.AUTH_URL, env.NEXTAUTH_URL]) {
+    if (!raw?.trim()) continue;
+    try {
+      const { hostname } = new URL(raw);
+      if (isSpringaHostname(hostname)) return false;
+    } catch {
+      return false;
+    }
   }
 
   if (!env.QA_AUTH_TOKEN?.trim() || !env.QA_AUTH_EMAIL?.trim()) return false;
