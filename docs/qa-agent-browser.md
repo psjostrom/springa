@@ -61,5 +61,11 @@ agent-browser open "$LOGIN_URL"
 - `lib/qaAuth.ts` — allow / verify helpers
 - `lib/auth.ts` — Credentials provider `qa`
 - `app/api/qa/login/route.ts` — login entry
-- `proxy.ts` — allows `/api/qa/*` without an existing session
-- `scripts/print-qa-login-url.sh` — builds login URL
+- `proxy.ts` — allows `/api/qa/*` without an existing session (checked before the demo cookie rewrite)
+- `scripts/print-qa-login-url.sh` — builds login URL (also available as `npm run qa:login-url`)
+- `scripts/setup-worktree.sh` — copies `.env.local` and seeds a `QA_AUTH_TOKEN` placeholder into new worktrees
+
+## Troubleshooting
+
+- **404 from `/api/qa/login`** — QA is disabled. Check: `NODE_ENV=development` (not `production`), `VERCEL_ENV` isn't `production`, `AUTH_URL`/`NEXTAUTH_URL` doesn't point at `springa.run` (or a subdomain like `preview.springa.run`), and both `QA_AUTH_TOKEN` and `QA_AUTH_EMAIL` are set (non-empty after trimming) in `.env.local`.
+- **401 from `/api/qa/login`** — QA is enabled but the token didn't match. Re-run `npm run qa:login-url` to regenerate the URL from the current `.env.local` value rather than reusing an old one — do not paste tokens into chat/logs while debugging.
