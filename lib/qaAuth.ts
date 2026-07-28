@@ -12,7 +12,7 @@ export function isLocalQaAllowed(
   if (env.NODE_ENV !== "development") return false;
 
   const authUrl = env.AUTH_URL ?? env.NEXTAUTH_URL ?? "";
-  if (authUrl && /(?:^|\/\/)(?:www\.)?springa\.run\b/i.test(authUrl)) {
+  if (authUrl && /(?:^|\/\/)(?:[\w-]+\.)*springa\.run\b/i.test(authUrl)) {
     return false;
   }
 

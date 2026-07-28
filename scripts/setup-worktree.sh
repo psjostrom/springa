@@ -4,7 +4,7 @@
 set -euo pipefail
 
 WORKTREE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-MAIN_REPO="$(cd "$WORKTREE_DIR" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's|/\.git$||')"
+MAIN_REPO="$(cd "$WORKTREE_DIR" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null | sed 's|/\.git$||')" || true
 if [[ -z "$MAIN_REPO" || "$MAIN_REPO" == "$WORKTREE_DIR" ]]; then
   # Fallback: parent of .claude/worktrees/<name> or .Codex/worktrees/<name>
   MAIN_REPO="$(cd "$WORKTREE_DIR/../../.." && pwd)"

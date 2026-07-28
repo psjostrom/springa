@@ -33,6 +33,12 @@ describe("isLocalQaAllowed", () => {
     ).toBe(false);
   });
 
+  it("blocks springa.run subdomains", () => {
+    expect(
+      isLocalQaAllowed({ ...base, AUTH_URL: "https://preview.springa.run" }),
+    ).toBe(false);
+  });
+
   it("blocks springa.run NEXTAUTH_URL when AUTH_URL unset", () => {
     const envWithoutAuthUrl: NodeJS.ProcessEnv = {
       NODE_ENV: base.NODE_ENV,
