@@ -9,6 +9,7 @@ import {
 } from "@/lib/paceTable";
 import { formatGoalTime } from "@/lib/format";
 import { supportsBasePhase } from "@/lib/periodization";
+import { EffortMetricSelect } from "./EffortMetricSelect";
 
 interface NewProgramWizardProps {
   draft: NewProgramDraft;
@@ -16,6 +17,8 @@ interface NewProgramWizardProps {
   onDraftChange: (draft: NewProgramDraft) => void;
   onCancel: () => void;
   onPreview: () => void;
+  lthr?: number;
+  hrZones?: number[];
 }
 
 const DAYS = [
@@ -44,6 +47,8 @@ export function NewProgramWizard({
   onDraftChange,
   onCancel,
   onPreview,
+  lthr,
+  hrZones,
 }: NewProgramWizardProps) {
   const abilityRange = draft.currentAbilityDist > 0
     ? getSliderRange(draft.currentAbilityDist)
@@ -328,6 +333,15 @@ export function NewProgramWizard({
 
       <div className="border-t border-border pt-4 space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Plan options</h3>
+        <div>
+          <p className="text-xs text-muted mb-1">Effort metric</p>
+          <EffortMetricSelect
+            value={draft.effortMetric}
+            onChange={(metric) => { update({ effortMetric: metric }); }}
+            lthr={lthr}
+            hrZones={hrZones}
+          />
+        </div>
         <div>
           <label htmlFor="new-program-start-km" className="block text-xs text-muted mb-1">
             Start km

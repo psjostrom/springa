@@ -135,6 +135,7 @@ describe("saveUserSettings", () => {
       onboardingComplete: true,
       insulinType: "fiasp",
       paceSuggestionDismissedAt: 1700000000000,
+      effortMetric: "hr",
     };
 
     for (const key of WRITABLE_SETTINGS_KEYS) {
@@ -144,7 +145,7 @@ describe("saveUserSettings", () => {
       expect(
         result[key as keyof UserSettings],
         `"${key}" not handled by saveUserSettings — add it there and to WRITABLE_SETTINGS_KEYS`,
-      ).toBeDefined();
+      ).toEqual(testValues[key]);
     }
   });
 });

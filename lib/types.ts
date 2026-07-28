@@ -32,7 +32,7 @@ export interface PlanContext {
   fuelInterval: number;
   fuelLong: number;
   fuelEasy: number;
-  byFeel?: boolean;
+  effortMetric?: import("./effortMetric").EffortMetric;
   raceDate: Date;
   raceDist: number;
 

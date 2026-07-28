@@ -9,6 +9,7 @@ import type { WorkoutEvent } from "@/lib/types";
 import type { UserSettings } from "@/lib/settings";
 import type { RunBGContext } from "@/lib/runBGContext";
 import type { AdaptedEvent } from "@/lib/adaptPlan";
+import { mapWithConcurrency } from "@/lib/adaptPlan";
 import { uploadPlan, updateEvent } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { hasLowConfidenceFuel, buildSyncPayload } from "@/lib/syncPayload";
@@ -19,18 +20,23 @@ import {
   buildDefaultNewProgramDraft,
   buildProgramConfigKey,
   buildProgramConfigKeyFromSettings,
+  classifyProgramConfigDirty,
   isProgramConfigKeyCurrent,
   isProgramFinished,
   toSettingsUpdate,
   validateNewProgramDraft,
   type NewProgramDraft,
+  type ProgramConfigDirtyKind,
 } from "@/lib/programs";
+import { buildFuturePlannedEffortPatches, findFuturePlannedEffortMetricMismatch, formatBulkReemitStatus, resolveBulkEffortMetricTarget } from "@/lib/applyEffortMetricToEvents";
+import { canUseHeartRateMetric, normalizeEffortMetric } from "@/lib/effortMetric";
 import { WeeklyVolumeChart } from "../components/WeeklyVolumeChart";
 import { WorkoutList } from "../components/WorkoutList";
 import { ActionBar } from "../components/ActionBar";
 import { PlannerSummaryBar } from "../components/PlannerSummaryBar";
 import { PlannerConfigPanel } from "../components/PlannerConfigPanel";
 import { NewProgramWizard } from "../components/NewProgramWizard";
+import { PlanConfigConfirmModal } from "../components/PlanConfigConfirmModal";
 import { useWeeklyVolumeData } from "../hooks/useWeeklyVolumeData";
 import { getCurrentFuelRate, DEFAULT_FUEL } from "@/lib/fuelRate";
 import { DEFAULT_LTHR } from "@/lib/constants";
@@ -49,6 +55,7 @@ import {
   switchTabAtom,
   updateSettingsAtom,
   lastGeneratedConfigAtom,
+  patchCalendarEventAtom,
 } from "../atoms";
 
 interface PlannerScreenProps {
@@ -98,6 +105,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const updateSettings = useSetAtom(updateSettingsAtom);
   const lastGeneratedConfig = useAtomValue(lastGeneratedConfigAtom);
   const setLastGeneratedConfig = useSetAtom(lastGeneratedConfigAtom);
+  const patchCalendarEvent = useSetAtom(patchCalendarEventAtom);
   const raceDate = settings?.raceDate ?? "2026-06-13";
 
   const raceDist = settings?.raceDist ?? 16;
@@ -115,6 +123,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   // Config panel state
   const [configExpanded, setConfigExpanded] = useState(false);
+  const [configConfirmKind, setConfigConfirmKind] = useState<ProgramConfigDirtyKind | null>(null);
+  const [configConfirmBusy, setConfigConfirmBusy] = useState(false);
+  const [pendingConfigSnapshot, setPendingConfigSnapshot] = useState<UserSettings | null>(null);
 
   const currentConfigKey = settings ? buildProgramConfigKeyFromSettings(settings) : null;
   const summarySettings = settings && newProgramDraft && newProgramMode !== "closed"
@@ -127,6 +138,9 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
   const scheduleChanged = lastGeneratedConfig != null &&
     currentConfigKey != null &&
     !isProgramConfigKeyCurrent(currentConfigKey, lastGeneratedConfig);
+  const scheduleDirtyKind: ProgramConfigDirtyKind = scheduleChanged
+    ? classifyProgramConfigDirty(currentConfigKey, lastGeneratedConfig)
+    : "none";
 
   // hasUploadedPlan: calendar has future planned events (plan was uploaded)
   const today = new Date();
@@ -201,7 +215,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setNewProgramError("Intervals.icu not connected.");
       return;
     }
-    if (settings.hrZones?.length !== 5) {
+    const effortMetric = normalizeEffortMetric(newProgramDraft.effortMetric);
+    if (effortMetric === "hr" && !canUseHeartRateMetric(lthr, settings.hrZones)) {
       setNewProgramError("HR zones not synced from Intervals.icu.");
       return;
     }
@@ -213,7 +228,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       totalWeeks: newProgramDraft.totalWeeks,
       startKm: newProgramDraft.startKm,
       lthr,
-      hrZones: settings.hrZones,
+      hrZones: settings.hrZones ?? [],
       includeBasePhase: newProgramDraft.includeBasePhase,
       diabetesMode,
       runDays: newProgramDraft.runDays,
@@ -222,6 +237,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       clubType: newProgramDraft.clubType,
       currentAbilitySecs: newProgramDraft.currentAbilitySecs,
       currentAbilityDist: newProgramDraft.currentAbilityDist,
+      effortMetric,
     });
 
     const todayFilter = new Date();
@@ -237,7 +253,8 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       setStatusMsg("Intervals.icu not connected");
       return;
     }
-    if (settings?.hrZones?.length !== 5) {
+    const effortMetric = normalizeEffortMetric(settings?.effortMetric);
+    if (effortMetric === "hr" && !canUseHeartRateMetric(lthr, settings?.hrZones)) {
       setStatusMsg("HR zones not synced from Intervals.icu");
       return;
     }
@@ -248,15 +265,16 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       totalWeeks,
       startKm,
       lthr,
-      hrZones: settings.hrZones,
-      includeBasePhase: settings.includeBasePhase ?? false,
+      hrZones: settings?.hrZones ?? [],
+      includeBasePhase: settings?.includeBasePhase ?? false,
       diabetesMode,
-      runDays: settings.runDays,
-      longRunDay: settings.longRunDay ?? 0,
-      clubDay: settings.clubDay,
-      clubType: settings.clubType,
-      currentAbilitySecs: settings.currentAbilitySecs,
-      currentAbilityDist: settings.currentAbilityDist,
+      runDays: settings?.runDays,
+      longRunDay: settings?.longRunDay ?? 0,
+      clubDay: settings?.clubDay,
+      clubType: settings?.clubType,
+      currentAbilitySecs: settings?.currentAbilitySecs,
+      currentAbilityDist: settings?.currentAbilityDist,
+      effortMetric,
     });
     const todayFilter = new Date();
     todayFilter.setHours(0, 0, 0, 0);
@@ -349,6 +367,154 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
   const handleSettingsSave = async (partial: Partial<UserSettings>) => {
     await updateSettings(partial);
+  };
+
+  const handleConfigDone = (snapshot: UserSettings) => {
+    const key = buildProgramConfigKeyFromSettings(snapshot);
+    setConfigExpanded(false);
+
+    if (!hasUploadedPlan) {
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+      return;
+    }
+
+    // Pre-feature / other-browser: no lastGeneratedConfig in localStorage.
+    // Compare live workouts to settings so metric Done still offers an update.
+    if (!lastGeneratedConfig) {
+      const metric = normalizeEffortMetric(snapshot.effortMetric);
+      const mismatch = findFuturePlannedEffortMetricMismatch(calendarEvents, metric);
+      if (!mismatch) {
+        setLastGeneratedConfig(key);
+        setConfigConfirmKind(null);
+        setPendingConfigSnapshot(null);
+        return;
+      }
+      setPendingConfigSnapshot(snapshot);
+      setConfigConfirmKind("target-only");
+      return;
+    }
+
+    const dirty = classifyProgramConfigDirty(key, lastGeneratedConfig);
+    if (dirty === "none") {
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+      return;
+    }
+    setPendingConfigSnapshot(snapshot);
+    setConfigConfirmKind(dirty);
+  };
+
+  const handleConfigConfirmDecline = () => {
+    // Seed a baseline from workout metrics so the yellow banner can still offer Update.
+    if (!lastGeneratedConfig && pendingConfigSnapshot) {
+      const metric = normalizeEffortMetric(pendingConfigSnapshot.effortMetric);
+      const baselineMetric = findFuturePlannedEffortMetricMismatch(
+        calendarEvents,
+        metric,
+      );
+      if (baselineMetric) {
+        setLastGeneratedConfig(
+          buildProgramConfigKeyFromSettings({
+            ...pendingConfigSnapshot,
+            effortMetric: baselineMetric,
+          }),
+        );
+      }
+    }
+    setConfigConfirmKind(null);
+    setPendingConfigSnapshot(null);
+  };
+
+  const applyTargetOnlyReemit = async (snapshot: UserSettings) => {
+    const target = resolveBulkEffortMetricTarget(
+      snapshot.effortMetric,
+      lastGeneratedConfig,
+    );
+    const thresholdPace = getThresholdPace(
+      snapshot.currentAbilityDist,
+      snapshot.currentAbilitySecs,
+    );
+    const { patches, failures } = buildFuturePlannedEffortPatches(
+      calendarEvents,
+      target,
+      {
+        lthr: snapshot.lthr ?? DEFAULT_LTHR,
+        // Pass through as-is; reemit fails closed when HR is requested without zones.
+        hrZones: snapshot.hrZones ?? [],
+        thresholdPace,
+      },
+    );
+
+    let succeeded = 0;
+    const allFailures = [...failures];
+
+    await mapWithConcurrency(patches, 4, async (patch) => {
+      try {
+        await updateEvent(patch.numericId, {
+          name: patch.name,
+          description: patch.description,
+        });
+        patchCalendarEvent({
+          id: patch.id,
+          patch: { name: patch.name, description: patch.description },
+        });
+        succeeded += 1;
+        void syncToGoogleCalendar("update", {
+          eventName: patch.previousName,
+          eventDate: format(patch.date, "yyyy-MM-dd"),
+          event: {
+            name: patch.name,
+            description: patch.description,
+            startLocal: format(patch.date, "yyyy-MM-dd'T'HH:mm:ss"),
+            ...(patch.fuelRate != null && { fuelRate: patch.fuelRate }),
+          },
+        });
+      } catch (err) {
+        console.error("Failed to re-emit workout:", err);
+        allFailures.push({
+          id: patch.id,
+          name: patch.previousName,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    });
+
+    if (allFailures.length === 0) {
+      setLastGeneratedConfig(buildProgramConfigKeyFromSettings(snapshot));
+    }
+    setStatusMsg(formatBulkReemitStatus(succeeded, allFailures));
+  };
+
+  const handleScheduleChangedAction = async () => {
+    if (!settings || configConfirmBusy) return;
+    setConfigConfirmBusy(true);
+    try {
+      if (scheduleDirtyKind === "target-only") {
+        setStatusMsg("");
+        await applyTargetOnlyReemit(settings);
+        return;
+      }
+      handleGenerate();
+    } finally {
+      setConfigConfirmBusy(false);
+    }
+  };
+
+  const handleConfigConfirmUpdate = async () => {
+    if (!configConfirmKind || !pendingConfigSnapshot) return;
+    setConfigConfirmBusy(true);
+    try {
+      if (configConfirmKind === "structural") {
+        handleGenerate();
+      } else {
+        await applyTargetOnlyReemit(pendingConfigSnapshot);
+      }
+    } finally {
+      setConfigConfirmBusy(false);
+      setConfigConfirmKind(null);
+      setPendingConfigSnapshot(null);
+    }
   };
 
   // --- Adapt ---
@@ -523,7 +689,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
               key={currentConfigKey ?? "settings"}
               settings={summarySettings}
               onSave={handleSettingsSave}
-              onDone={() => { setConfigExpanded(false); }}
+              onDone={handleConfigDone}
             />
           ) : (
             <PlannerSummaryBar
@@ -533,6 +699,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
             />
           )
         )}
+
+        <PlanConfigConfirmModal
+          open={configConfirmKind != null}
+          busy={configConfirmBusy}
+          onConfirm={() => { void handleConfigConfirmUpdate(); }}
+          onDecline={handleConfigConfirmDecline}
+        />
 
         {plannerState === "finished" && (
           <div className="bg-surface border border-success/30 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -564,25 +737,31 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </button>
         )}
 
-        {newProgramMode === "editing" && newProgramDraft && (
+        {newProgramMode === "editing" && newProgramDraft && settings && (
           <NewProgramWizard
             draft={newProgramDraft}
             validationError={newProgramError}
             onDraftChange={handleNewProgramDraftChange}
             onCancel={cancelNewProgram}
             onPreview={previewNewProgram}
+            lthr={lthr}
+            hrZones={settings.hrZones}
           />
         )}
 
-        {/* Schedule Changed Banner */}
-        {plannerState === "schedule-changed" && (
+        {/* Schedule / targets changed banner — hidden while Done confirm modal owns the same choice */}
+        {plannerState === "schedule-changed" && configConfirmKind == null && (
           <div className="bg-surface-alt border border-warning rounded-xl px-4 py-3 flex items-center justify-between">
-            <span className="text-warning text-sm">Schedule changed</span>
+            <span className="text-warning text-sm">
+              {scheduleDirtyKind === "target-only" ? "Targets changed" : "Schedule changed"}
+            </span>
             <button
-              onClick={handleGenerate}
-              className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold"
+              type="button"
+              disabled={configConfirmBusy}
+              onClick={() => { void handleScheduleChangedAction(); }}
+              className="bg-warning text-black px-3 py-1 rounded-lg text-xs font-bold disabled:opacity-50"
             >
-              Regenerate
+              {scheduleDirtyKind === "target-only" ? "Update workouts" : "Regenerate"}
             </button>
           </div>
         )}
@@ -608,8 +787,13 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
           </div>
         )}
 
-        {/* State 3: Uploaded plan exists, no local preview */}
-        {plannerState === "uploaded-plan" && (
+        {/* Escape hatch: full regenerate only when we have no lastGenerated baseline */}
+        {plannerState === "uploaded-plan" &&
+          !(
+            lastGeneratedConfig != null &&
+            currentConfigKey != null &&
+            isProgramConfigKeyCurrent(currentConfigKey, lastGeneratedConfig)
+          ) && (
           <button
             onClick={handleGenerate}
             className="w-full py-3 border border-brand text-brand rounded-xl font-bold text-sm hover:bg-brand/10 transition"

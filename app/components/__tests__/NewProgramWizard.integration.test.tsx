@@ -17,6 +17,7 @@ const initialDraft: NewProgramDraft = {
   totalWeeks: 18,
   startKm: 8,
   includeBasePhase: false,
+  effortMetric: "pace",
 };
 
 function dateWeeksFromNow(weeks: number): string {
@@ -95,6 +96,44 @@ describe("NewProgramWizard", () => {
       ...initialDraft,
       raceName: "Stockholm Half",
     });
+  });
+
+  it("includes effortMetric in draft changes", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+
+    render(<WizardHarness onPreview={onPreview} />);
+
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("pace");
+    await user.selectOptions(screen.getByRole("combobox", { name: /effort metric/i }), "feel");
+    await user.click(screen.getByRole("button", { name: "Preview plan" }));
+
+    expect(onPreview).toHaveBeenCalledWith({
+      ...initialDraft,
+      effortMetric: "feel",
+    });
+  });
+
+  it("disables By Heart Rate in new program until zones are available", () => {
+    render(<WizardHarness />);
+
+    expect(screen.getByRole("option", { name: "By Heart Rate" })).toBeDisabled();
+  });
+
+  it("enables By Heart Rate when lthr and zones are passed", () => {
+    render(
+      <NewProgramWizard
+        draft={initialDraft}
+        validationError={null}
+        onDraftChange={() => {}}
+        onCancel={() => {}}
+        onPreview={() => {}}
+        lthr={165}
+        hrZones={[120, 140, 155, 165, 175]}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "By Heart Rate" })).not.toBeDisabled();
   });
 
   it("derives plan length from the selected race date", async () => {

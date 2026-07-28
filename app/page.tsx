@@ -36,6 +36,7 @@ import { generatePlan } from "@/lib/workoutGenerators";
 import { uploadPlan } from "@/lib/intervalsClient";
 import { syncToGoogleCalendar, toSyncEvents } from "@/lib/googleCalendar";
 import { DEFAULT_LTHR } from "@/lib/constants";
+import { canUseHeartRateMetric, normalizeEffortMetric } from "@/lib/effortMetric";
 
 type Tab = "planner" | "calendar" | "intel" | "coach" | "simulate";
 
@@ -70,7 +71,11 @@ function HomeContent() {
   const isDemo = useAtomValue(isDemoAtom);
 
   const handleAbilityChanged = useCallback(async (newSecs: number, newDist: number) => {
-    if (!settings?.hrZones?.length) return;
+    if (!settings) return;
+    const effortMetric = normalizeEffortMetric(settings.effortMetric);
+    if (effortMetric === "hr" && !canUseHeartRateMetric(settings.lthr, settings.hrZones)) {
+      return;
+    }
 
     const newThreshold = getThresholdPace(newDist, newSecs);
     if (newThreshold && settings.intervalsConnected) {
@@ -89,7 +94,7 @@ function HomeContent() {
       totalWeeks: settings.totalWeeks ?? 18,
       startKm: settings.startKm ?? 8,
       lthr: settings.lthr ?? DEFAULT_LTHR,
-      hrZones: settings.hrZones,
+      hrZones: settings.hrZones ?? [],
       includeBasePhase: settings.includeBasePhase ?? false,
       diabetesMode,
       runDays: settings.runDays,
@@ -98,6 +103,7 @@ function HomeContent() {
       clubType: settings.clubType,
       currentAbilitySecs: newSecs,
       currentAbilityDist: newDist,
+      effortMetric,
     });
     const today = new Date();
     today.setHours(0, 0, 0, 0);

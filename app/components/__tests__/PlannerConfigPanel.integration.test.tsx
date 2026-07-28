@@ -28,6 +28,40 @@ function renderPanel(settings: UserSettings = baseSettings) {
 }
 
 describe("PlannerConfigPanel", () => {
+  it("saves effortMetric when the select changes", async () => {
+    const user = userEvent.setup();
+    const { saves } = renderPanel();
+
+    await user.selectOptions(screen.getByRole("combobox", { name: /effort metric/i }), "feel");
+
+    await waitFor(() => {
+      expect(saves).toContainEqual({ effortMetric: "feel" });
+    });
+  });
+
+  it("defaults the effort metric select to pace", () => {
+    renderPanel();
+
+    expect(screen.getByRole("combobox", { name: /effort metric/i })).toHaveValue("pace");
+  });
+
+  it("disables By Heart Rate when HR zones are missing", () => {
+    renderPanel();
+
+    const hrOption = screen.getByRole("option", { name: "By Heart Rate" });
+    expect(hrOption).toBeDisabled();
+  });
+
+  it("enables By Heart Rate when lthr and five zones are present", () => {
+    renderPanel({
+      ...baseSettings,
+      lthr: 165,
+      hrZones: [120, 140, 155, 165, 175],
+    });
+
+    expect(screen.getByRole("option", { name: "By Heart Rate" })).not.toBeDisabled();
+  });
+
   it("saves the club day as the long run day when club type becomes long", async () => {
     const user = userEvent.setup();
     const { saves } = renderPanel({

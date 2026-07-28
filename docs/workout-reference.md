@@ -6,6 +6,14 @@ Reference documentation for workout generation. Read this when working on `lib/w
 
 Inspired by **Ben Parkes' half marathon plan** — pace-based training with workout variety, progressive long runs, and a strong emphasis on keeping easy runs truly easy.
 
+## Effort metrics
+
+Plans and individual workouts can prescribe intensity by pace, heart rate, or feel. Set the plan default in Planner / new-program / setup (`effortMetric`); override per workout via the EventModal dropdown.
+
+- **Pace:** `10m 6:49-20:00/km Pace` (or `% pace` without ability)
+- **Heart rate:** `10m 68-83% LTHR (115-140 bpm)`
+- **Feel:** `Easy 10m` (no numeric target; name stays `W{weekNum} {Type}` with no metric suffix)
+
 ## Workout Types
 
 The plan uses rotating workout types to keep training varied and engaging. Every quality session is different.
