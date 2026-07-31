@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 
+const CONTROL_CLASS =
+  "h-8 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg border border-border transition disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand";
+
 interface WorkoutActionsMenuProps {
   canReplace: boolean;
   canMove: boolean;
@@ -53,9 +56,9 @@ export function WorkoutActionsMenu({
           if (disabled) return;
           setOpen((prev) => !prev);
         }}
-        className="px-2 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
+        className={`${CONTROL_CLASS} inline-flex w-8 items-center justify-center`}
       >
-        <MoreHorizontal size={18} aria-hidden="true" />
+        <MoreHorizontal size={16} aria-hidden="true" />
       </button>
       {showMenu && (
         <>
