@@ -19,9 +19,10 @@ export function WorkoutActionsMenu({
   onDelete,
 }: WorkoutActionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const showMenu = open && !disabled;
 
   useEffect(() => {
-    if (!open) return;
+    if (!showMenu) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -33,11 +34,7 @@ export function WorkoutActionsMenu({
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
     };
-  }, [open]);
-
-  useEffect(() => {
-    if (disabled) setOpen(false);
-  }, [disabled]);
+  }, [showMenu]);
 
   const closeAnd = (action: () => void) => {
     setOpen(false);
@@ -50,7 +47,7 @@ export function WorkoutActionsMenu({
         type="button"
         aria-label="Workout actions"
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={showMenu}
         disabled={disabled}
         onClick={() => {
           if (disabled) return;
@@ -60,7 +57,7 @@ export function WorkoutActionsMenu({
       >
         <MoreHorizontal size={18} aria-hidden="true" />
       </button>
-      {open && (
+      {showMenu && (
         <>
           <div
             className="fixed inset-0 z-40"
