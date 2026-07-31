@@ -45,6 +45,15 @@ npm run setup-worktree
 
 `setup-worktree` seeds `AUTH_URL` and `QA_AUTH_*` placeholders when missing. You still must set `QA_AUTH_EMAIL` to the dedicated account.
 
+`AUTH_URL` / `NEXTAUTH_URL` in the **process environment** override `.env.local`. Use that when Next runs on a non-default port:
+
+```bash
+AUTH_URL=http://localhost:3005 npm run dev -- --port 3005
+LOGIN_URL="$(AUTH_URL=http://localhost:3005 npm run -s qa:login-url -- /)"
+```
+
+The login URL host and port must match the running server.
+
 ## Testing another feature branch (overlay — do not commit)
 
 QA auth may not be on the branch under test. **Do not** cherry-pick into a product PR.
