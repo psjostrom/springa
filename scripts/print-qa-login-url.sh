@@ -23,18 +23,22 @@ TOKEN="$(trim "$TOKEN")"
 EMAIL="$(grep -E '^QA_AUTH_EMAIL=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
 EMAIL="$(trim "$EMAIL")"
 # Process env overrides .env.local (so alternate ports work without editing the file).
-if [[ -n "${AUTH_URL:-}" ]]; then
-  BASE="$(trim "$AUTH_URL")"
-elif [[ -n "${NEXTAUTH_URL:-}" ]]; then
-  BASE="$(trim "$NEXTAUTH_URL")"
+AUTH_URL_TRIMMED="$(trim "${AUTH_URL:-}")"
+NEXTAUTH_URL_TRIMMED="$(trim "${NEXTAUTH_URL:-}")"
+if [[ -n "$AUTH_URL_TRIMMED" ]]; then
+  BASE="$AUTH_URL_TRIMMED"
+elif [[ -n "$NEXTAUTH_URL_TRIMMED" ]]; then
+  BASE="$NEXTAUTH_URL_TRIMMED"
 else
   BASE="http://localhost:3000"
   AUTH_FROM_FILE="$(grep -E '^AUTH_URL=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
-  if [[ -z "${AUTH_FROM_FILE:-}" ]]; then
+  AUTH_FROM_FILE="$(trim "$AUTH_FROM_FILE")"
+  if [[ -z "$AUTH_FROM_FILE" ]]; then
     AUTH_FROM_FILE="$(grep -E '^NEXTAUTH_URL=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
+    AUTH_FROM_FILE="$(trim "$AUTH_FROM_FILE")"
   fi
-  if [[ -n "${AUTH_FROM_FILE:-}" ]]; then
-    BASE="$(trim "$AUTH_FROM_FILE")"
+  if [[ -n "$AUTH_FROM_FILE" ]]; then
+    BASE="$AUTH_FROM_FILE"
   fi
 fi
 
