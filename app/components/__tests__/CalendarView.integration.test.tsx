@@ -202,7 +202,7 @@ Cooldown
       expect(screen.getByRole("heading", { name: "W05 Easy + Strides" })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: "Edit" })); // still Edit until Task 2
+    await user.click(screen.getByRole("button", { name: /Move workout/i }));
     const dateInput = screen.getByDisplayValue("2026-02-16T08:00");
     await user.clear(dateInput);
     await user.type(dateInput, "2026-02-15T08:00");

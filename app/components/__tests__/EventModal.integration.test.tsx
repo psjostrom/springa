@@ -488,20 +488,42 @@ Cooldown
       expect(onEventUpdated).toHaveBeenCalledTimes(1);
       expect(screen.getByRole("heading", { name: "W05 Long (12km)" })).toBeInTheDocument();
     });
-    const replaceButton = screen.getByRole("button", { name: "Replace" });
-    const editButton = screen.getByRole("button", { name: "Edit" });
-    const deleteButton = screen.getByRole("button", { name: "Delete" });
+
+    const effortMetric = screen.getByRole("combobox", { name: /effort metric/i });
+    const actionsButton = screen.getByRole("button", { name: "Workout actions" });
     const closeButton = screen.getByRole("button", { name: "Close" });
 
-    expect(replaceButton).not.toBeDisabled();
-    expect(editButton).not.toBeDisabled();
-    expect(deleteButton).not.toBeDisabled();
+    expect(effortMetric).not.toBeDisabled();
+    expect(actionsButton).not.toBeDisabled();
     expect(closeButton).not.toBeDisabled();
+
+    await user.click(actionsButton);
+    expect(screen.getByRole("menuitem", { name: "Replace" })).not.toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Move" })).not.toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).not.toBeDisabled();
 
     await user.click(container.firstElementChild as HTMLElement);
 
     expect(onClose).toHaveBeenCalledTimes(1);
     request.resolve();
+  });
+
+  it("opens date editing from the tappable date and from Move in the actions menu", async () => {
+    const user = userEvent.setup();
+    render(<StatefulEventModalHarness onEventUpdated={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Move workout/i }));
+    expect(screen.getByDisplayValue(/T/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Workout actions" }));
+    expect(screen.getByRole("menuitem", { name: "Replace" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Move" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Move" }));
+    expect(screen.getByDisplayValue(/T/)).toBeInTheDocument();
   });
 
   it("allows closing after the Intervals patch succeeds even while Google rename is pending", async () => {
