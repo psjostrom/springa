@@ -108,7 +108,9 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
     handleDragEnter,
     handleDragLeave,
     handleDrop,
-  } = useDragDrop(setEvents);
+  } = useDragDrop(setEvents, (eventId, newDate) => {
+    patchCalendarEvent({ id: eventId, patch: { date: newDate } });
+  });
 
   // Lazy-load stream data via SWR when modal opens for a completed workout
   const selectedActivityId = selectedEvent?.type === "completed" ? selectedEvent.activityId : null;
@@ -145,6 +147,7 @@ export function CalendarView({ initialEvents, isLoadingInitial, initialError, on
 
   // Handle date save from modal
   const handleDateSaved = (eventId: string, newDate: Date) => {
+    patchCalendarEvent({ id: eventId, patch: { date: newDate } });
     setEvents((prev) =>
       prev.map((e) => (e.id === eventId ? { ...e, date: newDate } : e)),
     );

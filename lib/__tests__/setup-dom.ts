@@ -141,6 +141,7 @@ vi.mock("lucide-react", () => {
     Timer: icon("Timer"),
     ExternalLink: icon("ExternalLink"),
     MapPin: icon("MapPin"),
+    MoreHorizontal: icon("MoreHorizontal"),
   };
 });
 

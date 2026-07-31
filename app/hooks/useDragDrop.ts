@@ -7,6 +7,7 @@ import { parseEventId } from "@/lib/format";
 
 export function useDragDrop(
   setEvents: React.Dispatch<React.SetStateAction<CalendarEvent[]>>,
+  onEventMoved?: (eventId: string, newDate: Date) => void,
 ) {
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export function useDragDrop(
         },
       });
 
+      onEventMoved?.(draggedEvent.id, newDate);
       setEvents((prev) =>
         prev.map((e) =>
           e.id === draggedEvent.id ? { ...e, date: newDate } : e,

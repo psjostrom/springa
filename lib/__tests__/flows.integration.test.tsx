@@ -177,14 +177,14 @@ describe("Flow 3: Calendar — Edit planned event date", () => {
     const plannedEvent = screen.getByText(/W05 Easy \+ Strides/);
     await user.click(plannedEvent);
 
-    // 3. Assert Planned badge and Edit button visible
+    // 3. Assert Planned badge and tappable date (move) control visible
     await waitFor(() => {
       expect(screen.getByText(/Planned/)).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Move workout/i })).toBeInTheDocument();
 
-    // 5. Click Edit -> datetime-local input appears
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    // 5. Click Move workout -> datetime-local input appears
+    await user.click(screen.getByRole("button", { name: /Move workout/i }));
 
     const dateInput = screen.getByDisplayValue(/2026-02-17/);
     expect(dateInput).toBeInTheDocument();
@@ -375,14 +375,15 @@ describe("Flow 7: Calendar — Delete planned event from modal", () => {
     const plannedEvent = screen.getByText(/W05 Easy \+ Strides/);
     await user.click(plannedEvent);
 
-    // 3. Assert Planned badge and Delete button visible
+    // 3. Assert Planned badge and Workout actions menu visible
     await waitFor(() => {
       expect(screen.getByText(/Planned/)).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Workout actions" })).toBeInTheDocument();
 
-    // 5. Click Delete -> confirmation appears
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    // 5. Open actions menu -> Delete -> confirmation appears
+    await user.click(screen.getByRole("button", { name: "Workout actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(screen.getByText("Delete this workout?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer } from "react";
 import { format, isToday, startOfDay } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { useAtomValue } from "jotai";
+import { ChevronRight } from "lucide-react";
 import type { CalendarEvent, PaceTable } from "@/lib/types";
 import type { BGResponseModel } from "@/lib/bgModel";
 import type { RunBGContext } from "@/lib/runBGContext";
@@ -24,6 +25,7 @@ import { PreRunReadiness } from "./PreRunReadiness";
 import { PreRunCarbsInput } from "./PreRunCarbsInput";
 import { ClothingRecommendation } from "./ClothingRecommendation";
 import { EffortMetricSelect } from "./EffortMetricSelect";
+import { WorkoutActionsMenu } from "./WorkoutActionsMenu";
 import { WidgetTabs } from "./WidgetTabs";
 import { WorkoutGenerator } from "./WorkoutGenerator";
 import type { ClothingRecommendation as ClothingRec } from "@/lib/clothingCalculator";
@@ -319,13 +321,36 @@ export function EventModal({
                   className="border border-border bg-surface-alt text-text rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
-            ) : (
-              <div className="text-sm text-muted mb-1">
-                {format(effectiveSelectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
-                  locale: enGB,
-                })}
-              </div>
-            )}
+            ) : (() => {
+              const formattedDate = format(effectiveSelectedEvent.date, "EEEE d MMMM yyyy 'at' HH:mm", {
+                locale: enGB,
+              });
+              if (effectiveSelectedEvent.type === "planned") {
+                return (
+                  <button
+                    type="button"
+                    aria-label={`Move workout, ${formattedDate}`}
+                    disabled={isChangingMetric}
+                    onClick={() => {
+                      if (isChangingMetric) return;
+                      dispatch({
+                        type: "START_EDIT_DATE",
+                        date: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm"),
+                      });
+                    }}
+                    className="flex items-center gap-1 text-sm text-muted hover:text-text mb-1 transition disabled:opacity-50"
+                  >
+                    <span>{formattedDate}</span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                );
+              }
+              return (
+                <div className="text-sm text-muted mb-1">
+                  {formattedDate}
+                </div>
+              );
+            })()}
             <h3 className="text-lg sm:text-xl font-bold text-text">
               {effectiveSelectedEvent.name}
             </h3>
@@ -341,49 +366,28 @@ export function EventModal({
           <div className="flex items-center gap-2">
             {(editMode.kind === "idle" || editMode.kind === "changing-metric") && (
               <>
-                {effectiveSelectedEvent.type === "planned" && (
-                  <>
-                    {showEffortMetricSelect && (
-                      <EffortMetricSelect
-                        value={currentEffortMetric}
-                        onChange={(metric) => { void applyEffortMetric(metric); }}
-                        disabled={isChangingMetric}
-                        lthr={lthr}
-                        hrZones={hrZones}
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        if (isChangingMetric) return;
-                        dispatch({ type: "START_REPLACE" });
-                      }}
-                      disabled={isChangingMetric}
-                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
-                    >
-                      Replace
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (isChangingMetric) return;
-                        dispatch({ type: "START_EDIT_DATE", date: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm") });
-                      }}
-                      disabled={isChangingMetric}
-                      className="px-3 py-1.5 text-sm bg-surface-alt hover:bg-border text-muted rounded-lg transition disabled:opacity-50"
-                    >
-                      Edit
-                    </button>
-                  </>
+                {showEffortMetricSelect && (
+                  <EffortMetricSelect
+                    value={currentEffortMetric}
+                    onChange={(metric) => { void applyEffortMetric(metric); }}
+                    disabled={isChangingMetric}
+                    lthr={lthr}
+                    hrZones={hrZones}
+                  />
                 )}
-                <button
-                  onClick={() => {
-                    if (isChangingMetric) return;
-                    dispatch({ type: "CONFIRM_DELETE" });
-                  }}
+                <WorkoutActionsMenu
+                  canReplace={effectiveSelectedEvent.type === "planned"}
+                  canMove={effectiveSelectedEvent.type === "planned"}
                   disabled={isChangingMetric}
-                  className="px-3 py-1.5 text-sm bg-tint-error hover:bg-border text-text rounded-lg transition disabled:opacity-50"
-                >
-                  Delete
-                </button>
+                  onReplace={() => { dispatch({ type: "START_REPLACE" }); }}
+                  onMove={() => {
+                    dispatch({
+                      type: "START_EDIT_DATE",
+                      date: format(effectiveSelectedEvent.date, "yyyy-MM-dd'T'HH:mm"),
+                    });
+                  }}
+                  onDelete={() => { dispatch({ type: "CONFIRM_DELETE" }); }}
+                />
               </>
             )}
             {(editMode.kind === "confirming-delete" || editMode.kind === "deleting") && (
