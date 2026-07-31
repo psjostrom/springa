@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { format } from "date-fns";
 import { http, HttpResponse } from "msw";
 import { renderHook, act } from "@/lib/__tests__/test-utils";
 import { useDragDrop } from "../useDragDrop";
@@ -69,7 +70,8 @@ describe("useDragDrop", () => {
   });
 
   it("calls updateEvent and updates local state on drop", async () => {
-    const { result } = renderHook(() => useDragDrop(setEvents));
+    const onEventMoved = vi.fn();
+    const { result } = renderHook(() => useDragDrop(setEvents, onEventMoved));
 
     // Start drag
     const dragEvent = {
@@ -88,6 +90,10 @@ describe("useDragDrop", () => {
       start_date_local: expect.stringContaining("2026-03-12"),
     }));
     expect(setEventsMock).toHaveBeenCalled();
+    expect(onEventMoved).toHaveBeenCalledTimes(1);
+    const [movedId, movedDate] = onEventMoved.mock.calls[0] as [string, Date];
+    expect(movedId).toBe("event-100");
+    expect(format(movedDate, "yyyy-MM-dd")).toBe("2026-03-12");
     expect(result.current.draggedEvent).toBeNull();
   });
 
