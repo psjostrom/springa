@@ -837,7 +837,7 @@ describe("generateSingleWorkout", () => {
     }
   });
 
-  it("quality category downgrades to easy during recovery week", () => {
+  it("on-demand quality forces a speed session during recovery week", () => {
     for (let w = 0; w < config.totalWeeks; w++) {
       const wp = getWeekPhase(ctx, w);
       if (wp.isRecovery) {
@@ -845,23 +845,63 @@ describe("generateSingleWorkout", () => {
         recoveryThursday.setDate(recoveryThursday.getDate() + w * 7 + 3);
         const event = generateSingleWorkout("quality", recoveryThursday, config);
         expect(event).not.toBeNull();
-        expect(event!.name).toContain("Easy");
+        expect(event!.name).not.toMatch(/\bEasy\b/);
+        expect(event!.description).toMatch(/Main set \d+x/);
         return;
       }
     }
+    throw new Error("no recovery week found");
   });
 
-  it("quality category downgrades to easy during base phase", () => {
+  it("on-demand quality forces a speed session during base phase", () => {
     const baseConfig = { ...config, includeBasePhase: true };
     const baseCtx = buildContext(baseConfig);
     const week1Thursday = new Date(baseCtx.planStartMonday);
     week1Thursday.setDate(week1Thursday.getDate() + 3);
     const wp = getWeekPhase(baseCtx, 0);
-    if (wp.isBase) {
-      const event = generateSingleWorkout("quality", week1Thursday, baseConfig);
-      expect(event).not.toBeNull();
-      expect(event!.name).toContain("Easy");
+    expect(wp.isBase).toBe(true);
+    const event = generateSingleWorkout("quality", week1Thursday, baseConfig);
+    expect(event).not.toBeNull();
+    expect(event!.name).not.toMatch(/\bEasy\b/);
+    expect(event!.description).toMatch(/Main set \d+x/);
+  });
+
+  it("plan generation still soft-downgrades speed days in recovery weeks", () => {
+    const plan = generatePlan(config);
+    for (let w = 0; w < config.totalWeeks; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (!wp.isRecovery) continue;
+      const weekStart = new Date(ctx.planStartMonday);
+      weekStart.setDate(weekStart.getDate() + w * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      const weekEvents = plan.filter(
+        (e) => e.start_date_local >= weekStart && e.start_date_local < weekEnd,
+      );
+      const speedLike = weekEvents.filter((e) =>
+        /Short Intervals|Hills|Long Intervals|Distance Intervals|Race Pace Intervals/i.test(
+          e.name,
+        ),
+      );
+      expect(speedLike).toHaveLength(0);
+      return;
     }
+    throw new Error("no recovery week found");
+  });
+
+  it("on-demand quality stays light during race-test week", () => {
+    for (let w = 0; w < config.totalWeeks; w++) {
+      const wp = getWeekPhase(ctx, w);
+      if (!wp.isRaceTest) continue;
+      const raceTestThursday = new Date(ctx.planStartMonday);
+      raceTestThursday.setDate(raceTestThursday.getDate() + w * 7 + 3);
+      const event = generateSingleWorkout("quality", raceTestThursday, config);
+      expect(event).not.toBeNull();
+      expect(event!.name).toMatch(/Easy/);
+      expect(event!.description).not.toMatch(/Main set \d+x/);
+      return;
+    }
+    throw new Error("no race-test week found");
   });
 });
 

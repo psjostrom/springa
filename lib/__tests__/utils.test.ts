@@ -1017,6 +1017,32 @@ Cooldown
     expect(mainSet.steps[1].duration).toBe("0.2km");
   });
 
+  it("keeps targetless Walk recoveries in HR workouts", () => {
+    // Generator emits Walk/Stride/Uphill as targetless even when other steps use % LTHR.
+    const desc = `Track-style reps.
+
+Warmup
+- Warmup 10m 66-78% LTHR (112-132 bpm) intensity=warmup
+
+Main set 8x
+- Fast 0.6km 89-99% LTHR (150-167 bpm) intensity=active
+- Walk 0.2km intensity=rest
+
+Cooldown
+- Cooldown 5m 66-78% LTHR (112-132 bpm) intensity=cooldown
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
+    const mainSet = sections.find((s) => s.name === "Main set");
+    expect(mainSet).toBeDefined();
+    expect(mainSet!.repeats).toBe(8);
+    expect(mainSet!.steps).toHaveLength(2);
+    expect(mainSet!.steps[0].duration).toBe("0.6km");
+    expect(mainSet!.steps[0].zone).toBe("z4");
+    expect(mainSet!.steps[1].duration).toBe("0.2km");
+    expect(mainSet!.steps[1].zone).toBe("z1");
+  });
+
   it("hides redundant step labels (Easy, Fast, Walk) but keeps Uphill/Downhill/Stride", () => {
     const desc = `Notes.
 

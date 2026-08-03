@@ -352,7 +352,9 @@ export function EventModal({
               );
             })()}
             <h3 className="text-lg sm:text-xl font-bold text-text">
-              {effectiveSelectedEvent.name}
+              {editMode.kind === "replacing"
+                ? `Replace ${effectiveSelectedEvent.name}`
+                : effectiveSelectedEvent.name}
             </h3>
             {(() => {
               const badge = getEventStatusBadge(effectiveSelectedEvent);
