@@ -1,8 +1,8 @@
 # Springa
 
-Workout generator and BG management system for a T1D runner targeting EcoTrail 16km (2026-06-13). Generates training plans that sync to Intervals.icu → Garmin Connect → Garmin Forerunner 970.
+Workout generator and BG management system for a T1D runner. Generates training plans that sync to Intervals.icu → Garmin Connect → Garmin Forerunner 970.
 
-Personal/medical data (runner profile, physiological metrics, T1D management, equipment) lives in `.claude.local.md`.
+Personal/medical data (runner profile, physiological metrics, T1D management, equipment) lives in `.claude.local.md` — gitignored, so copy it by hand when moving machines; it won't travel via git.
 
 ## Tech Stack
 
