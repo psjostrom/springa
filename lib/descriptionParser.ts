@@ -387,8 +387,12 @@ export function parseWorkoutStructure(
       if (!isFreeFormat) {
         const free = freeStepPattern.exec(line);
         if (free) {
+          // Preserve "Walk" label even though it's in GENERIC_LABELS, to show recoveries in HR cards.
+          // Other generic labels (Easy, Fast, etc.) are still filtered to undefined.
           const label =
-            free[1] && !GENERIC_LABELS.includes(free[1]) ? free[1] : undefined;
+            free[1] && (free[1] === "Walk" || !GENERIC_LABELS.includes(free[1]))
+              ? free[1]
+              : undefined;
           steps.push({
             label,
             duration: free[2],
