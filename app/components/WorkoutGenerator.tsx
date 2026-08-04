@@ -175,6 +175,7 @@ export function WorkoutGenerator({
 
   return (
     <div className="space-y-3">
+      <div className="text-base font-bold text-text">{workout.name}</div>
       <WorkoutCard
         description={workout.description}
         fuelRate={workout.fuelRate}

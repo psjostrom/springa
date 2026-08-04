@@ -378,7 +378,29 @@ export function parseWorkoutStructure(
     const steps: WorkoutStep[] = [];
     for (const line of lines) {
       const m = stepPattern.exec(line);
-      if (m) steps.push(parseStep(m));
+      if (m) {
+        steps.push(parseStep(m));
+        continue;
+      }
+      // HR (and mixed) workouts emit Walk/Stride/Uphill as targetless lines
+      // alongside % LTHR steps. Fall back so recoveries stay visible in the card.
+      if (!isFreeFormat) {
+        const free = freeStepPattern.exec(line);
+        if (free) {
+          // Preserve "Walk" label even though it's in GENERIC_LABELS, to show recoveries in HR cards.
+          // Other generic labels (Easy, Fast, etc.) are still filtered to undefined.
+          const label =
+            free[1] && (free[1] === "Walk" || !GENERIC_LABELS.includes(free[1]))
+              ? free[1]
+              : undefined;
+          steps.push({
+            label,
+            duration: free[2],
+            zone: zoneForNoPaceLabel(free[1]),
+            bpmRange: "",
+          });
+        }
+      }
     }
     return steps;
   }

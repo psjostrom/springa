@@ -1017,7 +1017,35 @@ Cooldown
     expect(mainSet.steps[1].duration).toBe("0.2km");
   });
 
-  it("hides redundant step labels (Easy, Fast, Walk) but keeps Uphill/Downhill/Stride", () => {
+  it("keeps targetless Walk recoveries in HR workouts", () => {
+    // Generator emits Walk/Stride/Uphill as targetless even when other steps use % LTHR.
+    const desc = `Track-style reps.
+
+Warmup
+- Warmup 10m 66-78% LTHR (112-132 bpm) intensity=warmup
+
+Main set 8x
+- Fast 0.6km 89-99% LTHR (150-167 bpm) intensity=active
+- Walk 0.2km intensity=rest
+
+Cooldown
+- Cooldown 5m 66-78% LTHR (112-132 bpm) intensity=cooldown
+`;
+
+    const sections = parseWorkoutStructure(desc, DEFAULT_LTHR, testHrZones);
+    const mainSet = sections.find((s) => s.name === "Main set");
+    expect(mainSet).toBeDefined();
+    expect(mainSet!.repeats).toBe(8);
+    expect(mainSet!.steps).toHaveLength(2);
+    expect(mainSet!.steps[0].duration).toBe("0.6km");
+    expect(mainSet!.steps[0].zone).toBe("z4");
+    expect(mainSet!.steps[1].duration).toBe("0.2km");
+    expect(mainSet!.steps[1].zone).toBe("z1");
+    // Regression test for commit e71c048: Walk label should be preserved (not undefined)
+    expect(mainSet!.steps[1].label).toBe("Walk");
+  });
+
+  it("hides redundant step labels (Easy, Fast, Walk with targets) but keeps Uphill/Downhill/Stride", () => {
     const desc = `Notes.
 
 Warmup
@@ -1026,6 +1054,7 @@ Warmup
 Main set 6x
 - Uphill 2m 99-111% LTHR (167-188 bpm)
 - Easy 3m 66-78% LTHR (112-132 bpm)
+- Walk 2m 50-66% LTHR (85-112 bpm)
 
 Cooldown
 - 5m 66-78% LTHR (112-132 bpm)`;
@@ -1034,6 +1063,7 @@ Cooldown
     const mainSet = sections[1];
     expect(mainSet.steps[0].label).toBe("Uphill");
     expect(mainSet.steps[1].label).toBeUndefined(); // "Easy" filtered out
+    expect(mainSet.steps[2].label).toBeUndefined(); // "Walk" with target filtered out
   });
 });
 

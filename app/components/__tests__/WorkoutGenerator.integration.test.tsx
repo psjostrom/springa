@@ -66,6 +66,7 @@ describe("WorkoutGenerator", () => {
     await user.click(screen.getByRole("button", { name: /easy/i }));
     expect(screen.getByText("Sync Workouts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+    expect(screen.getByText(/^W\d{2} /)).toBeInTheDocument();
   });
 
   it("returns to picker when Back is clicked", async () => {

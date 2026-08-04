@@ -168,9 +168,14 @@ function applyEffortMetricName(ctx: PlanContext, event: WorkoutEvent): WorkoutEv
 function getSpeedSessionType(
   ctx: PlanContext,
   wp: WeekPhase,
+  opts?: { force?: boolean },
 ): SpeedSessionType | null {
-  // No speed during base, recovery, race test, or race week
-  if (wp.isBase || wp.isRaceWeek || wp.isRecovery || wp.isRaceTest) return null;
+  // Always keep race-test / race-week light — even on-demand Quality.
+  if (wp.isRaceWeek || wp.isRaceTest) return null;
+
+  // Plan auto-schedule: no speed during base or recovery.
+  // On-demand replace can force a real quality session in those phases.
+  if (!opts?.force && (wp.isBase || wp.isRecovery)) return null;
 
   // Taper weeks get race-pace intervals to stay sharp
   if (wp.isTaper) return "race-pace-intervals";
@@ -190,6 +195,7 @@ const generateQualityRun = (
   weekIdx: number,
   date: Date,
   wp: WeekPhase,
+  opts?: { force?: boolean },
 ): WorkoutEvent | null => {
   if (!isBefore(date, ctx.raceDate) && !isSameDay(date, ctx.raceDate))
     return null;
@@ -202,7 +208,7 @@ const generateQualityRun = (
   const wu = s("10m", "z2", "Warmup");
   const cd = s("5m", "z2", "Cooldown");
 
-  const sessionType = getSpeedSessionType(ctx, wp);
+  const sessionType = getSpeedSessionType(ctx, wp, opts);
 
   if (sessionType === null) {
     // Race week: no Thursday session — the Tuesday shakeout is enough
@@ -679,7 +685,8 @@ export function generateSingleWorkout(
       event = generateEasyRun(ctx, weekIdx, date, wp);
       break;
     case "quality":
-      event = generateQualityRun(ctx, weekIdx, date, wp);
+      // Explicit on-demand choice — do not soft-downgrade to Easy for phase.
+      event = generateQualityRun(ctx, weekIdx, date, wp, { force: true });
       break;
     case "long":
       event = generateLongRun(ctx, weekIdx, date, wp);
