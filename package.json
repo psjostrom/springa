@@ -31,6 +31,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "cheerio": "^1.2.0",
     "date-fns": "^4.4.0",
+    "jose": "^6.2.8",
     "jotai": "^2.20.1",
     "lucide-react": "^1.17.0",
     "mapbox-gl": "^3.24.0",
