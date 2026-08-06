@@ -9,7 +9,7 @@ import {
   verifyQaToken,
 } from "./qaAuth";
 
-async function ensureUserSettings(email: string): Promise<void> {
+export async function ensureUserSettings(email: string): Promise<void> {
   await db().execute({
     sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
     args: [email],
