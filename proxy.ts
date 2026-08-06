@@ -50,6 +50,12 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // API routes: never HTML-redirect; handlers return JSON 401 via requireAuth
+  // (needed for native Bearer clients without a cookie session)
+  if (nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   if (!isLoggedIn) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
