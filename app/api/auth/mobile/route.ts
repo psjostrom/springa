@@ -22,12 +22,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "idToken required" }, { status: 400 });
   }
 
+  let email: string;
   try {
-    const { email } = await verifyGoogleIdToken(idToken);
+    ({ email } = await verifyGoogleIdToken(idToken));
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     await ensureUserSettings(email);
     const { token, expiresAt } = await signMobileToken(email);
     return NextResponse.json({ token, expiresAt, user: { email } });
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

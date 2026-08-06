@@ -77,6 +77,23 @@ describe("requireAuth", () => {
     await expect(requireAuth()).resolves.toBe("native@example.com");
   });
 
+  it("prefers cookie email when Bearer header is also present", async () => {
+    // eslint-disable-next-line no-restricted-syntax -- auth boundary mock
+    mockAuth.mockResolvedValue({
+      user: { email: "cookie@example.com" },
+      expires: "",
+    } as Session);
+    // eslint-disable-next-line no-restricted-syntax -- headers boundary mock
+    mockHeaders.mockResolvedValue(
+      new Headers({ Authorization: "Bearer ignored.token" }),
+    );
+    // eslint-disable-next-line no-restricted-syntax -- would fail if Bearer path ran; cookie must win
+    (verifyMobileToken as unknown as MockedFunction<typeof verifyMobileToken>).mockRejectedValue(
+      new Error("should not verify Bearer when cookie present"),
+    );
+    await expect(requireAuth()).resolves.toBe("cookie@example.com");
+  });
+
   it("throws when Bearer token is invalid", async () => {
     // eslint-disable-next-line no-restricted-syntax -- auth boundary mock
     mockAuth.mockResolvedValue(null);

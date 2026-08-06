@@ -70,4 +70,14 @@ describe("POST /api/auth/mobile", () => {
     const res = await postJson({ idToken: "nope" });
     expect(res.status).toBe(401);
   });
+
+  it("returns 500 when ensureUserSettings fails after Google verify", async () => {
+    // eslint-disable-next-line no-restricted-syntax -- Google JWKS boundary mock
+    mockVerify.mockResolvedValue({ email: "runner@example.com" });
+    // eslint-disable-next-line no-restricted-syntax -- DB boundary mock
+    mockEnsure.mockRejectedValue(new Error("db down"));
+    const res = await postJson({ idToken: "google-id-token" });
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: "Server error" });
+  });
 });
