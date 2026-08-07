@@ -3,18 +3,14 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "./db";
 import { encrypt, getEncryptionKey } from "./credentials";
+import { ensureUserSettings } from "./ensureUserSettings";
 import {
   getQaAuthEmail,
   isLocalQaAllowed,
   verifyQaToken,
 } from "./qaAuth";
 
-export async function ensureUserSettings(email: string): Promise<void> {
-  await db().execute({
-    sql: "INSERT OR IGNORE INTO user_settings (email) VALUES (?)",
-    args: [email],
-  });
-}
+export { ensureUserSettings } from "./ensureUserSettings";
 
 function isMissingGoogleRefreshTokenColumn(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);

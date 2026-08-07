@@ -10,12 +10,15 @@ export class AuthError extends Error {
 }
 
 /** Get authenticated user email or throw AuthError. */
-export async function requireAuth(): Promise<string> {
+export async function requireAuth(options?: {
+  /** Test override — production always reads Next.js request headers. */
+  headerList?: Headers;
+}): Promise<string> {
   const session = await auth();
   const cookieEmail = session?.user?.email;
   if (cookieEmail) return cookieEmail;
 
-  const headerList = await headers();
+  const headerList = options?.headerList ?? (await headers());
   const authorization = headerList.get("authorization");
   if (authorization?.startsWith("Bearer ")) {
     const token = authorization.slice("Bearer ".length).trim();

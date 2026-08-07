@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureUserSettings } from "@/lib/auth";
+import { ensureUserSettings } from "@/lib/ensureUserSettings";
 import { signMobileToken, verifyGoogleIdToken } from "@/lib/mobileAuth";
 
 export async function POST(req: Request) {

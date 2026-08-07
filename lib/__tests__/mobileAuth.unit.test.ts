@@ -12,7 +12,11 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  process.env.AUTH_SECRET = PREV_SECRET;
+  if (PREV_SECRET === undefined) {
+    delete process.env.AUTH_SECRET;
+  } else {
+    process.env.AUTH_SECRET = PREV_SECRET;
+  }
 });
 
 describe("mobileAuth JWT", () => {
