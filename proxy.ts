@@ -6,10 +6,10 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isDemo = req.cookies.get("springa-demo")?.value === "1";
 
-  // Dev-only QA login (returns 404 when disabled) — must not require a session
+  // Dev-only QA routes (return 404 when disabled) — must not require a session
   // and must never be shadowed by the demo rewrite below, even if a stale
   // springa-demo cookie is present.
-  if (nextUrl.pathname === "/api/qa/login") {
+  if (nextUrl.pathname.startsWith("/api/qa/")) {
     return NextResponse.next();
   }
 
