@@ -125,24 +125,45 @@ agent-browser close
 | Path | Behavior |
 | --- | --- |
 | `GET /api/qa/login?token=…&redirectTo=/` | Validates token, creates Auth.js session via Credentials provider `qa`, redirects |
-| Same path when QA disabled | `404 Not Found` |
+| `POST /api/qa/mobile` `{ "token": "…" }` | Same gates; returns mobile Bearer JWT `{ token, expiresAt, user: { email } }` for `springa-native` |
+| Same paths when QA disabled | `404 Not Found` |
 | Bad token | `401 Unauthorized` |
+
+## Native app (`springa-native`)
+
+Same token/email env on local Springa. The app exchanges the token for a Bearer session (no cookie).
+
+```bash
+# Springa (local, QA env set)
+npm run dev -- --port 3000
+
+# Build deep link (do not paste into chat — contains the token)
+DEEP_LINK="$(npm run -s qa:native-deep-link)"
+
+# Emulator / device with the native dev client
+adb shell am start -a android.intent.action.VIEW -d "$DEEP_LINK" com.springa.app
+```
+
+`EXPO_PUBLIC_SPRINGA_API_URL` on the native app must point at that local Springa (not `springa.run`). The `qa-login` route is `__DEV__`-only.
 
 ## Files
 
 - `lib/qaAuth.ts` — allow / verify helpers
 - `lib/auth.ts` — Credentials provider `qa`
-- `app/api/qa/login/route.ts` — login entry
-- `proxy.ts` — allows `/api/qa/login` without an existing session (checked before the demo cookie rewrite)
-- `scripts/print-qa-login-url.sh` — builds login URL (`npm run qa:login-url`)
+- `app/api/qa/login/route.ts` — browser login entry
+- `app/api/qa/mobile/route.ts` — native Bearer login entry
+- `proxy.ts` — allows `/api/qa/*` without an existing session (checked before the demo cookie rewrite)
+- `scripts/print-qa-login-url.sh` — builds browser login URL (`npm run qa:login-url`)
+- `scripts/print-qa-native-deep-link.sh` — builds `springa://qa-login?token=…` (`npm run qa:native-deep-link`)
 - `scripts/qa-overlay.sh` — temporary QA auth on another branch (`--remove` to restore)
 - `scripts/setup-worktree.sh` — copies `.env.local`, seeds `AUTH_URL` + `QA_AUTH_*`
 - `next.config.ts` — `turbopack.root` pinned to this checkout
 
 ## Troubleshooting
 
-- **404 from `/api/qa/login`** — QA disabled. Check: `NODE_ENV=development`, `VERCEL_ENV` isn't `production`, `AUTH_URL`/`NEXTAUTH_URL` doesn't point at `springa.run` (or a subdomain), and both `QA_AUTH_TOKEN` and `QA_AUTH_EMAIL` are set (non-empty after trimming).
-- **401** — token mismatch. Rebuild the URL with `npm run qa:login-url` from current `.env.local` — do not paste tokens into chat.
+- **404 from `/api/qa/login` or `/api/qa/mobile`** — QA disabled. Check: `NODE_ENV=development`, `VERCEL_ENV` isn't `production`, `AUTH_URL`/`NEXTAUTH_URL` doesn't point at `springa.run` (or a subdomain), and both `QA_AUTH_TOKEN` and `QA_AUTH_EMAIL` are set (non-empty after trimming).
+- **401** — token mismatch. Rebuild the URL with `npm run qa:login-url` / `qa:native-deep-link` from current `.env.local` — do not paste tokens into chat.
+- **Native still on login after deep link** — confirm API URL is local Springa, Metro is this checkout, and the build is a `__DEV__` client.
 - **Wrong code in a worktree** — confirm `cd` is the worktree; check the Next “inferred workspace root” warning is gone (pinned `turbopack.root`).
 - **Clicks hit the wrong UI** — dismiss the push “Enable” toast; close Next.js issues overlay if present.
 - **Overlay left on a feature branch** — run `./scripts/qa-overlay.sh --remove` and `git status` before committing.
