@@ -38,6 +38,7 @@ const PREV_AUTH_SECRET = process.env.AUTH_SECRET;
 const PREV_GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 let googlePrivateKey: CryptoKey;
+let googleJwksPayload: { keys: Record<string, unknown>[] };
 
 async function signGoogleIdToken(
   claims: Record<string, unknown>,
@@ -72,10 +73,7 @@ beforeAll(async () => {
   jwk.kid = TEST_KID;
   jwk.alg = "RS256";
   jwk.use = "sig";
-
-  server.use(
-    http.get(GOOGLE_CERTS_URL, () => HttpResponse.json({ keys: [jwk] })),
-  );
+  googleJwksPayload = { keys: [jwk] };
 
   await holder.db.executeMultiple(SCHEMA_DDL);
 });
@@ -94,6 +92,10 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  // Re-register after MSW setup's afterEach resetHandlers().
+  server.use(
+    http.get(GOOGLE_CERTS_URL, () => HttpResponse.json(googleJwksPayload)),
+  );
   await holder.db.execute("DELETE FROM user_settings");
 });
 
@@ -158,5 +160,11 @@ describe("POST /api/auth/mobile", () => {
       holder.db = actual.createClient({ url: "file::memory:" });
       await holder.db.executeMultiple(SCHEMA_DDL);
     }
+
+    const rows = await holder.db.execute({
+      sql: "SELECT email FROM user_settings WHERE email = ?",
+      args: ["runner@example.com"],
+    });
+    expect(rows.rows).toHaveLength(0);
   });
 });

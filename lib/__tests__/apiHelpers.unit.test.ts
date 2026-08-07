@@ -96,4 +96,31 @@ describe("requireAuth", () => {
       }),
     ).rejects.toThrow(AuthError);
   });
+
+  it("throws when Bearer token is empty", async () => {
+    authState.session = null;
+    await expect(
+      requireAuth({
+        headerList: new Headers({ Authorization: "Bearer " }),
+      }),
+    ).rejects.toThrow(AuthError);
+  });
+
+  it("throws when Bearer token is expired", async () => {
+    authState.session = null;
+    const { SignJWT } = await import("jose");
+    const { MOBILE_JWT_AUD } = await import("@/lib/mobileAuth");
+    const secret = new TextEncoder().encode(TEST_AUTH_SECRET);
+    const expired = await new SignJWT({ email: "expired@example.com" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setAudience(MOBILE_JWT_AUD)
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+      .sign(secret);
+    await expect(
+      requireAuth({
+        headerList: new Headers({ Authorization: `Bearer ${expired}` }),
+      }),
+    ).rejects.toThrow(AuthError);
+  });
 });

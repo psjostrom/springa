@@ -20,8 +20,8 @@ export async function requireAuth(options?: {
 
   const headerList = options?.headerList ?? (await headers());
   const authorization = headerList.get("authorization");
-  if (authorization?.startsWith("Bearer ")) {
-    const token = authorization.slice("Bearer ".length).trim();
+  if (authorization && /^Bearer\s+/i.test(authorization)) {
+    const token = authorization.replace(/^Bearer\s+/i, "").trim();
     if (token) {
       try {
         const { email } = await verifyMobileToken(token);
