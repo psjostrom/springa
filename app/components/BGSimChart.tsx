@@ -127,7 +127,10 @@ export function BGSimChart({ curve, reliable, maxObservedMinute }: BGSimChartPro
               borderRadius: 8,
               fontSize: 13,
             }}
-            labelFormatter={(label) => `${label} min`}
+            labelFormatter={(label) => {
+              if (typeof label !== "number" && typeof label !== "string") return "";
+              return `${label} min`;
+            }}
             formatter={(value, name) => {
               const n = String(name ?? "");
               if (value == null || typeof value !== "number") return ["-", n];
