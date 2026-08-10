@@ -75,8 +75,8 @@ export class UnsupportedPlannedWorkoutError extends Error {
 
 export interface BuildPlannedWorkoutDetailInput {
   event: IntervalsEvent;
-  lthr: number;
-  hrZones: number[];
+  lthr?: number;
+  hrZones?: number[];
   estimationContext: WorkoutEstimationContext;
   timezone: string;
   warmthPreference?: number;
@@ -106,17 +106,28 @@ export async function buildPlannedWorkoutDetail({
   const name = event.name ?? "";
   const description = event.description ?? "";
   const category = getWorkoutCategory(name);
-  const sections = parseWorkoutStructure(
-    description,
-    lthr,
-    hrZones,
-    estimationContext.thresholdPace,
-  );
-  const resolved = resolveWorkoutMetrics(
-    description,
-    event.carbs_per_hour,
-    estimationContext,
-  );
+  const validLthr = lthr ?? null;
+  const validHrZones = hrZones?.length === 5 ? hrZones : null;
+  const hasPaceCalibration =
+    estimationContext.thresholdPace != null ||
+    Object.values(estimationContext.paceTable ?? {}).some(Boolean);
+  const calibrated =
+    validLthr != null && validHrZones != null && hasPaceCalibration;
+  const sections = calibrated
+    ? parseWorkoutStructure(
+        description,
+        validLthr,
+        validHrZones,
+        estimationContext.thresholdPace,
+      )
+    : [];
+  const resolved = calibrated
+    ? resolveWorkoutMetrics(
+        description,
+        event.carbs_per_hour,
+        estimationContext,
+      )
+    : { duration: null, distance: null, prescribedCarbsG: null, segments: [] };
 
   if (category === "other" && sections.length === 0 && resolved.segments.length === 0) {
     throw new UnsupportedPlannedWorkoutError();
@@ -134,25 +145,43 @@ export async function buildPlannedWorkoutDetail({
   ) {
     clothing = { status: "unavailable", reason: "outside-window" };
   } else {
+    let weather: ReturnType<typeof getWeatherForTime>;
     try {
-      const weather = getWeatherForTime(
+      weather = getWeatherForTime(
         await fetchForecast(),
         new Date(eventMs),
       );
-      clothing = weather
-        ? {
-            status: "available",
-            recommendation: recommendClothing(
-              weather,
-              category,
-              warmthPreference ?? 0,
-            ),
-          }
-        : { status: "unavailable", reason: "forecast-unavailable" };
     } catch {
-      clothing = { status: "unavailable", reason: "forecast-unavailable" };
+      weather = null;
     }
+    clothing = weather
+      ? {
+          status: "available",
+          recommendation: recommendClothing(
+            weather,
+            category,
+            warmthPreference ?? 0,
+          ),
+        }
+      : { status: "unavailable", reason: "forecast-unavailable" };
   }
+
+  const timeline =
+    validLthr != null && validHrZones != null && hasPaceCalibration
+      ? resolved.segments.map((segment) => ({
+          durationMinutes: segment.duration,
+          intensityPercent: segment.intensity,
+          zone:
+            segment.zone ??
+            (isPaceBased
+              ? classifyPacePct(segment.intensity)
+              : classifyHR(
+                  (segment.intensity / 100) * validLthr,
+                  validHrZones,
+                )),
+          estimated: segment.estimated,
+        }))
+      : [];
 
   return {
     event: {
@@ -174,23 +203,14 @@ export async function buildPlannedWorkoutDetail({
           detail: step.bpmRange,
         })),
       })),
-      timeline: resolved.segments.map((segment) => ({
-        durationMinutes: segment.duration,
-        intensityPercent: segment.intensity,
-        zone:
-          segment.zone ??
-          (isPaceBased
-            ? classifyPacePct(segment.intensity)
-            : classifyHR((segment.intensity / 100) * lthr, hrZones)),
-        estimated: segment.estimated,
-      })),
+      timeline,
     },
     metrics: {
       duration: resolved.duration,
       distance: resolved.distance,
       fuelRateGPerHour: event.carbs_per_hour ?? null,
       prescribedCarbsG: calculateCanonicalPlannedPrescription(
-        description,
+        calibrated ? description : undefined,
         event.carbs_per_hour,
         estimationContext,
       ),

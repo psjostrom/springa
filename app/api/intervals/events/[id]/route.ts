@@ -16,11 +16,7 @@ import {
   buildPlannedWorkoutDetail,
   UnsupportedPlannedWorkoutError,
 } from "@/lib/plannedWorkoutDetail";
-import {
-  computeMaxHRZones,
-  DEFAULT_LTHR,
-  DEFAULT_MAX_HR,
-} from "@/lib/constants";
+import { computeMaxHRZones } from "@/lib/constants";
 
 function errorResponse(error: string, code: string, status: number) {
   return NextResponse.json({ error, code }, { status });
@@ -64,18 +60,20 @@ export async function GET(
         ),
         getPreRunCarbs(email, eventId),
       ]);
-    const maxHr = settings.maxHr ?? profile.maxHr ?? DEFAULT_MAX_HR;
+    const maxHr = settings.maxHr ?? profile.maxHr;
     const hrZones =
       settings.hrZones?.length === 5
         ? settings.hrZones
         : profile.hrZones?.length === 5
           ? profile.hrZones
-          : computeMaxHRZones(maxHr);
+          : maxHr != null
+            ? computeMaxHRZones(maxHr)
+            : undefined;
 
     return NextResponse.json(
       await buildPlannedWorkoutDetail({
         event,
-        lthr: profile.lthr ?? DEFAULT_LTHR,
+        lthr: profile.lthr,
         hrZones,
         estimationContext,
         timezone: creds.timezone,

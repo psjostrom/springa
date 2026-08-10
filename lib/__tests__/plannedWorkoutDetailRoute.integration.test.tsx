@@ -39,6 +39,7 @@ import { GET } from "@/app/api/intervals/events/[id]/route";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
 import { signMobileToken } from "@/lib/mobileAuth";
+import { buildPlannedWorkoutDetail } from "@/lib/plannedWorkoutDetail";
 import { server } from "./msw/server";
 
 const EMAIL = "native@example.com";
@@ -272,6 +273,52 @@ describe("GET /api/intervals/events/[id]", () => {
         },
       },
     });
+  });
+
+  it("returns raw event without derived workout facts when calibration is absent", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET current_ability_dist = NULL, current_ability_secs = NULL,
+                hr_zones = NULL, max_hr = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => HttpResponse.json({})),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.event).toEqual({
+      id: "event-123",
+      intervalsEventId: 123,
+      startDateLocal: "2026-08-13T12:00:00",
+      name: "W05 Easy",
+      category: "easy",
+      description,
+    });
+    expect(result.body.structure).toEqual({ sections: [], timeline: [] });
+    expect(result.body.metrics).toEqual({
+      duration: null,
+      distance: null,
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: null,
+    });
+  });
+
+  it("does not report clothing-domain failures as unavailable forecasts", async () => {
+    await expect(
+      buildPlannedWorkoutDetail({
+        event: plannedEvent,
+        lthr: 168,
+        hrZones: [120, 140, 160, 175, 190],
+        estimationContext: { thresholdPace: 5 },
+        timezone: "Europe/Stockholm",
+        warmthPreference: Symbol("invalid") as unknown as number,
+        preRunCarbsG: 25,
+      }),
+    ).rejects.toThrow(TypeError);
   });
 
   it("keeps a supported unparseable workout usable without guessed metrics", async () => {
