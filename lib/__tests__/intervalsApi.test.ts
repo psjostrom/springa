@@ -879,23 +879,21 @@ describe("replaceWorkoutOnDate", () => {
     expect(capturedDeleteEventIds.length).toBe(0);
   });
 
-  it("creates first then deletes old event", async () => {
-    const callOrder: string[] = [];
-    server.use(
-      http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
-        callOrder.push("create");
-        const body = await request.json();
-        return HttpResponse.json((body as unknown[]).map((_, i) => ({ id: 2002 + i })));
-      }),
-      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () => {
-        callOrder.push("delete");
-        return new HttpResponse(null, { status: 200 });
-      }),
-    );
-
+  it("updates an existing event in place without creating or deleting", async () => {
     const newId = await replaceWorkoutOnDate("test-key", 500, workout);
-    expect(newId).toBe(2002);
-    expect(callOrder).toEqual(["create", "delete"]);
+
+    expect(newId).toBe(500);
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
+    expect(capturedPutPayload?.url).toContain("/events/500");
+    expect(capturedPutPayload?.body).toEqual({
+      start_date_local: "2026-04-01T12:00:00",
+      name: "W05 Easy",
+      description: "Warmup\n- 10m",
+      external_id: "ondemand-2026-04-01",
+      type: "Run",
+      carbs_per_hour: 48,
+    });
   });
 
   it("includes carbs_per_hour in create payload", async () => {
@@ -904,29 +902,28 @@ describe("replaceWorkoutOnDate", () => {
     expect((capturedUploadPayload[0] as Record<string, unknown>).carbs_per_hour).toBe(48);
   });
 
-  it("throws when create fails (old event preserved)", async () => {
+  it("throws when create without an existing ID fails", async () => {
     server.use(
       http.post(`${API_BASE}/athlete/0/events/bulk`, () => {
         return new HttpResponse("Server error", { status: 500 });
       }),
     );
 
-    await expect(replaceWorkoutOnDate("test-key", 500, workout)).rejects.toThrow("Failed to create event");
+    await expect(replaceWorkoutOnDate("test-key", undefined, workout)).rejects.toThrow("Failed to create event");
   });
 
-  it("succeeds even when delete fails after create", async () => {
+  it("throws when an in-place update fails without creating or deleting", async () => {
     server.use(
-      http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
-        const body = await request.json();
-        return HttpResponse.json((body as unknown[]).map((_, i) => ({ id: 2004 + i })));
-      }),
-      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () => {
-        return HttpResponse.error();
-      }),
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () =>
+        new HttpResponse("unavailable", { status: 503 }),
+      ),
     );
 
-    const newId = await replaceWorkoutOnDate("test-key", 500, workout);
-    expect(newId).toBe(2004);
+    await expect(
+      replaceWorkoutOnDate("test-key", 500, workout),
+    ).rejects.toThrow("Failed to update event");
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
   });
 });
 

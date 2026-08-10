@@ -534,17 +534,37 @@ export async function fetchEvent(
 export async function updateEvent(
   apiKey: string,
   eventId: number,
-  updates: { start_date_local?: string; name?: string; description?: string; carbs_per_hour?: number },
+  updates: {
+    start_date_local?: string;
+    name?: string;
+    description?: string;
+    external_id?: string;
+    type?: string;
+    carbs_per_hour?: number;
+  },
 ): Promise<void> {
   const auth = authHeader(apiKey);
-  const res = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(eventId))}`, {
-    method: "PUT",
-    headers: { Authorization: auth, "Content-Type": "application/json" },
-    body: JSON.stringify(updates),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(eventId))}`, {
+      method: "PUT",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+  } catch (error) {
+    throw new IntervalsApiError(
+      "Failed to update event",
+      0,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Failed to update event: ${res.status} ${errorText}`);
+    throw new IntervalsApiError(
+      `Failed to update event: ${res.status} ${errorText}`,
+      res.status,
+      errorText,
+    );
   }
 }
 
@@ -689,16 +709,20 @@ export async function replaceWorkoutOnDate(
   existingEventId: number | undefined,
   workout: WorkoutEvent,
 ): Promise<number> {
-  // Create first — if this fails, nothing is lost
-  const newId = await createSingleEvent(apiKey, workout);
   if (existingEventId != null) {
-    try {
-      await deleteEvent(apiKey, existingEventId);
-    } catch {
-      // Old event remains as duplicate — recoverable. Better than losing it.
-    }
+    await updateEvent(apiKey, existingEventId, {
+      start_date_local: format(workout.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+      name: workout.name,
+      description: workout.description,
+      external_id: workout.external_id,
+      type: workout.type,
+      ...(workout.fuelRate != null && {
+        carbs_per_hour: Math.round(workout.fuelRate),
+      }),
+    });
+    return existingEventId;
   }
-  return newId;
+  return createSingleEvent(apiKey, workout);
 }
 
 // --- WELLNESS ---
