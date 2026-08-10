@@ -129,6 +129,16 @@ export const handlers = [
     return HttpResponse.json(sampleEvents);
   }),
 
+  // GET single event
+  http.get(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+    const event = sampleEvents.find(
+      (candidate) => String(candidate.id) === params.eventId,
+    );
+    return event
+      ? HttpResponse.json({ ...event, type: "Run" })
+      : new HttpResponse(null, { status: 404 });
+  }),
+
   // PUT sport settings (HR zones, threshold pace, pace zones)
   http.put(`${API_BASE}/athlete/0/sport-settings/:settingsId`, async ({ request }) => {
     capturedSportSettingsPayload = await request.json() as Record<string, unknown>;

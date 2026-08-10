@@ -21,6 +21,17 @@ import type { WorkoutEstimationContext } from "./workoutMath";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
+export class IntervalsApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly responseText: string,
+  ) {
+    super(message);
+    this.name = "IntervalsApiError";
+  }
+}
+
 // --- ATHLETE PROFILE ---
 
 // The Intervals.icu athlete response has 100+ fields across 14 platforms.
@@ -492,6 +503,33 @@ export async function pairEventWithActivity(
 }
 
 // --- EVENT UPDATE ---
+
+export async function fetchEvent(
+  apiKey: string,
+  eventId: number,
+): Promise<IntervalsEvent> {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${API_BASE}/athlete/0/events/${encodeURIComponent(String(eventId))}`,
+      { headers: { Authorization: authHeader(apiKey) } },
+    );
+  } catch (error) {
+    throw new IntervalsApiError(
+      "Failed to fetch event",
+      0,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  if (!res.ok) {
+    throw new IntervalsApiError(
+      "Failed to fetch event",
+      res.status,
+      await res.text(),
+    );
+  }
+  return (await res.json()) as IntervalsEvent;
+}
 
 export async function updateEvent(
   apiKey: string,
