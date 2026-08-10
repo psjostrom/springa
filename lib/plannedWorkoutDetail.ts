@@ -3,6 +3,7 @@ import { recommendClothing } from "./clothingCalculator";
 import { classifyHR, getWorkoutCategory } from "./constants";
 import {
   classifyPacePct,
+  detectWorkoutFormat,
   parseWorkoutStructure,
 } from "./descriptionParser";
 import { fetchForecast, getWeatherForTime } from "./smhi";
@@ -108,9 +109,9 @@ export async function buildPlannedWorkoutDetail({
   const category = getWorkoutCategory(name);
   const validLthr = lthr ?? null;
   const validHrZones = hrZones?.length === 5 ? hrZones : null;
-  const isPaceBased =
-    description.includes("/km Pace") || description.includes("% pace");
-  const isHrBased = description.includes("% LTHR");
+  const format = detectWorkoutFormat(description);
+  const isPaceBased = format === "absolute-pace" || format === "pace";
+  const isHrBased = format === "hr";
   const hasHrCalibration = validLthr != null && validHrZones != null;
   const hasPaceTable = Object.values(
     estimationContext.paceTable ?? {},
@@ -130,17 +131,13 @@ export async function buildPlannedWorkoutDetail({
         estimationContext.thresholdPace,
       )
     : [];
-  const resolved = derivable
-    ? resolveWorkoutMetrics(
-        description,
-        event.carbs_per_hour,
-        estimationContext,
-      )
-    : { duration: null, distance: null, prescribedCarbsG: null, segments: [] };
-
-  const renderable = /(?:^|\n)-\s+.*\d+(?:\.\d+)?(?:s|m|km)(?:\s|$)/.test(
+  const resolved = resolveWorkoutMetrics(
     description,
+    event.carbs_per_hour,
+    estimationContext,
   );
+
+  const renderable = sections.length > 0 || resolved.segments.length > 0;
   if (category === "other" && !renderable) {
     throw new UnsupportedPlannedWorkoutError();
   }
@@ -196,11 +193,14 @@ export async function buildPlannedWorkoutDetail({
       : [];
 
   const duration =
-    !hasPaceCalibration && resolved.duration?.estimated
+    !derivable || (!hasPaceCalibration && resolved.duration?.estimated)
       ? null
       : resolved.duration;
   const distance =
-    hasPaceCalibration && (isPaceBased || isHrBased || hasPaceTable)
+    derivable &&
+    resolved.distance &&
+    (!resolved.distance.estimated ||
+      (hasPaceCalibration && (isPaceBased || isHrBased || hasPaceTable)))
       ? resolved.distance
       : null;
   const prescribedCarbsG =

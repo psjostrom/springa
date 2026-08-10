@@ -352,6 +352,102 @@ describe("GET /api/intervals/events/[id]", () => {
     });
   });
 
+  it("derives an exact-time free workout when notes mention LTHR", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET current_ability_dist = NULL, current_ability_secs = NULL,
+                hr_zones = NULL, max_hr = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({
+          ...plannedEvent,
+          description: [
+            "Notes mention 68-76% LTHR, but this workout is free-form.",
+            "",
+            "Main set",
+            "- Free 60m intensity=active",
+          ].join("\n"),
+        }),
+      ),
+      http.get(`${API_BASE}/athlete/0`, () => HttpResponse.json({})),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.structure).toEqual({
+      sections: [
+        {
+          name: "Main set",
+          repeats: null,
+          steps: [
+            {
+              label: "Free",
+              duration: "60m",
+              zone: "z2",
+              detail: "",
+            },
+          ],
+        },
+      ],
+      timeline: [
+        {
+          durationMinutes: 60,
+          intensityPercent: 79,
+          zone: "z2",
+          estimated: false,
+        },
+      ],
+    });
+    expect(result.body.metrics).toEqual({
+      duration: { minutes: 60, estimated: false },
+      distance: null,
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: null,
+    });
+  });
+
+  it("returns exact distance for an HR all-km workout without pace calibration", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET current_ability_dist = NULL, current_ability_secs = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({
+          ...plannedEvent,
+          description: [
+            "Warmup",
+            "- 1km 68-76% LTHR (114-128 bpm)",
+            "",
+            "Main set",
+            "- 4km 68-76% LTHR (114-128 bpm)",
+            "",
+            "Cooldown",
+            "- 1km 68-76% LTHR (114-128 bpm)",
+          ].join("\n"),
+        }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.structure.sections).toHaveLength(3);
+    expect(result.body.structure.timeline).toHaveLength(3);
+    expect(result.body.metrics).toEqual({
+      duration: null,
+      distance: { km: 6, estimated: false },
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: null,
+    });
+  });
+
   it("returns raw event without derived workout facts when calibration is absent", async () => {
     await holder.db.execute({
       sql: `UPDATE user_settings
@@ -438,6 +534,23 @@ describe("GET /api/intervals/events/[id]", () => {
           ...plannedEvent,
           name: "Mystery Session",
           description: "No prescription.",
+        }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(422);
+    expect(result.body.code).toBe("UNSUPPORTED_EVENT");
+  });
+
+  it("rejects an unknown workout with an unparseable duration bullet", async () => {
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({
+          ...plannedEvent,
+          name: "Mystery Session",
+          description: "- Dance 10m nonsense",
         }),
       ),
     );
