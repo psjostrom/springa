@@ -181,17 +181,19 @@ describe("/api/prerun-carbs", () => {
     });
   });
 
-  it("rejects unknown POST fields", async () => {
+  it("ignores unrelated fields in cookie POST payloads", async () => {
     const response = await POST(new Request("http://localhost/api/prerun-carbs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId: "123", carbsG: 25, extra: true }),
     }));
+    const stored = await holder.db.execute(
+      "SELECT event_id, carbs_g FROM prerun_carbs WHERE email = 'test@example.com'",
+    );
 
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      code: "INVALID_INPUT",
-    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(stored.rows).toMatchObject([{ event_id: "123", carbs_g: 25 }]);
   });
 
   it.each(["activity-123", "", "01"])(

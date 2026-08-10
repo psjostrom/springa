@@ -61,10 +61,6 @@ export async function POST(req: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  if (Object.keys(input).some((key) => key !== "eventId" && key !== "carbsG")) {
-    return invalidInput("Unknown field");
-  }
-
   const eventId = parseCalendarEventId(input.eventId);
   if (eventId == null) {
     return invalidInput(
