@@ -96,38 +96,38 @@ async function bearerDelete(id: string) {
   );
 }
 
+beforeAll(async () => {
+  globalThis.Uint8Array = nodeUint8Array;
+  await holder.db.executeMultiple(SCHEMA_DDL);
+});
+
+afterAll(() => {
+  globalThis.Uint8Array = originalUint8Array;
+});
+
+beforeEach(async () => {
+  originalConsoleError = console.error;
+  console.error = () => {};
+  holder.cookieEmail = null;
+  await holder.db.executeMultiple(SCHEMA_DDL);
+  await holder.db.execute("DELETE FROM prerun_carbs");
+  await holder.db.execute("DELETE FROM user_settings");
+  await holder.db.execute({
+    sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
+          VALUES (?, ?, ?)`,
+    args: [
+      EMAIL,
+      encrypt("intervals-key", process.env.CREDENTIALS_ENCRYPTION_KEY!),
+      "Europe/Stockholm",
+    ],
+  });
+});
+
+afterEach(() => {
+  console.error = originalConsoleError;
+});
+
 describe("planned workout move", () => {
-  beforeAll(async () => {
-    globalThis.Uint8Array = nodeUint8Array;
-    await holder.db.executeMultiple(SCHEMA_DDL);
-  });
-
-  afterAll(() => {
-    globalThis.Uint8Array = originalUint8Array;
-  });
-
-  beforeEach(async () => {
-    originalConsoleError = console.error;
-    console.error = () => {};
-    holder.cookieEmail = null;
-    await holder.db.executeMultiple(SCHEMA_DDL);
-    await holder.db.execute("DELETE FROM prerun_carbs");
-    await holder.db.execute("DELETE FROM user_settings");
-    await holder.db.execute({
-      sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
-            VALUES (?, ?, ?)`,
-      args: [
-        EMAIL,
-        encrypt("intervals-key", process.env.CREDENTIALS_ENCRYPTION_KEY!),
-        "Europe/Stockholm",
-      ],
-    });
-  });
-
-  afterEach(() => {
-    console.error = originalConsoleError;
-  });
-
   it("moves a canonical Bearer event with only its local start time", async () => {
     const response = await bearerPut(
       "event-123",
@@ -253,37 +253,6 @@ describe("planned workout move", () => {
 });
 
 describe("planned workout delete", () => {
-  beforeAll(async () => {
-    globalThis.Uint8Array = nodeUint8Array;
-    await holder.db.executeMultiple(SCHEMA_DDL);
-  });
-
-  afterAll(() => {
-    globalThis.Uint8Array = originalUint8Array;
-  });
-
-  beforeEach(async () => {
-    originalConsoleError = console.error;
-    console.error = () => {};
-    holder.cookieEmail = null;
-    await holder.db.executeMultiple(SCHEMA_DDL);
-    await holder.db.execute("DELETE FROM prerun_carbs");
-    await holder.db.execute("DELETE FROM user_settings");
-    await holder.db.execute({
-      sql: `INSERT INTO user_settings (email, intervals_api_key, timezone)
-            VALUES (?, ?, ?)`,
-      args: [
-        EMAIL,
-        encrypt("intervals-key", process.env.CREDENTIALS_ENCRYPTION_KEY!),
-        "Europe/Stockholm",
-      ],
-    });
-  });
-
-  afterEach(() => {
-    console.error = originalConsoleError;
-  });
-
   it("deletes upstream before removing local pre-run carbs", async () => {
     await savePreRunCarbs(EMAIL, 123, 25);
     let carbsSeenUpstream: number | null = null;
