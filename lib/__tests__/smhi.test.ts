@@ -5,13 +5,15 @@ import { getWeatherForTime, calcFeelsLike } from "../smhi";
 import type { SMHIWeather } from "../smhi";
 
 const SMHI_URL =
-  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/18.07/lat/59.28/data.json";
+  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/17.81/lat/59.45/data.json";
+const SMHI_URL_PATTERN =
+  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/:lon/lat/:lat/data.json";
 
 function snow1gResponse(entries: { time: string; temp: number; ws: number; gust: number; pmean: number; pcat: number }[]) {
   return {
     createdTime: "2026-04-06T12:00:00Z",
     referenceTime: "2026-04-06T12:00:00Z",
-    geometry: { type: "Point", coordinates: [[18.07, 59.28]] },
+    geometry: { type: "Point", coordinates: [[17.81, 59.45]] },
     timeSeries: entries.map((e) => ({
       time: e.time,
       data: {
@@ -46,21 +48,24 @@ function snow1gResponse(entries: { time: string; temp: number; ws: number; gust:
 
 describe("fetchForecast", () => {
   it("parses snow1g API response into SMHIWeather", async () => {
+    let requestedUrl: string | null = null;
     server.use(
-      http.get(SMHI_URL, () =>
-        HttpResponse.json(
+      http.get(SMHI_URL_PATTERN, ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json(
           snow1gResponse([
             { time: "2026-04-06T12:00:00Z", temp: 8.5, ws: 4.2, gust: 7.1, pmean: 0.5, pcat: 3 },
             { time: "2026-04-06T13:00:00Z", temp: 9.0, ws: 3.8, gust: 6.5, pmean: 0, pcat: 0 },
           ]),
-        ),
-      ),
+        );
+      }),
     );
 
     // Dynamic import to bypass module-level cache from other tests
     const { fetchForecast } = await import("../smhi");
     const result = await fetchForecast();
 
+    expect(requestedUrl).toBe(SMHI_URL);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       temp: 8.5,
@@ -74,7 +79,11 @@ describe("fetchForecast", () => {
   });
 
   it("throws on API error", async () => {
-    server.use(http.get(SMHI_URL, () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      http.get(SMHI_URL_PATTERN, () =>
+        new HttpResponse(null, { status: 500 }),
+      ),
+    );
 
     vi.resetModules();
     const { fetchForecast } = await import("../smhi");

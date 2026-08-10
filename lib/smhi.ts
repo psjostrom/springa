@@ -20,9 +20,9 @@ export interface SMHIWeather {
   validTime: string;
 }
 
-// Hardcoded coordinates — Enskede, Stockholm
-const LAT = 59.28;
-const LON = 18.07;
+// Hardcoded coordinates — Kallhäll, Stockholm
+const LAT = 59.45;
+const LON = 17.81;
 
 const SMHI_URL = `https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${LON}/lat/${LAT}/data.json`;
 
@@ -78,8 +78,6 @@ function parseTimeSeries(entry: SMHITimeSeries): SMHIWeather {
   };
 }
 
-// Client-side only — this module is imported from useWeather (a "use client" hook).
-// If ever imported server-side, this singleton would be shared across all requests.
 let cachedForecast: { data: SMHIWeather[]; fetchedAt: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 

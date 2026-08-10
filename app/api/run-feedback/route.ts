@@ -12,12 +12,12 @@ import { API_BASE } from "@/lib/constants";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
 import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
-import { db } from "@/lib/db";
 import type { WorkoutEstimationContext } from "@/lib/workoutMath";
 import { getUserSettings } from "@/lib/settings";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
 import { findAuthoritativeWorkoutEventMatch } from "@/lib/workoutEventMatching";
 import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
+import { getPreRunCarbs } from "@/lib/prerunCarbs";
 
 interface MatchedEvent {
   prescribedCarbsG: number | null;
@@ -137,7 +137,7 @@ function buildResponse(
 export async function GET(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -184,15 +184,9 @@ export async function GET(req: Request) {
     if (activity.PreRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
-        const result = await db().execute({
-          sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-          args: [email, String(lookupEventId)],
-        });
-        if (result.rows.length > 0) {
-          preRunFallback = {
-            carbsG: result.rows[0].carbs_g as number | null,
-          };
-        }
+        preRunFallback = {
+          carbsG: await getPreRunCarbs(email, lookupEventId),
+        };
       }
     }
 
@@ -226,15 +220,9 @@ export async function GET(req: Request) {
     if (activity.PreRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
-        const result = await db().execute({
-          sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-          args: [email, String(lookupEventId)],
-        });
-        if (result.rows.length > 0) {
-          preRunFallback = {
-            carbsG: result.rows[0].carbs_g as number | null,
-          };
-        }
+        preRunFallback = {
+          carbsG: await getPreRunCarbs(email, lookupEventId),
+        };
       }
     }
 
@@ -247,7 +235,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
