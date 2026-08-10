@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { streamText, toTextStream, createTextStreamResponse } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { formatAIError } from "@/lib/aiError";
@@ -58,11 +58,13 @@ export async function POST(req: Request) {
   try {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
-      system: systemPrompt || undefined,
+      instructions: systemPrompt || undefined,
       messages: coreMessages,
     });
 
-    return result.toTextStreamResponse();
+    return createTextStreamResponse({
+      stream: toTextStream({ stream: result.stream }),
+    });
   } catch (err) {
     const { message, status } = formatAIError(err);
     return NextResponse.json({ error: message }, { status });
