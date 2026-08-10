@@ -108,20 +108,29 @@ export async function buildPlannedWorkoutDetail({
   const category = getWorkoutCategory(name);
   const validLthr = lthr ?? null;
   const validHrZones = hrZones?.length === 5 ? hrZones : null;
+  const isPaceBased =
+    description.includes("/km Pace") || description.includes("% pace");
+  const isHrBased = description.includes("% LTHR");
+  const hasHrCalibration = validLthr != null && validHrZones != null;
+  const hasPaceTable = Object.values(
+    estimationContext.paceTable ?? {},
+  ).some(Boolean);
   const hasPaceCalibration =
-    estimationContext.thresholdPace != null ||
-    Object.values(estimationContext.paceTable ?? {}).some(Boolean);
-  const calibrated =
-    validLthr != null && validHrZones != null && hasPaceCalibration;
-  const sections = calibrated
+    estimationContext.thresholdPace != null || hasPaceTable;
+  const derivable = isPaceBased
+    ? hasPaceCalibration
+    : isHrBased
+      ? hasHrCalibration
+      : true;
+  const sections = derivable
     ? parseWorkoutStructure(
         description,
-        validLthr,
-        validHrZones,
+        validLthr ?? 0,
+        validHrZones ?? [],
         estimationContext.thresholdPace,
       )
     : [];
-  const resolved = calibrated
+  const resolved = derivable
     ? resolveWorkoutMetrics(
         description,
         event.carbs_per_hour,
@@ -129,12 +138,13 @@ export async function buildPlannedWorkoutDetail({
       )
     : { duration: null, distance: null, prescribedCarbsG: null, segments: [] };
 
-  if (category === "other" && sections.length === 0 && resolved.segments.length === 0) {
+  const renderable = /(?:^|\n)-\s+.*\d+(?:\.\d+)?(?:s|m|km)(?:\s|$)/.test(
+    description,
+  );
+  if (category === "other" && !renderable) {
     throw new UnsupportedPlannedWorkoutError();
   }
 
-  const isPaceBased =
-    description.includes("/km Pace") || description.includes("% pace");
   const eventMs = localToUtcMs(event.start_date_local, timezone);
   const now = Date.now();
   let clothing: PlannedWorkoutDetail["clothing"];
@@ -167,7 +177,7 @@ export async function buildPlannedWorkoutDetail({
   }
 
   const timeline =
-    validLthr != null && validHrZones != null && hasPaceCalibration
+    derivable
       ? resolved.segments.map((segment) => ({
           durationMinutes: segment.duration,
           intensityPercent: segment.intensity,
@@ -175,13 +185,32 @@ export async function buildPlannedWorkoutDetail({
             segment.zone ??
             (isPaceBased
               ? classifyPacePct(segment.intensity)
-              : classifyHR(
-                  (segment.intensity / 100) * validLthr,
-                  validHrZones,
-                )),
+              : isHrBased && validLthr != null && validHrZones != null
+                ? classifyHR(
+                    (segment.intensity / 100) * validLthr,
+                    validHrZones,
+                  )
+                : "z2"),
           estimated: segment.estimated,
         }))
       : [];
+
+  const duration =
+    !hasPaceCalibration && resolved.duration?.estimated
+      ? null
+      : resolved.duration;
+  const distance =
+    hasPaceCalibration && (isPaceBased || isHrBased || hasPaceTable)
+      ? resolved.distance
+      : null;
+  const prescribedCarbsG =
+    derivable && hasPaceCalibration
+      ? calculateCanonicalPlannedPrescription(
+          description,
+          event.carbs_per_hour,
+          estimationContext,
+        )
+      : null;
 
   return {
     event: {
@@ -206,14 +235,10 @@ export async function buildPlannedWorkoutDetail({
       timeline,
     },
     metrics: {
-      duration: resolved.duration,
-      distance: resolved.distance,
+      duration,
+      distance,
       fuelRateGPerHour: event.carbs_per_hour ?? null,
-      prescribedCarbsG: calculateCanonicalPlannedPrescription(
-        calibrated ? description : undefined,
-        event.carbs_per_hour,
-        estimationContext,
-      ),
+      prescribedCarbsG,
     },
     preRunCarbsG,
     clothing,

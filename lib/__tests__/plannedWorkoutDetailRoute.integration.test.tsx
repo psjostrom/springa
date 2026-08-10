@@ -59,6 +59,19 @@ const description = [
   "- 15m 68-76% LTHR (114-128 bpm)",
   "",
 ].join("\n");
+const paceDescription = [
+  "Steady easy running.",
+  "",
+  "Warmup",
+  "- 10m 68-76% pace",
+  "",
+  "Main set",
+  "- 35m 68-76% pace",
+  "",
+  "Cooldown",
+  "- 15m 68-76% pace",
+  "",
+].join("\n");
 const plannedEvent = {
   id: 123,
   category: "WORKOUT",
@@ -272,6 +285,70 @@ describe("GET /api/intervals/events/[id]", () => {
           },
         },
       },
+    });
+  });
+
+  it("derives pace prescriptions without HR profile calibration", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET hr_zones = NULL, max_hr = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({ ...plannedEvent, description: paceDescription }),
+      ),
+      http.get(`${API_BASE}/athlete/0`, () => HttpResponse.json({})),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.structure.sections).toMatchObject([
+      { name: "Warmup", repeats: null, steps: [{ duration: "10m", zone: "z2" }] },
+      { name: "Main set", repeats: null, steps: [{ duration: "35m", zone: "z2" }] },
+      { name: "Cooldown", repeats: null, steps: [{ duration: "15m", zone: "z2" }] },
+    ]);
+    expect(result.body.structure.timeline).toEqual([
+      { durationMinutes: 10, intensityPercent: 72, zone: "z2", estimated: false },
+      { durationMinutes: 35, intensityPercent: 72, zone: "z2", estimated: false },
+      { durationMinutes: 15, intensityPercent: 72, zone: "z2", estimated: false },
+    ]);
+    expect(result.body.metrics).toEqual({
+      duration: { minutes: 60, estimated: false },
+      distance: { km: 8.3, estimated: true },
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: 60,
+    });
+  });
+
+  it("derives HR structure and exact duration without pace calibration", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET current_ability_dist = NULL, current_ability_secs = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.structure.sections).toMatchObject([
+      { name: "Warmup", repeats: null, steps: [{ duration: "10m", zone: "z2" }] },
+      { name: "Main set", repeats: null, steps: [{ duration: "35m", zone: "z2" }] },
+      { name: "Cooldown", repeats: null, steps: [{ duration: "15m", zone: "z2" }] },
+    ]);
+    expect(result.body.structure.timeline).toEqual([
+      { durationMinutes: 10, intensityPercent: 72, zone: "z2", estimated: false },
+      { durationMinutes: 35, intensityPercent: 72, zone: "z2", estimated: false },
+      { durationMinutes: 15, intensityPercent: 72, zone: "z2", estimated: false },
+    ]);
+    expect(result.body.metrics).toEqual({
+      duration: { minutes: 60, estimated: false },
+      distance: null,
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: null,
     });
   });
 
