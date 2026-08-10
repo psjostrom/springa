@@ -562,7 +562,11 @@ export async function deleteEvent(
   });
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Failed to delete event: ${res.status} ${errorText}`);
+    throw new IntervalsApiError(
+      `Failed to delete event: ${res.status} ${errorText}`,
+      res.status,
+      errorText,
+    );
   }
 }
 

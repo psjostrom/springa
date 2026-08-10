@@ -8,10 +8,13 @@ import {
   fetchEvent,
   IntervalsApiError,
 } from "@/lib/intervalsApi";
-import { parseCalendarEventId } from "@/lib/calendarEventId";
+import {
+  isLocalDateTime,
+  parseCalendarEventId,
+} from "@/lib/calendarEventId";
 import { getUserSettings } from "@/lib/settings";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
-import { getPreRunCarbs } from "@/lib/prerunCarbs";
+import { deletePreRunCarbs, getPreRunCarbs } from "@/lib/prerunCarbs";
 import {
   buildPlannedWorkoutDetail,
   UnsupportedPlannedWorkoutError,
@@ -100,7 +103,7 @@ export async function PUT(
 ) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -114,17 +117,32 @@ export async function PUT(
     );
   }
 
-  const { id } = await params;
-  const eventId = Number(id);
-  if (!Number.isFinite(eventId)) {
-    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+  const eventId = parseCalendarEventId((await params).id);
+  if (eventId == null) {
+    return errorResponse("Invalid event ID", "INVALID_INPUT", 400);
   }
-  const body = (await req.json()) as {
-    start_date_local?: string;
-    name?: string;
-    description?: string;
-    carbs_per_hour?: number;
-  };
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid JSON", "INVALID_INPUT", 400);
+  }
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("Invalid input", "INVALID_INPUT", 400);
+  }
+
+  const input = body as Record<string, unknown>;
+  const keys = Object.keys(input);
+  const isBearer = /^Bearer\s+/i.test(
+    req.headers.get("authorization") ?? "",
+  );
+  if (
+    isBearer &&
+    (keys.length !== 1 || keys[0] !== "start_date_local")
+  ) {
+    return errorResponse("Invalid input", "INVALID_INPUT", 400);
+  }
 
   const updates: {
     start_date_local?: string;
@@ -133,12 +151,34 @@ export async function PUT(
     carbs_per_hour?: number;
   } = {};
 
-  if (body.start_date_local !== undefined)
-    updates.start_date_local = body.start_date_local;
-  if (body.name !== undefined) updates.name = body.name;
-  if (body.description !== undefined) updates.description = body.description;
-  if (body.carbs_per_hour !== undefined)
-    updates.carbs_per_hour = body.carbs_per_hour;
+  if ("start_date_local" in input) {
+    if (!isLocalDateTime(input.start_date_local)) {
+      return errorResponse("Invalid start date", "INVALID_INPUT", 400);
+    }
+    updates.start_date_local = input.start_date_local;
+  }
+  if ("name" in input) {
+    if (typeof input.name !== "string") {
+      return errorResponse("Invalid name", "INVALID_INPUT", 400);
+    }
+    updates.name = input.name;
+  }
+  if ("description" in input) {
+    if (typeof input.description !== "string") {
+      return errorResponse("Invalid description", "INVALID_INPUT", 400);
+    }
+    updates.description = input.description;
+  }
+  if ("carbs_per_hour" in input) {
+    if (
+      typeof input.carbs_per_hour !== "number" ||
+      !Number.isFinite(input.carbs_per_hour) ||
+      input.carbs_per_hour < 0
+    ) {
+      return errorResponse("Invalid carbs per hour", "INVALID_INPUT", 400);
+    }
+    updates.carbs_per_hour = input.carbs_per_hour;
+  }
 
   try {
     await updateEvent(creds.intervalsApiKey, eventId, updates);
@@ -158,7 +198,7 @@ export async function DELETE(
 ) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -172,20 +212,35 @@ export async function DELETE(
     );
   }
 
-  const { id } = await params;
-  const eventId = Number(id);
-  if (!Number.isFinite(eventId)) {
-    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
+  const eventId = parseCalendarEventId((await params).id);
+  if (eventId == null) {
+    return errorResponse("Invalid event ID", "INVALID_INPUT", 400);
   }
 
   try {
     await deleteEvent(creds.intervalsApiKey, eventId);
+  } catch (err) {
+    if (err instanceof IntervalsApiError && err.status === 404) {
+      // Already deleted upstream; local cleanup still has to run.
+    } else {
+      console.error("[intervals/events]", err);
+      return errorResponse(
+        err instanceof Error ? err.message : "Failed to delete event",
+        "UPSTREAM_ERROR",
+        502,
+      );
+    }
+  }
+
+  try {
+    await deletePreRunCarbs(email, eventId);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[intervals/events]", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to delete event" },
-      { status: 502 },
+    return errorResponse(
+      "Failed to clean up event",
+      "LOCAL_CLEANUP_FAILED",
+      500,
     );
   }
 }
