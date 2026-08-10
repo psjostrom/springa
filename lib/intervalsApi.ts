@@ -38,20 +38,44 @@ export class IntervalsApiError extends Error {
 // Typing them all would be maintenance burden with no safety gain — we access specific fields by name.
 type AthleteRaw = Record<string, unknown>;
 
-export async function fetchAthleteRaw(apiKey: string): Promise<AthleteRaw | null> {
+export async function fetchAthleteRaw(
+  apiKey: string,
+  options?: { strict?: boolean },
+): Promise<AthleteRaw | null> {
   try {
     const res = await fetch(`${API_BASE}/athlete/0`, {
       headers: { Authorization: authHeader(apiKey) },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const responseText = await res.text();
+      if (options?.strict) {
+        throw new IntervalsApiError(
+          "Failed to fetch athlete profile",
+          res.status,
+          responseText,
+        );
+      }
+      return null;
+    }
     return (await res.json()) as AthleteRaw;
-  } catch {
+  } catch (error) {
+    if (options?.strict) {
+      if (error instanceof IntervalsApiError) throw error;
+      throw new IntervalsApiError(
+        "Failed to fetch athlete profile",
+        0,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     return null;
   }
 }
 
-export async function fetchAthleteProfile(apiKey: string): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number }> {
-  const data = await fetchAthleteRaw(apiKey);
+export async function fetchAthleteProfile(
+  apiKey: string,
+  options?: { strict?: boolean },
+): Promise<{ lthr?: number; maxHr?: number; hrZones?: number[]; restingHr?: number; sportSettingsId?: number }> {
+  const data = await fetchAthleteRaw(apiKey, options);
   if (!data) return {};
   const runSettings = Array.isArray(data.sportSettings)
     ? (data.sportSettings as { id?: number; types?: string[]; lthr?: number; max_hr?: number; hr_zones?: number[] }[]).find((s) => s.types?.includes("Run"))

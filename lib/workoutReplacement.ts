@@ -41,15 +41,30 @@ export async function resolveReplacementPlanConfig(
   apiKey: string,
 ): Promise<PlanConfig> {
   const settings = await getUserSettings(email);
-  const profile = await fetchAthleteProfile(apiKey);
-  const cached = settings.diabetesMode ? await getActivityStreams(email) : [];
-
-  if (!settings.raceDate || settings.totalWeeks == null || profile.lthr == null) {
+  if (!settings.raceDate || settings.totalWeeks == null) {
     throw new WorkoutReplacementError(
       "PLAN_SETTINGS_REQUIRED",
       "Plan settings are required",
     );
   }
+
+  let profile;
+  try {
+    profile = await fetchAthleteProfile(apiKey, { strict: true });
+  } catch {
+    throw new WorkoutReplacementError(
+      "UPSTREAM_ERROR",
+      "Failed to fetch athlete profile",
+    );
+  }
+  if (profile.lthr == null) {
+    throw new WorkoutReplacementError(
+      "PLAN_SETTINGS_REQUIRED",
+      "Plan settings are required",
+    );
+  }
+
+  const cached = settings.diabetesMode ? await getActivityStreams(email) : [];
 
   return {
     bgModel:

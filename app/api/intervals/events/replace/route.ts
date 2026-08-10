@@ -3,6 +3,7 @@ import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { parseCalendarEventId } from "@/lib/calendarEventId";
 import { getUserCredentials } from "@/lib/credentials";
 import { replaceWorkoutOnDate } from "@/lib/intervalsApi";
+import { deletePreRunCarbs } from "@/lib/prerunCarbs";
 import type { WorkoutEvent } from "@/lib/types";
 import {
   replacePlannedWorkoutByIntent,
@@ -123,20 +124,34 @@ export async function POST(req: Request) {
     start_date_local: new Date(rawWorkout.start_date_local),
   };
 
+  let newId: number;
   try {
-    const newId = await replaceWorkoutOnDate(
+    newId = await replaceWorkoutOnDate(
       creds.intervalsApiKey,
       existingEventId,
       workout,
     );
-    return NextResponse.json({ newId });
   } catch (err) {
     console.error("[intervals/events/replace]", err);
-    return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : "Failed to replace workout",
-      },
-      { status: 502 },
+    return errorResponse(
+      err instanceof Error ? err.message : "Failed to replace workout",
+      "UPSTREAM_ERROR",
+      502,
     );
   }
+
+  if (existingEventId != null) {
+    try {
+      await deletePreRunCarbs(email, existingEventId);
+    } catch (err) {
+      console.error("[intervals/events/replace]", err);
+      return errorResponse(
+        "Failed to clean up event",
+        "LOCAL_CLEANUP_FAILED",
+        500,
+      );
+    }
+  }
+
+  return NextResponse.json({ newId });
 }

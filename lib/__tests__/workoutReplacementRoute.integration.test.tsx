@@ -110,7 +110,7 @@ function useProfile(overrides: Record<string, unknown> = {}) {
           id: 7,
           types: ["Run"],
           lthr: 168,
-          max_hr: 189,
+          max_hr: 200,
           hr_zones: [1, 2, 3, 4, 5],
           ...overrides,
         }],
@@ -155,7 +155,7 @@ beforeEach(async () => {
       "2026-11-01",
       16,
       12,
-      8,
+      11,
       0,
       1,
       JSON.stringify([2, 4, 6, 0]),
@@ -208,7 +208,7 @@ describe("Bearer workout replacement", () => {
   it.each([
     ["easy", "W01 Easy", "12:00:00"],
     ["quality", "W01 Short Intervals", "12:00:00"],
-    ["long", "W01 Long (8km)", "12:00:00"],
+    ["long", "W01 Long (11km)", "12:00:00"],
     ["club", "W01 Club Run", "18:30:00"],
   ])("generates %s with server-owned category semantics", async (
     category,
@@ -231,7 +231,7 @@ describe("Bearer workout replacement", () => {
 
   it.each([
     ["pace", /\/km Pace/, /% LTHR/],
-    ["hr", /67-88% LTHR \(112-147 bpm\)/, /\/km Pace/],
+    ["hr", /70-93% LTHR \(117-156 bpm\)/, /\/km Pace/],
     ["feel", /intensity=active/, /\/km Pace|% pace|% LTHR/],
   ])("uses stored %s effort metric with live LTHR and computed max-HR zones", async (
     effortMetric,
@@ -254,6 +254,26 @@ describe("Bearer workout replacement", () => {
     );
     expect(description).toMatch(included);
     expect(description).not.toMatch(excluded);
+  });
+
+  it("falls back to DEFAULT_MAX_HR when live max HR is absent", async () => {
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET effort_metric = 'hr' WHERE email = ?",
+      args: [EMAIL],
+    });
+    useProfile({ max_hr: undefined });
+
+    const response = await bearerPost({
+      existingEventId: "event-123",
+      category: "easy",
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      String(
+        (capturedPutPayload?.body as Record<string, unknown>).description,
+      ),
+    ).toMatch(/67-88% LTHR \(112-147 bpm\)/);
   });
 
   it("omits fuel when diabetes mode is off", async () => {
@@ -321,6 +341,19 @@ describe("Bearer workout replacement", () => {
       await holder.db.execute(
         `UPDATE user_settings SET ${column} = NULL WHERE email = '${EMAIL}'`,
       );
+      await holder.db.execute({
+        sql: `INSERT INTO activity_streams
+                (email, activity_id, name, fuel_rate, hr, glucose)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          EMAIL,
+          `malformed-${column}`,
+          "W01 Easy",
+          60,
+          "not-json",
+          "not-json",
+        ],
+      });
 
       const response = await bearerPost({
         existingEventId: "event-123",
@@ -346,6 +379,29 @@ describe("Bearer workout replacement", () => {
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({
       code: "PLAN_SETTINGS_REQUIRED",
+    });
+    expectNoExternalMutation();
+  });
+
+  it.each([
+    ["5xx", () => new HttpResponse("unavailable", { status: 503 })],
+    ["network failure", () => HttpResponse.error()],
+  ])("returns UPSTREAM_ERROR when athlete profile has a %s", async (
+    _name,
+    response,
+  ) => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, response),
+    );
+
+    const result = await bearerPost({
+      existingEventId: "event-123",
+      category: "easy",
+    });
+
+    expect(result.status).toBe(502);
+    await expect(result.json()).resolves.toMatchObject({
+      code: "UPSTREAM_ERROR",
     });
     expectNoExternalMutation();
   });
@@ -559,6 +615,8 @@ describe("legacy cookie workout replacement", () => {
   };
 
   it("keeps existing-ID request and response compatible with in-place PUT", async () => {
+    await savePreRunCarbs(EMAIL, 123, 25);
+
     const response = await cookiePost({ existingEventId: 123, workout });
 
     expect(response.status).toBe(200);
@@ -574,9 +632,66 @@ describe("legacy cookie workout replacement", () => {
     });
     expect(capturedUploadPayload).toEqual([]);
     expect(capturedDeleteEventIds).toEqual([]);
+    expect(await getPreRunCarbs(EMAIL, 123)).toBeNull();
+  });
+
+  it("preserves pre-run carbs when legacy same-ID PUT fails", async () => {
+    await savePreRunCarbs(EMAIL, 123, 25);
+    server.use(
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () =>
+        new HttpResponse("unavailable", { status: 503 }),
+      ),
+    );
+
+    const response = await cookiePost({ existingEventId: 123, workout });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UPSTREAM_ERROR",
+    });
+    expect(await getPreRunCarbs(EMAIL, 123)).toBe(25);
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
+  });
+
+  it("reports legacy cleanup failure and succeeds on retry", async () => {
+    await savePreRunCarbs(EMAIL, 123, 25);
+    await holder.db.execute(
+      "ALTER TABLE prerun_carbs RENAME TO prerun_carbs_blocked",
+    );
+
+    let first: Response;
+    try {
+      first = await cookiePost({ existingEventId: 123, workout });
+    } finally {
+      await holder.db.execute(
+        "ALTER TABLE prerun_carbs_blocked RENAME TO prerun_carbs",
+      );
+    }
+
+    expect(first.status).toBe(500);
+    await expect(first.json()).resolves.toMatchObject({
+      code: "LOCAL_CLEANUP_FAILED",
+    });
+    expect(await getPreRunCarbs(EMAIL, 123)).toBe(25);
+    expect(capturedPutPayload?.url).toContain("/events/123");
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
+
+    resetCaptures();
+    const retry = await cookiePost({ existingEventId: 123, workout });
+
+    expect(retry.status).toBe(200);
+    await expect(retry.json()).resolves.toEqual({ newId: 123 });
+    expect(await getPreRunCarbs(EMAIL, 123)).toBeNull();
+    expect(capturedPutPayload?.url).toContain("/events/123");
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
   });
 
   it("keeps no-ID bulk create behavior unchanged", async () => {
+    await savePreRunCarbs(EMAIL, 123, 25);
+
     const response = await cookiePost({ workout });
 
     expect(response.status).toBe(200);
@@ -592,5 +707,6 @@ describe("legacy cookie workout replacement", () => {
     }]);
     expect(capturedPutPayload).toBeNull();
     expect(capturedDeleteEventIds).toEqual([]);
+    expect(await getPreRunCarbs(EMAIL, 123)).toBe(25);
   });
 });
