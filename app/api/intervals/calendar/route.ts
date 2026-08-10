@@ -8,7 +8,7 @@ import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext"
 export async function GET(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
