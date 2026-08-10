@@ -109,7 +109,7 @@ export async function POST(req: Request) {
   try {
     const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      system,
+      instructions: system,
       messages: [{ role: "user", content: user }],
     });
 
