@@ -5,7 +5,7 @@ import type { CalendarEvent } from "../../types";
 import { resolveWorkoutMetrics } from "../../workoutMath";
 
 const SMHI_URL =
-  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/18.07/lat/59.28/data.json";
+  "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/17.81/lat/59.45/data.json";
 
 /** Convert raw Intervals.icu fixtures to CalendarEvent format for proxy route mocks. */
 function fixtureCalendarEvents(): CalendarEvent[] {
@@ -92,7 +92,7 @@ function smhiForecastResponse() {
   return {
     createdTime: now.toISOString(),
     referenceTime: now.toISOString(),
-    geometry: { type: "Point", coordinates: [[18.07, 59.28]] },
+    geometry: { type: "Point", coordinates: [[17.81, 59.45]] },
     timeSeries: Array.from({ length: 96 }, (_, i) => {
       const time = new Date(now);
       time.setHours(now.getHours() + i);
@@ -127,6 +127,16 @@ export const handlers = [
   http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
     capturedFetchedEventsUrl = request.url;
     return HttpResponse.json(sampleEvents);
+  }),
+
+  // GET single event
+  http.get(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+    const event = sampleEvents.find(
+      (candidate) => String(candidate.id) === params.eventId,
+    );
+    return event
+      ? HttpResponse.json({ ...event, type: "Run" })
+      : new HttpResponse(null, { status: 404 });
   }),
 
   // PUT sport settings (HR zones, threshold pace, pace zones)

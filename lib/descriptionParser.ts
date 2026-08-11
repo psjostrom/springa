@@ -51,6 +51,24 @@ export function classifyPacePct(avgPct: number): ZoneName {
   return "z2";
 }
 
+export type WorkoutFormat =
+  | "absolute-pace"
+  | "pace"
+  | "hr"
+  | "free"
+  | null;
+
+export function detectWorkoutFormat(description: string): WorkoutFormat {
+  const stepLines = description
+    .split("\n")
+    .filter((line) => line.startsWith("- "));
+  if (stepLines.some((line) => line.includes("/km Pace")))
+    return "absolute-pace";
+  if (stepLines.some((line) => line.includes("% pace"))) return "pace";
+  if (stepLines.some((line) => line.includes("% LTHR"))) return "hr";
+  return stepLines.length > 0 ? "free" : null;
+}
+
 const NO_PACE_STEP_LABEL_PATTERN =
   "Walk|Downhill|Recovery|Stride|Uphill|Threshold|Tempo|Hard|Fast|Interval|Race Pace|Race|Easy|Warmup|Cooldown|Free";
 
@@ -155,8 +173,9 @@ export function parseWorkoutZones(
   hrZones: number[] = [],
   thresholdPace?: number,
 ): ZoneName[] {
-  const isPaceFormat = description.includes("% pace");
-  const isAbsolutePace = description.includes("/km Pace");
+  const format = detectWorkoutFormat(description);
+  const isPaceFormat = format === "pace";
+  const isAbsolutePace = format === "absolute-pace";
   if (!isPaceFormat && !isAbsolutePace && hrZones.length !== 5) return [];
 
   const zones = new Set<ZoneName>();
@@ -263,17 +282,11 @@ export function parseWorkoutStructure(
   racePacePerKm?: number,
 ): WorkoutSection[] {
   if (!description) return [];
-  const stepLines = description.split("\n").filter((line) => line.startsWith("- "));
-  const isAbsolutePace = stepLines.some((line) => line.includes("/km Pace"));
-  const isPaceFormat = !isAbsolutePace && stepLines.some((line) => line.includes("% pace"));
-  const isHrFormat =
-    !isAbsolutePace && !isPaceFormat && stepLines.some((line) => line.includes("% LTHR"));
+  const format = detectWorkoutFormat(description);
+  const isAbsolutePace = format === "absolute-pace";
+  const isPaceFormat = format === "pace";
   // Free format: step lines with no pace AND no HR markers (e.g. "- Free 60m intensity=active").
-  const isFreeFormat =
-    !isPaceFormat &&
-    !isAbsolutePace &&
-    !isHrFormat &&
-    stepLines.length > 0;
+  const isFreeFormat = format === "free";
   if (!isPaceFormat && !isAbsolutePace && !isFreeFormat && hrZones.length !== 5)
     return [];
 

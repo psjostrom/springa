@@ -3,6 +3,7 @@ import type { EnrichedActivity } from "./activityStreamsDb";
 import { linearRegression } from "./math";
 import { extractObservations, MIN_ALIGNED_POINTS } from "./bgObservations";
 import { extractPostRunSpikes, type PostRunSpikeData } from "./postRunSpike";
+import { MAX_CARBS_PER_HOUR } from "./fuelRate";
 
 // --- Types ---
 
@@ -218,7 +219,6 @@ const MIN_DROP_TO_SUGGEST = -0.05; // only suggest fuel increases beyond this th
 //   1. minimum spread between tested fuel rates before regression is trusted
 //   2. maximum recommendation increment above current average per cycle
 const FUEL_STEP_GH = 10;
-const MAX_FUEL_ABSOLUTE = 90; // gut absorption ceiling (Jeukendrup; Burke et al.)
 const ACCEPTABLE_SPIKE = 2.0; // mmol/L post-run 30m peak above end BG
 const SPIKE_PENALTY_FACTOR = 4; // g/h per 1.0 mmol/L excess spike
 const MIN_POST_RUN_OBS = 5;
@@ -229,8 +229,8 @@ const MIN_FUEL_RATE = 20; // g/h safety floor
 // increases cause GI distress (Costa et al. 2023).
 function capFuel(target: number, current: number): number {
   const upperBound = current > 0
-    ? Math.min(current + FUEL_STEP_GH, MAX_FUEL_ABSOLUTE)
-    : MAX_FUEL_ABSOLUTE;
+    ? Math.min(current + FUEL_STEP_GH, MAX_CARBS_PER_HOUR)
+    : MAX_CARBS_PER_HOUR;
   return Math.max(0, Math.round(Math.min(target, upperBound)));
 }
 

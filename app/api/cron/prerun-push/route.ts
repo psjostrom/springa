@@ -14,6 +14,7 @@ import { fetchBGFromNS } from "@/lib/nightscout";
 import { fetchIOB, tauForInsulin } from "@/lib/iob";
 import { getUserSettings } from "@/lib/settings";
 import type { IntervalsEvent } from "@/lib/types";
+import { cleanupOrphanedPreRunCarbs } from "@/lib/prerunCarbs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,12 @@ export async function GET(req: Request) {
   const expected = `Bearer ${process.env.CRON_SECRET}`;
   if (!process.env.CRON_SECRET || authValue !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await cleanupOrphanedPreRunCarbs();
+  } catch (error) {
+    console.error("[prerun-push] Failed to clean orphaned pre-run carbs:", error);
   }
 
   const now = Date.now();

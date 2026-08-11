@@ -2,6 +2,7 @@ import {
   resolveWorkoutMetrics,
   type WorkoutEstimationContext,
 } from "./workoutMath";
+import { detectWorkoutFormat } from "./descriptionParser";
 
 /** Canonical "prescribed grams" for a workout. Pure function: same description +
  *  fuelRate + context always returns the same number. The pre-run UI and the
@@ -13,7 +14,7 @@ import {
  *  actual run time after pairing, so any duration-based fallback would diverge
  *  between pre-run and post-run for the same workout.
  *
- *  Calibration gate is built in: without paceTable or thresholdPace the
+ *  Pace calibration gate is built in: without paceTable or thresholdPace the
  *  description parser collapses wide pace ranges to literal midpoints (e.g.
  *  "6:27-18:54/km" → 12:40/km, ~2x reality) and the resulting gram total is
  *  meaningless. Returning null here suppresses display rather than producing an
@@ -26,7 +27,15 @@ export function calculateCanonicalPlannedPrescription(
   context: WorkoutEstimationContext = {},
 ): number | null {
   if (fuelRateGPerHour == null) return null;
-  if (context.paceTable == null && context.thresholdPace == null) return null;
+  const format = detectWorkoutFormat(description ?? "");
+  const needsPaceCalibration = format === "pace" || format === "absolute-pace";
+  if (
+    needsPaceCalibration &&
+    context.paceTable == null &&
+    context.thresholdPace == null
+  ) {
+    return null;
+  }
   return resolveWorkoutMetrics(description, fuelRateGPerHour, context)
     .prescribedCarbsG;
 }

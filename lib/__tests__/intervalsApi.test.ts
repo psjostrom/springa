@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import {
   fetchCalendarData,
+  fetchEvent,
   updateEvent,
   uploadToIntervals,
   fetchActivityDetails,
@@ -511,6 +512,21 @@ describe("updateEvent", () => {
   });
 });
 
+describe("fetchEvent", () => {
+  it("aborts a stalled request when its signal expires", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events/:eventId`, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return HttpResponse.json({ id: 123, category: "WORKOUT", type: "Run" });
+      }),
+    );
+
+    await expect(
+      fetchEvent("test-key", 123, { signal: AbortSignal.timeout(1) }),
+    ).rejects.toMatchObject({ status: 0 });
+  });
+});
+
 describe("uploadToIntervals", () => {
   it("fetches existing workouts, uploads new plan, then deletes stale workouts", async () => {
     const callOrder: string[] = [];
@@ -697,6 +713,28 @@ describe("uploadToIntervals", () => {
     expect((capturedUploadPayload[0] as Record<string, unknown>).carbs_per_hour).toBe(60);
   });
 
+  it.each([
+    [0, 0],
+    [90, 90],
+  ])("serializes fuelRate boundary %p in bulk uploads", async (fuelRate, expected) => {
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run", fuelRate },
+    ];
+
+    await uploadToIntervals("test-key", events);
+
+    expect((capturedUploadPayload[0] as Record<string, unknown>).carbs_per_hour).toBe(expected);
+  });
+
+  it.each([-1, 91, 90.6])("rejects fuelRate %p in bulk uploads", async (fuelRate) => {
+    const events: WorkoutEvent[] = [
+      { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run", fuelRate },
+    ];
+
+    await expect(uploadToIntervals("test-key", events)).rejects.toThrow("fuelRate");
+    expect(capturedUploadPayload).toEqual([]);
+  });
+
   it("omits carbs_per_hour when fuelRate is undefined", async () => {
     const events: WorkoutEvent[] = [
       { start_date_local: new Date("2026-03-01T12:00:00"), name: "Test", description: "Test", external_id: "test-1", type: "Run" },
@@ -879,23 +917,21 @@ describe("replaceWorkoutOnDate", () => {
     expect(capturedDeleteEventIds.length).toBe(0);
   });
 
-  it("creates first then deletes old event", async () => {
-    const callOrder: string[] = [];
-    server.use(
-      http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
-        callOrder.push("create");
-        const body = await request.json();
-        return HttpResponse.json((body as unknown[]).map((_, i) => ({ id: 2002 + i })));
-      }),
-      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () => {
-        callOrder.push("delete");
-        return new HttpResponse(null, { status: 200 });
-      }),
-    );
-
+  it("updates an existing event in place without creating or deleting", async () => {
     const newId = await replaceWorkoutOnDate("test-key", 500, workout);
-    expect(newId).toBe(2002);
-    expect(callOrder).toEqual(["create", "delete"]);
+
+    expect(newId).toBe(500);
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
+    expect(capturedPutPayload?.url).toContain("/events/500");
+    expect(capturedPutPayload?.body).toEqual({
+      start_date_local: "2026-04-01T12:00:00",
+      name: "W05 Easy",
+      description: "Warmup\n- 10m",
+      external_id: "ondemand-2026-04-01",
+      type: "Run",
+      carbs_per_hour: 48,
+    });
   });
 
   it("includes carbs_per_hour in create payload", async () => {
@@ -904,29 +940,44 @@ describe("replaceWorkoutOnDate", () => {
     expect((capturedUploadPayload[0] as Record<string, unknown>).carbs_per_hour).toBe(48);
   });
 
-  it("throws when create fails (old event preserved)", async () => {
+  it.each([
+    [0, 0],
+    [90, 90],
+  ])("serializes fuelRate boundary %p in legacy replacement", async (fuelRate, expected) => {
+    await replaceWorkoutOnDate("test-key", 500, { ...workout, fuelRate });
+
+    expect(capturedPutPayload?.body).toMatchObject({ carbs_per_hour: expected });
+  });
+
+  it.each([-1, 91, 90.6])("rejects fuelRate %p in legacy replacement", async (fuelRate) => {
+    await expect(
+      replaceWorkoutOnDate("test-key", 500, { ...workout, fuelRate }),
+    ).rejects.toThrow("fuelRate");
+    expect(capturedPutPayload).toBeNull();
+  });
+
+  it("throws when create without an existing ID fails", async () => {
     server.use(
       http.post(`${API_BASE}/athlete/0/events/bulk`, () => {
         return new HttpResponse("Server error", { status: 500 });
       }),
     );
 
-    await expect(replaceWorkoutOnDate("test-key", 500, workout)).rejects.toThrow("Failed to create event");
+    await expect(replaceWorkoutOnDate("test-key", undefined, workout)).rejects.toThrow("Failed to create event");
   });
 
-  it("succeeds even when delete fails after create", async () => {
+  it("throws when an in-place update fails without creating or deleting", async () => {
     server.use(
-      http.post(`${API_BASE}/athlete/0/events/bulk`, async ({ request }) => {
-        const body = await request.json();
-        return HttpResponse.json((body as unknown[]).map((_, i) => ({ id: 2004 + i })));
-      }),
-      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () => {
-        return HttpResponse.error();
-      }),
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () =>
+        new HttpResponse("unavailable", { status: 503 }),
+      ),
     );
 
-    const newId = await replaceWorkoutOnDate("test-key", 500, workout);
-    expect(newId).toBe(2004);
+    await expect(
+      replaceWorkoutOnDate("test-key", 500, workout),
+    ).rejects.toThrow("Failed to update event");
+    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedDeleteEventIds).toEqual([]);
   });
 });
 

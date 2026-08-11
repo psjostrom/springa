@@ -36,6 +36,9 @@ describe("requireAuth", () => {
     } as Session;
     const email = await requireAuth();
     expect(email).toBe("test@example.com");
+    await expect(
+      requireAuth({ withSource: true }),
+    ).resolves.toEqual({ email: "test@example.com", source: "session" });
   });
 
   it("throws when no session and no Bearer", async () => {
@@ -73,6 +76,12 @@ describe("requireAuth", () => {
         headerList: new Headers({ Authorization: `Bearer ${token}` }),
       }),
     ).resolves.toBe("native@example.com");
+    await expect(
+      requireAuth({
+        withSource: true,
+        headerList: new Headers({ Authorization: `Bearer ${token}` }),
+      }),
+    ).resolves.toEqual({ email: "native@example.com", source: "bearer" });
   });
 
   it("prefers cookie email when Bearer header is also present", async () => {

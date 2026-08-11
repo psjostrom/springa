@@ -7,6 +7,24 @@ export const DEFAULT_FUEL: Record<WorkoutCategory, number> = {
   interval: 60,
 };
 
+export const MAX_CARBS_PER_HOUR = 90;
+
+export function serializeFuelRate(
+  fuelRate: number | null | undefined,
+): number | undefined {
+  if (fuelRate == null) return undefined;
+  if (
+    !Number.isFinite(fuelRate) ||
+    fuelRate < 0 ||
+    fuelRate > MAX_CARBS_PER_HOUR
+  ) {
+    throw new RangeError(
+      `Invalid fuelRate: expected a finite value from 0 to ${MAX_CARBS_PER_HOUR} g/h`,
+    );
+  }
+  return Math.round(fuelRate);
+}
+
 /**
  * Single canonical resolution for fuel rate (g/h) by workout category.
  * Priority: BG model target → category average → default (60).

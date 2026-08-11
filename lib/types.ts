@@ -85,6 +85,7 @@ export interface IntervalsEvent {
   id: number;
   external_id?: string;
   category: string;
+  type?: string;
   start_date_local: string;
   name?: string;
   description?: string;

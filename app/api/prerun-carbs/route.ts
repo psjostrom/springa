@@ -1,36 +1,38 @@
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
-import { db } from "@/lib/db";
+import { parseCalendarEventId } from "@/lib/calendarEventId";
+import {
+  deletePreRunCarbs,
+  getPreRunCarbs,
+  savePreRunCarbs,
+} from "@/lib/prerunCarbs";
 import { NextResponse } from "next/server";
+
+function invalidInput(error: string) {
+  return NextResponse.json(
+    { error, code: "INVALID_INPUT" },
+    { status: 400 },
+  );
+}
 
 export async function GET(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
   }
 
   const { searchParams } = new URL(req.url);
-  const eventId = searchParams.get("eventId");
+  const rawEventId = searchParams.get("eventId");
+  const eventId = parseCalendarEventId(rawEventId);
 
-  if (!eventId) {
-    return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+  if (eventId == null) {
+    return invalidInput(rawEventId ? "Invalid eventId" : "Missing eventId");
   }
 
   try {
-    const result = await db().execute({
-      sql: "SELECT carbs_g FROM prerun_carbs WHERE email = ? AND event_id = ?",
-      args: [email, eventId],
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ carbsG: null });
-    }
-
-    return NextResponse.json({
-      carbsG: result.rows[0].carbs_g as number | null,
-    });
+    return NextResponse.json({ carbsG: await getPreRunCarbs(email, eventId) });
   } catch (err) {
     console.error("Failed to load pre-run carbs:", err);
     return NextResponse.json({ error: "Failed to load pre-run carbs" }, { status: 500 });
@@ -40,41 +42,48 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
   }
 
-  let body: {
-    eventId: string;
-    carbsG?: number | null;
-  };
+  let body: unknown;
 
   try {
-    body = (await req.json()) as {
-      eventId: string;
-      carbsG?: number | null;
-    };
+    body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return invalidInput("Invalid JSON");
   }
 
-  const { eventId, carbsG } = body;
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return invalidInput("Invalid input");
+  }
 
-  if (!eventId) {
-    return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+  const input = body as Record<string, unknown>;
+  const eventId = parseCalendarEventId(input.eventId);
+  if (eventId == null) {
+    return invalidInput(
+      Object.hasOwn(input, "eventId") ? "Invalid eventId" : "Missing eventId",
+    );
+  }
+
+  if (!Object.hasOwn(input, "carbsG")) {
+    return invalidInput("Missing carbsG");
+  }
+  const carbsG = input.carbsG;
+  if (
+    carbsG !== null &&
+    (typeof carbsG !== "number" ||
+      !Number.isFinite(carbsG) ||
+      !Number.isInteger(carbsG) ||
+      carbsG < 0)
+  ) {
+    return invalidInput("Invalid carbsG");
   }
 
   try {
-    await db().execute({
-      sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (email, event_id) DO UPDATE SET
-              carbs_g = excluded.carbs_g,
-              created_at = excluded.created_at`,
-      args: [email, eventId, carbsG ?? null, Date.now()],
-    });
+    await savePreRunCarbs(email, eventId, carbsG);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -86,24 +95,22 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
   }
 
   const { searchParams } = new URL(req.url);
-  const eventId = searchParams.get("eventId");
+  const rawEventId = searchParams.get("eventId");
+  const eventId = parseCalendarEventId(rawEventId);
 
-  if (!eventId) {
-    return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+  if (eventId == null) {
+    return invalidInput(rawEventId ? "Invalid eventId" : "Missing eventId");
   }
 
   try {
-    await db().execute({
-      sql: "DELETE FROM prerun_carbs WHERE email = ? AND event_id = ?",
-      args: [email, eventId],
-    });
+    await deletePreRunCarbs(email, eventId);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
