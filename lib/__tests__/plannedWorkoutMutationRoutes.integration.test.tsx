@@ -47,7 +47,12 @@ import { API_BASE } from "@/lib/constants";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
 import { signMobileToken } from "@/lib/mobileAuth";
-import { getPreRunCarbs, savePreRunCarbs } from "@/lib/prerunCarbs";
+import {
+  cleanupOrphanedPreRunCarbs,
+  getPreRunCarbs,
+  savePreRunCarbs,
+} from "@/lib/prerunCarbs";
+import { MAX_CARBS_PER_HOUR } from "@/lib/fuelRate";
 import {
   capturedDeleteEventIds,
   capturedPutPayload,
@@ -156,9 +161,21 @@ describe("planned workout move", () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
-      error: "Failed to update event: 503 unavailable",
+      error: "Failed to update event",
       code: "UPSTREAM_ERROR",
     });
+  });
+
+  it("uses cookie payload contract when cookie and Bearer credentials coexist", async () => {
+    holder.cookieEmail = EMAIL;
+    const { token } = await signMobileToken(EMAIL);
+    const response = await putRequest("123", JSON.stringify({ name: "Cookie update" }), {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    });
+
+    expect(response.status).toBe(200);
+    expect(capturedPutPayload?.body).toEqual({ name: "Cookie update" });
   });
 
   it.each([
@@ -259,6 +276,7 @@ describe("planned workout move", () => {
     ["name", { name: 12 }],
     ["description", { description: null }],
     ["carbs", { carbs_per_hour: "55" }],
+    ["carbs above maximum", { carbs_per_hour: MAX_CARBS_PER_HOUR + 1 }],
   ])("validates supplied cookie move %s", async (_name, body) => {
     holder.cookieEmail = EMAIL;
     const response = await putRequest("123", JSON.stringify(body));
@@ -272,9 +290,27 @@ describe("planned workout move", () => {
 });
 
 describe("planned workout delete", () => {
+  it("removes only confirmed orphaned pre-run carb rows and continues after failures", async () => {
+    await savePreRunCarbs(EMAIL, 123, 25);
+    await savePreRunCarbs(EMAIL, 124, 25);
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) => {
+        if (params.eventId === "123") {
+          return new HttpResponse("unavailable", { status: 503 });
+        }
+        return new HttpResponse("missing", { status: 404 });
+      }),
+    );
+
+    await cleanupOrphanedPreRunCarbs();
+
+    expect(await getPreRunCarbs(EMAIL, 123)).toBe(25);
+    expect(await getPreRunCarbs(EMAIL, 124)).toBeNull();
+  });
+
   it("deletes upstream before removing local pre-run carbs", async () => {
     await savePreRunCarbs(EMAIL, 123, 25);
-    let carbsSeenUpstream: number | null = null;
+    let carbsSeenUpstream: number | null | undefined;
     server.use(
       http.delete(
         `${API_BASE}/athlete/0/events/:eventId`,
@@ -356,7 +392,7 @@ describe("planned workout delete", () => {
     expect(await getPreRunCarbs(EMAIL, 123)).toBeNull();
   });
 
-  it.each(["0", "event-0", "01", "event-01", "9007199254740992"])(
+  it.each(["0", "event-0", "01", "event-01", "-1", "1.5", "9007199254740992"])(
     "rejects non-canonical or unsafe delete identity %p",
     async (id) => {
       const response = await bearerDelete(id);

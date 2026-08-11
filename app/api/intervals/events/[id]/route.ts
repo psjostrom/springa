@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
+import {
+  errorResponse,
+  requireAuth,
+  unauthorized,
+  AuthError,
+  type AuthSource,
+} from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import {
   updateEvent,
@@ -20,10 +26,7 @@ import {
   UnsupportedPlannedWorkoutError,
 } from "@/lib/plannedWorkoutDetail";
 import { computeMaxHRZones } from "@/lib/constants";
-
-function errorResponse(error: string, code: string, status: number) {
-  return NextResponse.json({ error, code }, { status });
-}
+import { MAX_CARBS_PER_HOUR } from "@/lib/fuelRate";
 
 export async function GET(
   req: Request,
@@ -44,9 +47,10 @@ export async function GET(
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json(
-      { error: "Intervals.icu not configured" },
-      { status: 400 },
+    return errorResponse(
+      "Intervals.icu not configured",
+      "MISSING_CREDENTIALS",
+      400,
     );
   }
 
@@ -86,12 +90,14 @@ export async function GET(
     );
   } catch (error) {
     if (error instanceof IntervalsApiError) {
-      if (error.message === "Failed to fetch athlete profile") {
-        return errorResponse(error.message, "UPSTREAM_ERROR", 502);
+      switch (error.resource) {
+        case "athlete-profile":
+          return errorResponse("Failed to fetch athlete profile", "UPSTREAM_ERROR", 502);
+        case "event":
+          return error.status === 404
+            ? errorResponse("Event not found", "EVENT_NOT_FOUND", 404)
+            : errorResponse("Failed to fetch event", "UPSTREAM_ERROR", 502);
       }
-      return error.status === 404
-        ? errorResponse("Event not found", "EVENT_NOT_FOUND", 404)
-        : errorResponse("Failed to fetch event", "UPSTREAM_ERROR", 502);
     }
     if (error instanceof UnsupportedPlannedWorkoutError) {
       return errorResponse(error.message, "UNSUPPORTED_EVENT", 422);
@@ -105,8 +111,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   let email: string;
+  let authSource: AuthSource;
   try {
-    email = await requireAuth({ headerList: req.headers });
+    const auth = await requireAuth({
+      headerList: req.headers,
+      withSource: true,
+    });
+    email = auth.email;
+    authSource = auth.source;
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -114,9 +126,10 @@ export async function PUT(
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json(
-      { error: "Intervals.icu not configured" },
-      { status: 400 },
+    return errorResponse(
+      "Intervals.icu not configured",
+      "MISSING_CREDENTIALS",
+      400,
     );
   }
 
@@ -137,9 +150,7 @@ export async function PUT(
 
   const input = body as Record<string, unknown>;
   const keys = Object.keys(input);
-  const isBearer = /^Bearer\s+/i.test(
-    req.headers.get("authorization") ?? "",
-  );
+  const isBearer = authSource === "bearer";
   if (
     isBearer &&
     (keys.length !== 1 || keys[0] !== "start_date_local")
@@ -176,7 +187,8 @@ export async function PUT(
     if (
       typeof input.carbs_per_hour !== "number" ||
       !Number.isFinite(input.carbs_per_hour) ||
-      input.carbs_per_hour < 0
+      input.carbs_per_hour < 0 ||
+      input.carbs_per_hour > MAX_CARBS_PER_HOUR
     ) {
       return errorResponse("Invalid carbs per hour", "INVALID_INPUT", 400);
     }
@@ -189,7 +201,7 @@ export async function PUT(
   } catch (err) {
     console.error("[intervals/events]", err);
     return errorResponse(
-      err instanceof Error ? err.message : "Failed to update event",
+      "Failed to update event",
       "UPSTREAM_ERROR",
       502,
     );
@@ -210,9 +222,10 @@ export async function DELETE(
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json(
-      { error: "Intervals.icu not configured" },
-      { status: 400 },
+    return errorResponse(
+      "Intervals.icu not configured",
+      "MISSING_CREDENTIALS",
+      400,
     );
   }
 
@@ -229,7 +242,7 @@ export async function DELETE(
     } else {
       console.error("[intervals/events]", err);
       return errorResponse(
-        err instanceof Error ? err.message : "Failed to delete event",
+        "Failed to delete event",
         "UPSTREAM_ERROR",
         502,
       );

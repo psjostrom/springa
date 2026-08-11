@@ -81,6 +81,10 @@ function parseTimeSeries(entry: SMHITimeSeries): SMHIWeather {
 let cachedForecast: { data: SMHIWeather[]; fetchedAt: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+export function resetForecastCache(): void {
+  cachedForecast = null;
+}
+
 export async function fetchForecast(): Promise<SMHIWeather[]> {
   if (cachedForecast && Date.now() - cachedForecast.fetchedAt < CACHE_TTL) {
     return cachedForecast.data;

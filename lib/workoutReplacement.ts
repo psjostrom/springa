@@ -30,8 +30,9 @@ export class WorkoutReplacementError extends Error {
   constructor(
     public readonly code: WorkoutReplacementErrorCode,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "WorkoutReplacementError";
   }
 }
@@ -118,7 +119,10 @@ export async function replacePlannedWorkoutByIntent(input: {
     );
   }
 
-  const targetDate = parseISO(event.start_date_local);
+  const targetDate =
+    typeof event.start_date_local === "string"
+      ? parseISO(event.start_date_local)
+      : new Date(NaN);
   if (!isValid(targetDate)) {
     throw new WorkoutReplacementError(
       "UPSTREAM_ERROR",
@@ -149,19 +153,21 @@ export async function replacePlannedWorkoutByIntent(input: {
         carbs_per_hour: Math.round(workout.fuelRate),
       }),
     });
-  } catch {
+  } catch (error) {
     throw new WorkoutReplacementError(
       "UPSTREAM_ERROR",
       "Failed to update event",
+      { cause: error },
     );
   }
 
   try {
     await deletePreRunCarbs(input.email, input.existingEventId);
-  } catch {
+  } catch (error) {
     throw new WorkoutReplacementError(
       "LOCAL_CLEANUP_FAILED",
       "Failed to clean up event",
+      { cause: error },
     );
   }
   return input.existingEventId;

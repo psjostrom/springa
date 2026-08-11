@@ -21,11 +21,14 @@ import type { WorkoutEstimationContext } from "./workoutMath";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
+export type IntervalsApiResource = "event" | "athlete-profile";
+
 export class IntervalsApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
     public readonly responseText: string,
+    public readonly resource: IntervalsApiResource,
   ) {
     super(message);
     this.name = "IntervalsApiError";
@@ -53,6 +56,7 @@ export async function fetchAthleteRaw(
           "Failed to fetch athlete profile",
           res.status,
           responseText,
+          "athlete-profile",
         );
       }
       return null;
@@ -65,6 +69,7 @@ export async function fetchAthleteRaw(
         "Failed to fetch athlete profile",
         0,
         error instanceof Error ? error.message : String(error),
+        "athlete-profile",
       );
     }
     return null;
@@ -543,6 +548,7 @@ export async function fetchEvent(
       "Failed to fetch event",
       0,
       error instanceof Error ? error.message : String(error),
+      "event",
     );
   }
   if (!res.ok) {
@@ -550,9 +556,19 @@ export async function fetchEvent(
       "Failed to fetch event",
       res.status,
       await res.text(),
+      "event",
     );
   }
-  return (await res.json()) as IntervalsEvent;
+  try {
+    return (await res.json()) as IntervalsEvent;
+  } catch (error) {
+    throw new IntervalsApiError(
+      "Failed to fetch event",
+      res.status,
+      error instanceof Error ? error.message : String(error),
+      "event",
+    );
+  }
 }
 
 export async function updateEvent(
@@ -580,6 +596,7 @@ export async function updateEvent(
       "Failed to update event",
       0,
       error instanceof Error ? error.message : String(error),
+      "event",
     );
   }
   if (!res.ok) {
@@ -588,6 +605,7 @@ export async function updateEvent(
       `Failed to update event: ${res.status} ${errorText}`,
       res.status,
       errorText,
+      "event",
     );
   }
 }
@@ -610,6 +628,7 @@ export async function deleteEvent(
       `Failed to delete event: ${res.status} ${errorText}`,
       res.status,
       errorText,
+      "event",
     );
   }
 }

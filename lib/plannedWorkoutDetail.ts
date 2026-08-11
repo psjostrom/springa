@@ -158,7 +158,8 @@ export async function buildPlannedWorkoutDetail({
         await fetchForecast(),
         new Date(eventMs),
       );
-    } catch {
+    } catch (error) {
+      console.error("[planned-workout-detail] Forecast unavailable:", error);
       weather = null;
     }
     clothing = weather
@@ -204,7 +205,9 @@ export async function buildPlannedWorkoutDetail({
       ? resolved.distance
       : null;
   const prescribedCarbsG =
-    derivable && hasPaceCalibration
+    derivable &&
+    (hasPaceCalibration ||
+      (isHrBased && resolved.duration != null && !resolved.duration.estimated))
       ? calculateCanonicalPlannedPrescription(
           description,
           event.carbs_per_hour,

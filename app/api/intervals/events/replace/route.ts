@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
+import {
+  errorResponse,
+  replacementErrorStatus,
+  requireAuth,
+  unauthorized,
+  AuthError,
+  type AuthSource,
+} from "@/lib/apiHelpers";
 import { parseCalendarEventId } from "@/lib/calendarEventId";
 import { getUserCredentials } from "@/lib/credentials";
 import { replaceWorkoutOnDate } from "@/lib/intervalsApi";
@@ -18,29 +25,16 @@ const CATEGORIES = new Set<OnDemandCategory>([
   "club",
 ]);
 
-function errorResponse(error: string, code: string, status: number) {
-  return NextResponse.json({ error, code }, { status });
-}
-
-function replacementErrorStatus(code: WorkoutReplacementError["code"]): number {
-  switch (code) {
-    case "EVENT_NOT_FOUND":
-      return 404;
-    case "UNSUPPORTED_EVENT":
-    case "PLAN_SETTINGS_REQUIRED":
-    case "DATE_OUTSIDE_PLAN":
-      return 422;
-    case "LOCAL_CLEANUP_FAILED":
-      return 500;
-    case "UPSTREAM_ERROR":
-      return 502;
-  }
-}
-
 export async function POST(req: Request) {
   let email: string;
+  let authSource: AuthSource;
   try {
-    email = await requireAuth({ headerList: req.headers });
+    const auth = await requireAuth({
+      headerList: req.headers,
+      withSource: true,
+    });
+    email = auth.email;
+    authSource = auth.source;
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -48,9 +42,10 @@ export async function POST(req: Request) {
 
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    return NextResponse.json(
-      { error: "Intervals.icu not configured" },
-      { status: 400 },
+    return errorResponse(
+      "Intervals.icu not configured",
+      "MISSING_CREDENTIALS",
+      400,
     );
   }
 
@@ -65,9 +60,7 @@ export async function POST(req: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const isBearer = /^Bearer\s+/i.test(
-    req.headers.get("authorization") ?? "",
-  );
+  const isBearer = authSource === "bearer";
   if (isBearer) {
     const keys = Object.keys(input);
     const existingEventId = parseCalendarEventId(input.existingEventId);
@@ -101,7 +94,7 @@ export async function POST(req: Request) {
         );
       }
       return errorResponse(
-        err instanceof Error ? err.message : "Failed to replace workout",
+        "Failed to replace workout",
         "UPSTREAM_ERROR",
         502,
       );
@@ -109,10 +102,18 @@ export async function POST(req: Request) {
   }
 
   const legacyBody = input as {
-    existingEventId?: number;
+    existingEventId?: unknown;
     workout?: WorkoutEvent;
   };
-  const existingEventId = legacyBody.existingEventId;
+  const hasExistingEventId = Object.hasOwn(input, "existingEventId");
+  let existingEventId: number | undefined;
+  if (hasExistingEventId) {
+    const parsedEventId = parseCalendarEventId(legacyBody.existingEventId);
+    if (parsedEventId == null) {
+      return errorResponse("Invalid input", "INVALID_INPUT", 400);
+    }
+    existingEventId = parsedEventId;
+  }
   const rawWorkout = legacyBody.workout;
 
   if (!rawWorkout) {
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[intervals/events/replace]", err);
     return errorResponse(
-      err instanceof Error ? err.message : "Failed to replace workout",
+      "Failed to replace workout",
       "UPSTREAM_ERROR",
       502,
     );

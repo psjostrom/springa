@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "./auth";
 import { verifyMobileToken } from "./mobileAuth";
+import type { WorkoutReplacementErrorCode } from "./workoutReplacement";
 
 export class AuthError extends Error {
   constructor(message = "Unauthorized") {
@@ -9,14 +10,35 @@ export class AuthError extends Error {
   }
 }
 
-/** Get authenticated user email or throw AuthError. */
-export async function requireAuth(options?: {
+export type AuthSource = "session" | "bearer";
+
+export interface AuthenticatedUser {
+  email: string;
+  source: AuthSource;
+}
+
+interface RequireAuthOptions {
   /** Explicit request headers for route handlers; defaults to Next.js headers. */
   headerList?: Headers;
-}): Promise<string> {
+  withSource?: boolean;
+}
+
+/** Get authenticated user email or throw AuthError. */
+export async function requireAuth(
+  options: RequireAuthOptions & { withSource: true },
+): Promise<AuthenticatedUser>;
+export async function requireAuth(
+  options?: RequireAuthOptions & { withSource?: false },
+): Promise<string>;
+export async function requireAuth(
+  options?: RequireAuthOptions,
+): Promise<string | AuthenticatedUser> {
   const session = await auth();
   const cookieEmail = session?.user?.email;
-  if (cookieEmail) return cookieEmail;
+  if (cookieEmail) {
+    const result = { email: cookieEmail, source: "session" as const };
+    return options?.withSource ? result : result.email;
+  }
 
   const headerList = options?.headerList ?? (await headers());
   const authorization = headerList.get("authorization");
@@ -25,7 +47,8 @@ export async function requireAuth(options?: {
     if (token) {
       try {
         const { email } = await verifyMobileToken(token);
-        return email;
+        const result = { email, source: "bearer" as const };
+        return options?.withSource ? result : result.email;
       } catch {
         throw new AuthError();
       }
@@ -33,6 +56,25 @@ export async function requireAuth(options?: {
   }
 
   throw new AuthError();
+}
+
+export function errorResponse(error: string, code: string, status: number) {
+  return NextResponse.json({ error, code }, { status });
+}
+
+export function replacementErrorStatus(code: WorkoutReplacementErrorCode): number {
+  switch (code) {
+    case "EVENT_NOT_FOUND":
+      return 404;
+    case "UNSUPPORTED_EVENT":
+    case "PLAN_SETTINGS_REQUIRED":
+    case "DATE_OUTSIDE_PLAN":
+      return 422;
+    case "LOCAL_CLEANUP_FAILED":
+      return 500;
+    case "UPSTREAM_ERROR":
+      return 502;
+  }
 }
 
 /** Standard 401 response for auth failures. */

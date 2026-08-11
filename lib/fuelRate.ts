@@ -7,6 +7,8 @@ export const DEFAULT_FUEL: Record<WorkoutCategory, number> = {
   interval: 60,
 };
 
+export const MAX_CARBS_PER_HOUR = 90;
+
 /**
  * Single canonical resolution for fuel rate (g/h) by workout category.
  * Priority: BG model target → category average → default (60).

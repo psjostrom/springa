@@ -139,7 +139,7 @@ To keep things varied, rotate through the formats across the plan:
 
 ## Full Workout Examples
 
-The generator MUST output descriptions matching these patterns exactly. Descriptions contain only notes and structured workout steps — no fuel data. Fuel is sent via `carbs_per_hour` on the API event and stored as `fuelRate` (g/h) on `WorkoutEvent`.
+The generator MUST output descriptions matching these patterns exactly. Descriptions contain only notes and structured workout steps — no fuel data. Fuel is sent via `carbs_per_hour` on the API event and stored as `fuelRate` (g/h) on `WorkoutEvent`. Accepted fuel range is `0`–`90` g/h.
 
 ### Pace Format
 

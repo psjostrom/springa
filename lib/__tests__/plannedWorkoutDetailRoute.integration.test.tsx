@@ -40,6 +40,7 @@ import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
 import { signMobileToken } from "@/lib/mobileAuth";
 import { buildPlannedWorkoutDetail } from "@/lib/plannedWorkoutDetail";
+import { resetForecastCache } from "@/lib/smhi";
 import { server } from "./msw/server";
 
 const EMAIL = "native@example.com";
@@ -113,6 +114,7 @@ async function insertCachedPaceCalibration() {
 
 describe("GET /api/intervals/events/[id]", () => {
   beforeAll(async () => {
+    // @libsql/client requires Node's Uint8Array realm; browser-realm values fail SQLite binding.
     globalThis.Uint8Array = nodeUint8Array;
     await holder.db.executeMultiple(SCHEMA_DDL);
   });
@@ -123,6 +125,7 @@ describe("GET /api/intervals/events/[id]", () => {
   });
 
   beforeEach(async () => {
+    resetForecastCache();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T10:00:00.000Z"));
     await holder.db.execute("DELETE FROM prerun_carbs");
@@ -199,17 +202,10 @@ describe("GET /api/intervals/events/[id]", () => {
   });
 
   it("returns server-derived planned detail", async () => {
-    const { token } = await signMobileToken(EMAIL);
-    const req = new Request("http://localhost/api/intervals/events/event-123", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const result = await requestDetail();
+    const { status, body } = result;
 
-    const response = await GET(req, {
-      params: Promise.resolve({ id: "event-123" }),
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
+    expect(status).toBe(200);
     expect(Object.keys(body)).toEqual([
       "event",
       "structure",
@@ -372,7 +368,7 @@ describe("GET /api/intervals/events/[id]", () => {
       duration: { minutes: 60, estimated: false },
       distance: null,
       fuelRateGPerHour: 60,
-      prescribedCarbsG: null,
+      prescribedCarbsG: 60,
     });
   });
 
@@ -706,6 +702,21 @@ describe("GET /api/intervals/events/[id]", () => {
     });
   });
 
+  it("returns typed 400 when Intervals credentials are missing", async () => {
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET intervals_api_key = NULL WHERE email = ?",
+      args: [EMAIL],
+    });
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(400);
+    expect(result.body).toEqual({
+      error: "Intervals.icu not configured",
+      code: "MISSING_CREDENTIALS",
+    });
+  });
+
   it("maps a missing Intervals event to 404", async () => {
     server.use(
       http.get(EVENT_URL, () => new HttpResponse("missing", { status: 404 })),
@@ -743,6 +754,20 @@ describe("GET /api/intervals/events/[id]", () => {
   it("maps an Intervals failure to 502", async () => {
     server.use(
       http.get(EVENT_URL, () => new HttpResponse("down", { status: 500 })),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(502);
+    expect(result.body).toEqual({
+      error: "Failed to fetch event",
+      code: "UPSTREAM_ERROR",
+    });
+  });
+
+  it("maps malformed successful event JSON to 502", async () => {
+    server.use(
+      http.get(EVENT_URL, () => new HttpResponse("not-json", { status: 200 })),
     );
 
     const result = await requestDetail();

@@ -83,6 +83,21 @@ function cookiePost(body: unknown) {
   );
 }
 
+async function cookieAndBearerPost(body: unknown) {
+  holder.cookieEmail = EMAIL;
+  const { token } = await signMobileToken(EMAIL);
+  return POST(
+    new Request("http://localhost/api/intervals/events/replace", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 function useEvent(overrides: Record<string, unknown> = {}) {
   server.use(
     http.get(`${API_BASE}/athlete/0/events/:eventId`, ({ params }) =>
@@ -276,7 +291,7 @@ describe("Bearer workout replacement", () => {
     ).toMatch(/67-88% LTHR \(112-147 bpm\)/);
   });
 
-  it("omits fuel when diabetes mode is off", async () => {
+  it("sends zero fuel when diabetes mode is off", async () => {
     await holder.db.execute({
       sql: "UPDATE user_settings SET diabetes_mode = 0 WHERE email = ?",
       args: [EMAIL],
@@ -338,9 +353,10 @@ describe("Bearer workout replacement", () => {
   it.each(["race_date", "total_weeks"])(
     "returns PLAN_SETTINGS_REQUIRED when %s is absent",
     async (column) => {
-      await holder.db.execute(
-        `UPDATE user_settings SET ${column} = NULL WHERE email = '${EMAIL}'`,
-      );
+      await holder.db.execute({
+        sql: `UPDATE user_settings SET ${column} = NULL WHERE email = ?`,
+        args: [EMAIL],
+      });
       await holder.db.execute({
         sql: `INSERT INTO activity_streams
                 (email, activity_id, name, fuel_rate, hr, glucose)
@@ -474,6 +490,22 @@ describe("Bearer workout replacement", () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toMatchObject({
       code: "UPSTREAM_ERROR",
+    });
+    expectNoExternalMutation();
+  });
+
+  it("rejects an event with a non-string local date", async () => {
+    useEvent({ start_date_local: 123 });
+
+    const response = await bearerPost({
+      existingEventId: "event-123",
+      category: "easy",
+    });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UPSTREAM_ERROR",
+      error: "Event has an invalid local date",
     });
     expectNoExternalMutation();
   });
@@ -613,6 +645,29 @@ describe("legacy cookie workout replacement", () => {
     type: "Run",
     fuelRate: 48,
   };
+
+  it("uses cookie validation when both cookie and Bearer credentials exist", async () => {
+    const response = await cookieAndBearerPost({
+      existingEventId: 123,
+      workout,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ newId: 123 });
+  });
+
+  it.each([0, -1, 1.5, "event-01", "not-an-event"])(
+    "rejects invalid legacy existing ID %p",
+    async (existingEventId) => {
+      const response = await cookiePost({ existingEventId, workout });
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({
+        code: "INVALID_INPUT",
+      });
+      expectNoExternalMutation();
+    },
+  );
 
   it("keeps existing-ID request and response compatible with in-place PUT", async () => {
     await savePreRunCarbs(EMAIL, 123, 25);

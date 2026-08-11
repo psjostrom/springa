@@ -88,7 +88,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-08-10T10:00:00.000Z"));
   await holder.db.executeMultiple(SCHEMA_DDL);
   await holder.db.execute("DELETE FROM activity_streams");
