@@ -3,6 +3,7 @@ import { getActivityStreams } from "./activityStreamsDb";
 import { buildBGModelFromCached } from "./bgModel";
 import { computeMaxHRZones, DEFAULT_MAX_HR } from "./constants";
 import { normalizeEffortMetric } from "./effortMetric";
+import { serializeFuelRate } from "./fuelRate";
 import {
   fetchAthleteProfile,
   fetchEvent,
@@ -140,6 +141,7 @@ export async function replacePlannedWorkoutByIntent(input: {
   }
 
   try {
+    const carbsPerHour = serializeFuelRate(workout.fuelRate);
     await updateEvent(input.apiKey, input.existingEventId, {
       name: workout.name,
       description: workout.description,
@@ -149,9 +151,7 @@ export async function replacePlannedWorkoutByIntent(input: {
       ),
       external_id: workout.external_id,
       type: workout.type,
-      ...(workout.fuelRate != null && {
-        carbs_per_hour: Math.round(workout.fuelRate),
-      }),
+      ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
     });
   } catch (error) {
     throw new WorkoutReplacementError(

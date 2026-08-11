@@ -3,6 +3,9 @@ import { parseCalendarEventId } from "./calendarEventId";
 import { getUserCredentials } from "./credentials";
 import { fetchEvent, IntervalsApiError } from "./intervalsApi";
 
+const ORPHAN_CLEANUP_BATCH_SIZE = 25;
+const ORPHAN_CLEANUP_TIMEOUT_MS = 5_000;
+
 export async function getPreRunCarbs(
   email: string,
   eventId: number,
@@ -43,9 +46,11 @@ export async function deletePreRunCarbs(
 
 /** Remove local rows only when upstream confirms their event no longer exists. */
 export async function cleanupOrphanedPreRunCarbs(): Promise<void> {
-  const result = await db().execute(
-    "SELECT email, event_id FROM prerun_carbs",
-  );
+  const result = await db().execute({
+    sql: `SELECT email, event_id FROM prerun_carbs
+          ORDER BY created_at ASC LIMIT ?`,
+    args: [ORPHAN_CLEANUP_BATCH_SIZE],
+  });
 
   for (const row of result.rows) {
     const email = typeof row.email === "string" ? row.email : null;
@@ -58,7 +63,9 @@ export async function cleanupOrphanedPreRunCarbs(): Promise<void> {
     try {
       const creds = await getUserCredentials(email);
       if (!creds?.intervalsApiKey) continue;
-      await fetchEvent(creds.intervalsApiKey, eventId);
+      await fetchEvent(creds.intervalsApiKey, eventId, {
+        signal: AbortSignal.timeout(ORPHAN_CLEANUP_TIMEOUT_MS),
+      });
     } catch (error) {
       if (error instanceof IntervalsApiError && error.status === 404) {
         try {

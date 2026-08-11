@@ -308,6 +308,27 @@ describe("planned workout delete", () => {
     expect(await getPreRunCarbs(EMAIL, 124)).toBeNull();
   });
 
+  it("limits orphan cleanup to one batch per invocation", async () => {
+    for (const eventId of Array.from({ length: 26 }, (_, index) => 1000 + index)) {
+      await savePreRunCarbs(EMAIL, eventId, 25);
+    }
+    let checked = 0;
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events/:eventId`, () => {
+        checked += 1;
+        return new HttpResponse("missing", { status: 404 });
+      }),
+    );
+
+    await cleanupOrphanedPreRunCarbs();
+
+    expect(checked).toBe(25);
+    const remaining = await holder.db.execute(
+      "SELECT COUNT(*) AS count FROM prerun_carbs",
+    );
+    expect(Number(remaining.rows[0].count)).toBe(1);
+  });
+
   it("deletes upstream before removing local pre-run carbs", async () => {
     await savePreRunCarbs(EMAIL, 123, 25);
     let carbsSeenUpstream: number | null | undefined;

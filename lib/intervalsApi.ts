@@ -12,6 +12,7 @@ import type {
 import { API_BASE, PACE_ZONE_PCT, ZONE_DISPLAY_NAMES, type ZoneKey } from "./constants";
 import { extractRawStreams, extractLatlng } from "./streams";
 import { categoryFromExternalId } from "./paceInsight";
+import { serializeFuelRate } from "./fuelRate";
 import {
   processActivities,
   processPlannedEvents,
@@ -536,12 +537,16 @@ export async function pairEventWithActivity(
 export async function fetchEvent(
   apiKey: string,
   eventId: number,
+  options?: { signal?: AbortSignal },
 ): Promise<IntervalsEvent> {
   let res: Response;
   try {
     res = await fetch(
       `${API_BASE}/athlete/0/events/${encodeURIComponent(String(eventId))}`,
-      { headers: { Authorization: authHeader(apiKey) } },
+      {
+        headers: { Authorization: authHeader(apiKey) },
+        signal: options?.signal,
+      },
     );
   } catch (error) {
     throw new IntervalsApiError(
@@ -655,6 +660,18 @@ export async function uploadToIntervals(
   events: WorkoutEvent[],
 ): Promise<{ count: number }> {
   const auth = authHeader(apiKey);
+  const payload = events.map((e) => {
+    const carbsPerHour = serializeFuelRate(e.fuelRate);
+    return {
+      category: "WORKOUT",
+      start_date_local: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+      name: e.name,
+      description: e.description,
+      external_id: e.external_id,
+      type: e.type,
+      ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
+    };
+  });
   const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
   const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
   const existingRes = await fetch(
@@ -665,16 +682,6 @@ export async function uploadToIntervals(
     throw new Error(`Failed to fetch existing events: ${existingRes.status}`);
   }
   const existingEvents = (await existingRes.json()) as IntervalsEvent[];
-
-  const payload = events.map((e) => ({
-    category: "WORKOUT",
-    start_date_local: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
-    name: e.name,
-    description: e.description,
-    external_id: e.external_id,
-    type: e.type,
-    ...(e.fuelRate != null && { carbs_per_hour: Math.round(e.fuelRate) }),
-  }));
 
   try {
     const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
@@ -724,6 +731,7 @@ async function createSingleEvent(
   workout: WorkoutEvent,
 ): Promise<number> {
   const auth = authHeader(apiKey);
+  const carbsPerHour = serializeFuelRate(workout.fuelRate);
   const payload = [{
     category: "WORKOUT",
     start_date_local: format(workout.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
@@ -731,7 +739,7 @@ async function createSingleEvent(
     description: workout.description,
     external_id: workout.external_id,
     type: workout.type,
-    ...(workout.fuelRate != null && { carbs_per_hour: Math.round(workout.fuelRate) }),
+    ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
   }];
 
   const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
@@ -753,15 +761,14 @@ export async function replaceWorkoutOnDate(
   workout: WorkoutEvent,
 ): Promise<number> {
   if (existingEventId != null) {
+    const carbsPerHour = serializeFuelRate(workout.fuelRate);
     await updateEvent(apiKey, existingEventId, {
       start_date_local: format(workout.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
       name: workout.name,
       description: workout.description,
       external_id: workout.external_id,
       type: workout.type,
-      ...(workout.fuelRate != null && {
-        carbs_per_hour: Math.round(workout.fuelRate),
-      }),
+      ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
     });
     return existingEventId;
   }
