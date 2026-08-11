@@ -11,7 +11,7 @@ export class AuthError extends Error {
 
 /** Get authenticated user email or throw AuthError. */
 export async function requireAuth(options?: {
-  /** Test override — production always reads Next.js request headers. */
+  /** Explicit request headers for route handlers; defaults to Next.js headers. */
   headerList?: Headers;
 }): Promise<string> {
   const session = await auth();

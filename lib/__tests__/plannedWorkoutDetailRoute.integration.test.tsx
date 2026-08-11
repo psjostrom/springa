@@ -87,6 +87,30 @@ const originalUint8Array = globalThis.Uint8Array;
 const nodeUint8Array = Object.getPrototypeOf(Buffer.prototype)
   .constructor as typeof Uint8Array;
 
+async function insertCachedPaceCalibration() {
+  await holder.db.execute({
+    sql: `INSERT INTO activity_streams
+            (email, activity_id, name, hr, pace, activity_date)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      EMAIL,
+      "activity-1",
+      "W04 Easy",
+      JSON.stringify([
+        { time: 0, value: 130 },
+        { time: 1, value: 130 },
+        { time: 2, value: 130 },
+      ]),
+      JSON.stringify([
+        { time: 0, value: 7 },
+        { time: 1, value: 7 },
+        { time: 2, value: 7 },
+      ]),
+      "2026-08-01",
+    ],
+  });
+}
+
 describe("GET /api/intervals/events/[id]", () => {
   beforeAll(async () => {
     globalThis.Uint8Array = nodeUint8Array;
@@ -456,8 +480,16 @@ describe("GET /api/intervals/events/[id]", () => {
             WHERE email = ?`,
       args: [EMAIL],
     });
+    await insertCachedPaceCalibration();
+    let profileRequests = 0;
     server.use(
-      http.get(`${API_BASE}/athlete/0`, () => HttpResponse.json({})),
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({ ...plannedEvent, description: paceDescription }),
+      ),
+      http.get(`${API_BASE}/athlete/0`, () => {
+        profileRequests += 1;
+        return HttpResponse.json({});
+      }),
     );
 
     const result = await requestDetail();
@@ -469,7 +501,7 @@ describe("GET /api/intervals/events/[id]", () => {
       startDateLocal: "2026-08-13T12:00:00",
       name: "W05 Easy",
       category: "easy",
-      description,
+      description: paceDescription,
     });
     expect(result.body.structure).toEqual({ sections: [], timeline: [] });
     expect(result.body.metrics).toEqual({
@@ -478,6 +510,69 @@ describe("GET /api/intervals/events/[id]", () => {
       fuelRateGPerHour: 60,
       prescribedCarbsG: null,
     });
+    const settings = await holder.db.execute({
+      sql: "SELECT hr_zones, max_hr FROM user_settings WHERE email = ?",
+      args: [EMAIL],
+    });
+    expect(settings.rows[0]).toMatchObject({ hr_zones: null, max_hr: null });
+    expect(profileRequests).toBe(1);
+  });
+
+  it("uses one live profile request for cached-stream calibration without persisting it", async () => {
+    await holder.db.execute({
+      sql: `UPDATE user_settings
+            SET current_ability_dist = NULL, current_ability_secs = NULL,
+                hr_zones = NULL, max_hr = NULL
+            WHERE email = ?`,
+      args: [EMAIL],
+    });
+    await insertCachedPaceCalibration();
+    let profileRequests = 0;
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        profileRequests += 1;
+        return HttpResponse.json({
+          sportSettings: [
+            { types: ["Run"], lthr: 168, max_hr: 190 },
+          ],
+        });
+      }),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.metrics).toEqual({
+      duration: { minutes: 60, estimated: false },
+      distance: { km: 8.6, estimated: true },
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: 60,
+    });
+    const settings = await holder.db.execute({
+      sql: "SELECT hr_zones, max_hr FROM user_settings WHERE email = ?",
+      args: [EMAIL],
+    });
+    expect(settings.rows[0]).toMatchObject({ hr_zones: null, max_hr: null });
+    expect(profileRequests).toBe(1);
+  });
+
+  it("returns typed 502 when the live profile is unavailable", async () => {
+    let profileRequests = 0;
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => {
+        profileRequests += 1;
+        return new HttpResponse("down", { status: 503 });
+      }),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(502);
+    expect(result.body).toEqual({
+      error: "Failed to fetch athlete profile",
+      code: "UPSTREAM_ERROR",
+    });
+    expect(profileRequests).toBe(1);
   });
 
   it("does not report clothing-domain failures as unavailable forecasts", async () => {

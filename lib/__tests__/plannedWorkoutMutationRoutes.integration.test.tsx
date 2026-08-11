@@ -142,6 +142,25 @@ describe("planned workout move", () => {
     });
   });
 
+  it("returns a typed upstream error when a Bearer move fails", async () => {
+    server.use(
+      http.put(`${API_BASE}/athlete/0/events/:eventId`, () =>
+        new HttpResponse("unavailable", { status: 503 }),
+      ),
+    );
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ start_date_local: "2026-08-14T12:00:00" }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to update event: 503 unavailable",
+      code: "UPSTREAM_ERROR",
+    });
+  });
+
   it.each([
     "0",
     "event-0",

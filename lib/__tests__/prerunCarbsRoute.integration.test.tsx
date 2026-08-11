@@ -65,17 +65,25 @@ describe("/api/prerun-carbs", () => {
     console.error = originalConsoleError;
   });
 
-  it("returns 400 for malformed JSON", async () => {
+  it("returns a typed 400 for malformed Bearer JSON", async () => {
+    holder.cookieEmail = null;
+    const { token } = await signMobileToken("native@example.com");
     const req = new Request("http://localhost/api/prerun-carbs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: "{",
     });
 
     const res = await POST(req);
 
     expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid JSON" });
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid JSON",
+      code: "INVALID_INPUT",
+    });
   });
 
   it("returns 500 when loading pre-run carbs fails", async () => {

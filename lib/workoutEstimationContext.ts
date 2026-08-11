@@ -45,6 +45,7 @@ export async function getUserWorkoutEstimationContext(
   email: string,
   intervalsApiKey?: string | null,
   settings?: UserSettings,
+  profile?: Awaited<ReturnType<typeof fetchAthleteProfile>>,
 ): Promise<WorkoutEstimationContext> {
   const resolvedSettings = settings ?? (await getUserSettings(email));
   const context = createWorkoutEstimationContext({
@@ -61,27 +62,37 @@ export async function getUserWorkoutEstimationContext(
     resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
   const cachedMaxHr = resolvedSettings.maxHr ?? null;
 
-  const cachedActivities = await getActivityStreams(email);
-
   if (cachedHrZones) {
     hrZones = cachedHrZones;
   } else if (cachedMaxHr) {
     hrZones = computeMaxHRZones(cachedMaxHr);
+  } else if (profile) {
+    if (profile.hrZones?.length === 5) {
+      hrZones = profile.hrZones;
+    } else if (profile.maxHr) {
+      hrZones = computeMaxHRZones(profile.maxHr);
+    } else {
+      return context;
+    }
   } else {
-    const profile = await fetchAthleteProfile(intervalsApiKey);
+    const fetchedProfile = await fetchAthleteProfile(intervalsApiKey);
     hrZones =
-      profile.hrZones?.length === 5
-        ? profile.hrZones
-        : profile.maxHr
-          ? computeMaxHRZones(profile.maxHr)
+      fetchedProfile.hrZones?.length === 5
+        ? fetchedProfile.hrZones
+        : fetchedProfile.maxHr
+          ? computeMaxHRZones(fetchedProfile.maxHr)
           : computeMaxHRZones(DEFAULT_MAX_HR);
     // Write back so subsequent requests skip the live fetch.
     await saveUserSettings(email, {
-      hrZones: profile.hrZones?.length === 5 ? profile.hrZones : undefined,
-      maxHr: profile.maxHr ?? undefined,
+      hrZones:
+        fetchedProfile.hrZones?.length === 5
+          ? fetchedProfile.hrZones
+          : undefined,
+      maxHr: fetchedProfile.maxHr ?? undefined,
     });
   }
 
+  const cachedActivities = await getActivityStreams(email);
   const paceTable = deriveCalibratedPaceTable(cachedActivities, hrZones);
 
   return createWorkoutEstimationContext({

@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return invalidInput("Invalid JSON");
   }
 
   if (body == null || typeof body !== "object" || Array.isArray(body)) {

@@ -52,17 +52,17 @@ export async function GET(
 
   try {
     const settings = await getUserSettings(email);
-    const [event, profile, estimationContext, preRunCarbsG] =
-      await Promise.all([
-        fetchEvent(creds.intervalsApiKey, eventId),
-        fetchAthleteProfile(creds.intervalsApiKey),
-        getUserWorkoutEstimationContext(
-          email,
-          creds.intervalsApiKey,
-          settings,
-        ),
-        getPreRunCarbs(email, eventId),
-      ]);
+    const [event, profile, preRunCarbsG] = await Promise.all([
+      fetchEvent(creds.intervalsApiKey, eventId),
+      fetchAthleteProfile(creds.intervalsApiKey, { strict: true }),
+      getPreRunCarbs(email, eventId),
+    ]);
+    const estimationContext = await getUserWorkoutEstimationContext(
+      email,
+      creds.intervalsApiKey,
+      settings,
+      profile,
+    );
     const maxHr = settings.maxHr ?? profile.maxHr;
     const hrZones =
       settings.hrZones?.length === 5
@@ -86,6 +86,9 @@ export async function GET(
     );
   } catch (error) {
     if (error instanceof IntervalsApiError) {
+      if (error.message === "Failed to fetch athlete profile") {
+        return errorResponse(error.message, "UPSTREAM_ERROR", 502);
+      }
       return error.status === 404
         ? errorResponse("Event not found", "EVENT_NOT_FOUND", 404)
         : errorResponse("Failed to fetch event", "UPSTREAM_ERROR", 502);
@@ -185,9 +188,10 @@ export async function PUT(
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[intervals/events]", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to update event" },
-      { status: 502 },
+    return errorResponse(
+      err instanceof Error ? err.message : "Failed to update event",
+      "UPSTREAM_ERROR",
+      502,
     );
   }
 }
