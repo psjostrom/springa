@@ -55,8 +55,8 @@ export async function getUserWorkoutEstimationContext(
 
   if (!intervalsApiKey) return context;
 
-  // Use cached hrZones/maxHr from settings to skip the live profile API call.
-  // If not cached, fetch once and write back for future requests.
+  // Prefer stored HR calibration. Injected profiles stay read-only; legacy
+  // callers without one fetch and cache profile calibration on a miss.
   let hrZones: number[];
   const cachedHrZones =
     resolvedSettings.hrZones?.length === 5 ? resolvedSettings.hrZones : null;
