@@ -696,13 +696,13 @@ export function generateSingleWorkout(
         date,
         wp,
         ctx.fuelInterval,
-        `ondemand-${format(date, "yyyy-MM-dd")}`,
+        `ondemand-${category}-${format(date, "yyyy-MM-dd")}`,
       );
       break;
   }
 
   if (!event) return null;
 
-  event.external_id = `ondemand-${format(date, "yyyy-MM-dd")}`;
+  event.external_id = `ondemand-${category}-${format(date, "yyyy-MM-dd")}`;
   return applyEffortMetricName(ctx, event);
 }

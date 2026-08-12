@@ -801,10 +801,21 @@ describe("generateSingleWorkout", () => {
     expect(event!.start_date_local.getDate()).toBe(buildThursday.getDate());
   });
 
-  it("sets external_id to ondemand-YYYY-MM-DD", () => {
+  it.each(["easy", "quality", "long", "club"] as const)(
+    "persists %s intent in the on-demand external_id",
+    (category) => {
+      const event = generateSingleWorkout(category, buildThursday, config);
+      expect(event).not.toBeNull();
+      expect(event!.external_id).toBe(
+        `ondemand-${category}-${formatDate(buildThursday)}`,
+      );
+    },
+  );
+
+  it("sets an external_id with a canonical on-demand date", () => {
     const event = generateSingleWorkout("easy", buildThursday, config);
     expect(event).not.toBeNull();
-    expect(event!.external_id).toMatch(/^ondemand-\d{4}-\d{2}-\d{2}$/);
+    expect(event!.external_id).toMatch(/^ondemand-easy-\d{4}-\d{2}-\d{2}$/);
   });
 
   it("returns null for dates outside plan window", () => {

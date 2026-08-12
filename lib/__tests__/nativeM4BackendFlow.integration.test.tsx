@@ -269,7 +269,7 @@ it("supports full native planned-workout flow through Springa route handlers", a
   expect(event).toMatchObject({
     id: 123,
     name: "W01 Short Intervals",
-    external_id: "ondemand-2026-08-14",
+    external_id: "ondemand-quality-2026-08-14",
     type: "Run",
     start_date_local: "2026-08-14T12:00:00",
     carbs_per_hour: 60,
