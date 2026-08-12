@@ -82,6 +82,7 @@ const plannedEvent = {
   description,
   paired_activity_id: null,
   carbs_per_hour: 60,
+  external_id: "ondemand-quality-2026-08-13",
 };
 
 const originalUint8Array = globalThis.Uint8Array;
@@ -208,6 +209,7 @@ describe("GET /api/intervals/events/[id]", () => {
     expect(status).toBe(200);
     expect(Object.keys(body)).toEqual([
       "event",
+      "replacementCategory",
       "structure",
       "metrics",
       "preRunCarbsG",
@@ -222,6 +224,7 @@ describe("GET /api/intervals/events/[id]", () => {
         category: "easy",
         description,
       },
+      replacementCategory: "quality",
       structure: {
         sections: [
           {
@@ -306,6 +309,26 @@ describe("GET /api/intervals/events/[id]", () => {
         },
       },
     });
+  });
+
+  it.each([
+    ["easy-5-2", "easy"],
+    ["free-5-4", "easy"],
+    ["speed-5-4", "quality"],
+    ["long-5", "long"],
+    ["club-5-2", "club"],
+    ["race", null],
+  ])("resolves replacement intent from %s", async (externalId, expected) => {
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({ ...plannedEvent, external_id: externalId }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.replacementCategory).toBe(expected);
   });
 
   it("derives pace prescriptions without HR profile calibration", async () => {

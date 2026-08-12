@@ -25,6 +25,12 @@ export type PlannedWorkoutCategory =
   | "race"
   | "other";
 
+export type PlannedWorkoutReplacementCategory =
+  | "easy"
+  | "quality"
+  | "long"
+  | "club";
+
 export interface PlannedWorkoutDetail {
   event: {
     id: `event-${number}`;
@@ -34,6 +40,7 @@ export interface PlannedWorkoutDetail {
     category: PlannedWorkoutCategory;
     description: string;
   };
+  replacementCategory: PlannedWorkoutReplacementCategory | null;
   structure: {
     sections: {
       name: string;
@@ -65,6 +72,31 @@ export interface PlannedWorkoutDetail {
         status: "unavailable";
         reason: "outside-window" | "forecast-unavailable";
       };
+}
+
+const REPLACEMENT_CATEGORIES = new Set<PlannedWorkoutReplacementCategory>([
+  "easy",
+  "quality",
+  "long",
+  "club",
+]);
+
+export function replacementCategoryFromExternalId(
+  externalId: string | undefined,
+): PlannedWorkoutReplacementCategory | null {
+  if (!externalId) return null;
+  const match = /^ondemand-(easy|quality|long|club)-\d{4}-\d{2}-\d{2}$/.exec(
+    externalId,
+  );
+  if (match && REPLACEMENT_CATEGORIES.has(match[1] as PlannedWorkoutReplacementCategory)) {
+    return match[1] as PlannedWorkoutReplacementCategory;
+  }
+  const prefix = externalId.split("-")[0];
+  if (prefix === "free") return "easy";
+  if (prefix === "speed") return "quality";
+  return REPLACEMENT_CATEGORIES.has(prefix as PlannedWorkoutReplacementCategory)
+    ? (prefix as PlannedWorkoutReplacementCategory)
+    : null;
 }
 
 export class UnsupportedPlannedWorkoutError extends Error {
@@ -224,6 +256,7 @@ export async function buildPlannedWorkoutDetail({
       category,
       description,
     },
+    replacementCategory: replacementCategoryFromExternalId(event.external_id),
     structure: {
       sections: sections.map((section) => ({
         name: section.name,

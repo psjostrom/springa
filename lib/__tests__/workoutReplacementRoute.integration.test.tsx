@@ -207,7 +207,7 @@ describe("Bearer workout replacement", () => {
     expect(capturedPutPayload?.url).toContain("/events/123");
     expect(capturedPutPayload?.body).toMatchObject({
       name: "W01 Short Intervals",
-      external_id: "ondemand-2026-08-13",
+      external_id: "ondemand-quality-2026-08-13",
       type: "Run",
       carbs_per_hour: 60,
     });
@@ -239,7 +239,7 @@ describe("Bearer workout replacement", () => {
     expect(capturedPutPayload?.body).toMatchObject({
       name,
       start_date_local: `2026-08-13T${localTime}`,
-      external_id: "ondemand-2026-08-13",
+      external_id: `ondemand-${category}-2026-08-13`,
       type: "Run",
     });
   });
