@@ -133,6 +133,12 @@ describe("/api/run-feedback", () => {
   });
 
   it("returns null prescribedCarbsG when paired event description is unparseable", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
+            VALUES (?, ?, ?, ?)`,
+      args: ["test@example.com", "202", 18, Date.now()],
+    });
+
     server.use(
       http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
         if (params.activityId !== "act-duration")
@@ -169,6 +175,48 @@ describe("/api/run-feedback", () => {
     await expect(res.json()).resolves.toMatchObject({
       activityId: "act-duration",
       prescribedCarbsG: null,
+      preRunCarbsG: 18,
+    });
+  });
+
+  it("returns null prescription instead of failing when paired event description is malformed", async () => {
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, ({ params }) => {
+        if (params.activityId !== "act-malformed")
+          return new HttpResponse(null, { status: 404 });
+        return HttpResponse.json({
+          id: "act-malformed",
+          type: "Run",
+          start_date_local: "2026-05-05T12:00:00",
+          start_date: "2026-05-05T10:00:00Z",
+          moving_time: 5640,
+          paired_event_id: null,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([
+          {
+            id: 303,
+            category: "WORKOUT",
+            name: "W13 Easy",
+            start_date_local: "2026-05-05T10:00:00",
+            description: { malformed: true },
+            carbs_per_hour: 60,
+            paired_activity_id: "act-malformed",
+          },
+        ]);
+      }),
+    );
+
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-malformed"),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      activityId: "act-malformed",
+      prescribedCarbsG: null,
+      preRunCarbsG: null,
     });
   });
 
@@ -278,5 +326,26 @@ describe("/api/run-feedback", () => {
       { activityId: "act-1", body: { carbs_ingested: 30 } },
       { activityId: "act-1", body: { PreRunCarbsG: 15 } },
     ]);
+  });
+
+  it("returns a JSON error when Intervals rejects the write", async () => {
+    server.use(
+      http.put(`${API_BASE}/activity/:activityId`, () =>
+        HttpResponse.json({ error: "Unknown custom field" }, { status: 422 }),
+      ),
+    );
+
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activityId: "act-1", rating: "good" }),
+      }),
+    );
+
+    expect(res.status).toBe(502);
+    await expect(res.json()).resolves.toMatchObject({
+      error: expect.stringContaining("Failed to update activity feedback"),
+    });
   });
 });

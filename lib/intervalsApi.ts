@@ -22,7 +22,7 @@ import type { WorkoutEstimationContext } from "./workoutMath";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
-export type IntervalsApiResource = "event" | "athlete-profile";
+export type IntervalsApiResource = "event" | "athlete-profile" | "activity";
 
 export class IntervalsApiError extends Error {
   constructor(
@@ -247,6 +247,43 @@ export async function fetchActivityById(
     return (await res.json()) as IntervalsActivity;
   } catch {
     return null;
+  }
+}
+
+export async function fetchActivityByIdStrict(
+  apiKey: string,
+  activityId: string,
+): Promise<IntervalsActivity> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
+      headers: { Authorization: authHeader(apiKey) },
+    });
+  } catch (error) {
+    throw new IntervalsApiError(
+      "Failed to fetch activity",
+      0,
+      error instanceof Error ? error.message : String(error),
+      "activity",
+    );
+  }
+  if (!res.ok) {
+    throw new IntervalsApiError(
+      "Failed to fetch activity",
+      res.status,
+      await res.text(),
+      "activity",
+    );
+  }
+  try {
+    return (await res.json()) as IntervalsActivity;
+  } catch (error) {
+    throw new IntervalsApiError(
+      "Failed to fetch activity",
+      res.status,
+      error instanceof Error ? error.message : String(error),
+      "activity",
+    );
   }
 }
 
