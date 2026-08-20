@@ -150,7 +150,14 @@ function stubNightscout(entries: unknown[] | null) {
 }
 
 function stubEvents(events: unknown[]) {
-  server.use(http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json(events)));
+  server.use(
+    http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
+      const url = new URL(request.url);
+      expect(url.searchParams.get("oldest")).toBe("2026-04-29T00:00:00");
+      expect(url.searchParams.get("newest")).toBe("2026-05-05T23:59:59");
+      return HttpResponse.json(events);
+    }),
+  );
 }
 
 describe("GET /api/intervals/activity/[id]/overview", () => {
@@ -231,6 +238,26 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
     expect(serialized).not.toContain("glucose");
     expect(serialized).not.toContain("rawTime");
     expect(serialized).not.toContain("velocity_smooth");
+  });
+
+  it("uses exact sample timestamps for split HR and elevation", async () => {
+    await insertCreds({ diabetesMode: false });
+    stubActivity(richActivity());
+    stubStreams([
+      { type: "time", data: [0, 29, 30, 59, 60, 89, 90, 119, 120] },
+      { type: "heartrate", data: [100, 110, 120, 130, 200, 210, 220, 230, 300] },
+      { type: "altitude", data: [10, 11, 12, 13, 20, 21, 22, 23, 30] },
+      { type: "distance", data: [0, 490, 500, 999, 1000, 1490, 1500, 1999, 2000] },
+    ]);
+
+    const res = await overviewRequest("act-rich");
+    const json = (await res.json()) as { splits: unknown[] };
+
+    expect(res.status).toBe(200);
+    expect(json.splits).toEqual([
+      { km: 1, paceMinPerKm: 1, avgHr: 115, elevationChangeM: 3 },
+      { km: 2, paceMinPerKm: 1, avgHr: 215, elevationChangeM: 3 },
+    ]);
   });
 
   it("skips BG-derived fields when diabetes mode is off", async () => {

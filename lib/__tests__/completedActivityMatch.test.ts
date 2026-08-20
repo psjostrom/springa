@@ -62,6 +62,21 @@ describe("findCompletedActivityMatch", () => {
 });
 
 describe("fetchActivityByIdStrict", () => {
+  it("passes caller cancellation to a stalled request", async () => {
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return HttpResponse.json(activity());
+      }),
+    );
+
+    await expect(
+      fetchActivityByIdStrict("test-key", "act-1", {
+        signal: AbortSignal.timeout(1),
+      }),
+    ).rejects.toMatchObject({ status: 0, resource: "activity" });
+  });
+
   it("throws an IntervalsApiError with the upstream status for non-2xx responses", async () => {
     server.use(
       http.get(

@@ -85,15 +85,16 @@ function enrichSplits(
   splits: ReturnType<typeof computeKmSplits>,
   streamData: StreamData,
 ): CompletedSplitDto[] {
-  const { heartrate, altitude } = streamData;
+  const { heartrate, altitude, rawTime = [] } = streamData;
   return splits.map((split) => {
-    const startMin = split.startTimeSec / 60;
-    const endMin = split.endTimeSec / 60;
-
     const hrWindow =
-      heartrate?.filter((p) => p.time >= startMin && p.time < endMin) ?? [];
+      heartrate?.filter((_, index) =>
+        rawTime[index] >= split.startTimeSec && rawTime[index] < split.endTimeSec
+      ) ?? [];
     const altWindow =
-      altitude?.filter((p) => p.time >= startMin && p.time < endMin) ?? [];
+      altitude?.filter((_, index) =>
+        rawTime[index] >= split.startTimeSec && rawTime[index] < split.endTimeSec
+      ) ?? [];
 
     return {
       km: split.km,
