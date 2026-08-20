@@ -240,11 +240,7 @@ export async function fetchActivityById(
   activityId: string,
 ): Promise<IntervalsActivity | null> {
   try {
-    const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
-      headers: { Authorization: authHeader(apiKey) },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as IntervalsActivity;
+    return await fetchActivityByIdStrict(apiKey, activityId);
   } catch {
     return null;
   }

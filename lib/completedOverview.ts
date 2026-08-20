@@ -111,7 +111,7 @@ function enrichSplits(
 }
 
 async function resolvePreRunCarbs(
-  activity: { PreRunCarbsG?: number; paired_event_id?: number | null },
+  activity: { PreRunCarbsG?: number },
   matchedEventId: number | null,
   email: string,
 ): Promise<CompletedWorkoutOverviewDto["preRunCarbs"]> {
@@ -120,7 +120,7 @@ async function resolvePreRunCarbs(
     return { grams: activityCarbs, source: "activity", fallbackEventId: null };
   }
 
-  const lookupEventId = activity.paired_event_id ?? matchedEventId;
+  const lookupEventId = matchedEventId;
   if (lookupEventId == null) {
     return { grams: null, source: "none", fallbackEventId: null };
   }
@@ -151,8 +151,10 @@ export async function buildCompletedWorkoutOverview(options: {
   const { email, apiKey, activityId, diabetesMode } = options;
 
   const activity = await fetchActivityByIdStrict(apiKey, activityId);
-  const { eventId } = await findCompletedActivityMatch(apiKey, activity);
-  const details = await fetchActivityDetails(activityId, apiKey);
+  const [{ eventId }, details] = await Promise.all([
+    findCompletedActivityMatch(apiKey, activity),
+    fetchActivityDetails(activityId, apiKey),
+  ]);
   const streamData = details.streamData;
 
   const event: CalendarEvent = activityToCalendarEvent(activity);

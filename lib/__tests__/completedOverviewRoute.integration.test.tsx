@@ -309,6 +309,15 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
     stubActivity(richActivity());
     stubStreams(richStreams());
     stubNightscout(nsReadings());
+    stubEvents([
+      {
+        id: 202,
+        category: "WORKOUT",
+        start_date_local: "2026-05-02T18:00:00",
+        name: "W12 Easy",
+        paired_activity_id: "act-rich",
+      },
+    ]);
 
     const res = await overviewRequest("act-rich");
 
@@ -322,10 +331,15 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
   });
 
   it("reports pre-run source 'none' without guessing when no authoritative event exists", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
+            VALUES (?, ?, ?, ?)`,
+      args: [EMAIL, "999", 27, Date.now()],
+    });
     stubActivity(
       richActivity({
         PreRunCarbsG: undefined,
-        paired_event_id: null,
+        paired_event_id: 999,
       }),
     );
     stubEvents([]);
