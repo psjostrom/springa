@@ -22,7 +22,7 @@ import type { WorkoutEstimationContext } from "./workoutMath";
 
 export const authHeader = (apiKey: string) => "Basic " + btoa("API_KEY:" + apiKey);
 
-export type IntervalsApiResource = "event" | "athlete-profile";
+export type IntervalsApiResource = "event" | "athlete-profile" | "activity";
 
 export class IntervalsApiError extends Error {
   constructor(
@@ -240,13 +240,59 @@ export async function fetchActivityById(
   activityId: string,
 ): Promise<IntervalsActivity | null> {
   try {
-    const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
-      headers: { Authorization: authHeader(apiKey) },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as IntervalsActivity;
+    return await fetchActivityByIdStrict(apiKey, activityId);
   } catch {
     return null;
+  }
+}
+
+export async function fetchActivityByIdStrict(
+  apiKey: string,
+  activityId: string,
+  options?: { signal?: AbortSignal },
+): Promise<IntervalsActivity> {
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    timeoutController.abort();
+  }, 5_000);
+  const signal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutController.signal])
+    : timeoutController.signal;
+  try {
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
+        headers: { Authorization: authHeader(apiKey) },
+        signal,
+      });
+    } catch (error) {
+      throw new IntervalsApiError(
+        "Failed to fetch activity",
+        0,
+        error instanceof Error ? error.message : String(error),
+        "activity",
+      );
+    }
+    if (!res.ok) {
+      throw new IntervalsApiError(
+        "Failed to fetch activity",
+        res.status,
+        await res.text(),
+        "activity",
+      );
+    }
+    try {
+      return (await res.json()) as IntervalsActivity;
+    } catch (error) {
+      throw new IntervalsApiError(
+        "Failed to fetch activity",
+        res.status,
+        error instanceof Error ? error.message : String(error),
+        "activity",
+      );
+    }
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

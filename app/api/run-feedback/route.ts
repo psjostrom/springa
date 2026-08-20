@@ -6,78 +6,37 @@ import {
   updateActivityFeedback,
   updateActivityCarbs,
   updateActivityPreRunCarbs,
-  authHeader,
 } from "@/lib/intervalsApi";
-import { API_BASE } from "@/lib/constants";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
-import type { IntervalsActivity, IntervalsEvent } from "@/lib/types";
+import type { IntervalsActivity } from "@/lib/types";
 import type { WorkoutEstimationContext } from "@/lib/workoutMath";
 import { getUserSettings } from "@/lib/settings";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
-import { findAuthoritativeWorkoutEventMatch } from "@/lib/workoutEventMatching";
+import { findCompletedActivityMatch } from "@/lib/completedActivityMatch";
 import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
 import { getPreRunCarbs } from "@/lib/prerunCarbs";
 
-interface MatchedEvent {
-  prescribedCarbsG: number | null;
-  eventId: number | null;
-}
-
-function shiftDateString(dateStr: string, dayOffset: number): string {
-  const date = new Date(`${dateStr}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + dayOffset);
-  return date.toISOString().slice(0, 10);
-}
-
-/** Find the matching WORKOUT event for this activity and compute prescribed carbs
- *  using the SAME inputs the calendar pipeline uses pre-run: the planned event's
- *  description + carbs_per_hour + workout context. No duration field is involved —
- *  Intervals.icu overwrites planned event time fields with actuals after pairing,
- *  so reading them post-run would diverge from the pre-run estimate. */
-async function findMatchingEvent(
+async function resolveMatchedPrescription(
   apiKey: string,
   activity: IntervalsActivity,
   context: WorkoutEstimationContext,
-): Promise<MatchedEvent> {
-  const dateStr = (activity.start_date_local ?? activity.start_date).slice(
-    0,
-    10,
-  );
-  const oldest = shiftDateString(dateStr, -3);
-  const newest = shiftDateString(dateStr, 3);
-
+) {
   try {
-    const res = await fetch(
-      `${API_BASE}/athlete/0/events?oldest=${oldest}T00:00:00&newest=${newest}T23:59:59`,
-      { headers: { Authorization: authHeader(apiKey) } },
-    );
-    if (!res.ok) return { prescribedCarbsG: null, eventId: null };
-    const events = (await res.json()) as IntervalsEvent[];
-    // Authoritative-only by design. The calendar pipeline uses the broader
-    // findWorkoutEventMatch because it ALSO drives the fire-and-forget auto-
-    // pairing (it needs to guess so it can pair). Feedback is per-activity and
-    // conservative: better to show "no prescription" briefly than to display a
-    // wrong number based on a name+day guess that may not survive the next
-    // pairing pass.
-    const planned = findAuthoritativeWorkoutEventMatch(activity, events);
-    if (!planned) return { prescribedCarbsG: null, eventId: null };
-
+    const { event, eventId } = await findCompletedActivityMatch(apiKey, activity);
     return {
-      prescribedCarbsG: calculateCanonicalPlannedPrescription(
-        planned.description,
-        planned.carbs_per_hour,
-        context,
-      ),
-      eventId: planned.id,
+      eventId,
+      prescribedCarbsG: event
+        ? calculateCanonicalPlannedPrescription(
+            event.description,
+            event.carbs_per_hour,
+            context,
+          )
+        : null,
     };
-  } catch (err) {
-    console.error(
-      "Failed to find matching event for activity:",
-      activity.id,
-      err,
-    );
-    return { prescribedCarbsG: null, eventId: null };
+  } catch (error) {
+    console.error("Failed to resolve matched prescription:", activity.id, error);
+    return { eventId: null, prescribedCarbsG: null };
   }
 }
 
@@ -176,7 +135,7 @@ export async function GET(req: Request) {
     );
 
     const { prescribedCarbsG, eventId: matchedEventId } =
-      await findMatchingEvent(apiKey, activity, workoutContext);
+      await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
@@ -212,7 +171,7 @@ export async function GET(req: Request) {
     );
 
     const { prescribedCarbsG, eventId: matchedEventId } =
-      await findMatchingEvent(apiKey, activity, workoutContext);
+      await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
@@ -282,16 +241,20 @@ export async function POST(req: Request) {
   }
   const apiKey = creds.intervalsApiKey;
 
-  // Write Rating + FeedbackComment to Intervals.icu
-  await updateActivityFeedback(apiKey, activityId, rating, comment);
+  try {
+    await updateActivityFeedback(apiKey, activityId, rating, comment);
+    if (carbsG != null) {
+      await updateActivityCarbs(apiKey, activityId, carbsG);
+    }
+    if (preRunCarbsG != null) {
+      await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
+    }
 
-  // Sync carbs to Intervals.icu if provided
-  if (carbsG != null) {
-    await updateActivityCarbs(apiKey, activityId, carbsG);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to save feedback" },
+      { status: 502 },
+    );
   }
-  if (preRunCarbsG != null) {
-    await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
-  }
-
-  return NextResponse.json({ ok: true });
 }
