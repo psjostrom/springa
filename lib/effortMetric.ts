@@ -4,17 +4,25 @@ export type EffortMetric = "pace" | "hr" | "feel";
 
 const ALLOWED = new Set<EffortMetric>(["pace", "hr", "feel"]);
 
+export function isEffortMetric(value: unknown): value is EffortMetric {
+  return typeof value === "string" && ALLOWED.has(value as EffortMetric);
+}
+
 export function normalizeEffortMetric(value: unknown): EffortMetric {
-  return typeof value === "string" && ALLOWED.has(value as EffortMetric)
-    ? (value as EffortMetric)
-    : "pace";
+  return isEffortMetric(value) ? value : "pace";
 }
 
 export function canUseHeartRateMetric(
   lthr?: number,
   hrZones?: number[],
 ): boolean {
-  return typeof lthr === "number" && lthr > 0 && hrZones?.length === 5;
+  return (
+    typeof lthr === "number" &&
+    Number.isFinite(lthr) &&
+    lthr > 0 &&
+    hrZones?.length === 5 &&
+    hrZones.every((zone) => Number.isFinite(zone))
+  );
 }
 
 /** Detect prescription metric from workout name + description markers. */

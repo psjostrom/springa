@@ -208,6 +208,8 @@ describe("GET /api/intervals/events/[id]", () => {
 
     expect(status).toBe(200);
     expect(Object.keys(body)).toEqual([
+      "effortMetric",
+      "heartRateMetricAvailable",
       "event",
       "replacementCategory",
       "structure",
@@ -216,6 +218,8 @@ describe("GET /api/intervals/events/[id]", () => {
       "clothing",
     ]);
     expect(body).toEqual({
+      effortMetric: "hr",
+      heartRateMetricAvailable: true,
       event: {
         id: "event-123",
         intervalsEventId: 123,
@@ -308,6 +312,71 @@ describe("GET /api/intervals/events/[id]", () => {
           },
         },
       },
+    });
+  });
+
+  it("resolves pace from event content", async () => {
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({ ...plannedEvent, description: paceDescription }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      effortMetric: "pace",
+      heartRateMetricAvailable: true,
+    });
+  });
+
+  it("resolves feel from event content", async () => {
+    server.use(
+      http.get(EVENT_URL, () =>
+        HttpResponse.json({
+          ...plannedEvent,
+          name: "W05 Easy By Feel",
+          description: "Main set\n- Easy 60m intensity=active",
+        }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      effortMetric: "feel",
+      heartRateMetricAvailable: true,
+    });
+  });
+
+  it("reports HR metric unavailable when live HR calibration is missing", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () => HttpResponse.json({})),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      effortMetric: "hr",
+      heartRateMetricAvailable: false,
+    });
+  });
+
+  it("resolves event metric instead of global effort setting", async () => {
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET effort_metric = 'pace' WHERE email = ?",
+      args: [EMAIL],
+    });
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      effortMetric: "hr",
+      heartRateMetricAvailable: true,
     });
   });
 

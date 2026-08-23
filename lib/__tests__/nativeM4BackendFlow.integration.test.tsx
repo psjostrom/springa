@@ -310,3 +310,46 @@ it("supports full native planned-workout flow through Springa route handlers", a
     new Set([`Basic ${btoa("API_KEY:intervals-key")}`]),
   );
 });
+
+it("returns complete detail from one Bearer effort mutation", async () => {
+  let eventFetches = 0;
+  const providerBodies: unknown[] = [];
+  server.use(
+    http.get(`${API_BASE}/athlete/0/events/123`, () => {
+      eventFetches += 1;
+      return HttpResponse.json(event);
+    }),
+    http.put(`${API_BASE}/athlete/0/events/123`, async ({ request: externalRequest }) => {
+      const body = await externalRequest.json();
+      providerBodies.push(body);
+      event = event ? { ...event, ...(body as Partial<ExternalEvent>) } : event;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  const response = await eventPUT(
+    request("/api/intervals/events/event-123", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ effortMetric: "hr" }),
+    }),
+    eventParams(),
+  );
+  const body = await response.json();
+
+  expect(response.status).toBe(200);
+  expect(body).toMatchObject({
+    effortMetric: "hr",
+    heartRateMetricAvailable: true,
+    event: { id: "event-123", intervalsEventId: 123 },
+    structure: expect.any(Object),
+    metrics: expect.any(Object),
+    clothing: expect.any(Object),
+  });
+  expect(eventFetches).toBe(1);
+  expect(providerBodies).toHaveLength(1);
+  expect(Object.keys(providerBodies[0] as object).sort()).toEqual([
+    "description",
+    "name",
+  ]);
+});
