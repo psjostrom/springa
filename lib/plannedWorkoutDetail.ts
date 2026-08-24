@@ -148,8 +148,8 @@ export async function buildPlannedWorkoutDetail({
   const effortMetric = detectEffortMetric(name, description);
   const heartRateMetricAvailable = canUseHeartRateMetric(lthr, hrZones);
   const category = getWorkoutCategory(name);
-  const validLthr = lthr ?? null;
-  const validHrZones = hrZones?.length === 5 ? hrZones : null;
+  const validLthr = heartRateMetricAvailable ? (lthr ?? null) : null;
+  const validHrZones = heartRateMetricAvailable ? (hrZones ?? null) : null;
   const format = detectWorkoutFormat(description);
   const isPaceBased = format === "absolute-pace" || format === "pace";
   const isHrBased = format === "hr";

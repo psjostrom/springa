@@ -365,6 +365,78 @@ describe("GET /api/intervals/events/[id]", () => {
     });
   });
 
+  it("reports HR metric unavailable and blocks HR derivation with non-finite calibration", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () =>
+        HttpResponse.json({
+          sportSettings: [
+            {
+              id: 1,
+              types: ["Run"],
+              lthr: NaN,
+              max_hr: 190,
+              hr_zones: [120, 140, 160, 175, 190],
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      effortMetric: "hr",
+      heartRateMetricAvailable: false,
+    });
+    expect(result.body.structure).toEqual({ sections: [], timeline: [] });
+    expect(result.body.metrics).toEqual({
+      duration: null,
+      distance: null,
+      fuelRateGPerHour: 60,
+      prescribedCarbsG: null,
+    });
+  });
+
+  it("blocks HR derivation when lthr is Infinity", async () => {
+    server.use(
+      http.get(`${API_BASE}/athlete/0`, () =>
+        HttpResponse.json({
+          sportSettings: [
+            {
+              id: 1,
+              types: ["Run"],
+              lthr: Infinity,
+              max_hr: 190,
+              hr_zones: [120, 140, 160, 175, 190],
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.heartRateMetricAvailable).toBe(false);
+    expect(result.body.structure).toEqual({ sections: [], timeline: [] });
+    expect(result.body.metrics.duration).toBe(null);
+  });
+
+  it("blocks HR derivation when hrZones contains non-finite values", async () => {
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET hr_zones = ? WHERE email = ?",
+      args: [JSON.stringify([120, NaN, 160, 175, 190]), EMAIL],
+    });
+
+    const result = await requestDetail();
+
+    expect(result.status).toBe(200);
+    expect(result.body.heartRateMetricAvailable).toBe(false);
+    expect(result.body.structure).toEqual({ sections: [], timeline: [] });
+    expect(result.body.metrics.prescribedCarbsG).toBe(null);
+  });
+
   it("resolves event metric instead of global effort setting", async () => {
     await holder.db.execute({
       sql: "UPDATE user_settings SET effort_metric = 'pace' WHERE email = ?",
