@@ -1,6 +1,7 @@
 import { removeByFeel } from "./byFeel";
 import { resolveZoneBand, classifyHR, DEFAULT_LTHR } from "./constants";
 import { formatStep, formatPaceStep } from "./descriptionBuilder";
+import { getZoneLabel } from "./format";
 import {
   canUseHeartRateMetric,
   detectEffortMetric,
@@ -93,7 +94,15 @@ function reemitStepLine(
   const trailing = intensitySuffix ? ` ${intensitySuffix}` : "";
 
   if (targetless) {
-    return `- ${formatPaceStep(duration, null, null, label, ctx.thresholdPace)}${trailing}`;
+    const sectionLabel =
+      currentSection === "Warmup" || currentSection === "Cooldown"
+        ? undefined
+        : zone === "walk"
+          ? "Walk"
+          : getZoneLabel(zone);
+    const resolvedLabel =
+      label ?? sectionLabel;
+    return `- ${formatPaceStep(duration, null, null, resolvedLabel, ctx.thresholdPace)}${trailing}`;
   }
 
   if (target === "hr") {
@@ -201,6 +210,8 @@ function zoneFromContext(
   if (currentSection === "Warmup" || intensity === "warmup") return "z2";
   if (currentSection === "Cooldown" || intensity === "cooldown") return "z2";
   if (intensity === "rest") return "z2";
+  // Legacy Feel steps omit labels; default active steps to Easy so metric edits remain possible.
+  if (intensity === "active") return "z2";
   return null;
 }
 

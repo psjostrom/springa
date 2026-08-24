@@ -38,6 +38,26 @@ const racePaceBlock = `Main set
 - Walk 2m intensity=rest
 `;
 
+const unlabeledPace = `Warmup
+- 10m 85-94% pace intensity=warmup
+
+Main set
+- 21m 85-94% pace intensity=active
+
+Cooldown
+- 15m 85-94% pace intensity=cooldown
+`;
+
+const persistedUnlabeledFeel = `Warmup
+- 10m intensity=warmup
+
+Main set
+- 21m intensity=active
+
+Cooldown
+- 15m intensity=cooldown
+`;
+
 describe("reemitWorkoutDescription", () => {
   it("pace → hr keeps structure and intensity tags", () => {
     const out = reemitWorkoutDescription(easyPace, "hr", {
@@ -63,6 +83,32 @@ describe("reemitWorkoutDescription", () => {
     const feel = reemitWorkoutDescription(easyPace, "feel", ctx);
     const pace = reemitWorkoutDescription(feel, "pace", ctx);
     expect(pace).toMatch(/\/km Pace|% pace/);
+  });
+
+  it("round-trips legacy unlabeled steps through feel", () => {
+    const feel = reemitWorkoutDescription(unlabeledPace, "feel", ctx);
+    expect(feel).toContain("- Easy 21m intensity=active");
+
+    const hr = reemitWorkoutDescription(feel, "hr", ctx);
+    expect(hr).toContain("- Easy 21m 68-83% LTHR");
+
+    const existingPace = reemitWorkoutDescription(
+      persistedUnlabeledFeel,
+      "pace",
+      ctx,
+    );
+    expect(existingPace).toContain(
+      "- 21m 6:15-18:20/km Pace intensity=active",
+    );
+
+    const existingHr = reemitWorkoutDescription(
+      persistedUnlabeledFeel,
+      "hr",
+      ctx,
+    );
+    expect(existingHr).toContain(
+      "- 21m 68-83% LTHR (114-140 bpm) intensity=active",
+    );
   });
 
   it("throws when re-emitting to HR without valid LTHR zones", () => {
