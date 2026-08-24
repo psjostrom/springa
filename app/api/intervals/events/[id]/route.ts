@@ -27,6 +27,134 @@ import {
 } from "@/lib/plannedWorkoutDetail";
 import { computeMaxHRZones } from "@/lib/constants";
 import { MAX_CARBS_PER_HOUR } from "@/lib/fuelRate";
+import {
+  canUseHeartRateMetric,
+  isEffortMetric,
+} from "@/lib/effortMetric";
+import {
+  reemitWorkoutDescription,
+  reemitWorkoutName,
+} from "@/lib/reemitWorkout";
+import { categoryFromExternalId } from "@/lib/paceInsight";
+import { todayInTimezone } from "@/lib/timezone";
+import type { IntervalsEvent } from "@/lib/types";
+import type { UserSettings } from "@/lib/settings";
+
+type AthleteProfile = Awaited<ReturnType<typeof fetchAthleteProfile>>;
+
+interface PlannedWorkoutDetailContext {
+  event: IntervalsEvent;
+  settings: UserSettings;
+  profile: AthleteProfile;
+  estimationContext: Awaited<ReturnType<typeof getUserWorkoutEstimationContext>>;
+  hrZones?: number[];
+  preRunCarbsG: number | null;
+}
+
+function resolveHeartRateZones(
+  settings: UserSettings,
+  profile: AthleteProfile,
+): number[] | undefined {
+  const maxHr = settings.maxHr ?? profile.maxHr;
+  return settings.hrZones?.length === 5
+    ? settings.hrZones
+    : profile.hrZones?.length === 5
+      ? profile.hrZones
+      : maxHr != null
+        ? computeMaxHRZones(maxHr)
+        : undefined;
+}
+
+async function loadPlannedWorkoutDetailContext(
+  email: string,
+  apiKey: string,
+  eventId: number,
+): Promise<PlannedWorkoutDetailContext> {
+  const settings = await getUserSettings(email);
+  const [event, profile, preRunCarbsG] = await Promise.all([
+    fetchEvent(apiKey, eventId),
+    fetchAthleteProfile(apiKey, { strict: true }),
+    getPreRunCarbs(email, eventId),
+  ]);
+  const estimationContext = await getUserWorkoutEstimationContext(
+    email,
+    apiKey,
+    settings,
+    profile,
+  );
+
+  return {
+    event,
+    settings,
+    profile,
+    estimationContext,
+    hrZones: resolveHeartRateZones(settings, profile),
+    preRunCarbsG,
+  };
+}
+
+function buildDetailFromContext(
+  context: PlannedWorkoutDetailContext,
+  timezone: string,
+  event = context.event,
+) {
+  return buildPlannedWorkoutDetail({
+    event,
+    lthr: context.profile.lthr,
+    hrZones: context.hrZones,
+    estimationContext: context.estimationContext,
+    timezone,
+    warmthPreference: context.settings.warmthPreference,
+    preRunCarbsG: context.preRunCarbsG,
+  });
+}
+
+function isRaceEvent(event: IntervalsEvent): boolean {
+  const normalizedName = (event.name ?? "").trim().toLowerCase();
+  return (
+    (typeof event.category === "string" &&
+      event.category.toLowerCase() === "race") ||
+    categoryFromExternalId(event.external_id) === "race" ||
+    /^race day\b/.test(normalizedName)
+  );
+}
+
+function isEligibleEffortEvent(event: IntervalsEvent, timezone: string): boolean {
+  const localDateTime = event.start_date_local;
+  const localDate =
+    typeof localDateTime === "string"
+      ? localDateTime.slice(0, 10)
+      : "";
+  return (
+    event.category === "WORKOUT" &&
+    event.type === "Run" &&
+    event.paired_activity_id == null &&
+    !isRaceEvent(event) &&
+    isLocalDateTime(localDateTime) &&
+    localDate >= todayInTimezone(timezone)
+  );
+}
+
+function detailErrorResponse(error: unknown): NextResponse | null {
+  if (error instanceof IntervalsApiError) {
+    switch (error.resource) {
+      case "athlete-profile":
+        return errorResponse(
+          "Failed to fetch athlete profile",
+          "UPSTREAM_ERROR",
+          502,
+        );
+      case "event":
+        return error.status === 404
+          ? errorResponse("Event not found", "EVENT_NOT_FOUND", 404)
+          : errorResponse("Failed to fetch event", "UPSTREAM_ERROR", 502);
+    }
+  }
+  if (error instanceof UnsupportedPlannedWorkoutError) {
+    return errorResponse(error.message, "UNSUPPORTED_EVENT", 422);
+  }
+  return null;
+}
 
 export async function GET(
   req: Request,
@@ -55,53 +183,18 @@ export async function GET(
   }
 
   try {
-    const settings = await getUserSettings(email);
-    const [event, profile, preRunCarbsG] = await Promise.all([
-      fetchEvent(creds.intervalsApiKey, eventId),
-      fetchAthleteProfile(creds.intervalsApiKey, { strict: true }),
-      getPreRunCarbs(email, eventId),
-    ]);
-    const estimationContext = await getUserWorkoutEstimationContext(
+    const context = await loadPlannedWorkoutDetailContext(
       email,
       creds.intervalsApiKey,
-      settings,
-      profile,
+      eventId,
     );
-    const maxHr = settings.maxHr ?? profile.maxHr;
-    const hrZones =
-      settings.hrZones?.length === 5
-        ? settings.hrZones
-        : profile.hrZones?.length === 5
-          ? profile.hrZones
-          : maxHr != null
-            ? computeMaxHRZones(maxHr)
-            : undefined;
 
     return NextResponse.json(
-      await buildPlannedWorkoutDetail({
-        event,
-        lthr: profile.lthr,
-        hrZones,
-        estimationContext,
-        timezone: creds.timezone,
-        warmthPreference: settings.warmthPreference,
-        preRunCarbsG,
-      }),
+      await buildDetailFromContext(context, creds.timezone),
     );
   } catch (error) {
-    if (error instanceof IntervalsApiError) {
-      switch (error.resource) {
-        case "athlete-profile":
-          return errorResponse("Failed to fetch athlete profile", "UPSTREAM_ERROR", 502);
-        case "event":
-          return error.status === 404
-            ? errorResponse("Event not found", "EVENT_NOT_FOUND", 404)
-            : errorResponse("Failed to fetch event", "UPSTREAM_ERROR", 502);
-      }
-    }
-    if (error instanceof UnsupportedPlannedWorkoutError) {
-      return errorResponse(error.message, "UNSUPPORTED_EVENT", 422);
-    }
+    const response = detailErrorResponse(error);
+    if (response) return response;
     throw error;
   }
 }
@@ -151,6 +244,108 @@ export async function PUT(
   const input = body as Record<string, unknown>;
   const keys = Object.keys(input);
   const isBearer = authSource === "bearer";
+  const isEffortIntent =
+    isBearer && keys.length === 1 && keys[0] === "effortMetric";
+  if (isEffortIntent) {
+    if (!isEffortMetric(input.effortMetric)) {
+      return errorResponse("Invalid input", "INVALID_INPUT", 400);
+    }
+
+    let context: PlannedWorkoutDetailContext;
+    try {
+      context = await loadPlannedWorkoutDetailContext(
+        email,
+        creds.intervalsApiKey,
+        eventId,
+      );
+    } catch (error) {
+      const response = detailErrorResponse(error);
+      if (response) return response;
+      throw error;
+    }
+
+    if (!isEligibleEffortEvent(context.event, creds.timezone)) {
+      return errorResponse(
+        "Event is not a planned workout",
+        "UNSUPPORTED_EVENT",
+        422,
+      );
+    }
+    if (
+      input.effortMetric === "hr" &&
+      !canUseHeartRateMetric(context.profile.lthr, context.hrZones)
+    ) {
+      return errorResponse(
+        "Heart-rate effort metric requires LTHR and five HR zones",
+        "PLAN_SETTINGS_REQUIRED",
+        422,
+      );
+    }
+
+    let currentDetail;
+    try {
+      currentDetail = await buildDetailFromContext(context, creds.timezone);
+    } catch (error) {
+      const response = detailErrorResponse(error);
+      if (response) return response;
+      throw error;
+    }
+    if (currentDetail.effortMetric === input.effortMetric) {
+      return NextResponse.json(currentDetail);
+    }
+
+    let candidateDetail;
+    let name: string;
+    let description: string;
+    try {
+      const reemitContext = {
+        lthr: context.profile.lthr ?? 0,
+        hrZones: context.hrZones ?? [],
+        thresholdPace: context.estimationContext.thresholdPace,
+      };
+      name = reemitWorkoutName(
+        context.event.name ?? "",
+        input.effortMetric,
+      );
+      description = reemitWorkoutDescription(
+        context.event.description ?? "",
+        input.effortMetric,
+        reemitContext,
+      );
+      candidateDetail = await buildDetailFromContext(context, creds.timezone, {
+        ...context.event,
+        name,
+        description,
+      });
+    } catch (error) {
+      if (error instanceof UnsupportedPlannedWorkoutError) {
+        return errorResponse(error.message, "UNSUPPORTED_EVENT", 422);
+      }
+      if (error instanceof Error && /re-emit|HR effortMetric/.test(error.message)) {
+        return errorResponse(error.message, "UNSUPPORTED_EVENT", 422);
+      }
+      throw error;
+    }
+    if (candidateDetail.effortMetric !== input.effortMetric) {
+      return errorResponse(
+        "Generated workout does not match requested effort metric",
+        "UNSUPPORTED_EVENT",
+        422,
+      );
+    }
+
+    try {
+      await updateEvent(creds.intervalsApiKey, eventId, { name, description });
+    } catch (error) {
+      console.error("[intervals/events]", error);
+      return errorResponse(
+        "Failed to update event",
+        "UPSTREAM_ERROR",
+        502,
+      );
+    }
+    return NextResponse.json(candidateDetail);
+  }
   if (
     isBearer &&
     (keys.length !== 1 || keys[0] !== "start_date_local")

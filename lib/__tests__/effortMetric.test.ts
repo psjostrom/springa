@@ -3,6 +3,7 @@ import {
   normalizeEffortMetric,
   canUseHeartRateMetric,
   detectEffortMetric,
+  isEffortMetric,
 } from "../effortMetric";
 import { TEST_LTHR, TEST_HR_ZONES } from "./testConstants";
 
@@ -19,11 +20,33 @@ describe("normalizeEffortMetric", () => {
   });
 });
 
+describe("isEffortMetric", () => {
+  it.each(["pace", "hr", "feel"])("accepts effort metric %s", (value) => {
+    expect(isEffortMetric(value)).toBe(true);
+  });
+
+  it.each([undefined, null, "", "power", 1, {}])(
+    "rejects effort metric %p",
+    (value) => {
+      expect(isEffortMetric(value)).toBe(false);
+    },
+  );
+});
+
 describe("canUseHeartRateMetric", () => {
   it("requires lthr and 5 zones", () => {
     expect(canUseHeartRateMetric(TEST_LTHR, [...TEST_HR_ZONES])).toBe(true);
     expect(canUseHeartRateMetric(undefined, [...TEST_HR_ZONES])).toBe(false);
     expect(canUseHeartRateMetric(TEST_LTHR, [120, 150])).toBe(false);
+  });
+
+  it("rejects non-positive, non-finite, and non-finite zone values", () => {
+    expect(canUseHeartRateMetric(0, [...TEST_HR_ZONES])).toBe(false);
+    expect(canUseHeartRateMetric(-1, [...TEST_HR_ZONES])).toBe(false);
+    expect(canUseHeartRateMetric(Number.NaN, [...TEST_HR_ZONES])).toBe(false);
+    expect(canUseHeartRateMetric(Number.POSITIVE_INFINITY, [...TEST_HR_ZONES])).toBe(false);
+    expect(canUseHeartRateMetric(170, [80, 90, 100, 110, Number.NaN])).toBe(false);
+    expect(canUseHeartRateMetric(170, [80, 90, 100, 110, Number.POSITIVE_INFINITY])).toBe(false);
   });
 });
 

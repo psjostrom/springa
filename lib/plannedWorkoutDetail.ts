@@ -17,6 +17,11 @@ import {
 } from "./workoutMath";
 import { calculateCanonicalPlannedPrescription } from "./workoutPrescriptions";
 import { formatCalendarEventId } from "./calendarEventId";
+import {
+  canUseHeartRateMetric,
+  detectEffortMetric,
+  type EffortMetric,
+} from "./effortMetric";
 
 export type PlannedWorkoutCategory =
   | "easy"
@@ -32,6 +37,8 @@ export type PlannedWorkoutReplacementCategory =
   | "club";
 
 export interface PlannedWorkoutDetail {
+  effortMetric: EffortMetric;
+  heartRateMetricAvailable: boolean;
   event: {
     id: `event-${number}`;
     intervalsEventId: number;
@@ -138,9 +145,11 @@ export async function buildPlannedWorkoutDetail({
 
   const name = event.name ?? "";
   const description = event.description ?? "";
+  const effortMetric = detectEffortMetric(name, description);
+  const heartRateMetricAvailable = canUseHeartRateMetric(lthr, hrZones);
   const category = getWorkoutCategory(name);
-  const validLthr = lthr ?? null;
-  const validHrZones = hrZones?.length === 5 ? hrZones : null;
+  const validLthr = heartRateMetricAvailable ? (lthr ?? null) : null;
+  const validHrZones = heartRateMetricAvailable ? (hrZones ?? null) : null;
   const format = detectWorkoutFormat(description);
   const isPaceBased = format === "absolute-pace" || format === "pace";
   const isHrBased = format === "hr";
@@ -248,6 +257,8 @@ export async function buildPlannedWorkoutDetail({
       : null;
 
   return {
+    effortMetric,
+    heartRateMetricAvailable,
     event: {
       id: formatCalendarEventId(event.id),
       intervalsEventId: event.id,

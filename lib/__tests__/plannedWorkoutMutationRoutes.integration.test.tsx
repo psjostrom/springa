@@ -289,6 +289,227 @@ describe("planned workout move", () => {
   });
 });
 
+describe("planned workout effort metric", () => {
+  const eventUrl = `${API_BASE}/athlete/0/events/123`;
+  const baseEvent: {
+    id: number;
+    category: string;
+    type: string;
+    start_date_local: string;
+    name: string;
+    description: string;
+    paired_activity_id: string | null;
+    external_id?: string;
+    carbs_per_hour: number;
+  } = {
+    id: 123,
+    category: "WORKOUT",
+    type: "Run",
+    start_date_local: "2026-08-13T12:00:00",
+    name: "W05 Easy",
+    description: "Main set\n- Easy 30m 68-76% pace",
+    paired_activity_id: null,
+    carbs_per_hour: 60,
+  };
+  let providerWrites = 0;
+  let providerBodies: unknown[] = [];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-10T10:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function installEffortEvent(
+    overrides: Partial<typeof baseEvent> = {},
+    profile: unknown = {
+      sportSettings: [
+        { types: ["Run"], lthr: 168, hr_zones: [120, 140, 160, 175, 190] },
+      ],
+    },
+  ) {
+    let currentEvent = { ...baseEvent, ...overrides };
+    providerWrites = 0;
+    providerBodies = [];
+    server.use(
+      http.get(eventUrl, () => HttpResponse.json(currentEvent)),
+      http.get(`${API_BASE}/athlete/0`, () =>
+        HttpResponse.json(profile as Record<string, unknown>),
+      ),
+      http.put(eventUrl, async ({ request }) => {
+        providerWrites += 1;
+        const body = await request.json();
+        providerBodies.push(body);
+        currentEvent = { ...currentEvent, ...(body as typeof currentEvent) };
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+  }
+
+  function descriptionFor(metric: "pace" | "hr" | "feel") {
+    if (metric === "pace") return "Main set\n- Easy 30m 68-76% pace";
+    if (metric === "hr") return "Main set\n- Easy 30m 68-76% LTHR (114-128 bpm)";
+    return "Main set\n- Easy 30m";
+  }
+
+  it.each([
+    ["pace", "hr"],
+    ["hr", "feel"],
+    ["feel", "pace"],
+  ] as const)("changes %s to %s with one server-owned provider patch", async (from, to) => {
+    installEffortEvent({ description: descriptionFor(from) });
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: to }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      effortMetric: to,
+      heartRateMetricAvailable: true,
+      event: { id: "event-123", intervalsEventId: 123 },
+      structure: expect.any(Object),
+      metrics: expect.any(Object),
+      clothing: expect.any(Object),
+    });
+    expect(providerWrites).toBe(1);
+    expect(providerBodies).toHaveLength(1);
+    expect(Object.keys(providerBodies[0] as object).sort()).toEqual([
+      "description",
+      "name",
+    ]);
+  });
+
+  it("returns current detail without a provider patch for the same metric", async () => {
+    installEffortEvent({ description: descriptionFor("hr") });
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: "hr" }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      effortMetric: "hr",
+      event: { id: "event-123", description: descriptionFor("hr") },
+    });
+    expect(providerWrites).toBe(0);
+  });
+
+  it("fails closed when prose markers make candidate metric ambiguous", async () => {
+    installEffortEvent({
+      description: [
+        "Notes mention 68-76% LTHR, but this workout is by feel.",
+        "",
+        "Main set",
+        "- Easy 30m",
+      ].join("\n"),
+    });
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: "pace" }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UNSUPPORTED_EVENT",
+    });
+    expect(providerWrites).toBe(0);
+  });
+
+  it.each([
+    {},
+    { effortMetric: "power" },
+    { metric: "hr" },
+    { effortMetric: "hr", name: "client-owned" },
+  ])("rejects invalid intent body %#", async (body) => {
+    installEffortEvent();
+
+    const response = await bearerPut("event-123", JSON.stringify(body));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: "INVALID_INPUT" });
+    expect(providerWrites).toBe(0);
+  });
+
+  it("rejects malformed JSON without a provider patch", async () => {
+    installEffortEvent();
+
+    const response = await bearerPut("event-123", "{");
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: "INVALID_INPUT" });
+    expect(providerWrites).toBe(0);
+  });
+
+  it.each([
+    ["past", { start_date_local: "2026-08-09T12:00:00" }],
+    ["invalid calendar datetime", { start_date_local: "2026-12-32T12:00:00" }],
+    ["paired", { paired_activity_id: "activity-123" }],
+    ["race", { external_id: "race-2026-08-13" }],
+    ["non-run", { type: "Ride" }],
+    ["non-workout", { category: "NOTE" }],
+  ] as const)("rejects %s events without a provider patch", async (_name, overrides) => {
+    installEffortEvent(overrides);
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: "hr" }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UNSUPPORTED_EVENT",
+    });
+    expect(providerWrites).toBe(0);
+  });
+
+  it("rejects HR intent without live calibration", async () => {
+    installEffortEvent({}, { sportSettings: [] });
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: "hr" }),
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "PLAN_SETTINGS_REQUIRED",
+      error: expect.stringMatching(/heart.?rate/i),
+    });
+    expect(providerWrites).toBe(0);
+  });
+
+  it("maps provider failures after validation to a typed upstream error", async () => {
+    installEffortEvent();
+    server.use(
+      http.put(eventUrl, async () => {
+        providerWrites += 1;
+        return new HttpResponse("unavailable", { status: 503 });
+      }),
+    );
+
+    const response = await bearerPut(
+      "event-123",
+      JSON.stringify({ effortMetric: "hr" }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to update event",
+      code: "UPSTREAM_ERROR",
+    });
+    expect(providerWrites).toBe(1);
+  });
+});
+
 describe("planned workout delete", () => {
   it("removes only confirmed orphaned pre-run carb rows and continues after failures", async () => {
     await savePreRunCarbs(EMAIL, 123, 25);
