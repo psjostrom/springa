@@ -90,6 +90,7 @@ export async function syncEventsToGoogle(
   events: SyncEvent[],
   timezone: string,
   context: WorkoutEstimationContext = {},
+  options: { strict?: boolean } = {},
 ): Promise<void> {
   for (const event of events) {
     const body = buildGoogleCalendarEventPayload(event, timezone, context);
@@ -100,6 +101,10 @@ export async function syncEventsToGoogle(
       body: JSON.stringify(body),
     });
     if (!res.ok) {
+      const text = await res.text();
+      if (options.strict) {
+        throw new Error(`Failed to create Google Calendar event "${event.name}": ${res.status} ${text}`);
+      }
       console.warn(`Failed to create Google Calendar event "${event.name}": ${res.status}`);
     }
   }
@@ -109,6 +114,7 @@ export async function syncEventsToGoogle(
 export async function clearFutureGoogleEvents(
   accessToken: string,
   calendarId: string,
+  options: { strict?: boolean } = {},
 ): Promise<void> {
   const now = new Date().toISOString();
   const res = await fetch(
@@ -116,16 +122,24 @@ export async function clearFutureGoogleEvents(
     { headers: authHeaders(accessToken) },
   );
   if (!res.ok) {
+    const text = await res.text();
+    if (options.strict) {
+      throw new Error(`Failed to list Google Calendar events for deletion: ${res.status} ${text}`);
+    }
     console.warn(`Failed to list Google Calendar events for deletion: ${res.status}`);
     return;
   }
 
   const data = (await res.json()) as { items?: { id: string }[] };
   for (const item of data.items ?? []) {
-    await fetch(
+    const deleteRes = await fetch(
       `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(item.id)}`,
       { method: "DELETE", headers: authHeaders(accessToken) },
     );
+    if (!deleteRes.ok && options.strict) {
+      const text = await deleteRes.text();
+      throw new Error(`Failed to delete Google Calendar event ${item.id}: ${deleteRes.status} ${text}`);
+    }
   }
 }
 

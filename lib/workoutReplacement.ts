@@ -1,17 +1,12 @@
 import { format, isValid, parseISO } from "date-fns";
-import { getActivityStreams } from "./activityStreamsDb";
-import { buildBGModelFromCached } from "./bgModel";
-import { computeMaxHRZones, DEFAULT_MAX_HR } from "./constants";
-import { normalizeEffortMetric } from "./effortMetric";
 import { serializeFuelRate } from "./fuelRate";
 import {
-  fetchAthleteProfile,
   fetchEvent,
   IntervalsApiError,
   updateEvent,
 } from "./intervalsApi";
 import { deletePreRunCarbs } from "./prerunCarbs";
-import { getUserSettings } from "./settings";
+import { resolvePlanContext, PlanContextError } from "./planContext";
 import type { IntervalsEvent } from "./types";
 import {
   generateSingleWorkout,
@@ -42,53 +37,18 @@ export async function resolveReplacementPlanConfig(
   email: string,
   apiKey: string,
 ): Promise<PlanConfig> {
-  const settings = await getUserSettings(email);
-  if (!settings.raceDate || settings.totalWeeks == null) {
-    throw new WorkoutReplacementError(
-      "PLAN_SETTINGS_REQUIRED",
-      "Plan settings are required",
-    );
-  }
-
-  let profile;
   try {
-    profile = await fetchAthleteProfile(apiKey, { strict: true });
-  } catch {
-    throw new WorkoutReplacementError(
-      "UPSTREAM_ERROR",
-      "Failed to fetch athlete profile",
-    );
+    return (await resolvePlanContext(email, apiKey)).planConfig;
+  } catch (error) {
+    if (error instanceof PlanContextError) {
+      throw new WorkoutReplacementError(
+        error.code === "PLAN_SETTINGS_REQUIRED" ? "PLAN_SETTINGS_REQUIRED" : "UPSTREAM_ERROR",
+        error.message,
+        { cause: error },
+      );
+    }
+    throw error;
   }
-  if (profile.lthr == null) {
-    throw new WorkoutReplacementError(
-      "PLAN_SETTINGS_REQUIRED",
-      "Plan settings are required",
-    );
-  }
-
-  const cached = settings.diabetesMode ? await getActivityStreams(email) : [];
-
-  return {
-    bgModel:
-      settings.diabetesMode && cached.length > 0
-        ? buildBGModelFromCached(cached)
-        : null,
-    raceDateStr: settings.raceDate,
-    raceDist: settings.raceDist ?? 16,
-    totalWeeks: settings.totalWeeks,
-    startKm: settings.startKm ?? 8,
-    lthr: profile.lthr,
-    hrZones: computeMaxHRZones(profile.maxHr ?? DEFAULT_MAX_HR),
-    effortMetric: normalizeEffortMetric(settings.effortMetric),
-    includeBasePhase: settings.includeBasePhase,
-    diabetesMode: settings.diabetesMode,
-    runDays: settings.runDays,
-    longRunDay: settings.longRunDay,
-    clubDay: settings.clubDay,
-    clubType: settings.clubType,
-    currentAbilitySecs: settings.currentAbilitySecs,
-    currentAbilityDist: settings.currentAbilityDist,
-  };
 }
 
 export async function replacePlannedWorkoutByIntent(input: {

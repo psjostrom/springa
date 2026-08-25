@@ -12,6 +12,9 @@ import {
   updateThresholdPace,
   updatePaceZones,
   updateAthleteHRZones,
+  fetchFutureWorkoutEvents,
+  upsertWorkoutEvents,
+  findStaleSpringaWorkoutEvents,
 } from "../intervalsApi";
 import { API_BASE } from "../constants";
 import type { WorkoutEvent } from "../types";
@@ -528,6 +531,61 @@ describe("fetchEvent", () => {
 });
 
 describe("uploadToIntervals", () => {
+  it("fetches future events through the bounded provider helper", async () => {
+    const oldest = new Date(2026, 2, 1);
+    const newest = new Date(2026, 3, 1);
+    let requestedUrl: URL | undefined;
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
+        requestedUrl = new URL(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const events = await fetchFutureWorkoutEvents("test-key", oldest, newest);
+
+    expect(events).toEqual([]);
+    expect(requestedUrl?.searchParams.get("oldest")).toBe("2026-03-01T00:00:00");
+    expect(requestedUrl?.searchParams.get("newest")).toBe("2026-04-01T00:00:00");
+    expect(requestedUrl?.searchParams.get("category")).toBe("WORKOUT");
+  });
+
+  it("upserts WorkoutEvents without exposing internal fields", async () => {
+    const events: WorkoutEvent[] = [
+      {
+        start_date_local: new Date("2026-03-01T12:00:00"),
+        name: "Test",
+        description: "Test",
+        external_id: "easy-1-1",
+        type: "Run",
+        fuelRate: 60,
+      },
+    ];
+
+    await expect(upsertWorkoutEvents("test-key", events)).resolves.toEqual({ count: 1 });
+    expect(capturedUploadPayload[0]).toMatchObject({
+      category: "WORKOUT",
+      external_id: "easy-1-1",
+      carbs_per_hour: 60,
+    });
+    expect(capturedUploadPayload[0]).not.toHaveProperty("distance");
+  });
+
+  it("selects only stale owned unpaired Run workouts", () => {
+    const existing = [
+      { id: 101, external_id: "easy-2026-11-29-1-0", category: "WORKOUT", type: "Run", start_date_local: "2026-03-01T12:00:00", paired_activity_id: null },
+      { id: 102, external_id: "long-2026-11-29-1", category: "WORKOUT", type: "Run", start_date_local: "2026-03-02T12:00:00" },
+      { id: 103, external_id: "easy-2026-11-29-2-0", category: "WORKOUT", type: "Run", start_date_local: "2026-03-03T12:00:00", paired_activity_id: "activity-1" },
+      { id: 104, external_id: "easy-2026-11-29-3-0", category: "WORKOUT", type: "Ride", start_date_local: "2026-03-04T12:00:00" },
+      { id: 105, external_id: "manual-1", category: "WORKOUT", type: "Run", start_date_local: "2026-03-05T12:00:00" },
+      { id: 106, external_id: "easy-2026-11-29-4-0", category: "NOTE", type: "Run", start_date_local: "2026-03-06T12:00:00" },
+    ];
+
+    expect(findStaleSpringaWorkoutEvents(existing, new Set(["easy-2026-11-29-1-0"]))).toEqual([
+      { id: 102, external_id: "long-2026-11-29-1" },
+    ]);
+  });
+
   it("fetches existing workouts, uploads new plan, then deletes stale workouts", async () => {
     const callOrder: string[] = [];
     server.use(
@@ -537,6 +595,7 @@ describe("uploadToIntervals", () => {
           {
             id: 100,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-01T12:00:00",
             name: "Old workout",
             external_id: "easy-1-2",
@@ -544,6 +603,7 @@ describe("uploadToIntervals", () => {
           {
             id: 101,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-02T12:00:00",
             name: "Kept workout",
             external_id: "easy-1-1",
@@ -553,6 +613,23 @@ describe("uploadToIntervals", () => {
             category: "WORKOUT",
             start_date_local: "2026-03-03T12:00:00",
             name: "Manual workout",
+          },
+          {
+            id: 103,
+            category: "WORKOUT",
+            type: "Run",
+            start_date_local: "2026-03-04T12:00:00",
+            name: "Completed workout",
+            external_id: "easy-1-3",
+            paired_activity_id: "activity-103",
+          },
+          {
+            id: 104,
+            category: "WORKOUT",
+            type: "Ride",
+            start_date_local: "2026-03-05T12:00:00",
+            name: "Ride workout",
+            external_id: "easy-1-4",
           },
         ]);
       }),
@@ -635,6 +712,7 @@ describe("uploadToIntervals", () => {
           {
             id: 100,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-01T12:00:00",
             name: "Old race workout",
             external_id: "long-2026-06-13-1",
@@ -642,6 +720,7 @@ describe("uploadToIntervals", () => {
           {
             id: 101,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-02T12:00:00",
             name: "Kept race workout",
             external_id: "long-2026-08-29-1",

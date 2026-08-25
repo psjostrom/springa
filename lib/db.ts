@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS user_settings (
   pace_suggestion_dismissed_at INTEGER,
   hr_zones TEXT,  -- JSON array of 5 HR zone boundary values, cached from Intervals.icu profile
   max_hr   INTEGER, -- cached from Intervals.icu profile; used when hr_zones not set
-  effort_metric TEXT
+  effort_metric TEXT,
+  generated_plan_config TEXT,
+  planner_config_dirty INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS activity_streams (

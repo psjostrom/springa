@@ -80,6 +80,29 @@ export const WRITABLE_SETTINGS_KEYS = [
   "paceSuggestionDismissedAt",
 ] as const satisfies readonly (keyof UserSettings)[];
 
+export interface SaveUserSettingsOptions {
+  plannerConfigDirty?: boolean;
+}
+
+type PlannerSettingKey =
+  | "raceDate"
+  | "raceName"
+  | "raceDist"
+  | "currentAbilitySecs"
+  | "currentAbilityDist"
+  | "totalWeeks"
+  | "startKm"
+  | "includeBasePhase"
+  | "effortMetric"
+  | "runDays"
+  | "longRunDay"
+  | "clubDay"
+  | "clubType";
+
+export type UserSettingsUpdate = Omit<Partial<UserSettings>, PlannerSettingKey> & {
+  [K in PlannerSettingKey]?: UserSettings[K] | null;
+};
+
 // --- CRUD ---
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
@@ -151,7 +174,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
 
 export async function saveUserSettings(
   email: string,
-  partial: Partial<UserSettings>,
+  partial: UserSettingsUpdate,
+  options: SaveUserSettingsOptions = {},
 ): Promise<void> {
   // Step 1: Ensure user row exists (diabetes_mode and onboarding_complete use DEFAULT 0)
   await db().execute({
@@ -205,7 +229,7 @@ export async function saveUserSettings(
   }
   if (partial.includeBasePhase !== undefined) {
     sets.push("include_base_phase = ?");
-    args.push(partial.includeBasePhase ? 1 : 0);
+    args.push(partial.includeBasePhase == null ? null : partial.includeBasePhase ? 1 : 0);
   }
   if (partial.warmthPreference !== undefined) {
     sets.push("warmth_preference = ?");
@@ -221,7 +245,7 @@ export async function saveUserSettings(
   }
   if (partial.runDays !== undefined) {
     sets.push("run_days = ?");
-    args.push(JSON.stringify(partial.runDays));
+    args.push(partial.runDays == null ? null : JSON.stringify(partial.runDays));
   }
   if (partial.longRunDay !== undefined) {
     sets.push("long_run_day = ?");
@@ -258,6 +282,10 @@ export async function saveUserSettings(
   if (partial.effortMetric !== undefined) {
     sets.push("effort_metric = ?");
     args.push(partial.effortMetric ?? null);
+  }
+  if (options.plannerConfigDirty !== undefined) {
+    sets.push("planner_config_dirty = ?");
+    args.push(options.plannerConfigDirty ? 1 : 0);
   }
 
   if (sets.length > 0) {

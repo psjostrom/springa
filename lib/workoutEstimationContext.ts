@@ -16,6 +16,17 @@ import {
   type WorkoutEstimationContext,
 } from "./workoutMath";
 
+export function resolveHeartRateZones(
+  settings: Pick<UserSettings, "hrZones" | "maxHr">,
+  profile: Pick<Awaited<ReturnType<typeof fetchAthleteProfile>>, "hrZones" | "maxHr">,
+  fallbackMaxHr?: number,
+): number[] | undefined {
+  if (settings.hrZones?.length === 5) return settings.hrZones;
+  if (profile.hrZones?.length === 5) return profile.hrZones;
+  const maxHr = settings.maxHr ?? profile.maxHr ?? fallbackMaxHr;
+  return maxHr != null ? computeMaxHRZones(maxHr) : undefined;
+}
+
 function deriveCalibratedPaceTable(
   activities: CachedActivity[],
   hrZones: number[],

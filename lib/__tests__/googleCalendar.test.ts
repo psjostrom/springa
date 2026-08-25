@@ -71,6 +71,25 @@ describe("syncEventsToGoogle", () => {
     expect(created.end).toEqual({ dateTime: "2026-04-01T12:55:00", timeZone: "Europe/Stockholm" });
     expect(created.description).toContain("Fuel: 45 g/h");
   });
+
+  it("throws in strict mode when event creation fails", async () => {
+    server.use(
+      http.post("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+    );
+
+    await expect(
+      syncEventsToGoogle(
+        "mock-access-token",
+        "cal-id",
+        [{ startLocal: "2026-04-01T12:00:00", name: "W01 Easy", description: "" }],
+        "Europe/Stockholm",
+        {},
+        { strict: true },
+      ),
+    ).rejects.toThrow("Failed to create Google Calendar event");
+  });
 });
 
 describe("buildGoogleCalendarEventPayload", () => {
@@ -102,6 +121,18 @@ describe("clearFutureGoogleEvents", () => {
   it("deletes all listed events", async () => {
     await clearFutureGoogleEvents("mock-access-token", "cal-id");
     expect(capturedGoogleDeletedEventIds).toEqual(["gcal-event-1", "gcal-event-2"]);
+  });
+
+  it("throws in strict mode when listing events fails", async () => {
+    server.use(
+      http.get("https://www.googleapis.com/calendar/v3/calendars/:calendarId/events", () => {
+        return new HttpResponse("boom", { status: 500 });
+      }),
+    );
+
+    await expect(
+      clearFutureGoogleEvents("mock-access-token", "cal-id", { strict: true }),
+    ).rejects.toThrow("Failed to list Google Calendar events");
   });
 });
 

@@ -701,52 +701,92 @@ export async function deleteActivity(
 
 // --- API UPLOAD ---
 
+function workoutPayload(events: WorkoutEvent[]): Record<string, unknown>[] {
+  return events.map((event) => {
+    const carbsPerHour = serializeFuelRate(event.fuelRate);
+    return {
+      category: "WORKOUT",
+      start_date_local: format(event.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+      name: event.name,
+      description: event.description,
+      external_id: event.external_id,
+      type: event.type,
+      ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
+    };
+  });
+}
+
+export async function fetchFutureWorkoutEvents(
+  apiKey: string,
+  oldest: Date,
+  newest: Date,
+): Promise<IntervalsEvent[]> {
+  const res = await fetch(
+    `${API_BASE}/athlete/0/events?oldest=${format(oldest, "yyyy-MM-dd'T'HH:mm:ss")}&newest=${format(newest, "yyyy-MM-dd'T'HH:mm:ss")}&category=WORKOUT`,
+    { headers: { Authorization: authHeader(apiKey) } },
+  );
+  if (!res.ok) {
+    throw new IntervalsApiError(
+      `Failed to fetch future workout events: ${res.status}`,
+      res.status,
+      await res.text(),
+      "event",
+    );
+  }
+  return (await res.json()) as IntervalsEvent[];
+}
+
+export async function upsertWorkoutEvents(
+  apiKey: string,
+  events: WorkoutEvent[],
+): Promise<{ count: number }> {
+  const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
+    method: "POST",
+    headers: { Authorization: authHeader(apiKey), "Content-Type": "application/json" },
+    body: JSON.stringify(workoutPayload(events)),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new IntervalsApiError(
+      `API Error ${res.status}: ${errorText}`,
+      res.status,
+      errorText,
+      "event",
+    );
+  }
+  return { count: events.length };
+}
+
+export function findStaleSpringaWorkoutEvents(
+  existing: IntervalsEvent[],
+  nextExternalIds: ReadonlySet<string>,
+): { id: number; external_id: string }[] {
+  return existing
+    .filter(
+      (event): event is IntervalsEvent & { external_id: string } =>
+        event.category === "WORKOUT" &&
+        event.type === "Run" &&
+        event.paired_activity_id == null &&
+        typeof event.external_id === "string" &&
+        categoryFromExternalId(event.external_id) !== null &&
+        !nextExternalIds.has(event.external_id),
+    )
+    .map((event) => ({ id: event.id, external_id: event.external_id }));
+}
+
 export async function uploadToIntervals(
   apiKey: string,
   events: WorkoutEvent[],
 ): Promise<{ count: number }> {
   const auth = authHeader(apiKey);
-  const payload = events.map((e) => {
-    const carbsPerHour = serializeFuelRate(e.fuelRate);
-    return {
-      category: "WORKOUT",
-      start_date_local: format(e.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
-      name: e.name,
-      description: e.description,
-      external_id: e.external_id,
-      type: e.type,
-      ...(carbsPerHour !== undefined && { carbs_per_hour: carbsPerHour }),
-    };
-  });
-  const todayStr = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss");
-  const endStr = format(addDays(new Date(), 365), "yyyy-MM-dd'T'HH:mm:ss");
-  const existingRes = await fetch(
-    `${API_BASE}/athlete/0/events?oldest=${todayStr}&newest=${endStr}&category=WORKOUT`,
-    { headers: { Authorization: auth } },
-  );
-  if (!existingRes.ok) {
-    throw new Error(`Failed to fetch existing events: ${existingRes.status}`);
-  }
-  const existingEvents = (await existingRes.json()) as IntervalsEvent[];
+  const now = new Date();
+  const existingEvents = await fetchFutureWorkoutEvents(apiKey, now, addDays(now, 365));
 
   try {
-    const res = await fetch(`${API_BASE}/athlete/0/events/bulk?upsert=true`, {
-      method: "POST",
-      headers: { Authorization: auth, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`API Error ${res.status}: ${errorText}`);
-    }
-    const nextExternalIds = new Set(payload.map((event) => event.external_id));
-    const staleEvents = existingEvents.filter(
-      (event) =>
-        event.category === "WORKOUT" &&
-        typeof event.external_id === "string" &&
-        categoryFromExternalId(event.external_id) !== null &&
-        event.external_id.length > 0 &&
-        !nextExternalIds.has(event.external_id),
+    await upsertWorkoutEvents(apiKey, events);
+    const staleEvents = findStaleSpringaWorkoutEvents(
+      existingEvents,
+      new Set(events.map((event) => event.external_id)),
     );
 
     for (const staleEvent of staleEvents) {
@@ -763,7 +803,7 @@ export async function uploadToIntervals(
       }
     }
 
-    return { count: payload.length };
+    return { count: events.length };
   } catch (error) {
     console.error("Upload failed:", error);
     throw error;
