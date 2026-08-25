@@ -80,6 +80,15 @@ export const WRITABLE_SETTINGS_KEYS = [
   "paceSuggestionDismissedAt",
 ] as const satisfies readonly (keyof UserSettings)[];
 
+export interface SaveUserSettingsOptions {
+  plannerConfigDirty?: boolean;
+}
+
+export type UserSettingsUpdate = Partial<Omit<UserSettings, "clubDay" | "clubType">> & {
+  clubDay?: number | null;
+  clubType?: string | null;
+};
+
 // --- CRUD ---
 
 export async function getUserSettings(email: string): Promise<UserSettings> {
@@ -151,7 +160,8 @@ export async function getUserSettings(email: string): Promise<UserSettings> {
 
 export async function saveUserSettings(
   email: string,
-  partial: Partial<UserSettings>,
+  partial: UserSettingsUpdate,
+  options: SaveUserSettingsOptions = {},
 ): Promise<void> {
   // Step 1: Ensure user row exists (diabetes_mode and onboarding_complete use DEFAULT 0)
   await db().execute({
@@ -258,6 +268,10 @@ export async function saveUserSettings(
   if (partial.effortMetric !== undefined) {
     sets.push("effort_metric = ?");
     args.push(partial.effortMetric ?? null);
+  }
+  if (options.plannerConfigDirty !== undefined) {
+    sets.push("planner_config_dirty = ?");
+    args.push(options.plannerConfigDirty ? 1 : 0);
   }
 
   if (sets.length > 0) {

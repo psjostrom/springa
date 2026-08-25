@@ -19,13 +19,15 @@ import {
   parseCalendarEventId,
 } from "@/lib/calendarEventId";
 import { getUserSettings } from "@/lib/settings";
-import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import {
+  getUserWorkoutEstimationContext,
+  resolveHeartRateZones,
+} from "@/lib/workoutEstimationContext";
 import { deletePreRunCarbs, getPreRunCarbs } from "@/lib/prerunCarbs";
 import {
   buildPlannedWorkoutDetail,
   UnsupportedPlannedWorkoutError,
 } from "@/lib/plannedWorkoutDetail";
-import { computeMaxHRZones } from "@/lib/constants";
 import { MAX_CARBS_PER_HOUR } from "@/lib/fuelRate";
 import {
   canUseHeartRateMetric,
@@ -49,20 +51,6 @@ interface PlannedWorkoutDetailContext {
   estimationContext: Awaited<ReturnType<typeof getUserWorkoutEstimationContext>>;
   hrZones?: number[];
   preRunCarbsG: number | null;
-}
-
-function resolveHeartRateZones(
-  settings: UserSettings,
-  profile: AthleteProfile,
-): number[] | undefined {
-  const maxHr = settings.maxHr ?? profile.maxHr;
-  return settings.hrZones?.length === 5
-    ? settings.hrZones
-    : profile.hrZones?.length === 5
-      ? profile.hrZones
-      : maxHr != null
-        ? computeMaxHRZones(maxHr)
-        : undefined;
 }
 
 async function loadPlannedWorkoutDetailContext(

@@ -9,12 +9,36 @@ import { getUserCredentials, updateCredentials } from "@/lib/credentials";
 import { fetchAthleteRaw, fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
 import { computeMaxHRZones, DEFAULT_MAX_HR } from "@/lib/constants";
+import {
+  canonicalPlannerConfig,
+  normalizePlannerConfig,
+  plannerConfigFromSettings,
+  validatePlannerConfig,
+  type PlannerConfig,
+  PlannerError,
+} from "@/lib/plannerConfig";
+import { getPlannerMetadata } from "@/lib/plannerMetadata";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+const PLANNER_CONFIG_KEYS: (keyof PlannerConfig)[] = [
+  "raceDist",
+  "raceDate",
+  "currentAbilityDist",
+  "currentAbilitySecs",
+  "runDays",
+  "longRunDay",
+  "clubDay",
+  "clubType",
+  "totalWeeks",
+  "startKm",
+  "includeBasePhase",
+  "effortMetric",
+];
+
+export async function GET(req?: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req?.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -51,7 +75,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   let email: string;
   try {
-    email = await requireAuth();
+    email = await requireAuth({ headerList: req.headers });
   } catch (e) {
     if (e instanceof AuthError) return unauthorized();
     throw e;
@@ -124,7 +148,87 @@ export async function PUT(req: Request) {
     }
   }
 
-  if (Object.keys(allowed).length > 0) {
+  const plannerChangeRequested = PLANNER_CONFIG_KEYS.some((key) => body[key] !== undefined);
+  if (plannerChangeRequested) {
+    const currentSettings = await getUserSettings(email);
+    const mergedSettings = { ...currentSettings, ...allowed };
+    const currentConfig = plannerConfigFromSettings(mergedSettings);
+    if (!currentConfig) {
+      return NextResponse.json(
+        {
+          error: "Planner config is incomplete",
+          code: "PLANNER_CONFIG_INVALID",
+          fields: { raceDate: "Complete Planner config is required." },
+        },
+        { status: 400 },
+      );
+    }
+    const normalizedConfig = normalizePlannerConfig(
+      currentConfig,
+      new Date(),
+      currentSettings.timezone ?? "Europe/Stockholm",
+    );
+    let hrContext: { lthr?: number; hrZones?: number[] } | undefined;
+    if (normalizedConfig.effortMetric === "hr") {
+      const credentials = await getUserCredentials(email);
+      const intervalsApiKey = "intervalsApiKey" in body
+        ? body.intervalsApiKey
+        : credentials?.intervalsApiKey;
+      if (!intervalsApiKey) {
+        return NextResponse.json(
+          {
+            error: "Heart-rate zones are required for heart-rate workouts.",
+            code: "PLANNER_CONFIG_INVALID",
+            fields: { effortMetric: "Connect Intervals.icu with a running threshold first." },
+          },
+          { status: 400 },
+        );
+      }
+      try {
+        const profile = await fetchAthleteProfile(intervalsApiKey, { strict: true });
+        hrContext = {
+          lthr: profile.lthr,
+          hrZones: profile.hrZones?.length === 5
+            ? profile.hrZones
+            : computeMaxHRZones(profile.maxHr ?? DEFAULT_MAX_HR),
+        };
+      } catch {
+        return NextResponse.json(
+          { error: "Failed to fetch athlete profile", code: "INTERVALS_UPSTREAM_ERROR" },
+          { status: 502 },
+        );
+      }
+    }
+    const validation = validatePlannerConfig(
+      normalizedConfig,
+      new Date(),
+      currentSettings.timezone ?? "Europe/Stockholm",
+      hrContext,
+    );
+    if (Object.keys(validation.fields).length > 0) {
+      const error = new PlannerError(
+        "PLANNER_CONFIG_INVALID",
+        "Planner config is invalid",
+        validation.fields,
+      );
+      return NextResponse.json(
+        { error: error.message, code: error.code, fields: error.fields },
+        { status: 400 },
+      );
+    }
+    for (const key of PLANNER_CONFIG_KEYS) {
+      Object.assign(allowed, { [key]: normalizedConfig[key] });
+    }
+    if (body.raceName !== undefined) allowed.raceName = normalizedConfig.raceName;
+
+    const previousConfig = plannerConfigFromSettings(currentSettings);
+    const generatedChanged = previousConfig == null ||
+      canonicalPlannerConfig(previousConfig) !== canonicalPlannerConfig(normalizedConfig);
+    const metadata = await getPlannerMetadata(email);
+    await saveUserSettings(email, allowed, {
+      plannerConfigDirty: metadata.dirty || generatedChanged,
+    });
+  } else if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);
   }
 

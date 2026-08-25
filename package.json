@@ -17,6 +17,7 @@
     "prepare": "husky",
     "db:query": "node --env-file=.env.local -e",
     "db:migrate:workout-prescriptions": "npx tsx --env-file=.env.local scripts/migrate-workout-event-prescriptions.ts",
+    "db:migrate:planner-metadata": "npx tsx --env-file=.env.local scripts/migrate-planner-metadata.ts",
     "demo:snapshot": "npx tsx --env-file=.env.local scripts/demo-snapshot.ts"
   },
   "dependencies": {
