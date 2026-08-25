@@ -155,10 +155,11 @@ export async function PUT(req: Request) {
       }
       await saveUserSettings(email, allowed);
     } else {
+      const effectiveTimezone = body.timezone ?? currentSettings.timezone ?? "Europe/Stockholm";
       const normalizedConfig = normalizePlannerConfig(
         currentConfig,
         new Date(),
-        currentSettings.timezone ?? "Europe/Stockholm",
+        effectiveTimezone,
       );
       let hrContext: { lthr?: number; hrZones?: number[] } | undefined;
       if (normalizedConfig.effortMetric === "hr") {
@@ -194,7 +195,7 @@ export async function PUT(req: Request) {
       const validation = validatePlannerConfig(
         normalizedConfig,
         new Date(),
-        currentSettings.timezone ?? "Europe/Stockholm",
+        effectiveTimezone,
         hrContext,
       );
       if (Object.keys(validation.fields).length > 0) {
