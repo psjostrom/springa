@@ -74,6 +74,29 @@ describe("Planner config contracts", () => {
       .toHaveProperty("clubType");
   });
 
+  it("rejects race dates below the minimum horizon before clamping", () => {
+    for (const raceDate of ["2026-08-24", "2026-08-26", "2026-10-06"]) {
+      expect(
+        validatePlannerConfig(
+          { ...VALID, raceDate, totalWeeks: 8 },
+          NOW,
+          "Europe/Stockholm",
+        ).fields,
+      ).toHaveProperty("totalWeeks");
+    }
+
+    expect(
+      validatePlannerConfig(
+        { ...VALID, raceDate: "2026-10-13", totalWeeks: 8 },
+        NOW,
+        "Europe/Stockholm",
+      ).fields,
+    ).not.toHaveProperty("totalWeeks");
+    expect(
+      validatePlannerConfig(VALID, NOW, "Europe/Stockholm").fields,
+    ).not.toHaveProperty("totalWeeks");
+  });
+
   it("requires HR context for heart-rate prescriptions", () => {
     const result = validatePlannerConfig(
       { ...VALID, effortMetric: "hr" },

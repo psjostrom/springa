@@ -213,12 +213,13 @@ function isClubType(value: unknown): value is PlannerClubType {
   return value === "long" || value === "speed" || value === "varies";
 }
 
-function getWeeksForDate(raceDate: string, now: Date, timezone: string): number {
+function getRawWeeksForDate(raceDate: string, now: Date, timezone: string): number {
   const today = parseISO(localDateString(now, timezone));
-  return Math.max(
-    MIN_NEW_PROGRAM_WEEKS,
-    differenceInCalendarWeeks(parseISO(raceDate), today, { weekStartsOn: 1 }) + 1,
-  );
+  return differenceInCalendarWeeks(parseISO(raceDate), today, { weekStartsOn: 1 }) + 1;
+}
+
+function getWeeksForDate(raceDate: string, now: Date, timezone: string): number {
+  return Math.max(MIN_NEW_PROGRAM_WEEKS, getRawWeeksForDate(raceDate, now, timezone));
 }
 
 function nearestFitnessDistance(distance: number): number {
@@ -347,10 +348,17 @@ export function validatePlannerConfig(
     fields.raceDist = "Race distance must be between 1 and 100 km.";
   if (!dateIsValid(config.raceDate)) fields.raceDate = "Race date must be a valid date.";
 
-  const totalWeeks = dateIsValid(config.raceDate)
-    ? getWeeksForDate(config.raceDate, now, timezone)
+  const rawWeeks = dateIsValid(config.raceDate)
+    ? getRawWeeksForDate(config.raceDate, now, timezone)
     : config.totalWeeks;
-  if (!isFiniteNumber(config.totalWeeks) || config.totalWeeks < MIN_NEW_PROGRAM_WEEKS)
+  const totalWeeks = dateIsValid(config.raceDate)
+    ? Math.max(MIN_NEW_PROGRAM_WEEKS, rawWeeks)
+    : config.totalWeeks;
+  if (
+    !isFiniteNumber(config.totalWeeks) ||
+    config.totalWeeks < MIN_NEW_PROGRAM_WEEKS ||
+    rawWeeks < MIN_NEW_PROGRAM_WEEKS
+  )
     fields.totalWeeks = `Plan length must be at least ${MIN_NEW_PROGRAM_WEEKS} weeks.`;
   else if (config.totalWeeks !== totalWeeks)
     fields.totalWeeks = "Plan length must match the race date.";

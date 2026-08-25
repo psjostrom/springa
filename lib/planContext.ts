@@ -75,10 +75,17 @@ export async function resolvePlanContext(
   const bgModel = settings.diabetesMode && cached.length > 0
     ? buildBGModelFromCached(cached)
     : null;
+  const estimationSettings = override
+    ? {
+        ...settings,
+        currentAbilityDist: override.currentAbilityDist,
+        currentAbilitySecs: override.currentAbilitySecs,
+      }
+    : settings;
   const estimationContext = await getUserWorkoutEstimationContext(
     email,
     override ? apiKey : null,
-    settings,
+    estimationSettings,
     profile,
   );
 

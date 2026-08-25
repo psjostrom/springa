@@ -103,6 +103,7 @@ describe("Planner plan context", () => {
       args: [EMAIL, "activity-1", "W01 Easy", JSON.stringify([]), "2026-07-01"],
     });
 
+    const stored = await resolvePlanContext(EMAIL, API_KEY);
     const resolved = await resolvePlanContext(EMAIL, API_KEY, OVERRIDE);
 
     expect(resolved.planConfig).toMatchObject({
@@ -113,6 +114,9 @@ describe("Planner plan context", () => {
       currentAbilitySecs: OVERRIDE.currentAbilitySecs,
       effortMetric: OVERRIDE.effortMetric,
     });
+    expect(resolved.estimationContext.thresholdPace).not.toBe(
+      stored.estimationContext.thresholdPace,
+    );
     expect(resolved.bgModel).not.toBeNull();
   });
 

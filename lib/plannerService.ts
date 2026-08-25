@@ -53,6 +53,7 @@ import {
 import {
   getUserSettings,
   saveUserSettings,
+  type UserSettings,
   type UserSettingsUpdate,
 } from "./settings";
 import { getUserWorkoutEstimationContext } from "./workoutEstimationContext";
@@ -173,7 +174,7 @@ async function fetchOwnedFutureEvents(
 function weeksToGo(raceDate: string | undefined, now: Date, timezone: string): number | null {
   if (!raceDate) return null;
   const today = parseISO(new Intl.DateTimeFormat("sv-SE", { timeZone: timezone }).format(now));
-  return differenceInCalendarWeeks(parseISO(raceDate), today, { weekStartsOn: 1 }) + 1;
+  return Math.max(0, differenceInCalendarWeeks(parseISO(raceDate), today, { weekStartsOn: 1 }) + 1);
 }
 
 function fuelRateSource(
@@ -252,7 +253,7 @@ export async function getPlannerState(
     plan: {
       status: active ? "active" : isComplete ? "complete" : "none",
       sync: plannerSync(currentConfig, metadata, active),
-      weeksToGo: weeksToGo(currentConfig?.raceDate, now, credentials.timezone),
+      weeksToGo: isComplete ? null : weeksToGo(currentConfig?.raceDate, now, credentials.timezone),
       futureWorkoutCount: ownedEvents.length,
     },
     fuelRates: buildFuelRates(bgModel, settings.diabetesMode),
@@ -489,6 +490,24 @@ function plannerSettingsFromConfig(config: PlannerConfig): UserSettingsUpdate {
   };
 }
 
+function plannerSettingsFromStored(settings: UserSettings): UserSettingsUpdate {
+  return {
+    raceName: settings.raceName ?? null,
+    raceDist: settings.raceDist ?? null,
+    raceDate: settings.raceDate ?? null,
+    currentAbilityDist: settings.currentAbilityDist ?? null,
+    currentAbilitySecs: settings.currentAbilitySecs ?? null,
+    runDays: settings.runDays ?? null,
+    longRunDay: settings.longRunDay ?? null,
+    clubDay: settings.clubDay ?? null,
+    clubType: settings.clubType ?? null,
+    totalWeeks: settings.totalWeeks ?? null,
+    startKm: settings.startKm ?? null,
+    includeBasePhase: settings.includeBasePhase ?? null,
+    effortMetric: settings.effortMetric ?? null,
+  };
+}
+
 function timingSafeEqualHex(left: string, right: string): boolean {
   if (!/^[0-9a-f]{64}$/.test(left) || !/^[0-9a-f]{64}$/.test(right)) return false;
   const leftBytes = Buffer.from(left, "hex");
@@ -607,17 +626,13 @@ async function syncGoogleWithWarning(
 
 async function restoreAfterUpsertFailure(
   email: string,
-  currentConfig: PlannerConfig | null,
+  previousSettings: UserSettings,
   metadata: PlannerMetadata,
 ): Promise<void> {
   try {
-    if (currentConfig) {
-      await saveUserSettings(email, plannerSettingsFromConfig(currentConfig), {
-        plannerConfigDirty: metadata.dirty,
-      });
-    } else {
-      await saveUserSettings(email, {}, { plannerConfigDirty: metadata.dirty });
-    }
+    await saveUserSettings(email, plannerSettingsFromStored(previousSettings), {
+      plannerConfigDirty: metadata.dirty,
+    });
     await savePlannerMetadata(email, metadata);
   } catch (error) {
     console.error("[planner] failed to restore after provider upload", error);
@@ -634,7 +649,6 @@ async function applyReplacePlan(
   }
   const credentials = await requireIntervals(email);
   const settings = await getUserSettings(email);
-  const currentConfig = plannerConfigFromSettings(settings);
   const metadata = rebuilt.previousMetadata;
   const warnings: PlannerApplyWarning[] = [];
 
@@ -647,7 +661,7 @@ async function applyReplacePlan(
   try {
     await upsertWorkoutEvents(credentials.intervalsApiKey, rebuilt.operations.generated);
   } catch (error) {
-    await restoreAfterUpsertFailure(email, currentConfig, metadata);
+    await restoreAfterUpsertFailure(email, settings, metadata);
     throw new PlannerError(
       "INTERVALS_UPSTREAM_ERROR",
       error instanceof Error ? error.message : String(error),

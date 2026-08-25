@@ -84,9 +84,23 @@ export interface SaveUserSettingsOptions {
   plannerConfigDirty?: boolean;
 }
 
-export type UserSettingsUpdate = Partial<Omit<UserSettings, "clubDay" | "clubType">> & {
-  clubDay?: number | null;
-  clubType?: string | null;
+type PlannerSettingKey =
+  | "raceDate"
+  | "raceName"
+  | "raceDist"
+  | "currentAbilitySecs"
+  | "currentAbilityDist"
+  | "totalWeeks"
+  | "startKm"
+  | "includeBasePhase"
+  | "effortMetric"
+  | "runDays"
+  | "longRunDay"
+  | "clubDay"
+  | "clubType";
+
+export type UserSettingsUpdate = Omit<Partial<UserSettings>, PlannerSettingKey> & {
+  [K in PlannerSettingKey]?: UserSettings[K] | null;
 };
 
 // --- CRUD ---
@@ -215,7 +229,7 @@ export async function saveUserSettings(
   }
   if (partial.includeBasePhase !== undefined) {
     sets.push("include_base_phase = ?");
-    args.push(partial.includeBasePhase ? 1 : 0);
+    args.push(partial.includeBasePhase == null ? null : partial.includeBasePhase ? 1 : 0);
   }
   if (partial.warmthPreference !== undefined) {
     sets.push("warmth_preference = ?");
@@ -231,7 +245,7 @@ export async function saveUserSettings(
   }
   if (partial.runDays !== undefined) {
     sets.push("run_days = ?");
-    args.push(JSON.stringify(partial.runDays));
+    args.push(partial.runDays == null ? null : JSON.stringify(partial.runDays));
   }
   if (partial.longRunDay !== undefined) {
     sets.push("long_run_day = ?");

@@ -26,6 +26,7 @@ import {
 } from "@/lib/plannerService";
 import { canonicalPlannerConfig, type PlannerConfig } from "@/lib/plannerConfig";
 import { getPlannerMetadata, savePlannerMetadata } from "@/lib/plannerMetadata";
+import { getUserSettings, saveUserSettings } from "@/lib/settings";
 import { server } from "./msw/server";
 import { capturedDeleteEventIds, capturedPutPayload, capturedUploadPayload, resetCaptures } from "./msw/handlers";
 
@@ -138,6 +139,19 @@ describe("Planner service", () => {
     });
   });
 
+  it("returns no countdown for a completed plan without future workouts", async () => {
+    await seedSettings();
+    await saveUserSettings(EMAIL, { raceDate: "2026-08-01" });
+
+    const state = await getPlannerState(EMAIL, NOW);
+
+    expect(state.plan).toMatchObject({
+      status: "complete",
+      weeksToGo: null,
+      futureWorkoutCount: 0,
+    });
+  });
+
   it("builds a replace preview without provider or metadata writes", async () => {
     await seedSettings();
     const before = await getPlannerMetadata(EMAIL);
@@ -212,6 +226,124 @@ describe("Planner service", () => {
       generatedPlanConfig: canonicalPlannerConfig(CONFIG),
       dirty: false,
     });
+  });
+
+  it("restores an empty Planner state after the first-program upload fails", async () => {
+    await seedSettings();
+    await holder.db.execute({
+      sql: `UPDATE user_settings SET
+        race_name = NULL, race_date = NULL, race_dist = NULL, total_weeks = NULL,
+        start_km = NULL, current_ability_dist = NULL, current_ability_secs = NULL,
+        run_days = NULL, long_run_day = NULL, club_day = NULL, club_type = NULL,
+        include_base_phase = NULL, effort_metric = NULL,
+        generated_plan_config = NULL, planner_config_dirty = 0
+        WHERE email = ?`,
+      args: [EMAIL],
+    });
+    server.use(
+      http.post(`${API_BASE}/athlete/0/events/bulk`, () =>
+        new HttpResponse(null, { status: 502 })),
+    );
+
+    const preview = await buildPlannerPreview(EMAIL, { intent: "start", config: CONFIG }, NOW);
+    await expect(
+      applyPlannerPreview(
+        EMAIL,
+        { intent: "start", config: CONFIG, previewHash: preview.response.previewHash },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: "INTERVALS_UPSTREAM_ERROR" });
+
+    const row = await holder.db.execute({
+      sql: `SELECT race_name, race_date, race_dist, total_weeks, start_km,
+        current_ability_dist, current_ability_secs, run_days, long_run_day,
+        club_day, club_type, include_base_phase, effort_metric,
+        generated_plan_config, planner_config_dirty
+        FROM user_settings WHERE email = ?`,
+      args: [EMAIL],
+    });
+    expect(row.rows[0]).toMatchObject({
+      race_name: null,
+      race_date: null,
+      race_dist: null,
+      total_weeks: null,
+      start_km: null,
+      current_ability_dist: null,
+      current_ability_secs: null,
+      run_days: null,
+      long_run_day: null,
+      club_day: null,
+      club_type: null,
+      include_base_phase: null,
+      effort_metric: null,
+      generated_plan_config: null,
+      planner_config_dirty: 0,
+    });
+  });
+
+  it("restores the exact previous Planner state after a replacement upload fails", async () => {
+    await seedSettings();
+    const previousConfig: PlannerConfig = {
+      ...CONFIG,
+      raceName: "Previous race",
+      currentAbilitySecs: 3300,
+      runDays: [1, 3, 6],
+      longRunDay: 6,
+      clubDay: 1,
+      clubType: "speed",
+      startKm: 7,
+      includeBasePhase: false,
+    };
+    await saveUserSettings(EMAIL, {
+      ...previousConfig,
+      warmthPreference: -2,
+      displayName: "Runner",
+    });
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: "previous-generated-config",
+      dirty: true,
+    });
+    const before = await getUserSettings(EMAIL);
+    const beforeMetadata = await getPlannerMetadata(EMAIL);
+    server.use(
+      http.post(`${API_BASE}/athlete/0/events/bulk`, () =>
+        new HttpResponse(null, { status: 502 })),
+    );
+
+    const preview = await buildPlannerPreview(EMAIL, { intent: "start", config: CONFIG }, NOW);
+    await expect(
+      applyPlannerPreview(
+        EMAIL,
+        { intent: "start", config: CONFIG, previewHash: preview.response.previewHash },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: "INTERVALS_UPSTREAM_ERROR" });
+
+    const after = await getUserSettings(EMAIL);
+    expect(after).toMatchObject({
+      raceDate: before.raceDate,
+      raceName: before.raceName,
+      raceDist: before.raceDist,
+      currentAbilitySecs: before.currentAbilitySecs,
+      currentAbilityDist: before.currentAbilityDist,
+      totalWeeks: before.totalWeeks,
+      startKm: before.startKm,
+      includeBasePhase: before.includeBasePhase,
+      effortMetric: before.effortMetric,
+      runDays: before.runDays,
+      longRunDay: before.longRunDay,
+      clubDay: before.clubDay,
+      clubType: before.clubType,
+      warmthPreference: before.warmthPreference,
+      displayName: before.displayName,
+    });
+    expect(after).toMatchObject({
+      raceDate: previousConfig.raceDate,
+      raceName: previousConfig.raceName,
+      currentAbilitySecs: previousConfig.currentAbilitySecs,
+      runDays: previousConfig.runDays,
+    });
+    expect(await getPlannerMetadata(EMAIL)).toEqual(beforeMetadata);
   });
 
   it("applies target-only updates in place without structural writes", async () => {
