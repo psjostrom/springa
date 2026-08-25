@@ -32,9 +32,11 @@ import { PUT as settingsPut } from "@/app/api/settings/route";
 import { API_BASE } from "@/lib/constants";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
-import type { PlannerConfig } from "@/lib/plannerConfig";
+import { PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
 import { getPlannerMetadata } from "@/lib/plannerMetadata";
+import { getUserSettings } from "@/lib/settings";
 import { signMobileToken } from "@/lib/mobileAuth";
+import { plannerErrorResponse } from "@/app/api/planner/_helpers";
 import { server } from "./msw/server";
 
 const EMAIL = "planner-routes@example.com";
@@ -107,6 +109,7 @@ async function bearerHeaders() {
 }
 
 beforeAll(async () => {
+  // jsdom's Uint8Array realm breaks SQLite setup and signMobileToken; swap before suite work.
   globalThis.Uint8Array = nodeUint8Array;
   await holder.db.executeMultiple(SCHEMA_DDL);
 });
@@ -123,6 +126,15 @@ beforeEach(async () => {
 });
 
 describe("Planner routes", () => {
+  it("falls back to HTTP 500 for an unmapped Planner error code", () => {
+    const error = new PlannerError(
+      "UNKNOWN_PLANNER_ERROR" as PlannerError["code"],
+      "Unknown Planner error",
+    );
+
+    expect(plannerErrorResponse(error).status).toBe(500);
+  });
+
   it("supports cookie and Bearer GET auth and rejects unauthenticated access", async () => {
     await seedSettings();
     holder.cookieEmail = EMAIL;
@@ -226,6 +238,39 @@ describe("Planner routes", () => {
     await expect(invalid.json()).resolves.toMatchObject({
       code: "PLANNER_CONFIG_INVALID",
       fields: { raceDist: expect.any(String) },
+    });
+  });
+
+  it("accepts and persists incomplete onboarding Planner settings", async () => {
+    holder.cookieEmail = EMAIL;
+    const response = await settingsPut(
+      new Request("http://localhost/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: "Runner",
+          runDays: [0, 2, 4],
+          longRunDay: 0,
+          effortMetric: "pace",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      incompletePlannerFields: [
+        "raceDist",
+        "raceDate",
+        "currentAbilityDist",
+        "currentAbilitySecs",
+      ],
+    });
+    expect(await getUserSettings(EMAIL)).toMatchObject({
+      displayName: "Runner",
+      runDays: [0, 2, 4],
+      longRunDay: 0,
+      effortMetric: "pace",
     });
   });
 

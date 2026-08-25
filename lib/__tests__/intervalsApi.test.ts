@@ -532,10 +532,22 @@ describe("fetchEvent", () => {
 
 describe("uploadToIntervals", () => {
   it("fetches future events through the bounded provider helper", async () => {
-    const oldest = new Date("2026-03-01T00:00:00Z");
-    const newest = new Date("2026-04-01T00:00:00Z");
+    const oldest = new Date(2026, 2, 1);
+    const newest = new Date(2026, 3, 1);
+    let requestedUrl: URL | undefined;
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, ({ request }) => {
+        requestedUrl = new URL(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+
     const events = await fetchFutureWorkoutEvents("test-key", oldest, newest);
-    expect(events).toEqual(expect.any(Array));
+
+    expect(events).toEqual([]);
+    expect(requestedUrl?.searchParams.get("oldest")).toBe("2026-03-01T00:00:00");
+    expect(requestedUrl?.searchParams.get("newest")).toBe("2026-04-01T00:00:00");
+    expect(requestedUrl?.searchParams.get("category")).toBe("WORKOUT");
   });
 
   it("upserts WorkoutEvents without exposing internal fields", async () => {
@@ -583,6 +595,7 @@ describe("uploadToIntervals", () => {
           {
             id: 100,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-01T12:00:00",
             name: "Old workout",
             external_id: "easy-1-2",
@@ -590,6 +603,7 @@ describe("uploadToIntervals", () => {
           {
             id: 101,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-02T12:00:00",
             name: "Kept workout",
             external_id: "easy-1-1",
@@ -599,6 +613,23 @@ describe("uploadToIntervals", () => {
             category: "WORKOUT",
             start_date_local: "2026-03-03T12:00:00",
             name: "Manual workout",
+          },
+          {
+            id: 103,
+            category: "WORKOUT",
+            type: "Run",
+            start_date_local: "2026-03-04T12:00:00",
+            name: "Completed workout",
+            external_id: "easy-1-3",
+            paired_activity_id: "activity-103",
+          },
+          {
+            id: 104,
+            category: "WORKOUT",
+            type: "Ride",
+            start_date_local: "2026-03-05T12:00:00",
+            name: "Ride workout",
+            external_id: "easy-1-4",
           },
         ]);
       }),
@@ -681,6 +712,7 @@ describe("uploadToIntervals", () => {
           {
             id: 100,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-01T12:00:00",
             name: "Old race workout",
             external_id: "long-2026-06-13-1",
@@ -688,6 +720,7 @@ describe("uploadToIntervals", () => {
           {
             id: 101,
             category: "WORKOUT",
+            type: "Run",
             start_date_local: "2026-03-02T12:00:00",
             name: "Kept race workout",
             external_id: "long-2026-08-29-1",

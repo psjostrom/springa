@@ -173,6 +173,30 @@ describe("Planner service", () => {
     expect(capturedDeleteEventIds).toEqual([]);
   });
 
+  it("maps provider fetch failures for replace and target previews", async () => {
+    await seedSettings();
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () =>
+        HttpResponse.json({ error: "upstream unavailable" }, { status: 503 })),
+    );
+
+    await expect(
+      buildPlannerPreview(EMAIL, { intent: "start", config: CONFIG }, NOW),
+    ).rejects.toMatchObject({ code: "INTERVALS_UPSTREAM_ERROR" });
+
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
+      dirty: false,
+    });
+    await expect(
+      buildPlannerPreview(
+        EMAIL,
+        { intent: "update", config: { ...CONFIG, currentAbilitySecs: 3500 } },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: "INTERVALS_UPSTREAM_ERROR" });
+  });
+
   it("rejects a stale preview before any apply write", async () => {
     await seedSettings();
     useProvider([

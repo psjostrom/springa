@@ -11,7 +11,7 @@ export function plannerErrorResponse(error: PlannerError): NextResponse {
     body.appliedWorkoutCount = error.details.appliedWorkoutCount;
   }
   if (error.details?.failures) body.failures = error.details.failures;
-  const status = {
+  const statusByCode: Record<PlannerError["code"], number> = {
     PLANNER_CONFIG_INVALID: 400,
     INTERVALS_NOT_CONNECTED: 409,
     HR_ZONES_REQUIRED: 409,
@@ -19,7 +19,8 @@ export function plannerErrorResponse(error: PlannerError): NextResponse {
     INTERVALS_UPSTREAM_ERROR: 502,
     PLANNER_APPLY_PARTIAL: 502,
     PLANNER_STATE_FINALIZE_FAILED: 500,
-  }[error.code];
+  };
+  const status = (Reflect.get(statusByCode, error.code) as number | undefined) ?? 500;
   return NextResponse.json(body, { status });
 }
 

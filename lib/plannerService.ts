@@ -171,6 +171,18 @@ async function fetchOwnedFutureEvents(
   return events.filter(isOwnedFutureWorkout);
 }
 
+async function fetchOwnedFutureEventsMapped(
+  apiKey: string,
+  now: Date,
+  raceDate?: string,
+): Promise<IntervalsEvent[]> {
+  try {
+    return await fetchOwnedFutureEvents(apiKey, now, raceDate);
+  } catch (error) {
+    throw mapContextError(error);
+  }
+}
+
 function weeksToGo(raceDate: string | undefined, now: Date, timezone: string): number | null {
   if (!raceDate) return null;
   const today = parseISO(new Intl.DateTimeFormat("sv-SE", { timeZone: timezone }).format(now));
@@ -225,12 +237,11 @@ export async function getPlannerState(
   const metadata = await getPlannerMetadata(email);
   const currentConfig = plannerConfigFromSettings(settings);
   const newProgramDraft = buildPlannerDefaults(settings, now);
-  let ownedEvents: IntervalsEvent[];
-  try {
-    ownedEvents = await fetchOwnedFutureEvents(credentials.intervalsApiKey, now, currentConfig?.raceDate);
-  } catch (error) {
-    throw mapContextError(error);
-  }
+  const ownedEvents = await fetchOwnedFutureEventsMapped(
+    credentials.intervalsApiKey,
+    now,
+    currentConfig?.raceDate,
+  );
 
   let bgModel: BGResponseModel | null = null;
   if (settings.diabetesMode) {
@@ -381,7 +392,7 @@ export async function buildPlannerPreview(
   let workouts: PlannerPreview["workouts"];
   if (action === "replace-plan") {
     const generated = (await import("./workoutGenerators")).generatePlan(context.planConfig);
-    const existing = await fetchOwnedFutureEvents(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
+    const existing = await fetchOwnedFutureEventsMapped(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
     const stale = findStaleSpringaWorkoutEvents(
       existing,
       new Set(generated.map((event) => event.external_id)),
@@ -399,7 +410,7 @@ export async function buildPlannerPreview(
       ),
     );
   } else {
-    const existing = await fetchOwnedFutureEvents(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
+    const existing = await fetchOwnedFutureEventsMapped(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
     const calendarEvents = existing.map(toCalendarEvent);
     const target = resolveBulkEffortMetricTarget(
       normalizedConfig.effortMetric,

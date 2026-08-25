@@ -39,6 +39,28 @@ export interface PlannerConfig {
   effortMetric: EffortMetric;
 }
 
+export const PLANNER_CONFIG_KEYS = [
+  "raceDist",
+  "raceDate",
+  "currentAbilityDist",
+  "currentAbilitySecs",
+  "runDays",
+  "longRunDay",
+  "clubDay",
+  "clubType",
+  "totalWeeks",
+  "startKm",
+  "includeBasePhase",
+  "effortMetric",
+] as const satisfies readonly (keyof PlannerConfig)[];
+
+export const REQUIRED_PLANNER_CONFIG_KEYS = [
+  "raceDist",
+  "raceDate",
+  "currentAbilityDist",
+  "currentAbilitySecs",
+] as const satisfies readonly (keyof PlannerConfig)[];
+
 export interface PlannerFitnessOption {
   label: "5K" | "10K" | "Half" | "Marathon";
   distanceKm: number;
@@ -442,20 +464,14 @@ export function buildFitnessOptions(): PlannerFitnessOption[] {
 }
 
 export function canonicalPlannerConfig(config: PlannerConfig): string {
+  const normalized = {
+    ...config,
+    runDays: [...new Set(config.runDays)].sort((a, b) => a - b),
+    effortMetric: normalizeEffortMetric(config.effortMetric),
+  };
   return JSON.stringify({
     version: PLANNER_CONFIG_VERSION,
-    raceDist: config.raceDist,
-    raceDate: config.raceDate,
-    currentAbilityDist: config.currentAbilityDist,
-    currentAbilitySecs: config.currentAbilitySecs,
-    runDays: [...new Set(config.runDays)].sort((a, b) => a - b),
-    longRunDay: config.longRunDay,
-    clubDay: config.clubDay,
-    clubType: config.clubType,
-    totalWeeks: config.totalWeeks,
-    startKm: config.startKm,
-    includeBasePhase: config.includeBasePhase,
-    effortMetric: normalizeEffortMetric(config.effortMetric),
+    ...Object.fromEntries(PLANNER_CONFIG_KEYS.map((key) => [key, normalized[key]])),
   });
 }
 

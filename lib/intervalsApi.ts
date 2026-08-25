@@ -784,14 +784,9 @@ export async function uploadToIntervals(
 
   try {
     await upsertWorkoutEvents(apiKey, events);
-    const nextExternalIds = new Set(events.map((event) => event.external_id));
-    const staleEvents = existingEvents.filter(
-      (event) =>
-        event.category === "WORKOUT" &&
-        typeof event.external_id === "string" &&
-        categoryFromExternalId(event.external_id) !== null &&
-        event.external_id.length > 0 &&
-        !nextExternalIds.has(event.external_id),
+    const staleEvents = findStaleSpringaWorkoutEvents(
+      existingEvents,
+      new Set(events.map((event) => event.external_id)),
     );
 
     for (const staleEvent of staleEvents) {
