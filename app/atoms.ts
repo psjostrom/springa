@@ -35,7 +35,7 @@ export const isDemoAtom = atom((get) => get(settingsAtom)?.demo === true);
 
 export const updateSettingsAtom = atom(
   null,
-  async (_get, set, partial: Partial<UserSettings>) => {
+  async (_get, set, partial: Partial<UserSettings>, intent?: "start" | "update") => {
     // Convert undefined values to null so JSON.stringify preserves them
     // (undefined keys are silently dropped, preventing DB clears)
     const body: Record<string, unknown> = {};
@@ -43,10 +43,11 @@ export const updateSettingsAtom = atom(
       const val = partial[key as keyof UserSettings];
       body[key] = val ?? null;
     }
+    const requestBody = intent === undefined ? body : { ...body, plannerIntent: intent };
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
     });
     if (!res.ok) throw new Error(`Settings save failed (${res.status})`);
     set(settingsAtom, (prev) => ({ ...(prev ?? {}), ...body }) as UserSettings);

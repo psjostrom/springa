@@ -239,8 +239,8 @@ describe("generatePlan", () => {
   });
 
   it("namespaces generated external ids by race date", () => {
-    const firstPlan = generateFull({ raceDateStr: "2026-08-29" });
-    const secondPlan = generateFull({ raceDateStr: "2026-09-26" });
+    const firstPlan = generateFullPlan({ ...defaultConfig, raceDateStr: "2026-08-29" });
+    const secondPlan = generateFullPlan({ ...defaultConfig, raceDateStr: "2026-09-26" });
 
     expect(firstPlan[0].external_id).toContain("2026-08-29");
     expect(secondPlan[0].external_id).toContain("2026-09-26");

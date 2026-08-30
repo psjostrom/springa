@@ -93,11 +93,17 @@ export async function updateEvent(
   }
 }
 
-export async function uploadPlan(events: WorkoutEvent[]): Promise<number> {
+export async function uploadPlan(
+  events: WorkoutEvent[],
+  options?: { recordPlannerMetadata?: boolean },
+): Promise<number> {
   const res = await fetch("/api/intervals/events/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ events }),
+    body: JSON.stringify({
+      events,
+      ...(options?.recordPlannerMetadata ? { recordPlannerMetadata: true } : {}),
+    }),
   });
   const data = await jsonOrThrow<{ count: number }>(res);
   return data.count;

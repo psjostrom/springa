@@ -185,6 +185,11 @@ export interface PlannerValidation {
   warning: PlannerWarning | null;
 }
 
+export interface PlannerConfigResolution {
+  config: PlannerConfig;
+  anchored: boolean;
+}
+
 const CONFIG_KEYS = [
   "raceName",
   "raceDist",
@@ -333,11 +338,12 @@ export function normalizePlannerConfig(
   config: PlannerConfig,
   now = new Date(),
   timezone = "Europe/Stockholm",
+  totalWeeksOverride?: number,
 ): PlannerConfig {
   const raceDate = config.raceDate;
-  const totalWeeks = dateIsValid(raceDate)
+  const totalWeeks = totalWeeksOverride ?? (dateIsValid(raceDate)
     ? getWeeksForDate(raceDate, now, timezone)
-    : config.totalWeeks;
+    : config.totalWeeks);
   const runDays = [...new Set(config.runDays)].sort((a, b) => a - b);
   const longRunDay = runDays.includes(config.longRunDay)
     ? config.longRunDay
@@ -359,13 +365,138 @@ export function normalizePlannerConfig(
   };
 }
 
+function parseCanonicalPlannerConfig(value: string | null): PlannerConfig | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!isRecord(parsed)) return null;
+    const expectedKeys = ["version", ...PLANNER_CONFIG_KEYS].sort().join(",");
+    if (Object.keys(parsed).sort().join(",") !== expectedKeys) return null;
+    if (parsed.version !== PLANNER_CONFIG_VERSION) return null;
+
+    const fields = { ...parsed };
+    delete fields.version;
+    const config = parsePlannerConfig({ raceName: "", ...fields });
+    if (!Number.isSafeInteger(config.totalWeeks) || config.totalWeeks < MIN_NEW_PROGRAM_WEEKS) {
+      return null;
+    }
+    if (!isSemanticallyValidCanonicalPlannerConfig(config)) return null;
+    return canonicalPlannerConfig(config) === value ? config : null;
+  } catch {
+    return null;
+  }
+}
+
+function isSemanticallyValidCanonicalPlannerConfig(config: PlannerConfig): boolean {
+  if (config.raceDist < RACE_DISTANCE_RANGE.min || config.raceDist > RACE_DISTANCE_RANGE.max) {
+    return false;
+  }
+  if (!FITNESS_DISTANCES.some((distance) => distance === config.currentAbilityDist)) {
+    return false;
+  }
+  const abilityRange = getSliderRange(config.currentAbilityDist);
+  if (config.currentAbilitySecs < abilityRange.min || config.currentAbilitySecs > abilityRange.max) {
+    return false;
+  }
+  if (
+    config.runDays.length < 2 ||
+    config.runDays.some((day) => !isWeekday(day)) ||
+    new Set(config.runDays).size !== config.runDays.length ||
+    !isWeekday(config.longRunDay) ||
+    !config.runDays.includes(config.longRunDay)
+  ) {
+    return false;
+  }
+  if (config.clubDay != null) {
+    if (!isWeekday(config.clubDay) || !config.runDays.includes(config.clubDay) || !isClubType(config.clubType)) {
+      return false;
+    }
+    if (config.clubType !== "long" && config.clubDay === config.longRunDay) return false;
+  } else if (config.clubType != null) {
+    return false;
+  }
+  if (
+    !Number.isSafeInteger(config.totalWeeks) ||
+    config.totalWeeks < MIN_NEW_PROGRAM_WEEKS ||
+    config.startKm < START_DISTANCE_RANGE.min ||
+    config.startKm > START_DISTANCE_RANGE.max ||
+    (config.includeBasePhase && !supportsBasePhase(config.totalWeeks))
+  ) {
+    return false;
+  }
+  return ["pace", "hr", "feel"].includes(config.effortMetric);
+}
+
+export function maxGeneratedPlanWeek(
+  externalIds: readonly (string | undefined)[],
+  raceDate: string,
+): number | null {
+  let maxWeek: number | null = null;
+  for (const externalId of externalIds) {
+    if (typeof externalId !== "string") continue;
+    const match = /^(?:easy|free)-(\d{4}-\d{2}-\d{2})-([1-9]\d*)-[0-6]$/.exec(externalId)
+      ?? /^(?:long|speed|club)-(\d{4}-\d{2}-\d{2})-([1-9]\d*)$/.exec(externalId);
+    const matchedRaceDate = match?.[1];
+    if (matchedRaceDate !== raceDate || !dateIsValid(matchedRaceDate)) continue;
+    const week = Number(match?.[2]);
+    if (Number.isSafeInteger(week) && (maxWeek === null || week > maxWeek)) maxWeek = week;
+  }
+  return maxWeek;
+}
+
+export function resolvePlannerConfig(
+  config: PlannerConfig,
+  intent: PlannerPreviewRequest["intent"],
+  generatedPlanConfig: string | null,
+  now = new Date(),
+  timezone = "Europe/Stockholm",
+  fallbackTotalWeeks: number | null = null,
+): PlannerConfigResolution {
+  const normalized = normalizePlannerConfig(config, now, timezone);
+  if (intent !== "update") return { config: normalized, anchored: false };
+
+  const anchor = parseCanonicalPlannerConfig(generatedPlanConfig);
+  if (!anchor) {
+    if (
+      !dateIsValid(config.raceDate) ||
+      typeof fallbackTotalWeeks !== "number" ||
+      !Number.isSafeInteger(fallbackTotalWeeks) ||
+      fallbackTotalWeeks < MIN_NEW_PROGRAM_WEEKS
+    ) {
+      return { config: normalized, anchored: false };
+    }
+    return {
+      config: normalizePlannerConfig(config, now, timezone, fallbackTotalWeeks),
+      anchored: true,
+    };
+  }
+  if (!dateIsValid(config.raceDate)) {
+    return { config: normalized, anchored: false };
+  }
+
+  const anchorRaceWeek = startOfWeek(parseISO(anchor.raceDate), { weekStartsOn: 1 });
+  const planStart = addWeeks(anchorRaceWeek, -(anchor.totalWeeks - 1));
+  const requestedRaceWeek = startOfWeek(parseISO(config.raceDate), { weekStartsOn: 1 });
+  const totalWeeks = differenceInCalendarWeeks(requestedRaceWeek, planStart, { weekStartsOn: 1 }) + 1;
+  if (!Number.isSafeInteger(totalWeeks) || totalWeeks < 1) {
+    return { config: normalized, anchored: false };
+  }
+
+  return {
+    config: normalizePlannerConfig(config, now, timezone, totalWeeks),
+    anchored: true,
+  };
+}
+
 export function validatePlannerConfig(
   config: PlannerConfig,
   now = new Date(),
   timezone = "Europe/Stockholm",
   hrContext: { lthr?: number; hrZones?: number[] } = {},
+  options: { allowShortTimeline?: boolean } = {},
 ): PlannerValidation {
   const fields: Partial<Record<keyof PlannerConfig, string>> = {};
+  const allowShortTimeline = options.allowShortTimeline === true;
   if (!isFiniteNumber(config.raceDist) || config.raceDist < 1 || config.raceDist > 100)
     fields.raceDist = "Race distance must be between 1 and 100 km.";
   if (!dateIsValid(config.raceDate)) fields.raceDate = "Race date must be a valid date.";
@@ -373,16 +504,18 @@ export function validatePlannerConfig(
   const rawWeeks = dateIsValid(config.raceDate)
     ? getRawWeeksForDate(config.raceDate, now, timezone)
     : config.totalWeeks;
-  const totalWeeks = dateIsValid(config.raceDate)
-    ? Math.max(MIN_NEW_PROGRAM_WEEKS, rawWeeks)
-    : config.totalWeeks;
+  const totalWeeks = allowShortTimeline
+    ? config.totalWeeks
+    : dateIsValid(config.raceDate)
+      ? Math.max(MIN_NEW_PROGRAM_WEEKS, rawWeeks)
+      : config.totalWeeks;
   if (
     !isFiniteNumber(config.totalWeeks) ||
     config.totalWeeks < MIN_NEW_PROGRAM_WEEKS ||
-    rawWeeks < MIN_NEW_PROGRAM_WEEKS
+    (!allowShortTimeline && rawWeeks < MIN_NEW_PROGRAM_WEEKS)
   )
     fields.totalWeeks = `Plan length must be at least ${MIN_NEW_PROGRAM_WEEKS} weeks.`;
-  else if (config.totalWeeks !== totalWeeks)
+  else if (!allowShortTimeline && config.totalWeeks !== totalWeeks)
     fields.totalWeeks = "Plan length must match the race date.";
   if (!FITNESS_DISTANCES.some((distance) => distance === config.currentAbilityDist))
     fields.currentAbilityDist = "Choose a supported fitness distance.";
@@ -428,7 +561,7 @@ export function validatePlannerConfig(
     fields.effortMetric = "Heart-rate zones are required for heart-rate workouts.";
   }
 
-  const warning = dateIsValid(config.raceDate)
+  const warning = !allowShortTimeline && dateIsValid(config.raceDate)
     ? getPlannerTimelineWarning(config.raceDate, now, timezone)
     : null;
   return { fields, warning };
@@ -588,16 +721,21 @@ export function summarizePreview(
     rows.push(workout);
     byWeek.set(workout.week, rows);
   }
-  const weeks = Array.from({ length: config.totalWeeks }, (_, index) => {
-    const week = index + 1;
-    const rows = byWeek.get(week) ?? [];
-    return {
-      week,
-      startsOn: format(addWeeks(planStart, index), "yyyy-MM-dd"),
-      distanceKm: Math.round(rows.reduce((sum, row) => sum + (row.distanceKm ?? 0), 0) * 10) / 10,
-      workoutCount: rows.length,
-    };
-  });
+  const firstWeek = workouts.length > 0
+    ? Math.min(...workouts.map((workout) => workout.week))
+    : null;
+  const weeks = firstWeek == null
+    ? []
+    : Array.from({ length: config.totalWeeks - firstWeek + 1 }, (_, index) => {
+      const week = firstWeek + index;
+      const rows = byWeek.get(week) ?? [];
+      return {
+        week,
+        startsOn: format(addWeeks(planStart, week - 1), "yyyy-MM-dd"),
+        distanceKm: Math.round(rows.reduce((sum, row) => sum + (row.distanceKm ?? 0), 0) * 10) / 10,
+        workoutCount: rows.length,
+      };
+    });
   return {
     summary: {
       workoutCount: workouts.length,

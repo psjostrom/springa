@@ -10,11 +10,10 @@ import { fetchAthleteRaw, fetchAthleteProfile } from "@/lib/intervalsApi";
 import { validateNSConnection, fetchBGFromNS } from "@/lib/nightscout";
 import { computeMaxHRZones, DEFAULT_MAX_HR } from "@/lib/constants";
 import {
-  canonicalPlannerConfig,
-  normalizePlannerConfig,
   PLANNER_CONFIG_KEYS,
   plannerConfigFromSettings,
   REQUIRED_PLANNER_CONFIG_KEYS,
+  resolvePlannerConfig,
   validatePlannerConfig,
   PlannerError,
 } from "@/lib/plannerConfig";
@@ -75,6 +74,7 @@ export async function PUT(req: Request) {
     displayName?: string;
     runDays?: number[];
     onboardingComplete?: boolean;
+    plannerIntent?: "start" | "update";
   };
 
   try {
@@ -86,6 +86,7 @@ export async function PUT(req: Request) {
       displayName?: string;
       runDays?: number[];
       onboardingComplete?: boolean;
+      plannerIntent?: "start" | "update";
     };
   } catch {
     return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
@@ -135,6 +136,14 @@ export async function PUT(req: Request) {
   }
 
   const plannerChangeRequested = PLANNER_CONFIG_KEYS.some((key) => body[key] !== undefined);
+  const rawPlannerIntent = (body as { plannerIntent?: unknown }).plannerIntent;
+  if (rawPlannerIntent !== undefined && rawPlannerIntent !== "start" && rawPlannerIntent !== "update") {
+    return NextResponse.json(
+      { error: "Planner intent is invalid", code: "PLANNER_CONFIG_INVALID" },
+      { status: 400 },
+    );
+  }
+  const plannerIntent = rawPlannerIntent ?? "update";
   let incompletePlannerFields: readonly (keyof typeof body)[] = [];
   if (plannerChangeRequested) {
     const currentSettings = await getUserSettings(email);
@@ -156,11 +165,15 @@ export async function PUT(req: Request) {
       await saveUserSettings(email, allowed);
     } else {
       const effectiveTimezone = body.timezone ?? currentSettings.timezone ?? "Europe/Stockholm";
-      const normalizedConfig = normalizePlannerConfig(
+      const metadata = await getPlannerMetadata(email);
+      const resolution = resolvePlannerConfig(
         currentConfig,
+        plannerIntent,
+        metadata.generatedPlanConfig,
         new Date(),
         effectiveTimezone,
       );
+      const normalizedConfig = resolution.config;
       let hrContext: { lthr?: number; hrZones?: number[] } | undefined;
       if (normalizedConfig.effortMetric === "hr") {
         const credentials = await getUserCredentials(email);
@@ -197,6 +210,7 @@ export async function PUT(req: Request) {
         new Date(),
         effectiveTimezone,
         hrContext,
+        { allowShortTimeline: resolution.anchored },
       );
       if (Object.keys(validation.fields).length > 0) {
         const error = new PlannerError(
@@ -214,13 +228,7 @@ export async function PUT(req: Request) {
       }
       if (body.raceName !== undefined) allowed.raceName = normalizedConfig.raceName;
 
-      const previousConfig = plannerConfigFromSettings(currentSettings);
-      const generatedChanged = previousConfig == null ||
-        canonicalPlannerConfig(previousConfig) !== canonicalPlannerConfig(normalizedConfig);
-      const metadata = await getPlannerMetadata(email);
-      await saveUserSettings(email, allowed, {
-        plannerConfigDirty: metadata.dirty || generatedChanged,
-      });
+      await saveUserSettings(email, allowed);
     }
   } else if (Object.keys(allowed).length > 0) {
     await saveUserSettings(email, allowed);

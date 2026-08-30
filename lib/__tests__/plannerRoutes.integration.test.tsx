@@ -32,8 +32,9 @@ import { PUT as settingsPut } from "@/app/api/settings/route";
 import { API_BASE } from "@/lib/constants";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
-import { PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
-import { getPlannerMetadata } from "@/lib/plannerMetadata";
+import { canonicalPlannerConfig, PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
+import { getPlannerMetadata, savePlannerMetadata } from "@/lib/plannerMetadata";
+import { POST as intervalsBulkPost } from "@/app/api/intervals/events/bulk/route";
 import { getUserSettings } from "@/lib/settings";
 import { signMobileToken } from "@/lib/mobileAuth";
 import { plannerErrorResponse } from "@/app/api/planner/_helpers";
@@ -203,7 +204,62 @@ describe("Planner routes", () => {
     });
   });
 
-  it("validates complete Planner settings and marks generation changes dirty", async () => {
+  it("returns a safe Google Calendar warning after a successful apply", async () => {
+    await seedSettings();
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET google_refresh_token = ?, google_calendar_id = ? WHERE email = ?",
+      args: [
+        encrypt("1//mock-refresh", process.env.CREDENTIALS_ENCRYPTION_KEY!),
+        "existing-cal-id",
+        EMAIL,
+      ],
+    });
+    holder.cookieEmail = EMAIL;
+
+    const preview = await plannerPreview(
+      new Request("http://localhost/api/planner/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "start", config: CONFIG }),
+      }),
+    );
+    const previewBody = await preview.json();
+
+    server.use(
+      http.post("https://oauth2.googleapis.com/token", () =>
+        HttpResponse.json(
+          { error: "invalid_grant", error_description: "Bad Request" },
+          { status: 400 },
+        )),
+    );
+
+    const response = await plannerApply(
+      new Request("http://localhost/api/planner/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intent: "start",
+          config: CONFIG,
+          previewHash: previewBody.previewHash,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      action: "replace-plan",
+      appliedWorkoutCount: expect.any(Number),
+      warnings: [{
+        code: "GOOGLE_CALENDAR_SYNC_FAILED",
+        message: "Google Calendar sync failed.",
+      }],
+    });
+    expect(JSON.stringify(body)).not.toContain("invalid_grant");
+    expect(JSON.stringify(body)).not.toContain("Bad Request");
+  });
+
+  it("validates complete Planner settings without storing sticky generation drift", async () => {
     await seedSettings();
     holder.cookieEmail = EMAIL;
     const changed = { ...CONFIG, startKm: 10 };
@@ -215,7 +271,7 @@ describe("Planner routes", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: true });
+    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
 
     const raceNameOnly = await settingsPut(
       new Request("http://localhost/api/settings", {
@@ -225,7 +281,7 @@ describe("Planner routes", () => {
       }),
     );
     expect(raceNameOnly.status).toBe(200);
-    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: true });
+    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
 
     const invalid = await settingsPut(
       new Request("http://localhost/api/settings", {
@@ -285,6 +341,81 @@ describe("Planner routes", () => {
       }),
     );
     expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
+  });
+
+  it("records planner metadata after a successful generated plan upload", async () => {
+    await seedSettings();
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: "stale-generated-config",
+      dirty: true,
+    });
+    holder.cookieEmail = EMAIL;
+
+    const response = await intervalsBulkPost(
+      new Request("http://localhost/api/intervals/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: [{
+            start_date_local: "2026-09-01T12:00:00",
+            name: "W01 Easy",
+            description: "Easy run",
+            external_id: "easy-2026-11-29-1-0",
+            type: "Run",
+          }],
+          recordPlannerMetadata: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await getPlannerMetadata(EMAIL)).toEqual({
+      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
+      dirty: false,
+    });
+  });
+
+  it("keeps generated metadata dirty when stale workout cleanup partially fails", async () => {
+    await seedSettings();
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: "stale-generated-config",
+      dirty: true,
+    });
+    holder.cookieEmail = EMAIL;
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([{
+        id: 100,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-09-01T12:00:00",
+        external_id: "easy-2026-11-29-2-0",
+      }])),
+      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () =>
+        new HttpResponse("cleanup failed", { status: 500 })),
+    );
+
+    const response = await intervalsBulkPost(
+      new Request("http://localhost/api/intervals/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: [{
+            start_date_local: "2026-09-01T12:00:00",
+            name: "W01 Easy",
+            description: "Easy run",
+            external_id: "easy-2026-11-29-1-0",
+            type: "Run",
+          }],
+          recordPlannerMetadata: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await getPlannerMetadata(EMAIL)).toEqual({
+      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
+      dirty: true,
+    });
   });
 
   it("rejects heart-rate settings without live threshold context", async () => {

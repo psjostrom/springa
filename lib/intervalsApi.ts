@@ -777,7 +777,7 @@ export function findStaleSpringaWorkoutEvents(
 export async function uploadToIntervals(
   apiKey: string,
   events: WorkoutEvent[],
-): Promise<{ count: number }> {
+): Promise<{ count: number; staleDeleteFailures: number[] }> {
   const auth = authHeader(apiKey);
   const now = new Date();
   const existingEvents = await fetchFutureWorkoutEvents(apiKey, now, addDays(now, 365));
@@ -789,6 +789,7 @@ export async function uploadToIntervals(
       new Set(events.map((event) => event.external_id)),
     );
 
+    const staleDeleteFailures: number[] = [];
     for (const staleEvent of staleEvents) {
       try {
         const deleteRes = await fetch(`${API_BASE}/athlete/0/events/${encodeURIComponent(String(staleEvent.id))}`, {
@@ -797,13 +798,15 @@ export async function uploadToIntervals(
         });
         if (!deleteRes.ok) {
           console.error(`Delete failed for event ${staleEvent.id} with status ${deleteRes.status}`);
+          staleDeleteFailures.push(staleEvent.id);
         }
       } catch (deleteError) {
         console.error(`Error deleting stale event ${staleEvent.id}:`, deleteError);
+        staleDeleteFailures.push(staleEvent.id);
       }
     }
 
-    return { count: events.length };
+    return { count: events.length, staleDeleteFailures };
   } catch (error) {
     console.error("Upload failed:", error);
     throw error;
