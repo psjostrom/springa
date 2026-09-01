@@ -192,9 +192,19 @@ function resolvePlannerConfigForEvents(
   now: Date,
   timezone: string,
 ) {
-  const fallbackTotalWeeks = intent === "update"
+  const generatedWeek = intent === "update"
     ? maxGeneratedPlanWeek(events.map((event) => event.external_id), config.raceDate)
     : null;
+  const raceWeekOffset = (event: IntervalsEvent) => differenceInCalendarWeeks(
+    parseISO(config.raceDate),
+    parseISO(event.start_date_local),
+    { weekStartsOn: 1 },
+  );
+  const raceOnlyFinalWeek = generatedWeek !== null &&
+    events.some((event) => event.external_id === `race-${config.raceDate}`) &&
+    !events.some((event) => maxGeneratedPlanWeek([event.external_id], config.raceDate) !== null && raceWeekOffset(event) === 0) &&
+    events.some((event) => maxGeneratedPlanWeek([event.external_id], config.raceDate) === generatedWeek && raceWeekOffset(event) === 1);
+  const fallbackTotalWeeks = raceOnlyFinalWeek ? generatedWeek + 1 : generatedWeek;
   return resolvePlannerConfig(
     config,
     intent,

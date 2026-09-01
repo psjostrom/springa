@@ -151,21 +151,6 @@ describe("intervalsClient", () => {
       expect(result).toBe(1);
       expect(capturedUploadPayload).toHaveLength(1);
     });
-
-    it("marks generated plan uploads for metadata recording", async () => {
-      let recordPlannerMetadata: unknown;
-      server.use(
-        http.post("/api/intervals/events/bulk", async ({ request }) => {
-          const body = await request.json() as { recordPlannerMetadata?: unknown };
-          recordPlannerMetadata = body.recordPlannerMetadata;
-          return HttpResponse.json({ count: 1 });
-        }),
-      );
-
-      await uploadPlan([], { recordPlannerMetadata: true });
-
-      expect(recordPlannerMetadata).toBe(true);
-    });
   });
 
   describe("replaceWorkout", () => {

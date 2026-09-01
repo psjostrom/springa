@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@libsql/client";
 
 const { holder } = vi.hoisted(() => {
@@ -26,6 +26,7 @@ import { getPlannerMetadata, savePlannerMetadata } from "@/lib/plannerMetadata";
 import { getUserSettings, saveUserSettings } from "@/lib/settings";
 
 const EMAIL = "test@example.com";
+const NOW = new Date("2026-08-25T12:00:00+02:00");
 const ANCHORED_CONFIG: PlannerConfig = {
   raceName: "Stockholm Half",
   raceDist: 21.1,
@@ -47,7 +48,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   await holder.db.execute("DELETE FROM user_settings");
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("/api/settings PUT", () => {
@@ -82,6 +89,24 @@ describe("/api/settings PUT", () => {
     expect(res.status).toBe(200);
     expect((await getUserSettings(EMAIL)).totalWeeks).toBe(14);
     expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
+  });
+
+  it("preserves stored total weeks when legacy metadata is missing", async () => {
+    await saveUserSettings(EMAIL, ANCHORED_CONFIG);
+
+    const res = await PUT(
+      new Request("http://localhost/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ effortMetric: "feel" }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await getUserSettings(EMAIL)).toMatchObject({
+      effortMetric: "feel",
+      totalWeeks: 14,
+    });
   });
 
   it("does not create sticky dirty state when config is changed and reverted", async () => {

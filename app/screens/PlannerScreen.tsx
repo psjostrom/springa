@@ -291,7 +291,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
     }
     setIsUploading(true);
     try {
-      const count = await uploadPlan(planEvents, { recordPlannerMetadata: true });
+      const count = await uploadPlan(planEvents);
       setStatusMsg(`Uploaded ${count} workouts.`);
       setNewProgramStarted(false);
       // Best-effort Google Calendar sync
@@ -327,7 +327,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
 
       let count: number;
       try {
-        count = await uploadPlan(planEvents, { recordPlannerMetadata: true });
+        count = await uploadPlan(planEvents);
       } catch (uploadError) {
         try {
           await updateSettings(previousSettings);

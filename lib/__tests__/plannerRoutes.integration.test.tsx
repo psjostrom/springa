@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { Buffer } from "node:buffer";
 import type { Client } from "@libsql/client";
 import { http, HttpResponse } from "msw";
@@ -32,7 +32,7 @@ import { PUT as settingsPut } from "@/app/api/settings/route";
 import { API_BASE } from "@/lib/constants";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
-import { canonicalPlannerConfig, PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
+import { PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
 import { getPlannerMetadata, savePlannerMetadata } from "@/lib/plannerMetadata";
 import { POST as intervalsBulkPost } from "@/app/api/intervals/events/bulk/route";
 import { getUserSettings } from "@/lib/settings";
@@ -42,6 +42,7 @@ import { server } from "./msw/server";
 
 const EMAIL = "planner-routes@example.com";
 const API_KEY = "intervals-key";
+const NOW = new Date("2026-08-25T12:00:00+02:00");
 const CONFIG: PlannerConfig = {
   raceName: "Stockholm Half",
   raceDist: 21.1,
@@ -120,10 +121,16 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   holder.cookieEmail = null;
   await holder.db.execute("DELETE FROM activity_streams");
   await holder.db.execute("DELETE FROM user_settings");
   useProvider();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("Planner routes", () => {
@@ -343,7 +350,7 @@ describe("Planner routes", () => {
     expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
   });
 
-  it("records planner metadata after a successful generated plan upload", async () => {
+  it("leaves Planner metadata to the Planner apply flow", async () => {
     await seedSettings();
     await savePlannerMetadata(EMAIL, {
       generatedPlanConfig: "stale-generated-config",
@@ -370,50 +377,7 @@ describe("Planner routes", () => {
 
     expect(response.status).toBe(200);
     expect(await getPlannerMetadata(EMAIL)).toEqual({
-      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
-      dirty: false,
-    });
-  });
-
-  it("keeps generated metadata dirty when stale workout cleanup partially fails", async () => {
-    await seedSettings();
-    await savePlannerMetadata(EMAIL, {
       generatedPlanConfig: "stale-generated-config",
-      dirty: true,
-    });
-    holder.cookieEmail = EMAIL;
-    server.use(
-      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([{
-        id: 100,
-        category: "WORKOUT",
-        type: "Run",
-        start_date_local: "2026-09-01T12:00:00",
-        external_id: "easy-2026-11-29-2-0",
-      }])),
-      http.delete(`${API_BASE}/athlete/0/events/:eventId`, () =>
-        new HttpResponse("cleanup failed", { status: 500 })),
-    );
-
-    const response = await intervalsBulkPost(
-      new Request("http://localhost/api/intervals/events/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          events: [{
-            start_date_local: "2026-09-01T12:00:00",
-            name: "W01 Easy",
-            description: "Easy run",
-            external_id: "easy-2026-11-29-1-0",
-            type: "Run",
-          }],
-          recordPlannerMetadata: true,
-        }),
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(await getPlannerMetadata(EMAIL)).toEqual({
-      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
       dirty: true,
     });
   });

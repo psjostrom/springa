@@ -172,6 +172,11 @@ export async function PUT(req: Request) {
         metadata.generatedPlanConfig,
         new Date(),
         effectiveTimezone,
+        plannerIntent === "update" &&
+          body.raceDate === undefined &&
+          body.totalWeeks === undefined
+          ? currentSettings.totalWeeks ?? null
+          : null,
       );
       const normalizedConfig = resolution.config;
       let hrContext: { lthr?: number; hrZones?: number[] } | undefined;

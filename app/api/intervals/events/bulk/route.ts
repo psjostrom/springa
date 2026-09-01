@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { uploadToIntervals } from "@/lib/intervalsApi";
-import { canonicalPlannerConfig, plannerConfigFromSettings } from "@/lib/plannerConfig";
-import { savePlannerMetadata } from "@/lib/plannerMetadata";
-import { getUserSettings } from "@/lib/settings";
 import type { WorkoutEvent } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -24,10 +21,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as {
-    events?: WorkoutEvent[];
-    recordPlannerMetadata?: boolean;
-  };
+  const body = (await req.json()) as { events?: WorkoutEvent[] };
   const rawEvents = body.events;
 
   if (!Array.isArray(rawEvents) || rawEvents.length === 0) {
@@ -43,23 +37,7 @@ export async function POST(req: Request) {
   }));
 
   try {
-    const plannerConfig = body.recordPlannerMetadata
-      ? plannerConfigFromSettings(await getUserSettings(email))
-      : null;
-    if (body.recordPlannerMetadata && !plannerConfig) {
-      return NextResponse.json(
-        { error: "Complete Planner settings required" },
-        { status: 400 },
-      );
-    }
-
-    const { count, staleDeleteFailures } = await uploadToIntervals(creds.intervalsApiKey, events);
-    if (plannerConfig) {
-      await savePlannerMetadata(email, {
-        generatedPlanConfig: canonicalPlannerConfig(plannerConfig),
-        dirty: staleDeleteFailures.length > 0,
-      });
-    }
+    const { count } = await uploadToIntervals(creds.intervalsApiKey, events);
     return NextResponse.json({ count });
   } catch (err) {
     console.error("[intervals/events/bulk]", err);

@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@libsql/client";
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "@/lib/constants";
@@ -110,10 +110,16 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   await holder.db.execute("DELETE FROM user_settings");
   await holder.db.execute("DELETE FROM activity_streams");
   resetCaptures();
   useProvider();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("Planner service", () => {
@@ -531,6 +537,33 @@ describe("Planner service", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("counts a race-only final week when recovering a missing metadata anchor", async () => {
+    await seedSettings();
+    await saveUserSettings(EMAIL, { raceDate: "2026-10-12", totalWeeks: 8 });
+    useProvider([
+      {
+        id: 501,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-10-11T12:00:00",
+        external_id: "long-2026-10-12-13",
+        paired_activity_id: null,
+      },
+      {
+        id: 502,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-10-12T12:00:00",
+        external_id: "race-2026-10-12",
+        paired_activity_id: null,
+      },
+    ]);
+
+    const state = await getPlannerState(EMAIL, NOW);
+
+    expect(state.currentConfig?.totalWeeks).toBe(14);
   });
 
   it("rejects target previews when a provider workout date changes", async () => {
