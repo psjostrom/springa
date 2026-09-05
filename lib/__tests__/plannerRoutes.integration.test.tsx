@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { Buffer } from "node:buffer";
 import type { Client } from "@libsql/client";
 import { http, HttpResponse } from "msw";
@@ -33,7 +33,8 @@ import { API_BASE } from "@/lib/constants";
 import { encrypt } from "@/lib/credentials";
 import { SCHEMA_DDL } from "@/lib/db";
 import { PlannerError, type PlannerConfig } from "@/lib/plannerConfig";
-import { getPlannerMetadata } from "@/lib/plannerMetadata";
+import { getPlannerMetadata, savePlannerMetadata } from "@/lib/plannerMetadata";
+import { POST as intervalsBulkPost } from "@/app/api/intervals/events/bulk/route";
 import { getUserSettings } from "@/lib/settings";
 import { signMobileToken } from "@/lib/mobileAuth";
 import { plannerErrorResponse } from "@/app/api/planner/_helpers";
@@ -41,6 +42,7 @@ import { server } from "./msw/server";
 
 const EMAIL = "planner-routes@example.com";
 const API_KEY = "intervals-key";
+const NOW = new Date("2026-08-25T12:00:00+02:00");
 const CONFIG: PlannerConfig = {
   raceName: "Stockholm Half",
   raceDist: 21.1,
@@ -119,10 +121,16 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   holder.cookieEmail = null;
   await holder.db.execute("DELETE FROM activity_streams");
   await holder.db.execute("DELETE FROM user_settings");
   useProvider();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("Planner routes", () => {
@@ -203,7 +211,62 @@ describe("Planner routes", () => {
     });
   });
 
-  it("validates complete Planner settings and marks generation changes dirty", async () => {
+  it("returns a safe Google Calendar warning after a successful apply", async () => {
+    await seedSettings();
+    await holder.db.execute({
+      sql: "UPDATE user_settings SET google_refresh_token = ?, google_calendar_id = ? WHERE email = ?",
+      args: [
+        encrypt("1//mock-refresh", process.env.CREDENTIALS_ENCRYPTION_KEY!),
+        "existing-cal-id",
+        EMAIL,
+      ],
+    });
+    holder.cookieEmail = EMAIL;
+
+    const preview = await plannerPreview(
+      new Request("http://localhost/api/planner/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "start", config: CONFIG }),
+      }),
+    );
+    const previewBody = await preview.json();
+
+    server.use(
+      http.post("https://oauth2.googleapis.com/token", () =>
+        HttpResponse.json(
+          { error: "invalid_grant", error_description: "Bad Request" },
+          { status: 400 },
+        )),
+    );
+
+    const response = await plannerApply(
+      new Request("http://localhost/api/planner/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intent: "start",
+          config: CONFIG,
+          previewHash: previewBody.previewHash,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      action: "replace-plan",
+      appliedWorkoutCount: expect.any(Number),
+      warnings: [{
+        code: "GOOGLE_CALENDAR_SYNC_FAILED",
+        message: "Google Calendar sync failed.",
+      }],
+    });
+    expect(JSON.stringify(body)).not.toContain("invalid_grant");
+    expect(JSON.stringify(body)).not.toContain("Bad Request");
+  });
+
+  it("validates complete Planner settings without storing sticky generation drift", async () => {
     await seedSettings();
     holder.cookieEmail = EMAIL;
     const changed = { ...CONFIG, startKm: 10 };
@@ -215,7 +278,7 @@ describe("Planner routes", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: true });
+    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
 
     const raceNameOnly = await settingsPut(
       new Request("http://localhost/api/settings", {
@@ -225,7 +288,7 @@ describe("Planner routes", () => {
       }),
     );
     expect(raceNameOnly.status).toBe(200);
-    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: true });
+    expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
 
     const invalid = await settingsPut(
       new Request("http://localhost/api/settings", {
@@ -285,6 +348,38 @@ describe("Planner routes", () => {
       }),
     );
     expect(await getPlannerMetadata(EMAIL)).toMatchObject({ dirty: false });
+  });
+
+  it("leaves Planner metadata to the Planner apply flow", async () => {
+    await seedSettings();
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: "stale-generated-config",
+      dirty: true,
+    });
+    holder.cookieEmail = EMAIL;
+
+    const response = await intervalsBulkPost(
+      new Request("http://localhost/api/intervals/events/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: [{
+            start_date_local: "2026-09-01T12:00:00",
+            name: "W01 Easy",
+            description: "Easy run",
+            external_id: "easy-2026-11-29-1-0",
+            type: "Run",
+          }],
+          recordPlannerMetadata: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await getPlannerMetadata(EMAIL)).toEqual({
+      generatedPlanConfig: "stale-generated-config",
+      dirty: true,
+    });
   });
 
   it("rejects heart-rate settings without live threshold context", async () => {

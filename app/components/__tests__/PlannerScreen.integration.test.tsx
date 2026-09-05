@@ -533,6 +533,7 @@ describe("PlannerScreen", () => {
     expect(capturedUploadPayload.length).toBeGreaterThan(0);
     expect(capturedSettingsBody).toEqual(
       expect.objectContaining({
+        plannerIntent: "start",
         raceName: "Stockholm Half",
         raceDist: 16,
         currentAbilityDist: 10,

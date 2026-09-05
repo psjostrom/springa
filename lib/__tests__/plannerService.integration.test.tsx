@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@libsql/client";
 import { http, HttpResponse } from "msw";
 import { API_BASE } from "@/lib/constants";
@@ -110,10 +110,16 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
   await holder.db.execute("DELETE FROM user_settings");
   await holder.db.execute("DELETE FROM activity_streams");
   resetCaptures();
   useProvider();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("Planner service", () => {
@@ -137,6 +143,21 @@ describe("Planner service", () => {
       sync: { status: "synced", dirtyKind: null },
       futureWorkoutCount: 3,
     });
+  });
+
+  it("uses unknown state instead of a dirty banner for operational dirt with no config diff", async () => {
+    await seedSettings();
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: canonicalPlannerConfig(CONFIG),
+      dirty: true,
+    });
+    useProvider([
+      { id: 111, category: "WORKOUT", type: "Run", start_date_local: "2026-09-01T12:00:00", external_id: "easy-2026-11-29-1-0", paired_activity_id: null },
+    ]);
+
+    const state = await getPlannerState(EMAIL, NOW);
+
+    expect(state.plan.sync).toEqual({ status: "unknown", dirtyKind: null });
   });
 
   it("returns no countdown for a completed plan without future workouts", async () => {
@@ -370,7 +391,7 @@ describe("Planner service", () => {
     expect(await getPlannerMetadata(EMAIL)).toEqual(beforeMetadata);
   });
 
-  it("applies target-only updates in place without structural writes", async () => {
+  it("applies target-only updates in one bulk upsert", async () => {
     await seedSettings();
     await savePlannerMetadata(EMAIL, {
       generatedPlanConfig: canonicalPlannerConfig(CONFIG),
@@ -395,14 +416,154 @@ describe("Planner service", () => {
     );
 
     expect(result).toMatchObject({ action: "update-targets", appliedWorkoutCount: 2 });
-    expect(capturedUploadPayload).toEqual([]);
+    expect(capturedUploadPayload).toEqual([
+      expect.objectContaining({
+        external_id: "easy-2026-11-29-1-0",
+        start_date_local: "2026-09-01T12:00:00",
+        name: expect.any(String),
+        description: expect.any(String),
+        type: "Run",
+      }),
+      expect.objectContaining({
+        external_id: "long-2026-11-29-1",
+        start_date_local: "2026-09-02T12:00:00",
+        name: expect.any(String),
+        description: expect.any(String),
+        type: "Run",
+      }),
+    ]);
     expect(capturedDeleteEventIds).toEqual([]);
-    expect(capturedPutPayload?.body).not.toHaveProperty("start_date_local");
-    expect(capturedPutPayload?.body).not.toHaveProperty("external_id");
+    expect(capturedPutPayload).toBeNull();
     expect(await getPlannerMetadata(EMAIL)).toEqual({
       generatedPlanConfig: canonicalPlannerConfig(config),
       dirty: false,
     });
+  });
+
+  it("continues structural updates from the saved plan week", async () => {
+    await seedSettings();
+    const anchor: PlannerConfig = {
+      ...CONFIG,
+      raceDate: "2026-10-18",
+      totalWeeks: 14,
+    };
+    await saveUserSettings(EMAIL, {
+      raceDate: anchor.raceDate,
+      totalWeeks: anchor.totalWeeks,
+    });
+    await savePlannerMetadata(EMAIL, {
+      generatedPlanConfig: canonicalPlannerConfig(anchor),
+      dirty: false,
+    });
+
+    const preview = await buildPlannerPreview(
+      EMAIL,
+      {
+        intent: "update",
+        config: { ...anchor, raceDate: "2026-09-20", totalWeeks: 8 },
+      },
+      NOW,
+    );
+
+    expect(preview.response.warning).toBeNull();
+    expect(preview.response.config.totalWeeks).toBe(10);
+    expect(preview.response.summary.planWeeks).toBe(10);
+    expect(preview.response.weeks[0]?.week).toBe(7);
+    expect(preview.response.workouts.some((workout) => workout.name.startsWith("W07 "))).toBe(true);
+    expect(preview.response.workouts.some((workout) => workout.name.startsWith("W01 "))).toBe(false);
+  });
+
+  it("recovers a missing metadata anchor from exact owned workout IDs", async () => {
+    await seedSettings();
+    await saveUserSettings(EMAIL, { raceDate: "2026-10-18", totalWeeks: 8 });
+    const events = [
+      ...Array.from({ length: 8 }, (_, index) => ({
+        id: 501 + index,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: `2026-${String(8 + Math.floor((index + 24) / 31)).padStart(2, "0")}-${String(((index + 24) % 31) + 1).padStart(2, "0")}T12:00:00`,
+        external_id: `long-2026-10-18-${index + 7}`,
+        paired_activity_id: null,
+      })),
+      {
+        id: 509,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-10-18T12:00:00",
+        external_id: "race-2026-10-18",
+        paired_activity_id: null,
+      },
+    ];
+    let eventFetchCount = 0;
+    useProvider(events);
+    server.use(
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        eventFetchCount++;
+        return HttpResponse.json(events);
+      }),
+    );
+
+    const requestedConfig = {
+      ...CONFIG,
+      raceDate: "2026-10-18",
+      totalWeeks: 8,
+      includeBasePhase: false,
+    };
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      const state = await getPlannerState(EMAIL, NOW);
+      const preview = await buildPlannerPreview(
+        EMAIL,
+        { intent: "update", config: requestedConfig },
+        NOW,
+      );
+
+      expect({
+        stateWeeks: state.currentConfig?.totalWeeks,
+        previewWeeks: preview.response.config.totalWeeks,
+        firstWeek: preview.response.workouts[0]?.week,
+        hasWeekOne: preview.response.workouts.some((workout) => workout.name.startsWith("W01 ")),
+        warning: preview.response.warning,
+        previewEventFetches: eventFetchCount - 1,
+      }).toEqual({
+        stateWeeks: 14,
+        previewWeeks: 14,
+        firstWeek: 7,
+        hasWeekOne: false,
+        warning: null,
+        previewEventFetches: 1,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("counts a race-only final week when recovering a missing metadata anchor", async () => {
+    await seedSettings();
+    await saveUserSettings(EMAIL, { raceDate: "2026-10-12", totalWeeks: 8 });
+    useProvider([
+      {
+        id: 501,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-10-11T12:00:00",
+        external_id: "long-2026-10-12-13",
+        paired_activity_id: null,
+      },
+      {
+        id: 502,
+        category: "WORKOUT",
+        type: "Run",
+        start_date_local: "2026-10-12T12:00:00",
+        external_id: "race-2026-10-12",
+        paired_activity_id: null,
+      },
+    ]);
+
+    const state = await getPlannerState(EMAIL, NOW);
+
+    expect(state.currentConfig?.totalWeeks).toBe(14);
   });
 
   it("rejects target previews when a provider workout date changes", async () => {
@@ -433,7 +594,7 @@ describe("Planner service", () => {
     expect(capturedPutPayload).toBeNull();
   });
 
-  it("keeps target metadata dirty when one update fails", async () => {
+  it("restores target settings when the bulk update fails", async () => {
     await seedSettings();
     await savePlannerMetadata(EMAIL, {
       generatedPlanConfig: canonicalPlannerConfig(CONFIG),
@@ -443,8 +604,10 @@ describe("Planner service", () => {
       { id: 401, category: "WORKOUT", type: "Run", start_date_local: "2026-09-01T12:00:00", external_id: "easy-2026-11-29-1-0", name: "W01 Easy", description: PARSEABLE_DESCRIPTION, paired_activity_id: null },
       { id: 402, category: "WORKOUT", type: "Run", start_date_local: "2026-09-02T12:00:00", external_id: "long-2026-11-29-1", name: "W01 Long (10km)", description: PARSEABLE_DESCRIPTION, paired_activity_id: null },
     ]);
+    const beforeSettings = await getUserSettings(EMAIL);
+    const beforeMetadata = await getPlannerMetadata(EMAIL);
     server.use(
-      http.put(`${API_BASE}/athlete/0/events/402`, () =>
+      http.post(`${API_BASE}/athlete/0/events/bulk`, () =>
         HttpResponse.json({ error: "upstream 502" }, { status: 502 })),
     );
     const config = { ...CONFIG, currentAbilitySecs: 3500 };
@@ -456,10 +619,11 @@ describe("Planner service", () => {
         { intent: "update", config, previewHash: preview.response.previewHash },
         NOW,
       ),
-    ).rejects.toMatchObject({
-      code: "PLANNER_APPLY_PARTIAL",
-      details: { appliedWorkoutCount: 1 },
+    ).rejects.toMatchObject({ code: "INTERVALS_UPSTREAM_ERROR" });
+    expect(await getUserSettings(EMAIL)).toMatchObject({
+      currentAbilitySecs: beforeSettings.currentAbilitySecs,
+      effortMetric: beforeSettings.effortMetric,
     });
-    expect((await getPlannerMetadata(EMAIL)).dirty).toBe(true);
+    expect(await getPlannerMetadata(EMAIL)).toEqual(beforeMetadata);
   });
 });

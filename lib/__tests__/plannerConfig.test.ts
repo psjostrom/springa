@@ -5,9 +5,12 @@ import {
   buildPlannerDefaults,
   canonicalPlannerConfig,
   classifyPlannerDirty,
+  maxGeneratedPlanWeek,
   normalizePlannerConfig,
   parsePlannerApplyRequest,
   parsePlannerPreviewRequest,
+  resolvePlannerConfig,
+  summarizePreview,
   validatePlannerConfig,
   type PlannerConfig,
 } from "../plannerConfig";
@@ -192,5 +195,131 @@ describe("Planner config contracts", () => {
     expect(defaults.totalWeeks).toBe(19);
     expect(validatePlannerConfig(defaults, NOW, "Europe/Stockholm").fields)
       .not.toHaveProperty("totalWeeks");
+  });
+
+  it("resolves update timelines from the exact generated-plan anchor", () => {
+    const anchor: PlannerConfig = {
+      ...VALID,
+      raceDate: "2026-10-18",
+      totalWeeks: 14,
+    };
+
+    const sameRace = resolvePlannerConfig(
+      { ...anchor, totalWeeks: 8 },
+      "update",
+      canonicalPlannerConfig(anchor),
+      NOW,
+      "Europe/Stockholm",
+    );
+    expect(sameRace.anchored).toBe(true);
+    expect(sameRace.config.totalWeeks).toBe(14);
+
+    const changedRace = resolvePlannerConfig(
+      { ...anchor, raceDate: "2026-09-20", totalWeeks: 8 },
+      "update",
+      canonicalPlannerConfig(anchor),
+      NOW,
+      "Europe/Stockholm",
+    );
+    expect(changedRace.anchored).toBe(true);
+    expect(changedRace.config.totalWeeks).toBe(10);
+    expect(summarizePreview(changedRace.config, [{
+      key: "easy-2026-09-20-7-0",
+      week: 7,
+      date: "2026-08-24",
+      name: "W07 Easy",
+      category: "easy",
+      distanceKm: 6,
+      durationMinutes: 36,
+      fuelRateGPerHour: null,
+    }]).weeks[0]?.startsOn).toBe("2026-08-24");
+  });
+
+  it("does not guess an update anchor from missing or malformed metadata", () => {
+    for (const generatedPlanConfig of [null, "", "not-json", '{"version":4}']) {
+      const resolved = resolvePlannerConfig(
+        { ...VALID, raceDate: "2026-09-20", totalWeeks: 8 },
+        "update",
+        generatedPlanConfig,
+        NOW,
+        "Europe/Stockholm",
+      );
+      expect(resolved.anchored).toBe(false);
+      expect(resolved.config.totalWeeks).toBe(8);
+    }
+  });
+
+  it("does not anchor semantically invalid generated metadata", () => {
+    const invalidAnchor = canonicalPlannerConfig({
+      ...VALID,
+      raceDate: "2026-10-18",
+      totalWeeks: 14,
+      raceDist: 0,
+    });
+
+    const resolved = resolvePlannerConfig(
+      { ...VALID, raceDate: "2026-09-20", totalWeeks: 8 },
+      "update",
+      invalidAnchor,
+      NOW,
+      "Europe/Stockholm",
+    );
+
+    expect(resolved.anchored).toBe(false);
+    expect(resolved.config.totalWeeks).toBe(8);
+  });
+
+  it("finds the highest week only in exact generated IDs for the requested race", () => {
+    expect(maxGeneratedPlanWeek([
+      "easy-2026-10-18-7-2",
+      "free-2026-10-18-8-4",
+      "long-2026-10-18-9",
+      "speed-2026-10-18-10",
+      "club-2026-10-18-14",
+      "race-2026-10-18",
+      "easy-2026-09-20-99-2",
+      "long-2026-10-18-14-extra",
+      "long-2026-10-18-0",
+      "easy-2026-10-18-15-7",
+      "manual-2026-10-18-99",
+      undefined,
+    ], "2026-10-18")).toBe(14);
+    expect(maxGeneratedPlanWeek(["race-2026-10-18"], "2026-10-18")).toBeNull();
+  });
+
+  it("omits only leading empty weeks from preview summaries", () => {
+    const summary = summarizePreview(
+      { ...VALID, totalWeeks: 14 },
+      [
+        {
+          key: "easy-2026-11-29-7-0",
+          week: 7,
+          date: "2026-10-12",
+          name: "W07 Easy",
+          category: "easy",
+          distanceKm: 6,
+          durationMinutes: 36,
+          fuelRateGPerHour: null,
+        },
+        {
+          key: "long-2026-11-29-9",
+          week: 9,
+          date: "2026-10-26",
+          name: "W09 Long (12km)",
+          category: "long",
+          distanceKm: 12,
+          durationMinutes: 72,
+          fuelRateGPerHour: null,
+        },
+      ],
+    );
+
+    expect(summary.summary.planWeeks).toBe(14);
+    expect(summary.weeks.map((week) => week.week)).toEqual([7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(summary.weeks[1]).toMatchObject({ week: 8, workoutCount: 0, distanceKm: 0 });
+  });
+
+  it("returns no week rows when preview has no workouts", () => {
+    expect(summarizePreview({ ...VALID, totalWeeks: 14 }, []).weeks).toEqual([]);
   });
 });

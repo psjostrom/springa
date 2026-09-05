@@ -323,7 +323,7 @@ export function PlannerScreen({ autoAdapt }: PlannerScreenProps) {
       const nextSettings = toSettingsUpdate(newProgramDraft);
       const previousSettings = toProgramSettingsSnapshot(settings);
 
-      await updateSettings(nextSettings);
+      await updateSettings(nextSettings, "start");
 
       let count: number;
       try {

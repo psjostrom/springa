@@ -7,7 +7,6 @@ import {
   deleteEvent,
   fetchFutureWorkoutEvents,
   findStaleSpringaWorkoutEvents,
-  updateEvent,
   upsertWorkoutEvents,
 } from "./intervalsApi";
 import {
@@ -22,9 +21,10 @@ import {
   canonicalPlannerConfig,
   classifyPlannerDirty,
   getPlannerWarning,
-  normalizePlannerConfig,
+  maxGeneratedPlanWeek,
   plannerConfigFromSettings,
   projectWorkout,
+  resolvePlannerConfig,
   summarizePreview,
   validatePlannerConfig,
   PlannerError,
@@ -36,7 +36,7 @@ import {
 } from "./plannerConfig";
 import { getPlannerMetadata, savePlannerMetadata, type PlannerMetadata } from "./plannerMetadata";
 import { PlanContextError, resolvePlanContext } from "./planContext";
-import { getCurrentFuelRate, serializeFuelRate } from "./fuelRate";
+import { getCurrentFuelRate } from "./fuelRate";
 import { categoryFromExternalId } from "./paceInsight";
 import type { CalendarEvent, IntervalsEvent, WorkoutEvent } from "./types";
 import { getWorkoutCategory } from "./constants";
@@ -78,6 +78,7 @@ export interface PlannerPreviewBuild {
     | {
         action: "update-targets";
         patches: EffortMetricEventPatch[];
+        events: WorkoutEvent[];
         buildFailures: EffortMetricPatchFailure[];
       };
   normalizedConfig: PlannerConfig;
@@ -183,6 +184,37 @@ async function fetchOwnedFutureEventsMapped(
   }
 }
 
+function resolvePlannerConfigForEvents(
+  config: PlannerConfig,
+  intent: PlannerPreviewRequest["intent"],
+  metadata: PlannerMetadata,
+  events: IntervalsEvent[],
+  now: Date,
+  timezone: string,
+) {
+  const generatedWeek = intent === "update"
+    ? maxGeneratedPlanWeek(events.map((event) => event.external_id), config.raceDate)
+    : null;
+  const raceWeekOffset = (event: IntervalsEvent) => differenceInCalendarWeeks(
+    parseISO(config.raceDate),
+    parseISO(event.start_date_local),
+    { weekStartsOn: 1 },
+  );
+  const raceOnlyFinalWeek = generatedWeek !== null &&
+    events.some((event) => event.external_id === `race-${config.raceDate}`) &&
+    !events.some((event) => maxGeneratedPlanWeek([event.external_id], config.raceDate) !== null && raceWeekOffset(event) === 0) &&
+    events.some((event) => maxGeneratedPlanWeek([event.external_id], config.raceDate) === generatedWeek && raceWeekOffset(event) === 1);
+  const fallbackTotalWeeks = raceOnlyFinalWeek ? generatedWeek + 1 : generatedWeek;
+  return resolvePlannerConfig(
+    config,
+    intent,
+    metadata.generatedPlanConfig,
+    now,
+    timezone,
+    fallbackTotalWeeks,
+  );
+}
+
 function weeksToGo(raceDate: string | undefined, now: Date, timezone: string): number | null {
   if (!raceDate) return null;
   const today = parseISO(new Intl.DateTimeFormat("sv-SE", { timeZone: timezone }).format(now));
@@ -222,9 +254,8 @@ function plannerSync(
     currentConfig ? canonicalPlannerConfig(currentConfig) : null,
     metadata.generatedPlanConfig,
   );
-  if (metadata.dirty || kind !== "none") {
-    return { status: "dirty", dirtyKind: kind === "none" ? "structural" : kind };
-  }
+  if (kind !== "none") return { status: "dirty", dirtyKind: kind };
+  if (metadata.dirty) return { status: "unknown", dirtyKind: null };
   return { status: "synced", dirtyKind: null };
 }
 
@@ -242,6 +273,17 @@ export async function getPlannerState(
     now,
     currentConfig?.raceDate,
   );
+  const resolution = currentConfig
+    ? resolvePlannerConfigForEvents(
+        currentConfig,
+        "update",
+        metadata,
+        ownedEvents,
+        now,
+        credentials.timezone,
+      )
+    : null;
+  const resolvedCurrentConfig = resolution?.anchored ? resolution.config : currentConfig;
 
   let bgModel: BGResponseModel | null = null;
   if (settings.diabetesMode) {
@@ -257,14 +299,14 @@ export async function getPlannerState(
   const active = ownedEvents.length > 0;
 
   return {
-    currentConfig,
+    currentConfig: resolvedCurrentConfig,
     newProgramDraft,
     fitnessOptions: buildFitnessOptions(),
     constraints: CONSTRAINTS,
     plan: {
       status: active ? "active" : isComplete ? "complete" : "none",
-      sync: plannerSync(currentConfig, metadata, active),
-      weeksToGo: isComplete ? null : weeksToGo(currentConfig?.raceDate, now, credentials.timezone),
+      sync: plannerSync(resolvedCurrentConfig, metadata, active),
+      weeksToGo: isComplete ? null : weeksToGo(resolvedCurrentConfig?.raceDate, now, credentials.timezone),
       futureWorkoutCount: ownedEvents.length,
     },
     fuelRates: buildFuelRates(bgModel, settings.diabetesMode),
@@ -319,6 +361,12 @@ function buildPreviewHashInput(
   return {
     normalizedConfig: build.generatedSnapshot,
     action: "update-targets",
+    generated: build.operations.events
+      .map((event) => ({
+        external_id: event.external_id,
+        start_date_local: format(event.start_date_local, "yyyy-MM-dd'T'HH:mm:ss"),
+      }))
+      .sort((a, b) => a.external_id.localeCompare(b.external_id)),
     patches: build.operations.patches
       .map((patch) => ({
         id: patch.id,
@@ -341,14 +389,37 @@ export async function buildPlannerPreview(
 ): Promise<PlannerPreviewBuild> {
   const credentials = await requireIntervals(email);
   const metadata = await getPlannerMetadata(email);
+  const ownedEvents = request.intent === "update"
+    ? await fetchOwnedFutureEventsMapped(
+        credentials.intervalsApiKey,
+        now,
+        request.config.raceDate,
+      )
+    : null;
   const validationHrContext = request.config.effortMetric === "hr"
     ? { lthr: 1, hrZones: [1, 2, 3, 4, 5] }
     : undefined;
-  const initialValidation = validatePlannerConfig(
+  const resolution = resolvePlannerConfigForEvents(
     request.config,
+    request.intent,
+    metadata,
+    ownedEvents ?? [],
+    now,
+    credentials.timezone,
+  );
+  const initialValidationConfig = resolution.anchored
+    ? {
+        ...request.config,
+        totalWeeks: resolution.config.totalWeeks,
+        includeBasePhase: resolution.config.includeBasePhase,
+      }
+    : request.config;
+  const initialValidation = validatePlannerConfig(
+    initialValidationConfig,
     now,
     credentials.timezone,
     validationHrContext,
+    { allowShortTimeline: resolution.anchored },
   );
   if (Object.keys(initialValidation.fields).length > 0) {
     throw new PlannerError(
@@ -357,12 +428,13 @@ export async function buildPlannerPreview(
       initialValidation.fields,
     );
   }
-  const normalizedConfig = normalizePlannerConfig(request.config, now, credentials.timezone);
+  const normalizedConfig = resolution.config;
   const validation = validatePlannerConfig(
     normalizedConfig,
     now,
     credentials.timezone,
     validationHrContext,
+    { allowShortTimeline: resolution.anchored },
   );
   if (Object.keys(validation.fields).length > 0) {
     throw new PlannerError(
@@ -392,7 +464,11 @@ export async function buildPlannerPreview(
   let workouts: PlannerPreview["workouts"];
   if (action === "replace-plan") {
     const generated = (await import("./workoutGenerators")).generatePlan(context.planConfig);
-    const existing = await fetchOwnedFutureEventsMapped(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
+    const existing = ownedEvents ?? await fetchOwnedFutureEventsMapped(
+      credentials.intervalsApiKey,
+      now,
+      normalizedConfig.raceDate,
+    );
     const stale = findStaleSpringaWorkoutEvents(
       existing,
       new Set(generated.map((event) => event.external_id)),
@@ -410,8 +486,7 @@ export async function buildPlannerPreview(
       ),
     );
   } else {
-    const existing = await fetchOwnedFutureEventsMapped(credentials.intervalsApiKey, now, normalizedConfig.raceDate);
-    const calendarEvents = existing.map(toCalendarEvent);
+    const calendarEvents = (ownedEvents ?? []).map(toCalendarEvent);
     const target = resolveBulkEffortMetricTarget(
       normalizedConfig.effortMetric,
       metadata.generatedPlanConfig,
@@ -437,10 +512,27 @@ export async function buildPlannerPreview(
     operations = {
       action,
       patches: patches.patches,
+      events: patches.patches.map((patch) => {
+        const source = ownedEvents?.find((event) => event.id === patch.numericId);
+        if (!source?.external_id) {
+          throw new PlannerError(
+            "PLANNER_CONFIG_INVALID",
+            `Missing external id for ${patch.name}`,
+          );
+        }
+        return {
+          start_date_local: patch.date,
+          name: patch.name,
+          description: patch.description,
+          external_id: source.external_id,
+          type: "Run" as const,
+          ...(patch.fuelRate != null ? { fuelRate: patch.fuelRate } : {}),
+        };
+      }),
       buildFailures: patches.failures,
     };
     workouts = patches.patches.map((patch) => {
-      const category = categoryFromExternalId(existing.find((event) => event.id === patch.numericId)?.external_id) ?? "other";
+      const category = categoryFromExternalId(ownedEvents?.find((event) => event.id === patch.numericId)?.external_id) ?? "other";
       const metrics = resolveWorkoutMetrics(patch.description, patch.fuelRate, context.estimationContext);
       return {
         key: patch.id,
@@ -462,7 +554,9 @@ export async function buildPlannerPreview(
     action,
     config: normalizedConfig,
     previewHash: "",
-    warning: validation.warning ?? getPlannerWarning(normalizedConfig, now, credentials.timezone),
+    warning: resolution.anchored
+      ? null
+      : validation.warning ?? getPlannerWarning(normalizedConfig, now, credentials.timezone),
     ...summary,
     workouts,
   };
@@ -524,40 +618,6 @@ function timingSafeEqualHex(left: string, right: string): boolean {
   const leftBytes = Buffer.from(left, "hex");
   const rightBytes = Buffer.from(right, "hex");
   return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
-}
-
-async function runTargetPatches(
-  patches: EffortMetricEventPatch[],
-  apply: (patch: EffortMetricEventPatch) => Promise<void>,
-): Promise<{ applied: EffortMetricEventPatch[]; failures: EffortMetricPatchFailure[] }> {
-  const applied: (EffortMetricEventPatch | undefined)[] = [];
-  const failures: (EffortMetricPatchFailure | undefined)[] = [];
-  let nextIndex = 0;
-
-  async function worker(): Promise<void> {
-    while (nextIndex < patches.length) {
-      const index = nextIndex++;
-      const patch = patches[index];
-      try {
-        await apply(patch);
-        applied[index] = patch;
-      } catch (error) {
-        failures[index] = {
-          id: patch.id,
-          name: patch.name,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(4, patches.length) }, () => worker()),
-  );
-  return {
-    applied: applied.filter((patch): patch is EffortMetricEventPatch => patch !== undefined),
-    failures: failures.filter((failure): failure is EffortMetricPatchFailure => failure !== undefined),
-  };
 }
 
 function plannerSyncEvents(events: WorkoutEvent[]): SyncEvent[] {
@@ -628,9 +688,10 @@ async function syncGoogleWithWarning(
     await sync();
     return null;
   } catch (error) {
+    console.error("[planner] Google Calendar sync failed", error);
     return {
       code: "GOOGLE_CALENDAR_SYNC_FAILED",
-      message: error instanceof Error ? error.message : String(error),
+      message: "Google Calendar sync failed.",
     };
   }
 }
@@ -738,7 +799,9 @@ async function applyTargetUpdates(
   if (rebuilt.operations.action !== "update-targets") {
     throw new PlannerError("PLANNER_CONFIG_INVALID", "Planner apply action mismatch");
   }
+  const patches = rebuilt.operations.patches;
   const credentials = await requireIntervals(email);
+  const settings = await getUserSettings(email);
   const warnings: PlannerApplyWarning[] = [];
   await saveUserSettings(
     email,
@@ -746,37 +809,13 @@ async function applyTargetUpdates(
     { plannerConfigDirty: true },
   );
 
-  const result = await runTargetPatches(rebuilt.operations.patches, async (patch) => {
-    const carbsPerHour = serializeFuelRate(patch.fuelRate);
-    await updateEvent(credentials.intervalsApiKey, patch.numericId, {
-      name: patch.name,
-      description: patch.description,
-      ...(carbsPerHour !== undefined ? { carbs_per_hour: carbsPerHour } : {}),
-    });
-  });
-
-  if (result.failures.length > 0) {
-    await savePlannerMetadata(email, {
-      generatedPlanConfig: rebuilt.previousMetadata.generatedPlanConfig,
-      dirty: true,
-    });
-    if (result.applied.length > 0) {
-      await syncGoogleWithWarning(() => syncTargetToGoogle(email, result.applied));
-      throw new PlannerError(
-        "PLANNER_APPLY_PARTIAL",
-        "Some workouts could not be updated",
-        undefined,
-        {
-          appliedWorkoutCount: result.applied.length,
-          failures: result.failures,
-        },
-      );
-    }
+  try {
+    await upsertWorkoutEvents(credentials.intervalsApiKey, rebuilt.operations.events);
+  } catch (error) {
+    await restoreAfterUpsertFailure(email, settings, rebuilt.previousMetadata);
     throw new PlannerError(
       "INTERVALS_UPSTREAM_ERROR",
-      "No workouts could be updated",
-      undefined,
-      { appliedWorkoutCount: 0, failures: result.failures },
+      error instanceof Error ? error.message : String(error),
     );
   }
 
@@ -801,12 +840,12 @@ async function applyTargetUpdates(
   }
 
   const googleWarning = await syncGoogleWithWarning(() =>
-    syncTargetToGoogle(email, result.applied),
+    syncTargetToGoogle(email, patches),
   );
   if (googleWarning) warnings.push(googleWarning);
   return {
     action: "update-targets",
-    appliedWorkoutCount: result.applied.length,
+    appliedWorkoutCount: patches.length,
     warnings,
     state: await getPlannerState(email, now),
   };
