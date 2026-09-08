@@ -125,6 +125,7 @@ const eslintConfig = defineConfig([
     ".claude/**",
     // Codex worktrees
     ".Codex/**",
+    ".worktrees/**",
   ]),
 ]);
 

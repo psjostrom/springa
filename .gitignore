@@ -38,6 +38,9 @@ ts-debug.log*
 # codex worktrees
 .Codex/worktrees/
 
+# agent worktrees
+.worktrees/
+
 # superpowers ephemeral artifacts (plans are consumed during implementation)
 docs/superpowers/
 
