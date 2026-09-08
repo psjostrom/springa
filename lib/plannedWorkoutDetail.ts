@@ -126,25 +126,21 @@ export interface BuildPlannedWorkoutDetailInput {
 const WEATHER_PAST_WINDOW_MS = 12 * 60 * 60 * 1000;
 const WEATHER_FUTURE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
-export async function buildPlannedWorkoutDetail({
-  event,
+export function buildPlannedWorkoutPresentation({
+  name,
+  description,
+  fuelRate,
   lthr,
   hrZones,
   estimationContext,
-  timezone,
-  warmthPreference,
-  preRunCarbsG,
-}: BuildPlannedWorkoutDetailInput): Promise<PlannedWorkoutDetail> {
-  if (
-    event.category !== "WORKOUT" ||
-    event.type !== "Run" ||
-    event.paired_activity_id != null
-  ) {
-    throw new UnsupportedPlannedWorkoutError();
-  }
-
-  const name = event.name ?? "";
-  const description = event.description ?? "";
+}: {
+  name: string;
+  description: string;
+  fuelRate?: number;
+  lthr?: number;
+  hrZones?: number[];
+  estimationContext: WorkoutEstimationContext;
+}): Pick<PlannedWorkoutDetail, "effortMetric" | "heartRateMetricAvailable" | "structure" | "metrics"> {
   const effortMetric = detectEffortMetric(name, description);
   const heartRateMetricAvailable = canUseHeartRateMetric(lthr, hrZones);
   const category = getWorkoutCategory(name);
@@ -174,45 +170,13 @@ export async function buildPlannedWorkoutDetail({
     : [];
   const resolved = resolveWorkoutMetrics(
     description,
-    event.carbs_per_hour,
+    fuelRate,
     estimationContext,
   );
 
   const renderable = sections.length > 0 || resolved.segments.length > 0;
   if (category === "other" && !renderable) {
     throw new UnsupportedPlannedWorkoutError();
-  }
-
-  const eventMs = localToUtcMs(event.start_date_local, timezone);
-  const now = Date.now();
-  let clothing: PlannedWorkoutDetail["clothing"];
-
-  if (
-    eventMs < now - WEATHER_PAST_WINDOW_MS ||
-    eventMs > now + WEATHER_FUTURE_WINDOW_MS
-  ) {
-    clothing = { status: "unavailable", reason: "outside-window" };
-  } else {
-    let weather: ReturnType<typeof getWeatherForTime>;
-    try {
-      weather = getWeatherForTime(
-        await fetchForecast(),
-        new Date(eventMs),
-      );
-    } catch (error) {
-      console.error("[planned-workout-detail] Forecast unavailable:", error);
-      weather = null;
-    }
-    clothing = weather
-      ? {
-          status: "available",
-          recommendation: recommendClothing(
-            weather,
-            category,
-            warmthPreference ?? 0,
-          ),
-        }
-      : { status: "unavailable", reason: "forecast-unavailable" };
   }
 
   const timeline =
@@ -251,7 +215,7 @@ export async function buildPlannedWorkoutDetail({
       (isHrBased && resolved.duration != null && !resolved.duration.estimated))
       ? calculateCanonicalPlannedPrescription(
           description,
-          event.carbs_per_hour,
+          fuelRate,
           estimationContext,
         )
       : null;
@@ -259,15 +223,6 @@ export async function buildPlannedWorkoutDetail({
   return {
     effortMetric,
     heartRateMetricAvailable,
-    event: {
-      id: formatCalendarEventId(event.id),
-      intervalsEventId: event.id,
-      startDateLocal: event.start_date_local,
-      name,
-      category,
-      description,
-    },
-    replacementCategory: replacementCategoryFromExternalId(event.external_id),
     structure: {
       sections: sections.map((section) => ({
         name: section.name,
@@ -284,9 +239,83 @@ export async function buildPlannedWorkoutDetail({
     metrics: {
       duration,
       distance,
-      fuelRateGPerHour: event.carbs_per_hour ?? null,
+      fuelRateGPerHour: fuelRate ?? null,
       prescribedCarbsG,
     },
+  };
+}
+
+export async function buildPlannedWorkoutDetail({
+  event,
+  lthr,
+  hrZones,
+  estimationContext,
+  timezone,
+  warmthPreference,
+  preRunCarbsG,
+}: BuildPlannedWorkoutDetailInput): Promise<PlannedWorkoutDetail> {
+  if (
+    event.category !== "WORKOUT" ||
+    event.type !== "Run" ||
+    event.paired_activity_id != null
+  ) {
+    throw new UnsupportedPlannedWorkoutError();
+  }
+
+  const name = event.name ?? "";
+  const description = event.description ?? "";
+  const category = getWorkoutCategory(name);
+  const presentation = buildPlannedWorkoutPresentation({
+    name, description, fuelRate: event.carbs_per_hour,
+    lthr, hrZones, estimationContext,
+  });
+
+  const eventMs = localToUtcMs(event.start_date_local, timezone);
+  const now = Date.now();
+  let clothing: PlannedWorkoutDetail["clothing"];
+
+  if (
+    eventMs < now - WEATHER_PAST_WINDOW_MS ||
+    eventMs > now + WEATHER_FUTURE_WINDOW_MS
+  ) {
+    clothing = { status: "unavailable", reason: "outside-window" };
+  } else {
+    let weather: ReturnType<typeof getWeatherForTime>;
+    try {
+      weather = getWeatherForTime(
+        await fetchForecast(),
+        new Date(eventMs),
+      );
+    } catch (error) {
+      console.error("[planned-workout-detail] Forecast unavailable:", error);
+      weather = null;
+    }
+    clothing = weather
+      ? {
+          status: "available",
+          recommendation: recommendClothing(
+            weather,
+            category,
+            warmthPreference ?? 0,
+          ),
+        }
+      : { status: "unavailable", reason: "forecast-unavailable" };
+  }
+
+  return {
+    effortMetric: presentation.effortMetric,
+    heartRateMetricAvailable: presentation.heartRateMetricAvailable,
+    event: {
+      id: formatCalendarEventId(event.id),
+      intervalsEventId: event.id,
+      startDateLocal: event.start_date_local,
+      name,
+      category,
+      description,
+    },
+    replacementCategory: replacementCategoryFromExternalId(event.external_id),
+    structure: presentation.structure,
+    metrics: presentation.metrics,
     preRunCarbsG,
     clothing,
   };
