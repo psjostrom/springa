@@ -50,7 +50,7 @@ async function resolveMatchedPrescription(
 async function findLatestUnratedRun(
   apiKey: string,
   email: string,
-): Promise<IntervalsActivity | null> {
+): Promise<{ activity: IntervalsActivity; protocol: WorkoutProtocol | null } | null> {
   const now = new Date();
   const twoDaysAgo = new Date(now);
   twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -73,7 +73,7 @@ async function findLatestUnratedRun(
     const protocol = await getWorkoutProtocol(email, activity.id);
     if (protocol?.feel != null || protocol?.rpe != null || protocol?.note) continue;
     if (activity.feel != null || activity.rpe != null || activity.icu_rpe != null) continue;
-    return activity;
+    return { activity, protocol };
   }
   return null;
 }
@@ -182,17 +182,19 @@ export async function GET(req: Request) {
       buildResponse(activity, prescribedCarbsG, preRunFallback, protocol),
     );
   } else {
-    const [resolvedActivity, settings] = await Promise.all([
+    const [latestRun, settings] = await Promise.all([
       findLatestUnratedRun(apiKey, email),
       settingsPromise,
     ]);
-    activity = resolvedActivity;
-    if (!activity) {
+    if (!latestRun) {
       return NextResponse.json(
         { error: "No unrated run found", retry: true },
         { status: 404 },
       );
     }
+    activity = latestRun.activity;
+    const protocol = latestRun.protocol;
+
     const workoutContext = await getUserWorkoutEstimationContext(
       email,
       apiKey,
@@ -203,7 +205,7 @@ export async function GET(req: Request) {
       await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (unsetIfZero(activity.PreRunCarbsG) == null) {
+    if (unsetIfZero(activity.PreRunCarbsG) == null && protocol?.preRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -213,7 +215,7 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      buildResponse(activity, prescribedCarbsG, preRunFallback, null),
+      buildResponse(activity, prescribedCarbsG, preRunFallback, protocol),
     );
   }
 }
@@ -317,8 +319,9 @@ export async function POST(req: Request) {
     if (protocol) {
       const protocolInput = protocol as unknown as WorkoutProtocolInput;
       protocolInput.hasProtocol = true;
-      if (feel != null && protocolInput.feel == null) protocolInput.feel = feel;
-      if (rpe != null && protocolInput.rpe == null) protocolInput.rpe = rpe;
+      protocolInput.feel = feel ?? protocolInput.feel ?? existing?.feel ?? null;
+      protocolInput.rpe = rpe ?? protocolInput.rpe ?? existing?.rpe ?? null;
+
       if (trimmedComment !== undefined) {
         protocolInput.note = trimmedComment;
       } else if (protocolInput.note === undefined && existing?.note) {

@@ -602,4 +602,85 @@ describe("/api/run-feedback", () => {
       note: "Rating note only",
     });
   });
+
+  it("preserves existing feel and rpe when omitted in protocol update", async () => {
+    // 1. Initial feel and rpe submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-rpe-preserve",
+          feel: 4,
+          rpe: 6,
+        }),
+      }),
+    );
+
+    // 2. Submit protocol update omitting feel and rpe
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-rpe-preserve",
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+          },
+        }),
+      }),
+    );
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-feel-rpe-preserve");
+    expect(saved).toMatchObject({
+      activityId: "act-feel-rpe-preserve",
+      hasProtocol: true,
+      beforeMode: "auto",
+      feel: 4,
+      rpe: 6,
+    });
+  });
+
+  it("finds latest unrated run and includes its Turso protocol in the response", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    server.use(
+      http.get(`${API_BASE}/athlete/0/activities`, () => {
+        return HttpResponse.json([
+          {
+            id: "act-unrated-latest",
+            start_date: `${today}T10:00:00Z`,
+            start_date_local: `${today}T12:00:00`,
+            name: "Morning Run",
+            type: "Run",
+            distance: 6000,
+            moving_time: 1800,
+          },
+        ]);
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    await holder.db.execute({
+      sql: `INSERT INTO workout_protocols (
+        email, activity_id, has_protocol, before_mode, before_timing, pre_run_carbs_g, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ["test@example.com", "act-unrated-latest", 1, "auto", "1-2h", 25, Date.now()],
+    });
+
+    const res = await GET(new Request("http://localhost/api/run-feedback"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.activityId).toBe("act-unrated-latest");
+    expect(json.preRunCarbsG).toBe(25);
+    expect(json.protocol).toMatchObject({
+      activityId: "act-unrated-latest",
+      beforeMode: "auto",
+      beforeTiming: "1-2h",
+      preRunCarbsG: 25,
+    });
+  });
 });

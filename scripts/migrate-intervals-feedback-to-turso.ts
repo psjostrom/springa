@@ -102,12 +102,17 @@ function inferProtocolFromComment(comment: string | undefined): {
   };
 }
 
-async function migrateUser(email: string) {
+interface MigrationFailure {
+  activityId: string;
+  error: unknown;
+}
+
+async function migrateUser(email: string): Promise<MigrationFailure[]> {
   console.log("\n=== Migrating user ===");
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
     console.log("No Intervals API key found. Skipping.");
-    return;
+    return [];
   }
 
   const auth = `Basic ${Buffer.from(`API_KEY:${creds.intervalsApiKey}`).toString("base64")}`;
@@ -120,7 +125,7 @@ async function migrateUser(email: string) {
 
   if (!res.ok) {
     console.error(`Failed to fetch activities from Intervals: ${res.status}`);
-    return;
+    return [{ activityId: "fetch-activities", error: new Error(`Intervals API returned ${res.status}`) }];
   }
 
   const activities = (await res.json()) as IntervalsActivity[];
@@ -141,7 +146,7 @@ async function migrateUser(email: string) {
 
   let migratedCount = 0;
   let skippedCount = 0;
-  const failures: { activityId: string; error: unknown }[] = [];
+  const failures: MigrationFailure[] = [];
   for (const activity of eligibleActivities) {
     const comment = activity.FeedbackComment?.trim() || null;
     const preRunCarbsG = activity.PreRunCarbsG && activity.PreRunCarbsG > 0 ? activity.PreRunCarbsG : null;
@@ -186,14 +191,16 @@ async function migrateUser(email: string) {
       migratedCount++;
     } catch (error) {
       failures.push({ activityId: activity.id, error });
-      console.error(`Failed to migrate activity ${activity.id}:`, error);
+      const redactedId = activity.id ? `${activity.id.slice(0, 4)}***` : "unknown";
+      console.error(`Failed to migrate activity ${redactedId}:`, error);
     }
   }
 
   if (failures.length > 0) {
-    console.error(`${failures.length} activities failed to migrate for user ${email}.`);
+    console.error(`${failures.length} activities failed to migrate for user.`);
   }
   console.log(`Migrated ${migratedCount} activities (${skippedCount} skipped, ${failures.length} failed).`);
+  return failures;
 }
 
 async function main() {
@@ -226,17 +233,31 @@ async function main() {
     );
   `);
 
-  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN has_protocol INTEGER NOT NULL DEFAULT 1"); } catch {}
-  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN feel INTEGER"); } catch {}
-  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN rpe INTEGER"); } catch {}
+  const tableInfo = await db().execute("PRAGMA table_info(workout_protocols)");
+  const existingCols = new Set(tableInfo.rows.map((r) => r.name as string));
+  if (!existingCols.has("has_protocol")) {
+    await db().execute("ALTER TABLE workout_protocols ADD COLUMN has_protocol INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!existingCols.has("feel")) {
+    await db().execute("ALTER TABLE workout_protocols ADD COLUMN feel INTEGER");
+  }
+  if (!existingCols.has("rpe")) {
+    await db().execute("ALTER TABLE workout_protocols ADD COLUMN rpe INTEGER");
+  }
 
+  const allFailures: MigrationFailure[] = [];
   for (const row of users.rows) {
-    await migrateUser(row.email as string);
+    const userFailures = await migrateUser(row.email as string);
+    allFailures.push(...userFailures);
   }
 
   // Verification count
   const countRes = await db().execute("SELECT COUNT(*) as cnt FROM workout_protocols");
   console.log(`\n=== Verification: Total rows in workout_protocols: ${countRes.rows[0].cnt} ===`);
+
+  if (allFailures.length > 0) {
+    throw new Error(`Migration completed with ${allFailures.length} activity failures across users.`);
+  }
 }
 
 main().catch((err) => {
