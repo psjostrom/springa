@@ -3,6 +3,20 @@ import { getUserCredentials } from "../lib/credentials";
 import type { IntervalsActivity } from "../lib/types";
 import { saveWorkoutProtocol, type CamAPSMode, type CamAPSAutoSubmode, type ProtocolTiming } from "../lib/workoutProtocolDb";
 
+function hasPumpKeywords(text: string): boolean {
+  return (
+    text.includes("pump") ||
+    text.includes("u/h") ||
+    text.includes("auto") ||
+    text.includes("ease") ||
+    text.includes("boost") ||
+    text.includes("manual") ||
+    text.includes("disconnect") ||
+    text.includes("koppla") ||
+    text.includes("avbröt")
+  );
+}
+
 function inferProtocolFromComment(comment: string | undefined): {
   beforeMode: CamAPSMode;
   beforeAutoSubmode: CamAPSAutoSubmode | null;
@@ -12,13 +26,15 @@ function inferProtocolFromComment(comment: string | undefined): {
   duringMode: CamAPSMode | null;
   duringAutoSubmode: CamAPSAutoSubmode | null;
   duringManualUh: number | null;
-} {
-  const text = (comment || "").toLowerCase();
+} | null {
+  if (!comment) return null;
+  const text = comment.toLowerCase();
+  if (!hasPumpKeywords(text)) return null;
 
-  let beforeMode: CamAPSMode = "disconnected";
-  let beforeAutoSubmode: CamAPSAutoSubmode | null = null;
+  let beforeMode: CamAPSMode = "auto";
+  let beforeAutoSubmode: CamAPSAutoSubmode | null = "ease_off";
   let beforeManualUh: number | null = null;
-  let beforeTiming: ProtocolTiming = ">2h";
+  let beforeTiming: ProtocolTiming = "1-2h";
   let duringSame = true;
   let duringMode: CamAPSMode | null = null;
   let duringAutoSubmode: CamAPSAutoSubmode | null = null;
@@ -29,41 +45,47 @@ function inferProtocolFromComment(comment: string | undefined): {
     beforeTiming = ">2h";
   } else if (text.includes("2 hour") || text.includes("2h") || text.includes("1,5h") || text.includes("1.5h") || text.includes("1 hour") || text.includes("1h")) {
     beforeTiming = "1-2h";
-  } else if (text.includes("30m") || text.includes("30 min") || text.includes("just before")) {
+  } else if (text.includes("30m") || text.includes("30 min") || text.includes("just before") || text.includes("<30m")) {
     beforeTiming = "<30m";
-  } else if (text.includes("at start")) {
+  } else if (text.includes("at start") || text.includes("vid start")) {
     beforeTiming = "at_start";
   }
 
-  // Check manual rate
-  const uhMatch = text.match(/([0-9]+[.,][0-9]+)\s*u\/h/);
-  if (uhMatch) {
-    const rate = parseFloat(uhMatch[1].replace(",", "."));
+  const beforePart = text.split("during")[0] ?? text;
+  const duringPart = text.includes("during") ? text.slice(text.indexOf("during")) : "";
+
+  // Check before run
+  const beforeUhMatch = beforePart.match(/([0-9]+[.,][0-9]+)\s*u\/h/);
+  if (beforeUhMatch) {
+    const rate = parseFloat(beforeUhMatch[1].replace(",", "."));
     if (!isNaN(rate)) {
       beforeMode = "manual";
       beforeManualUh = rate;
+      beforeAutoSubmode = null;
     }
-  } else if (text.includes("auto") || text.includes("ease off") || text.includes("ease-off")) {
+  } else if (beforePart.includes("ease off") || beforePart.includes("ease-off") || beforePart.includes("auto")) {
     beforeMode = "auto";
     beforeAutoSubmode = "ease_off";
-  } else if (text.includes("removed pump") || text.includes("disconnected") || text.includes("utan pump")) {
+  } else if (beforePart.includes("removed pump") || beforePart.includes("disconnected") || beforePart.includes("utan pump")) {
     beforeMode = "disconnected";
+    beforeAutoSubmode = null;
   }
 
   // Check during run
-  if (text.includes("disconnected during") || (text.includes("during") && text.includes("removed"))) {
+  const duringUhMatch = duringPart.match(/([0-9]+[.,][0-9]+)\s*u\/h/);
+  if (duringPart.includes("disconnected") || duringPart.includes("removed")) {
     duringSame = false;
     duringMode = "disconnected";
-  } else if (text.includes("during") && text.includes("auto")) {
+  } else if (duringPart.includes("auto") || duringPart.includes("ease")) {
     duringSame = false;
     duringMode = "auto";
     duringAutoSubmode = "ease_off";
-  } else if (text.includes("during") && uhMatch) {
-    const rate = parseFloat(uhMatch[1].replace(",", "."));
+  } else if (duringUhMatch) {
+    const rate = parseFloat(duringUhMatch[1].replace(",", "."));
     if (!isNaN(rate)) {
+      duringSame = false;
       duringMode = "manual";
       duringManualUh = rate;
-      if (beforeMode !== "manual") duringSame = false;
     }
   }
 
@@ -89,7 +111,7 @@ async function migrateUser(email: string) {
 
   const auth = `Basic ${Buffer.from(`API_KEY:${creds.intervalsApiKey}`).toString("base64")}`;
   const res = await fetch(
-    `https://intervals.icu/api/v1/athlete/0/activities?oldest=2024-01-01&newest=2026-12-31`,
+    `https://intervals.icu/api/v1/athlete/0/activities?oldest=2024-01-01&newest=2026-12-31&cols=*`,
     {
       headers: { Authorization: auth, Accept: "application/json" },
     },
@@ -107,10 +129,12 @@ async function migrateUser(email: string) {
     (a) =>
       (a.type === "Run" || a.type === "VirtualRun") &&
       ((a.FeedbackComment && a.FeedbackComment.trim().length > 0) ||
-        (a.PreRunCarbsG != null && a.PreRunCarbsG > 0)),
+        (a.PreRunCarbsG != null && a.PreRunCarbsG > 0) ||
+        a.Rating != null ||
+        a.feel != null),
   );
 
-  console.log(`Eligible runs with feedback or pre-run carbs: ${eligibleActivities.length}`);
+  console.log(`Eligible runs with feedback, feel, or pre-run carbs: ${eligibleActivities.length}`);
 
   let migratedCount = 0;
   for (const activity of eligibleActivities) {
@@ -118,14 +142,35 @@ async function migrateUser(email: string) {
     const preRunCarbsG = activity.PreRunCarbsG && activity.PreRunCarbsG > 0 ? activity.PreRunCarbsG : null;
     const inferred = inferProtocolFromComment(comment || undefined);
 
+    // Map legacy blunt rating: "good" -> 4, "bad" -> 2
+    let feel = activity.feel ?? null;
+    if (feel == null && activity.Rating) {
+      if (activity.Rating === "good") feel = 4;
+      else if (activity.Rating === "bad") feel = 2;
+    }
+    const rpe = activity.icu_rpe ?? activity.rpe ?? null;
+
+    const protocolToSave = inferred ?? {
+      beforeMode: "auto" as CamAPSMode,
+      beforeAutoSubmode: "ease_off" as CamAPSAutoSubmode,
+      beforeManualUh: null,
+      beforeTiming: "1-2h" as ProtocolTiming,
+      duringSame: true,
+      duringMode: null,
+      duringAutoSubmode: null,
+      duringManualUh: null,
+    };
+
     await saveWorkoutProtocol(email, activity.id, {
-      ...inferred,
+      ...protocolToSave,
       preRunCarbsG,
+      feel,
+      rpe,
       note: comment,
     });
     migratedCount++;
     console.log(
-      `  [${activity.id}] (${activity.start_date}) preRunCarbs=${preRunCarbsG}g | note="${comment?.slice(0, 50) ?? ''}"`,
+      `  [${activity.id}] (${activity.start_date}) feel=${feel} | preRunCarbs=${preRunCarbsG}g | note="${comment?.slice(0, 50) ?? ''}"`,
     );
   }
 
@@ -153,6 +198,8 @@ async function main() {
       during_manual_uh    REAL,
       pre_run_carbs_g     INTEGER,
       rescue_carbs_g      INTEGER,
+      feel                INTEGER,
+      rpe                 INTEGER,
       note                TEXT,
       updated_at          INTEGER NOT NULL,
       PRIMARY KEY (email, activity_id)

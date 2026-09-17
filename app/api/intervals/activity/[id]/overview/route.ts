@@ -33,7 +33,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid activity ID" }, { status: 400 });
   }
 
-  if (id === "qa-act-today") {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.QA_AUTH_EMAIL &&
+    email === process.env.QA_AUTH_EMAIL &&
+    id === "qa-act-today"
+  ) {
     const protocol = await getWorkoutProtocol(email, "qa-act-today");
     return NextResponse.json({
       activityId: "qa-act-today",

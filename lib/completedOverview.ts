@@ -161,7 +161,7 @@ export async function buildCompletedWorkoutOverview(options: {
 
   const activity = await fetchActivityByIdStrict(apiKey, activityId);
   const [protocol, { eventId }, details] = await Promise.all([
-    getWorkoutProtocol(email, activityId),
+    getWorkoutProtocol(email, activityId).catch(() => null),
     findCompletedActivityMatch(apiKey, activity),
     fetchActivityDetails(activityId, apiKey),
   ]);

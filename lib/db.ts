@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS workout_protocols (
   during_manual_uh    REAL,
   pre_run_carbs_g     INTEGER,
   rescue_carbs_g      INTEGER,
+  feel                INTEGER,
+  rpe                 INTEGER,
   note                TEXT,
   updated_at          INTEGER NOT NULL,
   PRIMARY KEY (email, activity_id)

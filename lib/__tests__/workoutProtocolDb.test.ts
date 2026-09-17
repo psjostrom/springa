@@ -18,7 +18,6 @@ import { SCHEMA_DDL } from "../db";
 import {
   getWorkoutProtocol,
   saveWorkoutProtocol,
-  getLatestWorkoutProtocol,
 } from "../workoutProtocolDb";
 
 const EMAIL = "athlete@example.com";
@@ -91,26 +90,18 @@ describe("workoutProtocolDb", () => {
     });
   });
 
-  it("gets latest workout protocol across activities", async () => {
+  it("saves and retrieves feel and rpe correctly", async () => {
     await saveWorkoutProtocol(EMAIL, ACTIVITY_1, {
-      beforeMode: "disconnected",
-      beforeTiming: ">2h",
-      duringSame: true,
-    });
-
-    // Small delay to ensure distinct timestamp
-    await new Promise((r) => setTimeout(r, 10));
-
-    await saveWorkoutProtocol(EMAIL, ACTIVITY_2, {
-      beforeMode: "manual",
-      beforeManualUh: 0.25,
+      beforeMode: "auto",
       beforeTiming: "1-2h",
       duringSame: true,
+      feel: 4,
+      rpe: 6,
     });
 
-    const latest = await getLatestWorkoutProtocol(EMAIL);
-    expect(latest?.activityId).toBe(ACTIVITY_2);
-    expect(latest?.beforeMode).toBe("manual");
-    expect(latest?.beforeManualUh).toBe(0.25);
+    const protocol = await getWorkoutProtocol(EMAIL, ACTIVITY_1);
+    expect(protocol).not.toBeNull();
+    expect(protocol?.feel).toBe(4);
+    expect(protocol?.rpe).toBe(6);
   });
 });

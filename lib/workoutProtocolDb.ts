@@ -18,6 +18,8 @@ export interface WorkoutProtocol {
   duringManualUh: number | null;
   preRunCarbsG: number | null;
   rescueCarbsG: number | null;
+  feel: number | null;
+  rpe: number | null;
   note: string | null;
   updatedAt: number;
 }
@@ -35,6 +37,8 @@ export interface WorkoutProtocolInput {
   duringManualUh?: number | null;
   preRunCarbsG?: number | null;
   rescueCarbsG?: number | null;
+  feel?: number | null;
+  rpe?: number | null;
   note?: string | null;
 }
 
@@ -46,7 +50,7 @@ export async function getWorkoutProtocol(
     sql: `SELECT
       activity_id, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
       before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
-      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, note, updated_at
+      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
     FROM workout_protocols
     WHERE email = ? AND activity_id = ?`,
     args: [email, activityId],
@@ -55,21 +59,26 @@ export async function getWorkoutProtocol(
   if (result.rows.length === 0) return null;
   const row = result.rows[0];
 
+  const parseNum = (val: unknown): number | null =>
+    val != null && val !== "" && !Number.isNaN(Number(val)) ? Number(val) : null;
+
   return {
     activityId: row.activity_id as string,
     beforeMode: row.before_mode as CamAPSMode,
     beforeAutoSubmode: row.before_auto_submode != null ? (row.before_auto_submode as CamAPSAutoSubmode) : null,
-    beforeTargetBg: row.before_target_bg != null ? Number(row.before_target_bg) : null,
-    beforeManualUh: row.before_manual_uh != null ? Number(row.before_manual_uh) : null,
+    beforeTargetBg: parseNum(row.before_target_bg),
+    beforeManualUh: parseNum(row.before_manual_uh),
     beforeTiming: row.before_timing as ProtocolTiming,
     duringSame: Boolean(row.during_same),
     duringMode: row.during_mode != null ? (row.during_mode as CamAPSMode) : null,
     duringAutoSubmode: row.during_auto_submode != null ? (row.during_auto_submode as CamAPSAutoSubmode) : null,
-    duringTargetBg: row.during_target_bg != null ? Number(row.during_target_bg) : null,
-    duringManualUh: row.during_manual_uh != null ? Number(row.during_manual_uh) : null,
-    preRunCarbsG: row.pre_run_carbs_g != null ? Number(row.pre_run_carbs_g) : null,
-    rescueCarbsG: row.rescue_carbs_g != null ? Number(row.rescue_carbs_g) : null,
-    note: typeof row.note === "string" ? row.note : null,
+    duringTargetBg: parseNum(row.during_target_bg),
+    duringManualUh: parseNum(row.during_manual_uh),
+    preRunCarbsG: parseNum(row.pre_run_carbs_g),
+    rescueCarbsG: parseNum(row.rescue_carbs_g),
+    feel: parseNum(row.feel),
+    rpe: parseNum(row.rpe),
+    note: typeof row.note === "string" && row.note.trim() ? row.note.trim() : null,
     updatedAt: Number(row.updated_at),
   };
 }
@@ -94,7 +103,9 @@ export async function saveWorkoutProtocol(
     duringManualUh: input.duringSame ? null : (input.duringManualUh ?? null),
     preRunCarbsG: input.preRunCarbsG ?? null,
     rescueCarbsG: input.rescueCarbsG ?? null,
-    note: input.note ? input.note.trim() : null,
+    feel: input.feel ?? null,
+    rpe: input.rpe ?? null,
+    note: input.note?.trim() ? input.note.trim() : null,
     updatedAt,
   };
 
@@ -102,8 +113,8 @@ export async function saveWorkoutProtocol(
     sql: `INSERT OR REPLACE INTO workout_protocols (
       email, activity_id, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
       before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
-      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, note, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       email,
       activityId,
@@ -119,47 +130,12 @@ export async function saveWorkoutProtocol(
       protocol.duringManualUh,
       protocol.preRunCarbsG,
       protocol.rescueCarbsG,
+      protocol.feel,
+      protocol.rpe,
       protocol.note,
       protocol.updatedAt,
     ],
   });
 
   return protocol;
-}
-
-export async function getLatestWorkoutProtocol(
-  email: string,
-): Promise<WorkoutProtocol | null> {
-  const result = await db().execute({
-    sql: `SELECT
-      activity_id, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
-      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
-      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, note, updated_at
-    FROM workout_protocols
-    WHERE email = ?
-    ORDER BY updated_at DESC
-    LIMIT 1`,
-    args: [email],
-  });
-
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-
-  return {
-    activityId: row.activity_id as string,
-    beforeMode: row.before_mode as CamAPSMode,
-    beforeAutoSubmode: row.before_auto_submode != null ? (row.before_auto_submode as CamAPSAutoSubmode) : null,
-    beforeTargetBg: row.before_target_bg != null ? Number(row.before_target_bg) : null,
-    beforeManualUh: row.before_manual_uh != null ? Number(row.before_manual_uh) : null,
-    beforeTiming: row.before_timing as ProtocolTiming,
-    duringSame: Boolean(row.during_same),
-    duringMode: row.during_mode != null ? (row.during_mode as CamAPSMode) : null,
-    duringAutoSubmode: row.during_auto_submode != null ? (row.during_auto_submode as CamAPSAutoSubmode) : null,
-    duringTargetBg: row.during_target_bg != null ? Number(row.during_target_bg) : null,
-    duringManualUh: row.during_manual_uh != null ? Number(row.during_manual_uh) : null,
-    preRunCarbsG: row.pre_run_carbs_g != null ? Number(row.pre_run_carbs_g) : null,
-    rescueCarbsG: row.rescue_carbs_g != null ? Number(row.rescue_carbs_g) : null,
-    note: typeof row.note === "string" ? row.note : null,
-    updatedAt: Number(row.updated_at),
-  };
 }

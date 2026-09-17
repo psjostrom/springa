@@ -76,6 +76,10 @@ async function findLatestUnratedRun(
   return null;
 }
 
+function unsetIfZero(val?: number | null): number | null {
+  return val == null || val === 0 ? null : val;
+}
+
 interface PreRunCarbsFallback {
   carbsG: number | null;
 }
@@ -89,17 +93,19 @@ function buildResponse(
   const movingTimeMs =
     activity.moving_time != null ? activity.moving_time * 1000 : null;
   const avgHr = activity.average_hr ?? activity.average_heartrate ?? null;
+  const feel = protocol?.feel ?? activity.feel ?? null;
+  const rpe = protocol?.rpe ?? activity.icu_rpe ?? activity.rpe ?? null;
+  const preRunCarbs =
+    protocol?.preRunCarbsG ??
+    unsetIfZero(activity.PreRunCarbsG) ??
+    preRunFallback?.carbsG ??
+    null;
+
   return {
     createdAt: new Date(
       activity.start_date_local ?? activity.start_date,
     ).getTime(),
-    rating: protocol
-      ? (activity.feel != null
-          ? activity.feel >= 3
-            ? "good"
-            : "bad"
-          : (nonEmpty(activity.Rating) ?? "good"))
-      : nonEmpty(activity.Rating),
+    rating: nonEmpty(activity.Rating),
     comment: protocol?.note ?? nonEmpty(activity.FeedbackComment),
     carbsG: activity.carbs_ingested ?? null,
     distance: activity.distance ?? undefined,
@@ -107,8 +113,11 @@ function buildResponse(
     avgHr: avgHr ?? undefined,
     activityId: activity.id,
     prescribedCarbsG,
-    preRunCarbsG:
-      protocol?.preRunCarbsG ?? activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
+    preRunCarbsG: preRunCarbs,
+    feel,
+    rpe,
+    protocol: protocol ?? null,
+    hasFeedback: !!protocol || !!activity.Rating || !!activity.FeedbackComment,
   };
 }
 
@@ -157,10 +166,8 @@ export async function GET(req: Request) {
     const { prescribedCarbsG, eventId: matchedEventId } =
       await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
-    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
-    // Use paired_event_id if available, otherwise use the event we matched above.
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (activity.PreRunCarbsG == null && protocol?.preRunCarbsG == null) {
+    if (unsetIfZero(activity.PreRunCarbsG) == null && protocol?.preRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -193,10 +200,8 @@ export async function GET(req: Request) {
     const { prescribedCarbsG, eventId: matchedEventId } =
       await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
-    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
-    // Use paired_event_id if available, otherwise use the event we matched above.
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (activity.PreRunCarbsG == null) {
+    if (unsetIfZero(activity.PreRunCarbsG) == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -206,7 +211,7 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      buildResponse(activity, prescribedCarbsG, preRunFallback),
+      buildResponse(activity, prescribedCarbsG, preRunFallback, null),
     );
   }
 }
@@ -223,10 +228,12 @@ export async function POST(req: Request) {
   let body: {
     activityId: string;
     rating?: string;
+    feel?: number;
+    rpe?: number;
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
-    protocol?: WorkoutProtocolInput;
+    protocol?: Record<string, unknown>;
   };
 
   try {
@@ -238,13 +245,30 @@ export async function POST(req: Request) {
     );
   }
 
-  const { activityId, rating, comment, carbsG, preRunCarbsG, protocol } = body;
+  const { activityId, rating, feel, rpe, comment, carbsG, preRunCarbsG, protocol } = body;
 
-  if (!activityId || (!rating && !protocol)) {
+  if (!activityId || (!rating && feel == null && !protocol)) {
     return NextResponse.json(
       { error: "Missing activityId or rating" },
       { status: 400 },
     );
+  }
+
+  if (protocol) {
+    const validModes: readonly string[] = ["disconnected", "auto", "manual"];
+    const validTimings: readonly string[] = [">2h", "1-2h", "<30m", "at_start"];
+    if (
+      typeof protocol.beforeMode !== "string" ||
+      !validModes.includes(protocol.beforeMode) ||
+      typeof protocol.beforeTiming !== "string" ||
+      !validTimings.includes(protocol.beforeTiming) ||
+      typeof protocol.duringSame !== "boolean"
+    ) {
+      return NextResponse.json(
+        { error: "Invalid protocol schema" },
+        { status: 400 },
+      );
+    }
   }
 
   const creds = await getUserCredentials(email);
@@ -258,15 +282,18 @@ export async function POST(req: Request) {
 
   try {
     if (protocol) {
-      await saveWorkoutProtocol(email, activityId, protocol);
+      const protocolInput = protocol as unknown as WorkoutProtocolInput;
+      if (feel != null && protocolInput.feel == null) protocolInput.feel = feel;
+      if (rpe != null && protocolInput.rpe == null) protocolInput.rpe = rpe;
+      await saveWorkoutProtocol(email, activityId, protocolInput);
     }
 
     const isMockQaActivity =
       process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
 
-    if (rating) {
+    if (rating || comment != null || feel != null || rpe != null) {
       try {
-        await updateActivityFeedback(apiKey, activityId, rating, comment);
+        await updateActivityFeedback(apiKey, activityId, rating, comment, feel, rpe);
       } catch (err) {
         if (!isMockQaActivity) throw err;
       }
