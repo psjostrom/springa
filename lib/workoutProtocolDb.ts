@@ -139,3 +139,59 @@ export async function saveWorkoutProtocol(
 
   return protocol;
 }
+
+/** Insert a protocol only if no record exists for (email, activityId). Used by migration. */
+export async function saveWorkoutProtocolIfAbsent(
+  email: string,
+  activityId: string,
+  input: WorkoutProtocolInput,
+): Promise<void> {
+  const updatedAt = Date.now();
+  const protocol: WorkoutProtocol = {
+    activityId,
+    beforeMode: input.beforeMode,
+    beforeAutoSubmode: input.beforeAutoSubmode ?? null,
+    beforeTargetBg: input.beforeTargetBg ?? null,
+    beforeManualUh: input.beforeManualUh ?? null,
+    beforeTiming: input.beforeTiming,
+    duringSame: input.duringSame,
+    duringMode: input.duringSame ? null : (input.duringMode ?? null),
+    duringAutoSubmode: input.duringSame ? null : (input.duringAutoSubmode ?? null),
+    duringTargetBg: input.duringSame ? null : (input.duringTargetBg ?? null),
+    duringManualUh: input.duringSame ? null : (input.duringManualUh ?? null),
+    preRunCarbsG: input.preRunCarbsG ?? null,
+    rescueCarbsG: input.rescueCarbsG ?? null,
+    feel: input.feel ?? null,
+    rpe: input.rpe ?? null,
+    note: input.note?.trim() ? input.note.trim() : null,
+    updatedAt,
+  };
+
+  await db().execute({
+    sql: `INSERT OR IGNORE INTO workout_protocols (
+      email, activity_id, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
+      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
+      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      email,
+      activityId,
+      protocol.beforeMode,
+      protocol.beforeAutoSubmode,
+      protocol.beforeTargetBg,
+      protocol.beforeManualUh,
+      protocol.beforeTiming,
+      protocol.duringSame ? 1 : 0,
+      protocol.duringMode,
+      protocol.duringAutoSubmode,
+      protocol.duringTargetBg,
+      protocol.duringManualUh,
+      protocol.preRunCarbsG,
+      protocol.rescueCarbsG,
+      protocol.feel,
+      protocol.rpe,
+      protocol.note,
+      protocol.updatedAt,
+    ],
+  });
+}

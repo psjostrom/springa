@@ -934,15 +934,11 @@ export async function updateActivityFeedback(
   activityId: string,
   rating?: string | null,
   comment?: string,
-  feel?: number | null,
-  rpe?: number | null,
 ): Promise<void> {
   const auth = authHeader(apiKey);
   const payload: Record<string, unknown> = {};
   if (rating) payload.Rating = rating;
   if (comment != null) payload.FeedbackComment = comment;
-  if (feel != null) payload.feel = feel;
-  if (rpe != null) payload.icu_rpe = rpe;
 
   const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(activityId)}`, {
     method: "PUT",

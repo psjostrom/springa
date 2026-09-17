@@ -69,15 +69,17 @@ async function findLatestUnratedRun(
     );
 
   for (const activity of candidates) {
-    if (activity.Rating) continue;
+    if (activity.Rating || activity.FeedbackComment) continue;
     const protocol = await getWorkoutProtocol(email, activity.id);
-    if (!protocol) return activity;
+    if (protocol?.feel != null || protocol?.rpe != null || protocol?.note) continue;
+    if (activity.feel != null || activity.rpe != null || activity.icu_rpe != null) continue;
+    return activity;
   }
   return null;
 }
 
 function unsetIfZero(val?: number | null): number | null {
-  return val == null || val === 0 ? null : val;
+  return val ?? null;
 }
 
 interface PreRunCarbsFallback {
@@ -117,7 +119,7 @@ function buildResponse(
     feel,
     rpe,
     protocol: protocol ?? null,
-    hasFeedback: !!protocol || !!activity.Rating || !!activity.FeedbackComment,
+    hasFeedback: feel != null || rpe != null || !!protocol?.note || !!activity.Rating || !!activity.FeedbackComment,
   };
 }
 
@@ -247,7 +249,28 @@ export async function POST(req: Request) {
 
   const { activityId, rating, feel, rpe, comment, carbsG, preRunCarbsG, protocol } = body;
 
-  if (!activityId || (!rating && feel == null && !protocol)) {
+  if (typeof activityId !== "string" || !activityId) {
+    return NextResponse.json(
+      { error: "Missing activityId or rating" },
+      { status: 400 },
+    );
+  }
+
+  if (feel != null && (!Number.isInteger(feel) || feel < 1 || feel > 5)) {
+    return NextResponse.json(
+      { error: "feel must be an integer from 1 to 5" },
+      { status: 400 },
+    );
+  }
+
+  if (rpe != null && (!Number.isInteger(rpe) || rpe < 1 || rpe > 10)) {
+    return NextResponse.json(
+      { error: "rpe must be an integer from 1 to 10" },
+      { status: 400 },
+    );
+  }
+
+  if (!rating && feel == null && !protocol) {
     return NextResponse.json(
       { error: "Missing activityId or rating" },
       { status: 400 },
@@ -257,6 +280,12 @@ export async function POST(req: Request) {
   if (protocol) {
     const validModes: readonly string[] = ["disconnected", "auto", "manual"];
     const validTimings: readonly string[] = [">2h", "1-2h", "<30m", "at_start"];
+    if (protocol.note != null && typeof protocol.note !== "string") {
+      return NextResponse.json(
+        { error: "Invalid protocol schema" },
+        { status: 400 },
+      );
+    }
     if (
       typeof protocol.beforeMode !== "string" ||
       !validModes.includes(protocol.beforeMode) ||
@@ -286,14 +315,33 @@ export async function POST(req: Request) {
       if (feel != null && protocolInput.feel == null) protocolInput.feel = feel;
       if (rpe != null && protocolInput.rpe == null) protocolInput.rpe = rpe;
       await saveWorkoutProtocol(email, activityId, protocolInput);
+    } else if (feel != null || rpe != null) {
+      // Turso owns feel/rpe — persist a minimal protocol even without CamAPS data
+      const existing = await getWorkoutProtocol(email, activityId);
+      if (existing) {
+        await saveWorkoutProtocol(email, activityId, {
+          ...existing,
+          feel: feel ?? existing.feel,
+          rpe: rpe ?? existing.rpe,
+        });
+      } else {
+        await saveWorkoutProtocol(email, activityId, {
+          beforeMode: "disconnected",
+          beforeTiming: ">2h",
+          duringSame: true,
+          feel: feel ?? null,
+          rpe: rpe ?? null,
+          note: comment?.trim() ?? null,
+        });
+      }
     }
 
     const isMockQaActivity =
       process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
 
-    if (rating || comment != null || feel != null || rpe != null) {
+    if (rating || comment != null) {
       try {
-        await updateActivityFeedback(apiKey, activityId, rating, comment, feel, rpe);
+        await updateActivityFeedback(apiKey, activityId, rating, comment);
       } catch (err) {
         if (!isMockQaActivity) throw err;
       }

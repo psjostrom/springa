@@ -295,19 +295,20 @@ function FeedbackContent() {
               </p>
             </div>
           ) : (
-            <div className="w-full max-w-sm mb-6">
-              <label className="block text-xs text-muted uppercase tracking-wider font-semibold text-center mb-3">
+            <fieldset className="w-full max-w-sm mb-6 border-0 p-0 m-0">
+              <legend className="block text-xs text-muted uppercase tracking-wider font-semibold text-center mb-3 w-full">
                 How did it feel?
-              </label>
+              </legend>
               <div className="flex justify-between gap-2">
                 {[1, 2, 3, 4, 5].map((val) => (
                   <button
                     key={val}
                     type="button"
+                    aria-pressed={formState.feel === val}
                     onClick={() => { setFormState((s) => ({ ...s, feel: val })); }}
                     className={`flex-1 py-3 rounded-xl border-2 font-bold text-base transition ${
                       formState.feel === val
-                        ? "border-brand bg-brand/10 text-brand"
+                        ? "border-brand bg-brand/10 text-brand-btn"
                         : "border-border bg-surface text-text hover:bg-surface-alt"
                     }`}
                   >
@@ -320,7 +321,7 @@ function FeedbackContent() {
                   {formatFeel(formState.feel)}
                 </p>
               )}
-            </div>
+            </fieldset>
           )}
 
           {/* Carbs ingested */}

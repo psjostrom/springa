@@ -230,7 +230,7 @@ export async function buildCompletedWorkoutOverview(options: {
       protocol?.preRunCarbsG,
     ),
     protocol,
-    feel: activity.feel ?? null,
-    rpe: activity.icu_rpe ?? activity.rpe ?? null,
+    feel: protocol?.feel ?? activity.feel ?? null,
+    rpe: protocol?.rpe ?? activity.icu_rpe ?? activity.rpe ?? null,
   };
 }

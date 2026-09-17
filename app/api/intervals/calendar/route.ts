@@ -41,7 +41,7 @@ export async function GET(req: Request) {
       workoutContext,
     );
 
-    if (process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
+    if (process.env.NODE_ENV !== "production" && process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
       const qaCompletedEvent = {
         id: "completed-today-qa",
         date: new Date().toISOString(),

@@ -1,7 +1,7 @@
 import { db } from "../lib/db";
 import { getUserCredentials } from "../lib/credentials";
 import type { IntervalsActivity } from "../lib/types";
-import { saveWorkoutProtocol, type CamAPSMode, type CamAPSAutoSubmode, type ProtocolTiming } from "../lib/workoutProtocolDb";
+import { saveWorkoutProtocolIfAbsent, type CamAPSMode, type CamAPSAutoSubmode, type ProtocolTiming } from "../lib/workoutProtocolDb";
 
 function hasPumpKeywords(text: string): boolean {
   return (
@@ -54,8 +54,8 @@ function inferProtocolFromComment(comment: string | undefined): {
   const beforePart = text.split("during")[0] ?? text;
   const duringPart = text.includes("during") ? text.slice(text.indexOf("during")) : "";
 
-  // Check before run
-  const beforeUhMatch = beforePart.match(/([0-9]+[.,][0-9]+)\s*u\/h/);
+  // Accept both decimal and integer u/h rates
+  const beforeUhMatch = beforePart.match(/([0-9]+(?:[.,][0-9]+)?)\s*u\/h/);
   if (beforeUhMatch) {
     const rate = parseFloat(beforeUhMatch[1].replace(",", "."));
     if (!isNaN(rate)) {
@@ -72,7 +72,7 @@ function inferProtocolFromComment(comment: string | undefined): {
   }
 
   // Check during run
-  const duringUhMatch = duringPart.match(/([0-9]+[.,][0-9]+)\s*u\/h/);
+  const duringUhMatch = duringPart.match(/([0-9]+(?:[.,][0-9]+)?)\s*u\/h/);
   if (duringPart.includes("disconnected") || duringPart.includes("removed")) {
     duringSame = false;
     duringMode = "disconnected";
@@ -102,10 +102,10 @@ function inferProtocolFromComment(comment: string | undefined): {
 }
 
 async function migrateUser(email: string) {
-  console.log(`\n=== Migrating user: ${email} ===`);
+  console.log("\n=== Migrating user ===");
   const creds = await getUserCredentials(email);
   if (!creds?.intervalsApiKey) {
-    console.log(`No Intervals API key found for ${email}. Skipping.`);
+    console.log("No Intervals API key found. Skipping.");
     return;
   }
 
@@ -131,50 +131,57 @@ async function migrateUser(email: string) {
       ((a.FeedbackComment && a.FeedbackComment.trim().length > 0) ||
         (a.PreRunCarbsG != null && a.PreRunCarbsG > 0) ||
         a.Rating != null ||
-        a.feel != null),
+        a.feel != null ||
+        a.icu_rpe != null ||
+        a.rpe != null),
   );
 
-  console.log(`Eligible runs with feedback, feel, or pre-run carbs: ${eligibleActivities.length}`);
+  console.log(`Eligible runs: ${eligibleActivities.length}`);
 
   let migratedCount = 0;
+  let skippedCount = 0;
   for (const activity of eligibleActivities) {
     const comment = activity.FeedbackComment?.trim() || null;
     const preRunCarbsG = activity.PreRunCarbsG && activity.PreRunCarbsG > 0 ? activity.PreRunCarbsG : null;
     const inferred = inferProtocolFromComment(comment || undefined);
 
     // Map legacy blunt rating: "good" -> 4, "bad" -> 2
-    let feel = activity.feel ?? null;
+    let feel: number | null = activity.feel ?? null;
+    if (feel != null && (!Number.isInteger(feel) || feel < 1 || feel > 5)) {
+      skippedCount++;
+      continue;
+    }
     if (feel == null && activity.Rating) {
       if (activity.Rating === "good") feel = 4;
       else if (activity.Rating === "bad") feel = 2;
     }
     const rpe = activity.icu_rpe ?? activity.rpe ?? null;
 
-    const protocolToSave = inferred ?? {
-      beforeMode: "auto" as CamAPSMode,
-      beforeAutoSubmode: "ease_off" as CamAPSAutoSubmode,
-      beforeManualUh: null,
-      beforeTiming: "1-2h" as ProtocolTiming,
-      duringSame: true,
-      duringMode: null,
-      duringAutoSubmode: null,
-      duringManualUh: null,
-    };
-
-    await saveWorkoutProtocol(email, activity.id, {
-      ...protocolToSave,
-      preRunCarbsG,
-      feel,
-      rpe,
-      note: comment,
-    });
+    if (inferred) {
+      // Protocol inference succeeded — save full protocol
+      await saveWorkoutProtocolIfAbsent(email, activity.id, {
+        ...inferred,
+        preRunCarbsG,
+        feel,
+        rpe,
+        note: comment,
+      });
+    } else {
+      // No protocol inference — save only feedback data without fabricated CamAPS fields
+      await saveWorkoutProtocolIfAbsent(email, activity.id, {
+        beforeMode: "disconnected",
+        beforeTiming: ">2h",
+        duringSame: true,
+        preRunCarbsG,
+        feel,
+        rpe,
+        note: comment,
+      });
+    }
     migratedCount++;
-    console.log(
-      `  [${activity.id}] (${activity.start_date}) feel=${feel} | preRunCarbs=${preRunCarbsG}g | note="${comment?.slice(0, 50) ?? ''}"`,
-    );
   }
 
-  console.log(`Successfully migrated ${migratedCount} activities into Turso workout_protocols.`);
+  console.log(`Migrated ${migratedCount} activities (${skippedCount} skipped).`);
 }
 
 async function main() {

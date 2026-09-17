@@ -428,4 +428,66 @@ describe("/api/run-feedback", () => {
       note: "Warm humid evening",
     });
   });
+
+  it("persists feel-only POST to Turso without writing feel to Intervals", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-only",
+          feel: 3,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+
+    // No Intervals PUT — feel is Turso-only
+    expect(capturedActivityPutPayloads).toEqual([]);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-feel-only");
+    expect(saved).toMatchObject({
+      activityId: "act-feel-only",
+      feel: 3,
+    });
+  });
+
+  it("rejects feel outside 1-5 range", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-1",
+          feel: 7,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: "feel must be an integer from 1 to 5",
+    });
+  });
+
+  it("rejects rpe outside 1-10 range", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-1",
+          feel: 3,
+          rpe: 15,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: "rpe must be an integer from 1 to 10",
+    });
+  });
 });
