@@ -37,6 +37,7 @@ vi.mock("@/lib/auth", () => ({
 import { GET, POST } from "@/app/api/run-feedback/route";
 import { server } from "./msw/server";
 import { SCHEMA_DDL } from "../db";
+import { getWorkoutProtocol } from "@/lib/workoutProtocolDb";
 
 async function insertIntervalsCreds() {
   // current_ability_dist + current_ability_secs give the user a thresholdPace,
@@ -76,6 +77,7 @@ describe("/api/run-feedback", () => {
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM prerun_carbs");
     await holder.db.execute("DELETE FROM activity_streams");
+    await holder.db.execute("DELETE FROM workout_protocols");
     await holder.db.execute("DELETE FROM user_settings");
     await insertIntervalsCreds();
   });
@@ -129,6 +131,44 @@ describe("/api/run-feedback", () => {
       prescribedCarbsG: 56,
       distance: 8100,
       avgHr: 142,
+    });
+  });
+
+  it("populates protocol note and preRunCarbsG from Turso when activity has protocol", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO workout_protocols (
+        email, activity_id, before_mode, before_timing, during_same, pre_run_carbs_g, note, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ["test@example.com", "act-proto", "auto", "1-2h", 1, 35, "Turso protocol note", Date.now()],
+    });
+
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-proto",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 8100,
+          moving_time: 3000,
+          average_hr: 140,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-proto"),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      activityId: "act-proto",
+      comment: "Turso protocol note",
+      preRunCarbsG: 35,
     });
   });
 
@@ -346,6 +386,46 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(502);
     await expect(res.json()).resolves.toMatchObject({
       error: expect.stringContaining("Failed to update activity feedback"),
+    });
+  });
+
+  it("saves a structured CamAPS protocol to Turso without writing to Intervals custom fields", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-camaps-1",
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTargetBg: 8.5,
+            beforeTiming: "1-2h",
+            duringSame: true,
+            preRunCarbsG: 15,
+            rescueCarbsG: 0,
+            note: "Warm humid evening",
+          },
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+
+    expect(capturedActivityPutPayloads).toEqual([]);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-camaps-1");
+    expect(saved).toMatchObject({
+      activityId: "act-camaps-1",
+      beforeMode: "auto",
+      beforeAutoSubmode: "ease_off",
+      beforeTargetBg: 8.5,
+      beforeTiming: "1-2h",
+      duringSame: true,
+      preRunCarbsG: 15,
+      rescueCarbsG: 0,
+      note: "Warm humid evening",
     });
   });
 });

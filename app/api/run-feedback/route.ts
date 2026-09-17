@@ -16,6 +16,12 @@ import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext"
 import { findCompletedActivityMatch } from "@/lib/completedActivityMatch";
 import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
 import { getPreRunCarbs } from "@/lib/prerunCarbs";
+import {
+  getWorkoutProtocol,
+  saveWorkoutProtocol,
+  type WorkoutProtocol,
+  type WorkoutProtocolInput,
+} from "@/lib/workoutProtocolDb";
 
 async function resolveMatchedPrescription(
   apiKey: string,
@@ -43,6 +49,7 @@ async function resolveMatchedPrescription(
 /** Find the latest unrated Run activity from the last 2 days. */
 async function findLatestUnratedRun(
   apiKey: string,
+  email: string,
 ): Promise<IntervalsActivity | null> {
   const now = new Date();
   const twoDaysAgo = new Date(now);
@@ -53,16 +60,20 @@ async function findLatestUnratedRun(
   const newest = tomorrow.toISOString().slice(0, 10);
 
   const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
-  return (
-    activities
-      .filter((a) => (a.type === "Run" || a.type === "VirtualRun") && !a.Rating)
-      .sort(
-        (a, b) =>
-          new Date(b.start_date_local ?? b.start_date).getTime() -
-          new Date(a.start_date_local ?? a.start_date).getTime(),
-      )
-      .at(0) ?? null
-  );
+  const candidates = activities
+    .filter((a) => a.type === "Run" || a.type === "VirtualRun")
+    .sort(
+      (a, b) =>
+        new Date(b.start_date_local ?? b.start_date).getTime() -
+        new Date(a.start_date_local ?? a.start_date).getTime(),
+    );
+
+  for (const activity of candidates) {
+    if (activity.Rating) continue;
+    const protocol = await getWorkoutProtocol(email, activity.id);
+    if (!protocol) return activity;
+  }
+  return null;
 }
 
 interface PreRunCarbsFallback {
@@ -73,6 +84,7 @@ function buildResponse(
   activity: IntervalsActivity,
   prescribedCarbsG: number | null,
   preRunFallback?: PreRunCarbsFallback,
+  protocol?: WorkoutProtocol | null,
 ) {
   const movingTimeMs =
     activity.moving_time != null ? activity.moving_time * 1000 : null;
@@ -81,15 +93,22 @@ function buildResponse(
     createdAt: new Date(
       activity.start_date_local ?? activity.start_date,
     ).getTime(),
-    rating: nonEmpty(activity.Rating),
-    comment: nonEmpty(activity.FeedbackComment),
+    rating: protocol
+      ? (activity.feel != null
+          ? activity.feel >= 3
+            ? "good"
+            : "bad"
+          : (nonEmpty(activity.Rating) ?? "good"))
+      : nonEmpty(activity.Rating),
+    comment: protocol?.note ?? nonEmpty(activity.FeedbackComment),
     carbsG: activity.carbs_ingested ?? null,
     distance: activity.distance ?? undefined,
     duration: movingTimeMs ?? undefined,
     avgHr: avgHr ?? undefined,
     activityId: activity.id,
     prescribedCarbsG,
-    preRunCarbsG: activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
+    preRunCarbsG:
+      protocol?.preRunCarbsG ?? activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
   };
 }
 
@@ -117,9 +136,10 @@ export async function GET(req: Request) {
   const settingsPromise = getUserSettings(email);
   let activity: IntervalsActivity | null;
   if (activityIdParam) {
-    const [resolvedActivity, settings] = await Promise.all([
+    const [resolvedActivity, settings, protocol] = await Promise.all([
       fetchActivityById(apiKey, activityIdParam),
       settingsPromise,
+      getWorkoutProtocol(email, activityIdParam),
     ]);
     activity = resolvedActivity;
     if (!activity) {
@@ -140,7 +160,7 @@ export async function GET(req: Request) {
     // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
     // Use paired_event_id if available, otherwise use the event we matched above.
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (activity.PreRunCarbsG == null) {
+    if (activity.PreRunCarbsG == null && protocol?.preRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -150,11 +170,11 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      buildResponse(activity, prescribedCarbsG, preRunFallback),
+      buildResponse(activity, prescribedCarbsG, preRunFallback, protocol),
     );
   } else {
     const [resolvedActivity, settings] = await Promise.all([
-      findLatestUnratedRun(apiKey),
+      findLatestUnratedRun(apiKey, email),
       settingsPromise,
     ]);
     activity = resolvedActivity;
@@ -202,20 +222,15 @@ export async function POST(req: Request) {
 
   let body: {
     activityId: string;
-    rating: string;
+    rating?: string;
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
+    protocol?: WorkoutProtocolInput;
   };
 
   try {
-    body = (await req.json()) as {
-      activityId: string;
-      rating: string;
-      comment?: string;
-      carbsG?: number;
-      preRunCarbsG?: number;
-    };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json(
       { error: "Invalid or empty request body" },
@@ -223,9 +238,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const { activityId, rating, comment, carbsG, preRunCarbsG } = body;
+  const { activityId, rating, comment, carbsG, preRunCarbsG, protocol } = body;
 
-  if (!activityId || !rating) {
+  if (!activityId || (!rating && !protocol)) {
     return NextResponse.json(
       { error: "Missing activityId or rating" },
       { status: 400 },
@@ -242,12 +257,35 @@ export async function POST(req: Request) {
   const apiKey = creds.intervalsApiKey;
 
   try {
-    await updateActivityFeedback(apiKey, activityId, rating, comment);
-    if (carbsG != null) {
-      await updateActivityCarbs(apiKey, activityId, carbsG);
+    if (protocol) {
+      await saveWorkoutProtocol(email, activityId, protocol);
     }
+
+    const isMockQaActivity =
+      process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
+
+    if (rating) {
+      try {
+        await updateActivityFeedback(apiKey, activityId, rating, comment);
+      } catch (err) {
+        if (!isMockQaActivity) throw err;
+      }
+    }
+
+    if (carbsG != null) {
+      try {
+        await updateActivityCarbs(apiKey, activityId, carbsG);
+      } catch (err) {
+        if (!isMockQaActivity) throw err;
+      }
+    }
+
     if (preRunCarbsG != null) {
-      await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
+      try {
+        await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
+      } catch (err) {
+        if (!isMockQaActivity) throw err;
+      }
     }
 
     return NextResponse.json({ ok: true });

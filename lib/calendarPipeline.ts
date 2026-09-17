@@ -69,6 +69,8 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
     rating: nonEmpty(activity.Rating),
     feedbackComment: nonEmpty(activity.FeedbackComment),
+    feel: activity.feel ?? null,
+    rpe: activity.icu_rpe ?? activity.rpe ?? null,
     activityId: activity.id,
   };
 }
@@ -200,6 +202,8 @@ export function processActivities(
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
       rating: nonEmpty(activity.Rating),
       feedbackComment: nonEmpty(activity.FeedbackComment),
+      feel: activity.feel ?? null,
+      rpe: activity.icu_rpe ?? activity.rpe ?? null,
       activityId: activity.id,
       pairedEventId: matchingEvent?.id,
     };

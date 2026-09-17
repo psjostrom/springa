@@ -10,6 +10,7 @@ import { buildRunBGContext } from "./runBGContext";
 import type { RunBGContext } from "./runBGContext";
 import { computeKmSplits } from "./splits";
 import type { CalendarEvent, StreamData } from "./types";
+import { getWorkoutProtocol, type WorkoutProtocol } from "./workoutProtocolDb";
 
 export interface BGScoreDto {
   rating: "good" | "ok" | "bad";
@@ -63,6 +64,9 @@ export interface CompletedWorkoutOverviewDto {
     source: "activity" | "paired-event" | "none";
     fallbackEventId: number | null;
   };
+  protocol: WorkoutProtocol | null;
+  feel: number | null;
+  rpe: number | null;
 }
 
 // CGM window padding around the run: 60 min before (entry context) and 2 h after (recovery).
@@ -115,7 +119,11 @@ async function resolvePreRunCarbs(
   activity: { PreRunCarbsG?: number },
   matchedEventId: number | null,
   email: string,
+  protocolCarbs?: number | null,
 ): Promise<CompletedWorkoutOverviewDto["preRunCarbs"]> {
+  if (protocolCarbs != null) {
+    return { grams: protocolCarbs, source: "activity", fallbackEventId: null };
+  }
   const activityCarbs = unsetIfZero(activity.PreRunCarbsG);
   if (activityCarbs != null) {
     return { grams: activityCarbs, source: "activity", fallbackEventId: null };
@@ -152,7 +160,8 @@ export async function buildCompletedWorkoutOverview(options: {
   const { email, apiKey, activityId, diabetesMode } = options;
 
   const activity = await fetchActivityByIdStrict(apiKey, activityId);
-  const [{ eventId }, details] = await Promise.all([
+  const [protocol, { eventId }, details] = await Promise.all([
+    getWorkoutProtocol(email, activityId),
     findCompletedActivityMatch(apiKey, activity),
     fetchActivityDetails(activityId, apiKey),
   ]);
@@ -214,6 +223,14 @@ export async function buildCompletedWorkoutOverview(options: {
       recovery: reportCard.recovery,
     },
     splits,
-    preRunCarbs: await resolvePreRunCarbs(activity, eventId, email),
+    preRunCarbs: await resolvePreRunCarbs(
+      activity,
+      eventId,
+      email,
+      protocol?.preRunCarbsG,
+    ),
+    protocol,
+    feel: activity.feel ?? null,
+    rpe: activity.icu_rpe ?? activity.rpe ?? null,
   };
 }

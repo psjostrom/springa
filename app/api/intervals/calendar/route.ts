@@ -40,6 +40,29 @@ export async function GET(req: Request) {
       new Date(newest),
       workoutContext,
     );
+
+    if (process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
+      const qaCompletedEvent = {
+        id: "completed-today-qa",
+        date: new Date().toISOString(),
+        name: "Morning Easy Run",
+        description: "Easy run with Garmin telemetry",
+        type: "completed",
+        category: "easy",
+        distance: 7200,
+        duration: 2400,
+        avgHr: 144,
+        maxHr: 158,
+        carbsIngested: 30,
+        activityId: "qa-act-today",
+        feel: 4,
+        rpe: 6,
+        rating: null,
+        feedbackComment: null,
+      };
+      return NextResponse.json([qaCompletedEvent, ...data]);
+    }
+
     return NextResponse.json(data);
   } catch (err) {
     console.error("[intervals/calendar]", err);
