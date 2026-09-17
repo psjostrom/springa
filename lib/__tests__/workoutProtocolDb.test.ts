@@ -104,4 +104,22 @@ describe("workoutProtocolDb", () => {
     expect(protocol?.feel).toBe(4);
     expect(protocol?.rpe).toBe(6);
   });
+
+  it("saves and retrieves feedback-only record without protocol", async () => {
+    await saveWorkoutProtocol(EMAIL, ACTIVITY_1, {
+      hasProtocol: false,
+      feel: 5,
+      rpe: 8,
+      note: "Hard tempo",
+    });
+
+    const protocol = await getWorkoutProtocol(EMAIL, ACTIVITY_1);
+    expect(protocol).not.toBeNull();
+    expect(protocol?.hasProtocol).toBe(false);
+    expect(protocol?.beforeMode).toBeNull();
+    expect(protocol?.beforeTiming).toBeNull();
+    expect(protocol?.feel).toBe(5);
+    expect(protocol?.rpe).toBe(8);
+    expect(protocol?.note).toBe("Hard tempo");
+  });
 });

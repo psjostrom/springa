@@ -8,7 +8,8 @@ function hasPumpKeywords(text: string): boolean {
     text.includes("pump") ||
     text.includes("u/h") ||
     text.includes("auto") ||
-    text.includes("ease") ||
+    text.includes("ease off") ||
+    text.includes("ease-off") ||
     text.includes("boost") ||
     text.includes("manual") ||
     text.includes("disconnect") ||
@@ -76,7 +77,7 @@ function inferProtocolFromComment(comment: string | undefined): {
   if (duringPart.includes("disconnected") || duringPart.includes("removed")) {
     duringSame = false;
     duringMode = "disconnected";
-  } else if (duringPart.includes("auto") || duringPart.includes("ease")) {
+  } else if (duringPart.includes("auto") || duringPart.includes("ease off") || duringPart.includes("ease-off")) {
     duringSame = false;
     duringMode = "auto";
     duringAutoSubmode = "ease_off";
@@ -140,6 +141,7 @@ async function migrateUser(email: string) {
 
   let migratedCount = 0;
   let skippedCount = 0;
+  const failures: { activityId: string; error: unknown }[] = [];
   for (const activity of eligibleActivities) {
     const comment = activity.FeedbackComment?.trim() || null;
     const preRunCarbsG = activity.PreRunCarbsG && activity.PreRunCarbsG > 0 ? activity.PreRunCarbsG : null;
@@ -157,31 +159,41 @@ async function migrateUser(email: string) {
     }
     const rpe = activity.icu_rpe ?? activity.rpe ?? null;
 
-    if (inferred) {
-      // Protocol inference succeeded — save full protocol
-      await saveWorkoutProtocolIfAbsent(email, activity.id, {
-        ...inferred,
-        preRunCarbsG,
-        feel,
-        rpe,
-        note: comment,
-      });
-    } else {
-      // No protocol inference — save only feedback data without fabricated CamAPS fields
-      await saveWorkoutProtocolIfAbsent(email, activity.id, {
-        beforeMode: "disconnected",
-        beforeTiming: ">2h",
-        duringSame: true,
-        preRunCarbsG,
-        feel,
-        rpe,
-        note: comment,
-      });
+    try {
+      if (inferred) {
+        // Protocol inference succeeded — save full protocol
+        await saveWorkoutProtocolIfAbsent(email, activity.id, {
+          hasProtocol: true,
+          ...inferred,
+          preRunCarbsG,
+          feel,
+          rpe,
+          note: comment,
+        });
+      } else {
+        // No protocol inference — save only feedback data without fabricated CamAPS fields
+        await saveWorkoutProtocolIfAbsent(email, activity.id, {
+          hasProtocol: false,
+          beforeMode: null,
+          beforeTiming: null,
+          duringSame: true,
+          preRunCarbsG,
+          feel,
+          rpe,
+          note: comment,
+        });
+      }
+      migratedCount++;
+    } catch (error) {
+      failures.push({ activityId: activity.id, error });
+      console.error(`Failed to migrate activity ${activity.id}:`, error);
     }
-    migratedCount++;
   }
 
-  console.log(`Migrated ${migratedCount} activities (${skippedCount} skipped).`);
+  if (failures.length > 0) {
+    console.error(`${failures.length} activities failed to migrate for user ${email}.`);
+  }
+  console.log(`Migrated ${migratedCount} activities (${skippedCount} skipped, ${failures.length} failed).`);
 }
 
 async function main() {
@@ -193,11 +205,12 @@ async function main() {
     CREATE TABLE IF NOT EXISTS workout_protocols (
       email               TEXT NOT NULL,
       activity_id         TEXT NOT NULL,
-      before_mode         TEXT NOT NULL,
+      has_protocol        INTEGER NOT NULL DEFAULT 1,
+      before_mode         TEXT NOT NULL DEFAULT 'none',
       before_auto_submode TEXT,
       before_target_bg    REAL,
       before_manual_uh    REAL,
-      before_timing       TEXT NOT NULL,
+      before_timing       TEXT NOT NULL DEFAULT 'none',
       during_same         INTEGER NOT NULL DEFAULT 1,
       during_mode         TEXT,
       during_auto_submode TEXT,
@@ -212,6 +225,10 @@ async function main() {
       PRIMARY KEY (email, activity_id)
     );
   `);
+
+  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN has_protocol INTEGER NOT NULL DEFAULT 1"); } catch {}
+  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN feel INTEGER"); } catch {}
+  try { await db().execute("ALTER TABLE workout_protocols ADD COLUMN rpe INTEGER"); } catch {}
 
   for (const row of users.rows) {
     await migrateUser(row.email as string);

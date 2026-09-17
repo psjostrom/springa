@@ -361,11 +361,18 @@ describe("/api/run-feedback", () => {
     expect(capturedActivityPutPayloads).toEqual([
       {
         activityId: "act-1",
-        body: { Rating: "good", FeedbackComment: "solid run" },
+        body: { Rating: "good" },
       },
       { activityId: "act-1", body: { carbs_ingested: 30 } },
       { activityId: "act-1", body: { PreRunCarbsG: 15 } },
     ]);
+    const saved = await getWorkoutProtocol("test@example.com", "act-1");
+    expect(saved).toMatchObject({
+      activityId: "act-1",
+      hasProtocol: false,
+      beforeMode: null,
+      note: "solid run",
+    });
   });
 
   it("returns a JSON error when Intervals rejects the write", async () => {
@@ -488,6 +495,111 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toMatchObject({
       error: "rpe must be an integer from 1 to 10",
+    });
+  });
+
+  it("accepts RPE-only POST and suppresses protocol in GET response", async () => {
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-rpe-only",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 5000,
+          moving_time: 1800,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    const postRes = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rpe-only",
+          rpe: 7,
+        }),
+      }),
+    );
+
+    expect(postRes.status).toBe(200);
+    await expect(postRes.json()).resolves.toEqual({ ok: true });
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-rpe-only");
+    expect(saved).toMatchObject({
+      activityId: "act-rpe-only",
+      hasProtocol: false,
+      beforeMode: null,
+      beforeTiming: null,
+      rpe: 7,
+    });
+
+    const getRes = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-rpe-only"),
+    );
+    expect(getRes.status).toBe(200);
+    await expect(getRes.json()).resolves.toMatchObject({
+      activityId: "act-rpe-only",
+      rpe: 7,
+      protocol: null,
+      hasFeedback: true,
+    });
+  });
+
+  it("preserves existing note when comment is absent in subsequent update", async () => {
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-note-preserve",
+          feel: 4,
+          comment: "Initial great note",
+        }),
+      }),
+    );
+
+    // Update feel without sending comment
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-note-preserve",
+          feel: 5,
+        }),
+      }),
+    );
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-note-preserve");
+    expect(saved).toMatchObject({
+      feel: 5,
+      note: "Initial great note",
+    });
+  });
+
+  it("updates note in Turso on rating-only submission with comment", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rating-note",
+          rating: "good",
+          comment: "Rating note only",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = await getWorkoutProtocol("test@example.com", "act-rating-note");
+    expect(saved).toMatchObject({
+      activityId: "act-rating-note",
+      hasProtocol: false,
+      note: "Rating note only",
     });
   });
 });

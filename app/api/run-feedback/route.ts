@@ -118,7 +118,7 @@ function buildResponse(
     preRunCarbsG: preRunCarbs,
     feel,
     rpe,
-    protocol: protocol ?? null,
+    protocol: protocol?.hasProtocol ? protocol : null,
     hasFeedback: feel != null || rpe != null || !!protocol?.note || !!activity.Rating || !!activity.FeedbackComment,
   };
 }
@@ -270,7 +270,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!rating && feel == null && !protocol) {
+  if (!rating && feel == null && rpe == null && !protocol) {
     return NextResponse.json(
       { error: "Missing activityId or rating" },
       { status: 400 },
@@ -310,28 +310,35 @@ export async function POST(req: Request) {
   const apiKey = creds.intervalsApiKey;
 
   try {
+    const existing = await getWorkoutProtocol(email, activityId);
+    const trimmedComment =
+      typeof comment === "string" ? comment.trim() || null : undefined;
+
     if (protocol) {
       const protocolInput = protocol as unknown as WorkoutProtocolInput;
+      protocolInput.hasProtocol = true;
       if (feel != null && protocolInput.feel == null) protocolInput.feel = feel;
       if (rpe != null && protocolInput.rpe == null) protocolInput.rpe = rpe;
+      if (trimmedComment !== undefined) {
+        protocolInput.note = trimmedComment;
+      } else if (protocolInput.note === undefined && existing?.note) {
+        protocolInput.note = existing.note;
+      }
       await saveWorkoutProtocol(email, activityId, protocolInput);
-    } else if (feel != null || rpe != null) {
-      // Turso owns feel/rpe — persist a minimal protocol even without CamAPS data
-      const existing = await getWorkoutProtocol(email, activityId);
+    } else if (feel != null || rpe != null || trimmedComment !== undefined) {
       if (existing) {
         await saveWorkoutProtocol(email, activityId, {
           ...existing,
           feel: feel ?? existing.feel,
           rpe: rpe ?? existing.rpe,
+          note: trimmedComment !== undefined ? trimmedComment : existing.note,
         });
       } else {
         await saveWorkoutProtocol(email, activityId, {
-          beforeMode: "disconnected",
-          beforeTiming: ">2h",
-          duringSame: true,
+          hasProtocol: false,
           feel: feel ?? null,
           rpe: rpe ?? null,
-          note: comment?.trim() ?? null,
+          note: trimmedComment ?? null,
         });
       }
     }
@@ -339,9 +346,9 @@ export async function POST(req: Request) {
     const isMockQaActivity =
       process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
 
-    if (rating || comment != null) {
+    if (rating) {
       try {
-        await updateActivityFeedback(apiKey, activityId, rating, comment);
+        await updateActivityFeedback(apiKey, activityId, rating);
       } catch (err) {
         if (!isMockQaActivity) throw err;
       }

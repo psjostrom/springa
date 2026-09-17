@@ -229,7 +229,7 @@ export async function buildCompletedWorkoutOverview(options: {
       email,
       protocol?.preRunCarbsG,
     ),
-    protocol,
+    protocol: protocol?.hasProtocol ? protocol : null,
     feel: protocol?.feel ?? activity.feel ?? null,
     rpe: protocol?.rpe ?? activity.icu_rpe ?? activity.rpe ?? null,
   };
