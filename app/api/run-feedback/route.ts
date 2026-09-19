@@ -16,6 +16,7 @@ import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescription
 import { getPreRunCarbs } from "@/lib/prerunCarbs";
 import {
   getWorkoutProtocol,
+  getWorkoutProtocolsByEmail,
   saveWorkoutProtocol,
   type WorkoutProtocol,
   type WorkoutProtocolInput,
@@ -28,15 +29,16 @@ async function resolveMatchedPrescription(
 ) {
   try {
     const { event, eventId } = await findCompletedActivityMatch(apiKey, activity);
+    if (!event || !eventId) {
+      return { eventId: null, prescribedCarbsG: null };
+    }
     return {
       eventId,
-      prescribedCarbsG: event
-        ? calculateCanonicalPlannedPrescription(
-            event.description,
-            event.carbs_per_hour,
-            context,
-          )
-        : null,
+      prescribedCarbsG: calculateCanonicalPlannedPrescription(
+        event.description ?? "",
+        event.carbs_per_hour ?? null,
+        context,
+      ),
     };
   } catch (error) {
     console.error("Failed to resolve matched prescription:", activity.id, error);
@@ -44,7 +46,7 @@ async function resolveMatchedPrescription(
   }
 }
 
-/** Find the latest unrated Run activity from the last 2 days. */
+/** Find the latest unrated Run activity from the last 7 days. */
 async function findLatestUnratedRun(
   apiKey: string,
   email: string,
@@ -57,9 +59,16 @@ async function findLatestUnratedRun(
   const oldest = sevenDaysAgo.toISOString().slice(0, 10);
   const newest = tomorrow.toISOString().slice(0, 10);
 
-  const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
+  const [activities, protocolMap] = await Promise.all([
+    fetchActivitiesByDateRange(apiKey, oldest, newest),
+    getWorkoutProtocolsByEmail(email),
+  ]);
   const candidates = activities
-    .filter((a) => a.type === "Run" || a.type === "VirtualRun")
+    .filter(
+      (a) =>
+        (a.type === "Run" || a.type === "VirtualRun") &&
+        new Date(a.start_date).getTime() >= sevenDaysAgo.getTime(),
+    )
     .sort(
       (a, b) =>
         new Date(b.start_date_local ?? b.start_date).getTime() -
@@ -68,7 +77,7 @@ async function findLatestUnratedRun(
 
   for (const activity of candidates) {
     if (activity.Rating) continue;
-    const protocol = await getWorkoutProtocol(email, activity.id);
+    const protocol = protocolMap.get(activity.id) ?? null;
     if (protocol?.status === "rated" || protocol?.status === "skipped") continue;
     return { activity, protocol };
   }
@@ -76,7 +85,8 @@ async function findLatestUnratedRun(
 }
 
 function unsetIfZero(val?: number | null): number | null {
-  return val ?? null;
+  if (val == null || val === 0) return null;
+  return val;
 }
 
 interface PreRunCarbsFallback {
@@ -324,6 +334,17 @@ export async function POST(req: Request) {
   const apiKey = creds.intervalsApiKey;
 
   try {
+    const isMockQaActivity =
+      process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
+
+    if (carbsG != null) {
+      try {
+        await updateActivityCarbs(apiKey, activityId, carbsG);
+      } catch (err) {
+        if (!isMockQaActivity) throw err;
+      }
+    }
+
     const existing = await getWorkoutProtocol(email, activityId);
     const trimmedComment =
       typeof comment === "string" ? comment.trim() || null : undefined;
@@ -378,7 +399,14 @@ export async function POST(req: Request) {
       }
 
       await saveWorkoutProtocol(email, activityId, protocolInput);
-    } else if (feel != null || rpe != null || trimmedComment !== undefined || preRunCarbsG != null) {
+    } else if (
+      status === "rated" ||
+      rating != null ||
+      feel != null ||
+      rpe != null ||
+      trimmedComment !== undefined ||
+      preRunCarbsG != null
+    ) {
       if (existing) {
         await saveWorkoutProtocol(email, activityId, {
           ...existing,
@@ -399,17 +427,6 @@ export async function POST(req: Request) {
           note: trimmedComment ?? null,
           preRunCarbsG: preRunCarbsG ?? null,
         });
-      }
-    }
-
-    const isMockQaActivity =
-      process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
-
-    if (carbsG != null) {
-      try {
-        await updateActivityCarbs(apiKey, activityId, carbsG);
-      } catch (err) {
-        if (!isMockQaActivity) throw err;
       }
     }
 

@@ -50,23 +50,7 @@ export interface WorkoutProtocolInput {
   note?: string | null;
 }
 
-export async function getWorkoutProtocol(
-  email: string,
-  activityId: string,
-): Promise<WorkoutProtocol | null> {
-  const result = await db().execute({
-    sql: `SELECT
-      activity_id, category, has_protocol, status, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
-      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
-      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
-    FROM workout_protocols
-    WHERE email = ? AND activity_id = ?`,
-    args: [email, activityId],
-  });
-
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-
+function mapRowToProtocol(row: Record<string, unknown>): WorkoutProtocol {
   const parseNum = (val: unknown): number | null =>
     val != null && val !== "" && !Number.isNaN(Number(val)) ? Number(val) : null;
 
@@ -102,6 +86,45 @@ export async function getWorkoutProtocol(
   };
 }
 
+export async function getWorkoutProtocol(
+  email: string,
+  activityId: string,
+): Promise<WorkoutProtocol | null> {
+  const result = await db().execute({
+    sql: `SELECT
+      activity_id, category, has_protocol, status, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
+      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
+      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
+    FROM workout_protocols
+    WHERE email = ? AND activity_id = ?`,
+    args: [email, activityId],
+  });
+
+  if (result.rows.length === 0) return null;
+  return mapRowToProtocol(result.rows[0] as unknown as Record<string, unknown>);
+}
+
+export async function getWorkoutProtocolsByEmail(
+  email: string,
+): Promise<Map<string, WorkoutProtocol>> {
+  const result = await db().execute({
+    sql: `SELECT
+      activity_id, category, has_protocol, status, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
+      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
+      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
+    FROM workout_protocols
+    WHERE email = ?`,
+    args: [email],
+  });
+
+  const map = new Map<string, WorkoutProtocol>();
+  for (const row of result.rows) {
+    const protocol = mapRowToProtocol(row as unknown as Record<string, unknown>);
+    map.set(protocol.activityId, protocol);
+  }
+  return map;
+}
+
 export async function getLastWorkoutProtocols(
   email: string,
 ): Promise<Record<string, WorkoutProtocol>> {
@@ -116,37 +139,12 @@ export async function getLastWorkoutProtocols(
     args: [email],
   });
 
-  const parseNum = (val: unknown): number | null =>
-    val != null && val !== "" && !Number.isNaN(Number(val)) ? Number(val) : null;
-
   const byCategory: Record<string, WorkoutProtocol> = {};
 
   for (const row of result.rows) {
     const cat = typeof row.category === "string" ? row.category.toLowerCase() : null;
     if (!cat || cat in byCategory) continue;
-
-    byCategory[cat] = {
-      activityId: row.activity_id as string,
-      category: cat,
-      hasProtocol: true,
-      status: "rated",
-      beforeMode: row.before_mode && row.before_mode !== "none" ? (row.before_mode as CamAPSMode) : null,
-      beforeAutoSubmode: row.before_auto_submode != null ? (row.before_auto_submode as CamAPSAutoSubmode) : null,
-      beforeTargetBg: parseNum(row.before_target_bg),
-      beforeManualUh: parseNum(row.before_manual_uh),
-      beforeTiming: row.before_timing && row.before_timing !== "none" ? (row.before_timing as ProtocolTiming) : null,
-      duringSame: Boolean(row.during_same),
-      duringMode: row.during_mode != null ? (row.during_mode as CamAPSMode) : null,
-      duringAutoSubmode: row.during_auto_submode != null ? (row.during_auto_submode as CamAPSAutoSubmode) : null,
-      duringTargetBg: parseNum(row.during_target_bg),
-      duringManualUh: parseNum(row.during_manual_uh),
-      preRunCarbsG: parseNum(row.pre_run_carbs_g),
-      rescueCarbsG: parseNum(row.rescue_carbs_g),
-      feel: parseNum(row.feel),
-      rpe: parseNum(row.rpe),
-      note: typeof row.note === "string" && row.note.trim() ? row.note.trim() : null,
-      updatedAt: Number(row.updated_at),
-    };
+    byCategory[cat] = mapRowToProtocol(row as unknown as Record<string, unknown>);
   }
 
   return byCategory;
@@ -163,7 +161,7 @@ export async function saveWorkoutProtocol(
     Boolean(input.beforeMode && (input.beforeMode as string) !== "none");
   const beforeMode = hasProtocol && input.beforeMode ? input.beforeMode : null;
   const beforeTiming = hasProtocol && input.beforeTiming ? input.beforeTiming : null;
-  const duringSame = hasProtocol ? Boolean(input.duringSame) : true;
+  const duringSame = hasProtocol ? (input.duringSame ?? true) : true;
   const status: WorkoutFeedbackStatus = input.status ?? "rated";
   const category = input.category ?? null;
 

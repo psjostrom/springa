@@ -143,7 +143,7 @@ function FeedbackContent() {
     rating?: string;
     comment?: string;
     carbsG?: number;
-    preRunCarbsG?: number;
+    preRunCarbsG?: number | null;
   }
 
   const { trigger: submitFeedback, isMutating: submitting, error: submitMutationError } = useSWRMutation<
@@ -178,7 +178,7 @@ function FeedbackContent() {
       rating: formState.rating ?? undefined,
       comment: formState.comment || undefined,
       carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
-      preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
+      preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : null,
     }).then(() => {
       setFormState((s) => ({ ...s, submitted: true }));
     }).catch(() => {
@@ -309,6 +309,7 @@ function FeedbackContent() {
                   <button
                     key={val}
                     type="button"
+                    aria-label={formatFeel(val)}
                     aria-pressed={formState.feel === val}
                     onClick={() => { setFormState((s) => ({ ...s, feel: val })); }}
                     className={`flex-1 py-3 rounded-xl border-2 font-bold text-base transition ${

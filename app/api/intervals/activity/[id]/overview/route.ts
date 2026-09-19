@@ -82,7 +82,7 @@ export async function GET(
         fallbackEventId: null,
       },
       protocol,
-      lastProtocols: await getLastWorkoutProtocols(email),
+      lastProtocols: await getLastWorkoutProtocols(email).catch(() => ({})),
       feel: 4,
       rpe: 6,
     });
@@ -97,7 +97,7 @@ export async function GET(
       activityId: id,
       diabetesMode: settings.diabetesMode === true,
     });
-    const lastProtocols = await getLastWorkoutProtocols(email);
+    const lastProtocols = await getLastWorkoutProtocols(email).catch(() => ({}));
     return NextResponse.json({
       ...overview,
       lastProtocols,

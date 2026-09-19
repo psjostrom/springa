@@ -172,6 +172,39 @@ describe("/api/run-feedback", () => {
     });
   });
 
+  it("falls back to paired event pre-run carbs when activity.PreRunCarbsG is 0", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
+            VALUES (?, ?, ?, ?)`,
+      args: ["test@example.com", "303", 22, Date.now()],
+    });
+
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-zero-carbs",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 5000,
+          moving_time: 1800,
+          paired_event_id: 303,
+          PreRunCarbsG: 0,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-zero-carbs"),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(json.preRunCarbsG).toBe(22);
+  });
+
   it("returns null prescribedCarbsG when paired event description is unparseable", async () => {
     await holder.db.execute({
       sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
@@ -596,6 +629,27 @@ describe("/api/run-feedback", () => {
       activityId: "act-rating-note",
       hasProtocol: false,
       note: "Rating note only",
+    });
+  });
+
+  it("persists protocol row on rating-only submission without comment or feel", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rating-only",
+          rating: "good",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = await getWorkoutProtocol("test@example.com", "act-rating-only");
+    expect(saved).toMatchObject({
+      activityId: "act-rating-only",
+      hasProtocol: false,
+      status: "rated",
     });
   });
 

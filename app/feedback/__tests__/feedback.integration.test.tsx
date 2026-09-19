@@ -71,7 +71,7 @@ describe("Feedback page — prescribed carbs", () => {
     const carbsInput = screen.getByPlaceholderText("e.g. 40");
     expect(carbsInput).toHaveValue(41);
 
-    await user.click(screen.getByRole("button", { name: "4" }));
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
@@ -97,7 +97,7 @@ describe("Feedback page — prescribed carbs", () => {
     await user.type(carbsInput, "55");
 
     // Rate feel 4, save
-    await user.click(screen.getByRole("button", { name: "4" }));
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
@@ -132,7 +132,7 @@ describe("Feedback page — post-submit navigation", () => {
 
     expect(await screen.findByText("5.5 km")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "4" }));
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     const doneLink = await screen.findByRole("link", { name: /Done/ });
@@ -174,7 +174,7 @@ describe("Feedback page — post-submit navigation", () => {
     expect(screen.getByText("RPE 7/10")).toBeInTheDocument();
     expect(screen.getByText("How did it feel?")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "3" }));
+    await user.click(screen.getByRole("button", { name: "Normal" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {

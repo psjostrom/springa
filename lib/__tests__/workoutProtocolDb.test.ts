@@ -17,6 +17,7 @@ vi.mock("@libsql/client", async (importOriginal) => {
 import { SCHEMA_DDL } from "../db";
 import {
   getWorkoutProtocol,
+  getWorkoutProtocolsByEmail,
   saveWorkoutProtocol,
 } from "../workoutProtocolDb";
 
@@ -121,5 +122,27 @@ describe("workoutProtocolDb", () => {
     expect(protocol?.feel).toBe(5);
     expect(protocol?.rpe).toBe(8);
     expect(protocol?.note).toBe("Hard tempo");
+  });
+
+  it("defaults duringSame to true when omitted for protocol", async () => {
+    await saveWorkoutProtocol(EMAIL, ACTIVITY_1, {
+      beforeMode: "auto",
+      beforeTiming: "1-2h",
+      // duringSame omitted
+    });
+
+    const protocol = await getWorkoutProtocol(EMAIL, ACTIVITY_1);
+    expect(protocol).not.toBeNull();
+    expect(protocol?.duringSame).toBe(true);
+  });
+
+  it("retrieves all protocols for email via getWorkoutProtocolsByEmail", async () => {
+    await saveWorkoutProtocol(EMAIL, ACTIVITY_1, { feel: 3 });
+    await saveWorkoutProtocol(EMAIL, ACTIVITY_2, { feel: 4 });
+
+    const map = await getWorkoutProtocolsByEmail(EMAIL);
+    expect(map.size).toBe(2);
+    expect(map.get(ACTIVITY_1)?.feel).toBe(3);
+    expect(map.get(ACTIVITY_2)?.feel).toBe(4);
   });
 });

@@ -201,6 +201,7 @@ export function processActivities(
       prescribedCarbsG,
       carbsIngested,
       preRunCarbsG: nonZero(activity.PreRunCarbsG),
+      isRated: Boolean(nonEmpty(activity.Rating)),
       rating: nonEmpty(activity.Rating),
       feedbackComment: nonEmpty(activity.FeedbackComment),
       feel: activity.feel ?? null,
