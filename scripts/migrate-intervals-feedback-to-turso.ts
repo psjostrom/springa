@@ -247,8 +247,13 @@ async function main() {
 
   const allFailures: MigrationFailure[] = [];
   for (const row of users.rows) {
-    const userFailures = await migrateUser(row.email as string);
-    allFailures.push(...userFailures);
+    try {
+      const userFailures = await migrateUser(row.email as string);
+      allFailures.push(...userFailures);
+    } catch (err) {
+      console.error("Failed to migrate user:", err instanceof Error ? err.message : String(err));
+      allFailures.push({ activityId: "user-migration", error: err });
+    }
   }
 
   // Verification count
