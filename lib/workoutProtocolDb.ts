@@ -123,7 +123,7 @@ export async function getLastWorkoutProtocols(
 
   for (const row of result.rows) {
     const cat = typeof row.category === "string" ? row.category.toLowerCase() : null;
-    if (!cat || byCategory[cat]) continue;
+    if (!cat || cat in byCategory) continue;
 
     byCategory[cat] = {
       activityId: row.activity_id as string,
