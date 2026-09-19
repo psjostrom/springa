@@ -42,30 +42,10 @@ export async function GET(req: Request) {
       workoutContext,
     );
 
-    try {
-      const protocolMap = await getWorkoutProtocolsByEmail(email);
-      if (protocolMap.size > 0) {
-        for (const ev of data) {
-          if (ev.type === "completed" && ev.activityId) {
-            const p = protocolMap.get(ev.activityId);
-            if (p) {
-              ev.isRated = p.status === "skipped" || p.status === "rated";
-              if (p.feel != null) ev.feel = p.feel;
-              if (p.rpe != null) ev.rpe = p.rpe;
-              if (p.note) ev.feedbackComment = p.note;
-              if (p.preRunCarbsG != null) ev.preRunCarbsG = p.preRunCarbsG;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[calendar] Failed to overlay protocols from Turso:", e);
-    }
-
     if (process.env.NODE_ENV !== "production" && process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
-      const qaCompletedEvent = {
+      data.unshift({
         id: "completed-today-qa",
-        date: new Date().toISOString(),
+        date: new Date(),
         name: "Morning Easy Run",
         description: "Easy run with Garmin telemetry",
         type: "completed",
@@ -80,8 +60,28 @@ export async function GET(req: Request) {
         rpe: 6,
         rating: null,
         feedbackComment: null,
-      };
-      return NextResponse.json([qaCompletedEvent, ...data]);
+      });
+    }
+
+    try {
+      const protocolMap = await getWorkoutProtocolsByEmail(email);
+      if (protocolMap.size > 0) {
+        for (const ev of data) {
+          if (ev.type === "completed" && ev.activityId) {
+            const p = protocolMap.get(ev.activityId);
+            if (p) {
+              ev.isRated = p.status === "skipped" || p.status === "rated";
+              if (ev.isRated) ev.rating = p.status;
+              if (p.feel != null) ev.feel = p.feel;
+              if (p.rpe != null) ev.rpe = p.rpe;
+              if (p.note) ev.feedbackComment = p.note;
+              if (p.preRunCarbsG != null) ev.preRunCarbsG = p.preRunCarbsG;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[calendar] Failed to overlay protocols from Turso:", e);
     }
 
     return NextResponse.json(data);
