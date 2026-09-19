@@ -286,8 +286,8 @@ function FeedbackContent() {
         </div>
       ) : (
         <>
-          {/* Garmin receipt or 1-5 feel selector */}
-          {feedback?.feel != null || feedback?.rpe != null ? (
+          {/* Garmin receipt if Garmin recorded feel or RPE */}
+          {(feedback?.feel != null || feedback?.rpe != null) && (
             <div className="w-full max-w-sm p-4 bg-surface border border-border rounded-xl mb-6 text-center">
               <p className="text-xs text-brand uppercase tracking-wider font-semibold">Garmin Rating</p>
               <p className="text-base font-bold text-text mt-1">
@@ -296,7 +296,10 @@ function FeedbackContent() {
                 {feedback.rpe != null ? `RPE ${feedback.rpe}/10` : ""}
               </p>
             </div>
-          ) : (
+          )}
+
+          {/* 1-5 feel selector if no feel from Garmin */}
+          {feedback?.feel == null && (
             <fieldset className="w-full max-w-sm mb-6 border-0 p-0 m-0">
               <legend className="block text-xs text-muted uppercase tracking-wider font-semibold text-center mb-3 w-full">
                 How did it feel?

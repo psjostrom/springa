@@ -58,5 +58,8 @@ describe("useUnratedRun", () => {
 
     const withIsRated = makeCompletedRun({ isRated: true });
     expect(useUnratedRun([withIsRated])).toBeNull();
+
+    const withFeedbackComment = makeCompletedRun({ feedbackComment: "Tough run" });
+    expect(useUnratedRun([withFeedbackComment])).toBeNull();
   });
 });

@@ -640,6 +640,128 @@ describe("/api/run-feedback", () => {
     });
   });
 
+  it("preserves existing protocol data, category, preRunCarbsG, and hasProtocol when marked skipped", async () => {
+    // 1. Initial structured protocol submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-skip-preserve",
+          category: "easy",
+          preRunCarbsG: 20,
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+          },
+        }),
+      }),
+    );
+
+    // 2. Mark skipped
+    const skipRes = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-skip-preserve",
+          status: "skipped",
+        }),
+      }),
+    );
+    expect(skipRes.status).toBe(200);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-skip-preserve");
+    expect(saved).toMatchObject({
+      activityId: "act-skip-preserve",
+      hasProtocol: true,
+      status: "skipped",
+      category: "easy",
+      beforeMode: "auto",
+      beforeTiming: "1-2h",
+      preRunCarbsG: 20,
+      feel: null,
+      rpe: null,
+    });
+  });
+
+  it("merges existing protocol fields and retains explicit null category and preRunCarbsG on structured update", async () => {
+    // 1. Initial structured protocol submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          category: "long",
+          preRunCarbsG: 30,
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+            note: "Existing note",
+          },
+        }),
+      }),
+    );
+
+    // 2. Subsequent structured update: omit category and preRunCarbsG
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          protocol: {
+            beforeMode: "manual",
+            beforeTiming: "<30m",
+            duringSame: false,
+          },
+        }),
+      }),
+    );
+
+    let saved = await getWorkoutProtocol("test@example.com", "act-struct-merge");
+    expect(saved).toMatchObject({
+      activityId: "act-struct-merge",
+      hasProtocol: true,
+      category: "long",
+      preRunCarbsG: 30,
+      beforeMode: "manual",
+      beforeTiming: "<30m",
+      duringSame: false,
+      note: "Existing note",
+    });
+
+    // 3. Explicit null for category and preRunCarbsG
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          category: null,
+          preRunCarbsG: null,
+          protocol: {
+            beforeMode: "manual",
+            beforeTiming: "<30m",
+            duringSame: false,
+          },
+        }),
+      }),
+    );
+
+    saved = await getWorkoutProtocol("test@example.com", "act-struct-merge");
+    expect(saved).toMatchObject({
+      activityId: "act-struct-merge",
+      category: null,
+      preRunCarbsG: null,
+    });
+  });
+
   it("finds latest unrated run and includes its Turso protocol in the response", async () => {
     const today = new Date().toISOString().slice(0, 10);
     server.use(

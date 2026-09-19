@@ -159,4 +159,29 @@ describe("Feedback page — post-submit navigation", () => {
     const adaptLink = screen.getByRole("link", { name: /Adapt upcoming/ });
     expect(adaptLink).toHaveAttribute("href", "/?tab=planner&adapt=true");
   });
+
+  it("renders feel selector alongside RPE receipt when Garmin provides RPE but no feel", async () => {
+    installFeedbackHandlers({ feel: null, rpe: 7 } as unknown as Partial<typeof feedbackResponse>);
+    const user = userEvent.setup();
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
+
+    render(<FeedbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("5.5 km")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("RPE 7/10")).toBeInTheDocument();
+    expect(screen.getByText("How did it feel?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "3" }));
+    await user.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => {
+      expect(capturedPostBody).not.toBeNull();
+    });
+
+    expect(capturedPostBody!.feel).toBe(3);
+    expect(capturedPostBody!.rpe).toBe(7);
+  });
 });

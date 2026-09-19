@@ -236,7 +236,7 @@ export async function POST(req: Request) {
     rpe?: number;
     comment?: string;
     carbsG?: number;
-    preRunCarbsG?: number;
+    preRunCarbsG?: number | null;
     category?: string | null;
     protocol?: Record<string, unknown>;
   };
@@ -330,40 +330,64 @@ export async function POST(req: Request) {
 
     if (isSkipped) {
       await saveWorkoutProtocol(email, activityId, {
-        hasProtocol: false,
+        ...(existing ?? {}),
+        category: category !== undefined ? category : (existing?.category ?? null),
+        hasProtocol: existing?.hasProtocol ?? false,
         status: "skipped",
         feel: null,
         rpe: null,
-        note: trimmedComment ?? existing?.note ?? null,
+        note: trimmedComment !== undefined ? trimmedComment : (existing?.note ?? null),
+        preRunCarbsG: preRunCarbsG !== undefined ? preRunCarbsG : (existing?.preRunCarbsG ?? null),
       });
       return NextResponse.json({ ok: true });
     }
 
     if (protocol) {
-      const protocolInput = protocol as unknown as WorkoutProtocolInput;
-      protocolInput.hasProtocol = true;
-      protocolInput.status = "rated";
-      if (category != null) protocolInput.category = category;
-      protocolInput.feel = feel ?? protocolInput.feel ?? existing?.feel ?? null;
-      protocolInput.rpe = rpe ?? protocolInput.rpe ?? existing?.rpe ?? null;
-      if (preRunCarbsG != null) protocolInput.preRunCarbsG = preRunCarbsG;
+      const incomingProtocol = protocol as unknown as WorkoutProtocolInput;
+      const protocolInput: WorkoutProtocolInput = {
+        ...(existing ?? {}),
+        ...incomingProtocol,
+        hasProtocol: true,
+        status: "rated",
+        feel: feel ?? incomingProtocol.feel ?? existing?.feel ?? null,
+        rpe: rpe ?? incomingProtocol.rpe ?? existing?.rpe ?? null,
+      };
+
+      if (category !== undefined) {
+        protocolInput.category = category;
+      } else if (incomingProtocol.category !== undefined) {
+        protocolInput.category = incomingProtocol.category;
+      } else {
+        protocolInput.category = existing?.category ?? null;
+      }
+
+      if (preRunCarbsG !== undefined) {
+        protocolInput.preRunCarbsG = preRunCarbsG;
+      } else if (incomingProtocol.preRunCarbsG !== undefined) {
+        protocolInput.preRunCarbsG = incomingProtocol.preRunCarbsG;
+      } else {
+        protocolInput.preRunCarbsG = existing?.preRunCarbsG ?? null;
+      }
 
       if (trimmedComment !== undefined) {
         protocolInput.note = trimmedComment;
-      } else if (protocolInput.note === undefined && existing?.note) {
-        protocolInput.note = existing.note;
+      } else if (incomingProtocol.note !== undefined) {
+        protocolInput.note = incomingProtocol.note;
+      } else {
+        protocolInput.note = existing?.note ?? null;
       }
+
       await saveWorkoutProtocol(email, activityId, protocolInput);
     } else if (feel != null || rpe != null || trimmedComment !== undefined || preRunCarbsG != null) {
       if (existing) {
         await saveWorkoutProtocol(email, activityId, {
           ...existing,
-          category: category ?? existing.category ?? null,
+          category: category !== undefined ? category : (existing.category ?? null),
           status: "rated",
           feel: feel ?? existing.feel,
           rpe: rpe ?? existing.rpe,
           note: trimmedComment !== undefined ? trimmedComment : existing.note,
-          preRunCarbsG: preRunCarbsG ?? existing.preRunCarbsG,
+          preRunCarbsG: preRunCarbsG !== undefined ? preRunCarbsG : existing.preRunCarbsG,
         });
       } else {
         await saveWorkoutProtocol(email, activityId, {
