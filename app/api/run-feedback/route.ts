@@ -237,6 +237,7 @@ export async function POST(req: Request) {
     comment?: string;
     carbsG?: number;
     preRunCarbsG?: number;
+    category?: string | null;
     protocol?: Record<string, unknown>;
   };
 
@@ -249,7 +250,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { activityId, status, rating, feel, rpe, comment, carbsG, preRunCarbsG, protocol } = body;
+  const { activityId, status, rating, feel, rpe, comment, carbsG, preRunCarbsG, category, protocol } = body;
 
   if (typeof activityId !== "string" || !activityId) {
     return NextResponse.json(
@@ -342,6 +343,7 @@ export async function POST(req: Request) {
       const protocolInput = protocol as unknown as WorkoutProtocolInput;
       protocolInput.hasProtocol = true;
       protocolInput.status = "rated";
+      if (category != null) protocolInput.category = category;
       protocolInput.feel = feel ?? protocolInput.feel ?? existing?.feel ?? null;
       protocolInput.rpe = rpe ?? protocolInput.rpe ?? existing?.rpe ?? null;
       if (preRunCarbsG != null) protocolInput.preRunCarbsG = preRunCarbsG;
@@ -356,6 +358,7 @@ export async function POST(req: Request) {
       if (existing) {
         await saveWorkoutProtocol(email, activityId, {
           ...existing,
+          category: category ?? existing.category ?? null,
           status: "rated",
           feel: feel ?? existing.feel,
           rpe: rpe ?? existing.rpe,
@@ -364,6 +367,7 @@ export async function POST(req: Request) {
         });
       } else {
         await saveWorkoutProtocol(email, activityId, {
+          category: category ?? null,
           hasProtocol: false,
           status: "rated",
           feel: feel ?? null,

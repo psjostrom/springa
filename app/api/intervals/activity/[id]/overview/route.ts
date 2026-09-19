@@ -4,7 +4,7 @@ import { buildCompletedWorkoutOverview } from "@/lib/completedOverview";
 import { getUserCredentials } from "@/lib/credentials";
 import { IntervalsApiError } from "@/lib/intervalsApi";
 import { getUserSettings } from "@/lib/settings";
-import { getWorkoutProtocol } from "@/lib/workoutProtocolDb";
+import { getLastWorkoutProtocols, getWorkoutProtocol } from "@/lib/workoutProtocolDb";
 
 const ACTIVITY_ID_PATTERN = /^[a-zA-Z0-9_:-]+$/;
 
@@ -82,6 +82,7 @@ export async function GET(
         fallbackEventId: null,
       },
       protocol,
+      lastProtocols: await getLastWorkoutProtocols(email),
       feel: 4,
       rpe: 6,
     });
@@ -96,7 +97,11 @@ export async function GET(
       activityId: id,
       diabetesMode: settings.diabetesMode === true,
     });
-    return NextResponse.json(overview);
+    const lastProtocols = await getLastWorkoutProtocols(email);
+    return NextResponse.json({
+      ...overview,
+      lastProtocols,
+    });
   } catch (err) {
     console.error("[intervals/activity/overview]", err);
     if (err instanceof IntervalsApiError) {

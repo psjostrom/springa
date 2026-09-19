@@ -189,6 +189,7 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
     expect(Object.keys(json).sort()).toEqual([
       "activityId",
       "feel",
+      "lastProtocols",
       "preRunCarbs",
       "protocol",
       "reportCard",
