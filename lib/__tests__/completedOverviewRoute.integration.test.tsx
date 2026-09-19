@@ -34,6 +34,7 @@ vi.mock("@/lib/auth", () => ({
 import { GET } from "@/app/api/intervals/activity/[id]/overview/route";
 import { server } from "./msw/server";
 import { SCHEMA_DDL } from "../db";
+import { saveWorkoutProtocol } from "@/lib/workoutProtocolDb";
 
 // --- Fixtures ---
 
@@ -171,6 +172,7 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
 
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM prerun_carbs");
+    await holder.db.execute("DELETE FROM workout_protocols");
     await holder.db.execute("DELETE FROM user_settings");
     await insertCreds({ diabetesMode: true });
   });
@@ -186,8 +188,12 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
     const json = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(json).sort()).toEqual([
       "activityId",
+      "feel",
+      "lastProtocols",
       "preRunCarbs",
+      "protocol",
       "reportCard",
+      "rpe",
       "splits",
     ]);
 
@@ -231,6 +237,9 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
       source: "activity",
       fallbackEventId: null,
     });
+    expect(json.protocol).toBeNull();
+    expect(json.feel).toBeNull();
+    expect(json.rpe).toBeNull();
 
     // No raw stream arrays or CGM readings in the response body.
     const serialized = JSON.stringify(json);
@@ -238,6 +247,46 @@ describe("GET /api/intervals/activity/[id]/overview", () => {
     expect(serialized).not.toContain("glucose");
     expect(serialized).not.toContain("rawTime");
     expect(serialized).not.toContain("velocity_smooth");
+  });
+
+  it("returns Garmin feel, rpe, and Turso workout protocol when present", async () => {
+    await insertCreds({ diabetesMode: false });
+    stubActivity(richActivity({ feel: 4, icu_rpe: 7 }));
+    stubStreams([]);
+
+    await saveWorkoutProtocol("test@example.com", "act-rich", {
+      beforeMode: "auto",
+      beforeAutoSubmode: "ease_off",
+      beforeTargetBg: 9.0,
+      beforeTiming: ">2h",
+      duringSame: true,
+      preRunCarbsG: 20,
+      rescueCarbsG: 10,
+      note: "Sunny trail run",
+    });
+
+    const res = await overviewRequest("act-rich");
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.feel).toBe(4);
+    expect(json.rpe).toBe(7);
+    expect(json.protocol).toMatchObject({
+      activityId: "act-rich",
+      beforeMode: "auto",
+      beforeAutoSubmode: "ease_off",
+      beforeTargetBg: 9.0,
+      beforeTiming: ">2h",
+      duringSame: true,
+      preRunCarbsG: 20,
+      rescueCarbsG: 10,
+      note: "Sunny trail run",
+    });
+    expect(json.preRunCarbs).toEqual({
+      grams: 20,
+      source: "activity",
+      fallbackEventId: null,
+    });
   });
 
   it("uses exact sample timestamps for split HR and elevation", async () => {

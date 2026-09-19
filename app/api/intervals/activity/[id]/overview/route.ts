@@ -4,6 +4,7 @@ import { buildCompletedWorkoutOverview } from "@/lib/completedOverview";
 import { getUserCredentials } from "@/lib/credentials";
 import { IntervalsApiError } from "@/lib/intervalsApi";
 import { getUserSettings } from "@/lib/settings";
+import { getLastWorkoutProtocols, getWorkoutProtocol } from "@/lib/workoutProtocolDb";
 
 const ACTIVITY_ID_PATTERN = /^[a-zA-Z0-9_:-]+$/;
 
@@ -32,6 +33,61 @@ export async function GET(
     return NextResponse.json({ error: "Invalid activity ID" }, { status: 400 });
   }
 
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.QA_AUTH_EMAIL &&
+    email === process.env.QA_AUTH_EMAIL &&
+    id === "qa-act-today"
+  ) {
+    const protocol = await getWorkoutProtocol(email, "qa-act-today");
+    return NextResponse.json({
+      activityId: "qa-act-today",
+      reportCard: {
+        bg: {
+          rating: "good",
+          startBG: 7.2,
+          minBG: 5.4,
+          hypo: false,
+          worstRate: -0.4,
+          lbgi: 1.1,
+        },
+        hrZone: {
+          rating: "good",
+          targetZone: "z2",
+          pctInTarget: 82,
+          expectedRepSec: 180,
+        },
+        entryTrend: {
+          rating: "good",
+          slope30m: 0.2,
+          stability: 1.5,
+          label: "Stable",
+        },
+        recovery: {
+          rating: "good",
+          drop30m: -0.5,
+          nadir: 5.8,
+          postHypo: false,
+          label: "Smooth",
+        },
+      },
+      splits: [
+        { km: 1, paceMinPerKm: 5.4, avgHr: 138, elevationChangeM: 2 },
+        { km: 2, paceMinPerKm: 5.3, avgHr: 142, elevationChangeM: -1 },
+        { km: 3, paceMinPerKm: 5.35, avgHr: 145, elevationChangeM: 4 },
+      ],
+      preRunCarbs: {
+        grams: 20,
+        source: "activity",
+        fallbackEventId: null,
+      },
+      protocol,
+      lastProtocols: await getLastWorkoutProtocols(email).catch(() => ({})),
+      feel: 4,
+      rpe: 6,
+    });
+  }
+
   const settings = await getUserSettings(email);
 
   try {
@@ -41,7 +97,11 @@ export async function GET(
       activityId: id,
       diabetesMode: settings.diabetesMode === true,
     });
-    return NextResponse.json(overview);
+    const lastProtocols = await getLastWorkoutProtocols(email).catch(() => ({}));
+    return NextResponse.json({
+      ...overview,
+      lastProtocols,
+    });
   } catch (err) {
     console.error("[intervals/activity/overview]", err);
     if (err instanceof IntervalsApiError) {

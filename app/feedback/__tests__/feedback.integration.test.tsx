@@ -71,7 +71,7 @@ describe("Feedback page — prescribed carbs", () => {
     const carbsInput = screen.getByPlaceholderText("e.g. 40");
     expect(carbsInput).toHaveValue(41);
 
-    await user.click(screen.getByText("\uD83D\uDC4D"));
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
@@ -79,6 +79,7 @@ describe("Feedback page — prescribed carbs", () => {
     });
 
     expect(capturedPostBody!.carbsG).toBe(41);
+    expect(capturedPostBody!.feel).toBe(4);
   });
 
   it("submits user-entered carbs instead of prescribed", async () => {
@@ -95,8 +96,8 @@ describe("Feedback page — prescribed carbs", () => {
     const carbsInput = screen.getByPlaceholderText("e.g. 40");
     await user.type(carbsInput, "55");
 
-    // Rate good, save
-    await user.click(screen.getByText("\uD83D\uDC4D"));
+    // Rate feel 4, save
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
@@ -104,6 +105,7 @@ describe("Feedback page — prescribed carbs", () => {
     });
 
     expect(capturedPostBody!.carbsG).toBe(55);
+    expect(capturedPostBody!.feel).toBe(4);
   });
 
   it("shows default placeholder when no prescribed carbs", async () => {
@@ -130,7 +132,7 @@ describe("Feedback page — post-submit navigation", () => {
 
     expect(await screen.findByText("5.5 km")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Rate good" }));
+    await user.click(screen.getByRole("button", { name: "Weak" }));
     await user.click(screen.getByRole("button", { name: /Save/ }));
 
     const doneLink = await screen.findByRole("link", { name: /Done/ });
@@ -156,5 +158,30 @@ describe("Feedback page — post-submit navigation", () => {
 
     const adaptLink = screen.getByRole("link", { name: /Adapt upcoming/ });
     expect(adaptLink).toHaveAttribute("href", "/?tab=planner&adapt=true");
+  });
+
+  it("renders feel selector alongside RPE receipt when Garmin provides RPE but no feel", async () => {
+    installFeedbackHandlers({ feel: null, rpe: 7 } as unknown as Partial<typeof feedbackResponse>);
+    const user = userEvent.setup();
+    searchParamsState.current = new URLSearchParams("activityId=i12345");
+
+    render(<FeedbackPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("5.5 km")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("RPE 7/10")).toBeInTheDocument();
+    expect(screen.getByText("How did it feel?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Normal" }));
+    await user.click(screen.getByRole("button", { name: /Save/ }));
+
+    await waitFor(() => {
+      expect(capturedPostBody).not.toBeNull();
+    });
+
+    expect(capturedPostBody!.feel).toBe(3);
+    expect(capturedPostBody!.rpe).toBe(7);
   });
 });

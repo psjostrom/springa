@@ -37,6 +37,7 @@ vi.mock("@/lib/auth", () => ({
 import { GET, POST } from "@/app/api/run-feedback/route";
 import { server } from "./msw/server";
 import { SCHEMA_DDL } from "../db";
+import { getWorkoutProtocol } from "@/lib/workoutProtocolDb";
 
 async function insertIntervalsCreds() {
   // current_ability_dist + current_ability_secs give the user a thresholdPace,
@@ -76,6 +77,7 @@ describe("/api/run-feedback", () => {
   beforeEach(async () => {
     await holder.db.execute("DELETE FROM prerun_carbs");
     await holder.db.execute("DELETE FROM activity_streams");
+    await holder.db.execute("DELETE FROM workout_protocols");
     await holder.db.execute("DELETE FROM user_settings");
     await insertIntervalsCreds();
   });
@@ -130,6 +132,77 @@ describe("/api/run-feedback", () => {
       distance: 8100,
       avgHr: 142,
     });
+  });
+
+  it("populates protocol note and preRunCarbsG from Turso when activity has protocol", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO workout_protocols (
+        email, activity_id, before_mode, before_timing, during_same, pre_run_carbs_g, note, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ["test@example.com", "act-proto", "auto", "1-2h", 1, 35, "Turso protocol note", Date.now()],
+    });
+
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-proto",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 8100,
+          moving_time: 3000,
+          average_hr: 140,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => {
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-proto"),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      activityId: "act-proto",
+      comment: "Turso protocol note",
+      preRunCarbsG: 35,
+    });
+  });
+
+  it("falls back to paired event pre-run carbs when activity.PreRunCarbsG is 0", async () => {
+    await holder.db.execute({
+      sql: `INSERT INTO prerun_carbs (email, event_id, carbs_g, created_at)
+            VALUES (?, ?, ?, ?)`,
+      args: ["test@example.com", "303", 22, Date.now()],
+    });
+
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-zero-carbs",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 5000,
+          moving_time: 1800,
+          paired_event_id: 303,
+          PreRunCarbsG: 0,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    const res = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-zero-carbs"),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(json.preRunCarbsG).toBe(22);
   });
 
   it("returns null prescribedCarbsG when paired event description is unparseable", async () => {
@@ -319,19 +392,22 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(capturedActivityPutPayloads).toEqual([
-      {
-        activityId: "act-1",
-        body: { Rating: "good", FeedbackComment: "solid run" },
-      },
       { activityId: "act-1", body: { carbs_ingested: 30 } },
-      { activityId: "act-1", body: { PreRunCarbsG: 15 } },
     ]);
+    const saved = await getWorkoutProtocol("test@example.com", "act-1");
+    expect(saved).toMatchObject({
+      activityId: "act-1",
+      hasProtocol: false,
+      status: "rated",
+      preRunCarbsG: 15,
+      note: "solid run",
+    });
   });
 
   it("returns a JSON error when Intervals rejects the write", async () => {
     server.use(
       http.put(`${API_BASE}/activity/:activityId`, () =>
-        HttpResponse.json({ error: "Unknown custom field" }, { status: 422 }),
+        HttpResponse.json({ error: "Rate limit exceeded" }, { status: 422 }),
       ),
     );
 
@@ -339,13 +415,444 @@ describe("/api/run-feedback", () => {
       new Request("http://localhost/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId: "act-1", rating: "good" }),
+        body: JSON.stringify({ activityId: "act-1", carbsG: 30 }),
       }),
     );
 
     expect(res.status).toBe(502);
     await expect(res.json()).resolves.toMatchObject({
-      error: expect.stringContaining("Failed to update activity feedback"),
+      error: expect.stringContaining("Failed to update activity carbs"),
+    });
+  });
+
+  it("saves a structured CamAPS protocol to Turso without writing to Intervals custom fields", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-camaps-1",
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTargetBg: 8.5,
+            beforeTiming: "1-2h",
+            duringSame: true,
+            preRunCarbsG: 15,
+            rescueCarbsG: 0,
+            note: "Warm humid evening",
+          },
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+
+    expect(capturedActivityPutPayloads).toEqual([]);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-camaps-1");
+    expect(saved).toMatchObject({
+      activityId: "act-camaps-1",
+      beforeMode: "auto",
+      beforeAutoSubmode: "ease_off",
+      beforeTargetBg: 8.5,
+      beforeTiming: "1-2h",
+      duringSame: true,
+      preRunCarbsG: 15,
+      rescueCarbsG: 0,
+      note: "Warm humid evening",
+    });
+  });
+
+  it("persists feel-only POST to Turso without writing feel to Intervals", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-only",
+          feel: 3,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+
+    // No Intervals PUT — feel is Turso-only
+    expect(capturedActivityPutPayloads).toEqual([]);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-feel-only");
+    expect(saved).toMatchObject({
+      activityId: "act-feel-only",
+      feel: 3,
+    });
+  });
+
+  it("rejects feel outside 1-5 range", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-1",
+          feel: 7,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: "feel must be an integer from 1 to 5",
+    });
+  });
+
+  it("rejects rpe outside 1-10 range", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-1",
+          feel: 3,
+          rpe: 15,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      error: "rpe must be an integer from 1 to 10",
+    });
+  });
+
+  it("accepts RPE-only POST and suppresses protocol in GET response", async () => {
+    server.use(
+      http.get(`${API_BASE}/activity/:activityId`, () => {
+        return HttpResponse.json({
+          id: "act-rpe-only",
+          start_date: "2026-05-02T16:10:00Z",
+          start_date_local: "2026-05-02T18:10:00",
+          name: "W12 Easy",
+          type: "Run",
+          distance: 5000,
+          moving_time: 1800,
+        });
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    const postRes = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rpe-only",
+          rpe: 7,
+        }),
+      }),
+    );
+
+    expect(postRes.status).toBe(200);
+    await expect(postRes.json()).resolves.toEqual({ ok: true });
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-rpe-only");
+    expect(saved).toMatchObject({
+      activityId: "act-rpe-only",
+      hasProtocol: false,
+      beforeMode: null,
+      beforeTiming: null,
+      rpe: 7,
+    });
+
+    const getRes = await GET(
+      new Request("http://localhost/api/run-feedback?activityId=act-rpe-only"),
+    );
+    expect(getRes.status).toBe(200);
+    await expect(getRes.json()).resolves.toMatchObject({
+      activityId: "act-rpe-only",
+      rpe: 7,
+      protocol: null,
+      hasFeedback: true,
+    });
+  });
+
+  it("preserves existing note when comment is absent in subsequent update", async () => {
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-note-preserve",
+          feel: 4,
+          comment: "Initial great note",
+        }),
+      }),
+    );
+
+    // Update feel without sending comment
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-note-preserve",
+          feel: 5,
+        }),
+      }),
+    );
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-note-preserve");
+    expect(saved).toMatchObject({
+      feel: 5,
+      note: "Initial great note",
+    });
+  });
+
+  it("updates note in Turso on rating-only submission with comment", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rating-note",
+          rating: "good",
+          comment: "Rating note only",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = await getWorkoutProtocol("test@example.com", "act-rating-note");
+    expect(saved).toMatchObject({
+      activityId: "act-rating-note",
+      hasProtocol: false,
+      note: "Rating note only",
+    });
+  });
+
+  it("persists protocol row on rating-only submission without comment or feel", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-rating-only",
+          rating: "good",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const saved = await getWorkoutProtocol("test@example.com", "act-rating-only");
+    expect(saved).toMatchObject({
+      activityId: "act-rating-only",
+      hasProtocol: false,
+      status: "rated",
+    });
+  });
+
+  it("preserves existing feel and rpe when omitted in protocol update", async () => {
+    // 1. Initial feel and rpe submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-rpe-preserve",
+          feel: 4,
+          rpe: 6,
+        }),
+      }),
+    );
+
+    // 2. Submit protocol update omitting feel and rpe
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-feel-rpe-preserve",
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+          },
+        }),
+      }),
+    );
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-feel-rpe-preserve");
+    expect(saved).toMatchObject({
+      activityId: "act-feel-rpe-preserve",
+      hasProtocol: true,
+      beforeMode: "auto",
+      feel: 4,
+      rpe: 6,
+    });
+  });
+
+  it("preserves existing protocol data, category, preRunCarbsG, and hasProtocol when marked skipped", async () => {
+    // 1. Initial structured protocol submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-skip-preserve",
+          category: "easy",
+          preRunCarbsG: 20,
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+          },
+        }),
+      }),
+    );
+
+    // 2. Mark skipped
+    const skipRes = await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-skip-preserve",
+          status: "skipped",
+        }),
+      }),
+    );
+    expect(skipRes.status).toBe(200);
+
+    const saved = await getWorkoutProtocol("test@example.com", "act-skip-preserve");
+    expect(saved).toMatchObject({
+      activityId: "act-skip-preserve",
+      hasProtocol: true,
+      status: "skipped",
+      category: "easy",
+      beforeMode: "auto",
+      beforeTiming: "1-2h",
+      preRunCarbsG: 20,
+      feel: null,
+      rpe: null,
+    });
+  });
+
+  it("merges existing protocol fields and retains explicit null category and preRunCarbsG on structured update", async () => {
+    // 1. Initial structured protocol submission
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          category: "long",
+          preRunCarbsG: 30,
+          protocol: {
+            beforeMode: "auto",
+            beforeAutoSubmode: "ease_off",
+            beforeTiming: "1-2h",
+            duringSame: true,
+            note: "Existing note",
+          },
+        }),
+      }),
+    );
+
+    // 2. Subsequent structured update: omit category and preRunCarbsG
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          protocol: {
+            beforeMode: "manual",
+            beforeTiming: "<30m",
+            duringSame: false,
+          },
+        }),
+      }),
+    );
+
+    let saved = await getWorkoutProtocol("test@example.com", "act-struct-merge");
+    expect(saved).toMatchObject({
+      activityId: "act-struct-merge",
+      hasProtocol: true,
+      category: "long",
+      preRunCarbsG: 30,
+      beforeMode: "manual",
+      beforeTiming: "<30m",
+      duringSame: false,
+      note: "Existing note",
+    });
+
+    // 3. Explicit null for category and preRunCarbsG
+    await POST(
+      new Request("http://localhost/api/run-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: "act-struct-merge",
+          category: null,
+          preRunCarbsG: null,
+          protocol: {
+            beforeMode: "manual",
+            beforeTiming: "<30m",
+            duringSame: false,
+          },
+        }),
+      }),
+    );
+
+    saved = await getWorkoutProtocol("test@example.com", "act-struct-merge");
+    expect(saved).toMatchObject({
+      activityId: "act-struct-merge",
+      category: null,
+      preRunCarbsG: null,
+    });
+  });
+
+  it("finds latest unrated run and includes its Turso protocol in the response", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    server.use(
+      http.get(`${API_BASE}/athlete/0/activities`, () => {
+        return HttpResponse.json([
+          {
+            id: "act-unrated-latest",
+            start_date: `${today}T10:00:00Z`,
+            start_date_local: `${today}T12:00:00`,
+            name: "Morning Run",
+            type: "Run",
+            distance: 6000,
+            moving_time: 1800,
+          },
+        ]);
+      }),
+      http.get(`${API_BASE}/athlete/0/events`, () => HttpResponse.json([])),
+    );
+
+    await holder.db.execute({
+      sql: `INSERT INTO workout_protocols (
+        email, activity_id, has_protocol, before_mode, before_timing, pre_run_carbs_g, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ["test@example.com", "act-unrated-latest", 1, "auto", "1-2h", 25, Date.now()],
+    });
+
+    const res = await GET(new Request("http://localhost/api/run-feedback"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Record<string, unknown>;
+
+    expect(json.activityId).toBe("act-unrated-latest");
+    expect(json.preRunCarbsG).toBe(25);
+    expect(json.protocol).toMatchObject({
+      activityId: "act-unrated-latest",
+      beforeMode: "auto",
+      beforeTiming: "1-2h",
+      preRunCarbsG: 25,
     });
   });
 });

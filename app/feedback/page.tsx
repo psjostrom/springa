@@ -17,6 +17,9 @@ interface FeedbackResponse {
   activityId: string;
   prescribedCarbsG?: number | null;
   preRunCarbsG?: number | null;
+  feel?: number | null;
+  rpe?: number | null;
+  hasFeedback?: boolean;
 }
 
 interface FetchResult {
@@ -35,6 +38,23 @@ async function fetchFeedback(url: string): Promise<FetchResult> {
   }
   const data = (await res.json()) as FeedbackResponse;
   return { data, waitingForSync: false };
+}
+
+function formatFeel(feel: number): string {
+  switch (feel) {
+    case 1:
+      return "Very Strong";
+    case 2:
+      return "Strong";
+    case 3:
+      return "Normal";
+    case 4:
+      return "Weak";
+    case 5:
+      return "Very Weak";
+    default:
+      return `${feel}/5`;
+  }
 }
 
 function formatDuration(ms: number): string {
@@ -70,6 +90,7 @@ function FeedbackContent() {
 
   // Form state — initialized from SWR data via onSuccess callback
   const [formState, setFormState] = useState<{
+    feel: number | null;
     rating: string | null;
     comment: string;
     carbsG: string;
@@ -78,6 +99,7 @@ function FeedbackContent() {
     activityId: string | null;
     submitted: boolean;
   }>({
+    feel: null,
     rating: null,
     comment: "",
     carbsG: "",
@@ -97,13 +119,14 @@ function FeedbackContent() {
         const data = fetchResult.data;
         if (!data) return;
         setFormState({
+          feel: data.feel ?? null,
           rating: data.rating,
           comment: data.comment ?? "",
           carbsG: data.carbsG != null ? String(data.carbsG) : "",
           preRunCarbsG: data.preRunCarbsG != null ? String(data.preRunCarbsG) : "",
           prescribedCarbsG: data.prescribedCarbsG ?? null,
           activityId: data.activityId,
-          submitted: !!data.rating,
+          submitted: Boolean(data.hasFeedback),
         });
       },
     },
@@ -114,10 +137,13 @@ function FeedbackContent() {
 
   interface FeedbackSubmission {
     activityId: string;
-    rating: string;
+    status?: "rated" | "skipped";
+    feel?: number | null;
+    rpe?: number | null;
+    rating?: string;
     comment?: string;
     carbsG?: number;
-    preRunCarbsG?: number;
+    preRunCarbsG?: number | null;
   }
 
   const { trigger: submitFeedback, isMutating: submitting, error: submitMutationError } = useSWRMutation<
@@ -140,13 +166,19 @@ function FeedbackContent() {
   const submitError = submitMutationError?.message ?? null;
 
   const handleSubmit = () => {
-    if (!formState.activityId || !formState.rating) return;
+    if (!formState.activityId) return;
+    const resolvedFeel = formState.feel ?? feedback?.feel ?? null;
+    if (resolvedFeel == null && !formState.rating) return;
+
     void submitFeedback({
       activityId: formState.activityId,
-      rating: formState.rating,
+      status: "rated",
+      feel: resolvedFeel,
+      rpe: feedback?.rpe ?? undefined,
+      rating: formState.rating ?? undefined,
       comment: formState.comment || undefined,
       carbsG: formState.carbsG ? Number(formState.carbsG) : undefined,
-      preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : undefined,
+      preRunCarbsG: formState.preRunCarbsG ? Number(formState.preRunCarbsG) : null,
     }).then(() => {
       setFormState((s) => ({ ...s, submitted: true }));
     }).catch(() => {
@@ -219,7 +251,11 @@ function FeedbackContent() {
             <p className="text-muted text-lg mb-6">Skipped</p>
           ) : (
             <div className="mb-6">
-              <p className="text-4xl mb-2">{formState.rating === "good" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}</p>
+              {formState.feel != null && (
+                <p className="text-2xl font-bold text-text mb-1">
+                  {formatFeel(formState.feel)}
+                </p>
+              )}
               <p className="text-success text-lg font-bold">Thanks!</p>
               {formState.carbsG && (
                 <p className="text-muted text-sm mt-2">Carbs ingested: {formState.carbsG}g</p>
@@ -250,31 +286,49 @@ function FeedbackContent() {
         </div>
       ) : (
         <>
-          {/* Rating buttons */}
-          <div className="flex gap-6 mb-6">
-            <button
-              aria-label="Rate good"
-              onClick={() => { setFormState((s) => ({ ...s, rating: "good" })); }}
-              className={`text-5xl p-4 rounded-2xl border-2 transition ${
-                formState.rating === "good"
-                  ? "border-success bg-success/10"
-                  : "border-border bg-surface"
-              }`}
-            >
-              {"\uD83D\uDC4D"}
-            </button>
-            <button
-              aria-label="Rate bad"
-              onClick={() => { setFormState((s) => ({ ...s, rating: "bad" })); }}
-              className={`text-5xl p-4 rounded-2xl border-2 transition ${
-                formState.rating === "bad"
-                  ? "border-error bg-error/10"
-                  : "border-border bg-surface"
-              }`}
-            >
-              {"\uD83D\uDC4E"}
-            </button>
-          </div>
+          {/* Garmin receipt if Garmin recorded feel or RPE */}
+          {(feedback?.feel != null || feedback?.rpe != null) && (
+            <div className="w-full max-w-sm p-4 bg-surface border border-border rounded-xl mb-6 text-center">
+              <p className="text-xs text-brand uppercase tracking-wider font-semibold">Garmin Rating</p>
+              <p className="text-base font-bold text-text mt-1">
+                {feedback.feel != null ? formatFeel(feedback.feel) : ""}
+                {feedback.feel != null && feedback.rpe != null ? " · " : ""}
+                {feedback.rpe != null ? `RPE ${feedback.rpe}/10` : ""}
+              </p>
+            </div>
+          )}
+
+          {/* 1-5 feel selector if no feel from Garmin */}
+          {feedback?.feel == null && (
+            <fieldset className="w-full max-w-sm mb-6 border-0 p-0 m-0">
+              <legend className="block text-xs text-muted uppercase tracking-wider font-semibold text-center mb-3 w-full">
+                How did it feel?
+              </legend>
+              <div className="flex justify-between gap-2">
+                {[1, 2, 3, 4, 5].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    aria-label={formatFeel(val)}
+                    aria-pressed={formState.feel === val}
+                    onClick={() => { setFormState((s) => ({ ...s, feel: val })); }}
+                    className={`flex-1 py-3 rounded-xl border-2 font-bold text-base transition ${
+                      formState.feel === val
+                        ? "border-brand bg-brand/10 text-brand-btn"
+                        : "border-border bg-surface text-text hover:bg-surface-alt"
+                    }`}
+                  >
+                    {val}
+                  </button>
+                ))}
+              </div>
+              {formState.feel != null && (
+                <p className="text-center text-xs font-semibold text-brand mt-2">
+                  {formatFeel(formState.feel)}
+                </p>
+              )}
+            </fieldset>
+          )}
 
           {/* Carbs ingested */}
           <div className="w-full max-w-sm mb-4">
@@ -330,7 +384,11 @@ function FeedbackContent() {
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={!formState.rating || !formState.activityId || submitting}
+            disabled={
+              (!formState.feel && feedback?.feel == null && !formState.rating) ||
+              !formState.activityId ||
+              submitting
+            }
             className="w-full max-w-sm py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition shadow-lg shadow-brand/20 disabled:opacity-40"
           >
             {submitting ? "Saving..." : "Save"}
@@ -344,6 +402,7 @@ function FeedbackContent() {
               }
               void submitFeedback({
                 activityId: formState.activityId,
+                status: "skipped",
                 rating: "skipped",
               }).then(() => {
                 setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));

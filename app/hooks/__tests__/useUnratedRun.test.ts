@@ -43,4 +43,23 @@ describe("useUnratedRun", () => {
 
     expect(useUnratedRun([run])).toBeNull();
   });
+
+  it("detects runs with feel as unrated unless rating or comment exists", () => {
+    vi.setSystemTime(new Date("2026-04-23T12:00:00Z"));
+
+    const withFeel = makeCompletedRun({ feel: 2 });
+    expect(useUnratedRun([withFeel])).toEqual({
+      activityId: "activity-1",
+      name: "W04 Easy",
+    });
+
+    const withRating = makeCompletedRun({ rating: "good" });
+    expect(useUnratedRun([withRating])).toBeNull();
+
+    const withIsRated = makeCompletedRun({ isRated: true });
+    expect(useUnratedRun([withIsRated])).toBeNull();
+
+    const withFeedbackComment = makeCompletedRun({ feedbackComment: "Tough run" });
+    expect(useUnratedRun([withFeedbackComment])).toBeNull();
+  });
 });

@@ -4,6 +4,7 @@ import { getUserCredentials } from "@/lib/credentials";
 import { getUserSettings } from "@/lib/settings";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import { getWorkoutProtocolsByEmail } from "@/lib/workoutProtocolDb";
 
 export async function GET(req: Request) {
   let email: string;
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   const newest = url.searchParams.get("newest");
 
   if (!oldest || !newest) {
-    return NextResponse.json({ error: "Missing oldest or newest parameter" }, { status: 400 });
+    return NextResponse.json({ error: "Missing oldest or newest query param" }, { status: 400 });
   }
 
   try {
@@ -40,6 +41,49 @@ export async function GET(req: Request) {
       new Date(newest),
       workoutContext,
     );
+
+    if (process.env.NODE_ENV !== "production" && process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
+      data.unshift({
+        id: "completed-today-qa",
+        date: new Date(),
+        name: "Morning Easy Run",
+        description: "Easy run with Garmin telemetry",
+        type: "completed",
+        category: "easy",
+        distance: 7200,
+        duration: 2400,
+        avgHr: 144,
+        maxHr: 158,
+        carbsIngested: 30,
+        activityId: "qa-act-today",
+        feel: 4,
+        rpe: 6,
+        rating: null,
+        feedbackComment: null,
+      });
+    }
+
+    try {
+      const protocolMap = await getWorkoutProtocolsByEmail(email);
+      if (protocolMap.size > 0) {
+        for (const ev of data) {
+          if (ev.type === "completed" && ev.activityId) {
+            const p = protocolMap.get(ev.activityId);
+            if (p) {
+              ev.isRated = p.status === "skipped" || p.status === "rated";
+              if (ev.isRated) ev.rating = p.status;
+              if (p.feel != null) ev.feel = p.feel;
+              if (p.rpe != null) ev.rpe = p.rpe;
+              if (p.note) ev.feedbackComment = p.note;
+              if (p.preRunCarbsG != null) ev.preRunCarbsG = p.preRunCarbsG;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[calendar] Failed to overlay protocols from Turso:", e);
+    }
+
     return NextResponse.json(data);
   } catch (err) {
     console.error("[intervals/calendar]", err);

@@ -79,6 +79,9 @@ export interface IntervalsActivity {
   PreRunCarbsG?: number;
   Rating?: string;
   FeedbackComment?: string;
+  feel?: number;
+  rpe?: number;
+  icu_rpe?: number;
 }
 
 export interface IntervalsEvent {
@@ -165,9 +168,12 @@ export interface CalendarEvent {
   // (completed activity paired to the same event).
   prescribedCarbsG?: number | null;
   carbsIngested?: number | null; // actual carbs consumed (from activity)
-  preRunCarbsG?: number | null; // pre-run carbs grams (from Intervals.icu custom field)
-  rating?: string | null; // athlete feedback rating (from Intervals.icu custom field)
-  feedbackComment?: string | null; // athlete feedback comment (from Intervals.icu custom field)
+  preRunCarbsG?: number | null; // pre-run carbs grams
+  isRated?: boolean; // whether workout has been rated or skipped in Springa
+  rating?: string | null; // legacy athlete feedback rating
+  feedbackComment?: string | null; // athlete feedback comment / note
+  feel?: number | null; // post-run feel (1-5)
+  rpe?: number | null; // perceived exertion (1-10)
   activityId?: string; // raw Intervals.icu activity ID for API calls
   pairedEventId?: number; // Intervals.icu event ID this activity was paired with
 }

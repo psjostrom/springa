@@ -3,9 +3,7 @@ import { getUserCredentials } from "@/lib/credentials";
 import {
   fetchActivityById,
   fetchActivitiesByDateRange,
-  updateActivityFeedback,
   updateActivityCarbs,
-  updateActivityPreRunCarbs,
 } from "@/lib/intervalsApi";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
@@ -16,6 +14,13 @@ import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext"
 import { findCompletedActivityMatch } from "@/lib/completedActivityMatch";
 import { calculateCanonicalPlannedPrescription } from "@/lib/workoutPrescriptions";
 import { getPreRunCarbs } from "@/lib/prerunCarbs";
+import {
+  getWorkoutProtocol,
+  getWorkoutProtocolsByEmail,
+  saveWorkoutProtocol,
+  type WorkoutProtocol,
+  type WorkoutProtocolInput,
+} from "@/lib/workoutProtocolDb";
 
 async function resolveMatchedPrescription(
   apiKey: string,
@@ -24,15 +29,16 @@ async function resolveMatchedPrescription(
 ) {
   try {
     const { event, eventId } = await findCompletedActivityMatch(apiKey, activity);
+    if (!event || !eventId) {
+      return { eventId: null, prescribedCarbsG: null };
+    }
     return {
       eventId,
-      prescribedCarbsG: event
-        ? calculateCanonicalPlannedPrescription(
-            event.description,
-            event.carbs_per_hour,
-            context,
-          )
-        : null,
+      prescribedCarbsG: calculateCanonicalPlannedPrescription(
+        event.description ?? "",
+        event.carbs_per_hour ?? null,
+        context,
+      ),
     };
   } catch (error) {
     console.error("Failed to resolve matched prescription:", activity.id, error);
@@ -40,29 +46,47 @@ async function resolveMatchedPrescription(
   }
 }
 
-/** Find the latest unrated Run activity from the last 2 days. */
+/** Find the latest unrated Run activity from the last 7 days. */
 async function findLatestUnratedRun(
   apiKey: string,
-): Promise<IntervalsActivity | null> {
+  email: string,
+): Promise<{ activity: IntervalsActivity; protocol: WorkoutProtocol | null } | null> {
   const now = new Date();
-  const twoDaysAgo = new Date(now);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const oldest = twoDaysAgo.toISOString().slice(0, 10);
+  const oldest = sevenDaysAgo.toISOString().slice(0, 10);
   const newest = tomorrow.toISOString().slice(0, 10);
 
-  const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
-  return (
-    activities
-      .filter((a) => (a.type === "Run" || a.type === "VirtualRun") && !a.Rating)
-      .sort(
-        (a, b) =>
-          new Date(b.start_date_local ?? b.start_date).getTime() -
-          new Date(a.start_date_local ?? a.start_date).getTime(),
-      )
-      .at(0) ?? null
-  );
+  const [activities, protocolMap] = await Promise.all([
+    fetchActivitiesByDateRange(apiKey, oldest, newest),
+    getWorkoutProtocolsByEmail(email),
+  ]);
+  const candidates = activities
+    .filter(
+      (a) =>
+        (a.type === "Run" || a.type === "VirtualRun") &&
+        new Date(a.start_date).getTime() >= sevenDaysAgo.getTime(),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.start_date_local ?? b.start_date).getTime() -
+        new Date(a.start_date_local ?? a.start_date).getTime(),
+    );
+
+  for (const activity of candidates) {
+    if (activity.Rating) continue;
+    const protocol = protocolMap.get(activity.id) ?? null;
+    if (protocol?.status === "rated" || protocol?.status === "skipped") continue;
+    return { activity, protocol };
+  }
+  return null;
+}
+
+function unsetIfZero(val?: number | null): number | null {
+  if (val == null || val === 0) return null;
+  return val;
 }
 
 interface PreRunCarbsFallback {
@@ -73,23 +97,38 @@ function buildResponse(
   activity: IntervalsActivity,
   prescribedCarbsG: number | null,
   preRunFallback?: PreRunCarbsFallback,
+  protocol?: WorkoutProtocol | null,
 ) {
   const movingTimeMs =
     activity.moving_time != null ? activity.moving_time * 1000 : null;
   const avgHr = activity.average_hr ?? activity.average_heartrate ?? null;
+  const isRated = protocol?.status === "rated" || protocol?.status === "skipped" || Boolean(activity.Rating);
+  const feel = protocol?.status === "rated" ? (protocol.feel ?? activity.feel ?? null) : (activity.feel ?? null);
+  const rpe = protocol?.status === "rated" ? (protocol.rpe ?? activity.icu_rpe ?? activity.rpe ?? null) : (activity.icu_rpe ?? activity.rpe ?? null);
+  const preRunCarbs =
+    protocol?.preRunCarbsG ??
+    unsetIfZero(activity.PreRunCarbsG) ??
+    preRunFallback?.carbsG ??
+    null;
+
   return {
     createdAt: new Date(
       activity.start_date_local ?? activity.start_date,
     ).getTime(),
-    rating: nonEmpty(activity.Rating),
-    comment: nonEmpty(activity.FeedbackComment),
+    isRated,
+    rating: isRated ? (protocol?.status === "skipped" ? "skipped" : "rated") : null,
+    comment: protocol?.note ?? nonEmpty(activity.FeedbackComment),
     carbsG: activity.carbs_ingested ?? null,
     distance: activity.distance ?? undefined,
     duration: movingTimeMs ?? undefined,
     avgHr: avgHr ?? undefined,
     activityId: activity.id,
     prescribedCarbsG,
-    preRunCarbsG: activity.PreRunCarbsG ?? preRunFallback?.carbsG ?? null,
+    preRunCarbsG: preRunCarbs,
+    feel,
+    rpe,
+    protocol: protocol?.hasProtocol ? protocol : null,
+    hasFeedback: isRated,
   };
 }
 
@@ -117,9 +156,10 @@ export async function GET(req: Request) {
   const settingsPromise = getUserSettings(email);
   let activity: IntervalsActivity | null;
   if (activityIdParam) {
-    const [resolvedActivity, settings] = await Promise.all([
+    const [resolvedActivity, settings, protocol] = await Promise.all([
       fetchActivityById(apiKey, activityIdParam),
       settingsPromise,
+      getWorkoutProtocol(email, activityIdParam),
     ]);
     activity = resolvedActivity;
     if (!activity) {
@@ -137,10 +177,8 @@ export async function GET(req: Request) {
     const { prescribedCarbsG, eventId: matchedEventId } =
       await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
-    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
-    // Use paired_event_id if available, otherwise use the event we matched above.
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (activity.PreRunCarbsG == null) {
+    if (unsetIfZero(activity.PreRunCarbsG) == null && protocol?.preRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -150,20 +188,22 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      buildResponse(activity, prescribedCarbsG, preRunFallback),
+      buildResponse(activity, prescribedCarbsG, preRunFallback, protocol),
     );
   } else {
-    const [resolvedActivity, settings] = await Promise.all([
-      findLatestUnratedRun(apiKey),
+    const [latestRun, settings] = await Promise.all([
+      findLatestUnratedRun(apiKey, email),
       settingsPromise,
     ]);
-    activity = resolvedActivity;
-    if (!activity) {
+    if (!latestRun) {
       return NextResponse.json(
         { error: "No unrated run found", retry: true },
         { status: 404 },
       );
     }
+    activity = latestRun.activity;
+    const protocol = latestRun.protocol;
+
     const workoutContext = await getUserWorkoutEstimationContext(
       email,
       apiKey,
@@ -173,10 +213,8 @@ export async function GET(req: Request) {
     const { prescribedCarbsG, eventId: matchedEventId } =
       await resolveMatchedPrescription(apiKey, activity, workoutContext);
 
-    // Fetch pre-run carbs from Turso if activity doesn't have PreRunCarbsG.
-    // Use paired_event_id if available, otherwise use the event we matched above.
     let preRunFallback: PreRunCarbsFallback | undefined;
-    if (activity.PreRunCarbsG == null) {
+    if (unsetIfZero(activity.PreRunCarbsG) == null && protocol?.preRunCarbsG == null) {
       const lookupEventId = activity.paired_event_id ?? matchedEventId;
       if (lookupEventId != null) {
         preRunFallback = {
@@ -186,7 +224,7 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(
-      buildResponse(activity, prescribedCarbsG, preRunFallback),
+      buildResponse(activity, prescribedCarbsG, preRunFallback, protocol),
     );
   }
 }
@@ -202,20 +240,19 @@ export async function POST(req: Request) {
 
   let body: {
     activityId: string;
-    rating: string;
+    status?: "rated" | "skipped";
+    rating?: string;
+    feel?: number;
+    rpe?: number;
     comment?: string;
     carbsG?: number;
-    preRunCarbsG?: number;
+    preRunCarbsG?: number | null;
+    category?: string | null;
+    protocol?: Record<string, unknown>;
   };
 
   try {
-    body = (await req.json()) as {
-      activityId: string;
-      rating: string;
-      comment?: string;
-      carbsG?: number;
-      preRunCarbsG?: number;
-    };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json(
       { error: "Invalid or empty request body" },
@@ -223,13 +260,68 @@ export async function POST(req: Request) {
     );
   }
 
-  const { activityId, rating, comment, carbsG, preRunCarbsG } = body;
+  const { activityId, status, rating, feel, rpe, comment, carbsG, preRunCarbsG, category, protocol } = body;
 
-  if (!activityId || !rating) {
+  if (typeof activityId !== "string" || !activityId) {
     return NextResponse.json(
       { error: "Missing activityId or rating" },
       { status: 400 },
     );
+  }
+
+  if (feel != null && (!Number.isInteger(feel) || feel < 1 || feel > 5)) {
+    return NextResponse.json(
+      { error: "feel must be an integer from 1 to 5" },
+      { status: 400 },
+    );
+  }
+
+  if (rpe != null && (!Number.isInteger(rpe) || rpe < 1 || rpe > 10)) {
+    return NextResponse.json(
+      { error: "rpe must be an integer from 1 to 10" },
+      { status: 400 },
+    );
+  }
+
+  const isSkipped = status === "skipped" || rating === "skipped";
+
+  if (
+    !isSkipped &&
+    !rating &&
+    feel == null &&
+    rpe == null &&
+    !protocol &&
+    carbsG == null &&
+    preRunCarbsG == null &&
+    comment == null
+  ) {
+    return NextResponse.json(
+      { error: "Missing feedback data" },
+      { status: 400 },
+    );
+  }
+
+  if (protocol) {
+    const validModes: readonly string[] = ["disconnected", "auto", "manual"];
+    const validTimings: readonly string[] = [">2h", "1-2h", "<30m", "at_start"];
+    if (protocol.note != null && typeof protocol.note !== "string") {
+      return NextResponse.json(
+        { error: "Invalid protocol schema" },
+        { status: 400 },
+      );
+    }
+    if (
+      typeof protocol.beforeMode !== "string" ||
+      !validModes.includes(protocol.beforeMode) ||
+      typeof protocol.beforeTiming !== "string" ||
+      !validTimings.includes(protocol.beforeTiming) ||
+      typeof protocol.duringSame !== "boolean"
+    ) {
+      return NextResponse.json(
+        { error: "Invalid protocol schema" },
+        { status: 400 },
+      );
+    }
   }
 
   const creds = await getUserCredentials(email);
@@ -242,12 +334,100 @@ export async function POST(req: Request) {
   const apiKey = creds.intervalsApiKey;
 
   try {
-    await updateActivityFeedback(apiKey, activityId, rating, comment);
+    const isMockQaActivity =
+      process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
+
     if (carbsG != null) {
-      await updateActivityCarbs(apiKey, activityId, carbsG);
+      try {
+        await updateActivityCarbs(apiKey, activityId, carbsG);
+      } catch (err) {
+        if (!isMockQaActivity) throw err;
+      }
     }
-    if (preRunCarbsG != null) {
-      await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
+
+    const existing = await getWorkoutProtocol(email, activityId);
+    const trimmedComment =
+      typeof comment === "string" ? comment.trim() || null : undefined;
+
+    if (isSkipped) {
+      await saveWorkoutProtocol(email, activityId, {
+        ...(existing ?? {}),
+        category: category !== undefined ? category : (existing?.category ?? null),
+        hasProtocol: existing?.hasProtocol ?? false,
+        status: "skipped",
+        feel: null,
+        rpe: null,
+        note: trimmedComment !== undefined ? trimmedComment : (existing?.note ?? null),
+        preRunCarbsG: preRunCarbsG !== undefined ? preRunCarbsG : (existing?.preRunCarbsG ?? null),
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (protocol) {
+      const incomingProtocol = protocol as unknown as WorkoutProtocolInput;
+      const protocolInput: WorkoutProtocolInput = {
+        ...(existing ?? {}),
+        ...incomingProtocol,
+        hasProtocol: true,
+        status: "rated",
+        feel: feel ?? incomingProtocol.feel ?? existing?.feel ?? null,
+        rpe: rpe ?? incomingProtocol.rpe ?? existing?.rpe ?? null,
+      };
+
+      if (category !== undefined) {
+        protocolInput.category = category;
+      } else if (incomingProtocol.category !== undefined) {
+        protocolInput.category = incomingProtocol.category;
+      } else {
+        protocolInput.category = existing?.category ?? null;
+      }
+
+      if (preRunCarbsG !== undefined) {
+        protocolInput.preRunCarbsG = preRunCarbsG;
+      } else if (incomingProtocol.preRunCarbsG !== undefined) {
+        protocolInput.preRunCarbsG = incomingProtocol.preRunCarbsG;
+      } else {
+        protocolInput.preRunCarbsG = existing?.preRunCarbsG ?? null;
+      }
+
+      if (trimmedComment !== undefined) {
+        protocolInput.note = trimmedComment;
+      } else if (incomingProtocol.note !== undefined) {
+        protocolInput.note = incomingProtocol.note;
+      } else {
+        protocolInput.note = existing?.note ?? null;
+      }
+
+      await saveWorkoutProtocol(email, activityId, protocolInput);
+    } else if (
+      status === "rated" ||
+      rating != null ||
+      feel != null ||
+      rpe != null ||
+      trimmedComment !== undefined ||
+      preRunCarbsG != null
+    ) {
+      if (existing) {
+        await saveWorkoutProtocol(email, activityId, {
+          ...existing,
+          category: category !== undefined ? category : (existing.category ?? null),
+          status: "rated",
+          feel: feel ?? existing.feel,
+          rpe: rpe ?? existing.rpe,
+          note: trimmedComment !== undefined ? trimmedComment : existing.note,
+          preRunCarbsG: preRunCarbsG !== undefined ? preRunCarbsG : existing.preRunCarbsG,
+        });
+      } else {
+        await saveWorkoutProtocol(email, activityId, {
+          category: category ?? null,
+          hasProtocol: false,
+          status: "rated",
+          feel: feel ?? null,
+          rpe: rpe ?? null,
+          note: trimmedComment ?? null,
+          preRunCarbsG: preRunCarbsG ?? null,
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });
