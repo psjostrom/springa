@@ -3,9 +3,7 @@ import { getUserCredentials } from "@/lib/credentials";
 import {
   fetchActivityById,
   fetchActivitiesByDateRange,
-  updateActivityFeedback,
   updateActivityCarbs,
-  updateActivityPreRunCarbs,
 } from "@/lib/intervalsApi";
 import { nonEmpty } from "@/lib/format";
 import { NextResponse } from "next/server";
@@ -52,11 +50,11 @@ async function findLatestUnratedRun(
   email: string,
 ): Promise<{ activity: IntervalsActivity; protocol: WorkoutProtocol | null } | null> {
   const now = new Date();
-  const twoDaysAgo = new Date(now);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const oldest = twoDaysAgo.toISOString().slice(0, 10);
+  const oldest = sevenDaysAgo.toISOString().slice(0, 10);
   const newest = tomorrow.toISOString().slice(0, 10);
 
   const activities = await fetchActivitiesByDateRange(apiKey, oldest, newest);
@@ -69,10 +67,9 @@ async function findLatestUnratedRun(
     );
 
   for (const activity of candidates) {
-    if (activity.Rating || activity.FeedbackComment) continue;
+    if (activity.Rating) continue;
     const protocol = await getWorkoutProtocol(email, activity.id);
-    if (protocol?.feel != null || protocol?.rpe != null || protocol?.note) continue;
-    if (activity.feel != null || activity.rpe != null || activity.icu_rpe != null) continue;
+    if (protocol?.status === "rated" || protocol?.status === "skipped") continue;
     return { activity, protocol };
   }
   return null;
@@ -95,8 +92,9 @@ function buildResponse(
   const movingTimeMs =
     activity.moving_time != null ? activity.moving_time * 1000 : null;
   const avgHr = activity.average_hr ?? activity.average_heartrate ?? null;
-  const feel = protocol?.feel ?? activity.feel ?? null;
-  const rpe = protocol?.rpe ?? activity.icu_rpe ?? activity.rpe ?? null;
+  const isRated = protocol?.status === "rated" || protocol?.status === "skipped" || Boolean(activity.Rating);
+  const feel = protocol?.status === "rated" ? (protocol.feel ?? activity.feel ?? null) : (activity.feel ?? null);
+  const rpe = protocol?.status === "rated" ? (protocol.rpe ?? activity.icu_rpe ?? activity.rpe ?? null) : (activity.icu_rpe ?? activity.rpe ?? null);
   const preRunCarbs =
     protocol?.preRunCarbsG ??
     unsetIfZero(activity.PreRunCarbsG) ??
@@ -107,7 +105,8 @@ function buildResponse(
     createdAt: new Date(
       activity.start_date_local ?? activity.start_date,
     ).getTime(),
-    rating: nonEmpty(activity.Rating),
+    isRated,
+    rating: isRated ? (protocol?.status === "skipped" ? "skipped" : "rated") : null,
     comment: protocol?.note ?? nonEmpty(activity.FeedbackComment),
     carbsG: activity.carbs_ingested ?? null,
     distance: activity.distance ?? undefined,
@@ -119,7 +118,7 @@ function buildResponse(
     feel,
     rpe,
     protocol: protocol?.hasProtocol ? protocol : null,
-    hasFeedback: feel != null || rpe != null || !!protocol?.note || !!activity.Rating || !!activity.FeedbackComment,
+    hasFeedback: isRated,
   };
 }
 
@@ -231,6 +230,7 @@ export async function POST(req: Request) {
 
   let body: {
     activityId: string;
+    status?: "rated" | "skipped";
     rating?: string;
     feel?: number;
     rpe?: number;
@@ -249,7 +249,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { activityId, rating, feel, rpe, comment, carbsG, preRunCarbsG, protocol } = body;
+  const { activityId, status, rating, feel, rpe, comment, carbsG, preRunCarbsG, protocol } = body;
 
   if (typeof activityId !== "string" || !activityId) {
     return NextResponse.json(
@@ -272,9 +272,20 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!rating && feel == null && rpe == null && !protocol) {
+  const isSkipped = status === "skipped" || rating === "skipped";
+
+  if (
+    !isSkipped &&
+    !rating &&
+    feel == null &&
+    rpe == null &&
+    !protocol &&
+    carbsG == null &&
+    preRunCarbsG == null &&
+    comment == null
+  ) {
     return NextResponse.json(
-      { error: "Missing activityId or rating" },
+      { error: "Missing feedback data" },
       { status: 400 },
     );
   }
@@ -316,11 +327,24 @@ export async function POST(req: Request) {
     const trimmedComment =
       typeof comment === "string" ? comment.trim() || null : undefined;
 
+    if (isSkipped) {
+      await saveWorkoutProtocol(email, activityId, {
+        hasProtocol: false,
+        status: "skipped",
+        feel: null,
+        rpe: null,
+        note: trimmedComment ?? existing?.note ?? null,
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     if (protocol) {
       const protocolInput = protocol as unknown as WorkoutProtocolInput;
       protocolInput.hasProtocol = true;
+      protocolInput.status = "rated";
       protocolInput.feel = feel ?? protocolInput.feel ?? existing?.feel ?? null;
       protocolInput.rpe = rpe ?? protocolInput.rpe ?? existing?.rpe ?? null;
+      if (preRunCarbsG != null) protocolInput.preRunCarbsG = preRunCarbsG;
 
       if (trimmedComment !== undefined) {
         protocolInput.note = trimmedComment;
@@ -328,20 +352,24 @@ export async function POST(req: Request) {
         protocolInput.note = existing.note;
       }
       await saveWorkoutProtocol(email, activityId, protocolInput);
-    } else if (feel != null || rpe != null || trimmedComment !== undefined) {
+    } else if (feel != null || rpe != null || trimmedComment !== undefined || preRunCarbsG != null) {
       if (existing) {
         await saveWorkoutProtocol(email, activityId, {
           ...existing,
+          status: "rated",
           feel: feel ?? existing.feel,
           rpe: rpe ?? existing.rpe,
           note: trimmedComment !== undefined ? trimmedComment : existing.note,
+          preRunCarbsG: preRunCarbsG ?? existing.preRunCarbsG,
         });
       } else {
         await saveWorkoutProtocol(email, activityId, {
           hasProtocol: false,
+          status: "rated",
           feel: feel ?? null,
           rpe: rpe ?? null,
           note: trimmedComment ?? null,
+          preRunCarbsG: preRunCarbsG ?? null,
         });
       }
     }
@@ -349,25 +377,9 @@ export async function POST(req: Request) {
     const isMockQaActivity =
       process.env.NODE_ENV !== "production" && activityId.startsWith("qa-");
 
-    if (rating) {
-      try {
-        await updateActivityFeedback(apiKey, activityId, rating);
-      } catch (err) {
-        if (!isMockQaActivity) throw err;
-      }
-    }
-
     if (carbsG != null) {
       try {
         await updateActivityCarbs(apiKey, activityId, carbsG);
-      } catch (err) {
-        if (!isMockQaActivity) throw err;
-      }
-    }
-
-    if (preRunCarbsG != null) {
-      try {
-        await updateActivityPreRunCarbs(apiKey, activityId, preRunCarbsG);
       } catch (err) {
         if (!isMockQaActivity) throw err;
       }

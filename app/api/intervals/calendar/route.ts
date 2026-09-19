@@ -4,6 +4,7 @@ import { getUserCredentials } from "@/lib/credentials";
 import { getUserSettings } from "@/lib/settings";
 import { fetchCalendarData } from "@/lib/intervalsApi";
 import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import { db } from "@/lib/db";
 
 export async function GET(req: Request) {
   let email: string;
@@ -40,6 +41,32 @@ export async function GET(req: Request) {
       new Date(newest),
       workoutContext,
     );
+
+    try {
+      const protocolsRes = await db().execute({
+        sql: "SELECT activity_id, status, feel, rpe, note, pre_run_carbs_g FROM workout_protocols WHERE email = ?",
+        args: [email],
+      });
+      if (protocolsRes.rows.length > 0) {
+        const protocolMap = new Map(
+          protocolsRes.rows.map((r) => [r.activity_id as string, r]),
+        );
+        for (const ev of data) {
+          if (ev.type === "completed" && ev.activityId) {
+            const p = protocolMap.get(ev.activityId);
+            if (p) {
+              ev.isRated = p.status === "skipped" || p.status === "rated" || p.status == null;
+              if (p.feel != null) ev.feel = p.feel as number;
+              if (p.rpe != null) ev.rpe = p.rpe as number;
+              if (p.note) ev.feedbackComment = p.note as string;
+              if (p.pre_run_carbs_g != null) ev.preRunCarbsG = p.pre_run_carbs_g as number;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[calendar] Failed to overlay protocols from Turso:", e);
+    }
 
     if (process.env.NODE_ENV !== "production" && process.env.QA_AUTH_EMAIL && email === process.env.QA_AUTH_EMAIL) {
       const qaCompletedEvent = {

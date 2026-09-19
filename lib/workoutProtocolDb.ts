@@ -4,9 +4,12 @@ export type CamAPSMode = "disconnected" | "auto" | "manual";
 export type CamAPSAutoSubmode = "ease_off" | "normal" | "boost";
 export type ProtocolTiming = ">2h" | "1-2h" | "<30m" | "at_start";
 
+export type WorkoutFeedbackStatus = "unrated" | "rated" | "skipped";
+
 export interface WorkoutProtocol {
   activityId: string;
   hasProtocol: boolean;
+  status: WorkoutFeedbackStatus;
   beforeMode: CamAPSMode | null;
   beforeAutoSubmode: CamAPSAutoSubmode | null;
   beforeTargetBg: number | null;
@@ -27,6 +30,7 @@ export interface WorkoutProtocol {
 
 export interface WorkoutProtocolInput {
   hasProtocol?: boolean;
+  status?: WorkoutFeedbackStatus;
   beforeMode?: CamAPSMode | null;
   beforeAutoSubmode?: CamAPSAutoSubmode | null;
   beforeTargetBg?: number | null;
@@ -50,7 +54,7 @@ export async function getWorkoutProtocol(
 ): Promise<WorkoutProtocol | null> {
   const result = await db().execute({
     sql: `SELECT
-      activity_id, has_protocol, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
+      activity_id, has_protocol, status, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
       before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
       during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
     FROM workout_protocols
@@ -69,9 +73,13 @@ export async function getWorkoutProtocol(
       ? Boolean(row.has_protocol)
       : Boolean(row.before_mode && row.before_mode !== "none" && row.before_mode !== "");
 
+  const status: WorkoutFeedbackStatus =
+    row.status === "skipped" ? "skipped" : row.status === "rated" ? "rated" : "unrated";
+
   return {
     activityId: row.activity_id as string,
     hasProtocol,
+    status,
     beforeMode: hasProtocol && row.before_mode && row.before_mode !== "none" ? (row.before_mode as CamAPSMode) : null,
     beforeAutoSubmode: hasProtocol && row.before_auto_submode != null ? (row.before_auto_submode as CamAPSAutoSubmode) : null,
     beforeTargetBg: hasProtocol ? parseNum(row.before_target_bg) : null,
@@ -103,10 +111,12 @@ export async function saveWorkoutProtocol(
   const beforeMode = hasProtocol && input.beforeMode ? input.beforeMode : null;
   const beforeTiming = hasProtocol && input.beforeTiming ? input.beforeTiming : null;
   const duringSame = hasProtocol ? Boolean(input.duringSame) : true;
+  const status: WorkoutFeedbackStatus = input.status ?? "rated";
 
   const protocol: WorkoutProtocol = {
     activityId,
     hasProtocol,
+    status,
     beforeMode,
     beforeAutoSubmode: hasProtocol ? (input.beforeAutoSubmode ?? null) : null,
     beforeTargetBg: hasProtocol ? (input.beforeTargetBg ?? null) : null,
@@ -127,14 +137,15 @@ export async function saveWorkoutProtocol(
 
   await db().execute({
     sql: `INSERT OR REPLACE INTO workout_protocols (
-      email, activity_id, has_protocol, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
+      email, activity_id, has_protocol, status, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
       before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
       during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       email,
       activityId,
       protocol.hasProtocol ? 1 : 0,
+      protocol.status,
       protocol.beforeMode ?? "none",
       protocol.beforeAutoSubmode,
       protocol.beforeTargetBg,
@@ -155,69 +166,4 @@ export async function saveWorkoutProtocol(
   });
 
   return protocol;
-}
-
-/** Insert a protocol only if no record exists for (email, activityId). Used by migration. */
-export async function saveWorkoutProtocolIfAbsent(
-  email: string,
-  activityId: string,
-  input: WorkoutProtocolInput,
-): Promise<void> {
-  const updatedAt = Date.now();
-  const hasProtocol =
-    input.hasProtocol ??
-    Boolean(input.beforeMode && (input.beforeMode as string) !== "none");
-  const beforeMode = hasProtocol && input.beforeMode ? input.beforeMode : null;
-  const beforeTiming = hasProtocol && input.beforeTiming ? input.beforeTiming : null;
-  const duringSame = hasProtocol ? Boolean(input.duringSame) : true;
-
-  const protocol: WorkoutProtocol = {
-    activityId,
-    hasProtocol,
-    beforeMode,
-    beforeAutoSubmode: hasProtocol ? (input.beforeAutoSubmode ?? null) : null,
-    beforeTargetBg: hasProtocol ? (input.beforeTargetBg ?? null) : null,
-    beforeManualUh: hasProtocol ? (input.beforeManualUh ?? null) : null,
-    beforeTiming,
-    duringSame,
-    duringMode: hasProtocol && !duringSame ? (input.duringMode ?? null) : null,
-    duringAutoSubmode: hasProtocol && !duringSame ? (input.duringAutoSubmode ?? null) : null,
-    duringTargetBg: hasProtocol && !duringSame ? (input.duringTargetBg ?? null) : null,
-    duringManualUh: hasProtocol && !duringSame ? (input.duringManualUh ?? null) : null,
-    preRunCarbsG: input.preRunCarbsG ?? null,
-    rescueCarbsG: input.rescueCarbsG ?? null,
-    feel: input.feel ?? null,
-    rpe: input.rpe ?? null,
-    note: input.note?.trim() ? input.note.trim() : null,
-    updatedAt,
-  };
-
-  await db().execute({
-    sql: `INSERT OR IGNORE INTO workout_protocols (
-      email, activity_id, has_protocol, before_mode, before_auto_submode, before_target_bg, before_manual_uh,
-      before_timing, during_same, during_mode, during_auto_submode, during_target_bg,
-      during_manual_uh, pre_run_carbs_g, rescue_carbs_g, feel, rpe, note, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      email,
-      activityId,
-      protocol.hasProtocol ? 1 : 0,
-      protocol.beforeMode ?? "none",
-      protocol.beforeAutoSubmode,
-      protocol.beforeTargetBg,
-      protocol.beforeManualUh,
-      protocol.beforeTiming ?? "none",
-      protocol.duringSame ? 1 : 0,
-      protocol.duringMode,
-      protocol.duringAutoSubmode,
-      protocol.duringTargetBg,
-      protocol.duringManualUh,
-      protocol.preRunCarbsG,
-      protocol.rescueCarbsG,
-      protocol.feel,
-      protocol.rpe,
-      protocol.note,
-      protocol.updatedAt,
-    ],
-  });
 }

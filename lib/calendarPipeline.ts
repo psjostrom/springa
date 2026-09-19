@@ -67,6 +67,7 @@ export function activityToCalendarEvent(activity: IntervalsActivity): CalendarEv
     fuelRate: null,
     carbsIngested: activity.carbs_ingested ?? null,
     preRunCarbsG: nonZero(activity.PreRunCarbsG),
+    isRated: Boolean(nonEmpty(activity.Rating)),
     rating: nonEmpty(activity.Rating),
     feedbackComment: nonEmpty(activity.FeedbackComment),
     feel: activity.feel ?? null,

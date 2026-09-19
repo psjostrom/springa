@@ -359,18 +359,14 @@ describe("/api/run-feedback", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(capturedActivityPutPayloads).toEqual([
-      {
-        activityId: "act-1",
-        body: { Rating: "good" },
-      },
       { activityId: "act-1", body: { carbs_ingested: 30 } },
-      { activityId: "act-1", body: { PreRunCarbsG: 15 } },
     ]);
     const saved = await getWorkoutProtocol("test@example.com", "act-1");
     expect(saved).toMatchObject({
       activityId: "act-1",
       hasProtocol: false,
-      beforeMode: null,
+      status: "rated",
+      preRunCarbsG: 15,
       note: "solid run",
     });
   });
@@ -378,7 +374,7 @@ describe("/api/run-feedback", () => {
   it("returns a JSON error when Intervals rejects the write", async () => {
     server.use(
       http.put(`${API_BASE}/activity/:activityId`, () =>
-        HttpResponse.json({ error: "Unknown custom field" }, { status: 422 }),
+        HttpResponse.json({ error: "Rate limit exceeded" }, { status: 422 }),
       ),
     );
 
@@ -386,13 +382,13 @@ describe("/api/run-feedback", () => {
       new Request("http://localhost/api/run-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId: "act-1", rating: "good" }),
+        body: JSON.stringify({ activityId: "act-1", carbsG: 30 }),
       }),
     );
 
     expect(res.status).toBe(502);
     await expect(res.json()).resolves.toMatchObject({
-      error: expect.stringContaining("Failed to update activity feedback"),
+      error: expect.stringContaining("Failed to update activity carbs"),
     });
   });
 

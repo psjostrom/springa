@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS workout_protocols (
   email               TEXT NOT NULL,
   activity_id         TEXT NOT NULL,
   has_protocol        INTEGER NOT NULL DEFAULT 1,
+  status              TEXT NOT NULL DEFAULT 'unrated',
   before_mode         TEXT NOT NULL DEFAULT 'none',
   before_auto_submode TEXT,
   before_target_bg    REAL,

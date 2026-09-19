@@ -10,9 +10,13 @@ interface UnratedRun {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isUnratedCompletedRun(event: CalendarEvent): event is CalendarEvent & { activityId: string } {
-  return event.type === "completed"
-    && typeof event.activityId === "string"
-    && !event.rating;
+  return (
+    event.type === "completed" &&
+    typeof event.activityId === "string" &&
+    !event.isRated &&
+    !event.rating &&
+    !event.feedbackComment
+  );
 }
 
 /**

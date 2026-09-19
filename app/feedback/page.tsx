@@ -43,15 +43,15 @@ async function fetchFeedback(url: string): Promise<FetchResult> {
 function formatFeel(feel: number): string {
   switch (feel) {
     case 1:
-      return "Very Weak";
+      return "Very Strong";
     case 2:
-      return "Weak";
+      return "Strong";
     case 3:
       return "Normal";
     case 4:
-      return "Good";
+      return "Weak";
     case 5:
-      return "Very Strong";
+      return "Very Weak";
     default:
       return `${feel}/5`;
   }
@@ -137,6 +137,7 @@ function FeedbackContent() {
 
   interface FeedbackSubmission {
     activityId: string;
+    status?: "rated" | "skipped";
     feel?: number | null;
     rpe?: number | null;
     rating?: string;
@@ -171,6 +172,7 @@ function FeedbackContent() {
 
     void submitFeedback({
       activityId: formState.activityId,
+      status: "rated",
       feel: resolvedFeel,
       rpe: feedback?.rpe ?? undefined,
       rating: formState.rating ?? undefined,
@@ -396,6 +398,7 @@ function FeedbackContent() {
               }
               void submitFeedback({
                 activityId: formState.activityId,
+                status: "skipped",
                 rating: "skipped",
               }).then(() => {
                 setFormState((s) => ({ ...s, rating: "skipped", submitted: true }));
