@@ -3,8 +3,8 @@ import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { getUserSettings } from "@/lib/settings";
 import { getActivityStreams } from "@/lib/activityStreamsDb";
-import { fetchCalendarData, fetchPaceCurves } from "@/lib/intervalsApi";
-import { getUserWorkoutEstimationContext } from "@/lib/workoutEstimationContext";
+import { fetchCalendarDataReadOnly, fetchPaceCurves, fetchAthleteProfile } from "@/lib/intervalsApi";
+import { getUserWorkoutEstimationContext, resolveHeartRateZones } from "@/lib/workoutEstimationContext";
 import { extractZoneSegments } from "@/lib/paceCalibration";
 import { generatePaceSuggestion } from "@/lib/paceInsight";
 
@@ -28,8 +28,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ suggestion: null });
     }
 
-    const hrZones = settings.hrZones;
-    if (hrZones?.length !== 5) {
+    const profile = await fetchAthleteProfile(creds.intervalsApiKey);
+    const hrZones = resolveHeartRateZones(settings, profile);
+    if (!hrZones) {
       return NextResponse.json({ suggestion: null });
     }
 
@@ -48,10 +49,11 @@ export async function GET(req: Request) {
       email,
       creds.intervalsApiKey,
       settings,
+      profile,
     );
 
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const events = await fetchCalendarData(
+    const events = await fetchCalendarDataReadOnly(
       creds.intervalsApiKey,
       ninetyDaysAgo,
       new Date(),

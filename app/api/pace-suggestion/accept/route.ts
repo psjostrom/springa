@@ -26,8 +26,15 @@ export async function POST(req: Request) {
     currentAbilityDist?: number;
   };
 
-  if (!body.suggestedAbilitySecs || !body.currentAbilityDist) {
-    return NextResponse.json({ error: "Missing suggestedAbilitySecs or currentAbilityDist" }, { status: 400 });
+  if (
+    typeof body.suggestedAbilitySecs !== "number" ||
+    typeof body.currentAbilityDist !== "number" ||
+    !Number.isFinite(body.suggestedAbilitySecs) ||
+    !Number.isFinite(body.currentAbilityDist) ||
+    body.suggestedAbilitySecs <= 0 ||
+    body.currentAbilityDist <= 0
+  ) {
+    return NextResponse.json({ error: "Missing or invalid suggestedAbilitySecs or currentAbilityDist" }, { status: 400 });
   }
 
   try {
