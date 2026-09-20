@@ -14,12 +14,17 @@ export async function POST(req: Request) {
     throw e;
   }
 
-  let body: { suggestedAbilitySecs?: number; currentAbilityDist?: number };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  const body = (rawBody && typeof rawBody === "object" ? rawBody : {}) as {
+    suggestedAbilitySecs?: number;
+    currentAbilityDist?: number;
+  };
 
   if (!body.suggestedAbilitySecs || !body.currentAbilityDist) {
     return NextResponse.json({ error: "Missing suggestedAbilitySecs or currentAbilityDist" }, { status: 400 });

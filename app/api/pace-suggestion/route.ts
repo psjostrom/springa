@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
   try {
     const settings = await getUserSettings(email);
-    if (!settings?.currentAbilitySecs || !settings?.currentAbilityDist) {
+    if (!settings.currentAbilitySecs || !settings.currentAbilityDist) {
       return NextResponse.json({ suggestion: null });
     }
 
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     }
 
     const hrZones = settings.hrZones;
-    if (!hrZones || hrZones.length !== 5) {
+    if (hrZones?.length !== 5) {
       return NextResponse.json({ suggestion: null });
     }
 
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     }
 
     const allSegments = cached.flatMap((a) =>
-      a.pace && a.pace.length > 0 && a.hr && a.hr.length > 0
+      (a.pace?.length ?? 0) > 0 && a.hr.length > 0 && a.pace
         ? extractZoneSegments(a.hr, a.pace, hrZones, a.activityId, a.activityDate ?? "")
         : [],
     );
