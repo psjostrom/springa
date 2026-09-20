@@ -517,6 +517,19 @@ export async function fetchCalendarData(
   return events;
 }
 
+/** Read-only variant: returns calendar events without firing auto-pair writes. */
+export async function fetchCalendarDataReadOnly(
+  apiKey: string,
+  startDate: Date,
+  endDate: Date,
+  context: WorkoutEstimationContext,
+): Promise<CalendarEvent[]> {
+  const oldest = format(startDate, "yyyy-MM-dd");
+  const newest = format(endDate, "yyyy-MM-dd");
+  const { events } = await fetchCalendarDataInner(apiKey, oldest, newest, context);
+  return events;
+}
+
 async function fetchCalendarDataInner(
   apiKey: string,
   oldest: string,
