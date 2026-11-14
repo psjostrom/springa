@@ -14,7 +14,7 @@ import { getUserCredentials } from "../lib/credentials";
 import { getUserSettings } from "../lib/settings";
 import { fetchPaceCurves as fetchPaceCurvesApi, fetchCalendarData } from "../lib/intervalsApi";
 import { fetchBGFromNS } from "../lib/nightscout";
-import { computeTrend, trendArrow, slopeToArrow } from "../lib/cgm";
+import { computeTrend, trendArrow } from "../lib/cgm";
 import { computeMaxHRZones } from "../lib/constants";
 
 const INTERVALS_BASE = "https://intervals.icu/api/v1";
@@ -507,14 +507,10 @@ export const bgFixture = ${JSON.stringify({
       mmol: latestBG.mmol,
       sgv: latestBG.sgv,
       ts: makeRelativeTs(latestBG.ts),
-      direction: bgTrend?.direction ?? latestBG.direction,
-      arrow: bgTrend ? slopeToArrow(bgTrend.slope) : trendArrow(latestBG.direction),
+      direction: latestBG.direction,
+      arrow: trendArrow(latestBG.direction),
     } : null,
-    trend: bgTrend ? {
-      slope: bgTrend.slope,
-      direction: bgTrend.direction,
-      arrow: slopeToArrow(bgTrend.slope),
-    } : null,
+    trend: bgTrend ? { slope: bgTrend.slope } : null,
   }, null, 2)};
 
 export const calendarFixture = ${JSON.stringify(calendarEvents, null, 2)};

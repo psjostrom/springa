@@ -169,6 +169,6 @@ Scoring strip in `EventModal` rating each completed run. Logic in `lib/reportCar
 
 **Source:** Strimma (Android CGM app) pushes to `/api/v1/entries` using standard Nightscout JSON format. xDrip+ has been retired — Strimma is the sole data source (validated equivalent coverage and accuracy in 14h side-by-side testing).
 
-**Direction recomputation:** `recomputeDirections()` in `lib/cgm.ts` recomputes direction server-side using 3-point averaged sgv values ~5 min apart. This catches any stale direction fields from companion mode. Garmin side: SugarRun and SugarWave also compute delta and direction from sgv values on-device.
+**Direction and delta:** Strimma computes both from its stored readings, and Scout stores them as sent. Springa and the Garmin apps display them unchanged and never recompute them. `computeTrend()` in `lib/cgm.ts` is a separate 30-minute regression slope used for pre-run guidance and the coach, not for the arrow.
 
 **Single table:** All readings live in `bg_readings`.
