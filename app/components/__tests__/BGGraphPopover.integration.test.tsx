@@ -13,13 +13,13 @@ import type { BGReading } from "@/lib/cgm";
 import type { BGResponseModel } from "@/lib/bgModel";
 import { BGGraphPopover } from "../BGGraphPopover";
 
-function makeReading(ts: number, mmol: number, direction = "Flat"): BGReading {
+function makeReading(ts: number, mmol: number, direction = "Flat", delta = 0): BGReading {
   return {
     ts,
     mmol,
     sgv: Math.round(mmol * 18),
     direction,
-    delta: 0,
+    delta,
   };
 }
 
@@ -93,5 +93,39 @@ describe("BGGraphPopover", () => {
 
     expect(screen.getByText("During run: 60g/h")).toBeInTheDocument();
     expect(screen.queryByText(/undefinedg\/h|NaNg\/h/)).not.toBeInTheDocument();
+  });
+
+  it("shows the uploader's delta in mmol/L", () => {
+    vi.setSystemTime(new Date("2026-04-23T12:00:00Z"));
+    const readingTime = Date.now() - 60 * 1000;
+
+    render(<BGGraphPopover onClose={() => {}} />, {
+      atomInits: [
+        [settingsAtom, {}],
+        [readingsAtom, [makeReading(readingTime, 7.4, "SingleDown", -12.6)]],
+        [currentBGAtom, 7.4],
+        [trendAtom, "↓"],
+        [trendSlopeAtom, 0],
+      ],
+    });
+
+    expect(screen.getByText("-0.7")).toBeInTheDocument();
+  });
+
+  it("hides the delta when the uploader had no past reading", () => {
+    vi.setSystemTime(new Date("2026-04-23T12:00:00Z"));
+    const readingTime = Date.now() - 60 * 1000;
+
+    render(<BGGraphPopover onClose={() => {}} />, {
+      atomInits: [
+        [settingsAtom, {}],
+        [readingsAtom, [makeReading(readingTime, 7.4, "NONE", -12.6)]],
+        [currentBGAtom, 7.4],
+        [trendAtom, "?"],
+        [trendSlopeAtom, 0],
+      ],
+    });
+
+    expect(screen.queryByText("-0.7")).not.toBeInTheDocument();
   });
 });
