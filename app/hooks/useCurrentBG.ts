@@ -60,7 +60,7 @@ function createBGStore() {
       }
       const json = (await res.json()) as {
         current?: { mmol: number; arrow?: string; ts: number };
-        trend?: { arrow?: string; slope?: number };
+        trend?: { slope?: number };
         readings?: BGReading[];
       };
       if (isStalePoll(pollToken)) return;
@@ -74,7 +74,7 @@ function createBGStore() {
 
       set({
         currentBG: json.current.mmol,
-        trend: json.trend?.arrow ?? json.current.arrow ?? null,
+        trend: json.current.arrow ?? null,
         trendSlope: json.trend?.slope ?? null,
         lastUpdate: new Date(json.current.ts),
         loading: false,

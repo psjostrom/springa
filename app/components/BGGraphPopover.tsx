@@ -5,7 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { trendArrow } from "@/lib/cgm";
 import { bgColor } from "./CurrentBGPill";
 import { getWorkoutCategory } from "@/lib/constants";
-import { BG_HYPO, BG_STABLE_MAX } from "@/lib/constants";
+import { BG_HYPO, BG_STABLE_MAX, MGDL_TO_MMOL } from "@/lib/constants";
 import { readingsAtom, trendAtom, currentBGAtom, trendSlopeAtom, bgModelAtom, enrichedEventsAtom, settingsAtom, updateSettingsAtom, currentTsbAtom, currentIobAtom } from "../atoms";
 import { PreRunReadiness } from "./PreRunReadiness";
 import type { WorkoutCategory } from "@/lib/types";
@@ -177,27 +177,11 @@ export function BGGraphPopover({ onClose }: BGGraphPopoverProps) {
 
   const scrubReading = scrubIdx !== null ? data[scrubIdx] : null;
 
-  // Delta over 5 min, averaged at both endpoints to reduce single-reading noise
   const activeIdx = scrubIdx ?? data.length - 1;
   const activeReading = data[activeIdx];
-  const DELTA_WINDOW_MS = 5 * 60 * 1000;
-  const avgWindow = (centerIdx: number) => {
-    const lo = Math.max(0, centerIdx - 1);
-    const hi = Math.min(data.length - 1, centerIdx + 1);
-    let sum = 0, count = 0;
-    for (let i = lo; i <= hi; i++) { sum += data[i].mmol; count++; }
-    return sum / count;
-  };
-  const targetTs = activeReading.ts - DELTA_WINDOW_MS;
-  let pastIdx: number | null = null;
-  for (let i = activeIdx - 1; i >= 0; i--) {
-    if (data[i].ts <= targetTs) {
-      const next = i + 1 < activeIdx ? i + 1 : null;
-      pastIdx = next != null && Math.abs(data[next].ts - targetTs) < Math.abs(data[i].ts - targetTs) ? next : i;
-      break;
-    }
-  }
-  const delta = pastIdx !== null ? avgWindow(activeIdx) - avgWindow(pastIdx) : null;
+  // The uploader stores delta 0 when it had no past reading, and marks that reading's
+  // direction as unknown ("?"), so the delta is hidden for those readings.
+  const delta = trendArrow(activeReading.direction) === "?" ? null : activeReading.delta / MGDL_TO_MMOL;
   const ageMs = now - activeReading.ts;
   const ageMins = Math.floor(ageMs / 60000);
   const ageStr = scrubReading

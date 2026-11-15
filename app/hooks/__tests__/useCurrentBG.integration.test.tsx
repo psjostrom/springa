@@ -26,7 +26,7 @@ describe("useCurrentBG", () => {
         requestCount += 1;
         return HttpResponse.json({
           current: { mmol: 6.2, arrow: "→", ts: Date.now() },
-          trend: { arrow: "→", slope: 0 },
+          trend: { slope: 0 },
           readings: [],
         });
       }),
@@ -57,7 +57,7 @@ describe("useCurrentBG", () => {
         await responseGate;
         return HttpResponse.json({
           current: { mmol: 7.4, arrow: "↘", ts: Date.now() },
-          trend: { arrow: "↘", slope: -0.2 },
+          trend: { slope: -0.2 },
           readings: [
             { ts: Date.now(), mmol: 7.4, sgv: 133, direction: "FortyFiveDown", delta: -0.2 },
           ],

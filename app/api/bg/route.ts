@@ -2,7 +2,7 @@ import { requireAuth, unauthorized, AuthError } from "@/lib/apiHelpers";
 import { getUserCredentials } from "@/lib/credentials";
 import { getUserSettings } from "@/lib/settings";
 import { fetchBGFromNS } from "@/lib/nightscout";
-import { computeTrend, trendArrow, slopeToArrow } from "@/lib/cgm";
+import { computeTrend, trendArrow } from "@/lib/cgm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -41,24 +41,15 @@ export async function GET() {
   const trend = computeTrend(readings);
   const latest = readings[readings.length - 1];
 
-  // Prefer computed trend direction over stored per-reading direction
-  const currentDirection = trend?.direction ?? latest.direction;
-
   return NextResponse.json({
     readings,
     current: {
       mmol: latest.mmol,
       sgv: latest.sgv,
       ts: latest.ts,
-      direction: currentDirection,
-      arrow: trendArrow(currentDirection),
+      direction: latest.direction,
+      arrow: trendArrow(latest.direction),
     },
-    trend: trend
-      ? {
-          slope: trend.slope,
-          direction: trend.direction,
-          arrow: slopeToArrow(trend.slope),
-        }
-      : null,
+    trend: trend ? { slope: trend.slope } : null,
   });
 }

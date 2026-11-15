@@ -1,25 +1,16 @@
 // --- Types ---
 //
-// IMPORTANT: xDrip+ companion mode (used when CGM is connected to CamAPS FX
-// or similar AID) returns WRONG direction and delta fields. The direction lags
-// behind actual sgv changes by 2-3 readings (~10-15 min), measured at a 31%
-// mismatch rate across 550 readings. BG can be rising while direction still
-// says "FortyFiveDown". See: github.com/NightscoutFoundation/xDrip/issues/3787
-//
-// We NEVER trust the direction field from CGM+. On ingestion, we recompute
-// direction from 3-point averaged sgv values ~5 min apart via
-// recomputeDirections(). The Garmin apps (SugarRun, SugarWave) do the same
-// computation on-device.
+// Direction and delta are computed by the uploader (Strimma) and stored by Scout
+// as sent. Springa displays them as they are and never recomputes them.
 
-import { MGDL_TO_MMOL } from "./constants";
 import { linearRegression } from "./math";
 
 export interface BGReading {
   sgv: number; // mg/dL (raw from Nightscout)
   mmol: number; // converted to mmol/L
   ts: number; // timestamp ms
-  direction: string; // recomputed from sgv — NOT from CGM+ API
-  delta: number; // smoothed SGV change in mg/dL over ~5 min window
+  direction: string; // as computed by the uploader
+  delta: number; // SGV change in mg/dL over ~5 min, as computed by the uploader
 }
 
 // --- Nightscout direction → arrow ---
@@ -40,114 +31,11 @@ export function trendArrow(direction: string): string {
   return DIRECTION_ARROWS[direction] ?? "?";
 }
 
-/** Derive arrow directly from slope (mmol/L per min) — always consistent. */
-export function slopeToArrow(slopePerMin: number): string {
-  const deltaMgdlPerMin = slopePerMin * MGDL_TO_MMOL;
-  return trendArrow(directionFromDelta(deltaMgdlPerMin));
-}
-
-// --- Parse Nightscout entries ---
-
-function isValidEntry(
-  e: unknown,
-): e is { sgv: number; date?: number; dateString?: string; direction?: string; delta?: number } {
-  if (typeof e !== "object" || e === null) return false;
-  const obj = e as Record<string, unknown>;
-  return typeof obj.sgv === "number" && obj.sgv > 0;
-}
-
-export function parseNightscoutEntries(body: unknown): BGReading[] {
-  const arr = Array.isArray(body) ? body : [body];
-  const readings: BGReading[] = [];
-
-  for (const entry of arr) {
-    if (!isValidEntry(entry)) continue;
-
-    const rawTs =
-      typeof entry.date === "number"
-        ? entry.date
-        : typeof entry.dateString === "string"
-          ? new Date(entry.dateString).getTime()
-          : Date.now();
-
-    if (isNaN(rawTs)) continue;
-
-    const ts = rawTs;
-
-    readings.push({
-      sgv: entry.sgv,
-      mmol: Math.round((entry.sgv / MGDL_TO_MMOL) * 10) / 10,
-      ts,
-      direction: entry.direction ?? "NONE",
-      delta: typeof entry.delta === "number" ? entry.delta : 0,
-    });
-  }
-
-  return readings;
-}
-
-// --- Recompute direction from sgv values ---
-// xDrip+ companion mode returns stale/wrong direction fields (~31% error rate).
-// See: https://github.com/NightscoutFoundation/xDrip/issues/3787
-// Recomputes direction using 3-point averaged sgv values ~5 min apart to reduce
-// per-minute noise. EASD/ISPAD 2020 CGM arrow thresholds (Moser et al.,
-// Diabetologia 2020): ±1.1 mg/dL/min flat, ±2.0 45°, ±3.0 single/double.
-function directionFromDelta(deltaMgdlPerMin: number): string {
-  if (deltaMgdlPerMin <= -3.0) return "DoubleDown";
-  if (deltaMgdlPerMin <= -2.0) return "SingleDown";
-  if (deltaMgdlPerMin <= -1.1) return "FortyFiveDown";
-  if (deltaMgdlPerMin <= 1.1) return "Flat";
-  if (deltaMgdlPerMin <= 2.0) return "FortyFiveUp";
-  if (deltaMgdlPerMin <= 3.0) return "SingleUp";
-  return "DoubleUp";
-}
-
-export function recomputeDirections(readings: BGReading[]): void {
-  const WINDOW_MS = 5 * 60 * 1000;
-
-  // Average sgv of readings[idx-1..idx+1] (clamped to array bounds)
-  const avgSgv = (idx: number) => {
-    const lo = Math.max(0, idx - 1);
-    const hi = Math.min(readings.length - 1, idx + 1);
-    let sum = 0, count = 0;
-    for (let j = lo; j <= hi; j++) { sum += readings[j].sgv; count++; }
-    return sum / count;
-  };
-
-  for (let i = 0; i < readings.length; i++) {
-    const curr = readings[i];
-
-    // Find reading closest to 5 min before current
-    let pastIdx: number | null = null;
-    const targetTs = curr.ts - WINDOW_MS;
-    for (let j = i - 1; j >= 0; j--) {
-      if (readings[j].ts <= targetTs) {
-        const next = j + 1 < i ? j + 1 : null;
-        pastIdx = next != null && Math.abs(readings[next].ts - targetTs) < Math.abs(readings[j].ts - targetTs) ? next : j;
-        break;
-      }
-    }
-
-    if (pastIdx === null || curr.ts - readings[pastIdx].ts > 600000) {
-      readings[i].direction = "NONE";
-      readings[i].delta = 0;
-      continue;
-    }
-
-    const dtMin = (curr.ts - readings[pastIdx].ts) / 60000;
-    if (dtMin <= 0) { readings[i].direction = "NONE"; readings[i].delta = 0; continue; }
-
-    const deltaPerMin = (avgSgv(i) - avgSgv(pastIdx)) / dtMin;
-    readings[i].direction = directionFromDelta(deltaPerMin);
-    readings[i].delta = Math.round((avgSgv(i) - avgSgv(pastIdx)) * 1000) / 1000;
-  }
-}
-
 // --- Trend computation from stored readings ---
 
 export function computeTrend(
   readings: BGReading[],
-): { slope: number; direction: string } | null {
+): { slope: number } | null {
   if (readings.length < 2) return null;
 
   // Use last 30 minutes of readings
@@ -165,10 +53,5 @@ export function computeTrend(
   }));
 
   const { slope: slopePerMin } = linearRegression(points);
-  const slopeRounded = Math.round(slopePerMin * 100) / 100;
-
-  const deltaMgdlPerMin = slopeRounded * MGDL_TO_MMOL;
-  const direction = directionFromDelta(deltaMgdlPerMin);
-
-  return { slope: slopeRounded, direction };
+  return { slope: Math.round(slopePerMin * 100) / 100 };
 }

@@ -3557,13 +3557,11 @@ export const bgFixture = {
     "mmol": 13.2,
     "sgv": 238,
     "ts": -46257,
-    "direction": "Flat",
-    "arrow": "→"
+    "direction": "DoubleDown",
+    "arrow": "⇊"
   },
   "trend": {
-    "slope": -0.03,
-    "direction": "Flat",
-    "arrow": "→"
+    "slope": -0.03
   }
 };
 

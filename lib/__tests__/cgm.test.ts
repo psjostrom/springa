@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  parseNightscoutEntries,
   computeTrend,
   trendArrow,
   type BGReading,
@@ -24,97 +23,6 @@ describe("trendArrow", () => {
   it("returns ? for unknown directions", () => {
     expect(trendArrow("UNKNOWN")).toBe("?");
     expect(trendArrow("")).toBe("?");
-  });
-});
-
-// --- parseNightscoutEntries ---
-
-describe("parseNightscoutEntries", () => {
-  it("parses a valid array of entries", () => {
-    const body = [
-      {
-        type: "sgv",
-        sgv: 145,
-        date: 1708300000000,
-        dateString: "2026-02-19T10:00:00.000+01:00",
-        direction: "Flat",
-        device: "dexcom",
-      },
-      {
-        type: "sgv",
-        sgv: 180,
-        date: 1708300300000,
-        direction: "SingleUp",
-      },
-    ];
-
-    const readings = parseNightscoutEntries(body);
-    expect(readings).toHaveLength(2);
-
-    expect(readings[0].sgv).toBe(145);
-    expect(readings[0].mmol).toBe(8.0); // 145 / 18.018 ≈ 8.05 → 8.0
-    expect(readings[0].ts).toBe(1708300000000);
-    expect(readings[0].direction).toBe("Flat");
-
-    expect(readings[1].sgv).toBe(180);
-    expect(readings[1].mmol).toBe(10.0); // 180 / 18.018 ≈ 9.99 → 10.0
-    expect(readings[1].direction).toBe("SingleUp");
-  });
-
-  it("parses a single object (not array)", () => {
-    const body = { sgv: 100, date: 1708300000000, direction: "Flat" };
-    const readings = parseNightscoutEntries(body);
-    expect(readings).toHaveLength(1);
-    expect(readings[0].sgv).toBe(100);
-    expect(readings[0].mmol).toBe(5.6); // 100 / 18.018 ≈ 5.55 → 5.6
-  });
-
-  it("returns empty for invalid entries", () => {
-    expect(parseNightscoutEntries([])).toHaveLength(0);
-    expect(parseNightscoutEntries(null)).toHaveLength(0);
-    expect(parseNightscoutEntries([{ sgv: 0 }])).toHaveLength(0); // sgv must be > 0
-    expect(parseNightscoutEntries([{ foo: "bar" }])).toHaveLength(0);
-  });
-
-  it("skips entries with missing sgv", () => {
-    const body = [
-      { sgv: 145, date: 1708300000000, direction: "Flat" },
-      { date: 1708300300000, direction: "Flat" }, // no sgv
-      { sgv: -5, date: 1708300300000 }, // negative sgv
-    ];
-    const readings = parseNightscoutEntries(body);
-    expect(readings).toHaveLength(1);
-  });
-
-  it("uses dateString when date is missing", () => {
-    const body = {
-      sgv: 145,
-      dateString: "2026-02-19T10:00:00.000Z",
-      direction: "Flat",
-    };
-    const readings = parseNightscoutEntries(body);
-    expect(readings[0].ts).toBe(new Date("2026-02-19T10:00:00.000Z").getTime());
-  });
-
-  it("defaults direction to NONE when missing", () => {
-    const body = { sgv: 145, date: 1708300000000 };
-    const readings = parseNightscoutEntries(body);
-    expect(readings[0].direction).toBe("NONE");
-  });
-
-  it("correctly converts mg/dL to mmol/L", () => {
-    // Known conversions
-    const cases = [
-      { sgv: 72, expected: 4.0 },
-      { sgv: 180, expected: 10.0 },
-      { sgv: 252, expected: 14.0 },
-      { sgv: 54, expected: 3.0 },
-    ];
-
-    for (const { sgv, expected } of cases) {
-      const readings = parseNightscoutEntries({ sgv, date: 1 });
-      expect(readings[0].mmol).toBe(expected);
-    }
   });
 });
 
@@ -145,7 +53,6 @@ describe("computeTrend", () => {
     const readings = makeReadings([8.0, 8.1, 7.9, 8.0, 8.1, 8.0]);
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
-    expect(trend!.direction).toBe("Flat");
     expect(Math.abs(trend!.slope)).toBeLessThan(0.05);
   });
 
@@ -155,7 +62,6 @@ describe("computeTrend", () => {
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
     expect(trend!.slope).toBeLessThan(-0.1);
-    expect(["SingleDown", "DoubleDown"]).toContain(trend!.direction);
   });
 
   it("detects rising BG", () => {
@@ -164,7 +70,6 @@ describe("computeTrend", () => {
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
     expect(trend!.slope).toBeGreaterThan(0.1);
-    expect(["SingleUp", "DoubleUp"]).toContain(trend!.direction);
   });
 
   it("only uses last 30 minutes of readings", () => {
@@ -185,12 +90,12 @@ describe("computeTrend", () => {
     const trend = computeTrend(readings);
     expect(trend).not.toBeNull();
     // Should be flat based on recent readings, not influenced by old high
-    expect(trend!.direction).toBe("Flat");
+    expect(Math.abs(trend!.slope)).toBeLessThan(0.05);
   });
 
   it("returns flat when all readings have the same timestamp", () => {
     const readings = makeReadings([8.0, 9.0, 10.0], 0); // 0 interval
     const trend = computeTrend(readings);
-    expect(trend).toEqual({ slope: 0, direction: "Flat" });
+    expect(trend).toEqual({ slope: 0 });
   });
 });
